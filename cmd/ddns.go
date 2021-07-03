@@ -12,6 +12,39 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal"
 )
 
+func dropRoot() {
+	log.Printf("🚷 Erasing supplementary group IDs.")
+	syscall.Setgroups([]int{})
+
+	gid, err := ddns.GetenvAsInt("PGID", 1000)
+	if err == nil {
+		log.Printf("👪 Setting the gid to %d", gid)
+		syscall.Setgid(gid)
+	} else {
+		log.Print(err)
+	}
+
+	uid, err := ddns.GetenvAsInt("PUID", 1000)
+	if err == nil {
+		log.Printf("🧑 Setting the uid to %d", uid)
+		syscall.Setuid(uid)
+	} else {
+		log.Print(err)
+	}
+
+	log.Printf("🧑 Effective user ID of the process: %d", os.Geteuid())
+	log.Printf("👪 Effective group ID of the process: %d", os.Getegid())
+
+	if groups, err := syscall.Getgroups(); err == nil {
+		log.Printf("👪 Supplementary group IDs of the process: %d", groups)
+	} else {
+		log.Printf("😡 Could not get supplementary group IDs.")
+	}
+	if os.Geteuid() == 0 || os.Getegid() == 0 {
+		log.Printf("⚠️ It seems this program was run with root privilege. This is not recommended.")
+	}
+}
+
 func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 	chanAlarm := time.After(d)
 	select {
@@ -23,7 +56,18 @@ func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 	}
 }
 
+func delayedExit(signal chan os.Signal) {
+	log.Printf("🕒 Waiting for one minute before exiting to prevent excessive logging.")
+	if continue_ := wait(signal, time.Minute); continue_ {
+		log.Printf("🕒 Time's up. Bye!")
+	}
+	os.Exit(1)
+}
+
 func main() {
+	// dropping the root privilege
+	dropRoot()
+
 	ctx := context.Background()
 
 	// catching SIGINT and SIGTERM
@@ -34,22 +78,14 @@ func main() {
 	c, err := ddns.ReadEnv()
 	if err != nil {
 		log.Print(err)
-		log.Printf("🕒 Waiting for one minute before exiting to prevent excessive logging.")
-		if continue_ := wait(chanSignal, time.Minute); continue_ {
-			log.Printf("🕒 Time's up. Bye!")
-		}
-		os.Exit(1)
+		delayedExit(chanSignal)
 	}
 
 	// preparing the CloadFlare client
 	h, err := ddns.NewAPI(c.Token)
 	if err != nil {
 		log.Print(err)
-		log.Printf("🕒 Waiting for one minute before exiting to prevent excessive logging.")
-		if continue_ := wait(chanSignal, time.Minute); continue_ {
-			log.Printf("🕒 Time's up. Bye!")
-		}
-		os.Exit(1)
+		delayedExit(chanSignal)
 	}
 
 mainLoop:

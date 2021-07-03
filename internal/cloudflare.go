@@ -65,10 +65,10 @@ func (h *handle) updateRecords(ctx context.Context, zone *cloudflare.Zone, fqdn 
 
 	for _, r := range rs {
 		if r.Name != fqdn {
-			return nil, fmt.Errorf("📈 Unexpected DNS record %+v when searching for the domain %s", r, fqdn)
+			return nil, fmt.Errorf("🙀 Unexpected DNS record %+v when searching for the domain %s", r, fqdn)
 		}
 		if r.Type != recordType {
-			return nil, fmt.Errorf("📈 Unexpected DNS record %+v when searching for records of type %s", r, recordType)
+			return nil, fmt.Errorf("🙀 Unexpected DNS record %+v when searching for records of type %s", r, recordType)
 		}
 	}
 	for _, r := range rs {

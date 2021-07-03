@@ -40,7 +40,7 @@ type Config struct {
 	RefreshInterval time.Duration
 }
 
-func getenvAsPolicy(key string) (Policy, error) {
+func GetenvAsPolicy(key string) (Policy, error) {
 	val := strings.TrimSpace(os.Getenv(key))
 	switch val {
 	case "cloudflare", "":
@@ -54,7 +54,7 @@ func getenvAsPolicy(key string) (Policy, error) {
 	}
 }
 
-func getenvAsNonEmptyList(key string) ([]string, error) {
+func GetenvAsNonEmptyList(key string) ([]string, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is missing.", key)
 	} else {
@@ -66,9 +66,9 @@ func getenvAsNonEmptyList(key string) ([]string, error) {
 	}
 }
 
-func getenvAsBool(key string, def bool) (bool, error) {
+func GetenvAsBool(key string, def bool) (bool, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("ℹ️ The variable %s is missing. Default value: %t", key, def)
+		log.Printf("🈳 The variable %s is missing. Default value: %t", key, def)
 		return def, nil
 	} else {
 		b, err := strconv.ParseBool(val)
@@ -79,9 +79,9 @@ func getenvAsBool(key string, def bool) (bool, error) {
 	}
 }
 
-func getenvAsInt(key string, def int) (int, error) {
+func GetenvAsInt(key string, def int) (int, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("ℹ️ The variable %s is missing. Default value: %d", key, def)
+		log.Printf("🈳 The variable %s is missing. Default value: %d", key, def)
 		return def, nil
 	} else {
 		i, err := strconv.Atoi(val)
@@ -92,9 +92,9 @@ func getenvAsInt(key string, def int) (int, error) {
 	}
 }
 
-func getenvAsTimeDuration(key string, def time.Duration) (time.Duration, error) {
+func GetenvAsTimeDuration(key string, def time.Duration) (time.Duration, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("ℹ️ The variable %s is missing. Default value: %s", key, def.String())
+		log.Printf("🈳 The variable %s is missing. Default value: %s", key, def.String())
 		return def, nil
 	} else {
 		t, err := time.ParseDuration(val)
@@ -110,31 +110,31 @@ func ReadEnv() (*Config, error) {
 	if token == "" {
 		return nil, fmt.Errorf("😡 The Cloudflare API token (CF_API_TOKEN) is missing.")
 	}
-	domains, err := getenvAsNonEmptyList("DOMAINS")
+	domains, err := GetenvAsNonEmptyList("DOMAINS")
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Domains to check: %v", domains)
-	ip6Policy, err := getenvAsPolicy("IP6_POLICY")
+	ip6Policy, err := GetenvAsPolicy("IP6_POLICY")
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IP6: %v", ip6Policy)
-	ip4Policy, err := getenvAsPolicy("IP4_POLICY")
+	ip4Policy, err := GetenvAsPolicy("IP4_POLICY")
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IP4: %v", ip4Policy)
-	ttl, err := getenvAsInt("TTL", 1)
+	ttl, err := GetenvAsInt("TTL", 1)
 	if err != nil {
 		return nil, err
 	}
-	proxied, err := getenvAsBool("PROXIED", false)
+	proxied, err := GetenvAsBool("PROXIED", false)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
-	refreshInterval, err := getenvAsTimeDuration("REFRESH_INTERVAL", time.Minute*5)
+	refreshInterval, err := GetenvAsTimeDuration("REFRESH_INTERVAL", time.Minute*5)
 	if err != nil {
 		return nil, err
 	}
