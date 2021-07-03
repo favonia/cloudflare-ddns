@@ -12,15 +12,15 @@ import (
 type Policy int
 
 const (
-	Disabled Policy = iota
+	Unmanaged Policy = iota
 	CloudFlare
 	Local
 )
 
 func (p Policy) String() string {
 	switch p {
-	case Disabled:
-		return "disabled"
+	case Unmanaged:
+		return "unmanaged"
 	case CloudFlare:
 		return "cloudflare"
 	case Local:
@@ -33,8 +33,8 @@ func (p Policy) String() string {
 type Config struct {
 	Token           string
 	Domains         []string
-	IP4Policy       Policy // "cloudflare", "local", "disabled"
-	IP6Policy       Policy // "cloudflare", "local", "disabled"
+	IP4Policy       Policy // "cloudflare", "local", "unmanaged"
+	IP6Policy       Policy // "cloudflare", "local", "unmanaged"
 	TTL             int
 	Proxied         bool
 	RefreshInterval time.Duration
@@ -45,12 +45,12 @@ func GetenvAsPolicy(key string) (Policy, error) {
 	switch val {
 	case "cloudflare", "":
 		return CloudFlare, nil
-	case "disabled":
-		return Disabled, nil
+	case "unmanaged":
+		return Unmanaged, nil
 	case "local":
 		return Local, nil
 	default:
-		return Disabled, fmt.Errorf("😡 Error parsing the variable %s with the value %s", key, val)
+		return Unmanaged, fmt.Errorf("😡 Error parsing the variable %s with the value %s", key, val)
 	}
 }
 

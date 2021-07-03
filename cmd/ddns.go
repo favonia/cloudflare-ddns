@@ -90,42 +90,41 @@ func main() {
 
 mainLoop:
 	for {
-		var noIP net.IP = nil
-		var ip4 *net.IP = nil
-		if c.IP4Policy != ddns.Disabled {
+		ip4 := net.IP(nil)
+		if c.IP4Policy != ddns.Unmanaged {
 			ip, err := ddns.GetIP4(c.IP4Policy)
 			if err != nil {
 				log.Print(err)
-				log.Printf("❓ Could not get IP4 address")
-				ip4 = &noIP
+				log.Printf("🤔 Could not get IP4 address")
 			} else {
 				log.Printf("🔍 Found the IP4 address: %v", ip.To4())
-				ip4 = &ip
+				ip4 = ip
 			}
 		}
 
-		var ip6 *net.IP = nil
-		if c.IP6Policy != ddns.Disabled {
+		ip6 := net.IP(nil)
+		if c.IP6Policy != ddns.Unmanaged {
 			ip, err := ddns.GetIP6(c.IP6Policy)
 			if err != nil {
 				log.Print(err)
-				log.Printf("❓ Could not get IP6 address")
-				ip6 = &noIP
+				log.Printf("🤔 Could not get IP6 address")
 			} else {
 				log.Printf("🔍 Found the IP6 address: %v", ip.To16())
-				ip6 = &ip
+				ip6 = ip
 			}
 		}
 
 		for _, fqdn := range c.Domains {
 			s := ddns.DNSSetting{
-				FQDN:    fqdn,
-				IP4:     ip4,
-				IP6:     ip6,
-				TTL:     c.TTL,
-				Proxied: c.Proxied,
+				FQDN:       fqdn,
+				IP4Managed: c.IP4Policy != ddns.Unmanaged,
+				IP4:        ip4,
+				IP6Managed: c.IP6Policy != ddns.Unmanaged,
+				IP6:        ip6,
+				TTL:        c.TTL,
+				Proxied:    c.Proxied,
 			}
-			err := h.UpdateDNSRecords(ctx, s)
+			err := h.UpdateDNSRecords(ctx, &s)
 			if err != nil {
 				log.Print(err)
 			}

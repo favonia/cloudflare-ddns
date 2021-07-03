@@ -10,9 +10,11 @@ import (
 )
 
 type handle struct {
-	api        *cloudflare.API
-	currentIP4 *net.IP
-	currentIP6 *net.IP
+	api       *cloudflare.API
+	ip4Set    bool
+	ip4Cached net.IP
+	ip6Set    bool
+	ip6Cached net.IP
 }
 
 func NewAPI(token string) (*handle, error) {
@@ -21,9 +23,11 @@ func NewAPI(token string) (*handle, error) {
 		return nil, err
 	}
 	return &handle{
-		api:        api,
-		currentIP4: nil,
-		currentIP6: nil,
+		api:       api,
+		ip4Set:    false,
+		ip4Cached: nil,
+		ip6Set:    false,
+		ip6Cached: nil,
 	}, nil
 }
 
@@ -65,17 +69,19 @@ func (h *handle) updateRecords(ctx context.Context, zone *cloudflare.Zone, fqdn 
 
 	for _, r := range rs {
 		if r.Name != fqdn {
-			return nil, fmt.Errorf("🙀 Unexpected DNS record %+v when searching for the domain %s", r, fqdn)
+			return nil, fmt.Errorf("🤯 Unexpected DNS record %+v when searching for the domain %s", r, fqdn)
 		}
 		if r.Type != recordType {
-			return nil, fmt.Errorf("🙀 Unexpected DNS record %+v when searching for records of type %s", r, recordType)
+			return nil, fmt.Errorf("🤯 Unexpected DNS record %+v when searching for records of type %s", r, recordType)
 		}
 	}
+
+	// find the entries that match
 	for _, r := range rs {
 		if ip.Equal(net.ParseIP(r.Content)) {
 			log.Printf("✅ Record was already up-to-date (%s).", ip.String())
 			updated = true
-			continue
+			break
 		}
 	}
 
@@ -87,22 +93,27 @@ func (h *handle) updateRecords(ctx context.Context, zone *cloudflare.Zone, fqdn 
 		Proxied: &proxied,
 	}
 
+	found_matched := 0
 	for _, r := range rs {
-		if !ip.Equal(net.ParseIP(r.Content)) {
+		if ip.Equal(net.ParseIP(r.Content)) {
+			found_matched++
+			if found_matched > 1 {
+				log.Printf("🧹 Removing a duplicate record: %+v", r)
+				h.api.DeleteDNSRecord(ctx, zone.ID, r.ID)
+			}
+		} else {
 			if updated {
-				log.Printf("🗑️ Deleting stale record pointing to %s", r.Content)
+				log.Printf("🗑️ Deleting a stale record pointing to %s", r.Content)
 				h.api.DeleteDNSRecord(ctx, zone.ID, r.ID)
 			} else {
-				log.Printf("📡 Updating record %+v", payload)
+				log.Printf("📡 Updating a record from %s to %v", r.Content, ip)
 				h.api.UpdateDNSRecord(ctx, zone.ID, r.ID, payload)
 				updated = true
 			}
-			updated = true
-			continue
 		}
 	}
 	if !updated {
-		log.Printf("➕ Adding new record %+v", payload)
+		log.Printf("➕ Adding a new record %+v", payload)
 		h.api.CreateDNSRecord(ctx, zone.ID, payload)
 		updated = true
 	}
@@ -110,22 +121,26 @@ func (h *handle) updateRecords(ctx context.Context, zone *cloudflare.Zone, fqdn 
 }
 
 type DNSSetting struct {
-	FQDN    string
-	IP4     *net.IP
-	IP6     *net.IP
-	TTL     int
-	Proxied bool
+	FQDN       string
+	IP4Managed bool
+	IP4        net.IP
+	IP6Managed bool
+	IP6        net.IP
+	TTL        int
+	Proxied    bool
 }
 
-func (h *handle) UpdateDNSRecords(ctx context.Context, s DNSSetting) error {
-	if s.IP4 != nil && h.currentIP4 != nil && h.currentIP4.Equal(*s.IP4) {
-		s.IP4 = nil // as if the policy is "disabled"
+func (h *handle) UpdateDNSRecords(ctx context.Context, s *DNSSetting) error {
+	checkingIP4 := s.IP4Managed
+	if checkingIP4 && h.ip4Set && h.ip4Cached.Equal(s.IP4) {
+		checkingIP4 = false // as if the policy is "unmanaged"
 	}
-	if s.IP6 != nil && h.currentIP6 != nil && h.currentIP6.Equal(*s.IP6) {
-		s.IP6 = nil // as if the policy is "disabled"
+	checkingIP6 := s.IP6Managed
+	if checkingIP6 && h.ip6Set && h.ip6Cached.Equal(s.IP6) {
+		checkingIP6 = false // as if the policy is "unmanaged"
 	}
-	if s.IP4 == nil && s.IP6 == nil {
-		log.Printf("🤷 Nothing to be done; skipping the updating.")
+	if !checkingIP4 && !checkingIP6 {
+		log.Printf("🤷 Nothing to do; skipping the updating.")
 		return nil
 	}
 
@@ -135,22 +150,26 @@ func (h *handle) UpdateDNSRecords(ctx context.Context, s DNSSetting) error {
 	}
 	log.Printf("🔍 Found the zone %s for the domain %s.", zone.Name, s.FQDN)
 
-	if s.IP4 != nil {
+	if checkingIP4 {
 		ip, err := h.updateRecords(ctx, zone, s.FQDN, "A", s.IP4.To4(), s.TTL, s.Proxied)
 		if err != nil {
-			h.currentIP4 = nil
+			h.ip4Set = false
 			return err
+		} else {
+			h.ip4Set = true
+			h.ip4Cached = ip
 		}
-		h.currentIP4 = &ip
 	}
 
-	if s.IP6 != nil {
+	if checkingIP6 {
 		ip, err := h.updateRecords(ctx, zone, s.FQDN, "AAAA", s.IP6.To16(), s.TTL, s.Proxied)
 		if err != nil {
-			h.currentIP6 = nil
+			h.ip6Set = false
 			return err
+		} else {
+			h.ip6Set = true
+			h.ip6Cached = ip
 		}
-		h.currentIP6 = &ip
 	}
 
 	return nil
