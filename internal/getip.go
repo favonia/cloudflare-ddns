@@ -17,7 +17,7 @@ func getIPFromCloudflare(url string) (net.IP, error) {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("😡 Could not connect to the CloudFlare server: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -29,7 +29,7 @@ func getIPFromCloudflare(url string) (net.IP, error) {
 	re := regexp.MustCompile(`(?m:^ip=(.*)$)`)
 	ms := re.FindSubmatch(body)
 	if ms == nil {
-		return nil, fmt.Errorf(`Could not find "ip=" in the response %q.`, string(body))
+		return nil, fmt.Errorf(`😡 Could not find "ip=..." in the response: %q.`, string(body))
 	}
 
 	return net.ParseIP(string(ms[1])), nil
@@ -56,7 +56,7 @@ func getIP6FromCloadflare() (net.IP, error) {
 func getLocalIP4() (net.IP, error) {
 	conn, err := net.Dial("udp4", "1.1.1.1:443")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(`😡 Could not detect a local IPv4 address: %w`, err)
 	}
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.To4(), nil
@@ -65,7 +65,7 @@ func getLocalIP4() (net.IP, error) {
 func getLocalIP6() (net.IP, error) {
 	conn, err := net.Dial("udp6", "[2606:4700:4700::1111]:443")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(`😡 Could not detect a local IPv6 address: %w`, err)
 	}
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.To16(), nil
@@ -73,22 +73,22 @@ func getLocalIP6() (net.IP, error) {
 
 func GetIP4(policy Policy) (net.IP, error) {
 	switch policy {
-	case CloudFlare:
+	case Cloudflare:
 		return getIP4FromCloadflare()
 	case Local:
 		return getLocalIP4()
 	default:
-		return nil, fmt.Errorf("🙀 The impossible happened!")
+		return nil, fmt.Errorf("😱 The impossible happened!")
 	}
 }
 
 func GetIP6(policy Policy) (net.IP, error) {
 	switch policy {
-	case CloudFlare:
+	case Cloudflare:
 		return getIP6FromCloadflare()
 	case Local:
 		return getLocalIP6()
 	default:
-		return nil, fmt.Errorf("🙀 The impossible happened!")
+		return nil, fmt.Errorf("😱 The impossible happened!")
 	}
 }
