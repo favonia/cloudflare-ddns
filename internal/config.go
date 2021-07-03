@@ -129,6 +129,7 @@ func ReadEnv() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
 	proxied, err := GetenvAsBool("PROXIED", false)
 	if err != nil {
 		return nil, err

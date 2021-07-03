@@ -57,9 +57,9 @@ func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 }
 
 func delayedExit(signal chan os.Signal) {
-	log.Printf("🕒 Waiting for one minute before exiting to prevent excessive logging.")
+	log.Printf("⏰ Waiting for one minute before exiting to prevent excessive logging.")
 	if continue_ := wait(signal, time.Minute); continue_ {
-		log.Printf("🕒 Time's up. Bye!")
+		log.Printf("⏰ Time's up. Bye!")
 	}
 	os.Exit(1)
 }
@@ -109,7 +109,7 @@ mainLoop:
 			ip, err := ddns.GetIP6(c.IP6Policy)
 			if err != nil {
 				log.Print(err)
-				log.Printf("❓Could not get IP6 address")
+				log.Printf("❓ Could not get IP6 address")
 				ip6 = &noIP
 			} else {
 				log.Printf("🔍 Found the IP6 address: %v", ip.To16())
@@ -131,7 +131,7 @@ mainLoop:
 			}
 		}
 
-		log.Printf("🕰️ Checking the DNS records again in %s . . .", c.RefreshInterval.String())
+		log.Printf("⏰ Checking the DNS records again in %s . . .", c.RefreshInterval.String())
 
 		if continue_ := wait(chanSignal, c.RefreshInterval); continue_ {
 			continue mainLoop
