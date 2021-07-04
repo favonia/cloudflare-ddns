@@ -1,10 +1,11 @@
-name: Build and Push
+name: Building and Pushing
 on:
   push:
     branches: main
   pull_request:
 jobs:
-  login:
+  ci:
+    name: Building and Pushing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
