@@ -20,7 +20,7 @@ As a bonus, the implementation has a tiny footprint and **its Docker images are 
 
 ## 🛡️ Privacy and Security
 
-The new implementation delivers the same privacy guarantee---it uses the same CloudFlare API to determine the public IP addresses. Moreover, it drops the root privilege immediately. That said, it does have a few external library dependencies:
+The new implementation delivers the same privacy guarantee---it uses the same CloudFlare API to determine the public IP addresses. Moreover, it drops the root privilege immediately. That said, it does depend on a few external libraries:
 1. [patrickmn/go-cache](https://github.com/patrickmn/go-cache) for in-memory caching to reduce API usage.
 2. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go) as the official Go library for CloudFlare API v4.
 
@@ -59,7 +59,7 @@ services:
 
 ⚠️ The item `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-The new tool should be up and running after running
+The new tool should be up and running after these commands:
 ```bash
 docker-compose pull cloudflare-ddns-go
 docker-compose up --detach --remove-orphans --build cloudflare-ddns-go
@@ -76,6 +76,8 @@ The compatible mode recognizes the following environment variables:
 | `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean | Whether the program should reduce the logging | No | `false`
+
+⚠️ In the above table, “Boolean” means `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
 
 ### 😎 New Mode (Using Environment Variables)
 
@@ -119,7 +121,7 @@ DOMAINS=www.example.org,www2.example.org
 
 - The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `github.com,www.github.com`.
 
-The new tool should be up and running after executing these commands:
+The new tool should be up and running after these commands:
 ```bash
 docker-compose pull cloudflare-ddns-go
 docker-compose up --detach --build cloudflare-ddns-go
@@ -145,7 +147,7 @@ Here are all the environment variables the program checks. Note that, in the com
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IPs and update DNS records (if necessary) | No | `5m`
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
 
-⚠️ In the above table, “Boolean” means `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
+⚠️ In the above table, “Boolean” means `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
 
 ⚠️ When the policy is `unmanaged`, the tool will not remove records of the specified kinds (`A` records for IPv4 and `AAAA` records for IPv6). Those records are simply ignored and kept intact.
 
