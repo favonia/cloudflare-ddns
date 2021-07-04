@@ -1,10 +1,10 @@
 # 🎉 CloudFlare DDNS in Go
 
-This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) **with many significant improvements.**
+This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) with several improvements.
 
 ## 🚧 Status of the Project
 
-The code is working well for me, but the repository is still young and the interface is subject to changes.
+The code is working well for me, but the repository is still young and the design is subject to changes. The compatible mode, however, is intended to track the latest configuration format used by [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns).
 
 ## 👏 Notable Improvements
 
@@ -30,12 +30,10 @@ The new implementation delivers the same privacy guarantee---it uses the same Cl
 
 Use this option if you already have a working JSON configuration for CloudFlare-DDNS and wish to keep it.
 
-#### 🚣 Migration Steps
+#### 🥾 Migration Step 1: Updating `docker-compose.yml`
 
-1. Locate the container entry in your `docker-compose.yml` file (or equivalent files).
-2. Change `timothyjmiller/cloudflare-ddns:latest` to `ghcr.io/favonia/cloudflare-ddns-go:latest`.
-3. Add `COMPATIBLE=true` to `environment`.
-4. Recreate the Docker container and have fun.
+1. Change `timothyjmiller/cloudflare-ddns:latest` to `ghcr.io/favonia/cloudflare-ddns-go:latest`.
+2. Add `COMPATIBLE=true` to `environment`.
 
 Here is a possible configuration after the migration:
 
@@ -55,17 +53,37 @@ services:
       - ${PWD}/cloudflare-ddns/config.json:/config.json
 ```
 
-⚠️ You should not need automatic restart (e.g., `restart: unless-stopped`) because the program should exit only when non-recoverable errors happen or when you manually stop it. Please consider reporting the bug if it exits for any other reasons.
+⚠️ You should not need automatic restart (_e.g.,_ `restart: unless-stopped`) because the program should exit only when non-recoverable errors happen or when you manually stop it. Please consider reporting the bug if it exits for any other reasons.
+
+⚠️ If you have a custom container name (_e.g.,_ `container_name: cloudflare-ddns`), it is recommended to change it so that Docker Compose will not be confused.
 
 ⚠️ The item `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
+The new tool should be up and running after running
+```bash
+docker-compose pull cloudflare-ddns-go
+docker-compose up --detach --remove-orphans --build cloudflare-ddns-go
+```
+(The `--remove-orphans` option is to remove the original CloudFlare-DDNS.) However, you might wish to follow the next step to customize it further.
+
+#### 🥾 Migration Step 2: Further Customization
+
+The compatible mode recognizes the following environment variables:
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
+| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS. | **Must be set to `true` to use the compatible mode** | `false`
+| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
+| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
+| `QUIET` | Boolean | Whether the program should reduce the logging | No | `false`
+
 ### 😎 New Mode (Using Environment Variables)
 
-Use this one if you are not using CloudFlare-DDNS or wish to try out more features. The main limitation of the new configuration format is that it only accepts one API token while you can specify multiple API tokens in the JSON compatible mode. This restriction might be lifted in the future.
+Use the new mode if compatibility with CloudFlare-DDNS is not your concern or you wish to try out more features. The main limitation of the new configuration format is that it only accepts one API token while you can specify multiple API tokens in the JSON compatible mode. This restriction might be lifted in the future.
 
 #### Step 1: Updating `docker-compose.yml`
 
-Incoporate the following fragment into your `docker-compose.yml` (or other equivalent files).
+Incorporate the following fragment into your `docker-compose.yml` (or other equivalent files).
 
 ```yaml
 version: "3"
@@ -101,7 +119,12 @@ DOMAINS=www.example.org,www2.example.org
 
 - The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `github.com,www.github.com`.
 
-The program should be working now, but you might wish to follow the next step customize it further.
+The new tool should be up and running after executing these commands:
+```bash
+docker-compose pull cloudflare-ddns-go
+docker-compose up --detach --build cloudflare-ddns-go
+```
+However, you might wish to follow the next step to customize it further.
 
 #### Step 3: Customization
 
@@ -111,14 +134,14 @@ Here are all the environment variables the program checks. Note that, in the com
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
 | `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
-| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | No | `false`
+| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | **Must be unset or set to `false` to use the new mode** | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | **Yes** | N/A
-| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the pubilc IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
+| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
 | `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PROXIED` | Boolean | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
-| `QUIET` | Boolean | Whether the program should reduce the reporting | No | `false`
+| `QUIET` | Boolean | Whether the program should reduce the logging | No | `false`
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IPs and update DNS records (if necessary) | No | `5m`
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
 
@@ -132,13 +155,14 @@ Here are all the environment variables the program checks. Note that, in the com
 
 The new mode can also work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. (This advanced setup is not available to all Docker configurations.) Use `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of the `CF_API_TOKEN` variable to provide the token.
 
-## 🛠️ Usage without Docker
+## 🛠️ Running without Docker Compose
 
-```sh
+At the root of the source directory, run:
+```bash
 go run cmd/ddns.go
 ```
-The program does not take arguments directly. Instead, it checks the environment variables.
+The program does not take arguments directly. Instead, it checks the environment variables. See the above section for the detailed explanation of the environment variables.
 
 ## 💖 Questions and Contributions
 
-Questions and contributions are welcome! Consider opening a GitHub issue to initiate the discussion.
+Questions, feature requests, and contributions are all welcome! Consider [opening a new GitHub issue](https://github.com/favonia/cloudflare-ddns-go/issues/new) to initiate the discussion.
