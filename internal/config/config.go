@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
+	"github.com/favonia/cloudflare-ddns-go/internal/common"
 )
 
 type site = struct {
@@ -147,9 +147,9 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 			log.Printf("📜 Subdomains to check: %v", options.Subdomains)
 		}
 		// converting domains to generic targets
-		targets := make([]api.Target, len(options.Subdomains))
+		sites[i].Targets = make([]api.Target, len(options.Subdomains))
 		for j, sub := range options.Subdomains {
-			targets[j] = &api.SubdomainTarget{ZoneID: options.ZoneID, Subdomain: sub}
+			sites[i].Targets[j] = &api.SubdomainTarget{ZoneID: options.ZoneID, Subdomain: sub}
 		}
 
 		sites[i].TTL = 60 * 5

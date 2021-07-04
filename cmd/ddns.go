@@ -97,7 +97,7 @@ func main() {
 
 mainLoop:
 	for {
-		ip4 := net.IP(nil)
+		ip4 := net.IP{}
 		if c.IP4Policy != common.Unmanaged {
 			ip, err := detector.GetIP4(c.IP4Policy)
 			if err != nil {
@@ -109,7 +109,7 @@ mainLoop:
 			}
 		}
 
-		ip6 := net.IP(nil)
+		ip6 := net.IP{}
 		if c.IP6Policy != common.Unmanaged {
 			ip, err := detector.GetIP6(c.IP6Policy)
 			if err != nil {

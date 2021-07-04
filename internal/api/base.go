@@ -147,7 +147,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 	for _, r := range rs {
 		if args.ip.Equal(net.ParseIP(r.Content)) {
 			if !args.quiet {
-				log.Printf("👌 Found an up-to-date %s record for the domain %s.", args.recordType, domain)
+				log.Printf("😃 Found an up-to-date %s record for the domain %s.", args.recordType, domain)
 			}
 			uptodate = true
 			break
