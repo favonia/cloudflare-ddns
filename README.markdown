@@ -1,4 +1,4 @@
-# 🔁 `cloudflare-ddns` Reimplementation
+# 🔁 Reimplementation of `cloudflare-ddns`
 
 This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. After my DNS records have been purged a few times, and the pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
 
@@ -30,7 +30,7 @@ Use this option if you already have a working JSON configuration for the origina
 
 #### 🥾 Migration Step 1: Updating `docker-compose.yml`
 
-1. Change `timothyjmiller/cloudflare-ddns:latest` to `ghcr.io/favonia/cloudflare-ddns-go:latest`.
+1. Change `timothyjmiller/cloudflare-ddns:latest` to `favonia/cloudflare-ddns-go:latest`.
 2. Add `COMPATIBLE=true` to `environment`.
 
 Here is a possible configuration after the migration:
@@ -39,7 +39,7 @@ Here is a possible configuration after the migration:
 version: "3"
 services:
   cloudflare-ddns-go:
-    image: ghcr.io/favonia/cloudflare-ddns-go:latest
+    image: favonia/cloudflare-ddns-go:latest
     security_opt:
       - no-new-privileges:true
     network_mode: host
@@ -91,7 +91,7 @@ Incorporate the following fragment into your `docker-compose.yml` (or other equi
 version: "3"
 services:
   cloudflare-ddns-go:
-    image: ghcr.io/favonia/cloudflare-ddns-go:latest
+    image: favonia/cloudflare-ddns-go:latest
     security_opt:
       - no-new-privileges:true
     network_mode: host
