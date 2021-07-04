@@ -1,6 +1,6 @@
-# 🎉 Reimplementation of CloudFlare DDNS in Go
+# 🎉 CloudFlare DDNS in Go
 
-This is a reimplementation of https://github.com/timothymiller/cloudflare-ddns **with many significant improvements.**
+This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) **with many significant improvements.**
 
 ## 🚧 Status of the Project
 
