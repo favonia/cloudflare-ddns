@@ -90,7 +90,7 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 	}, nil
 }
 
-// the JSON structure used by cloudflare DDNS
+// the JSON structure used by CloudFlare-DDNS
 type jsonConfig struct {
 	Cloudflare []struct {
 		Authentication struct {
@@ -213,12 +213,12 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	}
 	if useJSON {
 		if !quiet {
-			log.Printf("🤝 Using the Cloudflare-DDNS compatible mode; reading %s . . .", jsonPath)
+			log.Printf("🤝 Using the CloudFlare-DDNS compatible mode; reading %s . . .", jsonPath)
 		}
 		return readConfigFromJSON(ctx, quiet, jsonPath)
 	} else {
 		if !quiet {
-			log.Printf("😎 Not using the Cloudflare-DDNS compatible mode; checking environment variables . . .")
+			log.Printf("😎 Not using the CloudFlare-DDNS compatible mode; checking environment variables . . .")
 		}
 		return readConfigFromEnv(ctx, quiet)
 	}
