@@ -39,7 +39,7 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Domains to check: %v", domains)
+	log.Printf("📜 Managed domains: %v", domains)
 
 	// converting domains to generic targets
 	targets := make([]api.Target, len(domains))
@@ -151,7 +151,7 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 		}
 
 		if !quiet {
-			log.Printf("📜 Subdomains to check: %v", options.Subdomains)
+			log.Printf("📜 Managed subdomains: %v", options.Subdomains)
 		}
 		// converting domains to generic targets
 		sites[i].Targets = make([]api.Target, len(options.Subdomains))

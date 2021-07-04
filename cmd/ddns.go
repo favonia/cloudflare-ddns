@@ -144,7 +144,9 @@ mainLoop:
 			}
 		}
 
-		log.Printf("😴 Updating the DNS records again in %s . . .", c.RefreshInterval.String())
+		if !c.Quiet {
+			log.Printf("😴 Checking the IPs again in %s . . .", c.RefreshInterval.String())
+		}
 
 		if continue_ := wait(chanSignal, c.RefreshInterval); continue_ {
 			continue mainLoop

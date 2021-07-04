@@ -16,7 +16,9 @@ type Handle struct {
 }
 
 const (
-	ExpirationBaseline = time.Minute * 30
+	// CacheExpirationBaseline specifies the time after which we should recheck the zone IDs,
+	// zone names, and/or IP records on the server even if we believe nothing has changed.
+	CacheExpirationBaseline = time.Hour
 )
 
 var (
@@ -27,10 +29,10 @@ var (
 )
 
 func init() {
-	ip4Remembered = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	ip6Remembered = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	zoneNameOfID = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	zoneIDOfDomain = cache.New(ExpirationBaseline, ExpirationBaseline*4)
+	ip4Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*4)
+	ip6Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*4)
+	zoneNameOfID = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*4)
+	zoneIDOfDomain = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*4)
 }
 
 func newWithKey(key, email string) (*Handle, error) {
@@ -249,7 +251,9 @@ func (h *Handle) Update(args *UpdateArgs) error {
 	}
 
 	if !checkingIP4 && !checkingIP6 {
-		log.Printf("🤷 Nothing to do for the domain %s; skipping the updating.", domain)
+		if !args.Quiet {
+			log.Printf("🤷 Nothing to do for the domain %s; skipping the updating.", domain)
+		}
 		return nil
 	}
 
