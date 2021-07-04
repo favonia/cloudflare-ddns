@@ -112,13 +112,19 @@ type jsonConfig struct {
 // compatible mode for cloudflare-ddns
 func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, error) {
 	jsonFile, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("😡 Could not open %s: %v", path, err)
+	}
 	defer jsonFile.Close()
 	jsonBytes, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, fmt.Errorf("😡 Could not read %s: %v", path, err)
+	}
 
 	var config *jsonConfig
 	err = json.Unmarshal(jsonBytes, &config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("😡 Could not parse %s: %v", path, err)
 	}
 
 	sites := make([]site, len(config.Cloudflare))
@@ -136,11 +142,11 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 				key.AccountEmail != "" && key.AccountEmail != "your_email_here" {
 				if !quiet {
 					log.Printf("🗝️ Using an API key for authentication . . .")
-					log.Printf("😰 Please consider using API tokens.")
+					log.Printf("😰 Please consider using the more secure API tokens.")
 				}
 				sites[i].Handler = &api.KeyHandler{Key: key.APIKey, Email: key.AccountEmail}
 			} else {
-				return nil, fmt.Errorf("😡 Needs at least the API token or the API key.")
+				return nil, fmt.Errorf("😡 Needs at least an API token or an API key.")
 			}
 		}
 
