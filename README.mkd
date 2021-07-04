@@ -8,7 +8,7 @@ The code is working well for me, but the repository is still young and the desig
 
 ## 👏 Notable Improvements
 
-1. **It will _not_ delete any `A` or `AAAA` records** unless the domains are explicitly listed. The way the original program handles stale records has surprised many people; see [timothymiller/cloudflare-ddns#52](https://github.com/timothymiller/cloudflare-ddns/pull/52) and [#57](https://github.com/timothymiller/cloudflare-ddns/pull/57), for example. This will never happen in the new implementation.
+1. **It will _not_ delete any `A` or `AAAA` records** unless the domains are explicitly listed. The way [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) handles stale records has surprised many people; see [timothymiller/cloudflare-ddns#52](https://github.com/timothymiller/cloudflare-ddns/pull/52) and [#57](https://github.com/timothymiller/cloudflare-ddns/pull/57), for example. This will never happen in the new implementation.
 2. It is mainly **configured via environment variables,** which means all the settings can go into `.env` when using `docker-compose`. This immediately solves [timothymiller/cloudflare-ddns#35](https://github.com/timothymiller/cloudflare-ddns/pull/35) and [#41](https://github.com/timothymiller/cloudflare-ddns/pull/41).
 3. It can also be a **drop-in replacement**. See below.
 4. It _will_ respect `PGID` and `PUID` and **drop the root privilege immediately.**
@@ -16,7 +16,7 @@ The code is working well for me, but the repository is still young and the desig
 6. It can be configured to obtain IP addresses **using local network interfaces**, solving [#36](https://github.com/timothymiller/cloudflare-ddns/issues/36).
 7. It comes with **many technical improvements under the hood,** such as handling of pagination in the CloudFlare API (thanks to the official Go binding [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go)), (still incomplete) timeout mechanism, in-memory caching (thanks to [patrickmn/go-cache](https://github.com/patrickmn/go-cache)), etc.
 
-As a bonus, the implementation has a tiny footprint and **its Docker images are only of size about 5 MBs.** (The Docker image of the original CloudFlare-DDNS is also small, but this one is even smaller.)
+As a bonus, the implementation has a tiny footprint and **its Docker images are only of size about 5 MBs.** (The Docker image of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns)  is also small, but this one is even smaller.)
 
 ## 🛡️ Privacy and Security
 
@@ -28,7 +28,7 @@ The new implementation delivers the same privacy guarantee---it uses the same Cl
 
 ### 🤝 Compatible Mode
 
-Use this option if you already have a working JSON configuration for CloudFlare-DDNS and wish to keep it.
+Use this option if you already have a working JSON configuration for [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) and wish to keep it.
 
 #### 🥾 Migration Step 1: Updating `docker-compose.yml`
 
@@ -64,7 +64,7 @@ The new tool should be up and running after these commands:
 docker-compose pull cloudflare-ddns-go
 docker-compose up --detach --remove-orphans --build cloudflare-ddns-go
 ```
-(The `--remove-orphans` option is to remove the original CloudFlare-DDNS.) However, you might wish to follow the next step to customize it further.
+(The `--remove-orphans` option is to remove the original [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns).) However, you might wish to follow the next step to customize it further.
 
 #### 🥾 Migration Step 2: Further Customization
 
@@ -72,7 +72,7 @@ The compatible mode recognizes the following environment variables:
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS. | Must be set to `true` to use the compatible mode | `false`
+| `COMPATIBLE` | Boolean | Whether the program should mimic [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) | Must be set to `true` to use the compatible mode | `false`
 | `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean | Whether the program should reduce the logging | No | `false`
@@ -81,7 +81,7 @@ The compatible mode recognizes the following environment variables:
 
 ### 😎 New Mode (Using Environment Variables)
 
-Use the new mode if compatibility with CloudFlare-DDNS is not your concern or you wish to try out more features. The main limitation of the new configuration format is that it only accepts one API token while you can specify multiple API tokens in the JSON compatible mode. This restriction might be lifted in the future.
+Use the new mode if compatibility with [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) is not of your concern or you wish to try out more features. The main limitation of the new configuration format is that it only accepts one API token while you can specify multiple API tokens in the JSON compatible mode. This restriction might be lifted in the future.
 
 #### Step 1: Updating `docker-compose.yml`
 
@@ -136,7 +136,7 @@ Here are all the environment variables the program checks. Note that, in the com
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | Must be unset or set to `false` to use the new mode | `false`
+| `COMPATIBLE` | Boolean | Whether the program should mimic the [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) | Must be unset or set to `false` to use the new mode | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
