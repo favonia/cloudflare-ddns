@@ -1,10 +1,10 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -29,11 +29,25 @@ type Config struct {
 }
 
 func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error) {
-	token := os.Getenv("CF_API_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("😡 The Cloudflare API token (CF_API_TOKEN) is missing.")
+	var (
+		token     = os.Getenv("CF_API_TOKEN")
+		tokenFile = os.Getenv("CF_API_TOKEN_FILE")
+		handler   = api.Handler(nil)
+	)
+	switch {
+	case token == "" && tokenFile == "":
+		return nil, fmt.Errorf("😡 Needs CF_API_TOKEN or CF_API_TOKEN_FILE.")
+	case token != "" && tokenFile != "":
+		return nil, fmt.Errorf("😡 Cannot set both CF_API_TOKEN and CF_API_TOKEN_FILE.")
+	case token != "":
+		handler = &api.TokenHandler{Token: token}
+	case tokenFile != "":
+		tokenBytes, err := common.ReadFile(tokenFile)
+		if err != nil {
+			return nil, err
+		}
+		handler = &api.TokenHandler{Token: string(bytes.TrimSpace(tokenBytes))}
 	}
-	handler := api.TokenHandler{Token: token}
 
 	domains, err := common.GetenvAsNonEmptyList("DOMAINS", quiet)
 	if err != nil {
@@ -79,7 +93,7 @@ func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error)
 
 	return &Config{
 		Sites: []site{{
-			Handler: &handler,
+			Handler: handler,
 			Targets: targets,
 			TTL:     ttl,
 			Proxied: proxied,
@@ -111,14 +125,9 @@ type jsonConfig struct {
 
 // compatible mode for cloudflare-ddns
 func readConfigFromJSON(ctx context.Context, path string, quiet common.Quiet) (*Config, error) {
-	jsonFile, err := os.Open(path)
+	jsonBytes, err := common.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("😡 Could not open %s: %v", path, err)
-	}
-	defer jsonFile.Close()
-	jsonBytes, err := io.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("😡 Could not read %s: %v", path, err)
+		return nil, err
 	}
 
 	var config *jsonConfig

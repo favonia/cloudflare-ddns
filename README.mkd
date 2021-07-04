@@ -92,17 +92,18 @@ Here are all the environment variables the program checks. Note that, in the com
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token used to access CloudFlare APIs | **Yes** | N/A |
+| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access CloudFlare APIs | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
+| `CF_API_TOKEN_FILE` | File paths | The file the path points to contains the token to access CloudFlare APIs | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
 | `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | No | `false`
-| `QUIET` | Boolean | Whether the program should reduce the reporting | No | `false`
-| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
-| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | **Yes** | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means using the CloudFlare servers to obtain public IPv4 addresses. `local` means using the information associated with local network interfaces to obtain IPv4 addresses. `unmanaged` means the tool should simply leave the `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
-| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
+| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PROXIED` | Boolean | Whether new DNS records should be proxied by CloudFlare | No | `false`
+| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
+| `QUIET` | Boolean | Whether the program should reduce the reporting | No | `false`
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IPs and update DNS records (if necessary) | No | `5m`
+| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
 
 In the above table, “Boolean” includes `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`.
 
