@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func GetenvAsPolicy(key string) (Policy, error) {
+func GetenvAsPolicy(key string, quiet Quiet) (Policy, error) {
 	val := strings.TrimSpace(os.Getenv(key))
 	switch val {
 	case "cloudflare", "":
@@ -23,7 +23,7 @@ func GetenvAsPolicy(key string) (Policy, error) {
 	}
 }
 
-func GetenvAsNonEmptyList(key string) ([]string, error) {
+func GetenvAsNonEmptyList(key string, quiet Quiet) ([]string, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is missing.", key)
 	} else {
@@ -35,9 +35,11 @@ func GetenvAsNonEmptyList(key string) ([]string, error) {
 	}
 }
 
-func GetenvAsBool(key string, def bool) (bool, error) {
+func GetenvAsBool(key string, def bool, quiet Quiet) (bool, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("📭 The variable %s is missing. Default value: %t", key, def)
+		if !quiet {
+			log.Printf("📭 The variable %s is missing. Default value: %t", key, def)
+		}
 		return def, nil
 	} else {
 		b, err := strconv.ParseBool(val)
@@ -48,9 +50,16 @@ func GetenvAsBool(key string, def bool) (bool, error) {
 	}
 }
 
-func GetenvAsInt(key string, def int) (int, error) {
+func GetenvAsQuiet(key string, def Quiet, quiet Quiet) (Quiet, error) {
+	b, err := GetenvAsBool(key, bool(def), quiet)
+	return Quiet(b), err
+}
+
+func GetenvAsInt(key string, def int, quiet Quiet) (int, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("📭 The variable %s is missing. Default value: %d", key, def)
+		if !quiet {
+			log.Printf("📭 The variable %s is missing. Default value: %d", key, def)
+		}
 		return def, nil
 	} else {
 		i, err := strconv.Atoi(val)
@@ -61,9 +70,11 @@ func GetenvAsInt(key string, def int) (int, error) {
 	}
 }
 
-func GetenvAsPositiveTimeDuration(key string, def time.Duration) (time.Duration, error) {
+func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet Quiet) (time.Duration, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		log.Printf("📭 The variable %s is missing. Default value: %s", key, def.String())
+		if !quiet {
+			log.Printf("📭 The variable %s is missing. Default value: %s", key, def.String())
+		}
 		return def, nil
 	} else {
 		t, err := time.ParseDuration(val)

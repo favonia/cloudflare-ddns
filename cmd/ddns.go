@@ -22,7 +22,7 @@ func dropRoot() {
 		log.Printf("😡 Could not erase supplementary group IDs: %v", err)
 	}
 
-	gid, err := common.GetenvAsInt("PGID", 1000)
+	gid, err := common.GetenvAsInt("PGID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("👪 Setting the group gid to %d . . .", gid)
 		err := syscall.Setgid(gid)
@@ -33,7 +33,7 @@ func dropRoot() {
 		log.Print(err)
 	}
 
-	uid, err := common.GetenvAsInt("PUID", 1000)
+	uid, err := common.GetenvAsInt("PUID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("🧑 Setting the user to %d . . .", uid)
 		err := syscall.Setuid(uid)
@@ -104,7 +104,9 @@ mainLoop:
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv4 address.")
 			} else {
-				log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+				if !c.Quiet {
+					log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+				}
 				ip4 = ip
 			}
 		}
@@ -116,7 +118,9 @@ mainLoop:
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv6 address.")
 			} else {
-				log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+				if !c.Quiet {
+					log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+				}
 				ip6 = ip
 			}
 		}
@@ -137,6 +141,7 @@ mainLoop:
 					IP6:        ip6,
 					TTL:        s.TTL,
 					Proxied:    s.Proxied,
+					Quiet:      c.Quiet,
 				})
 				if err != nil {
 					log.Print(err)

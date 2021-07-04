@@ -25,17 +25,17 @@ type Config struct {
 	IP4Policy       common.Policy // "cloudflare", "local", "unmanaged"
 	IP6Policy       common.Policy // "cloudflare", "local", "unmanaged"
 	RefreshInterval time.Duration
-	Quiet           bool
+	Quiet           common.Quiet
 }
 
-func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
+func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error) {
 	token := os.Getenv("CF_API_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("😡 The Cloudflare API token (CF_API_TOKEN) is missing.")
 	}
 	handler := api.TokenHandler{Token: token}
 
-	domains, err := common.GetenvAsNonEmptyList("DOMAINS")
+	domains, err := common.GetenvAsNonEmptyList("DOMAINS", quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -47,31 +47,31 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 		targets[i] = &api.FQDNTarget{Domain: domain}
 	}
 
-	ip4Policy, err := common.GetenvAsPolicy("IP4_POLICY")
+	ip4Policy, err := common.GetenvAsPolicy("IP4_POLICY", quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IPv4: %v", ip4Policy)
 
-	ip6Policy, err := common.GetenvAsPolicy("IP6_POLICY")
+	ip6Policy, err := common.GetenvAsPolicy("IP6_POLICY", quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IPv6: %v", ip6Policy)
 
-	ttl, err := common.GetenvAsInt("TTL", 1)
+	ttl, err := common.GetenvAsInt("TTL", 1, quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
 
-	proxied, err := common.GetenvAsBool("PROXIED", false)
+	proxied, err := common.GetenvAsBool("PROXIED", false, quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
 
-	refreshInterval, err := common.GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5)
+	refreshInterval, err := common.GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5, quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ type jsonConfig struct {
 }
 
 // compatible mode for cloudflare-ddns
-func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, error) {
+func readConfigFromJSON(ctx context.Context, path string, quiet common.Quiet) (*Config, error) {
 	jsonFile, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("😡 Could not open %s: %v", path, err)
@@ -206,7 +206,7 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 var jsonPath string = "/config.json"
 
 func ReadConfig(ctx context.Context) (*Config, error) {
-	quiet, err := common.GetenvAsBool("QUIET", false)
+	quiet, err := common.GetenvAsQuiet("QUIET", common.VERBOSE, common.VERBOSE)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("🤫 Quiet mode enabled.")
 	}
 
-	useJSON, err := common.GetenvAsBool("COMPATIBLE", false)
+	useJSON, err := common.GetenvAsBool("COMPATIBLE", false, quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		if !quiet {
 			log.Printf("🤝 Using the CloudFlare-DDNS compatible mode; reading %s . . .", jsonPath)
 		}
-		return readConfigFromJSON(ctx, quiet, jsonPath)
+		return readConfigFromJSON(ctx, jsonPath, quiet)
 	} else {
 		if !quiet {
 			log.Printf("😎 Not using the CloudFlare-DDNS compatible mode; checking environment variables . . .")
