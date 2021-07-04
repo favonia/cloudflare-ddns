@@ -1,12 +1,12 @@
-# 🔁 Reimplementation of `cloudflare-ddns`
+# 🌟 CloudFlare DDNS
 
-This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. After my DNS records have been purged a few times, and the pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
+This is a re-implementation of the popular [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called the “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. Because various pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
 
 ## 🚧 Status of the Project
 
-The code is working well for me, but the project is young and the design is subject to changes. That said, the compatible mode is intended to mimic the original tool and it is considered a bug if it does not. I should also point out that once the upstream has all the features I am looking for, I might archive this project in favor of using the original tool.
+The project is young and the design is subject to changes. That said, the compatible mode is intended to mimic the original tool.
 
-## 📜 Notable Changes
+## 📜 Changes from [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns)
 
 1. It will not delete any `A` or `AAAA` records unless the domains are explicitly listed.
 2. It is configured primarily via environment variables.
@@ -30,7 +30,7 @@ Use this option if you already have a working JSON configuration for the origina
 
 #### 🥾 Migration Step 1: Updating `docker-compose.yml`
 
-1. Change `timothyjmiller/cloudflare-ddns:latest` to `favonia/cloudflare-ddns-go:latest`.
+1. Change `timothyjmiller/cloudflare-ddns:latest` to `favonia/cloudflare-ddns:latest`.
 2. Add `COMPATIBLE=true` to `environment`.
 
 Here is a possible configuration after the migration:
@@ -38,8 +38,8 @@ Here is a possible configuration after the migration:
 ```yaml
 version: "3"
 services:
-  cloudflare-ddns-go:
-    image: favonia/cloudflare-ddns-go:latest
+  cloudflare-ddns:
+    image: favonia/cloudflare-ddns:latest
     security_opt:
       - no-new-privileges:true
     network_mode: host
@@ -53,16 +53,14 @@ services:
 
 ⚠️ You should not need automatic restart (_e.g.,_ `restart: unless-stopped`) because the program should exit only when non-recoverable errors happen or when you manually stop it. Please consider reporting the bug if it exits for any other reasons.
 
-⚠️ If you have a custom container name (_e.g.,_ `container_name: cloudflare-ddns`), it is recommended to change it so that Docker Compose will not be confused.
-
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
 The new tool should be up and running after these commands:
 ```bash
-docker-compose pull cloudflare-ddns-go
-docker-compose up --detach --remove-orphans --build cloudflare-ddns-go
+docker-compose pull cloudflare-ddns
+docker-compose up --detach --remove-orphans --build cloudflare-ddns
 ```
-(The `--remove-orphans` option is to remove the original tool.) However, you might wish to follow the next step to customize it further.
+However, you might wish to follow the next step to customize it further.
 
 #### 🥾 Migration Step 2: Further Customization
 
@@ -90,8 +88,8 @@ Incorporate the following fragment into your `docker-compose.yml` (or other equi
 ```yaml
 version: "3"
 services:
-  cloudflare-ddns-go:
-    image: favonia/cloudflare-ddns-go:latest
+  cloudflare-ddns:
+    image: favonia/cloudflare-ddns:latest
     security_opt:
       - no-new-privileges:true
     network_mode: host
@@ -123,8 +121,8 @@ DOMAINS=www.example.org,www2.example.org
 
 The new tool should be up and running after these commands:
 ```bash
-docker-compose pull cloudflare-ddns-go
-docker-compose up --detach --build cloudflare-ddns-go
+docker-compose pull cloudflare-ddns
+docker-compose up --detach --build cloudflare-ddns
 ```
 However, you might wish to follow the next step to customize it further.
 
@@ -167,4 +165,4 @@ The program does not take arguments directly. Instead, it reads in environment v
 
 ## 💖 Feedback
 
-Questions, suggestions, feature requests, and contributions are all welcome! Please [open a new GitHub issue](https://github.com/favonia/cloudflare-ddns-go/issues/new) to initiate the discussion.
+Questions, suggestions, feature requests, and contributions are all welcome! Please [open a new GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to initiate the discussion.
