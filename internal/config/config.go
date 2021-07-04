@@ -38,7 +38,7 @@ func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error)
 	case token == "" && tokenFile == "":
 		return nil, fmt.Errorf("😡 Needs CF_API_TOKEN or CF_API_TOKEN_FILE.")
 	case token != "" && tokenFile != "":
-		return nil, fmt.Errorf("😡 Cannot set both CF_API_TOKEN and CF_API_TOKEN_FILE.")
+		return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
 	case token != "":
 		handler = &api.TokenHandler{Token: token}
 	case tokenFile != "":

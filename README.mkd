@@ -72,7 +72,7 @@ The compatible mode recognizes the following environment variables:
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS. | **Must be set to `true` to use the compatible mode** | `false`
+| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS. | Must be set to `true` to use the compatible mode | `false`
 | `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean | Whether the program should reduce the logging | No | `false`
@@ -132,10 +132,10 @@ Here are all the environment variables the program checks. Note that, in the com
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
-| `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
-| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | **Must be unset or set to `false` to use the new mode** | `false`
-| `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | **Yes** | N/A
+| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | Must be unset or set to `false` to use the new mode | `false`
+| `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
 | `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000

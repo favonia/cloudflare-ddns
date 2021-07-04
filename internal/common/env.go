@@ -25,7 +25,7 @@ func GetenvAsPolicy(key string, quiet Quiet) (Policy, error) {
 
 func GetenvAsNonEmptyList(key string, quiet Quiet) ([]string, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
-		return nil, fmt.Errorf("😡 The variable %s is missing.", key)
+		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
 	} else {
 		list := strings.Split(val, ",")
 		for i := range list {
@@ -38,7 +38,7 @@ func GetenvAsNonEmptyList(key string, quiet Quiet) ([]string, error) {
 func GetenvAsBool(key string, def bool, quiet Quiet) (bool, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is missing. Default value: %t", key, def)
+			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
 		}
 		return def, nil
 	} else {
@@ -58,7 +58,7 @@ func GetenvAsQuiet(key string, def Quiet, quiet Quiet) (Quiet, error) {
 func GetenvAsInt(key string, def int, quiet Quiet) (int, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is missing. Default value: %d", key, def)
+			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
 		}
 		return def, nil
 	} else {
@@ -73,7 +73,7 @@ func GetenvAsInt(key string, def int, quiet Quiet) (int, error) {
 func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet Quiet) (time.Duration, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is missing. Default value: %s", key, def.String())
+			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}
 		return def, nil
 	} else {
