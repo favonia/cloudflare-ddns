@@ -87,6 +87,7 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 		IP4Policy:       ip4Policy,
 		IP6Policy:       ip6Policy,
 		RefreshInterval: refreshInterval,
+		Quiet:           quiet,
 	}, nil
 }
 
