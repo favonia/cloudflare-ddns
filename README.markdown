@@ -1,5 +1,7 @@
 # 🌟 CloudFlare DDNS
 
+[![GitHub Actions](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml/badge.svg)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml) [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns) [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
+
 This is a re-implementation of the popular [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called the “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. Because various pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
 
 ## 🚧 Status of the Project
@@ -22,9 +24,9 @@ The new implementation uses the same CloudFlare servers to determine the public 
 1. [patrickmn/go-cache](https://github.com/patrickmn/go-cache) for in-memory caching to reduce CloudFlare API usage.
 2. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go) as the official Go library for CloudFlare API v4.
 
-## 🛠️ Setup with Docker Compose
+## 🐋 Deployment with Docker Compose
 
-### 🤝 Compatible Mode
+### 🤝 Compatible Mode (with [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns))
 
 Use this option if you already have a working JSON configuration for the original tool and wish to keep it.
 
@@ -165,4 +167,4 @@ The program does not take arguments directly. Instead, it reads in environment v
 
 ## 💖 Feedback
 
-Questions, suggestions, feature requests, and contributions are all welcome! Please [open a new GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to initiate the discussion.
+Questions, suggestions, feature requests, and contributions are all welcome! Please feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
