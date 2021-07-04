@@ -18,23 +18,29 @@ The code is working well for me, but the repository is still young. The interfac
 
 As a bonus, the implementation has a tiny footprint and **its Docker images are only of size about 5 MBs.** (The Docker image of the original CloudFlare-DDNS is also small, but this one is even smaller.)
 
-## 🛠️ Usage with Docker Compose
+## 🛠️ Setup with Docker Compose
 
 ### 🤝 Compatible Mode
 
-Use this option if you already have a working JSON configuration for CloudFlare-DDNS and do not want to update it.
+Use this option if you already have a working JSON configuration for CloudFlare-DDNS and wish to keep it.
 
 #### 🚣 Migration Steps
 
-1. Change `timothyjmiller/cloudflare-ddns:latest` to **`ghcr.io/favonia/cloudflare-ddns-go:latest`** in your `docker-compose.yml` file (or other equivalent ones).
-2. Under `environment`, **add `COMPATIBLE=true`** to enable the compatible mode.
-3. If you have been specifying `container_name`, it is recommended to use a different name; for example, `cloudflare-ddns-go`.
+1. Locate the container entry in your `docker-compose.yml` file (or equivalent files).
+2. Change `timothyjmiller/cloudflare-ddns:latest` to `ghcr.io/favonia/cloudflare-ddns-go:latest`.
+3. Add **`COMPATIBLE=true`** to `environment`.
 4. Recreate the Docker container and then _you are done._
+
+⚠️ If you have been specifying `container_name`, it is recommended to use a different name; for example, `cloudflare-ddns-go`.
+
+⚠️ You should not need automatic restart (e.g., `restart: unless-stopped`) because the program should exit only when non-recoverable errors happen or when you manually stop it. Please consider reporting the bug if it exits for any other reasons.
+
+⚠️ The item `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [Enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
 Here is a possible configuration after the migration:
 
 ```yaml
-version: "3.7"
+version: "3"
 services:
   cloudflare-ddns-go:
     image: ghcr.io/favonia/cloudflare-ddns-go:latest
@@ -48,14 +54,18 @@ services:
       - COMPATIBLE=true
     volumes:
       - ${PWD}/cloudflare-ddns/config.json:/config.json
-    restart: unless-stopped
 ```
 
-### 😎 New Mode
+### 😎 New Mode (Using Environment Variables)
 
-#### Step 1: Update `docker-compose.yml`
+Use this one if you wish to use any new features. The main limitation of the new configuration format is that it only accepts one API token while you can specify multiple API tokens in the JSON compatible mode.
 
-Incoporate the following fragment into your `docker-compose.yml` (or other equivalent ones).
+#### Step 1: Updating `docker-compose.yml`
+
+Incoporate the following fragment into your `docker-compose.yml` (or other equivalent files).
+
+⚠️ The item `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [Enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
+
 ```yaml
 version: "3"
 services:
@@ -69,10 +79,9 @@ services:
       - CF_API_TOKEN
       - DOMAINS
       - PROXIED=true
-    restart: unless-stopped
 ```
 
-#### Step 2: Update `.env`
+#### Step 2: Updating `.env`
 
 You should then add these lines in your `.env` file:
 ```sh
@@ -84,16 +93,16 @@ DOMAINS=www.example.org,www2.example.org
 
 - The domain names should be fully qualified domain names (without the final dots) separated by commas. For example, `github.com, www.github.com`. (It is okay to have some spaces around the commas.)
 
-Now the program should work.
+The program should work now, but you might wish to customize it further:
 
-#### Step 3: Customize
+#### Step 3: Customization
 
 Here are all the environment variables the program checks. Note that, in the compatible mode (`COMPATIBLE=true`), only `PUID`, `PGID`, and `QUIET` (and `COMPATIBLE` itself) are functional; other variables are ignored.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access CloudFlare APIs | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
-| `CF_API_TOKEN_FILE` | File paths | The file the path points to contains the token to access CloudFlare APIs | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
+| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
+| `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | **Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set** | N/A |
 | `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | No | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | **Yes** | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means using the CloudFlare servers to obtain public IPv4 addresses. `local` means using the information associated with local network interfaces to obtain IPv4 addresses. `unmanaged` means the tool should simply leave the `A` records alone. | No | `cloudflare`
@@ -105,7 +114,13 @@ Here are all the environment variables the program checks. Note that, in the com
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IPs and update DNS records (if necessary) | No | `5m`
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
 
-In the above table, “Boolean” includes `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`.
+⚠️ In the above table, “Boolean” means `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
+
+⚠️ You might need `network_mode: host` is for `IP4_POLICY=local` or `IP6_POLICY=local`, for otherwise the program will detect the address used by the container, not the host.
+
+#### Alternative Setup with Docker Secret
+
+The new mode can also work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. (This advanced setup is not available to all Docker configurations.) Use `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of the `CF_API_TOKEN` variable to provide the token.
 
 ## 🛠️ Usage without Docker
 
