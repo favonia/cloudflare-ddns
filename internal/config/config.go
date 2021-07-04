@@ -1,12 +1,13 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -25,21 +26,35 @@ type Config struct {
 	IP4Policy       common.Policy // "cloudflare", "local", "unmanaged"
 	IP6Policy       common.Policy // "cloudflare", "local", "unmanaged"
 	RefreshInterval time.Duration
-	Quiet           bool
+	Quiet           common.Quiet
 }
 
-func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
-	token := os.Getenv("CF_API_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("😡 The Cloudflare API token (CF_API_TOKEN) is missing.")
+func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error) {
+	var (
+		token     = os.Getenv("CF_API_TOKEN")
+		tokenFile = os.Getenv("CF_API_TOKEN_FILE")
+		handler   = api.Handler(nil)
+	)
+	switch {
+	case token == "" && tokenFile == "":
+		return nil, fmt.Errorf("😡 Needs CF_API_TOKEN or CF_API_TOKEN_FILE.")
+	case token != "" && tokenFile != "":
+		return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
+	case token != "":
+		handler = &api.TokenHandler{Token: token}
+	case tokenFile != "":
+		tokenBytes, err := common.ReadFile(tokenFile)
+		if err != nil {
+			return nil, err
+		}
+		handler = &api.TokenHandler{Token: string(bytes.TrimSpace(tokenBytes))}
 	}
-	handler := api.TokenHandler{Token: token}
 
-	domains, err := common.GetenvAsNonEmptyList("DOMAINS")
+	domains, err := common.GetenvAsNonEmptyList("DOMAINS", quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Domains to check: %v", domains)
+	log.Printf("📜 Managed domains: %v", domains)
 
 	// converting domains to generic targets
 	targets := make([]api.Target, len(domains))
@@ -47,31 +62,31 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 		targets[i] = &api.FQDNTarget{Domain: domain}
 	}
 
-	ip4Policy, err := common.GetenvAsPolicy("IP4_POLICY")
+	ip4Policy, err := common.GetenvAsPolicy("IP4_POLICY", quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IPv4: %v", ip4Policy)
 
-	ip6Policy, err := common.GetenvAsPolicy("IP6_POLICY")
+	ip6Policy, err := common.GetenvAsPolicy("IP6_POLICY", quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Policy for IPv6: %v", ip6Policy)
 
-	ttl, err := common.GetenvAsInt("TTL", 1)
+	ttl, err := common.GetenvAsInt("TTL", 1, quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
 
-	proxied, err := common.GetenvAsBool("PROXIED", false)
+	proxied, err := common.GetenvAsBool("PROXIED", false, quiet)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
 
-	refreshInterval, err := common.GetenvAsTimeDuration("REFRESH_INTERVAL", time.Minute*5)
+	refreshInterval, err := common.GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5, quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +94,7 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 
 	return &Config{
 		Sites: []site{{
-			Handler: &handler,
+			Handler: handler,
 			Targets: targets,
 			TTL:     ttl,
 			Proxied: proxied,
@@ -110,15 +125,10 @@ type jsonConfig struct {
 }
 
 // compatible mode for cloudflare-ddns
-func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, error) {
-	jsonFile, err := os.Open(path)
+func readConfigFromJSON(ctx context.Context, path string, quiet common.Quiet) (*Config, error) {
+	jsonBytes, err := common.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("😡 Could not open %s: %v", path, err)
-	}
-	defer jsonFile.Close()
-	jsonBytes, err := io.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("😡 Could not read %s: %v", path, err)
+		return nil, err
 	}
 
 	var config *jsonConfig
@@ -150,8 +160,12 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 			}
 		}
 
+		if strings.TrimSpace(options.ZoneID) == "" {
+			return nil, fmt.Errorf("😡 Zone ID is empty or missing.")
+		}
+
 		if !quiet {
-			log.Printf("📜 Subdomains to check: %v", options.Subdomains)
+			log.Printf("📜 Managed subdomains: %v", options.Subdomains)
 		}
 		// converting domains to generic targets
 		sites[i].Targets = make([]api.Target, len(options.Subdomains))
@@ -206,7 +220,7 @@ func readConfigFromJSON(ctx context.Context, quiet bool, path string) (*Config, 
 var jsonPath string = "/config.json"
 
 func ReadConfig(ctx context.Context) (*Config, error) {
-	quiet, err := common.GetenvAsBool("QUIET", false)
+	quiet, err := common.GetenvAsQuiet("QUIET", common.VERBOSE, common.VERBOSE)
 	if err != nil {
 		return nil, err
 	}
@@ -214,18 +228,18 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("🤫 Quiet mode enabled.")
 	}
 
-	useJSON, err := common.GetenvAsBool("COMPATIBLE", false)
+	useJSON, err := common.GetenvAsBool("COMPATIBLE", false, quiet)
 	if err != nil {
 		return nil, err
 	}
 	if useJSON {
 		if !quiet {
-			log.Printf("🤝 Using the CloudFlare-DDNS compatible mode; reading %s . . .", jsonPath)
+			log.Print("🤝 Using the cloudflare-ddns compatible mode.")
 		}
-		return readConfigFromJSON(ctx, quiet, jsonPath)
+		return readConfigFromJSON(ctx, jsonPath, quiet)
 	} else {
 		if !quiet {
-			log.Printf("😎 Not using the CloudFlare-DDNS compatible mode; checking environment variables . . .")
+			log.Printf("🆕 Not using the cloudflare-ddns compatible mode.")
 		}
 		return readConfigFromEnv(ctx, quiet)
 	}

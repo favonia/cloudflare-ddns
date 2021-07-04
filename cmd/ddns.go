@@ -22,7 +22,7 @@ func dropRoot() {
 		log.Printf("😡 Could not erase supplementary group IDs: %v", err)
 	}
 
-	gid, err := common.GetenvAsInt("PGID", 1000)
+	gid, err := common.GetenvAsInt("PGID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("👪 Setting the group gid to %d . . .", gid)
 		err := syscall.Setgid(gid)
@@ -33,7 +33,7 @@ func dropRoot() {
 		log.Print(err)
 	}
 
-	uid, err := common.GetenvAsInt("PUID", 1000)
+	uid, err := common.GetenvAsInt("PUID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("🧑 Setting the user to %d . . .", uid)
 		err := syscall.Setuid(uid)
@@ -62,7 +62,7 @@ func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 	chanAlarm := time.After(d)
 	select {
 	case sig := <-signal:
-		log.Printf("😮 Caught signal: %v. Bye!", sig)
+		log.Printf("👋 Caught signal: %v. Bye!", sig)
 		return false
 	case <-chanAlarm:
 		return true
@@ -70,10 +70,10 @@ func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 }
 
 func delayedExit(signal chan os.Signal) {
-	duration := time.Minute
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive logging . . .", duration)
+	duration := time.Minute * 2
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping . . .", duration)
 	if continue_ := wait(signal, duration); continue_ {
-		log.Printf("😮 Time's up. Bye!")
+		log.Printf("👋 Time's up. Bye!")
 	}
 	os.Exit(1)
 }
@@ -104,7 +104,9 @@ mainLoop:
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv4 address.")
 			} else {
-				log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+				if !c.Quiet {
+					log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+				}
 				ip4 = ip
 			}
 		}
@@ -116,7 +118,9 @@ mainLoop:
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv6 address.")
 			} else {
-				log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+				if !c.Quiet {
+					log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+				}
 				ip6 = ip
 			}
 		}
@@ -137,6 +141,7 @@ mainLoop:
 					IP6:        ip6,
 					TTL:        s.TTL,
 					Proxied:    s.Proxied,
+					Quiet:      c.Quiet,
 				})
 				if err != nil {
 					log.Print(err)
@@ -144,7 +149,9 @@ mainLoop:
 			}
 		}
 
-		log.Printf("😴 Updating the DNS records again in %s . . .", c.RefreshInterval.String())
+		if !c.Quiet {
+			log.Printf("😴 Checking the IP addresses again in %s . . .", c.RefreshInterval.String())
+		}
 
 		if continue_ := wait(chanSignal, c.RefreshInterval); continue_ {
 			continue mainLoop

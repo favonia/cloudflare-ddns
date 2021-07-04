@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/patrickmn/go-cache"
 )
 
@@ -16,7 +17,8 @@ type Handle struct {
 }
 
 const (
-	ExpirationBaseline = time.Minute * 30
+	// CacheExpirationBaseline specifies the time after which we should recheck everything.
+	CacheExpirationBaseline = time.Hour * 6
 )
 
 var (
@@ -27,10 +29,10 @@ var (
 )
 
 func init() {
-	ip4Remembered = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	ip6Remembered = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	zoneNameOfID = cache.New(ExpirationBaseline, ExpirationBaseline*4)
-	zoneIDOfDomain = cache.New(ExpirationBaseline, ExpirationBaseline*4)
+	ip4Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
+	ip6Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
+	zoneNameOfID = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
+	zoneIDOfDomain = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
 }
 
 func newWithKey(key, email string) (*Handle, error) {
@@ -73,7 +75,7 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 	}
 
 	if zone == nil {
-		// search for the closetest zone
+		// search for the zone
 		domainSlice := []byte(domain)
 		for i, b := range domainSlice {
 			if b != '.' {
@@ -89,7 +91,7 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 	}
 
 	if zone == nil {
-		return "", fmt.Errorf("🤔 Could not find the zone for the domain %s.", domain)
+		return "", fmt.Errorf("🤔 Could not find the zone of the domain %s.", domain)
 	} else {
 		zoneNameOfID.SetDefault(zone.ID, zone.Name)
 		zoneIDOfDomain.SetDefault(domain, zone.ID)
@@ -100,7 +102,7 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 // updateRecordsArgs is the type of (named) arguments to updateRecords
 type updateRecordsArgs = struct {
 	context    context.Context
-	quiet      bool
+	quiet      common.Quiet
 	target     Target
 	recordType string
 	ip         net.IP
@@ -133,7 +135,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 
 	for _, r := range rs {
 		if r.Name != domain {
-			return nil, fmt.Errorf("🤯 Unexpected domain %s when the domain %s: %+v", r.Name, domain, r)
+			return nil, fmt.Errorf("🤯 Unexpected domain %s when handling the domain %s: %+v", r.Name, domain, r)
 		}
 		if r.Type != args.recordType {
 			return nil, fmt.Errorf("🤯 Unexpected %s records when handling %s records: %+v", r.Type, args.recordType, r)
@@ -227,7 +229,7 @@ type UpdateArgs struct {
 	IP6        net.IP
 	TTL        int
 	Proxied    bool
-	Quiet      bool
+	Quiet      common.Quiet
 }
 
 func (h *Handle) Update(args *UpdateArgs) error {
@@ -249,7 +251,9 @@ func (h *Handle) Update(args *UpdateArgs) error {
 	}
 
 	if !checkingIP4 && !checkingIP6 {
-		log.Printf("🤷 Nothing to do for the domain %s; skipping the updating.", domain)
+		if !args.Quiet {
+			log.Printf("🤷 Nothing to do for the domain %s; skipping the updating.", domain)
+		}
 		return nil
 	}
 
@@ -278,6 +282,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 			proxied:    args.Proxied,
 		})
 		if err4 != nil {
+			log.Print(err4)
 			ip4Remembered.Delete(domain)
 		} else {
 			ip4Remembered.SetDefault(domain, (*net.IP)(&ip))
@@ -295,6 +300,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 			proxied:    args.Proxied,
 		})
 		if err6 != nil {
+			log.Print(err6)
 			ip6Remembered.Delete(domain)
 		} else {
 			ip6Remembered.SetDefault(domain, (*net.IP)(&ip))
