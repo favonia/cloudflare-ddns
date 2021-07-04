@@ -2,6 +2,7 @@ name: Build and Push
 on:
   push:
     branches: main
+  pull_request:
 jobs:
   login:
     runs-on: ubuntu-latest
@@ -10,12 +11,13 @@ jobs:
       - uses: docker/setup-qemu-action@v1
       - uses: docker/setup-buildx-action@v1
       - uses: docker/login-action@v1
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v2
         with:
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/s390x
-          tags: ghcr.io/favonia/cloudflare-ddns-go:latest
+          tags: ghcr.io/${{ github.repository }}:latest
