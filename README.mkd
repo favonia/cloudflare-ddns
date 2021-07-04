@@ -4,7 +4,7 @@ This is a reimplementation of [timothymiller/cloudflare-ddns](https://github.com
 
 ## 🚧 Status of the Project
 
-The code is working well for me, but the repository is still young and the design is subject to changes. The compatible mode, however, is intended to track the latest configuration format used by [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns).
+The code is working well for me, but the repository is still young and the design is subject to changes. That said, the compatible mode is intended to track the development of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns), and it will be considered a bug if the compatible mode fails to accept valid configuration files that would have been accepted.
 
 ## 👏 Notable Improvements
 
