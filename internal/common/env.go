@@ -61,13 +61,13 @@ func GetenvAsInt(key string, def int) (int, error) {
 	}
 }
 
-func GetenvAsTimeDuration(key string, def time.Duration) (time.Duration, error) {
+func GetenvAsPositiveTimeDuration(key string, def time.Duration) (time.Duration, error) {
 	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
 		log.Printf("📭 The variable %s is missing. Default value: %s", key, def.String())
 		return def, nil
 	} else {
 		t, err := time.ParseDuration(val)
-		if err != nil {
+		if err != nil || t <= 0 {
 			return t, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
 		}
 		return t, err

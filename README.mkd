@@ -1,0 +1,95 @@
+# 🎉 Reimplementation of CloudFlare DDNS in Go
+
+This is a reimplementation of https://github.com/timothymiller/cloudflare-ddns **with many significant improvements.**
+
+## 🚧 Status of the Project
+
+The code is working well for me, but the repository is still young. The interface is not stable. Use with caution.
+
+## 👏 Notable Improvements
+
+1. **It will _not_ delete any A or AAAA records** that are not specified by you. The way the original program handles stale records has surprised many people; see [timothymiller/cloudflare-ddns#52](https://github.com/timothymiller/cloudflare-ddns/pull/52) and [#57](https://github.com/timothymiller/cloudflare-ddns/pull/57), for example. This will never happen in the new implementation.
+2. It is **configured via environment variables,** which means all the settings can go into `.env` when using `docker-compose`. This immediately solves [timothymiller/cloudflare-ddns#35](https://github.com/timothymiller/cloudflare-ddns/pull/35) and [#41](https://github.com/timothymiller/cloudflare-ddns/pull/41).
+3. It can also be a **drop-in replacement** with `COMPATIBLE=true`. See below.
+4. It _will_ respect `PGID` and `PUID` and **drop the root privilege immediately.**
+5. It can take fully qualified domain names and **find the correct zones IDs for you.**
+6. It can be configured to obtain IP addresses **using local network interfaces**, solving [#36](https://github.com/timothymiller/cloudflare-ddns/issues/36).
+7. It comes with **many technical improvements under the hood,** such as handling of pagination in the CloudFlare API (thanks to the official Go binding [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go)), careful parsing of the JSON files, (still incomplete) timeout mechanism, caching (thanks to [patrickmn/go-cache](https://github.com/patrickmn/go-cache)), etc.
+
+As a bonus, the implementation has tiny footprint and **its Docker images are only of size about 5 MBs.** (The Docker image of the original CloudFlare-DDNS is also small, but this one is even smaller.)
+
+## 🛠️ How to Use It with Docker Compose
+
+### 🤝 Compatible Mode
+
+Use this option if you are already using CloudFlare-DDNS and do not want to touch the configuration file.
+
+Follow the instructions on https://github.com/timothymiller/cloudflare-ddns but use the setup below. The important three edits are:
+1. The `image` is at `ghcr.io/favonia/cloudflare-ddns-go:latest`
+2. If you have been specifying `container_name`, it is recommended to use a different name, for example `cloudflare-ddns-go`.
+3. Under `environment`, add `COMPATIBLE=true` to enable the compatible mode.
+_You do not have to modify your JSON configuration or anything else._
+
+```yaml
+version: "3.7"
+services:
+  cloudflare-ddns-go:
+    image: ghcr.io/favonia/cloudflare-ddns-go:latest
+    container_name: cloudflare-ddns-go
+    security_opt:
+      - no-new-privileges:true
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - COMPATIBLE=true
+    volumes:
+      - ${PWD}/cloudflare-ddns/config.json:/config.json
+    restart: unless-stopped
+```
+
+### 😎 New Mode
+
+The settings are done by solely environment variables.
+```yaml
+version: "3.7"
+services:
+  cloudflare-ddns-go:
+    image: ghcr.io/favonia/cloudflare-ddns-go:latest
+    container_name: cloudflare-ddns-go
+    security_opt:
+      - no-new-privileges:true
+    network_mode: host
+    environment:
+      - CF_API_TOKEN
+      - DOMAINS
+      - PROXIED=true
+    restart: unless-stopped
+```
+You should then add these lines in your `.env` file:
+```sh
+CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+DOMAINS=www.example.org,www2.example.org
+```
+
+Here are all the relevant environment variables.
+
+| Names | Valid Values | Meaning | Required? | Default Value |
+| ----- | ------------ | ------- | --------- | ------------- |
+| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token used to access CloudFlare APIs | **Yes** | N/A |
+| `COMPATIBLE` | Boolean | Whether the program should mimic the original CloudFlare-DDNS | No | `false`
+| `QUIET` | Boolean | Whether the program should reduce the reporting | No | `false`
+| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
+| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
+| `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes | N/A
+| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means using the CloudFlare servers to obtain public IPv4 addresses. `local` means using the information associated with local network interfaces to obtain IPv4 addresses. `unmanaged` means the tool should simply leave the `A` records alone. | No | `cloudflare`
+| `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
+| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic)
+| `PROXIED` | Boolean | Whether new DNS records should be proxied by CloudFlare | No | `false`
+| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IPs and update DNS records (if necessary) | No | `5m`
+
+In the above table, “Boolean” includes `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`.
+
+## 💖 Questions and Contributions
+
+Questions and contributions are welcome! Consider opening a GitHub issue to initiate the discussion.

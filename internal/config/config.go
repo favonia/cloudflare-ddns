@@ -71,7 +71,7 @@ func readConfigFromEnv(ctx context.Context, quiet bool) (*Config, error) {
 	}
 	log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
 
-	refreshInterval, err := common.GetenvAsTimeDuration("REFRESH_INTERVAL", time.Minute*5)
+	refreshInterval, err := common.GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5)
 	if err != nil {
 		return nil, err
 	}

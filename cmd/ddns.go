@@ -62,7 +62,7 @@ func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
 	chanAlarm := time.After(d)
 	select {
 	case sig := <-signal:
-		log.Printf("😮 Caught signal: %v. Bye!", sig)
+		log.Printf("👋 Caught signal: %v. Bye!", sig)
 		return false
 	case <-chanAlarm:
 		return true
@@ -73,7 +73,7 @@ func delayedExit(signal chan os.Signal) {
 	duration := time.Minute
 	log.Printf("🥱 Waiting for %v before exiting to prevent excessive logging . . .", duration)
 	if continue_ := wait(signal, duration); continue_ {
-		log.Printf("😮 Time's up. Bye!")
+		log.Printf("👋 Time's up. Bye!")
 	}
 	os.Exit(1)
 }
