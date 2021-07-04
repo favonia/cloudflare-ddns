@@ -12,7 +12,10 @@ import (
 func GetenvAsPolicy(key string, quiet Quiet) (Policy, error) {
 	val := strings.TrimSpace(os.Getenv(key))
 	switch val {
-	case "cloudflare", "":
+	case "":
+		log.Printf("📭 The variable %s is empty or unset. Default value: cloudflare", key)
+		return Cloudflare, nil
+	case "cloudflare":
 		return Cloudflare, nil
 	case "unmanaged":
 		return Unmanaged, nil

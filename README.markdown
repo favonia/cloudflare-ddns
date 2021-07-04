@@ -1,6 +1,6 @@
 # 🌟 CloudFlare DDNS
 
-[![GitHub Actions](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml/badge.svg)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml) [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns) [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml) [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns) [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 
 This is a re-implementation of the popular [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called the “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. Because various pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
 
@@ -144,8 +144,8 @@ Here are all the environment variables the program checks. Note that, in the com
 | `PROXIED` | Boolean values | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean values | Whether the program should reduce the logging | No | `false`
-| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IP addresses and update DNS records (if necessary) | No | `5m`
-| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (meaning automatic to CloudFlare)
+| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
+| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)
 
 ⚠️ In the above table, “boolean values” include `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
 
@@ -159,6 +159,8 @@ The new mode can also work with [Docker secrets](https://docs.docker.com/engine/
 
 ## 🛠️ Running without Docker Compose
 
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
+
 You need the Go compiler, which can be installed via package managers in most Linux distros or the [official Go install page](https://golang.org/doc/install). After setting up the compiler, run the following command at the root of the source repository:
 ```bash
 go run cmd/ddns.go
@@ -167,4 +169,4 @@ The program does not take arguments directly. Instead, it reads in environment v
 
 ## 💖 Feedback
 
-Questions, suggestions, feature requests, and contributions are all welcome! Please feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
+Questions, suggestions, feature requests, and contributions are all welcome! Feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
