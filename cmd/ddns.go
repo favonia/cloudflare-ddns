@@ -9,7 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal"
+	"github.com/favonia/cloudflare-ddns-go/internal/api"
+	"github.com/favonia/cloudflare-ddns-go/internal/common"
+	"github.com/favonia/cloudflare-ddns-go/internal/config"
+	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 )
 
 func dropRoot() {
@@ -19,7 +22,7 @@ func dropRoot() {
 		log.Printf("😡 Could not erase supplementary group IDs: %v", err)
 	}
 
-	gid, err := ddns.GetenvAsInt("PGID", 1000)
+	gid, err := common.GetenvAsInt("PGID", 1000)
 	if err == nil {
 		log.Printf("👪 Setting the group gid to %d . . .", gid)
 		err := syscall.Setgid(gid)
@@ -30,7 +33,7 @@ func dropRoot() {
 		log.Print(err)
 	}
 
-	uid, err := ddns.GetenvAsInt("PUID", 1000)
+	uid, err := common.GetenvAsInt("PUID", 1000)
 	if err == nil {
 		log.Printf("🧑 Setting the user to %d . . .", uid)
 		err := syscall.Setuid(uid)
@@ -86,7 +89,7 @@ func main() {
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM)
 
 	// reading the config
-	c, err := ddns.ReadConfig(ctx)
+	c, err := config.ReadConfig(ctx)
 	if err != nil {
 		log.Print(err)
 		delayedExit(chanSignal)
@@ -95,8 +98,8 @@ func main() {
 mainLoop:
 	for {
 		ip4 := net.IP(nil)
-		if c.IP4Policy != ddns.Unmanaged {
-			ip, err := ddns.GetIP4(c.IP4Policy)
+		if c.IP4Policy != common.Unmanaged {
+			ip, err := detector.GetIP4(c.IP4Policy)
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv4 address.")
@@ -107,8 +110,8 @@ mainLoop:
 		}
 
 		ip6 := net.IP(nil)
-		if c.IP6Policy != ddns.Unmanaged {
-			ip, err := ddns.GetIP6(c.IP6Policy)
+		if c.IP6Policy != common.Unmanaged {
+			ip, err := detector.GetIP6(c.IP6Policy)
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv6 address.")
@@ -119,24 +122,29 @@ mainLoop:
 		}
 
 		for _, s := range c.Sites {
-			for _, fqdn := range s.Domains {
-				args := ddns.DNSSetting{
-					FQDN:       fqdn,
-					IP4Managed: c.IP4Policy != ddns.Unmanaged,
+			h, err := s.Handler.Handle()
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			for _, target := range s.Targets {
+				err := h.Update(&api.UpdateArgs{
+					Context:    ctx,
+					Target:     target,
+					IP4Managed: c.IP4Policy != common.Unmanaged,
 					IP4:        ip4,
-					IP6Managed: c.IP6Policy != ddns.Unmanaged,
+					IP6Managed: c.IP6Policy != common.Unmanaged,
 					IP6:        ip6,
 					TTL:        s.TTL,
 					Proxied:    s.Proxied,
-				}
-				err := s.Handle.UpdateDNSRecords(ctx, &args)
+				})
 				if err != nil {
 					log.Print(err)
 				}
 			}
 		}
 
-		log.Printf("😴 Checking the DNS records again in %s . . .", c.RefreshInterval.String())
+		log.Printf("😴 Updating the DNS records again in %s . . .", c.RefreshInterval.String())
 
 		if continue_ := wait(chanSignal, c.RefreshInterval); continue_ {
 			continue mainLoop

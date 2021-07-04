@@ -1,4 +1,4 @@
-package ddns
+package detector
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"regexp"
 	"time"
+
+	"github.com/favonia/cloudflare-ddns-go/internal/common"
 )
 
 func getIPFromCloudflare(url string) (net.IP, error) {
@@ -71,22 +73,22 @@ func getLocalIP6() (net.IP, error) {
 	return conn.LocalAddr().(*net.UDPAddr).IP.To16(), nil
 }
 
-func GetIP4(policy Policy) (net.IP, error) {
+func GetIP4(policy common.Policy) (net.IP, error) {
 	switch policy {
-	case Cloudflare:
+	case common.Cloudflare:
 		return getIP4FromCloadflare()
-	case Local:
+	case common.Local:
 		return getLocalIP4()
 	default:
 		return nil, fmt.Errorf("😱 The impossible happened!")
 	}
 }
 
-func GetIP6(policy Policy) (net.IP, error) {
+func GetIP6(policy common.Policy) (net.IP, error) {
 	switch policy {
-	case Cloudflare:
+	case common.Cloudflare:
 		return getIP6FromCloadflare()
-	case Local:
+	case common.Local:
 		return getLocalIP6()
 	default:
 		return nil, fmt.Errorf("😱 The impossible happened!")
