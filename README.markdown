@@ -89,11 +89,11 @@ CF_API_TOKEN=<YOUR-CLOUDFLARE-API-TOKEN>
 DOMAINS=www.example.org,www2.example.org
 ```
 
-- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained via the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into `.env`.
+- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained on the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into the environment file.
 
   ⚠️ The legacy API key authentication is intentionally _not_ supported. Please use the more secure API tokens.
 
-- The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `a.org,www.a.org` means the tool should update the IP addresses of both the domains `a.org` and `www.a.org`. The domains do not have to be in the same zone---the tool will identify their zones automatically.
+- The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `DOMAINS=a.org,www.a.org` instructs the tool to manage both the domains `a.org` and `www.a.org`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
 
 The tool should be up and running after these commands:
 ```bash
@@ -108,29 +108,36 @@ Here are all the environment variables the tool recognizes.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens with the `DNS:Edit` permission | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `DELETE_ON_EXIT` | Boolean values | Whether managed DNS records should be deleted on exit | No | `false`
-| `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
-| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
-| `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
-| `PGID` | POSIX group ID | The effective group ID the tool should assume (instead of being the `root`) | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
-| `PROXIED` | Boolean values | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | POSIX user ID | The effective user ID the tool should assume (instead of being the `root`) | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
-| `QUIET` | Boolean values | Whether the tool should reduce the logging | No | `false`
+| `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
+| `DOMAINS` | Comma-separated fully qualified domain names (without the final periods) | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
+| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
+| `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
+| `PGID` | POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
+| `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
+| `PUID` | POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+| `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)
 
-⚠️ In the above table, “boolean values” include `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
+💡 A policy can be one of the following:
 
-⚠️ You will need `network_mode: host` for `IP4_POLICY=local` or `IP6_POLICY=local`, for otherwise the tool will detect the addresses inside the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
+- `cloudflare`: Get the public IP address via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+- `local`: Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers.
+
+  ⚠️ You need `network_mode: host` for the `local` policy, for otherwise the tool will detect the addresses inside the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
+
+- `unmanaged`: Stop the DNS updating completely. Existing DNS records will not be removed.
+
+The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other. Both of them apply to all managed domains.
 
 After customizing the tool, run the following command to recreate the container:
 ```bash
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-### Alternative Setup with Docker Secret
+### Alternative Setup with Docker Secrets
 
 The tool can work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. Pass the secret via `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of using the `CF_API_TOKEN` variable.
 
