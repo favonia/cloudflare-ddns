@@ -7,38 +7,29 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 ```
 2021/07/05 07:15:52 🚷 Erasing supplementary group IDs . . .
 2021/07/05 07:15:52 🤷 Could not erase supplementary group IDs: operation not permitted
-2021/07/05 07:15:52 📭 The variable PGID is empty or unset. Default value: 1000
-2021/07/05 07:15:52 📭 The variable PUID is empty or unset. Default value: 1000
 2021/07/05 07:15:52 🧑 Effective user ID of the process: 1000.
 2021/07/05 07:15:52 👪 Effective group ID of the process: 1000.
 2021/07/05 07:15:52 👪 Supplementary group IDs of the process: [……].
-2021/07/05 07:15:52 📭 The variable QUIET is empty or unset. Default value: false
 2021/07/05 07:15:52 📜 Managed domains: [……]
-2021/07/05 07:15:52 📭 The variable IP4_POLICY is empty or unset. Default value: cloudflare
 2021/07/05 07:15:52 📜 Policy for IPv4: cloudflare
-2021/07/05 07:15:52 📭 The variable IP6_POLICY is empty or unset. Default value: cloudflare
 2021/07/05 07:15:52 📜 Policy for IPv6: cloudflare
-2021/07/05 07:15:52 📭 The variable TTL is empty or unset. Default value: 1
 2021/07/05 07:15:52 📜 TTL for new DNS entries: 1 (1 = automatic)
-2021/07/05 07:15:52 📭 The variable PROXIED is empty or unset. Default value: false
 2021/07/05 07:15:52 📜 Whether new DNS entries are proxied: false
-2021/07/05 07:15:52 📭 The variable REFRESH_INTERVAL is empty or unset. Default value: 5m0s
 2021/07/05 07:15:52 📜 Refresh interval: 5m0s
 2021/07/05 07:15:52 📜 Whether managed records are deleted on exit: true
-2021/07/05 07:15:52 📭 The variable DETECTION_TIMEOUT is empty or unset. Default value: 5s
 2021/07/05 07:15:52 📜 Timeout of each attempt to detect IP addresses: 5s
-2021/07/05 07:15:52 📭 The variable CACHE_EXPIRATION is empty or unset. Default value: 6h0m0s
 2021/07/05 07:15:52 📜 Expiration of cached CloudFlare API responses: 6h0m0s
 2021/07/05 07:15:53 🧐 Found the IPv4 address: ……
 2021/07/05 07:15:53 🧐 Found the IPv6 address: ……
 2021/07/05 07:15:53 🧐 Found the zone of the domain ……: …….
 2021/07/05 07:15:54 👶 Adding a new A record: ……
 2021/07/05 07:15:55 👶 Adding a new AAAA record: ……
+2021/07/05 07:15:55 😴 Checking the IP addresses again in 5m0s . . .
 ```
 
 ## 📜 Highlights
 
-* Ultra-small docker images (~2MB) with tiny footprints for all popular architectures.
+* Ultra-small Docker images (~2MB) with tiny footprints for all popular architectures.
 * Ability to update multiple domains across different zones.
 * Ability to remove stale records or choose to remove records on exit.
 * Ability to obtain IP addresses from either public servers or local network interfaces (configurable).
@@ -53,7 +44,7 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 * The root privilege is immediately dropped after the program starts.
 * There are only two external dependencies, other than the Go standard library:
   1. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
-  2. [patrickmn/go-cache](https://github.com/patrickmn/go-cache): in-memory caching.
+  2. [patrickmn/go-cache](https://github.com/patrickmn/go-cache): simple in-memory caching, essentially `map[string]interface{}` with expiration times.
 
 The CloudFlare binding provides robust handling of pagination and other nuisances of the CloudFlare API, and the in-memory caching helps reduce the API usage.
 
@@ -61,7 +52,7 @@ The CloudFlare binding provides robust handling of pagination and other nuisance
 
 ### Step 1: Updating the Compose File
 
-Incorporate the following fragment into the compose file (typically `docker-compose.y[a]ml`).
+Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`).
 
 ```yaml
 version: "3"
@@ -79,7 +70,7 @@ services:
 
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-⚠️  The setting `no-new-privileges:true` provides additional protection when you run the container as a non-root user. (The tool will also attempt to drop the root privilege.) Keep in mind that this might not completely stop malicious containers.
+💡 The setting `no-new-privileges:true` provides additional protection when you run the container as a non-root user. (The tool itself will also attempt to drop the root privilege.)
 
 💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
@@ -90,14 +81,14 @@ services:
 Add these lines to your environment file (typically `.env`):
 ```bash
 CF_API_TOKEN=<YOUR-CLOUDFLARE-API-TOKEN>
-DOMAINS=www.example.org,www2.example.org
+DOMAINS=example.org,www.example.org,example.io
 ```
 
-- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained on the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into the environment file.
+- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into the environment file.
 
   ⚠️ The legacy API key authentication is intentionally _not_ supported. Please use the more secure API tokens.
 
-- The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `DOMAINS=a.org,www.a.org` instructs the tool to manage both the domains `a.org` and `www.a.org`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+- The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
 
 The tool should be up and running after these commands:
 ```bash
@@ -117,7 +108,7 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
-| `DOMAINS` | Comma-separated fully qualified domain names (without the final periods) | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
+| `DOMAINS` | Comma-separated fully qualified domain names | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `PGID` | POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
@@ -127,7 +118,7 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 | `REFRESH_INTERVAL` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
-💡 A policy can be one of the following:
+💡 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
 
 - `cloudflare`: Get the public IP address via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
 - `local`: Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers.
@@ -140,7 +131,7 @@ The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while 
 
 After customizing the tool, run the following command to recreate the container:
 ```bash
-docker-compose up --detach --build cloudflare-ddns
+docker-compose up --detach
 ```
 
 ### Alternative Setup with Docker Secrets

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -57,6 +58,9 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	}
 
 	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
+	for i, domain := range domains {
+		domains[i] = strings.TrimSuffix(domain, ".")
+	}
 	if err != nil {
 		return nil, err
 	}
