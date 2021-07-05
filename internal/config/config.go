@@ -13,23 +13,27 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 )
 
-type site = struct {
-	Handler api.Handler
-	Targets []api.Target
-	TTL     int
-	Proxied bool
-}
-
 type Config struct {
-	Sites           []site
+	Quiet           common.Quiet
+	Handler         api.Handler
+	Targets         []api.Target
 	IP4Policy       detector.Policy // "cloudflare", "local", "unmanaged"
 	IP6Policy       detector.Policy // "cloudflare", "local", "unmanaged"
+	TTL             int
+	Proxied         bool
 	RefreshInterval time.Duration
-	Quiet           common.Quiet
 	DeleteOnExit    bool
 }
 
-func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error) {
+func ReadConfig(ctx context.Context) (*Config, error) {
+	quiet, err := GetenvAsQuiet("QUIET", common.VERBOSE, common.VERBOSE)
+	if err != nil {
+		return nil, err
+	}
+	if quiet {
+		log.Printf("🤫 Quiet mode enabled.")
+	}
+
 	var (
 		token     = os.Getenv("CF_API_TOKEN")
 		tokenFile = os.Getenv("CF_API_TOKEN_FILE")
@@ -99,42 +103,14 @@ func readConfigFromEnv(ctx context.Context, quiet common.Quiet) (*Config, error)
 	log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnExit)
 
 	return &Config{
-		Sites: []site{{
-			Handler: handler,
-			Targets: targets,
-			TTL:     ttl,
-			Proxied: proxied,
-		}},
+		Quiet:           quiet,
+		Handler:         handler,
+		Targets:         targets,
 		IP4Policy:       ip4Policy,
 		IP6Policy:       ip6Policy,
+		TTL:             ttl,
+		Proxied:         proxied,
 		RefreshInterval: refreshInterval,
-		Quiet:           quiet,
 		DeleteOnExit:    deleteOnExit,
 	}, nil
-}
-
-func ReadConfig(ctx context.Context) (*Config, error) {
-	quiet, err := GetenvAsQuiet("QUIET", common.VERBOSE, common.VERBOSE)
-	if err != nil {
-		return nil, err
-	}
-	if quiet {
-		log.Printf("🤫 Quiet mode enabled.")
-	}
-
-	useJSON, err := GetenvAsBool("COMPATIBLE", false, quiet)
-	if err != nil {
-		return nil, err
-	}
-	if useJSON {
-		if !quiet {
-			log.Print("🤝 Using the cloudflare-ddns compatible mode.")
-		}
-		return readConfigFromJSON(ctx, jsonPath, quiet)
-	} else {
-		if !quiet {
-			log.Printf("🆕 Not using the cloudflare-ddns compatible mode.")
-		}
-		return readConfigFromEnv(ctx, quiet)
-	}
 }

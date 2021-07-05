@@ -12,6 +12,7 @@ func (t *TokenHandler) Handle() (*Handle, error) {
 	return newWithToken(t.Token)
 }
 
+/*
 type KeyHandler struct {
 	Key   string
 	Email string
@@ -20,3 +21,4 @@ type KeyHandler struct {
 func (t *KeyHandler) Handle() (*Handle, error) {
 	return newWithKey(t.Key, t.Email)
 }
+*/

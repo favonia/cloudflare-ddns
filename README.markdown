@@ -2,90 +2,34 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml) [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns) [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 
-This is a re-implementation of the popular [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) (called the “original tool” below). The main motivation was to have an implementation that (1) will not delete `A` and `AAAA` records that are not listed and (2) is configurable via only environment variables. Because various pull requests to the upstream (by others) seem to be stalled, I decided to re-implement the tool.
+An extremely small and fast tool to use CloudFlare as a DDNS service. The tool was originally inspired by [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) which has a similar goal.
 
-## 🚧 Status of the Project
+## 📜 Highlights
 
-The project is young and the design is subject to changes. That said, the compatible mode is intended to mimic the original tool.
-
-## 📜 Changes from [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns)
-
-1. It will not delete any `A` or `AAAA` records unless the domains are explicitly listed.
-2. It is configured primarily via environment variables.
-3. It can also mimic the behavior of the original tool. See below.
-4. It will respect `PGID` and `PUID` and drop the root privilege.
-5. It can take fully qualified domain names and find the correct zone IDs via the CloudFlare API.
-6. It can be configured to obtain IP addresses using local network interfaces.
-7. It has a few technical improvements under the hood, such as the handling of pagination in the CloudFlare API (via the official Go binding [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go)), (still incomplete) timeout mechanism, in-memory caching (via [patrickmn/go-cache](https://github.com/patrickmn/go-cache)), etc.
+* Ultra-small docker images (~2MB) with tiny footprints for all popular architectures.
+* Ability to update multiple domains across different zones.
+* Ability to remove stale records or remove records on exit (the latter is configurable).
+* Ability to obtain IP addresses from either public servers or local network interfaces.
+* Ability to enable or disable IPv4 and IPv6 individually.
+* Full configurability via environment variables.
+* Ability to pass API tokens via environment variables or files.
+* Local caching to reduce CloudFlare API usage.
 
 ## 🛡️ Privacy and Security
 
-The new implementation uses the same CloudFlare servers to determine the public IP addresses, and it drops the root privilege. That said, it does depend on the following two external libraries:
-1. [patrickmn/go-cache](https://github.com/patrickmn/go-cache) for in-memory caching to reduce CloudFlare API usage.
-2. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go) as the official Go library for CloudFlare API v4.
+* Public IP addresses are obtained via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy as we will use the CloudFlare API to update DNS records anyways.
+* The root privilege is immediately dropped after the program starts.
+* The only two external dependencies (other than the Go standard library):
+  1. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
+  2. [patrickmn/go-cache](https://github.com/patrickmn/go-cache): in-memory caching.
+
+The CloudFlare binding provides robust handling of pagination and other tricky cases when using the CloudFlare API, and the in-memory caching reduces the API usage.
 
 ## 🐋 Deployment with Docker Compose
 
-### 🤝 Compatible Mode (with [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns))
+### Step 1: Updating the Compose File
 
-Use this option if you already have a working JSON configuration for the original tool and wish to keep it.
-
-#### 🥾 Migration Step 1: Updating `docker-compose.yml`
-
-1. Change `timothyjmiller/cloudflare-ddns:latest` to `favonia/cloudflare-ddns:latest`.
-2. Add `COMPATIBLE=true` to `environment`.
-
-Here is a possible configuration after the migration:
-
-```yaml
-version: "3"
-services:
-  cloudflare-ddns:
-    image: favonia/cloudflare-ddns:latest
-    security_opt:
-      - no-new-privileges:true
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - COMPATIBLE=true
-    volumes:
-      - ${PWD}/cloudflare-ddns/config.json:/config.json
-```
-
-⚠️ You should not need automatic restart (_e.g.,_ `restart: unless-stopped`) because the program should exit only when non-recoverable errors happen or when you manually stop it. Please consider reporting the bug if it exits for any other reasons.
-
-⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
-
-The new tool should be up and running after these commands:
-```bash
-docker-compose pull cloudflare-ddns
-docker-compose up --detach --remove-orphans --build cloudflare-ddns
-```
-However, you might wish to follow the next step to customize it further.
-
-#### 🥾 Migration Step 2: Further Customization
-
-The compatible mode recognizes the following environment variables:
-
-| Name | Valid Values | Meaning | Required? | Default Value |
-| ---- | ------------ | ------- | --------- | ------------- |
-| `COMPATIBLE` | Boolean values | Whether the program should mimic the original tool | Must be set to `true` to use the compatible mode | `false`
-| `PGID` | POSIX group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
-| `PUID` | POSIX user ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
-| `QUIET` | Boolean values | Whether the program should reduce the logging | No | `false`
-
-⚠️ In the above table, “boolean values” include `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
-
-### 🆕 New Mode (Using Environment Variables)
-
-Use the new mode if compatibility with the original tool is not of your concern or you want to try out other features.
-
-⚠️ The new mode can manage domains across different zones, but currently it only accepts one API token (while you can specify multiple API tokens in the compatible mode, each for a different zone). As a workaround, you can create one single API token with the permission to update DNS records in all the relevant zones.
-
-#### Step 1: Updating `docker-compose.yml`
-
-Incorporate the following fragment into your `docker-compose.yml` (or other equivalent files).
+Incorporate the following fragment into the compose file (typically `docker-compose.y[a]ml`).
 
 ```yaml
 version: "3"
@@ -105,64 +49,68 @@ services:
 
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-⚠️ The setting `PROXIED=true` enables CloudFlare to cache your webpages and hide your actual IP addresses. If you wish to bypass that, remove the entry `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+⚠️ The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
-#### Step 2: Updating `.env`
+💡 There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
 
-You should then add these lines in your `.env` file:
+### Step 2: Updating the Environment File
+
+Add these lines to your environment file (typically `.env`):
 ```bash
-CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+CF_API_TOKEN=<YOUR-CLOUDFLARE-API-TOKEN>
 DOMAINS=www.example.org,www2.example.org
 ```
 
-- The value of `CF_API_TOKEN` should be an API **token** (_not_ API key), which can be obtained via the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create an API token (_not_ API key) with the **Zone - DNS - Edit** permission and copy the token into `.env`.
+- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained via the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into `.env`.
 
-  ⚠️ The legacy API key authentication is intentionally _not_ supported by the new format. You should use the more secure API tokens even in the JSON compatible mode.
+  ⚠️ The legacy API key authentication is intentionally _not_ supported. Please use the more secure API tokens.
 
-- The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `github.com,www.github.com`. The domains do not have to be in the same zone---the tool will identify the correct zone of each domain.
+- The value of `DOMAINS` should be a list of fully qualified domain names (without the final dots) separated by commas. For example, `a.org,www.a.org` means the tool should update the IP addresses of both the domains `a.org` and `www.a.org`. The domains do not have to be in the same zone---the tool will identify their zones automatically.
 
-The new tool should be up and running after these commands:
+The tool should be up and running after these commands:
 ```bash
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 However, you might wish to follow the next step to customize it further.
 
-#### Step 3: Further Customization
+### Step 3: Further Customization
 
-Here are all the environment variables the program checks. Note that, in the compatible mode (`COMPATIBLE=true`), only `PUID`, `PGID`, and `QUIET` (and `COMPATIBLE` itself) are functional; other variables are ignored.
+Here are all the environment variables the tool recognizes.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `COMPATIBLE` | Boolean values | Whether the program should mimic the original tool | Must be unset or set to `false` to use the new mode | `false`
 | `DELETE_ON_EXIT` | Boolean values | Whether managed DNS records should be deleted on exit | No | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
-| `PGID` | POSIX group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
+| `PGID` | POSIX group ID | The effective group ID the tool should assume (instead of being the `root`) | No | 1000
 | `PROXIED` | Boolean values | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | POSIX user ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
-| `QUIET` | Boolean values | Whether the program should reduce the logging | No | `false`
-| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
+| `PUID` | POSIX user ID | The effective user ID the tool should assume (instead of being the `root`) | No | 1000
+| `QUIET` | Boolean values | Whether the tool should reduce the logging | No | `false`
+| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)
 
 ⚠️ In the above table, “boolean values” include `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
 
-⚠️ When the policy is `unmanaged`, the tool will not remove records of the specified kinds (`A` records for IPv4 and `AAAA` records for IPv6). Those records are simply ignored and kept intact.
+⚠️ You will need `network_mode: host` for `IP4_POLICY=local` or `IP6_POLICY=local`, for otherwise the tool will detect the addresses inside the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 
-⚠️ You will need `network_mode: host` for `IP4_POLICY=local` or `IP6_POLICY=local`, for otherwise the program will detect the addresses in the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
+After customizing the tool, run the following command to recreate the container:
+```bash
+docker-compose up --detach --build cloudflare-ddns
+```
 
-#### Alternative Setup with Docker Secret
+### Alternative Setup with Docker Secret
 
-The new mode can also work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. Use `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of the `CF_API_TOKEN` variable to provide the token.
+The tool can work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. Pass the secret via `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of using the `CF_API_TOKEN` variable.
 
 ## 🛠️ Running without Docker Compose
 
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
 
-You need the Go compiler, which can be installed via package managers in most Linux distros or the [official Go install page](https://golang.org/doc/install). After setting up the compiler, run the following command at the root of the source repository:
+You will need the Go compiler, which can be installed via package managers in most Linux distros or the [official Go install page](https://golang.org/doc/install). After setting up the compiler, run the following command at the root of the source repository:
 ```bash
 go run ./cmd/ddns.go
 ```

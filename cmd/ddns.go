@@ -78,28 +78,21 @@ func delayedExit(signal chan os.Signal) {
 	os.Exit(1)
 }
 
-func applyIPs(ctx context.Context, c *config.Config, ip4 net.IP, ip6 net.IP) {
-	for _, s := range c.Sites {
-		h, err := s.Handler.Handle()
+func applyIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
+	for _, target := range c.Targets {
+		err := h.Update(&api.UpdateArgs{
+			Context:    ctx,
+			Target:     target,
+			IP4Managed: c.IP4Policy.IsManaged(),
+			IP4:        ip4,
+			IP6Managed: c.IP6Policy.IsManaged(),
+			IP6:        ip6,
+			TTL:        c.TTL,
+			Proxied:    c.Proxied,
+			Quiet:      c.Quiet,
+		})
 		if err != nil {
 			log.Print(err)
-			continue
-		}
-		for _, target := range s.Targets {
-			err := h.Update(&api.UpdateArgs{
-				Context:    ctx,
-				Target:     target,
-				IP4Managed: c.IP4Policy.IsManaged(),
-				IP4:        ip4,
-				IP6Managed: c.IP6Policy.IsManaged(),
-				IP6:        ip6,
-				TTL:        s.TTL,
-				Proxied:    s.Proxied,
-				Quiet:      c.Quiet,
-			})
-			if err != nil {
-				log.Print(err)
-			}
 		}
 	}
 }
@@ -116,6 +109,13 @@ func main() {
 
 	// reading the config
 	c, err := config.ReadConfig(ctx)
+	if err != nil {
+		log.Print(err)
+		delayedExit(chanSignal)
+	}
+
+	// getting the handler
+	h, err := c.Handler.Handle()
 	if err != nil {
 		log.Print(err)
 		delayedExit(chanSignal)
@@ -151,18 +151,17 @@ mainLoop:
 			}
 		}
 
-		applyIPs(ctx, c, ip4, ip6)
+		applyIPs(ctx, c, h, ip4, ip6)
 
 		if !c.Quiet {
 			log.Printf("😴 Checking the IP addresses again in %v . . .", c.RefreshInterval)
 		}
-
 		if sig := wait(chanSignal, c.RefreshInterval); sig == nil {
 			continue mainLoop
 		} else {
 			if c.DeleteOnExit {
 				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
-				applyIPs(ctx, c, nil, nil) // `nil` to purge all records
+				applyIPs(ctx, c, h, nil, nil) // `nil` to purge all records
 				log.Printf("👋 Done now. Bye!")
 			} else {
 				log.Printf("👋 Caught signal: %v. Bye!", *sig)
