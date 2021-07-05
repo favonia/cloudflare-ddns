@@ -1,24 +1,13 @@
 package api
 
-type Handler interface {
-	Handle() (*Handle, error)
+type NewHandler interface {
+	NewHandle() (*Handle, error)
 }
 
-type TokenHandler struct {
+type TokenNewHandler struct {
 	Token string
 }
 
-func (t *TokenHandler) Handle() (*Handle, error) {
+func (t *TokenNewHandler) NewHandle() (*Handle, error) {
 	return newWithToken(t.Token)
 }
-
-/*
-type KeyHandler struct {
-	Key   string
-	Email string
-}
-
-func (t *KeyHandler) Handle() (*Handle, error) {
-	return newWithKey(t.Key, t.Email)
-}
-*/

@@ -12,8 +12,12 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 )
 
+func Getenv(key string) string {
+	return strings.TrimSpace(os.Getenv(key))
+}
+
 func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
-	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
+	if val := Getenv(key); val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
 		}
@@ -33,7 +37,7 @@ func GetenvAsQuiet(key string, def common.Quiet, quiet common.Quiet) (common.Qui
 }
 
 func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
-	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
+	if val := Getenv(key); val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
 		}
@@ -48,7 +52,7 @@ func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
 }
 
 func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
-	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
+	if val := Getenv(key); val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
 	} else {
 		list := strings.Split(val, ",")
@@ -60,8 +64,7 @@ func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
 }
 
 func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
-	val := strings.TrimSpace(os.Getenv(key))
-	switch val {
+	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: cloudflare", key)
@@ -79,7 +82,7 @@ func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
 }
 
 func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet common.Quiet) (time.Duration, error) {
-	if val := strings.TrimSpace(os.Getenv(key)); val == "" {
+	if val := Getenv(key); val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}

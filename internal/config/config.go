@@ -1,11 +1,9 @@
 package config
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -16,7 +14,7 @@ import (
 
 type Config struct {
 	Quiet            common.Quiet
-	Handler          api.Handler
+	NewHandler       api.NewHandler
 	Targets          []api.Target
 	IP4Policy        detector.Policy
 	IP6Policy        detector.Policy
@@ -38,9 +36,9 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	}
 
 	var (
-		token     = os.Getenv("CF_API_TOKEN")
-		tokenFile = os.Getenv("CF_API_TOKEN_FILE")
-		handler   = api.Handler(nil)
+		token      = Getenv("CF_API_TOKEN")
+		tokenFile  = Getenv("CF_API_TOKEN_FILE")
+		newHandler = api.NewHandler(nil)
 	)
 	switch {
 	case token == "" && tokenFile == "":
@@ -48,13 +46,13 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	case token != "" && tokenFile != "":
 		return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
 	case token != "":
-		handler = &api.TokenHandler{Token: token}
+		newHandler = &api.TokenNewHandler{Token: token}
 	case tokenFile != "":
-		tokenBytes, err := common.ReadFile(tokenFile)
+		token, err := common.ReadFileAsString(tokenFile)
 		if err != nil {
 			return nil, err
 		}
-		handler = &api.TokenHandler{Token: string(bytes.TrimSpace(tokenBytes))}
+		newHandler = &api.TokenNewHandler{Token: token}
 	}
 
 	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
@@ -122,7 +120,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 
 	return &Config{
 		Quiet:            quiet,
-		Handler:          handler,
+		NewHandler:       newHandler,
 		Targets:          targets,
 		IP4Policy:        ip4Policy,
 		IP6Policy:        ip6Policy,
