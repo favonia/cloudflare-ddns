@@ -4,26 +4,54 @@
 
 An extremely small and fast tool to use CloudFlare as a DDNS service. The tool was originally inspired by [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) which has a similar goal.
 
+```
+2021/07/05 07:15:52 🚷 Erasing supplementary group IDs . . .
+2021/07/05 07:15:52 🤷 Could not erase supplementary group IDs: operation not permitted
+2021/07/05 07:15:52 📭 The variable PGID is empty or unset. Default value: 1000
+2021/07/05 07:15:52 📭 The variable PUID is empty or unset. Default value: 1000
+2021/07/05 07:15:52 🧑 Effective user ID of the process: 1000.
+2021/07/05 07:15:52 👪 Effective group ID of the process: 1000.
+2021/07/05 07:15:52 👪 Supplementary group IDs of the process: [……].
+2021/07/05 07:15:52 📭 The variable QUIET is empty or unset. Default value: false
+2021/07/05 07:15:52 📜 Managed domains: [……]
+2021/07/05 07:15:52 📭 The variable IP4_POLICY is empty or unset. Default value: cloudflare
+2021/07/05 07:15:52 📜 Policy for IPv4: cloudflare
+2021/07/05 07:15:52 📭 The variable IP6_POLICY is empty or unset. Default value: cloudflare
+2021/07/05 07:15:52 📜 Policy for IPv6: cloudflare
+2021/07/05 07:15:52 📭 The variable TTL is empty or unset. Default value: 1
+2021/07/05 07:15:52 📜 TTL for new DNS entries: 1 (1 = automatic)
+2021/07/05 07:15:52 📭 The variable PROXIED is empty or unset. Default value: false
+2021/07/05 07:15:52 📜 Whether new DNS entries are proxied: false
+2021/07/05 07:15:52 📭 The variable REFRESH_INTERVAL is empty or unset. Default value: 5m0s
+2021/07/05 07:15:52 📜 Refresh interval: 5m0s
+2021/07/05 07:15:52 📜 Whether managed records are deleted on exit: true
+2021/07/05 07:15:53 🧐 Found the IPv4 address: ……
+2021/07/05 07:15:53 🧐 Found the IPv6 address: ……
+2021/07/05 07:15:53 🧐 Found the zone rooted at …… for the domain …….
+2021/07/05 07:15:54 👶 Adding a new A record: ……
+2021/07/05 07:15:55 👶 Adding a new AAAA record: ……
+```
+
 ## 📜 Highlights
 
 * Ultra-small docker images (~2MB) with tiny footprints for all popular architectures.
 * Ability to update multiple domains across different zones.
-* Ability to remove stale records or remove records on exit (the latter is configurable).
-* Ability to obtain IP addresses from either public servers or local network interfaces.
+* Ability to remove stale records or choose to remove records on exit.
+* Ability to obtain IP addresses from either public servers or local network interfaces (configurable).
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Full configurability via environment variables.
-* Ability to pass API tokens via environment variables or files.
+* Ability to pass API tokens via an environment variable or a file.
 * Local caching to reduce CloudFlare API usage.
 
 ## 🛡️ Privacy and Security
 
 * Public IP addresses are obtained via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy as we will use the CloudFlare API to update DNS records anyways.
 * The root privilege is immediately dropped after the program starts.
-* The only two external dependencies (other than the Go standard library):
+* There are only two external dependencies, other than the Go standard library:
   1. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
   2. [patrickmn/go-cache](https://github.com/patrickmn/go-cache): in-memory caching.
 
-The CloudFlare binding provides robust handling of pagination and other tricky cases when using the CloudFlare API, and the in-memory caching reduces the API usage.
+The CloudFlare binding provides robust handling of pagination and other nuisances of the CloudFlare API, and the in-memory caching helps reduce the API usage.
 
 ## 🐋 Deployment with Docker Compose
 
@@ -40,8 +68,6 @@ services:
       - no-new-privileges:true
     network_mode: host
     environment:
-      - PUID=1000
-      - PGID=1000
       - CF_API_TOKEN
       - DOMAINS
       - PROXIED=true
@@ -49,7 +75,9 @@ services:
 
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-⚠️ The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+⚠️  The setting `no-new-privileges:true` provides additional protection when you run the container as a non-root user. (The tool will also attempt to drop the root privilege.) Keep in mind that this might not completely stop malicious containers.
+
+💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
 💡 There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
 
@@ -86,9 +114,9 @@ Here are all the environment variables the tool recognizes.
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
-| `PGID` | POSIX group ID | The effective group ID the tool should assume (instead of being the `root`) | No | 1000
+| `PGID` | POSIX group ID | The effective group ID the tool should assume (instead of being the `root`) | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PROXIED` | Boolean values | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | POSIX user ID | The effective user ID the tool should assume (instead of being the `root`) | No | 1000
+| `PUID` | POSIX user ID | The effective user ID the tool should assume (instead of being the `root`) | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 | `QUIET` | Boolean values | Whether the tool should reduce the logging | No | `false`
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)

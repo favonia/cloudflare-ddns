@@ -15,43 +15,75 @@ import (
 )
 
 func dropRoot() {
-	log.Printf("🚷 Erasing supplementary group IDs . . .")
-	err := syscall.Setgroups([]int{})
-	if err != nil {
-		log.Printf("😡 Could not erase supplementary group IDs: %v", err)
-	}
-
-	gid, err := config.GetenvAsInt("PGID", 1000, common.VERBOSE)
-	if err == nil {
-		log.Printf("👪 Setting the group gid to %d . . .", gid)
-		err := syscall.Setgid(gid)
+	{
+		log.Printf("🚷 Erasing supplementary group IDs . . .")
+		err := syscall.Setgroups([]int{})
 		if err != nil {
-			log.Printf("😡 Could not set the group ID: %v", err)
+			log.Printf("🤷 Could not erase supplementary group IDs: %v", err)
 		}
-	} else {
-		log.Print(err)
 	}
 
-	uid, err := config.GetenvAsInt("PUID", 1000, common.VERBOSE)
-	if err == nil {
-		log.Printf("🧑 Setting the user to %d . . .", uid)
-		err := syscall.Setuid(uid)
-		if err != nil {
-			log.Printf("😡 Could not set the user ID: %v", err)
+	// group ID
+	{
+		var (
+			currentGid = syscall.Getegid()
+			defaultGid = currentGid
+		)
+		if defaultGid == 0 {
+			defaultGid = syscall.Getgid() // real group ID
+			if defaultGid == 0 {
+				defaultGid = 1000
+			}
 		}
-	} else {
-		log.Print(err)
+		gid, err := config.GetenvAsInt("PGID", defaultGid, common.VERBOSE)
+		if err == nil {
+			if gid != currentGid {
+				log.Printf("👪 Setting the group ID to %d . . .", gid)
+				err := syscall.Setgid(gid)
+				if err != nil {
+					log.Printf("😡 Could not set the group ID: %v", err)
+				}
+			}
+		} else {
+			log.Print(err)
+		}
 	}
 
-	log.Printf("🧑 Effective user ID of the process: %d.", os.Geteuid())
-	log.Printf("👪 Effective group ID of the process: %d.", os.Getegid())
+	// user ID
+	{
+		var (
+			currentUid = syscall.Geteuid()
+			defaultUid = currentUid
+		)
+		if defaultUid == 0 {
+			defaultUid = syscall.Getuid()
+			if defaultUid == 0 {
+				defaultUid = 1000
+			}
+		}
+		uid, err := config.GetenvAsInt("PUID", defaultUid, common.VERBOSE)
+		if err == nil {
+			if uid != currentUid {
+				log.Printf("🧑 Setting the user ID to %d . . .", uid)
+				err := syscall.Setuid(uid)
+				if err != nil {
+					log.Printf("😡 Could not set the user ID: %v", err)
+				}
+			}
+		} else {
+			log.Print(err)
+		}
+	}
+
+	log.Printf("🧑 Effective user ID of the process: %d.", syscall.Geteuid())
+	log.Printf("👪 Effective group ID of the process: %d.", syscall.Getegid())
 
 	if groups, err := syscall.Getgroups(); err == nil {
 		log.Printf("👪 Supplementary group IDs of the process: %d.", groups)
 	} else {
 		log.Printf("😡 Could not get the supplementary group IDs.")
 	}
-	if os.Geteuid() == 0 || os.Getegid() == 0 {
+	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
 		log.Printf("😰 It seems this program was run with root privilege. This is not recommended.")
 	}
 }
