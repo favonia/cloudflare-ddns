@@ -25,9 +25,13 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 2021/07/05 07:15:52 📭 The variable REFRESH_INTERVAL is empty or unset. Default value: 5m0s
 2021/07/05 07:15:52 📜 Refresh interval: 5m0s
 2021/07/05 07:15:52 📜 Whether managed records are deleted on exit: true
+2021/07/05 07:15:52 📭 The variable DETECTION_TIMEOUT is empty or unset. Default value: 5s
+2021/07/05 07:15:52 📜 Timeout of each attempt to detect IP addresses: 5s
+2021/07/05 07:15:52 📭 The variable CACHE_EXPIRATION is empty or unset. Default value: 6h0m0s
+2021/07/05 07:15:52 📜 Expiration of cached CloudFlare API responses: 6h0m0s
 2021/07/05 07:15:53 🧐 Found the IPv4 address: ……
 2021/07/05 07:15:53 🧐 Found the IPv6 address: ……
-2021/07/05 07:15:53 🧐 Found the zone rooted at …… for the domain …….
+2021/07/05 07:15:53 🧐 Found the zone of the domain ……: …….
 2021/07/05 07:15:54 👶 Adding a new A record: ……
 2021/07/05 07:15:55 👶 Adding a new AAAA record: ……
 ```
@@ -104,13 +108,15 @@ However, you might wish to follow the next step to customize it further.
 
 ### Step 3: Further Customization
 
-Here are all the environment variables the tool recognizes.
+Here are all the environment variables the tool recognizes, in the alphabetic order.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
+| `CACHE_EXPIRATION` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
 | `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens with the `DNS:Edit` permission | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
+| `DETECTION_TIMEOUT` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `DOMAINS` | Comma-separated fully qualified domain names (without the final periods) | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
@@ -118,8 +124,8 @@ Here are all the environment variables the tool recognizes.
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `PUID` | POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
-| `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
-| `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)
+| `REFRESH_INTERVAL` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
+| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
 💡 A policy can be one of the following:
 

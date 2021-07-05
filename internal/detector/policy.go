@@ -3,13 +3,14 @@ package detector
 import (
 	"fmt"
 	"net"
+	"time"
 )
 
 type Policy interface {
 	IsManaged() bool
 	String() string
-	GetIP4() (net.IP, error)
-	GetIP6() (net.IP, error)
+	GetIP4(time.Duration) (net.IP, error)
+	GetIP6(time.Duration) (net.IP, error)
 }
 
 type Unmanaged struct{}
@@ -22,11 +23,11 @@ func (p *Unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *Unmanaged) GetIP4() (net.IP, error) {
+func (p *Unmanaged) GetIP4(timeout time.Duration) (net.IP, error) {
 	return nil, fmt.Errorf("😱 The impossible happened!")
 }
 
-func (p *Unmanaged) GetIP6() (net.IP, error) {
+func (p *Unmanaged) GetIP6(timeout time.Duration) (net.IP, error) {
 	return nil, fmt.Errorf("😱 The impossible happened!")
 }
 
@@ -40,7 +41,7 @@ func (p *Local) String() string {
 	return "local"
 }
 
-func (p *Local) GetIP4() (net.IP, error) {
+func (p *Local) GetIP4(timeout time.Duration) (net.IP, error) {
 	conn, err := net.Dial("udp4", "1.1.1.1:443")
 	if err != nil {
 		return nil, fmt.Errorf(`😩 Could not detect a local IPv4 address: %v`, err)
@@ -49,7 +50,7 @@ func (p *Local) GetIP4() (net.IP, error) {
 	return conn.LocalAddr().(*net.UDPAddr).IP.To4(), nil
 }
 
-func (p *Local) GetIP6() (net.IP, error) {
+func (p *Local) GetIP6(timeout time.Duration) (net.IP, error) {
 	conn, err := net.Dial("udp6", "[2606:4700:4700::1111]:443")
 	if err != nil {
 		return nil, fmt.Errorf(`😩 Could not detect a local IPv6 address: %v`, err)
@@ -68,8 +69,8 @@ func (p *Cloudflare) String() string {
 	return "cloudflare"
 }
 
-func (p *Cloudflare) GetIP4() (net.IP, error) {
-	ip, err := getIPFromCloudflare("https://1.1.1.1/cdn-cgi/trace")
+func (p *Cloudflare) GetIP4(timeout time.Duration) (net.IP, error) {
+	ip, err := getIPFromCloudflare("https://1.1.1.1/cdn-cgi/trace", timeout)
 	if err == nil {
 		return ip.To4(), nil
 	} else {
@@ -77,8 +78,8 @@ func (p *Cloudflare) GetIP4() (net.IP, error) {
 	}
 }
 
-func (p *Cloudflare) GetIP6() (net.IP, error) {
-	ip, err := getIPFromCloudflare("https://[2606:4700:4700::1111]/cdn-cgi/trace")
+func (p *Cloudflare) GetIP6(timeout time.Duration) (net.IP, error) {
+	ip, err := getIPFromCloudflare("https://[2606:4700:4700::1111]/cdn-cgi/trace", timeout)
 	if err == nil {
 		return ip.To16(), nil
 	} else {

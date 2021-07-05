@@ -146,6 +146,9 @@ func main() {
 		delayedExit(chanSignal)
 	}
 
+	// (re)initiating the cache
+	api.InitCache(c.CacheExpiration)
+
 	// getting the handler
 	h, err := c.Handler.Handle()
 	if err != nil {
@@ -157,7 +160,7 @@ mainLoop:
 	for {
 		ip4 := net.IP{}
 		if c.IP4Policy.IsManaged() {
-			ip, err := c.IP4Policy.GetIP4()
+			ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv4 address.")
@@ -171,7 +174,7 @@ mainLoop:
 
 		ip6 := net.IP{}
 		if c.IP6Policy.IsManaged() {
-			ip, err := c.IP6Policy.GetIP6()
+			ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv6 address.")

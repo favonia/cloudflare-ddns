@@ -14,15 +14,17 @@ import (
 )
 
 type Config struct {
-	Quiet           common.Quiet
-	Handler         api.Handler
-	Targets         []api.Target
-	IP4Policy       detector.Policy // "cloudflare", "local", "unmanaged"
-	IP6Policy       detector.Policy // "cloudflare", "local", "unmanaged"
-	TTL             int
-	Proxied         bool
-	RefreshInterval time.Duration
-	DeleteOnExit    bool
+	Quiet            common.Quiet
+	Handler          api.Handler
+	Targets          []api.Target
+	IP4Policy        detector.Policy
+	IP6Policy        detector.Policy
+	TTL              int
+	Proxied          bool
+	RefreshInterval  time.Duration
+	DeleteOnExit     bool
+	DetectionTimeout time.Duration
+	CacheExpiration  time.Duration
 }
 
 func ReadConfig(ctx context.Context) (*Config, error) {
@@ -102,15 +104,29 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	}
 	log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnExit)
 
+	detectionTimeout, err := GetenvAsPositiveTimeDuration("DETECTION_TIMEOUT", time.Second*5, quiet)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", detectionTimeout)
+
+	cacheExpiration, err := GetenvAsPositiveTimeDuration("CACHE_EXPIRATION", api.DefaultCacheExpiration, quiet)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("📜 Expiration of cached CloudFlare API responses: %v", cacheExpiration)
+
 	return &Config{
-		Quiet:           quiet,
-		Handler:         handler,
-		Targets:         targets,
-		IP4Policy:       ip4Policy,
-		IP6Policy:       ip6Policy,
-		TTL:             ttl,
-		Proxied:         proxied,
-		RefreshInterval: refreshInterval,
-		DeleteOnExit:    deleteOnExit,
+		Quiet:            quiet,
+		Handler:          handler,
+		Targets:          targets,
+		IP4Policy:        ip4Policy,
+		IP6Policy:        ip6Policy,
+		TTL:              ttl,
+		Proxied:          proxied,
+		RefreshInterval:  refreshInterval,
+		DeleteOnExit:     deleteOnExit,
+		DetectionTimeout: detectionTimeout,
+		CacheExpiration:  cacheExpiration,
 	}, nil
 }

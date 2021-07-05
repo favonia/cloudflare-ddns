@@ -17,8 +17,7 @@ type Handle struct {
 }
 
 const (
-	// CacheExpirationBaseline specifies the time after which we should recheck everything.
-	CacheExpirationBaseline = time.Hour * 6
+	DefaultCacheExpiration = time.Hour * 6
 )
 
 var (
@@ -28,11 +27,16 @@ var (
 	zoneIDOfDomain *cache.Cache
 )
 
+// init makes sure the cache exists even if InitCache is not called
 func init() {
-	ip4Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
-	ip6Remembered = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
-	zoneNameOfID = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
-	zoneIDOfDomain = cache.New(CacheExpirationBaseline, CacheExpirationBaseline*2)
+	InitCache(DefaultCacheExpiration)
+}
+
+func InitCache(expiration time.Duration) {
+	ip4Remembered = cache.New(expiration, expiration*2)
+	ip6Remembered = cache.New(expiration, expiration*2)
+	zoneNameOfID = cache.New(expiration, expiration*2)
+	zoneIDOfDomain = cache.New(expiration, expiration*2)
 }
 
 func newWithKey(key, email string) (*Handle, error) {
@@ -263,7 +267,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 	}
 
 	if !args.Quiet {
-		log.Printf("🧐 Found the zone rooted at %s for the domain %s.", zoneName, domain)
+		log.Printf("🧐 Found the zone of the domain %s: %s.", domain, zoneName)
 	}
 
 	var (

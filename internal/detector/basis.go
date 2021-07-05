@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-func getIPFromCloudflare(url string) (net.IP, error) {
-	timeout := time.Second * 5
+func getIPFromCloudflare(url string, timeout time.Duration) (net.IP, error) {
 	client := http.Client{
 		Timeout: timeout,
 	}
