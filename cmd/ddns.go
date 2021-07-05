@@ -12,7 +12,6 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
-	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 )
 
 func dropRoot() {
@@ -22,7 +21,7 @@ func dropRoot() {
 		log.Printf("😡 Could not erase supplementary group IDs: %v", err)
 	}
 
-	gid, err := common.GetenvAsInt("PGID", 1000, common.VERBOSE)
+	gid, err := config.GetenvAsInt("PGID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("👪 Setting the group gid to %d . . .", gid)
 		err := syscall.Setgid(gid)
@@ -33,7 +32,7 @@ func dropRoot() {
 		log.Print(err)
 	}
 
-	uid, err := common.GetenvAsInt("PUID", 1000, common.VERBOSE)
+	uid, err := config.GetenvAsInt("PUID", 1000, common.VERBOSE)
 	if err == nil {
 		log.Printf("🧑 Setting the user to %d . . .", uid)
 		err := syscall.Setuid(uid)
@@ -58,24 +57,51 @@ func dropRoot() {
 }
 
 // returns true if the alarm is triggered before other signals come
-func wait(signal chan os.Signal, d time.Duration) (continue_ bool) {
+func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 	chanAlarm := time.After(d)
 	select {
 	case sig := <-signal:
-		log.Printf("👋 Caught signal: %v. Bye!", sig)
-		return false
+		return &sig
 	case <-chanAlarm:
-		return true
+		return nil
 	}
 }
 
 func delayedExit(signal chan os.Signal) {
 	duration := time.Minute * 2
 	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping . . .", duration)
-	if continue_ := wait(signal, duration); continue_ {
+	if sig := wait(signal, duration); sig == nil {
 		log.Printf("👋 Time's up. Bye!")
+	} else {
+		log.Printf("👋 Caught signal: %v. Bye!", *sig)
 	}
 	os.Exit(1)
+}
+
+func applyIPs(ctx context.Context, c *config.Config, ip4 net.IP, ip6 net.IP) {
+	for _, s := range c.Sites {
+		h, err := s.Handler.Handle()
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		for _, target := range s.Targets {
+			err := h.Update(&api.UpdateArgs{
+				Context:    ctx,
+				Target:     target,
+				IP4Managed: c.IP4Policy.IsManaged(),
+				IP4:        ip4,
+				IP6Managed: c.IP6Policy.IsManaged(),
+				IP6:        ip6,
+				TTL:        s.TTL,
+				Proxied:    s.Proxied,
+				Quiet:      c.Quiet,
+			})
+			if err != nil {
+				log.Print(err)
+			}
+		}
+	}
 }
 
 func main() {
@@ -98,8 +124,8 @@ func main() {
 mainLoop:
 	for {
 		ip4 := net.IP{}
-		if c.IP4Policy != common.Unmanaged {
-			ip, err := detector.GetIP4(c.IP4Policy)
+		if c.IP4Policy.IsManaged() {
+			ip, err := c.IP4Policy.GetIP4()
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv4 address.")
@@ -112,8 +138,8 @@ mainLoop:
 		}
 
 		ip6 := net.IP{}
-		if c.IP6Policy != common.Unmanaged {
-			ip, err := detector.GetIP6(c.IP6Policy)
+		if c.IP6Policy.IsManaged() {
+			ip, err := c.IP6Policy.GetIP6()
 			if err != nil {
 				log.Print(err)
 				log.Printf("🤔 Could not get the IPv6 address.")
@@ -125,37 +151,22 @@ mainLoop:
 			}
 		}
 
-		for _, s := range c.Sites {
-			h, err := s.Handler.Handle()
-			if err != nil {
-				log.Print(err)
-				continue
-			}
-			for _, target := range s.Targets {
-				err := h.Update(&api.UpdateArgs{
-					Context:    ctx,
-					Target:     target,
-					IP4Managed: c.IP4Policy != common.Unmanaged,
-					IP4:        ip4,
-					IP6Managed: c.IP6Policy != common.Unmanaged,
-					IP6:        ip6,
-					TTL:        s.TTL,
-					Proxied:    s.Proxied,
-					Quiet:      c.Quiet,
-				})
-				if err != nil {
-					log.Print(err)
-				}
-			}
-		}
+		applyIPs(ctx, c, ip4, ip6)
 
 		if !c.Quiet {
-			log.Printf("😴 Checking the IP addresses again in %s . . .", c.RefreshInterval.String())
+			log.Printf("😴 Checking the IP addresses again in %v . . .", c.RefreshInterval)
 		}
 
-		if continue_ := wait(chanSignal, c.RefreshInterval); continue_ {
+		if sig := wait(chanSignal, c.RefreshInterval); sig == nil {
 			continue mainLoop
 		} else {
+			if c.DeleteOnExit {
+				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
+				applyIPs(ctx, c, nil, nil) // `nil` to purge all records
+				log.Printf("👋 Done now. Bye!")
+			} else {
+				log.Printf("👋 Caught signal: %v. Bye!", *sig)
+			}
 			break mainLoop
 		}
 	}

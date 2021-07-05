@@ -71,8 +71,8 @@ The compatible mode recognizes the following environment variables:
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `COMPATIBLE` | Boolean values | Whether the program should mimic the original tool | Must be set to `true` to use the compatible mode | `false`
-| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
-| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
+| `PGID` | POSIX group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
+| `PUID` | POSIX user ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean values | Whether the program should reduce the logging | No | `false`
 
 ⚠️ In the above table, “boolean values” include `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False`. Other values will lead to errors. See [strconv.ParseBool](https://golang.org/pkg/strconv/#ParseBool).
@@ -134,15 +134,16 @@ Here are all the environment variables the program checks. Note that, in the com
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN_FILE` | File paths | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `COMPATIBLE` | Boolean values | Whether the program should mimic the original tool | Must be unset or set to `false` to use the new mode | `false`
+| `DELETE_ON_EXIT` | Boolean values | Whether managed DNS records should be deleted on exit | No | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names (but without the final periods) | All the domains this tool should update | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | `cloudflare` means getting the public IP address via CloudFlare. `local` means getting the address via local network interfaces. `unmanaged` means leaving `A` records alone. | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (As above, but for IPv6 and `AAAA` records) | No | `cloudflare`
-| `PGID` | POSIX Group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
+| `PGID` | POSIX group ID | The effective group ID the program should assume (instead of being the `root`) | No | 1000
 | `PROXIED` | Boolean values | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | POSIX User ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
+| `PUID` | POSIX user ID | The effective user ID the program should assume (instead of being the `root`) | No | 1000
 | `QUIET` | Boolean values | Whether the program should reduce the logging | No | `false`
 | `REFRESH_INTERVAL` | Any positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the program to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values | The TTL values used to create new DNS records | No | `1` (this means “automatic” to CloudFlare)
@@ -163,7 +164,7 @@ The new mode can also work with [Docker secrets](https://docs.docker.com/engine/
 
 You need the Go compiler, which can be installed via package managers in most Linux distros or the [official Go install page](https://golang.org/doc/install). After setting up the compiler, run the following command at the root of the source repository:
 ```bash
-go run cmd/ddns.go
+go run ./cmd/ddns.go
 ```
 The program does not take arguments directly. Instead, it reads in environment variables. See the above section for the detailed explanation of those variables.
 
