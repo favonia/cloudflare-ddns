@@ -72,10 +72,12 @@ func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
 		return &detector.Cloudflare{}, nil
 	case "cloudflare":
 		return &detector.Cloudflare{}, nil
-	case "unmanaged":
-		return &detector.Unmanaged{}, nil
+	case "ipify":
+		return &detector.Ipify{}, nil
 	case "local":
 		return &detector.Local{}, nil
+	case "unmanaged":
+		return &detector.Unmanaged{}, nil
 	default:
 		return &detector.Unmanaged{}, fmt.Errorf("😡 Error parsing the variable %s with the value %s", key, val)
 	}

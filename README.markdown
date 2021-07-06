@@ -29,7 +29,7 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (~2MB) with tiny footprints for all popular architectures.
+* Ultra-small Docker images (~2MB) for all popular architectures.
 * Ability to update multiple domains across different zones.
 * Ability to remove stale records or choose to remove records on exit.
 * Ability to obtain IP addresses from either public servers or local network interfaces (configurable).
@@ -40,11 +40,11 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 
 ## 🛡️ Privacy and Security
 
-* Public IP addresses are obtained via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy as we will use the CloudFlare API to update DNS records anyways.
+* By default, public IP addresses are obtained via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
 * The root privilege is immediately dropped after the program starts.
-* There are only two external dependencies, other than the Go standard library:
-  1. [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
-  2. [patrickmn/go-cache](https://github.com/patrickmn/go-cache): simple in-memory caching, essentially `map[string]interface{}` with expiration times.
+* The source code dependes on these two external libraries, other than the Go standard library:
+  - [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
+  - [patrickmn/go-cache](https://github.com/patrickmn/go-cache): simple in-memory caching, essentially `map[string]interface{}` with expiration times.
 
 The CloudFlare binding provides robust handling of pagination and other nuisances of the CloudFlare API, and the in-memory caching helps reduce the API usage.
 
@@ -109,8 +109,8 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 | `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `DOMAINS` | Comma-separated fully qualified domain names | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
-| `IP4_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
-| `IP6_POLICY` | `cloudflare`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
+| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
+| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `PGID` | POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `PUID` | POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
@@ -120,7 +120,8 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 
 💡 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
 
-- `cloudflare`: Get the public IP address via the [CloudFlare debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+- `cloudflare`: Get the public IP address via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+- `ipify`: Get the public address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 - `local`: Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers.
 
   ⚠️ You need `network_mode: host` for the `local` policy, for otherwise the tool will detect the addresses inside the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.

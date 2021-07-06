@@ -30,13 +30,13 @@ func getIPFromCloudflare(url string, timeout time.Duration) (net.IP, error) {
 	re := regexp.MustCompile(`(?m:^ip=(.*)$)`)
 	loc := re.FindReaderSubmatchIndex(teeRuneReader)
 	if loc == nil {
-		return nil, fmt.Errorf(`😩 Could not find "ip=..." in the response of %s.`, url)
+		return nil, fmt.Errorf(`😩 Failed to find "ip=..." in the response of %s.`, url)
 	}
 	matched := string(bytes.Runes(buf.Bytes())[loc[2]:loc[3]])
 
 	ip := net.ParseIP(matched)
 	if ip == nil {
-		return nil, fmt.Errorf(`😩 Could not obtain a valid IP address from %s.`, url)
+		return nil, fmt.Errorf(`😩 Failed to obtain a valid IP address from %s.`, url)
 	}
 
 	return ip, nil
