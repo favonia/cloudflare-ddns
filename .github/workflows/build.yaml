@@ -9,7 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: docker/setup-qemu-action@v1
+      - uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: ${{ github.repository }}
+          flavor: latest=true
       - uses: docker/setup-buildx-action@v1
       - uses: docker/login-action@v1
         if: ${{ github.event_name != 'pull_request' }}
@@ -20,4 +24,5 @@ jobs:
         with:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/s390x
-          tags: ${{ github.repository }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
