@@ -46,16 +46,19 @@ A small and fast DDNS updater for CloudFlare.
 * Ability to pass API tokens via an environment variable or a file.
 * Local caching to reduce CloudFlare API usage.
 
-## 🕵️ Privacy and Security
+## 🕵️ Privacy
 
-* By default, public IP addresses are obtained via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
+By default, public IP addresses are obtained via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
+
+## 🛡️ Security
+
 * The root privilege is immediately dropped after the program starts.
-* The source code only depends on these three external libraries, in addition to the Go standard library:
+* The source code depends on these three external libraries, in addition to the Go standard library:
   - [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     This is the official Go binding for CloudFlare API v4. It provides robust handling of pagination, rate limiting, account IDs, and other nuisances of the API.
   - [patrickmn/go-cache](https://github.com/patrickmn/go-cache):\
     This is essentially `map[string]interface{}` with expiration times. The library is well-tested and comes with a clean interface.
-  - [golang.org/x/net/idna](https://pkg.go.dev/golang.org/x/net/idna)
+  - [golang.org/x/net/idna](https://pkg.go.dev/golang.org/x/net/idna):\
     This library implements the normalization of internationalized domain names.
 
 ## 🐋 Quick Start with Docker
@@ -152,13 +155,14 @@ Here are all the recognized environment variables, in the alphabetic order.
 
 💡 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
 
-- `cloudflare`: Get the public IP address via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
-- `ipify`: Get the public address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
-- `local`: Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers.
-
-  ⚠️ You need `network_mode: host` for the `local` policy, for otherwise the tool will detect the addresses inside the [bridge network set up by Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
-
-- `unmanaged`: Stop the DNS updating completely. Existing DNS records will not be removed.
+- `cloudflare`\
+  Get the public IP address via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+- `ipify`\
+  Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
+- `local`\
+  Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need `network_mode: host` for this policy, for otherwise the tool will detect the addresses inside the [bridge network](https://docs.docker.com/network/bridge/) instead of those in the host network.
+- `unmanaged`\
+  Stop the DNS updating completely. Existing DNS records will not be removed.
 
 The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other. Both of them apply to all managed domains.
 
