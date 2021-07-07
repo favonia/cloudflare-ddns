@@ -10,7 +10,9 @@ A small and fast DDNS updater for CloudFlare.
 
 ```
 2021/07/05 07:15:52 🚷 Erasing supplementary group IDs . . .
-2021/07/05 07:15:52 🤷 Could not erase supplementary group IDs: operation not permitted
+2021/07/05 07:15:52 🤷 Could not erase supplementary group IDs, moving on . . .
+2021/07/05 07:15:52 👪 Setting the group ID to 1000 . . .
+2021/07/05 07:15:52 🧑 Setting the user ID to 1000 . . .
 2021/07/05 07:15:52 🧑 Effective user ID of the process: 1000.
 2021/07/05 07:15:52 👪 Effective group ID of the process: 1000.
 2021/07/05 07:15:52 👪 Supplementary group IDs of the process: [……].

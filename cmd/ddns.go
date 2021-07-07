@@ -19,7 +19,7 @@ func dropRoot() {
 		log.Printf("🚷 Erasing supplementary group IDs . . .")
 		err := syscall.Setgroups([]int{})
 		if err != nil {
-			log.Printf("🤷 Could not erase supplementary group IDs: %v", err)
+			log.Printf("🤷 Could not erase supplementary group IDs, moving on . . .")
 		}
 	}
 
@@ -36,16 +36,12 @@ func dropRoot() {
 			}
 		}
 		gid, err := config.GetenvAsInt("PGID", defaultGid, common.VERBOSE)
-		if err == nil {
-			if gid != currentGid {
-				log.Printf("👪 Setting the group ID to %d . . .", gid)
-				err := syscall.Setgid(gid)
-				if err != nil {
-					log.Printf("😡 Could not set the group ID: %v", err)
-				}
-			}
-		} else {
+		if err != nil {
 			log.Print(err)
+		}
+		log.Printf("👪 Setting the group ID to %d . . .", gid)
+		if err = syscall.Setresgid(gid, gid, gid); err != nil {
+			log.Printf("😡 Could not set the group ID: %v", err)
 		}
 	}
 
@@ -62,16 +58,12 @@ func dropRoot() {
 			}
 		}
 		uid, err := config.GetenvAsInt("PUID", defaultUid, common.VERBOSE)
-		if err == nil {
-			if uid != currentUid {
-				log.Printf("🧑 Setting the user ID to %d . . .", uid)
-				err := syscall.Setuid(uid)
-				if err != nil {
-					log.Printf("😡 Could not set the user ID: %v", err)
-				}
-			}
-		} else {
+		if err != nil {
 			log.Print(err)
+		}
+		log.Printf("🧑 Setting the user ID to %d . . .", uid)
+		if err = syscall.Setresuid(uid, uid, uid); err != nil {
+			log.Printf("😡 Could not set the user ID: %v", err)
 		}
 	}
 
