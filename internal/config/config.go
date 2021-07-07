@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -35,29 +34,45 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("🤫 Quiet mode enabled.")
 	}
 
-	var (
-		token      = Getenv("CF_API_TOKEN")
-		tokenFile  = Getenv("CF_API_TOKEN_FILE")
-		newHandler = api.NewHandler(nil)
-	)
-	switch {
-	case token == "" && tokenFile == "":
-		return nil, fmt.Errorf("😡 Needs CF_API_TOKEN or CF_API_TOKEN_FILE.")
-	case token != "" && tokenFile != "":
-		return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
-	case token != "":
-		newHandler = &api.TokenNewHandler{Token: token}
-	case tokenFile != "":
-		token, err := common.ReadFileAsString(tokenFile)
-		if err != nil {
-			return nil, err
+	newHandler := api.NewHandler(nil)
+	{
+
+		token := Getenv("CF_API_TOKEN")
+		{
+			tokenFile := Getenv("CF_API_TOKEN_FILE")
+			switch {
+			case token == "" && tokenFile == "":
+				return nil, fmt.Errorf("😡 Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.")
+			case token != "" && tokenFile != "":
+				return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
+			case token != "":
+				log.Printf("📜 CF_API_TOKEN is specified.")
+			case tokenFile != "":
+				log.Printf("📜 CF_API_TOKEN_FILE is specified.")
+				token, err = common.ReadFileAsString(tokenFile)
+				if err != nil {
+					return nil, err
+				}
+				if token == "" {
+					return nil, fmt.Errorf("😡 The token in the file specified by CF_API_TOKEN_FILE is empty.")
+				}
+			}
 		}
-		newHandler = &api.TokenNewHandler{Token: token}
+
+		accountID := Getenv("CF_ACCOUNT_ID")
+		switch accountID {
+		case "":
+			log.Printf("📜 CF_ACCOUNT_ID is not specified (which is fine).")
+		default:
+			log.Printf("📜 CF_ACCOUNT_ID is specified.")
+		}
+
+		newHandler = &api.TokenNewHandler{Token: token, AccountID: accountID}
 	}
 
 	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
 	for i, domain := range domains {
-		domains[i] = strings.TrimSuffix(domain, ".")
+		domains[i] = normalizeDomain(domain)
 	}
 	if err != nil {
 		return nil, err

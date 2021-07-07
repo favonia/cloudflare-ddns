@@ -14,6 +14,9 @@ A small and fast DDNS updater for CloudFlare.
 2021/07/05 07:15:52 🧑 Effective user ID of the process: 1000.
 2021/07/05 07:15:52 👪 Effective group ID of the process: 1000.
 2021/07/05 07:15:52 👪 Supplementary group IDs of the process: [……].
+2021/07/05 07:15:52 🤫 Quiet mode enabled.
+2021/07/05 07:15:52 📜 CF_API_TOKEN is specified.
+2021/07/05 07:15:52 📜 CF_ACCOUNT_ID is not specified (which is fine).
 2021/07/05 07:15:52 📜 Managed domains: [……]
 2021/07/05 07:15:52 📜 Policy for IPv4: cloudflare
 2021/07/05 07:15:52 📜 Policy for IPv6: cloudflare
@@ -35,22 +38,25 @@ A small and fast DDNS updater for CloudFlare.
 
 * Ultra-small Docker images (~2MB) for all popular architectures.
 * Ability to update multiple domains across different zones.
-* Ability to remove stale records or choose to remove records on exit.
-* Ability to obtain IP addresses from either public servers or local network interfaces (configurable).
+* Ability to handle internationalized domain names.
+* Ability to remove stale records or choose to remove records on exit/stop.
+* Ability to obtain IP addresses from either CloudFlare, ipify, or local network interfaces (configurable).
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Full configurability via environment variables.
 * Ability to pass API tokens via an environment variable or a file.
 * Local caching to reduce CloudFlare API usage.
 
-## 🛡️ Privacy and Security
+## 🕵️ Privacy and Security
 
 * By default, public IP addresses are obtained via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
 * The root privilege is immediately dropped after the program starts.
-* The source code dependes on these two external libraries, other than the Go standard library:
-  - [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go): the official Go binding for CloudFlare API v4.
-  - [patrickmn/go-cache](https://github.com/patrickmn/go-cache): simple in-memory caching, essentially `map[string]interface{}` with expiration times.
-
-The CloudFlare binding provides robust handling of pagination and other nuisances of the CloudFlare API, and the in-memory caching helps reduce the API usage.
+* The source code only depends on these three external libraries, in addition to the Go standard library:
+  - [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
+    This is the official Go binding for CloudFlare API v4. It provides robust handling of pagination, rate limiting, account IDs, and other nuisances of the API.
+  - [patrickmn/go-cache](https://github.com/patrickmn/go-cache):\
+    This is essentially `map[string]interface{}` with expiration times. The library is well-tested and comes with a clean interface.
+  - [golang.org/x/net/idna](https://pkg.go.dev/golang.org/x/net/idna)
+    This library implements the normalization of internationalized domain names.
 
 ## 🐋 Quick Start with Docker
 
@@ -96,7 +102,7 @@ services:
 
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-💡 The setting `no-new-privileges:true` provides additional protection when you run the container as a non-root user. (The tool itself will also attempt to drop the root privilege.)
+💡 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege if it happens to have such privilege.)
 
 💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
@@ -124,11 +130,12 @@ docker-compose up --detach --build cloudflare-ddns
 
 ## Further Customization
 
-Here are all the environment variables the tool recognizes, in the alphabetic order.
+Here are all the recognized environment variables, in the alphabetic order.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `CF_ACCOUNT_ID` | CloudFlare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
 | `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens | A file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`

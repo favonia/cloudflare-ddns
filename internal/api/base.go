@@ -39,18 +39,10 @@ func InitCache(expiration time.Duration) {
 	zoneIDOfDomain = cache.New(expiration, expiration*2)
 }
 
-func newWithKey(key, email string) (*Handle, error) {
-	handle, err := cloudflare.New(key, email)
+func newWithToken(token string, accountID string) (*Handle, error) {
+	handle, err := cloudflare.NewWithAPIToken(token, cloudflare.UsingAccount(accountID))
 	if err != nil {
 		return nil, fmt.Errorf("🤔 The token-based CloudFlare authentication failed: %v", err)
-	}
-	return &Handle{cf: handle}, nil
-}
-
-func newWithToken(token string) (*Handle, error) {
-	handle, err := cloudflare.NewWithAPIToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("🤔 The key-based CloudFlare authentication failed: %v", err)
 	}
 	return &Handle{cf: handle}, nil
 }
@@ -69,37 +61,55 @@ func (h Handle) zoneName(ctx context.Context, zoneID string) (string, error) {
 	return zone.Name, nil
 }
 
-func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
-	// try the whole domain as the zone
-	var zone *cloudflare.Zone
-
-	zones, err := h.cf.ListZones(ctx, domain)
-	if err == nil && len(zones) > 0 {
-		zone = &zones[0]
+// The built-in ZoneIDByName is broken due to the possibility of multiple zones
+func (h *Handle) activeZoneIDByName(ctx context.Context, zoneName string) (string, int, error) {
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, h.cf.AccountID, "active"))
+	if err != nil {
+		return "", 0, fmt.Errorf("🤔 Could not find the zone named %s.", zoneName)
 	}
 
-	if zone == nil {
+	switch l := len(res.Result); l {
+	case 0:
+		return "", l, fmt.Errorf("🤔 Could not find the zone named %s.", zoneName)
+	case 1:
+		return res.Result[0].ID, l, nil
+	default:
+		return "", l, fmt.Errorf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+	}
+}
+
+func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
+	// try the whole domain as the zone
+	zoneName := domain
+	zoneID, numMatched, err := h.activeZoneIDByName(ctx, zoneName)
+	if err != nil {
+		if numMatched > 1 {
+			return "", err
+		}
+
 		// search for the zone
-		domainSlice := []byte(domain)
-		for i, b := range domainSlice {
-			if b != '.' {
-				continue
-			}
-			zoneName := string(domainSlice[i+1:])
-			zones, err = h.cf.ListZones(ctx, zoneName)
-			if err == nil && len(zones) > 0 {
-				zone = &zones[0]
-				break
+	zoneSearch:
+		for i, b := range domain {
+			if b == '.' {
+				zoneName = domain[i+1:]
+				zoneID, numMatched, err = h.activeZoneIDByName(ctx, zoneName)
+
+				switch {
+				case err == nil:
+					break zoneSearch
+				case numMatched > 1:
+					return "", err
+				}
 			}
 		}
 	}
 
-	if zone == nil {
+	if zoneID == "" {
 		return "", fmt.Errorf("🤔 Could not find the zone of the domain %s.", domain)
 	} else {
-		zoneNameOfID.SetDefault(zone.ID, zone.Name)
-		zoneIDOfDomain.SetDefault(domain, zone.ID)
-		return zone.ID, nil
+		zoneIDOfDomain.SetDefault(domain, zoneID)
+		zoneNameOfID.SetDefault(zoneID, zoneName)
+		return zoneID, nil
 	}
 }
 
@@ -168,12 +178,12 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		Proxied: &args.proxied,
 	}
 
-	num_matched := 0
+	numMatched := 0
 	for _, r := range rs {
 		if args.ip.Equal(net.ParseIP(r.Content)) {
 			uptodate = true
-			num_matched++
-			if num_matched > 1 {
+			numMatched++
+			if numMatched > 1 {
 				log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, r.ID)
 				err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID)
 				if err != nil {
@@ -199,7 +209,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 					}
 				} else {
 					uptodate = true
-					num_matched++
+					numMatched++
 				}
 			}
 		}
@@ -213,7 +223,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 			log.Printf("😡 Could not add the record: %v", err)
 		} else {
 			uptodate = true
-			num_matched++
+			numMatched++
 		}
 	}
 

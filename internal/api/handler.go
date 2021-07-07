@@ -5,9 +5,10 @@ type NewHandler interface {
 }
 
 type TokenNewHandler struct {
-	Token string
+	Token     string
+	AccountID string
 }
 
 func (t *TokenNewHandler) NewHandle() (*Handle, error) {
-	return newWithToken(t.Token)
+	return newWithToken(t.Token, t.AccountID)
 }
