@@ -1,8 +1,12 @@
 # 🌟 CloudFlare DDNS
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml) [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns) [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
+[![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml)
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
+[![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns)
+[![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 
-An extremely small and fast tool to use CloudFlare as a DDNS service. The tool was originally inspired by [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) which has a similar goal.
+A small and fast DDNS updater for CloudFlare.
 
 ```
 2021/07/05 07:15:52 🚷 Erasing supplementary group IDs . . .
@@ -48,6 +52,28 @@ An extremely small and fast tool to use CloudFlare as a DDNS service. The tool w
 
 The CloudFlare binding provides robust handling of pagination and other nuisances of the CloudFlare API, and the in-memory caching helps reduce the API usage.
 
+## 🐋 Quick Start with Docker
+
+```bash
+docker run \
+  --network host \
+  -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+  -e DOMAINS=www.example.org \
+  -e PROXIED=true \
+  favonia/cloudflare-ddns
+```
+
+## 🏃 Quick Start from Source
+
+You need the [Go tool](https://golang.org/doc/install) to run the program from its source.
+
+```bash
+export CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+export DOMAINS=www.example.org
+export PROXIED=true
+go run ./cmd/ddns.go
+```
+
 ## 🐋 Deployment with Docker Compose
 
 ### Step 1: Updating the Compose File
@@ -80,7 +106,7 @@ services:
 
 Add these lines to your environment file (typically `.env`):
 ```bash
-CF_API_TOKEN=<YOUR-CLOUDFLARE-API-TOKEN>
+CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
 DOMAINS=example.org,www.example.org,example.io
 ```
 
@@ -95,19 +121,18 @@ The tool should be up and running after these commands:
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
-However, you might wish to follow the next step to customize it further.
 
-### Step 3: Further Customization
+## Further Customization
 
 Here are all the environment variables the tool recognizes, in the alphabetic order.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CACHE_EXPIRATION` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
-| `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens with the `DNS:Edit` permission | The path to the file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `CF_API_TOKEN` | CloudFlare API tokens with the `DNS:Edit` permission | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens | A file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
-| `DETECTION_TIMEOUT` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
+| `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `DOMAINS` | Comma-separated fully qualified domain names | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
@@ -115,7 +140,7 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `PUID` | POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
-| `REFRESH_INTERVAL` | Positive time duration, with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
+| `REFRESH_INTERVAL` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
 💡 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
@@ -130,24 +155,10 @@ Here are all the environment variables the tool recognizes, in the alphabetic or
 
 The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other. Both of them apply to all managed domains.
 
-After customizing the tool, run the following command to recreate the container:
+If you are using Docker Compose, run the following command to recreate the container after customizing the tool:
 ```bash
 docker-compose up --detach
 ```
-
-### Alternative Setup with Docker Secrets
-
-The tool can work with [Docker secrets](https://docs.docker.com/engine/swarm/secrets/) if you wish to provide the API token via `docker secret`. Pass the secret via `CF_API_TOKEN_FILE=/run/secrets/<secret_name>` instead of using the `CF_API_TOKEN` variable.
-
-## 🛠️ Running without Docker Compose
-
-[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
-
-You will need the Go compiler, which can be installed via package managers in most Linux distros or the [official Go install page](https://golang.org/doc/install). After setting up the compiler, run the following command at the root of the source repository:
-```bash
-go run ./cmd/ddns.go
-```
-The program does not take arguments directly. Instead, it reads in environment variables. See the above section for the detailed explanation of those variables.
 
 ## 💖 Feedback
 
