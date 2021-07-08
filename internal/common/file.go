@@ -9,10 +9,10 @@ import (
 
 func ReadFileAsString(path string) (string, error) {
 	file, err := os.Open(path)
-	defer file.Close()
 	if err != nil {
 		return "", fmt.Errorf("😡 Could not open %s: %v", path, err)
 	}
+	defer file.Close()
 
 	content, err := io.ReadAll(file)
 	if err != nil {

@@ -17,18 +17,20 @@ func Getenv(key string) string {
 }
 
 func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
-	if val := Getenv(key); val == "" {
+	val := Getenv(key)
+	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
 		}
 		return def, nil
-	} else {
-		b, err := strconv.ParseBool(val)
-		if err != nil {
-			return b, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
-		}
-		return b, err
 	}
+
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		return b, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	}
+
+	return b, nil
 }
 
 func GetenvAsQuiet(key string, def common.Quiet, quiet common.Quiet) (common.Quiet, error) {
@@ -37,30 +39,33 @@ func GetenvAsQuiet(key string, def common.Quiet, quiet common.Quiet) (common.Qui
 }
 
 func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
-	if val := Getenv(key); val == "" {
+	val := Getenv(key)
+	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
 		}
 		return def, nil
-	} else {
-		i, err := strconv.Atoi(val)
-		if err != nil {
-			return i, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
-		}
-		return i, err
 	}
+
+	i, err := strconv.Atoi(val)
+	if err != nil {
+		return i, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	}
+
+	return i, nil
 }
 
 func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
-	if val := Getenv(key); val == "" {
+	val := Getenv(key)
+	if val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
-	} else {
-		list := strings.Split(val, ",")
-		for i := range list {
-			list[i] = strings.TrimSpace(list[i])
-		}
-		return list, nil
 	}
+
+	list := strings.Split(val, ",")
+	for i := range list {
+		list[i] = strings.TrimSpace(list[i])
+	}
+	return list, nil
 }
 
 func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
@@ -84,16 +89,18 @@ func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
 }
 
 func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet common.Quiet) (time.Duration, error) {
-	if val := Getenv(key); val == "" {
+	val := Getenv(key)
+	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}
 		return def, nil
-	} else {
-		t, err := time.ParseDuration(val)
-		if err != nil || t <= 0 {
-			return t, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
-		}
-		return t, err
 	}
+
+	t, err := time.ParseDuration(val)
+	if err != nil || t <= 0 {
+		return t, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	}
+
+	return t, err
 }

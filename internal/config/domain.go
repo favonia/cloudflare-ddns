@@ -8,8 +8,10 @@ import (
 
 func normalizeDomain(domain string) string {
 	domain = strings.TrimSuffix(domain, ".")
-	if normalized, err := idna.ToUnicode(domain); err == nil {
-		return normalized
+
+	normalized, err := idna.ToUnicode(domain)
+	if err != nil {
+		return domain
 	}
-	return domain
+	return normalized
 }

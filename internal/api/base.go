@@ -93,24 +93,25 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 			if b == '.' {
 				zoneName = domain[i+1:]
 				zoneID, numMatched, err = h.activeZoneIDByName(ctx, zoneName)
-
-				switch {
-				case err == nil:
-					break zoneSearch
-				case numMatched > 1:
-					return "", err
+				if err != nil {
+					if numMatched > 1 {
+						return "", err
+					}
+					continue zoneSearch
 				}
+
+				break zoneSearch
 			}
 		}
 	}
 
 	if zoneID == "" {
 		return "", fmt.Errorf("🤔 Could not find the zone of the domain %s.", domain)
-	} else {
-		zoneIDOfDomain.SetDefault(domain, zoneID)
-		zoneNameOfID.SetDefault(zoneID, zoneName)
-		return zoneID, nil
 	}
+
+	zoneIDOfDomain.SetDefault(domain, zoneID)
+	zoneNameOfID.SetDefault(zoneID, zoneName)
+	return zoneID, nil
 }
 
 // updateRecordsArgs is the type of (named) arguments to updateRecords
@@ -140,20 +141,13 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// whether there was already an up-to-date record
 	uptodate := false
 
 	// delete every record if the ip is `nil`
 	if args.ip == nil {
 		uptodate = true
-	}
-
-	for _, r := range rs {
-		if r.Name != domain {
-			return nil, fmt.Errorf("🤯 Unexpected domain %s when handling the domain %s: %+v", r.Name, domain, r)
-		}
-		if r.Type != args.recordType {
-			return nil, fmt.Errorf("🤯 Unexpected %s records when handling %s records: %+v", r.Type, args.recordType, r)
-		}
 	}
 
 	/*
@@ -179,47 +173,45 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 	}
 
 	numMatched := 0
+domainLoop:
 	for _, r := range rs {
 		if args.ip.Equal(net.ParseIP(r.Content)) {
 			uptodate = true
 			numMatched++
 			if numMatched > 1 {
 				log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, r.ID)
-				err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID)
-				if err != nil {
+				if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
 					log.Printf("😡 Could not remove the record: %v", err)
 				}
 			}
-		} else {
-			if uptodate {
-				log.Printf("🧟 Deleting a stale %s record (ID: %s) that was pointing to %s . . .", args.recordType, r.ID, r.Content)
-				err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID)
-				if err != nil {
-					log.Printf("😡 Could not delete the record: %v", err)
-				}
-			} else {
-				log.Printf("📝 Updating a stale %s record (ID: %s) from %s to %v . . .", args.recordType, r.ID, r.Content, args.ip)
-				h.cf.UpdateDNSRecord(args.context, zoneID, r.ID, payload)
-				if err != nil {
-					log.Printf("😡 Could not update the record: %v", err)
-					log.Printf("🧟 Deleting the record instead . . .")
-					err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID)
-					if err != nil {
-						log.Printf("😡 Could not delete the record, either: %v", err)
-					}
-				} else {
-					uptodate = true
-					numMatched++
-				}
-			}
+			continue domainLoop
 		}
+		if uptodate {
+			log.Printf("🧟 Deleting a stale %s record (ID: %s) referring to %s . . .", args.recordType, r.ID, r.Content)
+			if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
+				log.Printf("😡 Could not delete the record: %v", err)
+			}
+			continue domainLoop
+		}
+
+		log.Printf("📝 Updating a stale %s record (ID: %s) from %s to %v . . .", args.recordType, r.ID, r.Content, args.ip)
+		if err := h.cf.UpdateDNSRecord(args.context, zoneID, r.ID, payload); err != nil {
+			log.Printf("😡 Could not update the record: %v", err)
+			log.Printf("🧟 Deleting the record instead . . .")
+			if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
+				log.Printf("😡 Could not delete the record, either: %v", err)
+			}
+			continue domainLoop
+		}
+
+		uptodate = true
+		numMatched++
 	}
 
 	// The remaining case: there aren't any records to begin with!
 	if !uptodate {
-		log.Printf("👶 Adding a new %s record: %+v", args.recordType, payload)
-		_, err := h.cf.CreateDNSRecord(args.context, zoneID, payload)
-		if err != nil {
+		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
+		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
 			log.Printf("😡 Could not add the record: %v", err)
 		} else {
 			uptodate = true
@@ -229,9 +221,9 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 
 	if !uptodate {
 		return nil, fmt.Errorf("😡 Failed to update %s records for the domain %s.", args.recordType, domain)
-	} else {
-		return args.ip, nil
 	}
+
+	return args.ip, nil
 }
 
 type UpdateArgs struct {
@@ -323,7 +315,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 
 	if err4 != nil || err6 != nil {
 		return fmt.Errorf("😡 Failed to update records for the domain %s.", domain)
-	} else {
-		return nil
 	}
+
+	return nil
 }

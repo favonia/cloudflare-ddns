@@ -22,7 +22,7 @@ func getIPFromCloudflare(url string, timeout time.Duration) (net.IP, error) {
 	}
 	defer resp.Body.Close()
 
-	// we need `buf` because ``re.FindReaderSubmatch
+	// buf is needed because `FindReaderSubmatchIndex` only gives indexes.
 	var buf bytes.Buffer
 	teeReader := io.TeeReader(resp.Body, &buf)
 	teeRuneReader := bufio.NewReader(teeReader)
@@ -54,18 +54,16 @@ func (p *Cloudflare) String() string {
 
 func (p *Cloudflare) GetIP4(timeout time.Duration) (net.IP, error) {
 	ip, err := getIPFromCloudflare("https://1.1.1.1/cdn-cgi/trace", timeout)
-	if err == nil {
-		return ip.To4(), nil
-	} else {
+	if err != nil {
 		return nil, err
 	}
+	return ip.To4(), nil
 }
 
 func (p *Cloudflare) GetIP6(timeout time.Duration) (net.IP, error) {
 	ip, err := getIPFromCloudflare("https://[2606:4700:4700::1111]/cdn-cgi/trace", timeout)
-	if err == nil {
-		return ip.To16(), nil
-	} else {
+	if err != nil {
 		return nil, err
 	}
+	return ip.To16(), nil
 }

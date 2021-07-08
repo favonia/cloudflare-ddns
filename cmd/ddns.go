@@ -38,6 +38,7 @@ func dropRoot() {
 		gid, err := config.GetenvAsInt("PGID", defaultGid, common.VERBOSE)
 		if err != nil {
 			log.Print(err)
+			gid = defaultGid
 		}
 		log.Printf("👪 Setting the group ID to %d . . .", gid)
 		if err = syscall.Setresgid(gid, gid, gid); err != nil {
@@ -60,6 +61,7 @@ func dropRoot() {
 		uid, err := config.GetenvAsInt("PUID", defaultUid, common.VERBOSE)
 		if err != nil {
 			log.Print(err)
+			uid = defaultUid
 		}
 		log.Printf("🧑 Setting the user ID to %d . . .", uid)
 		if err = syscall.Setresuid(uid, uid, uid); err != nil {
@@ -70,11 +72,12 @@ func dropRoot() {
 	log.Printf("🧑 Effective user ID of the process: %d.", syscall.Geteuid())
 	log.Printf("👪 Effective group ID of the process: %d.", syscall.Getegid())
 
-	if groups, err := syscall.Getgroups(); err == nil {
-		log.Printf("👪 Supplementary group IDs of the process: %d.", groups)
-	} else {
+	if groups, err := syscall.Getgroups(); err != nil {
 		log.Printf("😡 Could not get the supplementary group IDs.")
+	} else {
+		log.Printf("👪 Supplementary group IDs of the process: %d.", groups)
 	}
+
 	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
 		log.Printf("😰 It seems this program was run with root privilege. This is not recommended.")
 	}
@@ -150,7 +153,7 @@ func main() {
 
 mainLoop:
 	for {
-		ip4 := net.IP{}
+		var ip4 net.IP
 		if c.IP4Policy.IsManaged() {
 			ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
 			if err != nil {
@@ -164,7 +167,7 @@ mainLoop:
 			}
 		}
 
-		ip6 := net.IP{}
+		var ip6 net.IP
 		if c.IP6Policy.IsManaged() {
 			ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
 			if err != nil {

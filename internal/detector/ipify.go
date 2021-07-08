@@ -44,18 +44,16 @@ func (p *Ipify) String() string {
 
 func (p *Ipify) GetIP4(timeout time.Duration) (net.IP, error) {
 	ip, err := getIPFromIpify("https://api4.ipify.org", timeout)
-	if err == nil {
-		return ip.To4(), nil
-	} else {
+	if err != nil {
 		return nil, err
 	}
+	return ip.To4(), nil
 }
 
 func (p *Ipify) GetIP6(timeout time.Duration) (net.IP, error) {
 	ip, err := getIPFromIpify("https://api6.ipify.org", timeout)
-	if err == nil {
-		return ip.To16(), nil
-	} else {
+	if err != nil {
 		return nil, err
 	}
+	return ip.To16(), nil
 }
