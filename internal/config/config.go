@@ -20,13 +20,13 @@ type Config struct {
 	TTL              int
 	Proxied          bool
 	RefreshInterval  time.Duration
-	DeleteOnExit     bool
+	DeleteOnStop     bool
 	DetectionTimeout time.Duration
 	CacheExpiration  time.Duration
 }
 
 func ReadConfig(ctx context.Context) (*Config, error) {
-	quiet, err := GetenvAsQuiet("QUIET", common.VERBOSE, common.VERBOSE)
+	quiet, err := GetenvAsQuiet("QUIET")
 	if err != nil {
 		return nil, err
 	}
@@ -46,9 +46,13 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 			case token != "" && tokenFile != "":
 				return nil, fmt.Errorf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
 			case token != "":
-				log.Printf("📜 CF_API_TOKEN is specified.")
+				if !quiet {
+					log.Printf("📜 CF_API_TOKEN is specified.")
+				}
 			case tokenFile != "":
-				log.Printf("📜 CF_API_TOKEN_FILE is specified.")
+				if !quiet {
+					log.Printf("📜 CF_API_TOKEN_FILE is specified.")
+				}
 				token, err = common.ReadFileAsString(tokenFile)
 				if err != nil {
 					return nil, err
@@ -60,11 +64,13 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		}
 
 		accountID := Getenv("CF_ACCOUNT_ID")
-		switch accountID {
-		case "":
-			log.Printf("📜 CF_ACCOUNT_ID is not specified (which is fine).")
-		default:
-			log.Printf("📜 CF_ACCOUNT_ID is specified.")
+		if !quiet {
+			switch accountID {
+			case "":
+				log.Printf("📜 CF_ACCOUNT_ID is not specified (which is fine).")
+			default:
+				log.Printf("📜 CF_ACCOUNT_ID is specified.")
+			}
 		}
 
 		newHandler = &api.TokenNewHandler{Token: token, AccountID: accountID}
@@ -77,7 +83,9 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Managed domains: %v", domains)
+	if !quiet {
+		log.Printf("📜 Managed domains: %v", domains)
+	}
 
 	// converting domains to generic targets
 	targets := make([]api.Target, len(domains))
@@ -89,49 +97,65 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Policy for IPv4: %v", ip4Policy)
+	if !quiet {
+		log.Printf("📜 Policy for IPv4: %v", ip4Policy)
+	}
 
 	ip6Policy, err := GetenvAsPolicy("IP6_POLICY", quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Policy for IPv6: %v", ip6Policy)
+	if !quiet {
+		log.Printf("📜 Policy for IPv6: %v", ip6Policy)
+	}
 
 	ttl, err := GetenvAsInt("TTL", 1, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
+	if !quiet {
+		log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
+	}
 
 	proxied, err := GetenvAsBool("PROXIED", false, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
+	if !quiet {
+		log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
+	}
 
 	refreshInterval, err := GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Refresh interval: %v", refreshInterval)
+	if !quiet {
+		log.Printf("📜 Refresh interval: %v", refreshInterval)
+	}
 
-	deleteOnExit, err := GetenvAsBool("DELETE_ON_EXIT", false, quiet)
+	deleteOnStop, err := GetenvAsBool("DELETE_ON_STOP", false, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnExit)
+	if !quiet {
+		log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnStop)
+	}
 
 	detectionTimeout, err := GetenvAsPositiveTimeDuration("DETECTION_TIMEOUT", time.Second*5, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", detectionTimeout)
+	if !quiet {
+		log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", detectionTimeout)
+	}
 
 	cacheExpiration, err := GetenvAsPositiveTimeDuration("CACHE_EXPIRATION", api.DefaultCacheExpiration, quiet)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("📜 Expiration of cached CloudFlare API responses: %v", cacheExpiration)
+	if !quiet {
+		log.Printf("📜 Expiration of cached CloudFlare API responses: %v", cacheExpiration)
+	}
 
 	return &Config{
 		Quiet:            quiet,
@@ -142,7 +166,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		TTL:              ttl,
 		Proxied:          proxied,
 		RefreshInterval:  refreshInterval,
-		DeleteOnExit:     deleteOnExit,
+		DeleteOnStop:     deleteOnStop,
 		DetectionTimeout: detectionTimeout,
 		CacheExpiration:  cacheExpiration,
 	}, nil

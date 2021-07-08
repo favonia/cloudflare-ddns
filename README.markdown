@@ -9,25 +9,9 @@
 A small and fast DDNS updater for CloudFlare.
 
 ```
-2021/07/05 07:15:52 🚷 Erasing supplementary group IDs . . .
-2021/07/05 07:15:52 🤷 Could not erase supplementary group IDs, moving on . . .
-2021/07/05 07:15:52 👪 Setting the group ID to 1000 . . .
-2021/07/05 07:15:52 🧑 Setting the user ID to 1000 . . .
-2021/07/05 07:15:52 🧑 Effective user ID of the process: 1000.
-2021/07/05 07:15:52 👪 Effective group ID of the process: 1000.
-2021/07/05 07:15:52 👪 Supplementary group IDs of the process: [……].
+2021/07/05 07:15:52 🧑 Effective user ID: 1000.
+2021/07/05 07:15:52 👪 Effective group ID: 1000.
 2021/07/05 07:15:52 🤫 Quiet mode enabled.
-2021/07/05 07:15:52 📜 CF_API_TOKEN is specified.
-2021/07/05 07:15:52 📜 CF_ACCOUNT_ID is not specified (which is fine).
-2021/07/05 07:15:52 📜 Managed domains: [……]
-2021/07/05 07:15:52 📜 Policy for IPv4: cloudflare
-2021/07/05 07:15:52 📜 Policy for IPv6: cloudflare
-2021/07/05 07:15:52 📜 TTL for new DNS entries: 1 (1 = automatic)
-2021/07/05 07:15:52 📜 Whether new DNS entries are proxied: false
-2021/07/05 07:15:52 📜 Refresh interval: 5m0s
-2021/07/05 07:15:52 📜 Whether managed records are deleted on exit: true
-2021/07/05 07:15:52 📜 Timeout of each attempt to detect IP addresses: 5s
-2021/07/05 07:15:52 📜 Expiration of cached CloudFlare API responses: 6h0m0s
 2021/07/05 07:15:53 🧐 Found the IPv4 address: ……
 2021/07/05 07:15:53 🧐 Found the IPv6 address: ……
 2021/07/05 07:15:53 🧐 Found the zone of the domain ……: …….
@@ -54,14 +38,16 @@ By default, public IP addresses are obtained via [CloudFlare’s debugging inter
 
 ## 🛡️ Security
 
-* The root privilege is immediately dropped after the program starts.
-* The source code depends on these three external libraries, in addition to the Go standard library:
-  - [cloudflare/cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-    This is the official Go binding for CloudFlare API v4. It provides robust handling of pagination, rate limiting, account IDs, and other nuisances of the API.
-  - [patrickmn/go-cache](https://github.com/patrickmn/go-cache):\
-    This is essentially `map[string]interface{}` with expiration times. The library is well-tested and comes with a clean interface.
-  - [golang.org/x/net/idna](https://pkg.go.dev/golang.org/x/net/idna):\
+* The root privilege and all capacities are immediately dropped after the program starts.
+* The source code depends on these external libraries, in addition to the Go standard library:
+  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
+    This official Go binding of CloudFlare API v4 provides robust handling of pagination, rate limiting, and other tricky details.
+  - [go-cache](https://github.com/patrickmn/go-cache):\
+    This is essentially `map[string]interface{}` with expiration times.
+  - [idna](https://pkg.go.dev/golang.org/x/net/idna):\
     This library implements the normalization of internationalized domain names.
+  - [cap](https://sites.google.com/site/fullycapable):\
+    This library facilitates the dropping of Linux capacities.
 
 ## 🐋 Quick Start with Docker
 
@@ -107,7 +93,7 @@ services:
 
 ⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 
-💡 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege if it happens to have such privilege.)
+💡 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
 
 💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
@@ -143,14 +129,14 @@ Here are all the recognized environment variables, in the alphabetic order.
 | `CF_ACCOUNT_ID` | CloudFlare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
 | `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens | A file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `DELETE_ON_EXIT` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
+| `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `DOMAINS` | Comma-separated fully qualified domain names | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
-| `PGID` | POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
+| `PGID` | Non-zero POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+| `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
 | `REFRESH_INTERVAL` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)

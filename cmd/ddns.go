@@ -9,77 +9,108 @@ import (
 	"syscall"
 	"time"
 
+	"kernel.org/pub/linux/libs/security/libcap/cap"
+
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
 )
 
-func dropRoot() {
-	{
-		log.Printf("🚷 Erasing supplementary group IDs . . .")
-		err := syscall.Setgroups([]int{})
-		if err != nil {
-			log.Printf("🤷 Could not erase supplementary group IDs, moving on . . .")
-		}
+func tryRaiseCap(val cap.Value) {
+	c, err := cap.GetPID(0)
+	if err != nil {
+		return
 	}
+	if err := c.SetFlag(cap.Effective, true, cap.SETGID); err != nil {
+		return
+	}
+	if err := c.SetProc(); err != nil {
+		return
+	}
+}
 
+func dropRoot() {
 	// group ID
 	{
-		var (
-			currentGid = syscall.Getegid()
-			defaultGid = currentGid
-		)
-		if defaultGid == 0 {
-			defaultGid = syscall.Getgid() // real group ID
-			if defaultGid == 0 {
-				defaultGid = 1000
+		defaultGID := syscall.Getegid()
+		if defaultGID == 0 {
+			defaultGID = syscall.Getgid() // real group ID
+			if defaultGID == 0 {
+				defaultGID = 1000
 			}
 		}
-		gid, err := config.GetenvAsInt("PGID", defaultGid, common.VERBOSE)
+		gid, err := config.GetenvAsInt("PGID", defaultGID, common.QUIET)
 		if err != nil {
 			log.Print(err)
-			gid = defaultGid
+			gid = defaultGID
+		} else if gid == 0 {
+			log.Printf("😡 PGID cannot be 0. Using %d instead . . .", defaultGID)
+			gid = defaultGID
 		}
-		log.Printf("👪 Setting the group ID to %d . . .", gid)
+
+		// trying to raise cap.SETGID
+		tryRaiseCap(cap.SETGID)
+		if err = syscall.Setgroups([]int{}); err != nil {
+			log.Printf("🤔 Could not erase all supplementary gruop IDs: %v", err)
+		}
 		if err = syscall.Setresgid(gid, gid, gid); err != nil {
-			log.Printf("😡 Could not set the group ID: %v", err)
+			log.Printf("🤔 Could not set the group ID to %d: %v", gid, err)
 		}
 	}
 
 	// user ID
 	{
-		var (
-			currentUid = syscall.Geteuid()
-			defaultUid = currentUid
-		)
-		if defaultUid == 0 {
-			defaultUid = syscall.Getuid()
-			if defaultUid == 0 {
-				defaultUid = 1000
+		defaultUID := syscall.Geteuid()
+		if defaultUID == 0 {
+			defaultUID = syscall.Getuid()
+			if defaultUID == 0 {
+				defaultUID = 1000
 			}
 		}
-		uid, err := config.GetenvAsInt("PUID", defaultUid, common.VERBOSE)
+		uid, err := config.GetenvAsInt("PUID", defaultUID, common.QUIET)
 		if err != nil {
 			log.Print(err)
-			uid = defaultUid
+			uid = defaultUID
+		} else if uid == 0 {
+			log.Printf("😡 PUID cannot be 0. Using %d instead . . .", defaultUID)
+			uid = defaultUID
 		}
-		log.Printf("🧑 Setting the user ID to %d . . .", uid)
+
+		// trying to raise cap.SETUID
+		tryRaiseCap(cap.SETUID)
 		if err = syscall.Setresuid(uid, uid, uid); err != nil {
-			log.Printf("😡 Could not set the user ID: %v", err)
+			log.Printf("🤔 Could not set the user ID to %d: %v", uid, err)
 		}
 	}
 
-	log.Printf("🧑 Effective user ID of the process: %d.", syscall.Geteuid())
-	log.Printf("👪 Effective group ID of the process: %d.", syscall.Getegid())
+	if err := cap.NewSet().SetProc(); err != nil {
+		log.Printf("😡 Could not drop all privileges: %v", err)
+	}
+
+	log.Printf("🧑 Effective user ID: %d.", syscall.Geteuid())
+	log.Printf("👪 Effective group ID: %d.", syscall.Getegid())
 
 	if groups, err := syscall.Getgroups(); err != nil {
 		log.Printf("😡 Could not get the supplementary group IDs.")
-	} else {
-		log.Printf("👪 Supplementary group IDs of the process: %d.", groups)
+	} else if len(groups) > 0 {
+		log.Printf("😰 The program still has supplementary group IDs: %d.", groups)
+	}
+	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
+		log.Printf("😰 The program is still run as the root.")
 	}
 
-	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
-		log.Printf("😰 It seems this program was run with root privilege. This is not recommended.")
+	{
+		now, err := cap.GetPID(0)
+		if err != nil {
+			log.Printf("🤯 Could not get the current capacities: %v", err)
+		} else {
+			diff, err := now.Compare(cap.NewSet())
+			if err != nil {
+				log.Printf("🤯 Could not compare capacities: %v", err)
+			} else if diff != 0 {
+				log.Printf("😰 The program still retains some additional capacities: %v", now)
+			}
+		}
 	}
 }
 
@@ -189,7 +220,7 @@ mainLoop:
 		if sig := wait(chanSignal, c.RefreshInterval); sig == nil {
 			continue mainLoop
 		} else {
-			if c.DeleteOnExit {
+			if c.DeleteOnStop {
 				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
 				applyIPs(ctx, c, h, nil, nil) // `nil` to purge all records
 				log.Printf("👋 Done now. Bye!")

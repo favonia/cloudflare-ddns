@@ -33,9 +33,21 @@ func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
 	return b, nil
 }
 
-func GetenvAsQuiet(key string, def common.Quiet, quiet common.Quiet) (common.Quiet, error) {
-	b, err := GetenvAsBool(key, bool(def), quiet)
-	return common.Quiet(b), err
+func GetenvAsQuiet(key string) (common.Quiet, error) {
+	def := common.Quiet(false)
+
+	val := Getenv(key)
+	if val == "" {
+		log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
+		return def, nil
+	}
+
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		return def, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	}
+
+	return common.Quiet(b), nil
 }
 
 func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
