@@ -12,10 +12,12 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
+// Getenv reads an environment variable and trim the space.
 func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
+// GetenvAsBool reads an environment variable as a boolean value.
 func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, error) {
 	val := Getenv(key)
 	if val == "" {
@@ -33,6 +35,7 @@ func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, error) {
 	return b, nil
 }
 
+// GetenvAsQuiet reads an environment variable as quiet/verbose.
 func GetenvAsQuiet(key string) (quiet.Quiet, error) {
 	def := quiet.VERBOSE
 
@@ -50,6 +53,7 @@ func GetenvAsQuiet(key string) (quiet.Quiet, error) {
 	return quiet.Quiet(b), nil
 }
 
+// GetenvAsInt reads an environment variable as an integer.
 func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
 	val := Getenv(key)
 	if val == "" {
@@ -67,6 +71,8 @@ func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
 	return i, nil
 }
 
+// GetenvAsNonEmptyList reads an environment variable as a comma-separated list of strings.
+// Spaces are trimed.
 func GetenvAsNonEmptyList(key string, quiet quiet.Quiet) ([]string, error) {
 	val := Getenv(key)
 	if val == "" {
@@ -80,6 +86,7 @@ func GetenvAsNonEmptyList(key string, quiet quiet.Quiet) ([]string, error) {
 	return list, nil
 }
 
+// GetenvAsPolicy reads an environment variable and parses it as a policy.
 func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
 	switch val := Getenv(key); val {
 	case "":
@@ -100,6 +107,7 @@ func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
 	}
 }
 
+// GetenvAsPolicy reads an environment variable and parses it as a time duration
 func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
 	val := Getenv(key)
 	if val == "" {
