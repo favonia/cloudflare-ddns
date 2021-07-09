@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
+func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
@@ -33,8 +33,8 @@ func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
 	return b, nil
 }
 
-func GetenvAsQuiet(key string) (common.Quiet, error) {
-	def := common.Quiet(false)
+func GetenvAsQuiet(key string) (quiet.Quiet, error) {
+	def := quiet.VERBOSE
 
 	val := Getenv(key)
 	if val == "" {
@@ -47,10 +47,10 @@ func GetenvAsQuiet(key string) (common.Quiet, error) {
 		return def, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
 	}
 
-	return common.Quiet(b), nil
+	return quiet.Quiet(b), nil
 }
 
-func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
+func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
@@ -67,7 +67,7 @@ func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
 	return i, nil
 }
 
-func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
+func GetenvAsNonEmptyList(key string, quiet quiet.Quiet) ([]string, error) {
 	val := Getenv(key)
 	if val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
@@ -80,7 +80,7 @@ func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
 	return list, nil
 }
 
-func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
+func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
@@ -100,7 +100,7 @@ func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
 	}
 }
 
-func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet common.Quiet) (time.Duration, error) {
+func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {

@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/patrickmn/go-cache"
+
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 type Handle struct {
@@ -117,7 +118,7 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 // updateRecordsArgs is the type of (named) arguments to updateRecords
 type updateRecordsArgs = struct {
 	context    context.Context
-	quiet      common.Quiet
+	quiet      quiet.Quiet
 	target     Target
 	recordType string
 	ip         net.IP
@@ -235,7 +236,7 @@ type UpdateArgs struct {
 	IP6        net.IP
 	TTL        int
 	Proxied    bool
-	Quiet      common.Quiet
+	Quiet      quiet.Quiet
 }
 
 func (h *Handle) Update(args *UpdateArgs) error {
