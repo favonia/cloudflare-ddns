@@ -176,7 +176,7 @@ func main() {
 	api.InitCache(c.CacheExpiration)
 
 	// getting the handler
-	h, err := c.NewHandler.NewHandle()
+	h, err := c.Auth.New()
 	if err != nil {
 		log.Print(err)
 		delayedExit(chanSignal)

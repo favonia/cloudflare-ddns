@@ -40,14 +40,6 @@ func InitCache(expiration time.Duration) {
 	zoneIDOfDomain = cache.New(expiration, expiration*2)
 }
 
-func newWithToken(token string, accountID string) (*Handle, error) {
-	handle, err := cloudflare.NewWithAPIToken(token, cloudflare.UsingAccount(accountID))
-	if err != nil {
-		return nil, fmt.Errorf("🤔 The token-based CloudFlare authentication failed: %v", err)
-	}
-	return &Handle{cf: handle}, nil
-}
-
 func (h Handle) zoneName(ctx context.Context, zoneID string) (string, error) {
 	if name, found := zoneNameOfID.Get(zoneID); found {
 		return name.(string), nil

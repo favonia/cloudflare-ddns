@@ -8,13 +8,13 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
-	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 	"github.com/favonia/cloudflare-ddns-go/internal/file"
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 type Config struct {
 	Quiet            quiet.Quiet
-	NewHandler       api.NewHandler
+	Auth             api.Auth
 	Targets          []api.Target
 	IP4Policy        detector.Policy
 	IP6Policy        detector.Policy
@@ -35,7 +35,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("🤫 Quiet mode enabled.")
 	}
 
-	var newHandler api.NewHandler
+	var auth api.Auth
 	{
 
 		token := Getenv("CF_API_TOKEN")
@@ -74,7 +74,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 			}
 		}
 
-		newHandler = &api.TokenNewHandler{Token: token, AccountID: accountID}
+		auth = &api.TokenAuth{Token: token, AccountID: accountID}
 	}
 
 	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
@@ -160,7 +160,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 
 	return &Config{
 		Quiet:            quiet,
-		NewHandler:       newHandler,
+		Auth:             auth,
 		Targets:          targets,
 		IP4Policy:        ip4Policy,
 		IP6Policy:        ip6Policy,
