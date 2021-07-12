@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/patrickmn/go-cache"
+
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 type Handle struct {
@@ -37,14 +38,6 @@ func InitCache(expiration time.Duration) {
 	ip6Remembered = cache.New(expiration, expiration*2)
 	zoneNameOfID = cache.New(expiration, expiration*2)
 	zoneIDOfDomain = cache.New(expiration, expiration*2)
-}
-
-func newWithToken(token string, accountID string) (*Handle, error) {
-	handle, err := cloudflare.NewWithAPIToken(token, cloudflare.UsingAccount(accountID))
-	if err != nil {
-		return nil, fmt.Errorf("🤔 The token-based CloudFlare authentication failed: %v", err)
-	}
-	return &Handle{cf: handle}, nil
 }
 
 func (h Handle) zoneName(ctx context.Context, zoneID string) (string, error) {
@@ -117,7 +110,7 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 // updateRecordsArgs is the type of (named) arguments to updateRecords
 type updateRecordsArgs = struct {
 	context    context.Context
-	quiet      common.Quiet
+	quiet      quiet.Quiet
 	target     Target
 	recordType string
 	ip         net.IP
@@ -136,34 +129,52 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		return nil, err
 	}
 
-	query := cloudflare.DNSRecord{Name: domain, Type: args.recordType}
-	rs, err := h.cf.DNSRecords(args.context, zoneID, query)
-	if err != nil {
-		return nil, err
+	var (
+		matchedIDs   []string // all the record IDs with the same IP
+		unmatchedIDs []string // all the record IDs with a different IP
+	)
+
+	{
+		rs, err := h.cf.DNSRecords(args.context, zoneID, cloudflare.DNSRecord{
+			Name: domain,
+			Type: args.recordType,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i := range rs {
+			if args.ip.Equal(net.ParseIP(rs[i].Content)) {
+				matchedIDs = append(matchedIDs, rs[i].ID)
+			} else {
+				unmatchedIDs = append(unmatchedIDs, rs[i].ID)
+			}
+		}
 	}
 
 	// whether there was already an up-to-date record
 	uptodate := false
 
-	// delete every record if the ip is `nil`
+	// delete every record if ip is `nil`
 	if args.ip == nil {
 		uptodate = true
 	}
 
-	/*
-		Find the entries that match, if any. If there is already a record that is up-to-date,
-		then we will delete the first stale record instead of updating it.
-	*/
-	for _, r := range rs {
-		if args.ip.Equal(net.ParseIP(r.Content)) {
-			if !args.quiet {
-				log.Printf("😃 Found an up-to-date %s record for the domain %s.", args.recordType, domain)
-			}
-			uptodate = true
-			break
+	if !uptodate && len(matchedIDs) > 0 {
+		if !args.quiet {
+			log.Printf("😃 Found an up-to-date %s record for the domain %s.", args.recordType, domain)
+		}
+		uptodate = true
+		matchedIDs = matchedIDs[1:]
+	}
+
+	for _, id := range matchedIDs {
+		log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, id)
+		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+			log.Printf("😡 Could not remove the record: %v", err)
 		}
 	}
 
+	// the data for updating or creating a record
 	payload := cloudflare.DNSRecord{
 		Name:    domain,
 		Type:    args.recordType,
@@ -172,51 +183,38 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		Proxied: &args.proxied,
 	}
 
-	numMatched := 0
-domainLoop:
-	for _, r := range rs {
-		if args.ip.Equal(net.ParseIP(r.Content)) {
-			uptodate = true
-			numMatched++
-			if numMatched > 1 {
-				log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, r.ID)
-				if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
-					log.Printf("😡 Could not remove the record: %v", err)
+	if !uptodate && args.ip != nil {
+		var unhandled []string
+		for i, id := range unmatchedIDs {
+			log.Printf("📝 Updating a stale %s record (ID: %s) . . .", args.recordType, id)
+			if err := h.cf.UpdateDNSRecord(args.context, zoneID, id, payload); err != nil {
+				log.Printf("😡 Could not update the record: %v", err)
+				log.Printf("🧟 Deleting the record instead . . .")
+				if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+					log.Printf("😡 Could not delete the record, either: %v", err)
 				}
+				continue
 			}
-			continue domainLoop
+			uptodate = true
+			unhandled = unmatchedIDs[i:]
+			break
 		}
-		if uptodate {
-			log.Printf("🧟 Deleting a stale %s record (ID: %s) referring to %s . . .", args.recordType, r.ID, r.Content)
-			if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
-				log.Printf("😡 Could not delete the record: %v", err)
-			}
-			continue domainLoop
-		}
-
-		log.Printf("📝 Updating a stale %s record (ID: %s) from %s to %v . . .", args.recordType, r.ID, r.Content, args.ip)
-		if err := h.cf.UpdateDNSRecord(args.context, zoneID, r.ID, payload); err != nil {
-			log.Printf("😡 Could not update the record: %v", err)
-			log.Printf("🧟 Deleting the record instead . . .")
-			if err := h.cf.DeleteDNSRecord(args.context, zoneID, r.ID); err != nil {
-				log.Printf("😡 Could not delete the record, either: %v", err)
-			}
-			continue domainLoop
-		}
-
-		uptodate = true
-		numMatched++
+		unmatchedIDs = unhandled
 	}
 
-	// The remaining case: there aren't any records to begin with!
-	if !uptodate {
+	for _, id := range unmatchedIDs {
+		log.Printf("🧟 Deleting a stale %s record (ID: %s) . . .", args.recordType, id)
+		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+			log.Printf("😡 Could not delete the record: %v", err)
+		}
+	}
+
+	if !uptodate && args.ip != nil {
 		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
 		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
 			log.Printf("😡 Could not add the record: %v", err)
-		} else {
-			uptodate = true
-			numMatched++
 		}
+		uptodate = true
 	}
 
 	if !uptodate {
@@ -235,7 +233,7 @@ type UpdateArgs struct {
 	IP6        net.IP
 	TTL        int
 	Proxied    bool
-	Quiet      common.Quiet
+	Quiet      quiet.Quiet
 }
 
 func (h *Handle) Update(args *UpdateArgs) error {

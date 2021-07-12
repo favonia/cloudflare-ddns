@@ -8,15 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
+// Getenv reads an environment variable and trim the space.
 func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
+// GetenvAsBool reads an environment variable as a boolean value.
+func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
@@ -33,8 +35,9 @@ func GetenvAsBool(key string, def bool, quiet common.Quiet) (bool, error) {
 	return b, nil
 }
 
-func GetenvAsQuiet(key string) (common.Quiet, error) {
-	def := common.Quiet(false)
+// GetenvAsQuiet reads an environment variable as quiet/verbose.
+func GetenvAsQuiet(key string) (quiet.Quiet, error) {
+	def := quiet.VERBOSE
 
 	val := Getenv(key)
 	if val == "" {
@@ -47,10 +50,11 @@ func GetenvAsQuiet(key string) (common.Quiet, error) {
 		return def, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
 	}
 
-	return common.Quiet(b), nil
+	return quiet.Quiet(b), nil
 }
 
-func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
+// GetenvAsInt reads an environment variable as an integer.
+func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
@@ -67,7 +71,9 @@ func GetenvAsInt(key string, def int, quiet common.Quiet) (int, error) {
 	return i, nil
 }
 
-func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
+// GetenvAsNonEmptyList reads an environment variable as a comma-separated list of strings.
+// Spaces are trimed.
+func GetenvAsNonEmptyList(key string, quiet quiet.Quiet) ([]string, error) {
 	val := Getenv(key)
 	if val == "" {
 		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
@@ -80,7 +86,8 @@ func GetenvAsNonEmptyList(key string, quiet common.Quiet) ([]string, error) {
 	return list, nil
 }
 
-func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
+// GetenvAsPolicy reads an environment variable and parses it as a policy.
+func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
@@ -100,7 +107,8 @@ func GetenvAsPolicy(key string, quiet common.Quiet) (detector.Policy, error) {
 	}
 }
 
-func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet common.Quiet) (time.Duration, error) {
+// GetenvAsPolicy reads an environment variable and parses it as a time duration
+func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {

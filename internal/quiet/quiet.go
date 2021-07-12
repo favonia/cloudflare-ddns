@@ -1,4 +1,4 @@
-package common
+package quiet
 
 type Quiet bool
 

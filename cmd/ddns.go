@@ -12,8 +12,8 @@ import (
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 func tryRaiseCap(val cap.Value) {
@@ -39,7 +39,7 @@ func dropRoot() {
 				defaultGID = 1000
 			}
 		}
-		gid, err := config.GetenvAsInt("PGID", defaultGID, common.QUIET)
+		gid, err := config.GetenvAsInt("PGID", defaultGID, quiet.QUIET)
 		if err != nil {
 			log.Print(err)
 			gid = defaultGID
@@ -67,7 +67,7 @@ func dropRoot() {
 				defaultUID = 1000
 			}
 		}
-		uid, err := config.GetenvAsInt("PUID", defaultUID, common.QUIET)
+		uid, err := config.GetenvAsInt("PUID", defaultUID, quiet.QUIET)
 		if err != nil {
 			log.Print(err)
 			uid = defaultUID
@@ -176,7 +176,7 @@ func main() {
 	api.InitCache(c.CacheExpiration)
 
 	// getting the handler
-	h, err := c.NewHandler.NewHandle()
+	h, err := c.Auth.New()
 	if err != nil {
 		log.Print(err)
 		delayedExit(chanSignal)

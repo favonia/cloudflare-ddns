@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
-	"github.com/favonia/cloudflare-ddns-go/internal/common"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
+	"github.com/favonia/cloudflare-ddns-go/internal/file"
+	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 type Config struct {
-	Quiet            common.Quiet
-	NewHandler       api.NewHandler
+	Quiet            quiet.Quiet
+	Auth             api.Auth
 	Targets          []api.Target
 	IP4Policy        detector.Policy
 	IP6Policy        detector.Policy
@@ -34,7 +35,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("🤫 Quiet mode enabled.")
 	}
 
-	newHandler := api.NewHandler(nil)
+	var auth api.Auth
 	{
 
 		token := Getenv("CF_API_TOKEN")
@@ -53,7 +54,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 				if !quiet {
 					log.Printf("📜 CF_API_TOKEN_FILE is specified.")
 				}
-				token, err = common.ReadFileAsString(tokenFile)
+				token, err = file.ReadFileAsString(tokenFile)
 				if err != nil {
 					return nil, err
 				}
@@ -73,7 +74,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 			}
 		}
 
-		newHandler = &api.TokenNewHandler{Token: token, AccountID: accountID}
+		auth = &api.TokenAuth{Token: token, AccountID: accountID}
 	}
 
 	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
@@ -159,7 +160,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 
 	return &Config{
 		Quiet:            quiet,
-		NewHandler:       newHandler,
+		Auth:             auth,
 		Targets:          targets,
 		IP4Policy:        ip4Policy,
 		IP6Policy:        ip6Policy,
