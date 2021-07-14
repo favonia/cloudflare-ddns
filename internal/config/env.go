@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
@@ -15,6 +16,19 @@ import (
 // Getenv reads an environment variable and trim the space.
 func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
+}
+
+// GetenvAsString reads an environment variable as a string.
+func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, error) {
+	val := Getenv(key)
+	if val == "" {
+		if !quiet {
+			log.Printf("📭 The variable %s is empty or unset. Default value: %q", key, def)
+		}
+		return def, nil
+	}
+
+	return val, nil
 }
 
 // GetenvAsBool reads an environment variable as a boolean value.
@@ -107,8 +121,8 @@ func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
 	}
 }
 
-// GetenvAsPolicy reads an environment variable and parses it as a time duration
-func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
+// GetenvAsPosDuration reads an environment variable and parses it as a time duration
+func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
@@ -123,4 +137,22 @@ func GetenvAsPositiveTimeDuration(key string, def time.Duration, quiet quiet.Qui
 	}
 
 	return t, err
+}
+
+// GetenvAsCron reads an environment variable and parses it as a Cron expression
+func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedule, error) {
+	val := Getenv(key)
+	if val == "" {
+		if !quiet {
+			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
+		}
+		return def, nil
+	}
+
+	c, err := cron.New(val)
+	if err != nil {
+		return c, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	}
+
+	return c, err
 }
