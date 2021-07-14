@@ -40,7 +40,7 @@ By default, public IP addresses are obtained via [CloudFlare’s debugging inter
 ## 🛡️ Security
 
 * The root privilege and all capacities are immediately dropped after the program starts.
-* The source code depends on these external libraries, in addition to the Go standard library:
+* The source code depends on these external libraries (not part of the Go project):
   - [cap](https://sites.google.com/site/fullycapable):\
     Manipulation of Linux capabilities.
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
@@ -49,8 +49,6 @@ By default, public IP addresses are obtained via [CloudFlare’s debugging inter
     Parsing of Cron expressions.
   - [go-cache](https://github.com/patrickmn/go-cache):\
     Essentially `map[string]interface{}` with expiration times.
-  - [idna](https://pkg.go.dev/golang.org/x/net/idna):\
-    Normalization of internationalized domain names (IDNs).
 
 ## 🐋 Quick Start with Docker
 
