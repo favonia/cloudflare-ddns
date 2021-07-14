@@ -143,8 +143,8 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `A` records | (See below) | N/A
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
-| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
-| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
+| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP4_DOMAINS` is not empty; otherwise, `unmanaged`
+| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP6_DOMAINS` is not empty; otherwise, `unmanaged`
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
@@ -170,7 +170,7 @@ The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while 
 | `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
 | `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
-| `REFRESH_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `"@every 5m"` (every 5 minutes)
+| `REFRESH_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `REFRESH_ON_START` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether to check IP addresses on start regardless of `REFRESH_CRON` | No | `true`
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `REFRESH_CRON` | No | `UTC`
 
@@ -182,6 +182,8 @@ Note that the update schedule does not take the time to update records into cons
 | ---- | ------------ | ------- | --------- | ------------- |
 | `PGID` | Non-zero POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+
+The tool will also try to drop supplementary groups.
 
 ### Others
 

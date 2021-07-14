@@ -93,7 +93,9 @@ func dropRoot() {
 	if groups, err := syscall.Getgroups(); err != nil {
 		log.Printf("😡 Could not get the supplementary group IDs.")
 	} else if len(groups) > 0 {
-		log.Printf("😰 The program still has supplementary group IDs: %d.", groups)
+		log.Printf("👪 Supplementary group IDs: %d.", groups)
+	} else {
+		log.Printf("👪 No supplementary group IDs.")
 	}
 	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
 		log.Printf("😰 The program is still run as the root.")
