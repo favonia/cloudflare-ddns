@@ -22,14 +22,15 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (~2MB) for all popular architectures.
+* Ultra-small Docker images (about 2 to 2.3 MB) on all architectures.
 * Ability to update multiple domains across different zones.
-* Ability to handle internationalized domain names.
-* Ability to remove stale records or choose to remove records on exit/stop.
-* Ability to obtain IP addresses from either CloudFlare, ipify, or local network interfaces (configurable).
 * Ability to enable or disable IPv4 and IPv6 individually.
+* Support of internationalized domain names.
+* Ability to remove stale records or choose to remove records on exit/stop.
+* Ability to obtain IP addresses from CloudFlare, ipify, or local network interfaces.
+* Support of timezone and Cron expressions.
 * Full configurability via environment variables.
-* Ability to pass API tokens via an environment variable or a file.
+* Ability to pass API tokens via a file instead of an environment variable.
 * Local caching to reduce CloudFlare API usage.
 
 ## 🕵️ Privacy
@@ -45,7 +46,7 @@ By default, public IP addresses are obtained via [CloudFlare’s debugging inter
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of CloudFlare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
   - [cron](https://github.com/robfig/cron):\
-    Parsing of Cron strings.
+    Parsing of Cron expressions.
   - [go-cache](https://github.com/patrickmn/go-cache):\
     Essentially `map[string]interface{}` with expiration times.
   - [idna](https://pkg.go.dev/golang.org/x/net/idna):\
