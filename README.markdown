@@ -187,6 +187,8 @@ The tool will also try to drop supplementary groups.
 
 ### Others
 
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
 
 ### Updating the Containers

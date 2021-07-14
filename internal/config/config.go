@@ -226,7 +226,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 	if !quiet {
-		log.Printf("📜 Refresh IP addresses on start: %t", refreshOnStart)
+		log.Printf("📜 Whether to refresh IP addresses on start: %t", refreshOnStart)
 	}
 
 	deleteOnStop, err := GetenvAsBool("DELETE_ON_STOP", false, quiet)
