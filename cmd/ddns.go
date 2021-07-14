@@ -127,7 +127,8 @@ func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 
 func delayedExit(signal chan os.Signal) {
 	duration := time.Minute * 2
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping . . .", duration)
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping when used with Docker Compose.", duration)
+	log.Printf("🥱 Press Ctrl+C to exit immediately . . .")
 	if sig := wait(signal, duration); sig == nil {
 		log.Printf("👋 Time's up. Bye!")
 	} else {
@@ -143,6 +144,38 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			Target:     target,
 			IP4Managed: c.IP4Policy.IsManaged(),
 			IP4:        ip4,
+			IP6Managed: c.IP6Policy.IsManaged(),
+			IP6:        ip6,
+			TTL:        c.TTL,
+			Proxied:    c.Proxied,
+			Quiet:      c.Quiet,
+		})
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	for _, target := range c.IP4Targets {
+		err := h.Update(&api.UpdateArgs{
+			Context:    ctx,
+			Target:     target,
+			IP4Managed: c.IP4Policy.IsManaged(),
+			IP4:        ip4,
+			IP6Managed: false,
+			IP6:        nil,
+			TTL:        c.TTL,
+			Proxied:    c.Proxied,
+			Quiet:      c.Quiet,
+		})
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	for _, target := range c.IP6Targets {
+		err := h.Update(&api.UpdateArgs{
+			Context:    ctx,
+			Target:     target,
+			IP4Managed: false,
+			IP4:        nil,
 			IP6Managed: c.IP6Policy.IsManaged(),
 			IP6:        ip6,
 			TTL:        c.TTL,
@@ -239,9 +272,9 @@ mainLoop:
 		interval := time.Until(next)
 		if interval <= 0 {
 			if !c.Quiet {
-				log.Printf("😪 Running behind the schedule by %s; immediately restarting the updating . . .", -interval)
+				log.Printf("😪 Running behind the schedule by %s . . .", -interval)
 			}
-			continue mainLoop
+			interval = 0
 		}
 
 		if !c.Quiet {

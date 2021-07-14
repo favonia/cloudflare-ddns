@@ -17,6 +17,8 @@ type Config struct {
 	Quiet            quiet.Quiet
 	Auth             api.Auth
 	Targets          []api.Target
+	IP4Targets       []api.Target
+	IP6Targets       []api.Target
 	IP4Policy        detector.Policy
 	IP6Policy        detector.Policy
 	TTL              int
@@ -79,37 +81,120 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		auth = &api.TokenAuth{Token: token, AccountID: accountID}
 	}
 
-	domains, err := GetenvAsNonEmptyList("DOMAINS", quiet)
-	for i, domain := range domains {
-		domains[i] = normalizeDomain(domain)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if !quiet {
-		log.Printf("📜 Managed domains: %v", domains)
+	var (
+		targets    []api.Target
+		ip4Targets []api.Target
+		ip6Targets []api.Target
+	)
+
+	{
+		domains := GetenvAsNormalizedDomains("DOMAINS", quiet)
+		ip4Domains := GetenvAsNormalizedDomains("IP4_DOMAINS", quiet)
+		ip6Domains := GetenvAsNormalizedDomains("IP6_DOMAINS", quiet)
+
+		var (
+			addedDomains    map[string]bool = map[string]bool{}
+			addedIP4Domains map[string]bool = map[string]bool{}
+			addedIP6Domains map[string]bool = map[string]bool{}
+		)
+
+		for _, domain := range domains {
+			if addedDomains[domain] {
+				log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+				continue
+			}
+			addedDomains[domain] = true
+			targets = append(targets, &api.FQDNTarget{Domain: domain})
+		}
+		for _, domain := range ip4Domains {
+			if addedIP4Domains[domain] {
+				log.Printf("😡 Domain %s was already listed in IP4_DOMAINS and thus ignored.", domain)
+				continue
+			}
+			if addedDomains[domain] {
+				log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+				continue
+			}
+			addedIP4Domains[domain] = true
+			ip4Targets = append(ip4Targets, &api.FQDNTarget{Domain: domain})
+		}
+		for _, domain := range ip6Domains {
+			if addedIP6Domains[domain] {
+				log.Printf("😡 Domain %s was already listed in IP6_DOMAINS and thus ignored.", domain)
+				continue
+			}
+			if addedDomains[domain] {
+				log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+				continue
+			}
+			addedIP6Domains[domain] = true
+			ip6Targets = append(ip6Targets, &api.FQDNTarget{Domain: domain})
+		}
+
+		if len(targets) == 0 && len(ip4Targets) == 0 && len(ip6Targets) == 0 {
+			return nil, fmt.Errorf("😡 DOMAINS, IP4_DOMAINS, and IP6_DOMAINS are all empty or unset.")
+		}
+
+		if !quiet {
+			if len(targets) > 0 {
+				log.Printf("📜 Managed domains for IPv4 and IPv6: %v", targets)
+			}
+			if len(ip4Targets) > 0 {
+				log.Printf("📜 Managed domains for IPv4: %v", ip4Targets)
+			}
+			if len(ip6Targets) > 0 {
+				log.Printf("📜 Managed domains for IPv6: %v", ip6Targets)
+			}
+		}
 	}
 
-	// converting domains to generic targets
-	targets := make([]api.Target, len(domains))
-	for i, domain := range domains {
-		targets[i] = &api.FQDNTarget{Domain: domain}
+	var defaultIP4Policy detector.Policy
+	if len(targets) > 0 || len(ip4Targets) > 0 {
+		defaultIP4Policy = &detector.Cloudflare{}
+	} else {
+		defaultIP4Policy = &detector.Unmanaged{}
 	}
-
-	ip4Policy, err := GetenvAsPolicy("IP4_POLICY", quiet)
-	if err != nil {
+	ip4Policy, err := GetenvAsPolicy("IP4_POLICY", defaultIP4Policy, quiet)
+	switch {
+	case err != nil:
 		return nil, err
+	case len(targets) == 0 && len(ip4Targets) == 0 && ip4Policy.IsManaged():
+		if !quiet {
+			log.Printf("🤔 DOMAINS and IP4_DOMAINS are all empty, and thus IP4_POLICY=%s would be ignored.", ip4Policy)
+		}
+		ip4Policy = &detector.Unmanaged{}
+	case len(ip4Targets) > 0 && !ip4Policy.IsManaged():
+		return nil, fmt.Errorf("😡 IPv4 is unmanaged and yet IP4_DOMAINS is not empty.")
 	}
 	if !quiet {
 		log.Printf("📜 Policy for IPv4: %v", ip4Policy)
 	}
 
-	ip6Policy, err := GetenvAsPolicy("IP6_POLICY", quiet)
-	if err != nil {
+	var defaultIP6Policy detector.Policy
+	switch {
+	case len(targets) > 0 || len(ip6Targets) > 0:
+		defaultIP6Policy = &detector.Cloudflare{}
+	default:
+		defaultIP6Policy = &detector.Unmanaged{}
+	}
+	ip6Policy, err := GetenvAsPolicy("IP6_POLICY", defaultIP6Policy, quiet)
+	switch {
+	case err != nil:
 		return nil, err
+	case len(targets) == 0 && len(ip6Targets) == 0 && ip6Policy.IsManaged():
+		if !quiet {
+			log.Printf("🤔 DOMAINS and IP6_DOMAINS are all empty, and thus IP6_POLICY=%s would be ignored.", ip6Policy)
+		}
+		ip6Policy = &detector.Unmanaged{}
+	case len(ip6Targets) > 0 && !ip6Policy.IsManaged():
+		return nil, fmt.Errorf("😡 IPv6 is unmanaged and yet IP6_DOMAINS is not empty.")
 	}
 	if !quiet {
 		log.Printf("📜 Policy for IPv6: %v", ip6Policy)
+	}
+
+	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
+		return nil, fmt.Errorf("😡 Both IPv4 and IPv6 are unmanaged.")
 	}
 
 	ttl, err := GetenvAsInt("TTL", 1, quiet)
@@ -172,6 +257,8 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		Quiet:            quiet,
 		Auth:             auth,
 		Targets:          targets,
+		IP4Targets:       ip4Targets,
+		IP6Targets:       ip6Targets,
 		IP4Policy:        ip4Policy,
 		IP6Policy:        ip6Policy,
 		TTL:              ttl,

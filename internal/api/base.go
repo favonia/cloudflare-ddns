@@ -256,7 +256,18 @@ func (h *Handle) Update(args *UpdateArgs) error {
 
 	if !checkingIP4 && !checkingIP6 {
 		if !args.Quiet {
-			log.Printf("🤷 Addresses remain the same for %s; skipping the updating.", domain)
+			var readableRecordType string
+			switch {
+			case args.IP4Managed && args.IP6Managed:
+				readableRecordType = "A or AAAA"
+			case args.IP4Managed:
+				readableRecordType = "A"
+			case args.IP6Managed:
+				readableRecordType = "AAAA"
+			default:
+				return fmt.Errorf("😱 The impossible happened!")
+			}
+			log.Printf("🤷 IP addresses remain the same; no need to check %s records for %s.", readableRecordType, domain)
 		}
 		return nil
 	}
