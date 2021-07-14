@@ -85,29 +85,30 @@ func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
 	return i, nil
 }
 
-// GetenvAsNonEmptyList reads an environment variable as a comma-separated list of strings.
+// GetenvAsNormalizedDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func GetenvAsNonEmptyList(key string, quiet quiet.Quiet) ([]string, error) {
+func GetenvAsNormalizedDomains(key string, quiet quiet.Quiet) []string {
 	val := Getenv(key)
-	if val == "" {
-		return nil, fmt.Errorf("😡 The variable %s is empty or unset.", key)
+	rawList := strings.Split(val, ",")
+	var list []string
+	for _, item := range rawList {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		list = append(list, normalizeDomain(item))
 	}
-
-	list := strings.Split(val, ",")
-	for i := range list {
-		list[i] = strings.TrimSpace(list[i])
-	}
-	return list, nil
+	return list
 }
 
 // GetenvAsPolicy reads an environment variable and parses it as a policy.
-func GetenvAsPolicy(key string, quiet quiet.Quiet) (detector.Policy, error) {
+func GetenvAsPolicy(key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, error) {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: cloudflare", key)
+			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
 		}
-		return &detector.Cloudflare{}, nil
+		return def, nil
 	case "cloudflare":
 		return &detector.Cloudflare{}, nil
 	case "ipify":

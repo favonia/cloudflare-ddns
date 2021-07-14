@@ -8,6 +8,7 @@ type Target interface {
 	zoneID(ctx context.Context, handle *Handle) (string, error)
 	zoneName(ctx context.Context, handle *Handle) (string, error)
 	domain(ctx context.Context, handle *Handle) (string, error)
+	String() string
 }
 
 type FQDNTarget struct {
@@ -28,4 +29,8 @@ func (t *FQDNTarget) zoneName(ctx context.Context, handle *Handle) (string, erro
 
 func (t *FQDNTarget) domain(ctx context.Context, handle *Handle) (string, error) {
 	return t.Domain, nil
+}
+
+func (t *FQDNTarget) String() string {
+	return t.Domain
 }

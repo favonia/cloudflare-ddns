@@ -153,6 +153,38 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			log.Print(err)
 		}
 	}
+	for _, target := range c.IP4Targets {
+		err := h.Update(&api.UpdateArgs{
+			Context:    ctx,
+			Target:     target,
+			IP4Managed: c.IP4Policy.IsManaged(),
+			IP4:        ip4,
+			IP6Managed: false,
+			IP6:        nil,
+			TTL:        c.TTL,
+			Proxied:    c.Proxied,
+			Quiet:      c.Quiet,
+		})
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	for _, target := range c.IP6Targets {
+		err := h.Update(&api.UpdateArgs{
+			Context:    ctx,
+			Target:     target,
+			IP4Managed: false,
+			IP4:        nil,
+			IP6Managed: c.IP6Policy.IsManaged(),
+			IP6:        ip6,
+			TTL:        c.TTL,
+			Proxied:    c.Proxied,
+			Quiet:      c.Quiet,
+		})
+		if err != nil {
+			log.Print(err)
+		}
+	}
 }
 
 func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {

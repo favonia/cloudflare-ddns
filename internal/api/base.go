@@ -256,7 +256,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 
 	if !checkingIP4 && !checkingIP6 {
 		if !args.Quiet {
-			log.Printf("🤷 Addresses remain the same for %s; skipping the updating.", domain)
+			log.Printf("🤷 IP addresses remain the same; no need to check %s.", domain)
 		}
 		return nil
 	}
