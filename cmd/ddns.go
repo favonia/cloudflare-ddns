@@ -127,7 +127,8 @@ func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 
 func delayedExit(signal chan os.Signal) {
 	duration := time.Minute * 2
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping . . .", duration)
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping when used with Docker Compose.", duration)
+	log.Printf("🥱 Press Ctrl+C to exit immediately . . .")
 	if sig := wait(signal, duration); sig == nil {
 		log.Printf("👋 Time's up. Bye!")
 	} else {
@@ -271,9 +272,9 @@ mainLoop:
 		interval := time.Until(next)
 		if interval <= 0 {
 			if !c.Quiet {
-				log.Printf("😪 Running behind the schedule by %s; immediately restarting the updating . . .", -interval)
+				log.Printf("😪 Running behind the schedule by %s . . .", -interval)
 			}
-			continue mainLoop
+			interval = 0
 		}
 
 		if !c.Quiet {

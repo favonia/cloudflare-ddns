@@ -155,37 +155,46 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		defaultIP4Policy = &detector.Unmanaged{}
 	}
 	ip4Policy, err := GetenvAsPolicy("IP4_POLICY", defaultIP4Policy, quiet)
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, err
-	}
-	if len(targets) == 0 && len(ip4Targets) == 0 && ip4Policy.IsManaged() {
+	case len(targets) == 0 && len(ip4Targets) == 0 && ip4Policy.IsManaged():
 		if !quiet {
 			log.Printf("🤔 DOMAINS and IP4_DOMAINS are all empty, and thus IP4_POLICY=%s would be ignored.", ip4Policy)
 		}
 		ip4Policy = &detector.Unmanaged{}
+	case len(ip4Targets) > 0 && !ip4Policy.IsManaged():
+		return nil, fmt.Errorf("😡 IPv4 is unmanaged and yet IP4_DOMAINS is not empty.")
 	}
 	if !quiet {
 		log.Printf("📜 Policy for IPv4: %v", ip4Policy)
 	}
 
 	var defaultIP6Policy detector.Policy
-	if len(targets) > 0 || len(ip6Targets) > 0 {
+	switch {
+	case len(targets) > 0 || len(ip6Targets) > 0:
 		defaultIP6Policy = &detector.Cloudflare{}
-	} else {
+	default:
 		defaultIP6Policy = &detector.Unmanaged{}
 	}
 	ip6Policy, err := GetenvAsPolicy("IP6_POLICY", defaultIP6Policy, quiet)
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, err
-	}
-	if len(targets) == 0 && len(ip6Targets) == 0 && ip6Policy.IsManaged() {
+	case len(targets) == 0 && len(ip6Targets) == 0 && ip6Policy.IsManaged():
 		if !quiet {
 			log.Printf("🤔 DOMAINS and IP6_DOMAINS are all empty, and thus IP6_POLICY=%s would be ignored.", ip6Policy)
 		}
 		ip6Policy = &detector.Unmanaged{}
+	case len(ip6Targets) > 0 && !ip6Policy.IsManaged():
+		return nil, fmt.Errorf("😡 IPv6 is unmanaged and yet IP6_DOMAINS is not empty.")
 	}
 	if !quiet {
 		log.Printf("📜 Policy for IPv6: %v", ip6Policy)
+	}
+
+	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
+		return nil, fmt.Errorf("😡 Both IPv4 and IPv6 are unmanaged.")
 	}
 
 	ttl, err := GetenvAsInt("TTL", 1, quiet)
