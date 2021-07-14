@@ -22,8 +22,8 @@ const (
 )
 
 var (
-	ip4Remembered  *cache.Cache
-	ip6Remembered  *cache.Cache
+	savedIP4s      *cache.Cache
+	savedIP6s      *cache.Cache
 	zoneNameOfID   *cache.Cache
 	zoneIDOfDomain *cache.Cache
 )
@@ -34,8 +34,8 @@ func init() {
 }
 
 func InitCache(expiration time.Duration) {
-	ip4Remembered = cache.New(expiration, expiration*2)
-	ip6Remembered = cache.New(expiration, expiration*2)
+	savedIP4s = cache.New(expiration, expiration*2)
+	savedIP6s = cache.New(expiration, expiration*2)
 	zoneNameOfID = cache.New(expiration, expiration*2)
 	zoneIDOfDomain = cache.New(expiration, expiration*2)
 }
@@ -196,7 +196,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 				continue
 			}
 			uptodate = true
-			unhandled = unmatchedIDs[i:]
+			unhandled = unmatchedIDs[i+1:]
 			break
 		}
 		unmatchedIDs = unhandled
@@ -244,19 +244,19 @@ func (h *Handle) Update(args *UpdateArgs) error {
 
 	checkingIP4 := false
 	if args.IP4Managed {
-		previousIP4, remembered := ip4Remembered.Get(domain)
-		checkingIP4 = !(remembered && previousIP4.(*net.IP).Equal(args.IP4))
+		savedIP4, saved := savedIP4s.Get(domain)
+		checkingIP4 = !(saved && savedIP4.(*net.IP).Equal(args.IP4))
 	}
 
 	checkingIP6 := false
 	if args.IP6Managed {
-		previousIP6, remembered := ip6Remembered.Get(domain)
-		checkingIP6 = !(remembered && previousIP6.(*net.IP).Equal(args.IP6))
+		savedIP6, saved := savedIP6s.Get(domain)
+		checkingIP6 = !(saved && savedIP6.(*net.IP).Equal(args.IP6))
 	}
 
 	if !checkingIP4 && !checkingIP6 {
 		if !args.Quiet {
-			log.Printf("🤷 Nothing to do for the domain %s; skipping the updating.", domain)
+			log.Printf("🤷 Addresses remain the same for %s; skipping the updating.", domain)
 		}
 		return nil
 	}
@@ -272,11 +272,10 @@ func (h *Handle) Update(args *UpdateArgs) error {
 
 	var (
 		err4, err6 error
-		ip         net.IP
 	)
 
 	if checkingIP4 {
-		ip, err4 = h.updateRecords(&updateRecordsArgs{
+		ip, err4 := h.updateRecords(&updateRecordsArgs{
 			context:    args.Context,
 			quiet:      args.Quiet,
 			target:     args.Target,
@@ -287,14 +286,14 @@ func (h *Handle) Update(args *UpdateArgs) error {
 		})
 		if err4 != nil {
 			log.Print(err4)
-			ip4Remembered.Delete(domain)
+			savedIP4s.Delete(domain)
 		} else {
-			ip4Remembered.SetDefault(domain, (*net.IP)(&ip))
+			savedIP4s.SetDefault(domain, (*net.IP)(&ip))
 		}
 	}
 
 	if checkingIP6 {
-		ip, err6 = h.updateRecords(&updateRecordsArgs{
+		ip, err6 := h.updateRecords(&updateRecordsArgs{
 			context:    args.Context,
 			quiet:      args.Quiet,
 			target:     args.Target,
@@ -305,9 +304,9 @@ func (h *Handle) Update(args *UpdateArgs) error {
 		})
 		if err6 != nil {
 			log.Print(err6)
-			ip6Remembered.Delete(domain)
+			savedIP6s.Delete(domain)
 		} else {
-			ip6Remembered.SetDefault(domain, (*net.IP)(&ip))
+			savedIP6s.SetDefault(domain, (*net.IP)(&ip))
 		}
 	}
 

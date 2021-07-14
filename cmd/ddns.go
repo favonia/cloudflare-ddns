@@ -136,7 +136,7 @@ func delayedExit(signal chan os.Signal) {
 	os.Exit(1)
 }
 
-func applyIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
+func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
 	for _, target := range c.Targets {
 		err := h.Update(&api.UpdateArgs{
 			Context:    ctx,
@@ -153,6 +153,42 @@ func applyIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, 
 			log.Print(err)
 		}
 	}
+}
+
+func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {
+	var ip4 net.IP
+	if c.IP4Policy.IsManaged() {
+		ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
+		if err != nil {
+			log.Print(err)
+			log.Printf("🤔 Could not get the IPv4 address.")
+		} else {
+			if !c.Quiet {
+				log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+			}
+			ip4 = ip
+		}
+	}
+
+	var ip6 net.IP
+	if c.IP6Policy.IsManaged() {
+		ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
+		if err != nil {
+			log.Print(err)
+			log.Printf("🤔 Could not get the IPv6 address.")
+		} else {
+			if !c.Quiet {
+				log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+			}
+			ip6 = ip
+		}
+	}
+
+	setIPs(ctx, c, h, ip4, ip6)
+}
+
+func clearIPs(ctx context.Context, c *config.Config, h *api.Handle) {
+	setIPs(ctx, c, h, nil, nil)
 }
 
 func main() {
@@ -183,46 +219,44 @@ func main() {
 	}
 
 mainLoop:
-	for {
-		var ip4 net.IP
-		if c.IP4Policy.IsManaged() {
-			ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
-			if err != nil {
-				log.Print(err)
-				log.Printf("🤔 Could not get the IPv4 address.")
-			} else {
-				if !c.Quiet {
-					log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
-				}
-				ip4 = ip
-			}
+	for first := true; ; first = false {
+		next := c.RefreshCron.Next()
+		if !first || c.RefreshOnStart {
+			updateIPs(ctx, c, h)
 		}
 
-		var ip6 net.IP
-		if c.IP6Policy.IsManaged() {
-			ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
-			if err != nil {
-				log.Print(err)
-				log.Printf("🤔 Could not get the IPv6 address.")
+		if next.IsZero() {
+			if c.DeleteOnStop {
+				log.Printf("😮 No future updating scheduled. Deleting all managed records . . .")
+				clearIPs(ctx, c, h)
+				log.Printf("👋 Done now. Bye!")
 			} else {
-				if !c.Quiet {
-					log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
-				}
-				ip6 = ip
+				log.Printf("👋 No future updating scheduled. Bye!")
 			}
+			break mainLoop
 		}
 
-		applyIPs(ctx, c, h, ip4, ip6)
+		interval := time.Until(next)
+		if interval <= 0 {
+			if !c.Quiet {
+				log.Printf("😪 Running behind the schedule by %s; immediately restarting the updating . . .", -interval)
+			}
+			continue mainLoop
+		}
 
 		if !c.Quiet {
-			log.Printf("😴 Checking the IP addresses again in %v . . .", c.RefreshInterval)
+			if first {
+				log.Printf("😴 Checking the IP addresses in %v . . .", interval)
+			} else {
+				log.Printf("😴 Checking the IP addresses again in %v . . .", interval)
+			}
 		}
-		if sig := wait(chanSignal, c.RefreshInterval); sig == nil {
+		if sig := wait(chanSignal, interval); sig == nil {
 			continue mainLoop
 		} else {
 			if c.DeleteOnStop {
 				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
-				applyIPs(ctx, c, h, nil, nil) // `nil` to purge all records
+				clearIPs(ctx, c, h) // `nil` to purge all records
 				log.Printf("👋 Done now. Bye!")
 			} else {
 				log.Printf("👋 Caught signal: %v. Bye!", *sig)

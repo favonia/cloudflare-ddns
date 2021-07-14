@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
+	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 	"github.com/favonia/cloudflare-ddns-go/internal/file"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
@@ -20,7 +21,8 @@ type Config struct {
 	IP6Policy        detector.Policy
 	TTL              int
 	Proxied          bool
-	RefreshInterval  time.Duration
+	RefreshCron      cron.Schedule
+	RefreshOnStart   bool
 	DeleteOnStop     bool
 	DetectionTimeout time.Duration
 	CacheExpiration  time.Duration
@@ -126,12 +128,20 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
 	}
 
-	refreshInterval, err := GetenvAsPositiveTimeDuration("REFRESH_INTERVAL", time.Minute*5, quiet)
+	refreshCron, err := GetenvAsCron("REFRESH_CRON", cron.MustNew("@every 5m"), quiet)
 	if err != nil {
 		return nil, err
 	}
 	if !quiet {
-		log.Printf("📜 Refresh interval: %v", refreshInterval)
+		log.Printf("📜 Refresh schedule: %v", refreshCron)
+	}
+
+	refreshOnStart, err := GetenvAsBool("REFRESH_ON_START", true, quiet)
+	if err != nil {
+		return nil, err
+	}
+	if !quiet {
+		log.Printf("📜 Refresh IP addresses on start: %t", refreshOnStart)
 	}
 
 	deleteOnStop, err := GetenvAsBool("DELETE_ON_STOP", false, quiet)
@@ -142,7 +152,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnStop)
 	}
 
-	detectionTimeout, err := GetenvAsPositiveTimeDuration("DETECTION_TIMEOUT", time.Second*5, quiet)
+	detectionTimeout, err := GetenvAsPosDuration("DETECTION_TIMEOUT", time.Second*5, quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +160,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", detectionTimeout)
 	}
 
-	cacheExpiration, err := GetenvAsPositiveTimeDuration("CACHE_EXPIRATION", api.DefaultCacheExpiration, quiet)
+	cacheExpiration, err := GetenvAsPosDuration("CACHE_EXPIRATION", api.DefaultCacheExpiration, quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +176,8 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		IP6Policy:        ip6Policy,
 		TTL:              ttl,
 		Proxied:          proxied,
-		RefreshInterval:  refreshInterval,
+		RefreshCron:      refreshCron,
+		RefreshOnStart:   refreshOnStart,
 		DeleteOnStop:     deleteOnStop,
 		DetectionTimeout: detectionTimeout,
 		CacheExpiration:  cacheExpiration,

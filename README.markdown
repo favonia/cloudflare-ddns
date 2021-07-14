@@ -40,14 +40,16 @@ By default, public IP addresses are obtained via [CloudFlare’s debugging inter
 
 * The root privilege and all capacities are immediately dropped after the program starts.
 * The source code depends on these external libraries, in addition to the Go standard library:
-  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-    This official Go binding of CloudFlare API v4 provides robust handling of pagination, rate limiting, and other tricky details.
-  - [go-cache](https://github.com/patrickmn/go-cache):\
-    This is essentially `map[string]interface{}` with expiration times.
-  - [idna](https://pkg.go.dev/golang.org/x/net/idna):\
-    This library implements the normalization of internationalized domain names.
   - [cap](https://sites.google.com/site/fullycapable):\
-    This library facilitates the dropping of Linux capacities.
+    Manipulation of Linux capabilities.
+  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
+    The official Go binding of CloudFlare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
+  - [cron](https://github.com/robfig/cron):\
+    Parsing of Cron strings.
+  - [go-cache](https://github.com/patrickmn/go-cache):\
+    Essentially `map[string]interface{}` with expiration times.
+  - [idna](https://pkg.go.dev/golang.org/x/net/idna):\
+    Normalization of internationalized domain names (IDNs).
 
 ## 🐋 Quick Start with Docker
 
@@ -121,27 +123,28 @@ docker-compose up --detach --build cloudflare-ddns
 
 ## Further Customization
 
-Here are all the recognized environment variables, in the alphabetic order.
+Here are all the recognized environment variables.
+
+### Authentication
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
 | `CF_ACCOUNT_ID` | CloudFlare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
 | `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens | A file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 | `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+
+### Record Updating
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
 | `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
-| `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `DOMAINS` | Comma-separated fully qualified domain names | All the domains this tool should manage | Yes, and the list cannot be empty | N/A
 | `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
 | `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare`
-| `PGID` | Non-zero POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
-| `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
-| `REFRESH_INTERVAL` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The refresh interval for the tool to re-check IP addresses and update DNS records (if necessary) | No | `5m0s` (5 minutes)
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
-💡 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
+The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
 
 - `cloudflare`\
   Get the public IP address via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
@@ -154,10 +157,33 @@ Here are all the recognized environment variables, in the alphabetic order.
 
 The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other. Both of them apply to all managed domains.
 
-If you are using Docker Compose, run the following command to recreate the container after customizing the tool:
-```bash
-docker-compose up --detach
-```
+### Scheduling
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
+| `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
+| `REFRESH_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `"@every 5m"` (every 5 minutes)
+| `REFRESH_ON_START` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether to check IP addresses on start regardless of `REFRESH_CRON` | No | `true`
+| `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `CRON` | No | `UTC`
+| `SKIP_FIRST` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the IP addresses should be immediately checked and updated instead of waiting for the timing specified by `CRON` | No | `false`
+
+Note that the update schedule does not take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the interval between adjacent updates is 3 minutes, not 5 minutes.
+
+### Security
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
+| `PGID` | Non-zero POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
+| `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+
+### Others
+
+| `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
+
+### Updating the Containers
+
+If you are using Docker Compose, run `docker-compose up --detach` to update the containers with new settings.
 
 ## 💖 Feedback
 
