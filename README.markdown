@@ -50,7 +50,9 @@ By default, public IP addresses are obtained through [CloudFlare’s via DNS-ove
   - [go-cache](https://github.com/patrickmn/go-cache):\
     Essentially `map[string]interface{}` with expiration times.
 
-## 🐋 Quick Start with Docker
+## 🏃 Quick Start
+
+### 🐋 With Docker
 
 ```bash
 docker run \
@@ -61,7 +63,7 @@ docker run \
   favonia/cloudflare-ddns
 ```
 
-## 🏃 Quick Start from Source
+### 🧑‍💻 From Source
 
 You need the [Go tool](https://golang.org/doc/install) to run the program from its source.
 
@@ -74,7 +76,7 @@ go run ./cmd/ddns.go
 
 ## 🐋 Deployment with Docker Compose
 
-### Step 1: Updating the Compose File
+### 📦 Step 1: Updating the Compose File
 
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`).
 
@@ -96,7 +98,7 @@ services:
 
 💡 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
 
-💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
 💡 There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
 
@@ -120,11 +122,11 @@ docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-## Further Customization
+## 🎛️ Further Customization
 
 Here are all the recognized environment variables.
 
-### Authentication
+### 🔑 Authentication
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -134,7 +136,7 @@ Here are all the recognized environment variables.
 
 In most cases, `CF_ACCOUNT_ID` is not needed.
 
-### Record Updating
+### 🧭 DNS Records
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -161,7 +163,7 @@ The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following polic
 
 The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
 
-### Scheduling and Timing
+### ⏳ Scheduling
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -174,7 +176,7 @@ The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while 
 
 Note that the update schedule does not take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the interval between adjacent updates is 3 minutes, not 5 minutes.
 
-### Security
+### 🛡️ Security
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -183,13 +185,13 @@ Note that the update schedule does not take the time to update records into cons
 
 The tool will also try to drop supplementary groups.
 
-### Others
+### 🖥️ User Interface
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
 
-### Updating the Containers
+### 🔁 Restarting the Container
 
 If you are using Docker Compose, run `docker-compose up --detach` to update the containers with new settings.
 
