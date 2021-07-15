@@ -13,6 +13,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
+	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
@@ -281,9 +282,9 @@ mainLoop:
 
 		if !c.Quiet {
 			if first {
-				log.Printf("😴 Checking the IP addresses in %v . . .", interval)
+				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
 			} else {
-				log.Printf("😴 Checking the IP addresses again in %v . . .", interval)
+				log.Printf("😴 Checking the IP addresses again in %v . . .", cron.PPDuration(interval))
 			}
 		}
 		if sig := wait(chanSignal, interval); sig == nil {

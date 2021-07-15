@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	c "github.com/robfig/cron/v3"
+	"github.com/robfig/cron/v3"
 )
 
 type Schedule = interface {
@@ -14,11 +14,11 @@ type Schedule = interface {
 
 type Cron struct {
 	spec     string
-	schedule c.Schedule
+	schedule cron.Schedule
 }
 
 func New(spec string) (*Cron, error) {
-	sche, err := c.ParseStandard(spec)
+	sche, err := cron.ParseStandard(spec)
 	if err != nil {
 		return nil, err
 	}
