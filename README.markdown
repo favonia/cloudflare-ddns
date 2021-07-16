@@ -22,7 +22,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (about 2 to 2.3 MB) on all architectures.
+* Ultra-small Docker images (about 2 MB) on all architectures.
 * Ability to update multiple domains across different zones.
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Support of internationalized domain names.
