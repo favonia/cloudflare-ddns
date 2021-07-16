@@ -41,7 +41,7 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 
 <details><summary>🚷 The root privilege is immediately dropped after the program starts.</summary>
 
-The program honors `PGID` and `PUID` and will drop Linux capacities (divided root privileges).
+The program honors `PGID` and `PUID` and will drop Linux capabilities (divided root privileges).
 </details>
 
 <details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
@@ -113,7 +113,7 @@ The setting `network_mode: host` is for IPv6. If you wish to keep the network se
 <details>
 <summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
 
-The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
+The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capabilities.)
 </details>
 
 <details>
@@ -263,7 +263,7 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
 
-💡 There is no point in specifying `--restart=always` because the tool exits only when unrecoverable errors occur.
+💡 There is no need to specify `--restart=always` because the tool exits only when unrecoverable errors occur.
 
 </details>
 
