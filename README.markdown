@@ -22,7 +22,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (about 2 to 2.3 MB) on all architectures.
+* Ultra-small Docker images (about 2 MB) on all architectures.
 * Ability to update multiple domains across different zones.
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Support of internationalized domain names.
@@ -35,7 +35,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
+By default, public IP addresses are obtained through [CloudFlare’s via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
 
 ## 🛡️ Security
 
@@ -151,7 +151,7 @@ At least one domain should be specified in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOM
 The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
 
 - `cloudflare`\
-  Get the public IP address via [CloudFlare’s debugging interface](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+  Get the public IP address by querying `whoami.cloudflare.` against [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
 - `ipify`\
   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 - `local`\

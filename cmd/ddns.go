@@ -281,10 +281,10 @@ mainLoop:
 		}
 
 		if !c.Quiet {
-			if first {
-				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
-			} else {
+			if !first || c.RefreshOnStart {
 				log.Printf("😴 Checking the IP addresses again in %v . . .", cron.PPDuration(interval))
+			} else {
+				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
 			}
 		}
 		if sig := wait(chanSignal, interval); sig == nil {
