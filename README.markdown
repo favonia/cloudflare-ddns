@@ -22,7 +22,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (about 2 MB) on all architectures.
+* Ultra-small Docker images (about 2 MB) for all architectures.
 * Ability to update multiple domains across different zones.
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Support of internationalized domain names.
@@ -35,22 +35,31 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained through [CloudFlare’s via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
+By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
 
 ## 🛡️ Security
 
-* The root privilege and all capacities are immediately dropped after the program starts.
-* The source code depends on these external libraries (not part of the Go project):
-  - [cap](https://sites.google.com/site/fullycapable):\
-    Manipulation of Linux capabilities.
-  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-    The official Go binding of CloudFlare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
-  - [cron](https://github.com/robfig/cron):\
-    Parsing of Cron expressions.
-  - [go-cache](https://github.com/patrickmn/go-cache):\
-    Essentially `map[string]interface{}` with expiration times.
+<details><summary>🚷 The root privilege is immediately dropped after the program starts.</summary>
 
-## 🐋 Quick Start with Docker
+The program honors `PGID` and `PUID` and will drop Linux capacities (divided root privileges).
+</details>
+
+<details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
+
+- [cap](https://sites.google.com/site/fullycapable):\
+  Manipulation of Linux capabilities.
+- [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
+  The official Go binding of CloudFlare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
+- [cron](https://github.com/robfig/cron):\
+  Parsing of Cron expressions.
+- [go-cache](https://github.com/patrickmn/go-cache):\
+  Essentially `map[string]interface{}` with expiration times.
+</details>
+
+## ⛷️ Quick Start
+
+<details>
+<summary>🐋 Directly run the provided Docker images.</summary>
 
 ```bash
 docker run \
@@ -60,8 +69,10 @@ docker run \
   -e PROXIED=true \
   favonia/cloudflare-ddns
 ```
+</details>
 
-## 🏃 Quick Start from Source
+<details>
+<summary>🧬 Directly run the Go program from its source.</summary>
 
 You need the [Go tool](https://golang.org/doc/install) to run the program from its source.
 
@@ -71,10 +82,11 @@ export DOMAINS=www.example.org
 export PROXIED=true
 go run ./cmd/ddns.go
 ```
+</details>
 
 ## 🐋 Deployment with Docker Compose
 
-### Step 1: Updating the Compose File
+### 📦 Step 1: Updating the Compose File
 
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`).
 
@@ -92,15 +104,31 @@ services:
       - PROXIED=true
 ```
 
-⚠️ The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
+<details>
+<summary>📡 You want <code>network_mode: host</code> for IPv6.</summary>
 
-💡 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
+The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
+</details>
 
-💡 The setting `PROXIED=true` instructs CloudFlare to cache webpages and hide your actual IP addresses. If you wish to bypass that, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+<details>
+<summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
 
-💡 There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
+The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
+</details>
 
-### Step 2: Updating the Environment File
+<details>
+<summary>🎭 Use <code>PROXIED=true</code> to hide your IP addresses.</summary>
+
+The setting `PROXIED=true` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+</details>
+
+<details>
+<summary>🙅 No automatic <code>restart</code> is needed.</summary>
+
+There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
+</details>
+
+### 🪧 Step 2: Updating the Environment File
 
 Add these lines to your environment file (typically `.env`):
 ```bash
@@ -108,23 +136,28 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
 DOMAINS=example.org,www.example.org,example.io
 ```
 
-- The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Create a token with the **Zone - DNS - Edit** permission and copy the token into the environment file.
+<details>
+<summary>🔑 <code>CF_API_TOKEN</code> is your CloudFlare API token.</summary>
 
-  ⚠️ The legacy API key authentication is intentionally _not_ supported. Please use the more secure API tokens.
+The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
+</details>
 
-- The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+<details>
+<summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
 
-The tool should be up and running after these commands:
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+</details>
+
+Run these commands to update the container:
 ```bash
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-## Further Customization
+## 🎛️ Further Customization
 
-Here are all the recognized environment variables.
-
-### Authentication
+<details>
+<summary>🔑 Specifying accounts and tokens</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -133,8 +166,10 @@ Here are all the recognized environment variables.
 | `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 
 In most cases, `CF_ACCOUNT_ID` is not needed.
+</details>
 
-### Record Updating
+<details>
+<summary>📍 Detecting IP addresses and updating DNS records</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -146,22 +181,32 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
-At least one domain should be specified in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this program is useless. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`.
+> <details>
+> <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
+>
+> - `cloudflare`\
+>  Get the public IP address by querying `whoami.cloudflare.` against [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
+> - `ipify`\
+>   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
+> - `local`\
+>   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need `network_mode: host` for this policy, for otherwise the tool will detect the addresses inside the [bridge network](https://docs.docker.com/network/bridge/) instead of those in the host network.
+> - `unmanaged`\
+>   Stop the DNS updating completely. Existing DNS records will not be removed.
+>
+> The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
+> </details>
 
-The values of `IP4_POLICY` and `IP6_POLICY` should be one of the following policies:
+> <details>
+> <summary>📍 Requirements of domain specifications: <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code></summary>
+>
+> At least one domain should be specified in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this program is useless. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`.
+> </details>
 
-- `cloudflare`\
-  Get the public IP address by querying `whoami.cloudflare.` against [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
-- `ipify`\
-  Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
-- `local`\
-  Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need `network_mode: host` for this policy, for otherwise the tool will detect the addresses inside the [bridge network](https://docs.docker.com/network/bridge/) instead of those in the host network.
-- `unmanaged`\
-  Stop the DNS updating completely. Existing DNS records will not be removed.
+</details>
 
-The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
-
-### Scheduling and Timing
+<details>
+<summary>⏳ Scheduling the updating</summary>
+<code>DOMAINS</code>, <code>IP4/6_DOMAINS</code>, <code>IP4/6_POLICY</code>, <code>PROXIED</code>, and <code>TTL</code></summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -173,8 +218,10 @@ The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while 
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `REFRESH_CRON` | No | `UTC`
 
 Note that the update schedule does not take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the interval between adjacent updates is 3 minutes, not 5 minutes.
+</details>
 
-### Security
+<details>
+<summary>🛡️ Dropping root privileges</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -182,16 +229,43 @@ Note that the update schedule does not take the time to update records into cons
 | `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 
 The tool will also try to drop supplementary groups.
+</details>
 
-### Others
+<details>
+<summary>🖥️ Tweaking the user interface</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
+</details>
 
-### Updating the Containers
+### 🔁 Restarting the Container
 
-If you are using Docker Compose, run `docker-compose up --detach` to update the containers with new settings.
+If you are using Docker Compose, run `docker-compose up --detach` after changing the settings.
+
+## 🚵 Migration Guides
+
+<details>
+<summary>I was using <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
+
+⚠️ It is not recommended to use [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/), because it relies on unverified DNS responses. A malicious hacker could manipulate DNS responses and trick it into updating your domain with any IP address.
+
+| Old Parameter |  | New Paramater |
+| ------------- | - | ------------- |
+| `API_KEY=key` | ✔️ | Use `CF_API_TOKEN=key` |
+| `API_KEY_FILE=file` | ✔️ | Use `CF_API_TOKEN_FILE=file` |
+| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️ | Use `DOMAINS=sub.example.org` directly |
+| `PROXIED=true` | ✔️ | The same |
+| `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` |
+| `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` |
+| `DELETE_ON_STOP=true` | ✔️ | The same |
+| `INTERFACE=iface` | ✔️ | Not required for `local` policies; the tool can handle multiple network interfaces |
+| `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
+| `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
+
+💡 There is no point in specifying `--restart=always` because the tool exits only when unrecoverable errors occur.
+
+</details>
 
 ## 💖 Feedback
 
