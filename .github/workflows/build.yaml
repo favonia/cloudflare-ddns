@@ -4,6 +4,12 @@ on:
     branches: main
   pull_request:
 jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: golangci/golangci-lint-action@v2
   ci:
     name: Building and Pushing
     runs-on: ubuntu-latest
