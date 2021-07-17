@@ -35,7 +35,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. You can also configure the tool to use [ipify](https://www.ipify.org) which, unlike the debugging interface, is fully documented.
+By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. Moreover, if CloudFlare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
 
 ## 🛡️ Security
 
@@ -107,7 +107,7 @@ services:
 <details>
 <summary>📡 You want <code>network_mode: host</code> for IPv6.</summary>
 
-The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the proper way to [enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
+The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the [proper way to enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 </details>
 
 <details>
@@ -256,8 +256,8 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 | `API_KEY_FILE=file` | ✔️ | Use `CF_API_TOKEN_FILE=file` |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️ | Use `DOMAINS=sub.example.org` directly |
 | `PROXIED=true` | ✔️ | Same |
-| `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` |
-| `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` |
+| `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` to disable IPv6 |
+| `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` to disable IPv4 |
 | `DELETE_ON_STOP=true` | ✔️ | Same |
 | `INTERFACE=iface` | ✔️ | Not required for `local` policies; the tool can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
