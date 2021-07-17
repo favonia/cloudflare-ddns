@@ -69,6 +69,10 @@ func (h *Handle) activeZoneIDsByName(ctx context.Context, zoneName string) ([]st
 }
 
 func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
+	if id, found := zoneIDOfDomain.Get(domain); found {
+		return id.(string), nil
+	}
+
 	// try the whole domain as the zone
 	zoneName := domain
 
