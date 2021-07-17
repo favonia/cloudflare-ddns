@@ -174,13 +174,6 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		matchedIDs = matchedIDs[1:]
 	}
 
-	for _, id := range matchedIDs {
-		log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, id)
-		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
-			log.Printf("😡 Could not remove the record: %v", err)
-		}
-	}
-
 	// the data for updating or creating a record
 	payload := cloudflare.DNSRecord{
 		Name:    domain,
@@ -194,10 +187,10 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		var unhandled []string
 		for i, id := range unmatchedIDs {
 			log.Printf("📝 Updating a stale %s record (ID: %s) . . .", args.recordType, id)
-			if err := h.cf.UpdateDNSRecord(args.context, zoneID, id, payload); err != nil {
+			if err = h.cf.UpdateDNSRecord(args.context, zoneID, id, payload); err != nil {
 				log.Printf("😡 Could not update the record: %v", err)
 				log.Printf("🧟 Deleting the record instead . . .")
-				if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+				if err = h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
 					log.Printf("😡 Could not delete the record, either: %v", err)
 				}
 				continue
@@ -209,19 +202,26 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		unmatchedIDs = unhandled
 	}
 
+	if !uptodate && args.ip != nil {
+		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
+		if _, err = h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
+			log.Printf("😡 Could not add the record: %v", err)
+		} else {
+			uptodate = true
+		}
+	}
+
 	for _, id := range unmatchedIDs {
 		log.Printf("🧟 Deleting a stale %s record (ID: %s) . . .", args.recordType, id)
-		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+		if err = h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
 			log.Printf("😡 Could not delete the record: %v", err)
 		}
 	}
 
-	if !uptodate && args.ip != nil {
-		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
-		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
-			log.Printf("😡 Could not add the record: %v", err)
-		} else {
-			uptodate = true
+	for _, id := range matchedIDs {
+		log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, id)
+		if err = h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil {
+			log.Printf("😡 Could not remove the record: %v", err)
 		}
 	}
 
