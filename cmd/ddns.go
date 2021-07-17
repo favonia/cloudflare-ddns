@@ -130,7 +130,7 @@ func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 
 func delayedExit(signal chan os.Signal) {
 	duration := time.Minute * 2
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping when used with Docker Compose.", duration)
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping.", duration)
 	log.Printf("🥱 Press Ctrl+C to exit immediately . . .")
 	if sig := wait(signal, duration); sig == nil {
 		log.Printf("👋 Time's up. Bye!")
@@ -142,8 +142,10 @@ func delayedExit(signal chan os.Signal) {
 
 func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
 	for _, target := range c.Targets {
+		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
 		err := h.Update(&api.UpdateArgs{
 			Context:    ctx,
+			Quiet:      c.Quiet,
 			Target:     target,
 			IP4Managed: c.IP4Policy.IsManaged(),
 			IP4:        ip4,
@@ -151,15 +153,17 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			IP6:        ip6,
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
-			Quiet:      c.Quiet,
 		})
+		cancel()
 		if err != nil {
 			log.Print(err)
 		}
 	}
 	for _, target := range c.IP4Targets {
+		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
 		err := h.Update(&api.UpdateArgs{
 			Context:    ctx,
+			Quiet:      c.Quiet,
 			Target:     target,
 			IP4Managed: c.IP4Policy.IsManaged(),
 			IP4:        ip4,
@@ -167,15 +171,17 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			IP6:        nil,
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
-			Quiet:      c.Quiet,
 		})
+		cancel()
 		if err != nil {
 			log.Print(err)
 		}
 	}
 	for _, target := range c.IP6Targets {
+		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
 		err := h.Update(&api.UpdateArgs{
 			Context:    ctx,
+			Quiet:      c.Quiet,
 			Target:     target,
 			IP4Managed: false,
 			IP4:        nil,
@@ -183,8 +189,8 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			IP6:        ip6,
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
-			Quiet:      c.Quiet,
 		})
+		cancel()
 		if err != nil {
 			log.Print(err)
 		}
@@ -254,12 +260,16 @@ func main() {
 		delayedExit(chanSignal)
 	}
 
+	first := true
+	updated := false
 mainLoop:
-	for first := true; ; first = false {
+	for {
 		next := c.RefreshCron.Next()
 		if !first || c.RefreshOnStart {
 			updateIPs(ctx, c, h)
+			updated = true
 		}
+		first = false
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
@@ -281,7 +291,7 @@ mainLoop:
 		}
 
 		if !c.Quiet {
-			if !first || c.RefreshOnStart {
+			if updated {
 				log.Printf("😴 Checking the IP addresses again in %v . . .", cron.PPDuration(interval))
 			} else {
 				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
