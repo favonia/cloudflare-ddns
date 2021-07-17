@@ -26,6 +26,7 @@ type Config struct {
 	RefreshCron      cron.Schedule
 	RefreshOnStart   bool
 	DeleteOnStop     bool
+	APITimeout       time.Duration
 	DetectionTimeout time.Duration
 	CacheExpiration  time.Duration
 }
@@ -41,7 +42,6 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 
 	var auth api.Auth
 	{
-
 		token := Getenv("CF_API_TOKEN")
 		{
 			tokenFile := Getenv("CF_API_TOKEN_FILE")
@@ -237,6 +237,14 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnStop)
 	}
 
+	apiTimeout, err := GetenvAsPosDuration("CF_API_TIMEOUT", time.Second*10, quiet)
+	if err != nil {
+		return nil, err
+	}
+	if !quiet {
+		log.Printf("📜 Timeout of each access to the CloudFlare API: %v", apiTimeout)
+	}
+
 	detectionTimeout, err := GetenvAsPosDuration("DETECTION_TIMEOUT", time.Second*5, quiet)
 	if err != nil {
 		return nil, err
@@ -266,6 +274,7 @@ func ReadConfig(ctx context.Context) (*Config, error) {
 		RefreshCron:      refreshCron,
 		RefreshOnStart:   refreshOnStart,
 		DeleteOnStop:     deleteOnStop,
+		APITimeout:       apiTimeout,
 		DetectionTimeout: detectionTimeout,
 		CacheExpiration:  cacheExpiration,
 	}, nil

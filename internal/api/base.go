@@ -55,56 +55,63 @@ func (h Handle) zoneName(ctx context.Context, zoneID string) (string, error) {
 }
 
 // The built-in ZoneIDByName is broken due to the possibility of multiple zones
-func (h *Handle) activeZoneIDByName(ctx context.Context, zoneName string) (string, int, error) {
+func (h *Handle) activeZoneIDsByName(ctx context.Context, zoneName string) ([]string, error) {
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, h.cf.AccountID, "active"))
 	if err != nil {
-		return "", 0, fmt.Errorf("🤔 Could not find the zone named %s.", zoneName)
+		return nil, fmt.Errorf("🤔 Could not check whether there's a zone named %s: %v", zoneName, err)
 	}
 
-	switch l := len(res.Result); l {
-	case 0:
-		return "", l, fmt.Errorf("🤔 Could not find the zone named %s.", zoneName)
-	case 1:
-		return res.Result[0].ID, l, nil
-	default:
-		return "", l, fmt.Errorf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+	var ids []string
+	for i := range res.Result {
+		ids = append(ids, res.Result[i].ID)
 	}
+	return ids, nil
 }
 
 func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
+	if id, found := zoneIDOfDomain.Get(domain); found {
+		return id.(string), nil
+	}
+
 	// try the whole domain as the zone
 	zoneName := domain
-	zoneID, numMatched, err := h.activeZoneIDByName(ctx, zoneName)
+
+	zoneIDs, err := h.activeZoneIDsByName(ctx, zoneName)
 	if err != nil {
-		if numMatched > 1 {
-			return "", err
-		}
+		return "", err
+	}
+	if len(zoneIDs) > 1 {
+		return "", fmt.Errorf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+	}
+	if len(zoneIDs) == 0 {
 
 		// search for the zone
 	zoneSearch:
 		for i, b := range domain {
 			if b == '.' {
 				zoneName = domain[i+1:]
-				zoneID, numMatched, err = h.activeZoneIDByName(ctx, zoneName)
+				zoneIDs, err = h.activeZoneIDsByName(ctx, zoneName)
 				if err != nil {
-					if numMatched > 1 {
-						return "", err
-					}
+					return "", err
+				}
+				if len(zoneIDs) > 1 {
+					return "", fmt.Errorf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+				}
+				if len(zoneIDs) == 0 {
 					continue zoneSearch
 				}
-
 				break zoneSearch
 			}
 		}
 	}
 
-	if zoneID == "" {
+	if len(zoneIDs) != 1 {
 		return "", fmt.Errorf("🤔 Could not find the zone of the domain %s.", domain)
 	}
 
-	zoneIDOfDomain.SetDefault(domain, zoneID)
-	zoneNameOfID.SetDefault(zoneID, zoneName)
-	return zoneID, nil
+	zoneIDOfDomain.SetDefault(domain, zoneIDs[0])
+	zoneNameOfID.SetDefault(zoneIDs[0], zoneName)
+	return zoneIDs[0], nil
 }
 
 // updateRecordsArgs is the type of (named) arguments to updateRecords
@@ -140,7 +147,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 			Type: args.recordType,
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("🤔 Could not retrieve DNS records for the domain %s: %v", domain, err)
 		}
 		for i := range rs {
 			if args.ip.Equal(net.ParseIP(rs[i].Content)) {
@@ -213,8 +220,9 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
 		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
 			log.Printf("😡 Could not add the record: %v", err)
+		} else {
+			uptodate = true
 		}
-		uptodate = true
 	}
 
 	if !uptodate {
@@ -226,6 +234,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 
 type UpdateArgs struct {
 	Context    context.Context
+	Quiet      quiet.Quiet
 	Target     Target
 	IP4Managed bool
 	IP4        net.IP
@@ -233,7 +242,6 @@ type UpdateArgs struct {
 	IP6        net.IP
 	TTL        int
 	Proxied    bool
-	Quiet      quiet.Quiet
 }
 
 func (h *Handle) Update(args *UpdateArgs) error {

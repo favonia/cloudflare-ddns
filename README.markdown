@@ -41,7 +41,7 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 
 <details><summary>🚷 The root privilege is immediately dropped after the program starts.</summary>
 
-The program honors `PGID` and `PUID` and will drop Linux capacities (divided root privileges).
+The program honors `PGID` and `PUID` and will drop Linux capabilities (divided root privileges).
 </details>
 
 <details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
@@ -113,7 +113,7 @@ The setting `network_mode: host` is for IPv6. If you wish to keep the network se
 <details>
 <summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
 
-The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capacities.)
+The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capabilities.)
 </details>
 
 <details>
@@ -211,6 +211,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `CF_API_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to access the CloudFlare API | No | `10s` (10 seconds)
 | `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `REFRESH_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
@@ -263,7 +264,7 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
 
-💡 There is no point in specifying `--restart=always` because the tool exits only when unrecoverable errors occur.
+💡 There is no need to specify `--restart=always` because the tool exits only when unrecoverable errors occur.
 
 </details>
 
