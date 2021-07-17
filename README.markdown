@@ -246,19 +246,19 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 ## 🚵 Migration Guides
 
 <details>
-<summary>I was using <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
+<summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
 
-⚠️ It is not recommended to use [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/), because it relies on unverified DNS responses. A malicious hacker could manipulate DNS responses and trick it into updating your domain with any IP address.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate DNS responses and trick it into updating your domain with any IP address.
 
 | Old Parameter |  | New Paramater |
 | ------------- | - | ------------- |
 | `API_KEY=key` | ✔️ | Use `CF_API_TOKEN=key` |
 | `API_KEY_FILE=file` | ✔️ | Use `CF_API_TOKEN_FILE=file` |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️ | Use `DOMAINS=sub.example.org` directly |
-| `PROXIED=true` | ✔️ | The same |
+| `PROXIED=true` | ✔️ | Same |
 | `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` |
 | `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` |
-| `DELETE_ON_STOP=true` | ✔️ | The same |
+| `DELETE_ON_STOP=true` | ✔️ | Same |
 | `INTERFACE=iface` | ✔️ | Not required for `local` policies; the tool can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
