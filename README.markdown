@@ -39,9 +39,9 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 
 ## 🛡️ Security
 
-<details><summary>🚷 The root privilege is immediately dropped after the program starts.</summary>
+<details><summary>🚷 The superuser privilege is immediately dropped after the program starts.</summary>
 
-The program honors `PGID` and `PUID` and will drop Linux capabilities (divided root privileges).
+The program honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
 </details>
 
 <details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
@@ -113,7 +113,7 @@ The setting `network_mode: host` is for IPv6. If you wish to keep the network se
 <details>
 <summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
 
-The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-root user. (The program itself will also attempt to drop the root privilege and all capabilities.)
+The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. (The program itself will also attempt to drop the superuser privilege and all capabilities.)
 </details>
 
 <details>
@@ -221,7 +221,7 @@ Note that the update schedule does not take the time to update records into cons
 </details>
 
 <details>
-<summary>🛡️ Dropping root privileges</summary>
+<summary>🛡️ Dropping superuser privileges</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |

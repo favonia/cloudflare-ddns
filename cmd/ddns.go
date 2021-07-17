@@ -99,7 +99,7 @@ func dropRoot() {
 		log.Printf("👪 No supplementary group IDs.")
 	}
 	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
-		log.Printf("😰 The program is still run as the root.")
+		log.Printf("😰 The program is still run as the superuser.")
 	}
 
 	{
@@ -234,7 +234,7 @@ func clearIPs(ctx context.Context, c *config.Config, h *api.Handle) {
 }
 
 func main() {
-	// dropping the root privilege
+	// dropping the superuser privilege
 	dropRoot()
 
 	ctx := context.Background()
