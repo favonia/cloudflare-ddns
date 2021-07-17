@@ -148,7 +148,7 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 			Type: args.recordType,
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("🤔 Could not retrieve DNS records for the domain %s: %v", domain, err)
 		}
 		for i := range rs {
 			if args.ip.Equal(net.ParseIP(rs[i].Content)) {
@@ -221,8 +221,9 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
 		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
 		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil {
 			log.Printf("😡 Could not add the record: %v", err)
+		} else {
+			uptodate = true
 		}
-		uptodate = true
 	}
 
 	if !uptodate {
