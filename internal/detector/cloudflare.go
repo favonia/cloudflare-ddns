@@ -28,7 +28,6 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("DNS: %q", q)
 	dnsQuery = q
 }
 
