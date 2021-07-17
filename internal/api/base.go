@@ -123,7 +123,6 @@ type updateRecordsArgs = struct {
 	ip         net.IP
 	ttl        int
 	proxied    bool
-	timeout    time.Duration
 }
 
 func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, error) {
