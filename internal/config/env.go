@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -19,70 +18,73 @@ func Getenv(key string) string {
 }
 
 // GetenvAsString reads an environment variable as a string.
-func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, error) {
+func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %q", key, def)
 		}
-		return def, nil
+		return def, true
 	}
 
-	return val, nil
+	return val, true
 }
 
 // GetenvAsBool reads an environment variable as a boolean value.
-func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, error) {
+func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
 		}
-		return def, nil
+		return def, true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		return b, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		return b, false
 	}
 
-	return b, nil
+	return b, true
 }
 
 // GetenvAsQuiet reads an environment variable as quiet/verbose.
-func GetenvAsQuiet(key string) (quiet.Quiet, error) {
+func GetenvAsQuiet(key string) (quiet.Quiet, bool) {
 	def := quiet.VERBOSE
 
 	val := Getenv(key)
 	if val == "" {
 		log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
-		return def, nil
+		return def, true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		return def, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		return def, false
 	}
 
-	return quiet.Quiet(b), nil
+	return quiet.Quiet(b), true
 }
 
 // GetenvAsInt reads an environment variable as an integer.
-func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, error) {
+func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
 		}
-		return def, nil
+		return def, true
 	}
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		return i, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		return 0, false
 	}
 
-	return i, nil
+	return i, true
 }
 
 // GetenvAsNormalizedDomains reads an environment variable as a comma-separated list of domains.
@@ -102,58 +104,64 @@ func GetenvAsNormalizedDomains(key string, quiet quiet.Quiet) []string {
 }
 
 // GetenvAsPolicy reads an environment variable and parses it as a policy.
-func GetenvAsPolicy(key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, error) {
+func GetenvAsPolicy(key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, bool) {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
 		}
-		return def, nil
+		return def, true
 	case "cloudflare":
-		return &detector.Cloudflare{}, nil
+		return &detector.Cloudflare{}, true
 	case "ipify":
-		return &detector.Ipify{}, nil
+		return &detector.Ipify{}, true
 	case "local":
-		return &detector.Local{}, nil
+		return &detector.Local{}, true
 	case "unmanaged":
-		return &detector.Unmanaged{}, nil
+		return &detector.Unmanaged{}, true
 	default:
-		return &detector.Unmanaged{}, fmt.Errorf("😡 Error parsing the variable %s with the value %s", key, val)
+		log.Printf("😡 Error parsing the variable %s with the value %s", key, val)
+		return nil, false
 	}
 }
 
 // GetenvAsPosDuration reads an environment variable and parses it as a time duration
-func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, error) {
+func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}
-		return def, nil
+		return def, true
 	}
 
 	t, err := time.ParseDuration(val)
-	if err != nil || t <= 0 {
-		return t, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	switch {
+	case err != nil:
+		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		return 0, false
+	case t < 0:
+		log.Printf("😡 Time duration %v is negative.", t)
 	}
 
-	return t, err
+	return t, true
 }
 
 // GetenvAsCron reads an environment variable and parses it as a Cron expression
-func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedule, error) {
+func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedule, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}
-		return def, nil
+		return def, true
 	}
 
-	c, err := cron.New(val)
-	if err != nil {
-		return c, fmt.Errorf("😡 Error parsing the variable %s: %v", key, err)
+	c, ok := cron.New(val)
+	if !ok {
+		log.Printf("😡 Error parsing the variable %s.", key)
+		return c, false
 	}
 
-	return c, err
+	return c, true
 }

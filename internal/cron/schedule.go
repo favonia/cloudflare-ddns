@@ -17,22 +17,23 @@ type Cron struct {
 	schedule cron.Schedule
 }
 
-func New(spec string) (*Cron, error) {
+func New(spec string) (*Cron, bool) {
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
-		return nil, err
+		log.Printf(`😡 Could not parse %s as a Cron expresion: %v`, spec, err)
+		return nil, false
 	}
 
 	return &Cron{
 		spec:     spec,
 		schedule: sche,
-	}, nil
+	}, true
 }
 
 func MustNew(spec string) *Cron {
-	cron, err := New(spec)
-	if err != nil {
-		log.Fatal(err)
+	cron, ok := New(spec)
+	if !ok {
+		panic("schedule.MustNew: assertion failed")
 	}
 	return cron
 }

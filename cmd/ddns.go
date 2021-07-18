@@ -48,9 +48,8 @@ func main() {
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM)
 
 	// reading the config
-	c, err := config.ReadConfig(ctx)
-	if err != nil {
-		log.Print(err)
+	c, ok := config.ReadConfig(ctx)
+	if !ok {
 		delayedExit(chanSignal)
 	}
 
@@ -58,9 +57,8 @@ func main() {
 	api.InitCache(c.CacheExpiration)
 
 	// getting the handler
-	h, err := c.Auth.New()
-	if err != nil {
-		log.Print(err)
+	h, ok := c.Auth.New()
+	if !ok {
 		delayedExit(chanSignal)
 	}
 

@@ -3,8 +3,8 @@ package detector
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -17,7 +17,7 @@ func randUint16() uint16 {
 	return uint16(rand.Uint32())
 }
 
-func newDNSQuery(id uint16, name string, class dnsmessage.Class) ([]byte, error) {
+func newDNSQuery(id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
 	msg := dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
@@ -43,84 +43,100 @@ func newDNSQuery(id uint16, name string, class dnsmessage.Class) ([]byte, error)
 	}
 	q, err := msg.Pack()
 	if err != nil {
-		return nil, fmt.Errorf(`😩 Failed to prepare the DNS query.`)
+		log.Printf(`😩 Failed to prepare the DNS query: %v`, err)
+		return nil, false
 	}
-	return q, nil
+	return q, true
 }
 
-func parseTXTRecord(r *dnsmessage.TXTResource) (net.IP, error) {
+func parseTXTRecord(r *dnsmessage.TXTResource) (net.IP, bool) {
 	switch len(r.TXT) {
 	case 0:
-		return nil, fmt.Errorf("🤯 The TXT record has no strings: %v", r)
+		log.Printf("🤯 The TXT record has no strings: %v", r)
+		return nil, false
 	case 1: // good!
 	default:
-		return nil, fmt.Errorf("🤯 Unexpected multiple strings in the TXT record: %v", r)
+		log.Printf("🤯 Unexpected multiple strings in the TXT record: %v", r)
+		return nil, false
 	}
 
 	ip := net.ParseIP(r.TXT[0])
 	if ip == nil {
-		return nil, fmt.Errorf(`🤯 The TXT record %q is not a valid IP address.`, r.TXT[0])
+		log.Printf(`🤯 The TXT record %q is not a valid IP address.`, r.TXT[0])
+		return nil, false
 	}
 
-	return ip, nil
+	return ip, true
 }
 
-func parseDNSResource(ans *dnsmessage.Resource, name string, class dnsmessage.Class) (net.IP, error) {
+func parseDNSResource(ans *dnsmessage.Resource, name string, class dnsmessage.Class) (net.IP, bool) {
 	switch {
 	case ans.Header.Name.String() != name:
-		return nil, fmt.Errorf("🤯 The DNS answer is for %q, not %q.", ans.Header.Name.String(), name)
+		log.Printf("🤯 The DNS answer is for %q, not %q.", ans.Header.Name.String(), name)
+		return nil, false
 	case ans.Header.Type != dnsmessage.TypeTXT:
-		return nil, fmt.Errorf("🤯 The DNS answer is of type %v, not %v.", ans.Header.Type, dnsmessage.TypeTXT)
+		log.Printf("🤯 The DNS answer is of type %v, not %v.", ans.Header.Type, dnsmessage.TypeTXT)
+		return nil, false
 	case ans.Header.Class != class:
-		return nil, fmt.Errorf("🤯 The DNS answer is of class %v, not %v.", ans.Header.Class, class)
+		log.Printf("🤯 The DNS answer is of class %v, not %v.", ans.Header.Class, class)
+		return nil, false
 	}
 
 	txt, ok := ans.Body.(*dnsmessage.TXTResource)
 	if !ok {
-		return nil, fmt.Errorf("🤯 The TXT record body is not of type TXTResource: %v", ans)
+		log.Printf("🤯 The TXT record body is not of type TXTResource: %v", ans)
+		return nil, false
 	}
 
 	return parseTXTRecord(txt)
 }
 
-func parseDNSResponse(r []byte, id uint16, name string, class dnsmessage.Class) (net.IP, error) {
+func parseDNSResponse(r []byte, id uint16, name string, class dnsmessage.Class) (net.IP, bool) {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
-		return nil, fmt.Errorf("😩 Not a valid DNS response: %v", err)
+		log.Printf("😩 Not a valid DNS response: %v", err)
+		return nil, false
 	}
 
 	switch {
 	case msg.ID != id:
-		return nil, fmt.Errorf("😩 Response ID %x differs from the query ID %x.", id, msg.ID)
+		log.Printf("😩 Response ID %x differs from the query ID %x.", id, msg.ID)
+		return nil, false
 	case !msg.Response:
-		return nil, fmt.Errorf("🤯 The QR (query/response) bit was not set in the response.")
+		log.Printf("🤯 The QR (query/response) bit was not set in the response.")
+		return nil, false
 	case msg.Truncated:
-		return nil, fmt.Errorf("🤯 The TC (truncation) bit was set. Something went wrong.")
+		log.Printf("🤯 The TC (truncation) bit was set. Something went wrong.")
+		return nil, false
 	case msg.RCode != dnsmessage.RCodeSuccess:
-		return nil, fmt.Errorf("🤯 The response code is %v. The query failed.", msg.RCode)
+		log.Printf("🤯 The response code is %v. The query failed.", msg.RCode)
+		return nil, false
 	}
 
 	switch len(msg.Answers) {
 	case 0:
-		return nil, fmt.Errorf("😩 No DNS answers in the response.")
+		log.Printf("😩 No DNS answers in the response.")
+		return nil, false
 	case 1:
 		return parseDNSResource(&msg.Answers[0], name, class)
 	default:
-		return nil, fmt.Errorf("😩 Unexpected multiple DNS answers in the response.")
+		log.Printf("😩 Unexpected multiple DNS answers in the response.")
+		return nil, false
 	}
 }
 
-func getIPFromDNS(ctx context.Context, url string, name string, class dnsmessage.Class) (net.IP, error) {
+func getIPFromDNS(ctx context.Context, url string, name string, class dnsmessage.Class) (net.IP, bool) {
 	id := randUint16()
-	q, err := newDNSQuery(id, name, class)
-	if err != nil {
-		return nil, err
+	q, ok := newDNSQuery(id, name, class)
+	if !ok {
+		return nil, false
 	}
 
 	// http.Post is avoided so that we can pass ctx
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(q))
 	if err != nil {
-		return nil, fmt.Errorf("😩 Could not generate the request to %s: %v", url, err)
+		log.Printf("😩 Could not generate the request to %s: %v", url, err)
+		return nil, false
 	}
 
 	// set the content type for POST
@@ -129,13 +145,15 @@ func getIPFromDNS(ctx context.Context, url string, name string, class dnsmessage
 	// make the request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("😩 Could not send the request to %s: %v", url, err)
+		log.Printf("😩 Could not send the request to %s: %v", url, err)
+		return nil, false
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("😩 Failed to read the response from %s: %v", url, err)
+		log.Printf("😩 Failed to read the response from %s: %v", url, err)
+		return nil, false
 	}
 
 	return parseDNSResponse(body, id, name, class)

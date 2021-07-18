@@ -12,7 +12,7 @@ import (
 func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
 	for _, target := range c.Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
+		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
 			Target:     target,
@@ -24,13 +24,10 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			Proxied:    c.Proxied,
 		})
 		cancel()
-		if err != nil {
-			log.Print(err)
-		}
 	}
 	for _, target := range c.IP4Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
+		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
 			Target:     target,
@@ -42,13 +39,10 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			Proxied:    c.Proxied,
 		})
 		cancel()
-		if err != nil {
-			log.Print(err)
-		}
 	}
 	for _, target := range c.IP6Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
+		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
 			Target:     target,
@@ -60,19 +54,15 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			Proxied:    c.Proxied,
 		})
 		cancel()
-		if err != nil {
-			log.Print(err)
-		}
 	}
 }
 
 func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP, ip6 net.IP) {
 	if c.IP4Policy.IsManaged() {
 		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
-		ip, err := c.IP4Policy.GetIP4(ctx)
+		ip, ok := c.IP4Policy.GetIP4(ctx)
 		cancel()
-		if err != nil {
-			log.Print(err)
+		if !ok {
 			log.Printf("🤔 Could not detect the IPv4 address.")
 		} else {
 			if !c.Quiet {
@@ -84,10 +74,9 @@ func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP
 
 	if c.IP6Policy.IsManaged() {
 		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
-		ip, err := c.IP6Policy.GetIP6(ctx)
+		ip, ok := c.IP6Policy.GetIP6(ctx)
 		cancel()
-		if err != nil {
-			log.Print(err)
+		if !ok {
 			log.Printf("🤔 Could not detect the IPv6 address.")
 		} else {
 			if !c.Quiet {

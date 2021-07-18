@@ -1,13 +1,13 @@
 package api
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/cloudflare/cloudflare-go"
 )
 
 type Auth interface {
-	New() (*Handle, error)
+	New() (*Handle, bool)
 }
 
 type TokenAuth struct {
@@ -15,10 +15,11 @@ type TokenAuth struct {
 	AccountID string
 }
 
-func (t *TokenAuth) New() (*Handle, error) {
+func (t *TokenAuth) New() (*Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
-		return nil, fmt.Errorf("🤔 The token-based CloudFlare authentication failed: %v", err)
+		log.Printf("🤔 The token-based CloudFlare authentication failed: %v", err)
+		return nil, false
 	}
-	return &Handle{cf: handle}, nil
+	return &Handle{cf: handle}, true
 }

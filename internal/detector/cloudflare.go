@@ -17,18 +17,18 @@ func (p *Cloudflare) String() string {
 	return "cloudflare"
 }
 
-func (p *Cloudflare) GetIP4(ctx context.Context) (net.IP, error) {
-	ip, err := getIPFromDNS(ctx, "https://1.1.1.1/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS)
-	if err != nil {
-		return nil, err
+func (p *Cloudflare) GetIP4(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromDNS(ctx, "https://1.1.1.1/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS)
+	if !ok {
+		return nil, false
 	}
-	return ip.To4(), nil
+	return ip.To4(), true
 }
 
-func (p *Cloudflare) GetIP6(ctx context.Context) (net.IP, error) {
-	ip, err := getIPFromDNS(ctx, "https://[2606:4700:4700::1111]/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS)
-	if err != nil {
-		return nil, err
+func (p *Cloudflare) GetIP6(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromDNS(ctx, "https://[2606:4700:4700::1111]/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS)
+	if !ok {
+		return nil, false
 	}
-	return ip.To16(), nil
+	return ip.To16(), true
 }
