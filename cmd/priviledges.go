@@ -15,7 +15,7 @@ func tryRaiseCap(val cap.Value) {
 	if err != nil {
 		return
 	}
-	if err := c.SetFlag(cap.Effective, true, cap.SETGID); err != nil {
+	if err := c.SetFlag(cap.Effective, true, val); err != nil {
 		return
 	}
 	if err := c.SetProc(); err != nil {
