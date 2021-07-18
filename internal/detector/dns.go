@@ -21,12 +21,14 @@ func newDNSQuery(id uint16, name string, class dnsmessage.Class) ([]byte, error)
 	msg := dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
-			Response:         false,                   // query
-			OpCode:           0,                       // query
-			Authoritative:    false,                   // meaningless for queries
-			Truncated:        false,                   // meaningless for queries
-			RecursionDesired: false,                   // meaningless for queries
-			RCode:            dnsmessage.RCodeSuccess, // meaningless for queries
+			Response:         false, // query
+			OpCode:           0,     // query
+			RecursionDesired: false, // no, please
+
+			Authoritative:      false, // meaningless for queries
+			Truncated:          false, // meaningless for queries
+			RecursionAvailable: false, // meaningless for queries
+			RCode:              0,     // meaningless for queries
 		},
 		Questions: []dnsmessage.Question{
 			dnsmessage.Question{
@@ -87,8 +89,15 @@ func parseDNSResponse(r []byte, id uint16, name string, class dnsmessage.Class) 
 		return nil, fmt.Errorf("😩 Not a valid DNS response: %v", err)
 	}
 
-	if msg.ID != id {
-		return nil, fmt.Errorf("😩 Response has ID %x, but the query has ID %x.", id, msg.ID)
+	switch {
+	case msg.ID != id:
+		return nil, fmt.Errorf("😩 Response ID %x differs from the query ID %x.", id, msg.ID)
+	case !msg.Response:
+		return nil, fmt.Errorf("🤯 The QR (query/response) bit was not set in the response.")
+	case msg.Truncated:
+		return nil, fmt.Errorf("🤯 The TC (truncation) bit was set. Something went wrong.")
+	case msg.RCode != dnsmessage.RCodeSuccess:
+		return nil, fmt.Errorf("🤯 The response code is %v. The query failed.", msg.RCode)
 	}
 
 	switch len(msg.Answers) {
