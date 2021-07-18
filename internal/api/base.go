@@ -84,7 +84,6 @@ func (h *Handle) zoneID(ctx context.Context, domain string) (string, error) {
 		return "", fmt.Errorf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
 	}
 	if len(zoneIDs) == 0 {
-
 		// search for the zone
 	zoneSearch:
 		for i, b := range domain {
@@ -289,9 +288,7 @@ func (h *Handle) Update(args *UpdateArgs) error {
 		log.Printf("🧐 Found the zone of the domain %s: %s.", domain, zoneName)
 	}
 
-	var (
-		err4, err6 error
-	)
+	var err4, err6 error
 
 	if checkingIP4 {
 		ip, err4 := h.updateRecords(&updateRecordsArgs{

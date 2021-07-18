@@ -31,7 +31,7 @@ func newDNSQuery(id uint16, name string, class dnsmessage.Class) ([]byte, error)
 			RCode:              0,     // meaningless for queries
 		},
 		Questions: []dnsmessage.Question{
-			dnsmessage.Question{
+			{
 				Name:  dnsmessage.MustNewName(name),
 				Type:  dnsmessage.TypeTXT,
 				Class: class,
