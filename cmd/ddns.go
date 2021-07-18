@@ -197,35 +197,42 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 	}
 }
 
-func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {
-	var ip4 net.IP
+func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP, ip6 net.IP) {
 	if c.IP4Policy.IsManaged() {
-		ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
+		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
+		ip, err := c.IP4Policy.GetIP4(ctx)
+		cancel()
 		if err != nil {
 			log.Print(err)
-			log.Printf("🤔 Could not get the IPv4 address.")
+			log.Printf("🤔 Could not detect the IPv4 address.")
 		} else {
 			if !c.Quiet {
-				log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
+				log.Printf("🧐 Detected the IPv4 address: %v", ip.To4())
 			}
 			ip4 = ip
 		}
 	}
 
-	var ip6 net.IP
 	if c.IP6Policy.IsManaged() {
-		ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
+		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
+		ip, err := c.IP6Policy.GetIP6(ctx)
+		cancel()
 		if err != nil {
 			log.Print(err)
-			log.Printf("🤔 Could not get the IPv6 address.")
+			log.Printf("🤔 Could not detect the IPv6 address.")
 		} else {
 			if !c.Quiet {
-				log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
+				log.Printf("🧐 Detected the IPv6 address: %v", ip.To16())
 			}
 			ip6 = ip
 		}
 	}
 
+	return ip4, ip6
+}
+
+func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {
+	ip4, ip6 := detectIPs(ctx, c, h)
 	setIPs(ctx, c, h, ip4, ip6)
 }
 

@@ -1,9 +1,9 @@
 package detector
 
 import (
+	"context"
 	"fmt"
 	"net"
-	"time"
 )
 
 type Unmanaged struct{}
@@ -16,10 +16,10 @@ func (p *Unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *Unmanaged) GetIP4(timeout time.Duration) (net.IP, error) {
+func (p *Unmanaged) GetIP4(ctx context.Context) (net.IP, error) {
 	return nil, fmt.Errorf("😱 The impossible happened!")
 }
 
-func (p *Unmanaged) GetIP6(timeout time.Duration) (net.IP, error) {
+func (p *Unmanaged) GetIP6(ctx context.Context) (net.IP, error) {
 	return nil, fmt.Errorf("😱 The impossible happened!")
 }
