@@ -25,7 +25,7 @@ type Config struct { //nolint:maligned
 	RefreshCron      cron.Schedule
 	RefreshOnStart   bool
 	DeleteOnStop     bool
-	APITimeout       time.Duration
+	UpdateTimeout    time.Duration
 	DetectionTimeout time.Duration
 	CacheExpiration  time.Duration
 }
@@ -36,7 +36,7 @@ const (
 	DefaultRefreshCron      = "@every 5m"
 	DefaultRefreshOnStart   = true
 	DefaultDeleteOnStop     = false
-	DefaultAPITimeout       = time.Second * 10
+	DefaultUpdateTimeout    = time.Second * 15
 	DefaultDetectionTimeout = time.Second * 5
 	DefaultCacheExpiration  = api.DefaultCacheExpiration
 )
@@ -301,13 +301,13 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnStop)
 	}
 
-	apiTimeout, ok := GetenvAsPosDuration("CF_API_TIMEOUT", DefaultAPITimeout, quiet)
+	updateTimeout, ok := GetenvAsPosDuration("CF_API_TIMEOUT", DefaultUpdateTimeout, quiet)
 	if !ok {
 		return nil, false
 	}
 
 	if !quiet {
-		log.Printf("📜 Timeout of each access to the CloudFlare API: %v", apiTimeout)
+		log.Printf("📜 Timeout of each access to the CloudFlare API: %v", updateTimeout)
 	}
 
 	detectionTimeout, ok := GetenvAsPosDuration("DETECTION_TIMEOUT", DefaultDetectionTimeout, quiet)
@@ -341,7 +341,7 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		RefreshCron:      refreshCron,
 		RefreshOnStart:   refreshOnStart,
 		DeleteOnStop:     deleteOnStop,
-		APITimeout:       apiTimeout,
+		UpdateTimeout:    updateTimeout,
 		DetectionTimeout: detectionTimeout,
 		CacheExpiration:  cacheExpiration,
 	}, true

@@ -11,7 +11,7 @@ import (
 
 func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
 	for _, target := range c.Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
 		_ = h.Update(&api.UpdateArgs{
@@ -28,7 +28,7 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 	}
 
 	for _, target := range c.IP4Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
 		_ = h.Update(&api.UpdateArgs{
@@ -45,7 +45,7 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 	}
 
 	for _, target := range c.IP6Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
 		_ = h.Update(&api.UpdateArgs{
