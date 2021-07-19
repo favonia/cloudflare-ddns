@@ -10,14 +10,18 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
+// tryRaiseCap will attempt raise the capabilities.
+// The newly gained capabilities (if any) will be dropped later by dropCapabilities.
 func tryRaiseCap(val cap.Value) {
 	c, err := cap.GetPID(0)
 	if err != nil {
 		return
 	}
+
 	if err := c.SetFlag(cap.Effective, true, val); err != nil {
 		return
 	}
+
 	if err := c.SetProc(); err != nil {
 		return
 	}
@@ -31,6 +35,7 @@ func dropSuperuserGroup() {
 			defaultGID = 1000
 		}
 	}
+
 	gid, ok := config.GetenvAsInt("PGID", defaultGID, quiet.QUIET)
 	if !ok {
 		gid = defaultGID
@@ -41,9 +46,11 @@ func dropSuperuserGroup() {
 
 	// trying to raise cap.SETGID
 	tryRaiseCap(cap.SETGID)
+
 	if err := syscall.Setgroups([]int{}); err != nil {
 		log.Printf("🤔 Could not erase all supplementary gruop IDs: %v", err)
 	}
+
 	if err := syscall.Setresgid(gid, gid, gid); err != nil {
 		log.Printf("🤔 Could not set the group ID to %d: %v", gid, err)
 	}
@@ -57,6 +64,7 @@ func dropSuperuser() {
 			defaultUID = 1000
 		}
 	}
+
 	uid, ok := config.GetenvAsInt("PUID", defaultUID, quiet.QUIET)
 	if !ok {
 		uid = defaultUID
@@ -67,6 +75,7 @@ func dropSuperuser() {
 
 	// trying to raise cap.SETUID
 	tryRaiseCap(cap.SETUID)
+
 	if err := syscall.Setresuid(uid, uid, uid); err != nil {
 		log.Printf("🤔 Could not set the user ID to %d: %v", uid, err)
 	}
@@ -78,7 +87,7 @@ func dropCapabilities() {
 	}
 }
 
-// dropPriviledges drops all privileges as much as possible
+// dropPriviledges drops all privileges as much as possible.
 func dropPriviledges() {
 	// group ID
 	dropSuperuserGroup()

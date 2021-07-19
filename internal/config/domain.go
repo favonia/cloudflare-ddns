@@ -13,5 +13,6 @@ func normalizeDomain(domain string) string {
 	if err != nil {
 		return domain
 	}
+
 	return normalized
 }

@@ -13,7 +13,11 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 )
 
-// returns true if the alarm is triggered before other signals come
+const (
+	DelayOnError = time.Minute * 2
+)
+
+// wait returns true if the alarm is triggered before other signals come.
 func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 	chanAlarm := time.After(d)
 	select {
@@ -25,14 +29,14 @@ func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 }
 
 func delayedExit(signal chan os.Signal) {
-	duration := time.Minute * 2
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping.", duration)
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping.", DelayOnError)
 	log.Printf("🥱 Press Ctrl+C to exit immediately . . .")
-	if sig := wait(signal, duration); sig == nil {
+	if sig := wait(signal, DelayOnError); sig == nil { //nolint:wsl
 		log.Printf("👋 Time's up. Bye!")
 	} else {
 		log.Printf("👋 Caught signal: %v. Bye!", *sig)
 	}
+
 	os.Exit(1)
 }
 
@@ -81,6 +85,7 @@ mainLoop:
 			} else {
 				log.Printf("👋 No future updating scheduled. Bye!")
 			}
+
 			break mainLoop
 		}
 
@@ -109,6 +114,7 @@ mainLoop:
 			} else {
 				log.Printf("👋 Caught signal: %v. Bye!", *sig)
 			}
+
 			break mainLoop
 		}
 	}

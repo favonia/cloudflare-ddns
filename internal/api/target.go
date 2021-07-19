@@ -24,10 +24,11 @@ func (t *FQDNTarget) zoneName(ctx context.Context, handle *Handle) (string, bool
 	if !ok {
 		return "", false
 	}
+
 	return handle.zoneName(ctx, zoneID)
 }
 
-func (t *FQDNTarget) domain(ctx context.Context, handle *Handle) (string, bool) {
+func (t *FQDNTarget) domain(_ context.Context, _ *Handle) (string, bool) {
 	return t.Domain, true
 }
 

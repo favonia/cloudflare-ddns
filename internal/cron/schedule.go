@@ -21,7 +21,7 @@ func New(spec string) (*Cron, bool) {
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
 		log.Printf(`😡 Could not parse %s as a Cron expresion: %v`, spec, err)
-		return nil, false
+		return nil, false //nolint:nlreturn
 	}
 
 	return &Cron{
@@ -33,8 +33,9 @@ func New(spec string) (*Cron, bool) {
 func MustNew(spec string) *Cron {
 	cron, ok := New(spec)
 	if !ok {
-		panic("schedule.MustNew: assertion failed")
+		log.Fatalf(`🤯 schedule.MustNew failed on the specification: %v`, spec)
 	}
+
 	return cron
 }
 

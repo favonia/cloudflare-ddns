@@ -12,6 +12,8 @@ import (
 func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
 	for _, target := range c.Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		defer cancel()
+
 		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
@@ -23,10 +25,12 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
 		})
-		cancel()
 	}
+
 	for _, target := range c.IP4Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		defer cancel()
+
 		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
@@ -38,10 +42,12 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
 		})
-		cancel()
 	}
+
 	for _, target := range c.IP6Targets {
 		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
+		defer cancel()
+
 		_ = h.Update(&api.UpdateArgs{
 			Context:    ctx,
 			Quiet:      c.Quiet,
@@ -53,15 +59,15 @@ func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip
 			TTL:        c.TTL,
 			Proxied:    c.Proxied,
 		})
-		cancel()
 	}
 }
 
-func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP, ip6 net.IP) {
+func detectIPs(ctx context.Context, c *config.Config) (ip4 net.IP, ip6 net.IP) {
 	if c.IP4Policy.IsManaged() {
 		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
+		defer cancel()
+
 		ip, ok := c.IP4Policy.GetIP4(ctx)
-		cancel()
 		if !ok {
 			log.Printf("🤔 Could not detect the IPv4 address.")
 		} else {
@@ -75,7 +81,9 @@ func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP
 	if c.IP6Policy.IsManaged() {
 		ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 		ip, ok := c.IP6Policy.GetIP6(ctx)
+
 		cancel()
+
 		if !ok {
 			log.Printf("🤔 Could not detect the IPv6 address.")
 		} else {
@@ -90,7 +98,7 @@ func detectIPs(ctx context.Context, c *config.Config, h *api.Handle) (ip4 net.IP
 }
 
 func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {
-	ip4, ip6 := detectIPs(ctx, c, h)
+	ip4, ip6 := detectIPs(ctx, c)
 	setIPs(ctx, c, h, ip4, ip6)
 }
 

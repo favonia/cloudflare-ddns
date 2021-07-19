@@ -22,6 +22,7 @@ func (p *Cloudflare) GetIP4(ctx context.Context) (net.IP, bool) {
 	if !ok {
 		return nil, false
 	}
+
 	return ip.To4(), true
 }
 
@@ -30,5 +31,6 @@ func (p *Cloudflare) GetIP6(ctx context.Context) (net.IP, bool) {
 	if !ok {
 		return nil, false
 	}
+
 	return ip.To16(), true
 }
