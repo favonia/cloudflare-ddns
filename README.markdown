@@ -95,9 +95,10 @@ version: "3"
 services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
+    network_mode: host
+    restart: always
     security_opt:
       - no-new-privileges:true
-    network_mode: host
     environment:
       - CF_API_TOKEN
       - DOMAINS
@@ -111,6 +112,12 @@ The setting `network_mode: host` is for IPv6. If you wish to keep the network se
 </details>
 
 <details>
+<summary>🔁 Use <code>restart: always</code> to automatically restart the updater on system reboot.</summary>
+
+The Docker default restart policies should prevent excessive logging when there are configuration errors.
+</details>
+
+<details>
 <summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
 
 The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. (The program itself will also attempt to drop the superuser privilege and all capabilities.)
@@ -120,12 +127,6 @@ The setting `no-new-privileges:true` provides additional protection, especially 
 <summary>🎭 Use <code>PROXIED=true</code> to hide your IP addresses.</summary>
 
 The setting `PROXIED=true` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
-</details>
-
-<details>
-<summary>🙅 No automatic <code>restart</code> is needed.</summary>
-
-There is no need to use automatic restart (_e.g.,_ `restart: unless-stopped`) because the tool exits only when non-recoverable errors happen or when you manually stop it.
 </details>
 
 ### 🪧 Step 2: Updating the Environment File
@@ -262,8 +263,6 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 | `INTERFACE=iface` | ✔️ | Not required for `local` policies; the tool can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
-
-💡 There is no need to specify `--restart=always` because the tool exits only when unrecoverable errors occur.
 
 </details>
 
