@@ -3,121 +3,21 @@ package main
 import (
 	"context"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"kernel.org/pub/linux/libs/security/libcap/cap"
-
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
-	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
-func tryRaiseCap(val cap.Value) {
-	c, err := cap.GetPID(0)
-	if err != nil {
-		return
-	}
-	if err := c.SetFlag(cap.Effective, true, cap.SETGID); err != nil {
-		return
-	}
-	if err := c.SetProc(); err != nil {
-		return
-	}
-}
+const (
+	DelayOnError = time.Minute * 2
+)
 
-func dropRoot() {
-	// group ID
-	{
-		defaultGID := syscall.Getegid()
-		if defaultGID == 0 {
-			defaultGID = syscall.Getgid() // real group ID
-			if defaultGID == 0 {
-				defaultGID = 1000
-			}
-		}
-		gid, err := config.GetenvAsInt("PGID", defaultGID, quiet.QUIET)
-		if err != nil {
-			log.Print(err)
-			gid = defaultGID
-		} else if gid == 0 {
-			log.Printf("😡 PGID cannot be 0. Using %d instead . . .", defaultGID)
-			gid = defaultGID
-		}
-
-		// trying to raise cap.SETGID
-		tryRaiseCap(cap.SETGID)
-		if err = syscall.Setgroups([]int{}); err != nil {
-			log.Printf("🤔 Could not erase all supplementary gruop IDs: %v", err)
-		}
-		if err = syscall.Setresgid(gid, gid, gid); err != nil {
-			log.Printf("🤔 Could not set the group ID to %d: %v", gid, err)
-		}
-	}
-
-	// user ID
-	{
-		defaultUID := syscall.Geteuid()
-		if defaultUID == 0 {
-			defaultUID = syscall.Getuid()
-			if defaultUID == 0 {
-				defaultUID = 1000
-			}
-		}
-		uid, err := config.GetenvAsInt("PUID", defaultUID, quiet.QUIET)
-		if err != nil {
-			log.Print(err)
-			uid = defaultUID
-		} else if uid == 0 {
-			log.Printf("😡 PUID cannot be 0. Using %d instead . . .", defaultUID)
-			uid = defaultUID
-		}
-
-		// trying to raise cap.SETUID
-		tryRaiseCap(cap.SETUID)
-		if err = syscall.Setresuid(uid, uid, uid); err != nil {
-			log.Printf("🤔 Could not set the user ID to %d: %v", uid, err)
-		}
-	}
-
-	if err := cap.NewSet().SetProc(); err != nil {
-		log.Printf("😡 Could not drop all privileges: %v", err)
-	}
-
-	log.Printf("🧑 Effective user ID: %d.", syscall.Geteuid())
-	log.Printf("👪 Effective group ID: %d.", syscall.Getegid())
-
-	if groups, err := syscall.Getgroups(); err != nil {
-		log.Printf("😡 Could not get the supplementary group IDs.")
-	} else if len(groups) > 0 {
-		log.Printf("👪 Supplementary group IDs: %d.", groups)
-	} else {
-		log.Printf("👪 No supplementary group IDs.")
-	}
-	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
-		log.Printf("😰 The program is still run as the superuser.")
-	}
-
-	{
-		now, err := cap.GetPID(0)
-		if err != nil {
-			log.Printf("🤯 Could not get the current capacities: %v", err)
-		} else {
-			diff, err := now.Compare(cap.NewSet())
-			if err != nil {
-				log.Printf("🤯 Could not compare capacities: %v", err)
-			} else if diff != 0 {
-				log.Printf("😰 The program still retains some additional capacities: %v", now)
-			}
-		}
-	}
-}
-
-// returns true if the alarm is triggered before other signals come
+// wait returns true if the alarm is triggered before other signals come.
 func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 	chanAlarm := time.After(d)
 	select {
@@ -129,113 +29,21 @@ func wait(signal chan os.Signal, d time.Duration) *os.Signal {
 }
 
 func delayedExit(signal chan os.Signal) {
-	duration := time.Minute * 2
-	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping.", duration)
+	log.Printf("🥱 Waiting for %v before exiting to prevent excessive looping.", DelayOnError)
 	log.Printf("🥱 Press Ctrl+C to exit immediately . . .")
-	if sig := wait(signal, duration); sig == nil {
+	if sig := wait(signal, DelayOnError); sig == nil { //nolint:wsl
 		log.Printf("👋 Time's up. Bye!")
 	} else {
 		log.Printf("👋 Caught signal: %v. Bye!", *sig)
 	}
+
 	os.Exit(1)
-}
-
-func setIPs(ctx context.Context, c *config.Config, h *api.Handle, ip4 net.IP, ip6 net.IP) {
-	for _, target := range c.Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
-			Context:    ctx,
-			Quiet:      c.Quiet,
-			Target:     target,
-			IP4Managed: c.IP4Policy.IsManaged(),
-			IP4:        ip4,
-			IP6Managed: c.IP6Policy.IsManaged(),
-			IP6:        ip6,
-			TTL:        c.TTL,
-			Proxied:    c.Proxied,
-		})
-		cancel()
-		if err != nil {
-			log.Print(err)
-		}
-	}
-	for _, target := range c.IP4Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
-			Context:    ctx,
-			Quiet:      c.Quiet,
-			Target:     target,
-			IP4Managed: c.IP4Policy.IsManaged(),
-			IP4:        ip4,
-			IP6Managed: false,
-			IP6:        nil,
-			TTL:        c.TTL,
-			Proxied:    c.Proxied,
-		})
-		cancel()
-		if err != nil {
-			log.Print(err)
-		}
-	}
-	for _, target := range c.IP6Targets {
-		ctx, cancel := context.WithTimeout(ctx, c.APITimeout)
-		err := h.Update(&api.UpdateArgs{
-			Context:    ctx,
-			Quiet:      c.Quiet,
-			Target:     target,
-			IP4Managed: false,
-			IP4:        nil,
-			IP6Managed: c.IP6Policy.IsManaged(),
-			IP6:        ip6,
-			TTL:        c.TTL,
-			Proxied:    c.Proxied,
-		})
-		cancel()
-		if err != nil {
-			log.Print(err)
-		}
-	}
-}
-
-func updateIPs(ctx context.Context, c *config.Config, h *api.Handle) {
-	var ip4 net.IP
-	if c.IP4Policy.IsManaged() {
-		ip, err := c.IP4Policy.GetIP4(c.DetectionTimeout)
-		if err != nil {
-			log.Print(err)
-			log.Printf("🤔 Could not get the IPv4 address.")
-		} else {
-			if !c.Quiet {
-				log.Printf("🧐 Found the IPv4 address: %v", ip.To4())
-			}
-			ip4 = ip
-		}
-	}
-
-	var ip6 net.IP
-	if c.IP6Policy.IsManaged() {
-		ip, err := c.IP6Policy.GetIP6(c.DetectionTimeout)
-		if err != nil {
-			log.Print(err)
-			log.Printf("🤔 Could not get the IPv6 address.")
-		} else {
-			if !c.Quiet {
-				log.Printf("🧐 Found the IPv6 address: %v", ip.To16())
-			}
-			ip6 = ip
-		}
-	}
-
-	setIPs(ctx, c, h, ip4, ip6)
-}
-
-func clearIPs(ctx context.Context, c *config.Config, h *api.Handle) {
-	setIPs(ctx, c, h, nil, nil)
 }
 
 func main() {
 	// dropping the superuser privilege
-	dropRoot()
+	dropPriviledges()
+	printPriviledges()
 
 	ctx := context.Background()
 
@@ -244,9 +52,8 @@ func main() {
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM)
 
 	// reading the config
-	c, err := config.ReadConfig(ctx)
-	if err != nil {
-		log.Print(err)
+	c, ok := config.ReadConfig(ctx)
+	if !ok {
 		delayedExit(chanSignal)
 	}
 
@@ -254,9 +61,8 @@ func main() {
 	api.InitCache(c.CacheExpiration)
 
 	// getting the handler
-	h, err := c.Auth.New()
-	if err != nil {
-		log.Print(err)
+	h, ok := c.Auth.New()
+	if !ok {
 		delayedExit(chanSignal)
 	}
 
@@ -279,6 +85,7 @@ mainLoop:
 			} else {
 				log.Printf("👋 No future updating scheduled. Bye!")
 			}
+
 			break mainLoop
 		}
 
@@ -307,6 +114,7 @@ mainLoop:
 			} else {
 				log.Printf("👋 Caught signal: %v. Bye!", *sig)
 			}
+
 			break mainLoop
 		}
 	}

@@ -1,35 +1,41 @@
 package detector
 
 import (
-	"fmt"
+	"context"
 	"io"
+	"log"
 	"net"
 	"net/http"
-	"time"
 )
 
-func getIPFromIpify(url string, timeout time.Duration) (net.IP, error) {
-	client := http.Client{
-		Timeout: timeout,
+func getIPFromIpify(ctx context.Context, url string) (net.IP, bool) {
+	// http.Post is avoided so that we can pass ctx
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		log.Printf("😩 Could not generate the request to %s: %v", url, err)
+		return nil, false //nolint:nlreturn
 	}
 
-	resp, err := client.Get(url)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("😩 Could not connect to %s: %v", url, err)
+		log.Printf("😩 Could not send the request to %s: %v", url, err)
+		return nil, false //nolint:nlreturn
 	}
 	defer resp.Body.Close()
 
 	text, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf(`😩 Failed to read the response from %s.`, url)
+		log.Printf(`😩 Failed to read the response from %s.`, url)
+		return nil, false //nolint:nlreturn
 	}
 
 	ip := net.ParseIP(string(text))
 	if ip == nil {
-		return nil, fmt.Errorf(`😩 Failed to obtain a valid IP address from %s.`, url)
+		log.Printf(`🤯 The response %q is not a valid IP address.`, text)
+		return nil, false //nolint:nlreturn
 	}
 
-	return ip, nil
+	return ip, true
 }
 
 type Ipify struct{}
@@ -42,18 +48,20 @@ func (p *Ipify) String() string {
 	return "ipify"
 }
 
-func (p *Ipify) GetIP4(timeout time.Duration) (net.IP, error) {
-	ip, err := getIPFromIpify("https://api4.ipify.org", timeout)
-	if err != nil {
-		return nil, err
+func (p *Ipify) GetIP4(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromIpify(ctx, "https://api4.ipify.org")
+	if !ok {
+		return nil, false
 	}
-	return ip.To4(), nil
+
+	return ip.To4(), true
 }
 
-func (p *Ipify) GetIP6(timeout time.Duration) (net.IP, error) {
-	ip, err := getIPFromIpify("https://api6.ipify.org", timeout)
-	if err != nil {
-		return nil, err
+func (p *Ipify) GetIP6(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromIpify(ctx, "https://api6.ipify.org")
+	if !ok {
+		return nil, false
 	}
-	return ip.To16(), nil
+
+	return ip.To16(), true
 }

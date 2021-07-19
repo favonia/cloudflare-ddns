@@ -1,9 +1,9 @@
 package detector
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"net"
-	"time"
 )
 
 type Local struct{}
@@ -16,20 +16,24 @@ func (p *Local) String() string {
 	return "local"
 }
 
-func (p *Local) GetIP4(timeout time.Duration) (net.IP, error) {
+func (p *Local) GetIP4(ctx context.Context) (net.IP, bool) {
 	conn, err := net.Dial("udp4", "1.1.1.1:443")
 	if err != nil {
-		return nil, fmt.Errorf(`😩 Could not detect a local IPv4 address: %v`, err)
+		log.Printf(`😩 Could not detect a local IPv4 address: %v`, err)
+		return nil, false //nolint:nlreturn
 	}
 	defer conn.Close()
-	return conn.LocalAddr().(*net.UDPAddr).IP.To4(), nil
+
+	return conn.LocalAddr().(*net.UDPAddr).IP.To4(), true
 }
 
-func (p *Local) GetIP6(timeout time.Duration) (net.IP, error) {
+func (p *Local) GetIP6(ctx context.Context) (net.IP, bool) {
 	conn, err := net.Dial("udp6", "[2606:4700:4700::1111]:443")
 	if err != nil {
-		return nil, fmt.Errorf(`😩 Could not detect a local IPv6 address: %v`, err)
+		log.Printf(`😩 Could not detect a local IPv6 address: %v`, err)
+		return nil, false //nolint:nlreturn
 	}
 	defer conn.Close()
-	return conn.LocalAddr().(*net.UDPAddr).IP.To16(), nil
+
+	return conn.LocalAddr().(*net.UDPAddr).IP.To16(), true
 }

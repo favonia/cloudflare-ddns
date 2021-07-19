@@ -1,0 +1,5 @@
+linters-settings:
+  gci:
+    local-prefixes: github.com/favonia/cloudflare-ddns-go
+  maligned:
+    suggest-new: true
