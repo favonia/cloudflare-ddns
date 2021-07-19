@@ -122,7 +122,7 @@ Docker’s default restart policies should prevent excessive logging when there 
 <details>
 <summary>🛡️ Use <code>no-new-privileges:true</code>, <code>PUID</code>, and <code>PGID</code> to protect yourself.</summary>
 
-Change `1000` to the user or group IDs you wish to use to run the updater. The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all superuser privileges as much as possible.
+Change `1000` to the user or group IDs you wish to use to run the updater. The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all those privileges as much as possible.
 </details>
 
 <details>
@@ -214,7 +214,7 @@ Kubernetes’s default restart policies should prevent excessive logging when th
 <details>
 <summary>🛡️ Use <code>runAsUser</code>, <code>runAsGroup</code>, and <code>allowPrivilegeEscalation: false</code> to protect yourself.</summary>
 
-Kubernetes comes with built-in support to drop superuser privileges. The updater itself will also attempt to drop the superuser privilege and all capabilities.
+Kubernetes comes with built-in support to drop superuser privileges. The updater itself will also attempt to drop all of them.
 </details>
 
 <details>
