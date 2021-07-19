@@ -164,7 +164,7 @@ Kubernetes offers great flexibility in assembling different objects together. Th
 
 ### 📝 Step 1: Creating a YAML File
 
-Save the following YAML file as `cloudflare-ddns.yaml`.
+Save the following configuration as `cloudflare-ddns.yaml`.
 
 ```yaml
 apiVersion: apps/v1
