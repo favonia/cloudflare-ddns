@@ -39,9 +39,9 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 
 ## 🛡️ Security
 
-<details><summary>🚷 The superuser privilege is immediately dropped after the program starts.</summary>
+<details><summary>🚷 The superuser privilege is immediately dropped after the updater starts.</summary>
 
-The program honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
+The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
 </details>
 
 <details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
@@ -72,9 +72,9 @@ docker run \
 </details>
 
 <details>
-<summary>🧬 Directly run the Go program from its source.</summary>
+<summary>🧬 Directly run the updater from its source.</summary>
 
-You need the [Go tool](https://golang.org/doc/install) to run the program from its source.
+You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
 ```bash
 export CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
@@ -100,13 +100,15 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
+      - PGID=1000
+      - PUID=1000
       - CF_API_TOKEN
       - DOMAINS
       - PROXIED=true
 ```
 
 <details>
-<summary>📡 You want <code>network_mode: host</code> for IPv6.</summary>
+<summary>📡 Use <code>network_mode: host</code> (as a hack) to enable IPv6 or read more.</summary>
 
 The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the [proper way to enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
 </details>
@@ -114,13 +116,13 @@ The setting `network_mode: host` is for IPv6. If you wish to keep the network se
 <details>
 <summary>🔁 Use <code>restart: always</code> to automatically restart the updater on system reboot.</summary>
 
-The Docker default restart policies should prevent excessive logging when there are configuration errors.
+Docker’s default restart policies should prevent excessive logging when there are configuration errors.
 </details>
 
 <details>
-<summary>🛡️ Use <code>no-new-privileges:true</code> to protect yourself.</summary>
+<summary>🛡️ Use <code>no-new-privileges:true</code>, <code>PUID</code>, and <code>PGID</code> to protect yourself.</summary>
 
-The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. (The program itself will also attempt to drop the superuser privilege and all capabilities.)
+Change `1000` to the user or group IDs you wish to use to run the updater. The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all superuser privileges as much as possible.
 </details>
 
 <details>
@@ -149,13 +151,105 @@ The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which
 The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
 </details>
 
-Run these commands to update the container:
+### 🚀 Step 3: Building the Container
+
 ```bash
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
+## ☸️ Deployment with Kubernetes
+
+Kubernetes offers great flexibility in assembling different objects together. The following shows a minimum setup.
+
+### 📝 Step 1: Creating a YAML File
+
+Save the following YAML file as `cloudflare-ddns.yaml`.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-ddns
+  labels:
+    app: cloudflare-ddns
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cloudflare-ddns
+  template:
+    metadata:
+      name: cloudflare-ddns
+      labels:
+        app: cloudflare-ddns
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: cloudflare-ddns
+          image: favonia/cloudflare-ddns:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 1000
+            runAsGroup: 1000
+          env:
+            - name: "IP6_POLICY"
+              value: "unmanaged"
+            - name: "PROXIED"
+              value: "true"
+            - name: "CF_API_TOKEN"
+              value: YOUR-CLOUDFLARE-API-TOKEN
+            - name: "DOMAINS"
+              value: "example.org,www.example.org,example.io"
+```
+
+<details>
+<summary>🔁 Use <code>restartPolicy: Always</code> to automatically restart the updater on system reboot.</summary>
+
+Kubernetes’s default restart policies should prevent excessive logging when there are configuration errors.
+</details>
+
+<details>
+<summary>🛡️ Use <code>runAsUser</code>, <code>runAsGroup</code>, and <code>allowPrivilegeEscalation: false</code> to protect yourself.</summary>
+
+Kubernetes comes with built-in support to drop superuser privileges. The updater itself will also attempt to drop the superuser privilege and all capabilities.
+</details>
+
+<details>
+<summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6.</summary>
+
+The support of IPv6 in Kubernetes has been improving, but a working setup still takes efforts. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) is still non-trivial. [minicube](https://minikube.sigs.k8s.io/) provides a quick and simple setup, but it unfortunately still [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the correct steps would go beyond this README file.
+</details>
+
+<details>
+<summary>🎭 Use <code>PROXIED: "true"</code> to hide your IP addresses.</summary>
+
+The setting `PROXIED: "true"` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED: "true"`. (The default value of `PROXIED` is `false`.)
+</details>
+
+<details>
+<summary>🔑 <code>CF_API_TOKEN</code> is your CloudFlare API token.</summary>
+
+The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
+</details>
+
+<details>
+<summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
+
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+</details>
+
+### 🚀 Step 2: Creating the Deployment
+
+```sh
+kubectl create -f cloudflare-ddns.yaml
+```
+
 ## 🎛️ Further Customization
+
+### ⚙️ All Settings
 
 <details>
 <summary>🔑 Specifying accounts and tokens</summary>
@@ -191,7 +285,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `ipify`\
 >   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\
->   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need `network_mode: host` for this policy, for otherwise the tool will detect the addresses inside the [bridge network](https://docs.docker.com/network/bridge/) instead of those in the host network.
+>   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the tool will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
 > - `unmanaged`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
@@ -201,7 +295,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > <details>
 > <summary>📍 Requirements of domain specifications: <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code></summary>
 >
-> At least one domain should be specified in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this program is useless. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`.
+> At least one domain should be specified in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`.
 > </details>
 
 </details>
@@ -212,7 +306,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
-| `CF_API_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to access the CloudFlare API | No | `10s` (10 seconds)
+| `UPDATE_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `15s` (15 seconds)
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
 | `REFRESH_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `REFRESH_ON_START` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether to check IP addresses on start regardless of `REFRESH_CRON` | No | `true`
@@ -243,6 +337,8 @@ The tool will also try to drop supplementary groups.
 ### 🔁 Restarting the Container
 
 If you are using Docker Compose, run `docker-compose up --detach` after changing the settings.
+
+If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after changing the settings.
 
 ## 🚵 Migration Guides
 
