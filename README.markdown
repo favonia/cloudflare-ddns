@@ -218,9 +218,11 @@ Kubernetes comes with built-in support to drop superuser privileges. The updater
 </details>
 
 <details>
-<summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6.</summary>
+<summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6 management.</summary>
 
-The support of IPv6 in Kubernetes has been improving, but a working setup still takes efforts. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) is still non-trivial. The popular tool [minicube](https://minikube.sigs.k8s.io/) unfortunately still [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the correct steps would go beyond this README file.
+The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet.](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6) Until there is an easy way to enable IPv6 in Kubernetes, the template in this simple guide will have IPv6 disabled.
+
+If you manage to enable IPv6, congratulations. Feel free to remove `IP6_POLICY: "unmanaged"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. The only issue is that the updater will remove all `AAAA` records associated with the domains in `DOMAINS` because those records will appear to be stale. The deleted records will be recreated once the updater can correctly detect the IPv6 addresses.
 </details>
 
 <details>
