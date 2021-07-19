@@ -220,7 +220,7 @@ Kubernetes comes with built-in support to drop superuser privileges. The updater
 <details>
 <summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6.</summary>
 
-The support of IPv6 in Kubernetes has been improving, but a working setup still takes efforts. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) is still non-trivial. [minicube](https://minikube.sigs.k8s.io/) provides a quick and simple setup, but it unfortunately still [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the correct steps would go beyond this README file.
+The support of IPv6 in Kubernetes has been improving, but a working setup still takes efforts. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) is still non-trivial. The popular tool [minicube](https://minikube.sigs.k8s.io/) unfortunately still [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the correct steps would go beyond this README file.
 </details>
 
 <details>
