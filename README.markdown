@@ -9,6 +9,7 @@
 A small and fast DDNS updater for CloudFlare.
 
 ```
+2021/07/05 07:15:52 🌟 CloudFlare DDNS
 2021/07/05 07:15:52 🧑 Effective user ID: 1000.
 2021/07/05 07:15:52 👪 Effective group ID: 1000.
 2021/07/05 07:15:52 🤫 Quiet mode enabled.

@@ -28,7 +28,20 @@ func exit() {
 	os.Exit(1)
 }
 
+var Version string = ""
+
+func welcome() {
+	if Version == "" {
+		log.Printf("🌟 CloudFlare DDNS")
+		return
+	}
+
+	log.Printf("🌟 CloudFlare DDNS version %s", Version)
+}
+
 func main() {
+	welcome()
+
 	// dropping the superuser privilege
 	dropPriviledges()
 	printPriviledges()
