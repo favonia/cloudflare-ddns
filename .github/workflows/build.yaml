@@ -26,9 +26,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - run: "git fetch --tags --force"
+      - run: echo '::set-output name=GIT_DESCRIBE::'`git describe --tags --always --long`
+        id: git-describe
       - uses: docker/build-push-action@v2
         with:
           push: ${{ github.event_name != 'pull_request' }}
+          build-args: ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/s390x
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
