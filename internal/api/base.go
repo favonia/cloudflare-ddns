@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net"
-	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
@@ -12,33 +11,24 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 )
 
+type Cache = struct {
+	listRecords  map[ipnet.Type]*cache.Cache
+	activeZones  *cache.Cache
+	zoneOfDomain *cache.Cache
+}
+
 type Handle struct {
-	cf *cloudflare.API
+	cf    *cloudflare.API
+	cache Cache
 }
 
 const (
 	CleanupIntervalFactor = 2
 )
 
-var apiCache struct { //nolint:gochecknoglobals
-	listRecords  map[ipnet.Type]*cache.Cache
-	activeZones  *cache.Cache
-	zoneOfDomain *cache.Cache
-}
-
-func InitCache(expiration time.Duration) {
-	cleanupInterval := expiration * CleanupIntervalFactor
-	apiCache.listRecords = map[ipnet.Type]*cache.Cache{
-		ipnet.IP4: cache.New(expiration, cleanupInterval),
-		ipnet.IP6: cache.New(expiration, cleanupInterval),
-	}
-	apiCache.activeZones = cache.New(expiration, cleanupInterval)
-	apiCache.zoneOfDomain = cache.New(expiration, cleanupInterval)
-}
-
 // activeZoneIDsByName replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
 func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) {
-	if ids, found := apiCache.activeZones.Get(name); found {
+	if ids, found := h.cache.activeZones.Get(name); found {
 		return ids.([]string), true
 	}
 
@@ -53,13 +43,13 @@ func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) 
 		ids = append(ids, res.Result[i].ID)
 	}
 
-	apiCache.activeZones.SetDefault(name, ids)
+	h.cache.activeZones.SetDefault(name, ids)
 
 	return ids, true
 }
 
 func (h *Handle) zoneOfDomain(ctx context.Context, domain string) (string, bool) {
-	if id, found := apiCache.zoneOfDomain.Get(domain); found {
+	if id, found := h.cache.zoneOfDomain.Get(domain); found {
 		return id.(string), true
 	}
 
@@ -76,7 +66,7 @@ zoneSearch:
 			case 0: // len(zones) == 0
 				continue zoneSearch
 			case 1: // len(zones) == 1
-				apiCache.zoneOfDomain.SetDefault(domain, zones[0])
+				h.cache.zoneOfDomain.SetDefault(domain, zones[0])
 
 				return zones[0], true
 
@@ -92,7 +82,7 @@ zoneSearch:
 }
 
 func (h *Handle) listRecords(ctx context.Context, domain string, ipNet ipnet.Type) (map[string]net.IP, bool) {
-	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
 		return rmap.(map[string]net.IP), true
 	}
 
@@ -128,12 +118,12 @@ func (h *Handle) deleteRecord(ctx context.Context, domain string, ipNet ipnet.Ty
 	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
 		log.Printf("😡 Failed to delete a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
 
-		apiCache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain)
 
 		return false
 	}
 
-	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
 		delete(rmap.(map[string]net.IP), id)
 	}
 
@@ -156,12 +146,12 @@ func (h *Handle) updateRecord(ctx context.Context, domain string, ipNet ipnet.Ty
 	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
 		log.Printf("😡 Failed to update a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
 
-		apiCache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain)
 
 		return false
 	}
 
-	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
 		rmap.(map[string]net.IP)[id] = ip
 	}
 
@@ -189,12 +179,12 @@ func (h *Handle) createRecord(ctx context.Context,
 	if err != nil {
 		log.Printf("😡 Failed to add a new %s record of %s: %v", ipNet.RecordType(), domain, err)
 
-		apiCache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain)
 
 		return "", false
 	}
 
-	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
 		rmap.(map[string]net.IP)[res.Result.ID] = ip
 	}
 

@@ -2,12 +2,16 @@ package api
 
 import (
 	"log"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/patrickmn/go-cache"
+
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 )
 
 type Auth interface {
-	New() (*Handle, bool)
+	New(time.Duration) (*Handle, bool)
 }
 
 type TokenAuth struct {
@@ -15,12 +19,24 @@ type TokenAuth struct {
 	AccountID string
 }
 
-func (t *TokenAuth) New() (*Handle, bool) {
+func (t *TokenAuth) New(cacheExpiration time.Duration) (*Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
 		log.Printf("🤔 The token-based CloudFlare authentication failed: %v", err)
 		return nil, false
 	}
 
-	return &Handle{cf: handle}, true
+	cleanupInterval := cacheExpiration * CleanupIntervalFactor
+
+	return &Handle{
+		cf: handle,
+		cache: Cache{
+			listRecords: map[ipnet.Type]*cache.Cache{
+				ipnet.IP4: cache.New(cacheExpiration, cleanupInterval),
+				ipnet.IP6: cache.New(cacheExpiration, cleanupInterval),
+			},
+			activeZones:  cache.New(cacheExpiration, cleanupInterval),
+			zoneOfDomain: cache.New(cacheExpiration, cleanupInterval),
+		},
+	}, true
 }

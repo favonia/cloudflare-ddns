@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 )
@@ -58,11 +57,8 @@ func main() { //nolint:funlen,gocognit,cyclop
 		exit()
 	}
 
-	// (re)initiating the cache
-	api.InitCache(c.CacheExpiration)
-
 	// getting the handler
-	h, ok := c.Auth.New()
+	h, ok := c.Auth.New(c.CacheExpiration)
 	if !ok {
 		exit()
 	}
