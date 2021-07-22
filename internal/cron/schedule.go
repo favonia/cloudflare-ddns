@@ -21,7 +21,7 @@ func New(spec string) (*Cron, bool) {
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
 		log.Printf(`😡 Could not parse %s as a Cron expresion: %v`, spec, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	return &Cron{

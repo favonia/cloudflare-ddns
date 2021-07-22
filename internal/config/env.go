@@ -25,7 +25,7 @@ func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, bool) {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %q", key, def)
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	}
 
 	return val, true
@@ -38,13 +38,13 @@ func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, bool) {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
 		log.Printf("😡 Error parsing the variable %s: %v", key, err)
-		return b, false //nolint:nlreturn
+		return b, false
 	}
 
 	return b, true
@@ -57,13 +57,13 @@ func GetenvAsQuiet(key string) (quiet.Quiet, bool) {
 	val := Getenv(key)
 	if val == "" {
 		log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
-		return def, true //nolint:nlreturn
+		return def, true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
 		log.Printf("😡 Error parsing the variable %s: %v", key, err)
-		return def, false //nolint:nlreturn
+		return def, false
 	}
 
 	return quiet.Quiet(b), true
@@ -76,13 +76,13 @@ func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, bool) {
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	}
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
 		log.Printf("😡 Error parsing the variable %s: %v", key, err)
-		return 0, false //nolint:nlreturn
+		return 0, false
 	}
 
 	return i, true
@@ -94,7 +94,7 @@ func GetenvAsNormalizedDomains(key string, quiet quiet.Quiet) []string {
 	rawList := strings.Split(Getenv(key), ",")
 
 	list := make([]string, 0, len(rawList))
-	for _, item := range rawList { //nolint:wsl
+	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
@@ -113,7 +113,7 @@ func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet qui
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	case "cloudflare":
 		return &detector.Cloudflare{Net: ipNet}, true
 	case "ipify":
@@ -124,7 +124,7 @@ func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet qui
 		return &detector.Unmanaged{}, true
 	default:
 		log.Printf("😡 Error parsing the variable %s with the value %s", key, val)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 }
 
@@ -135,7 +135,7 @@ func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	}
 
 	t, err := time.ParseDuration(val)
@@ -143,7 +143,7 @@ func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time
 	switch {
 	case err != nil:
 		log.Printf("😡 Error parsing the variable %s: %v", key, err)
-		return 0, false //nolint:nlreturn
+		return 0, false
 	case t < 0:
 		log.Printf("😡 Time duration %v is negative.", t)
 	}
@@ -158,13 +158,13 @@ func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedu
 		if !quiet {
 			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
 		}
-		return def, true //nolint:nlreturn,wsl
+		return def, true
 	}
 
 	c, ok := cron.New(val)
 	if !ok {
 		log.Printf("😡 Error parsing the variable %s.", key)
-		return c, false //nolint:nlreturn
+		return c, false
 	}
 
 	return c, true

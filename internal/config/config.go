@@ -48,7 +48,7 @@ func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 	switch {
 	case token != "" && tokenFile != "":
 		log.Printf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
-		return "", false //nolint:nlreturn
+		return "", false
 	case token != "":
 		return token, true
 	case tokenFile != "":
@@ -59,13 +59,13 @@ func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 
 		if token == "" {
 			log.Printf("😡 The token in the file specified by CF_API_TOKEN_FILE is empty.")
-			return "", false //nolint:nlreturn
+			return "", false
 		}
 
 		return token, true
 	default:
 		log.Printf("😡 Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.")
-		return "", false //nolint:nlreturn
+		return "", false
 	}
 }
 
@@ -93,7 +93,7 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets [
 	for _, domain := range rawDomains {
 		if ip4DomainSet[domain] || ip6DomainSet[domain] {
 			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
-			continue //nolint:nlreturn
+			continue
 		}
 
 		ip4DomainSet[domain] = true
@@ -105,7 +105,7 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets [
 	for _, domain := range rawIP4Domains {
 		if ip4DomainSet[domain] {
 			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
-			continue //nolint:nlreturn
+			continue
 		}
 
 		ip4DomainSet[domain] = true
@@ -116,7 +116,7 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets [
 	for _, domain := range rawIP6Domains {
 		if ip6DomainSet[domain] {
 			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
-			continue //nolint:nlreturn
+			continue
 		}
 
 		ip6DomainSet[domain] = true
@@ -126,15 +126,18 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets [
 
 	if len(ip4Targets) == 0 && len(ip6Targets) == 0 {
 		log.Printf("😡 DOMAINS, IP4_DOMAINS, and IP6_DOMAINS are all empty or unset.")
-		return nil, nil, false //nolint:nlreturn
+		return nil, nil, false
 	}
 
 	return ip4Targets, ip6Targets, true
 }
 
-func readPolicy(_ context.Context, quiet quiet.Quiet, ipNet ipnet.Type, key string, targets []api.Target) (detector.Policy, bool) { //nolint:lll
+func readPolicy(
+	_ context.Context, quiet quiet.Quiet,
+	ipNet ipnet.Type, key string, targets []api.Target,
+) (detector.Policy, bool) {
 	var defaultPolicy detector.Policy
-	switch { //nolint:wsl
+	switch {
 	case len(targets) > 0:
 		defaultPolicy = &detector.Cloudflare{Net: ipNet}
 	default:
@@ -142,20 +145,23 @@ func readPolicy(_ context.Context, quiet quiet.Quiet, ipNet ipnet.Type, key stri
 	}
 
 	policy, ok := GetenvAsPolicy(ipnet.IP6, key, defaultPolicy, quiet)
-	switch { //nolint:wsl
+	switch {
 	case !ok:
 		return nil, false
 	case len(targets) == 0 && policy.IsManaged():
 		if !quiet {
 			log.Printf("🤔 No domains set for %s; %s=%s is ignored.", ipNet, key, policy)
 		}
-		policy = &detector.Unmanaged{} //nolint:wsl
+		policy = &detector.Unmanaged{}
 	}
 
 	return policy, true
 }
 
-func readPolicies(ctx context.Context, quiet quiet.Quiet, ip4Targets, ip6Targets []api.Target) (ip4Policy, ip6Policy detector.Policy, allOk bool) { //nolint:lll
+func readPolicies(
+	ctx context.Context, quiet quiet.Quiet,
+	ip4Targets, ip6Targets []api.Target,
+) (ip4Policy, ip6Policy detector.Policy, allOk bool) {
 	ip4Policy, ip4Ok := readPolicy(ctx, quiet, ipnet.IP4, "IP4_POLICY", ip4Targets)
 	if !ip4Ok {
 		return nil, nil, false
@@ -168,7 +174,7 @@ func readPolicies(ctx context.Context, quiet quiet.Quiet, ip4Targets, ip6Targets
 
 	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
 		log.Printf("😡 Both IPv4 and IPv6 are unmanaged.")
-		return nil, nil, false //nolint:nlreturn
+		return nil, nil, false
 	}
 
 	return ip4Policy, ip6Policy, true
@@ -222,12 +228,12 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
-	ttl, ok := GetenvAsInt("TTL", 1, quiet)
+	ttl, ok := GetenvAsInt("TTL", DefaultTTL, quiet)
 	if !ok {
 		return nil, false
 	}
 
-	proxied, ok := GetenvAsBool("PROXIED", false, quiet)
+	proxied, ok := GetenvAsBool("PROXIED", DefaultProxied, quiet)
 	if !ok {
 		return nil, false
 	}
@@ -242,7 +248,7 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
-	deleteOnStop, ok := GetenvAsBool("DELETE_ON_STOP", false, quiet)
+	deleteOnStop, ok := GetenvAsBool("DELETE_ON_STOP", DefaultDeleteOnStop, quiet)
 	if !ok {
 		return nil, false
 	}

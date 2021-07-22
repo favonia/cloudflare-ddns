@@ -11,14 +11,14 @@ func ReadFileAsString(path string) (string, bool) {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Printf("😡 Could not open %s: %v", path, err)
-		return "", false //nolint:nlreturn
+		return "", false
 	}
 	defer file.Close()
 
 	content, err := io.ReadAll(file)
 	if err != nil {
 		log.Printf("😡 Could not read %s: %v", path, err)
-		return "", false //nolint:nlreturn
+		return "", false
 	}
 
 	return string(bytes.TrimSpace(content)), true

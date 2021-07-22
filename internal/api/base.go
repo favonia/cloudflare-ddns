@@ -10,7 +10,6 @@ import (
 	"github.com/patrickmn/go-cache"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
 type Handle struct {
@@ -46,7 +45,7 @@ func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
 		log.Printf("🤔 Failed to check the existence of a zone named %s: %v", name, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	ids := make([]string, 0, len(res.Result))
@@ -74,178 +73,130 @@ zoneSearch:
 			}
 
 			switch len(zones) {
-			case 0: // len(zoneIDs) == 0
+			case 0: // len(zones) == 0
 				continue zoneSearch
-			case 1: // len(zoneIDs) == 1
+			case 1: // len(zones) == 1
 				apiCache.zoneOfDomain.SetDefault(domain, zones[0])
 
 				return zones[0], true
 
-			default: // len(zoneIDs) > 1
+			default: // len(zones) > 1
 				log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
-				return "", false //nolint:nlreturn
+				return "", false
 			}
 		}
 	}
 
 	log.Printf("🤔 Failed to find the zone of %s.", domain)
-	return "", false //nolint:nlreturn,wsl
+	return "", false
 }
 
-func (h *Handle) getCurrentRecords(ctx context.Context, zoneID, domain string, ipNet ipnet.Type, ip net.IP) (matchedIDs, unmatchedIDs []string, ok bool) { //nolint:lll
+func (h *Handle) listRecords(ctx context.Context, domain string, ipNet ipnet.Type) (map[string]net.IP, bool) {
+	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+		return rmap.(map[string]net.IP), true
+	}
+
+	zone, ok := h.zoneOfDomain(ctx, domain)
+	if !ok {
+		return nil, false
+	}
+
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
-	rs, err := h.cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{
+	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
 		Name: domain,
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
 		log.Printf("🤔 Failed to retrieve records of %s: %v", domain, err)
-		return nil, nil, false //nolint:nlreturn
+		return nil, false
 	}
 
+	rmap := map[string]net.IP{}
 	for i := range rs {
-		if ip.Equal(net.ParseIP(rs[i].Content)) {
-			matchedIDs = append(matchedIDs, rs[i].ID)
-		} else {
-			unmatchedIDs = append(unmatchedIDs, rs[i].ID)
-		}
+		rmap[rs[i].ID] = net.ParseIP(rs[i].Content)
 	}
 
-	return matchedIDs, unmatchedIDs, true
+	return rmap, true
 }
 
-// UpdateArgs is the type of (named) arguments to updateRecords.
-type UpdateArgs struct {
-	Quiet     quiet.Quiet
-	IPNetwork ipnet.Type
-	IP        net.IP
-	Target    Target
-	TTL       int
-	Proxied   bool
-}
-
-func (h *Handle) updateNoCache(ctx context.Context, args *UpdateArgs) (net.IP, bool) { //nolint:funlen,cyclop,gocognit
-	domain, ok := args.Target.domain(ctx, h)
-	if !ok {
-		return nil, false
-	}
-
-	zone, ok := args.Target.zone(ctx, h)
-	if !ok {
-		return nil, false
-	}
-
-	matchedIDs, unmatchedIDs, ok := h.getCurrentRecords(ctx, zone, domain, args.IPNetwork, args.IP)
-	if !ok {
-		return nil, false
-	}
-
-	// whether there was already an up-to-date record
-	uptodate := false
-
-	// delete every record if ip is `nil`
-	if args.IP == nil {
-		uptodate = true
-	}
-
-	if !uptodate && len(matchedIDs) > 0 {
-		if !args.Quiet {
-			log.Printf("😃 Found an up-to-date %s record of %s.", args.IPNetwork.RecordType(), domain)
-		}
-
-		uptodate = true
-		matchedIDs = matchedIDs[1:]
-	}
-
-	// the data for updating or creating a record
-	//nolint:exhaustivestruct // Other fields are intentionally unspecified
-	payload := cloudflare.DNSRecord{
-		Name:    domain,
-		Type:    args.IPNetwork.RecordType(),
-		Content: args.IP.String(),
-		TTL:     args.TTL,
-		Proxied: &args.Proxied,
-	}
-
-	if !uptodate && args.IP != nil {
-		var unhandled []string
-
-		for i, id := range unmatchedIDs {
-			log.Printf("📝 Updating a stale %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
-			if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil { //nolint:wsl
-				log.Printf("😡 Failed to update the record: %v", err)
-				log.Printf("🧟 Deleting the record instead . . .")
-				if err = h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
-					log.Printf("😡 Failed to delete the record, too: %v", err)
-				}
-
-				continue
-			}
-
-			uptodate = true
-			unhandled = unmatchedIDs[i+1:]
-
-			break
-		}
-
-		unmatchedIDs = unhandled
-	}
-
-	if !uptodate && args.IP != nil {
-		log.Printf("👶 Adding a new %s record for %s.", args.IPNetwork.RecordType(), domain)
-		if _, err := h.cf.CreateDNSRecord(ctx, zone, payload); err != nil { //nolint:wsl
-			log.Printf("😡 Failed to add the record: %v", err)
-		} else {
-			uptodate = true
-		}
-	}
-
-	for _, id := range unmatchedIDs {
-		log.Printf("🧟 Deleting a stale %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
-		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
-			log.Printf("😡 Failed to delete the record: %v", err)
-		}
-	}
-
-	for _, id := range matchedIDs {
-		log.Printf("👻 Removing a duplicate %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
-		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
-			log.Printf("😡 Failed to remove the record: %v", err)
-		}
-	}
-
-	if !uptodate {
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
-		return nil, false //nolint:nlreturn
-	}
-
-	return args.IP, true
-}
-
-func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool {
-	domain, ok := args.Target.domain(ctx, h)
+func (h *Handle) deleteRecord(ctx context.Context, domain string, ipNet ipnet.Type, id string) bool {
+	zone, ok := h.zoneOfDomain(ctx, domain)
 	if !ok {
 		return false
 	}
 
-	savedIP, saved := apiCache.listRecords[args.IPNetwork].Get(domain)
+	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
+		log.Printf("😡 Failed to delete a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
 
-	if saved && savedIP.(net.IP).Equal(args.IP) {
-		if !args.Quiet {
-			log.Printf("🤷 No need to change %s records of %s.", args.IPNetwork.RecordType(), domain)
-		}
+		apiCache.listRecords[ipNet].Delete(domain)
 
-		return true
+		return false
 	}
 
-	ip, ok := h.updateNoCache(ctx, args)
+	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+		delete(rmap.(map[string]net.IP), id)
+	}
+
+	return true
+}
+
+func (h *Handle) updateRecord(ctx context.Context, domain string, ipNet ipnet.Type, id string, ip net.IP) bool {
+	zone, ok := h.zoneOfDomain(ctx, domain)
 	if !ok {
-		apiCache.listRecords[args.IPNetwork].Delete(domain)
-
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
-		return false //nolint:nlreturn,wsl
+		return false
 	}
 
-	apiCache.listRecords[args.IPNetwork].SetDefault(domain, ip)
-	return true //nolint:nlreturn,wsl
+	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	payload := cloudflare.DNSRecord{
+		Name:    domain,
+		Type:    ipNet.RecordType(),
+		Content: ip.String(),
+	}
+
+	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
+		log.Printf("😡 Failed to update a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
+
+		apiCache.listRecords[ipNet].Delete(domain)
+
+		return false
+	}
+
+	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+		rmap.(map[string]net.IP)[id] = ip
+	}
+
+	return true
+}
+
+func (h *Handle) createRecord(ctx context.Context,
+	domain string, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool,
+) (string, bool) {
+	zone, ok := h.zoneOfDomain(ctx, domain)
+	if !ok {
+		return "", false
+	}
+
+	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	payload := cloudflare.DNSRecord{
+		Name:    domain,
+		Type:    ipNet.RecordType(),
+		Content: ip.String(),
+		TTL:     ttl,
+		Proxied: &proxied,
+	}
+
+	res, err := h.cf.CreateDNSRecord(ctx, zone, payload)
+	if err != nil {
+		log.Printf("😡 Failed to add a new %s record of %s: %v", ipNet.RecordType(), domain, err)
+
+		apiCache.listRecords[ipNet].Delete(domain)
+
+		return "", false
+	}
+
+	if rmap, found := apiCache.listRecords[ipNet].Get(domain); found {
+		rmap.(map[string]net.IP)[res.Result.ID] = ip
+	}
+
+	return res.Result.ID, true
 }

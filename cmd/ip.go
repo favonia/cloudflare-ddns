@@ -33,7 +33,7 @@ func updateIP(ctx context.Context, c *config.Config, h *api.Handle, ipNet ipnet.
 	ip, ok := c.Policy[ipNet].GetIP(ctx)
 	if !ok {
 		log.Printf("🤔 Could not detect the %v address.", ipNet)
-		return //nolint:nlreturn
+		return
 	}
 
 	if !c.Quiet {

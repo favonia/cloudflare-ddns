@@ -40,7 +40,7 @@ func dropSuperuserGroup() {
 	if !ok {
 		gid = defaultGID
 	} else if gid == 0 {
-		log.Printf("😡 PGID cannot be 0. Using %d instead . . .", defaultGID)
+		log.Printf("😡 PGID cannot be 0. Using %d instead.", defaultGID)
 		gid = defaultGID
 	}
 
@@ -69,7 +69,7 @@ func dropSuperuser() {
 	if !ok {
 		uid = defaultUID
 	} else if uid == 0 {
-		log.Printf("😡 PUID cannot be 0. Using %d instead . . .", defaultUID)
+		log.Printf("😡 PUID cannot be 0. Using %d instead.", defaultUID)
 		uid = defaultUID
 	}
 
