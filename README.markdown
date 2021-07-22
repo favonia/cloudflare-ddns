@@ -238,7 +238,7 @@ The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which
 <details>
 <summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
 
-The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs this tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---this tool will identify their zones automatically.
 </details>
 
 ### 🚀 Step 2: Creating the Deployment
@@ -264,18 +264,15 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
 
 <details>
-<summary>📍 Detecting IP addresses and updating DNS records</summary>
+<summary>📍 Policies (detection strategies) and domains</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `A` records | (See below) | N/A
 | `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP4_DOMAINS` is not empty; otherwise, `unmanaged`
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
 | `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP6_DOMAINS` is not empty; otherwise, `unmanaged`
-| `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 
 > <details>
 > <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
@@ -301,18 +298,21 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
 
 <details>
-<summary>⏳ Scheduling the updating</summary>
+<summary>⏳ Schedules, timeouts, and parameters of new DNS records</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
+| `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
+| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `UPDATE_CRON` | No | `UTC`
 | `UPDATE_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `UPDATE_ON_START` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `15s` (15 seconds)
 
-Note that the update schedule does not take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the interval between adjacent updates is 3 minutes, not 5 minutes.
+Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 </details>
 
 <details>
@@ -320,18 +320,18 @@ Note that the update schedule does not take the time to update records into cons
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `PGID` | Non-zero POSIX group ID | The effective group ID the tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
-| `PUID` | Non-zero POSIX user ID | The effective user ID the tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+| `PGID` | Non-zero POSIX group ID | The group ID this tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
+| `PUID` | Non-zero POSIX user ID | The user ID this tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 
-The tool will also try to drop supplementary groups.
+The updater will also try to drop supplementary group IDs.
 </details>
 
 <details>
-<summary>🖥️ Tweaking the user interface</summary>
+<summary>🔇 Quiet mode</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the tool should reduce the logging | No | `false`
+| `QUIET` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether the updater should reduce the logging | No | `false`
 </details>
 
 ### 🔁 Restarting the Container
@@ -356,7 +356,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` to disable IPv6 |
 | `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` to disable IPv4 |
 | `DELETE_ON_STOP=true` | ✔️ | Same |
-| `INTERFACE=iface` | ✔️ | Not required for `local` policies; the tool can handle multiple network interfaces |
+| `INTERFACE=iface` | ✔️ | Not required for `local` policies; we can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
 
