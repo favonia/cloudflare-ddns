@@ -252,7 +252,7 @@ kubectl create -f cloudflare-ddns.yaml
 ### ⚙️ All Settings
 
 <details>
-<summary>🔑 Specifying accounts and tokens</summary>
+<summary>🔑 CloudFlare accounts and API tokens</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -264,7 +264,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
 
 <details>
-<summary>📍 Policies (detection strategies) and domains</summary>
+<summary>📍 Policies (strategies to detect IP addresses) and domains</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -353,8 +353,8 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `API_KEY_FILE=file` | ✔️ | Use `CF_API_TOKEN_FILE=file` |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️ | Use `DOMAINS=sub.example.org` directly |
 | `PROXIED=true` | ✔️ | Same |
-| `RRTYPE=A` | ✔️ | Use `IP6_POLICY=unmanaged` to disable IPv6 |
-| `RRTYPE=AAAA` | ✔️ | Use `IP4_POLICY=unmanaged` to disable IPv4 |
+| `RRTYPE=A` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP6_POLICY=unmanaged` to disable IPv6 |
+| `RRTYPE=AAAA` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_POLICY=unmanaged` to disable IPv4 |
 | `DELETE_ON_STOP=true` | ✔️ | Same |
 | `INTERFACE=iface` | ✔️ | Not required for `local` policies; we can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
