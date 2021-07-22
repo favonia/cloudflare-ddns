@@ -93,7 +93,7 @@ mainLoop:
 		interval := time.Until(next)
 		if interval <= 0 {
 			if !c.Quiet {
-				log.Printf("😪 Running behind the schedule by %s . . .", -interval)
+				log.Printf("😪 Running behind the schedule by %v.", -interval)
 			}
 			interval = 0
 		}
@@ -110,7 +110,7 @@ mainLoop:
 		} else {
 			if c.DeleteOnStop {
 				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
-				clearIPs(ctx, c, h) // `nil` to purge all records
+				clearIPs(ctx, c, h)
 				log.Printf("👋 Done now. Bye!")
 			} else {
 				log.Printf("👋 Caught signal: %v. Bye!", *sig)

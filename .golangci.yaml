@@ -6,4 +6,4 @@ linters-settings:
 
 linters:
   enable-all: true
-  disable: maligned,scopelint,golint,interfacer
+  disable: maligned,scopelint,golint,interfacer,nlreturn,wsl,lll
