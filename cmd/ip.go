@@ -20,7 +20,7 @@ func setIP(ctx context.Context, c *config.Config, h *api.Handle, ipNet ipnet.Typ
 			Target:    target,
 			IPNetwork: ipNet,
 			IP:        ip,
-			TTL:       c.TTL,
+			TTL:       int(c.TTL),
 			Proxied:   c.Proxied,
 		})
 	}
@@ -37,7 +37,7 @@ func updateIP(ctx context.Context, c *config.Config, h *api.Handle, ipNet ipnet.
 	}
 
 	if !c.Quiet {
-		log.Printf("🧐 Detected the %v address: %v", ipNet, ip)
+		log.Printf("🌐 Detected the %v address: %v", ipNet, ip)
 	}
 
 	setIP(ctx, c, h, ipNet, ip)

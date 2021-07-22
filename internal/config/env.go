@@ -23,7 +23,7 @@ func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %q", key, def)
+			log.Printf("🈳 Use default %s=%q", key, def)
 		}
 		return def, true
 	}
@@ -36,7 +36,7 @@ func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
+			log.Printf("🈳 Use default %s=%t", key, def)
 		}
 		return def, true
 	}
@@ -56,7 +56,7 @@ func GetenvAsQuiet(key string) (quiet.Quiet, bool) {
 
 	val := Getenv(key)
 	if val == "" {
-		log.Printf("📭 The variable %s is empty or unset. Default value: %t", key, def)
+		log.Printf("🈳 Use default %s=%t", key, def)
 		return def, true
 	}
 
@@ -74,7 +74,7 @@ func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, bool) {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %d", key, def)
+			log.Printf("🈳 Use default %s=%d", key, def)
 		}
 		return def, true
 	}
@@ -111,7 +111,7 @@ func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet qui
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
+			log.Printf("🈳 Use default %s=%v", key, def)
 		}
 		return def, true
 	case "cloudflare":
@@ -133,7 +133,7 @@ func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %s", key, def.String())
+			log.Printf("🈳 Use default %s=%s", key, def.String())
 		}
 		return def, true
 	}
@@ -156,7 +156,7 @@ func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedu
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("📭 The variable %s is empty or unset. Default value: %v", key, def)
+			log.Printf("🈳 Use default %s=%v", key, def)
 		}
 		return def, true
 	}

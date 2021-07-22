@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -13,19 +14,28 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
+type TTL int
+
+func (t TTL) String() string {
+	if t == 1 {
+		return "automatic"
+	}
+	return fmt.Sprintf("%d", t)
+}
+
 type Config struct {
 	Quiet            quiet.Quiet
 	Auth             api.Auth
-	Targets          map[ipnet.Type][]api.Target
 	Policy           map[ipnet.Type]detector.Policy
-	TTL              int
-	Proxied          bool
+	Targets          map[ipnet.Type][]api.Target
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
 	DeleteOnStop     bool
+	CacheExpiration  time.Duration
+	TTL              TTL
+	Proxied          bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
-	CacheExpiration  time.Duration
 }
 
 const (
@@ -44,6 +54,12 @@ func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 		token     = Getenv("CF_API_TOKEN")
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
 	)
+
+	// foolproof checks
+	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
+		log.Printf("😡 You need to provide a real API token as CF_API_TOKEN.")
+		return "", false
+	}
 
 	switch {
 	case token != "" && tokenFile != "":
@@ -181,26 +197,26 @@ func readPolicies(
 }
 
 func PrintConfig(ctx context.Context, c *Config) {
-	log.Printf("📜 Policy for IPv4: %v", c.Policy[ipnet.IP4])
-
+	log.Printf("🔧 Policies:")
+	log.Printf("   🔸 IPv4 policy:      %v", c.Policy[ipnet.IP4])
 	if c.Policy[ipnet.IP4].IsManaged() {
-		log.Printf("📜 Managed domains for IPv4: %v", c.Targets[ipnet.IP4])
+		log.Printf("   🔸 IPv4 domains:     %v", c.Targets[ipnet.IP4])
 	}
-
-	log.Printf("📜 Policy for IPv6: %v", c.Policy[ipnet.IP6])
-
+	log.Printf("   🔸 IPv6 policy:      %v", c.Policy[ipnet.IP6])
 	if c.Policy[ipnet.IP6].IsManaged() {
-		log.Printf("📜 Managed domains for IPv6: %v", c.Targets[ipnet.IP6])
+		log.Printf("   🔸 IPv6 domains:     %v", c.Targets[ipnet.IP6])
 	}
-
-	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", c.TTL)
-	log.Printf("📜 Whether new DNS entries are proxied: %t", c.Proxied)
-	log.Printf("📜 Update schedule: %v", c.UpdateCron)
-	log.Printf("📜 Whether to update records on start: %t", c.UpdateOnStart)
-	log.Printf("📜 Whether to delete records on exit: %t", c.DeleteOnStop)
-	log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", c.DetectionTimeout)
-	log.Printf("📜 Timeout of each attempt to update IP addresses: %v", c.UpdateTimeout)
-	log.Printf("📜 Expiration of cached CloudFlare API responses: %v", c.CacheExpiration)
+	log.Printf("🔧 Timing:")
+	log.Printf("   🔸 Update frequency: %v", c.UpdateCron)
+	log.Printf("   🔸 Update on start?  %t", c.UpdateOnStart)
+	log.Printf("   🔸 Delete on stop?   %t", c.DeleteOnStop)
+	log.Printf("   🔸 Cache expiration: %v", c.CacheExpiration)
+	log.Printf("🔧 New DNS records:")
+	log.Printf("   🔸 TTL:              %v", c.TTL)
+	log.Printf("   🔸 Proxied:          %t", c.Proxied)
+	log.Printf("🔧 Timeouts")
+	log.Printf("   🔸 IP detection:     %v", c.DetectionTimeout)
+	log.Printf("   🔸 Record updating:  %v", c.UpdateTimeout)
 }
 
 func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
@@ -210,7 +226,7 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 	}
 
 	if quiet {
-		log.Printf("🤫 Quiet mode enabled.")
+		log.Printf("🔇 Quiet mode enabled.")
 	}
 
 	auth, ok := readAuth(ctx, quiet)
@@ -224,16 +240,6 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 	}
 
 	ip4Policy, ip6Policy, ok := readPolicies(ctx, quiet, ip4Targets, ip6Targets)
-	if !ok {
-		return nil, false
-	}
-
-	ttl, ok := GetenvAsInt("TTL", DefaultTTL, quiet)
-	if !ok {
-		return nil, false
-	}
-
-	proxied, ok := GetenvAsBool("PROXIED", DefaultProxied, quiet)
 	if !ok {
 		return nil, false
 	}
@@ -253,6 +259,21 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
+	cacheExpiration, ok := GetenvAsPosDuration("CACHE_EXPIRATION", DefaultCacheExpiration, quiet)
+	if !ok {
+		return nil, false
+	}
+
+	ttl, ok := GetenvAsInt("TTL", DefaultTTL, quiet)
+	if !ok {
+		return nil, false
+	}
+
+	proxied, ok := GetenvAsBool("PROXIED", DefaultProxied, quiet)
+	if !ok {
+		return nil, false
+	}
+
 	detectionTimeout, ok := GetenvAsPosDuration("DETECTION_TIMEOUT", DefaultDetectionTimeout, quiet)
 	if !ok {
 		return nil, false
@@ -263,29 +284,24 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
-	cacheExpiration, ok := GetenvAsPosDuration("CACHE_EXPIRATION", DefaultCacheExpiration, quiet)
-	if !ok {
-		return nil, false
-	}
-
 	return &Config{
 		Quiet: quiet,
 		Auth:  auth,
-		Targets: map[ipnet.Type][]api.Target{
-			ipnet.IP4: ip4Targets,
-			ipnet.IP6: ip6Targets,
-		},
 		Policy: map[ipnet.Type]detector.Policy{
 			ipnet.IP4: ip4Policy,
 			ipnet.IP6: ip6Policy,
 		},
-		TTL:              ttl,
-		Proxied:          proxied,
+		Targets: map[ipnet.Type][]api.Target{
+			ipnet.IP4: ip4Targets,
+			ipnet.IP6: ip6Targets,
+		},
 		UpdateCron:       updateCron,
 		UpdateOnStart:    updateOnStart,
 		DeleteOnStop:     deleteOnStop,
+		CacheExpiration:  cacheExpiration,
+		TTL:              TTL(ttl),
+		Proxied:          proxied,
 		DetectionTimeout: detectionTimeout,
 		UpdateTimeout:    updateTimeout,
-		CacheExpiration:  cacheExpiration,
 	}, true
 }
