@@ -50,7 +50,7 @@ func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
 		log.Printf("🤔 Failed to check the existence of a zone named %s: %v", name, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	ids := make([]string, 0, len(res.Result))
@@ -87,13 +87,13 @@ zoneSearch:
 
 			default: // len(zones) > 1
 				log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
-				return "", false //nolint:nlreturn
+				return "", false
 			}
 		}
 	}
 
 	log.Printf("🤔 Failed to find the zone of %s.", domain)
-	return "", false //nolint:nlreturn,wsl
+	return "", false
 }
 
 func (h *Handle) listRecords(ctx context.Context, domain string, ipNet ipnet.Type) ([]record, bool) {
@@ -109,7 +109,7 @@ func (h *Handle) listRecords(ctx context.Context, domain string, ipNet ipnet.Typ
 	})
 	if err != nil {
 		log.Printf("🤔 Failed to retrieve records of %s: %v", domain, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	rs := make([]record, 0, len(rawRecords))

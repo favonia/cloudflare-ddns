@@ -33,7 +33,7 @@ var Version string //nolint:gochecknoglobals
 func welcome() {
 	if Version == "" {
 		log.Printf("🌟 CloudFlare DDNS")
-		return //nolint:nlreturn
+		return
 	}
 
 	log.Printf("🌟 CloudFlare DDNS version %s", Version)

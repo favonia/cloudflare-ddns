@@ -24,6 +24,6 @@ func (t Type) RecordType() string {
 		return "AAAA"
 	default:
 		log.Fatalf("Unknown IP Network: %s", t.String())
-		return "" //nolint:nlreturn
+		return ""
 	}
 }

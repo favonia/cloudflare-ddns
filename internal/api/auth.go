@@ -19,7 +19,7 @@ func (t *TokenAuth) New() (*Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
 		log.Printf("🤔 The token-based CloudFlare authentication failed: %v", err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	return &Handle{cf: handle}, true

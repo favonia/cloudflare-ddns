@@ -15,26 +15,26 @@ func getIPFromHTTP(ctx context.Context, url string) (net.IP, bool) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		log.Printf("😩 Could not generate the request to %s: %v", url, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("😩 Could not send the request to %s: %v", url, err)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 	defer resp.Body.Close()
 
 	text, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf(`😩 Failed to read the response from %s.`, url)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	ip := net.ParseIP(string(text))
 	if ip == nil {
 		log.Printf(`🤯 The response %q is not a valid IP address.`, text)
-		return nil, false //nolint:nlreturn
+		return nil, false
 	}
 
 	return ip, true
