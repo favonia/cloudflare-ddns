@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func PPDuration(d time.Duration) string {
+func PrintPhrase(d time.Duration) string {
 	switch {
 	case d <= 0:
-		return "no time "
+		return "immediately"
 	case d < time.Second:
-		return "less than 1s"
+		return "in less than 1s"
 	default:
-		return fmt.Sprintf("about %v", d.Round(time.Second))
+		return fmt.Sprintf("in about %v", d.Round(time.Second))
 	}
 }

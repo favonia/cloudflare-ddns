@@ -100,9 +100,9 @@ mainLoop:
 
 		if !c.Quiet {
 			if updated {
-				log.Printf("😴 Checking the IP addresses again in %v . . .", cron.PPDuration(interval))
+				log.Printf("😴 Checking the IP addresses again %v . . .", cron.PrintPhrase(interval))
 			} else {
-				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
+				log.Printf("😴 Checking the IP addresses %v . . .", cron.PrintPhrase(interval))
 			}
 		}
 		if sig := wait(chanSignal, interval); sig == nil {
