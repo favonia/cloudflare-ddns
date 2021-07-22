@@ -132,7 +132,10 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets [
 	return ip4Targets, ip6Targets, true
 }
 
-func readPolicy(_ context.Context, quiet quiet.Quiet, ipNet ipnet.Type, key string, targets []api.Target) (detector.Policy, bool) {
+func readPolicy(
+	_ context.Context, quiet quiet.Quiet,
+	ipNet ipnet.Type, key string, targets []api.Target,
+) (detector.Policy, bool) {
 	var defaultPolicy detector.Policy
 	switch {
 	case len(targets) > 0:
@@ -155,7 +158,10 @@ func readPolicy(_ context.Context, quiet quiet.Quiet, ipNet ipnet.Type, key stri
 	return policy, true
 }
 
-func readPolicies(ctx context.Context, quiet quiet.Quiet, ip4Targets, ip6Targets []api.Target) (ip4Policy, ip6Policy detector.Policy, allOk bool) {
+func readPolicies(
+	ctx context.Context, quiet quiet.Quiet,
+	ip4Targets, ip6Targets []api.Target,
+) (ip4Policy, ip6Policy detector.Policy, allOk bool) {
 	ip4Policy, ip4Ok := readPolicy(ctx, quiet, ipnet.IP4, "IP4_POLICY", ip4Targets)
 	if !ip4Ok {
 		return nil, nil, false

@@ -5,8 +5,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/cloudflare/cloudflare-go"
-
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
@@ -21,24 +19,37 @@ type UpdateArgs struct {
 	Proxied   bool
 }
 
-func (h *Handle) updateNoCache(ctx context.Context, args *UpdateArgs) (net.IP, bool) { //nolint:funlen,cyclop,gocognit
+func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedIDs []string) {
+	for id, ip := range rmap {
+		if ip.Equal(target) {
+			matchedIDs = append(matchedIDs, id)
+		} else {
+			unmatchedIDs = append(unmatchedIDs, id)
+		}
+	}
+
+	return matchedIDs, unmatchedIDs
+}
+
+func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:funlen,cyclop,gocognit
 	domain, ok := args.Target.domain(ctx, h)
 	if !ok {
-		return nil, false
+		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+		return false
 	}
 
-	zone, ok := args.Target.zone(ctx, h)
+	rs, ok := h.listRecords(ctx, domain, args.IPNetwork)
 	if !ok {
-		return nil, false
+		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+		return false
 	}
 
-	matchedIDs, unmatchedIDs, ok := h.listRecordIDs(ctx, domain, args.IPNetwork, args.IP)
-	if !ok {
-		return nil, false
-	}
+	matchedIDs, unmatchedIDs := splitRecords(rs, args.IP)
 
 	// whether there was already an up-to-date record
 	uptodate := false
+	// whether everything works
+	numUnmatched := len(unmatchedIDs)
 
 	// delete every record if ip is `nil`
 	if args.IP == nil {
@@ -47,92 +58,14 @@ func (h *Handle) updateNoCache(ctx context.Context, args *UpdateArgs) (net.IP, b
 
 	if !uptodate && len(matchedIDs) > 0 {
 		if !args.Quiet {
-			log.Printf("😃 Found an up-to-date %s record of %s.", args.IPNetwork.RecordType(), domain)
+			log.Printf("😃 Found an up-to-date %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, matchedIDs[0])
 		}
 
 		uptodate = true
 		matchedIDs = matchedIDs[1:]
 	}
 
-	// the data for updating or creating a record
-	//nolint:exhaustivestruct // Other fields are intentionally unspecified
-	payload := cloudflare.DNSRecord{
-		Name:    domain,
-		Type:    args.IPNetwork.RecordType(),
-		Content: args.IP.String(),
-		TTL:     args.TTL,
-		Proxied: &args.Proxied,
-	}
-
-	if !uptodate && args.IP != nil {
-		var unhandled []string
-
-		for i, id := range unmatchedIDs {
-			if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
-				log.Printf("😡 Failed to update a stale %s record of %s (ID: %s): %v",
-					args.IPNetwork.RecordType(), domain, id, err)
-				if err = h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-					log.Printf("😡 Failed to delete the same record (ID: %s): %v", id, err)
-					continue
-				} else {
-					log.Printf("🧟 Deleted the record instead (ID: %s).", id)
-					continue
-				}
-			}
-
-			log.Printf("📝 Updated a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
-
-			uptodate = true
-			unhandled = unmatchedIDs[i+1:]
-
-			break
-		}
-
-		unmatchedIDs = unhandled
-	}
-
-	if !uptodate && args.IP != nil {
-		if r, err := h.cf.CreateDNSRecord(ctx, zone, payload); err != nil {
-			log.Printf("😡 Failed to add a new %s record of %s.", err, domain)
-		} else {
-			log.Printf("🐣 Added a new %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, r.Result.ID)
-			uptodate = true
-		}
-	}
-
-	for _, id := range unmatchedIDs {
-		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-			log.Printf("😡 Failed to delete a stale %s record of %s (ID: %s): %v", args.IPNetwork.RecordType(), domain, id, err)
-		} else {
-			log.Printf("🧟 Deleted a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
-		}
-	}
-
-	for _, id := range matchedIDs {
-		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-			log.Printf("😡 Failed to remove a duplicate %s record of %s (ID: %s): %v", args.IPNetwork.RecordType(), domain, id, err)
-		} else {
-			log.Printf("👻 Removed a duplicate %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
-		}
-	}
-
-	if !uptodate {
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
-		return nil, false
-	}
-
-	return args.IP, true
-}
-
-func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool {
-	domain, ok := args.Target.domain(ctx, h)
-	if !ok {
-		return false
-	}
-
-	savedIP, saved := apiCache.savedIP[args.IPNetwork].Get(domain)
-
-	if saved && savedIP.(net.IP).Equal(args.IP) {
+	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		if !args.Quiet {
 			log.Printf("🤷 No need to update %s records of %s.", args.IPNetwork.RecordType(), domain)
 		}
@@ -140,14 +73,54 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool {
 		return true
 	}
 
-	ip, ok := h.updateNoCache(ctx, args)
-	if !ok {
-		apiCache.savedIP[args.IPNetwork].Delete(domain)
+	if !uptodate && args.IP != nil {
+		var unhandled []string
 
+		for i, id := range unmatchedIDs {
+			if h.updateRecord(ctx, domain, args.IPNetwork, id, args.IP) {
+				log.Printf("📝 Updated a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+
+				uptodate = true
+				numUnmatched--
+				unhandled = unmatchedIDs[i+1:]
+
+				break
+			} else {
+				if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
+					log.Printf("🧟 Deleted a stale %s record of %s instead (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+					numUnmatched--
+				}
+				continue
+			}
+		}
+
+		unmatchedIDs = unhandled
+	}
+
+	if !uptodate && args.IP != nil {
+		if id, ok := h.createRecord(ctx, domain, args.IPNetwork, args.IP, args.TTL, args.Proxied); ok {
+			log.Printf("🐣 Added a new %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+			uptodate = true
+		}
+	}
+
+	for _, id := range unmatchedIDs {
+		if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
+			log.Printf("🧟 Deleted a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+			numUnmatched--
+		}
+	}
+
+	for _, id := range matchedIDs {
+		if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
+			log.Printf("👻 Removed a duplicate %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+		}
+	}
+
+	if !uptodate || numUnmatched > 0 {
 		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
 		return false
 	}
 
-	apiCache.savedIP[args.IPNetwork].SetDefault(domain, ip)
 	return true
 }
