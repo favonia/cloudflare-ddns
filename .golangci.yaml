@@ -3,3 +3,7 @@ linters-settings:
     local-prefixes: github.com/favonia/cloudflare-ddns-go
   maligned:
     suggest-new: true
+
+linters:
+  enable-all: true
+  disable: maligned,scopelint,golint,interfacer

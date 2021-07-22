@@ -28,18 +28,18 @@ func exit() {
 	os.Exit(1)
 }
 
-var Version string = ""
+var Version string //nolint:gochecknoglobals
 
 func welcome() {
 	if Version == "" {
 		log.Printf("🌟 CloudFlare DDNS")
-		return
+		return //nolint:nlreturn
 	}
 
 	log.Printf("🌟 CloudFlare DDNS version %s", Version)
 }
 
-func main() {
+func main() { //nolint:funlen,gocognit,cyclop
 	welcome()
 
 	// dropping the superuser privilege
@@ -71,8 +71,8 @@ func main() {
 	updated := false
 mainLoop:
 	for {
-		next := c.RefreshCron.Next()
-		if !first || c.RefreshOnStart {
+		next := c.UpdateCron.Next()
+		if !first || c.UpdateOnStart {
 			updateIPs(ctx, c, h)
 			updated = true
 		}
@@ -100,9 +100,9 @@ mainLoop:
 
 		if !c.Quiet {
 			if updated {
-				log.Printf("😴 Checking the IP addresses again in %v . . .", cron.PPDuration(interval))
+				log.Printf("😴 Checking the IP addresses again %v . . .", cron.PrintPhrase(interval))
 			} else {
-				log.Printf("😴 Checking the IP addresses in %v . . .", cron.PPDuration(interval))
+				log.Printf("😴 Checking the IP addresses %v . . .", cron.PrintPhrase(interval))
 			}
 		}
 		if sig := wait(chanSignal, interval); sig == nil {

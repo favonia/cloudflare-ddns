@@ -6,9 +6,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 )
 
-func getIPFromIpify(ctx context.Context, url string) (net.IP, bool) {
+func getIPFromHTTP(ctx context.Context, url string) (net.IP, bool) {
 	// http.Post is avoided so that we can pass ctx
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -38,7 +40,9 @@ func getIPFromIpify(ctx context.Context, url string) (net.IP, bool) {
 	return ip, true
 }
 
-type Ipify struct{}
+type Ipify struct {
+	Net ipnet.Type
+}
 
 func (p *Ipify) IsManaged() bool {
 	return true
@@ -48,8 +52,8 @@ func (p *Ipify) String() string {
 	return "ipify"
 }
 
-func (p *Ipify) GetIP4(ctx context.Context) (net.IP, bool) {
-	ip, ok := getIPFromIpify(ctx, "https://api4.ipify.org")
+func (p *Ipify) getIP4(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromHTTP(ctx, "https://api4.ipify.org")
 	if !ok {
 		return nil, false
 	}
@@ -57,11 +61,22 @@ func (p *Ipify) GetIP4(ctx context.Context) (net.IP, bool) {
 	return ip.To4(), true
 }
 
-func (p *Ipify) GetIP6(ctx context.Context) (net.IP, bool) {
-	ip, ok := getIPFromIpify(ctx, "https://api6.ipify.org")
+func (p *Ipify) getIP6(ctx context.Context) (net.IP, bool) {
+	ip, ok := getIPFromHTTP(ctx, "https://api6.ipify.org")
 	if !ok {
 		return nil, false
 	}
 
 	return ip.To16(), true
+}
+
+func (p *Ipify) GetIP(ctx context.Context) (net.IP, bool) {
+	switch p.Net {
+	case ipnet.IP4:
+		return p.getIP4(ctx)
+	case ipnet.IP6:
+		return p.getIP6(ctx)
+	default:
+		return nil, false
+	}
 }
