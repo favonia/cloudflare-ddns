@@ -15,10 +15,6 @@ func (p *Unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *Unmanaged) GetIP4(ctx context.Context) (net.IP, bool) {
-	return nil, false
-}
-
-func (p *Unmanaged) GetIP6(ctx context.Context) (net.IP, bool) {
+func (p *Unmanaged) GetIP(_ context.Context) (net.IP, bool) {
 	return nil, false
 }

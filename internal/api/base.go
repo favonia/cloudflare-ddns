@@ -9,6 +9,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
@@ -17,51 +18,34 @@ type Handle struct {
 }
 
 const (
-	DefaultCacheExpiration = time.Hour * 6
-	CleanupIntervalFactor  = 2
+	CleanupIntervalFactor = 2
 )
 
-var (
-	savedIP4s      *cache.Cache
-	savedIP6s      *cache.Cache
-	zoneNameOfID   *cache.Cache
-	zoneIDOfDomain *cache.Cache
-)
-
-// init makes sure the cache exists even if InitCache is not called.
-func init() {
-	InitCache(DefaultCacheExpiration)
+var apiCache struct { //nolint:gochecknoglobals
+	listRecords  map[ipnet.Type]*cache.Cache
+	activeZones  *cache.Cache
+	zoneOfDomain *cache.Cache
 }
 
 func InitCache(expiration time.Duration) {
 	cleanupInterval := expiration * CleanupIntervalFactor
-	savedIP4s = cache.New(expiration, cleanupInterval)
-	savedIP6s = cache.New(expiration, cleanupInterval)
-	zoneNameOfID = cache.New(expiration, cleanupInterval)
-	zoneIDOfDomain = cache.New(expiration, cleanupInterval)
-}
-
-func (h Handle) zoneName(ctx context.Context, zoneID string) (string, bool) {
-	if name, found := zoneNameOfID.Get(zoneID); found {
-		return name.(string), true
+	apiCache.listRecords = map[ipnet.Type]*cache.Cache{
+		ipnet.IP4: cache.New(expiration, cleanupInterval),
+		ipnet.IP6: cache.New(expiration, cleanupInterval),
 	}
-
-	zone, err := h.cf.ZoneDetails(ctx, zoneID)
-	if err != nil {
-		log.Printf("🤔 Could not retrieve the name of the zone (ID: %s): %v", zoneID, err)
-		return "", false //nolint:nlreturn
-	}
-
-	zoneNameOfID.SetDefault(zoneID, zone.Name)
-
-	return zone.Name, true
+	apiCache.activeZones = cache.New(expiration, cleanupInterval)
+	apiCache.zoneOfDomain = cache.New(expiration, cleanupInterval)
 }
 
 // activeZoneIDsByName replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
-func (h *Handle) activeZoneIDsByName(ctx context.Context, zoneName string) ([]string, bool) {
-	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(zoneName, h.cf.AccountID, "active"))
+func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) {
+	if ids, found := apiCache.activeZones.Get(name); found {
+		return ids.([]string), true
+	}
+
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
-		log.Printf("🤔 Could not check whether there's a zone named %s: %v", zoneName, err)
+		log.Printf("🤔 Failed to check the existence of a zone named %s: %v", name, err)
 		return nil, false //nolint:nlreturn
 	}
 
@@ -70,86 +54,57 @@ func (h *Handle) activeZoneIDsByName(ctx context.Context, zoneName string) ([]st
 		ids = append(ids, res.Result[i].ID)
 	}
 
+	apiCache.activeZones.SetDefault(name, ids)
+
 	return ids, true
 }
 
-func (h *Handle) zoneID(ctx context.Context, domain string) (string, bool) {
-	if id, found := zoneIDOfDomain.Get(domain); found {
+func (h *Handle) zoneOfDomain(ctx context.Context, domain string) (string, bool) {
+	if id, found := apiCache.zoneOfDomain.Get(domain); found {
 		return id.(string), true
 	}
 
-	// try the whole domain as the zone
-	zoneName := domain
+zoneSearch:
+	for i := -1; i < len(domain); i++ {
+		if i == -1 || domain[i] == '.' {
+			zoneName := domain[i+1:]
+			zones, ok := h.activeZones(ctx, zoneName)
+			if !ok {
+				return "", false
+			}
 
-	zoneIDs, ok := h.activeZoneIDsByName(ctx, zoneName)
-	if !ok {
-		return "", false
-	}
+			switch len(zones) {
+			case 0: // len(zoneIDs) == 0
+				continue zoneSearch
+			case 1: // len(zoneIDs) == 1
+				apiCache.zoneOfDomain.SetDefault(domain, zones[0])
 
-	switch len(zoneIDs) {
-	case 0:
-	zoneSearch:
-		for i, b := range domain {
-			if b == '.' {
-				zoneName = domain[i+1:]
-				zoneIDs, ok = h.activeZoneIDsByName(ctx, zoneName)
-				if !ok {
-					return "", false
-				}
+				return zones[0], true
 
-				switch len(zoneIDs) {
-				case 0: // len(zoneIDs) == 0
-					continue zoneSearch
-				case 1: // len(zoneIDs) == 1
-					break zoneSearch
-				default: // len(zoneIDs) > 1
-					log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
-					return "", false //nolint:nlreturn
-				}
+			default: // len(zoneIDs) > 1
+				log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+				return "", false //nolint:nlreturn
 			}
 		}
-	case 1: // len(zoneIDs) == 1
-		break
-	default: // len(zoneIDs) > 1
-		log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
-		return "", false //nolint:nlreturn
 	}
 
-	if len(zoneIDs) != 1 {
-		log.Printf("🤔 Could not find the zone of the domain %s.", domain)
-		return "", false //nolint:nlreturn
-	}
-
-	zoneIDOfDomain.SetDefault(domain, zoneIDs[0])
-	zoneNameOfID.SetDefault(zoneIDs[0], zoneName)
-
-	return zoneIDs[0], true
+	log.Printf("🤔 Failed to find the zone of %s.", domain)
+	return "", false //nolint:nlreturn,wsl
 }
 
-// updateRecordsArgs is the type of (named) arguments to updateRecords.
-type updateRecordsArgs = struct {
-	context    context.Context
-	quiet      quiet.Quiet
-	target     Target
-	recordType string
-	ip         net.IP
-	ttl        int
-	proxied    bool
-}
-
-func (h *Handle) getCurrentRecords(args *updateRecordsArgs, zoneID, domain string) (matchedIDs, unmatchedIDs []string, ok bool) { //nolint:lll
+func (h *Handle) getCurrentRecords(ctx context.Context, zoneID, domain string, ipNet ipnet.Type, ip net.IP) (matchedIDs, unmatchedIDs []string, ok bool) { //nolint:lll
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
-	rs, err := h.cf.DNSRecords(args.context, zoneID, cloudflare.DNSRecord{
+	rs, err := h.cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{
 		Name: domain,
-		Type: args.recordType,
+		Type: ipNet.RecordType(),
 	})
 	if err != nil {
-		log.Printf("🤔 Could not retrieve DNS records for the domain %s: %v", domain, err)
+		log.Printf("🤔 Failed to retrieve records of %s: %v", domain, err)
 		return nil, nil, false //nolint:nlreturn
 	}
 
 	for i := range rs {
-		if args.ip.Equal(net.ParseIP(rs[i].Content)) {
+		if ip.Equal(net.ParseIP(rs[i].Content)) {
 			matchedIDs = append(matchedIDs, rs[i].ID)
 		} else {
 			unmatchedIDs = append(unmatchedIDs, rs[i].ID)
@@ -159,18 +114,28 @@ func (h *Handle) getCurrentRecords(args *updateRecordsArgs, zoneID, domain strin
 	return matchedIDs, unmatchedIDs, true
 }
 
-func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, bool) {
-	domain, ok := args.target.domain(args.context, h)
+// UpdateArgs is the type of (named) arguments to updateRecords.
+type UpdateArgs struct {
+	Quiet     quiet.Quiet
+	IPNetwork ipnet.Type
+	IP        net.IP
+	Target    Target
+	TTL       int
+	Proxied   bool
+}
+
+func (h *Handle) updateNoCache(ctx context.Context, args *UpdateArgs) (net.IP, bool) { //nolint:funlen,cyclop,gocognit
+	domain, ok := args.Target.domain(ctx, h)
 	if !ok {
 		return nil, false
 	}
 
-	zoneID, ok := args.target.zoneID(args.context, h)
+	zone, ok := args.Target.zone(ctx, h)
 	if !ok {
 		return nil, false
 	}
 
-	matchedIDs, unmatchedIDs, ok := h.getCurrentRecords(args, zoneID, domain)
+	matchedIDs, unmatchedIDs, ok := h.getCurrentRecords(ctx, zone, domain, args.IPNetwork, args.IP)
 	if !ok {
 		return nil, false
 	}
@@ -179,13 +144,13 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, bool) {
 	uptodate := false
 
 	// delete every record if ip is `nil`
-	if args.ip == nil {
+	if args.IP == nil {
 		uptodate = true
 	}
 
 	if !uptodate && len(matchedIDs) > 0 {
-		if !args.quiet {
-			log.Printf("😃 Found an up-to-date %s record for the domain %s.", args.recordType, domain)
+		if !args.Quiet {
+			log.Printf("😃 Found an up-to-date %s record of %s.", args.IPNetwork.RecordType(), domain)
 		}
 
 		uptodate = true
@@ -196,22 +161,22 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, bool) {
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
 	payload := cloudflare.DNSRecord{
 		Name:    domain,
-		Type:    args.recordType,
-		Content: args.ip.String(),
-		TTL:     args.ttl,
-		Proxied: &args.proxied,
+		Type:    args.IPNetwork.RecordType(),
+		Content: args.IP.String(),
+		TTL:     args.TTL,
+		Proxied: &args.Proxied,
 	}
 
-	if !uptodate && args.ip != nil {
+	if !uptodate && args.IP != nil {
 		var unhandled []string
 
 		for i, id := range unmatchedIDs {
-			log.Printf("📝 Updating a stale %s record (ID: %s) . . .", args.recordType, id)
-			if err := h.cf.UpdateDNSRecord(args.context, zoneID, id, payload); err != nil { //nolint:wsl
-				log.Printf("😡 Could not update the record: %v", err)
+			log.Printf("📝 Updating a stale %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
+			if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil { //nolint:wsl
+				log.Printf("😡 Failed to update the record: %v", err)
 				log.Printf("🧟 Deleting the record instead . . .")
-				if err = h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil { //nolint:wsl
-					log.Printf("😡 Could not delete the record, either: %v", err)
+				if err = h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
+					log.Printf("😡 Failed to delete the record, too: %v", err)
 				}
 
 				continue
@@ -226,141 +191,61 @@ func (h *Handle) updateRecords(args *updateRecordsArgs) (net.IP, bool) {
 		unmatchedIDs = unhandled
 	}
 
-	if !uptodate && args.ip != nil {
-		log.Printf("👶 Adding a new %s record for the domain %s.", args.recordType, domain)
-		if _, err := h.cf.CreateDNSRecord(args.context, zoneID, payload); err != nil { //nolint:wsl
-			log.Printf("😡 Could not add the record: %v", err)
+	if !uptodate && args.IP != nil {
+		log.Printf("👶 Adding a new %s record for %s.", args.IPNetwork.RecordType(), domain)
+		if _, err := h.cf.CreateDNSRecord(ctx, zone, payload); err != nil { //nolint:wsl
+			log.Printf("😡 Failed to add the record: %v", err)
 		} else {
 			uptodate = true
 		}
 	}
 
 	for _, id := range unmatchedIDs {
-		log.Printf("🧟 Deleting a stale %s record (ID: %s) . . .", args.recordType, id)
-		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil { //nolint:wsl
-			log.Printf("😡 Could not delete the record: %v", err)
+		log.Printf("🧟 Deleting a stale %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
+		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
+			log.Printf("😡 Failed to delete the record: %v", err)
 		}
 	}
 
 	for _, id := range matchedIDs {
-		log.Printf("👻 Removing a duplicate %s record (ID: %s) . . .", args.recordType, id)
-		if err := h.cf.DeleteDNSRecord(args.context, zoneID, id); err != nil { //nolint:wsl
-			log.Printf("😡 Could not remove the record: %v", err)
+		log.Printf("👻 Removing a duplicate %s record of %s (ID: %s) . . .", args.IPNetwork.RecordType(), domain, id)
+		if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil { //nolint:wsl
+			log.Printf("😡 Failed to remove the record: %v", err)
 		}
 	}
 
 	if !uptodate {
-		log.Printf("😡 Failed to update %s records for the domain %s.", args.recordType, domain)
+		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
 		return nil, false //nolint:nlreturn
 	}
 
-	return args.ip, true
+	return args.IP, true
 }
 
-type UpdateArgs struct {
-	Context    context.Context
-	Quiet      quiet.Quiet
-	Target     Target
-	IP4Managed bool
-	IP4        net.IP
-	IP6Managed bool
-	IP6        net.IP
-	TTL        int
-	Proxied    bool
-}
-
-func (h *Handle) Update(args *UpdateArgs) bool {
-	domain, ok := args.Target.domain(args.Context, h)
+func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool {
+	domain, ok := args.Target.domain(ctx, h)
 	if !ok {
 		return false
 	}
 
-	checkingIP4 := false
-	if args.IP4Managed { //nolint:wsl
-		savedIP4, saved := savedIP4s.Get(domain)
-		checkingIP4 = !(saved && savedIP4.(net.IP).Equal(args.IP4))
-	}
+	savedIP, saved := apiCache.listRecords[args.IPNetwork].Get(domain)
 
-	checkingIP6 := false
-	if args.IP6Managed { //nolint:wsl
-		savedIP6, saved := savedIP6s.Get(domain)
-		checkingIP6 = !(saved && savedIP6.(net.IP).Equal(args.IP6))
-	}
-
-	if !checkingIP4 && !checkingIP6 {
+	if saved && savedIP.(net.IP).Equal(args.IP) {
 		if !args.Quiet {
-			var readableRecordTypes string
-			switch { //nolint:wsl
-			case args.IP4Managed && args.IP6Managed:
-				readableRecordTypes = "A or AAAA"
-			case args.IP4Managed:
-				readableRecordTypes = "A"
-			case args.IP6Managed:
-				readableRecordTypes = "AAAA"
-			default:
-				log.Fatalf("😱 The impossible happened!")
-				return false //nolint:nlreturn
-			}
-
-			log.Printf("🤷 IP addresses remain the same; no need to check %s records for %s.", readableRecordTypes, domain)
+			log.Printf("🤷 No need to change %s records of %s.", args.IPNetwork.RecordType(), domain)
 		}
 
 		return true
 	}
 
-	zoneName, ok := args.Target.zoneName(args.Context, h)
+	ip, ok := h.updateNoCache(ctx, args)
 	if !ok {
-		return false
+		apiCache.listRecords[args.IPNetwork].Delete(domain)
+
+		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+		return false //nolint:nlreturn,wsl
 	}
 
-	if !args.Quiet {
-		log.Printf("🧐 Found the zone of the domain %s: %s.", domain, zoneName)
-	}
-
-	allOk := true
-
-	if checkingIP4 {
-		ip, ok := h.updateRecords(&updateRecordsArgs{
-			context:    args.Context,
-			quiet:      args.Quiet,
-			target:     args.Target,
-			recordType: "A",
-			ip:         args.IP4.To4(),
-			ttl:        args.TTL,
-			proxied:    args.Proxied,
-		})
-		if !ok {
-			savedIP4s.Delete(domain)
-		} else {
-			savedIP4s.SetDefault(domain, ip)
-		}
-
-		allOk = allOk && ok
-	}
-
-	if checkingIP6 {
-		ip, ok := h.updateRecords(&updateRecordsArgs{
-			context:    args.Context,
-			quiet:      args.Quiet,
-			target:     args.Target,
-			recordType: "AAAA",
-			ip:         args.IP6.To16(),
-			ttl:        args.TTL,
-			proxied:    args.Proxied,
-		})
-		if !ok {
-			savedIP6s.Delete(domain)
-		} else {
-			savedIP6s.SetDefault(domain, ip)
-		}
-
-		allOk = allOk && ok
-	}
-
-	if !allOk {
-		log.Printf("😡 Failed to update records for the domain %s.", domain)
-		return false //nolint:nlreturn
-	}
-
-	return true
+	apiCache.listRecords[args.IPNetwork].SetDefault(domain, ip)
+	return true //nolint:nlreturn,wsl
 }

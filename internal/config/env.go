@@ -9,6 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
@@ -106,7 +107,7 @@ func GetenvAsNormalizedDomains(key string, quiet quiet.Quiet) []string {
 }
 
 // GetenvAsPolicy reads an environment variable and parses it as a policy.
-func GetenvAsPolicy(key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, bool) {
+func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, bool) {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
@@ -114,11 +115,11 @@ func GetenvAsPolicy(key string, def detector.Policy, quiet quiet.Quiet) (detecto
 		}
 		return def, true //nolint:nlreturn,wsl
 	case "cloudflare":
-		return &detector.Cloudflare{}, true
+		return &detector.Cloudflare{Net: ipNet}, true
 	case "ipify":
-		return &detector.Ipify{}, true
+		return &detector.Ipify{Net: ipNet}, true
 	case "local":
-		return &detector.Local{}, true
+		return &detector.Local{Net: ipNet}, true
 	case "unmanaged":
 		return &detector.Unmanaged{}, true
 	default:

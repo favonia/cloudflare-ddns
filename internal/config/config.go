@@ -9,39 +9,37 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 	"github.com/favonia/cloudflare-ddns-go/internal/file"
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
-type Config struct { //nolint:maligned
+type Config struct {
 	Quiet            quiet.Quiet
 	Auth             api.Auth
-	Targets          []api.Target
-	IP4Targets       []api.Target
-	IP6Targets       []api.Target
-	IP4Policy        detector.Policy
-	IP6Policy        detector.Policy
+	Targets          map[ipnet.Type][]api.Target
+	Policy           map[ipnet.Type]detector.Policy
 	TTL              int
 	Proxied          bool
-	RefreshCron      cron.Schedule
-	RefreshOnStart   bool
+	UpdateCron       cron.Schedule
+	UpdateOnStart    bool
 	DeleteOnStop     bool
-	UpdateTimeout    time.Duration
 	DetectionTimeout time.Duration
+	UpdateTimeout    time.Duration
 	CacheExpiration  time.Duration
 }
 
 const (
 	DefaultTTL              = 1
 	DefaultProxied          = false
-	DefaultRefreshCron      = "@every 5m"
-	DefaultRefreshOnStart   = true
+	DefaultUpdateCron       = "@every 5m"
+	DefaultUpdateOnStart    = true
 	DefaultDeleteOnStop     = false
 	DefaultUpdateTimeout    = time.Second * 15
 	DefaultDetectionTimeout = time.Second * 5
-	DefaultCacheExpiration  = api.DefaultCacheExpiration
+	DefaultCacheExpiration  = time.Hour * 6
 )
 
-func readAuthToken(_ context.Context, quiet quiet.Quiet) (string, bool) {
+func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 	var (
 		token     = Getenv("CF_API_TOKEN")
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
@@ -52,15 +50,8 @@ func readAuthToken(_ context.Context, quiet quiet.Quiet) (string, bool) {
 		log.Printf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
 		return "", false //nolint:nlreturn
 	case token != "":
-		if !quiet {
-			log.Printf("📜 CF_API_TOKEN is specified.")
-		}
-		return token, true //nolint:nlreturn
+		return token, true
 	case tokenFile != "":
-		if !quiet {
-			log.Printf("📜 CF_API_TOKEN_FILE is specified.")
-		}
-
 		token, ok := file.ReadFileAsString(tokenFile)
 		if !ok {
 			return "", false
@@ -85,47 +76,35 @@ func readAuth(ctx context.Context, quiet quiet.Quiet) (api.Auth, bool) {
 	}
 
 	accountID := Getenv("CF_ACCOUNT_ID")
-	if !quiet {
-		switch accountID {
-		case "":
-			log.Printf("📜 CF_ACCOUNT_ID is not specified (which is fine).")
-		default:
-			log.Printf("📜 CF_ACCOUNT_ID is specified.")
-		}
-	}
 
 	return &api.TokenAuth{Token: token, AccountID: accountID}, true
 }
 
-func readDomains(_ context.Context, quiet quiet.Quiet) (targets, ip4Targets, ip6Targets []api.Target, allOk bool) {
+func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets []api.Target, allOk bool) {
 	var (
 		rawDomains    = GetenvAsNormalizedDomains("DOMAINS", quiet)
 		rawIP4Domains = GetenvAsNormalizedDomains("IP4_DOMAINS", quiet)
 		rawIP6Domains = GetenvAsNormalizedDomains("IP6_DOMAINS", quiet)
 
-		domainSet    = map[string]bool{}
 		ip4DomainSet = map[string]bool{}
 		ip6DomainSet = map[string]bool{}
 	)
 
 	for _, domain := range rawDomains {
-		if domainSet[domain] {
-			log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+		if ip4DomainSet[domain] || ip6DomainSet[domain] {
+			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
 			continue //nolint:nlreturn
 		}
 
-		domainSet[domain] = true
+		ip4DomainSet[domain] = true
 
-		targets = append(targets, &api.FQDNTarget{Domain: domain})
+		ip4Targets = append(ip4Targets, &api.FQDNTarget{Domain: domain})
+		ip6Targets = append(ip6Targets, &api.FQDNTarget{Domain: domain})
 	}
 
 	for _, domain := range rawIP4Domains {
-		switch {
-		case ip4DomainSet[domain]:
-			log.Printf("😡 Domain %s was already listed in IP4_DOMAINS and thus ignored.", domain)
-			continue //nolint:nlreturn
-		case domainSet[domain]:
-			log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+		if ip4DomainSet[domain] {
+			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
 			continue //nolint:nlreturn
 		}
 
@@ -135,12 +114,8 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (targets, ip4Targets, ip6
 	}
 
 	for _, domain := range rawIP6Domains {
-		switch {
-		case ip6DomainSet[domain]:
-			log.Printf("😡 Domain %s was already listed in IP6_DOMAINS and thus ignored.", domain)
-			continue //nolint:nlreturn
-		case domainSet[domain]:
-			log.Printf("😡 Domain %s was already listed in DOMAINS and thus ignored.", domain)
+		if ip6DomainSet[domain] {
+			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
 			continue //nolint:nlreturn
 		}
 
@@ -149,78 +124,46 @@ func readDomains(_ context.Context, quiet quiet.Quiet) (targets, ip4Targets, ip6
 		ip6Targets = append(ip6Targets, &api.FQDNTarget{Domain: domain})
 	}
 
-	if len(targets) == 0 && len(ip4Targets) == 0 && len(ip6Targets) == 0 {
+	if len(ip4Targets) == 0 && len(ip6Targets) == 0 {
 		log.Printf("😡 DOMAINS, IP4_DOMAINS, and IP6_DOMAINS are all empty or unset.")
-		return nil, nil, nil, false //nolint:nlreturn
+		return nil, nil, false //nolint:nlreturn
 	}
 
-	if !quiet {
-		if len(targets) > 0 {
-			log.Printf("📜 Managed domains for IPv4 and IPv6: %v", targets)
-		}
-
-		if len(ip4Targets) > 0 {
-			log.Printf("📜 Managed domains for IPv4: %v", ip4Targets)
-		}
-
-		if len(ip6Targets) > 0 {
-			log.Printf("📜 Managed domains for IPv6: %v", ip6Targets)
-		}
-	}
-
-	return targets, ip4Targets, ip6Targets, true
+	return ip4Targets, ip6Targets, true
 }
 
-func readPolicies(_ context.Context, quiet quiet.Quiet, targets, ip4Targets, ip6Targets []api.Target) (ip4Policy, ip6Policy detector.Policy, allOk bool) {
-	var defaultIP4Policy detector.Policy
-	if len(targets) > 0 || len(ip4Targets) > 0 {
-		defaultIP4Policy = &detector.Cloudflare{}
-	} else {
-		defaultIP4Policy = &detector.Unmanaged{}
-	}
-
-	ip4Policy, ok := GetenvAsPolicy("IP4_POLICY", defaultIP4Policy, quiet)
+func readPolicy(_ context.Context, quiet quiet.Quiet, ipNet ipnet.Type, key string, targets []api.Target) (detector.Policy, bool) { //nolint:lll
+	var defaultPolicy detector.Policy
 	switch { //nolint:wsl
-	case !ok:
-		return nil, nil, false
-	case len(targets) == 0 && len(ip4Targets) == 0 && ip4Policy.IsManaged():
-		if !quiet {
-			log.Printf("🤔 DOMAINS and IP4_DOMAINS are all empty, and thus IP4_POLICY=%s would be ignored.", ip4Policy)
-		}
-		ip4Policy = &detector.Unmanaged{} //nolint:wsl
-	case len(ip4Targets) > 0 && !ip4Policy.IsManaged():
-		log.Printf("😡 IPv4 is unmanaged and yet IP4_DOMAINS is not empty.")
-		return nil, nil, false //nolint:nlreturn
-	}
-
-	if !quiet {
-		log.Printf("📜 Policy for IPv4: %v", ip4Policy)
-	}
-
-	var defaultIP6Policy detector.Policy
-	switch { //nolint:wsl
-	case len(targets) > 0 || len(ip6Targets) > 0:
-		defaultIP6Policy = &detector.Cloudflare{}
+	case len(targets) > 0:
+		defaultPolicy = &detector.Cloudflare{Net: ipNet}
 	default:
-		defaultIP6Policy = &detector.Unmanaged{}
+		defaultPolicy = &detector.Unmanaged{}
 	}
 
-	ip6Policy, ok = GetenvAsPolicy("IP6_POLICY", defaultIP6Policy, quiet)
+	policy, ok := GetenvAsPolicy(ipnet.IP6, key, defaultPolicy, quiet)
 	switch { //nolint:wsl
 	case !ok:
-		return nil, nil, false
-	case len(targets) == 0 && len(ip6Targets) == 0 && ip6Policy.IsManaged():
+		return nil, false
+	case len(targets) == 0 && policy.IsManaged():
 		if !quiet {
-			log.Printf("🤔 DOMAINS and IP6_DOMAINS are all empty, and thus IP6_POLICY=%s would be ignored.", ip6Policy)
+			log.Printf("🤔 No domains set for %s; %s=%s is ignored.", ipNet, key, policy)
 		}
-		ip6Policy = &detector.Unmanaged{} //nolint:wsl
-	case len(ip6Targets) > 0 && !ip6Policy.IsManaged():
-		log.Printf("😡 IPv6 is unmanaged and yet IP6_DOMAINS is not empty.")
-		return nil, nil, false //nolint:nlreturn
+		policy = &detector.Unmanaged{} //nolint:wsl
 	}
 
-	if !quiet {
-		log.Printf("📜 Policy for IPv6: %v", ip6Policy)
+	return policy, true
+}
+
+func readPolicies(ctx context.Context, quiet quiet.Quiet, ip4Targets, ip6Targets []api.Target) (ip4Policy, ip6Policy detector.Policy, allOk bool) { //nolint:lll
+	ip4Policy, ip4Ok := readPolicy(ctx, quiet, ipnet.IP4, "IP4_POLICY", ip4Targets)
+	if !ip4Ok {
+		return nil, nil, false
+	}
+
+	ip6Policy, ip6Ok := readPolicy(ctx, quiet, ipnet.IP6, "IP6_POLICY", ip6Targets)
+	if !ip6Ok {
+		return nil, nil, false
 	}
 
 	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
@@ -231,7 +174,30 @@ func readPolicies(_ context.Context, quiet quiet.Quiet, targets, ip4Targets, ip6
 	return ip4Policy, ip6Policy, true
 }
 
-func ReadConfig(ctx context.Context) (*Config, bool) {
+func PrintConfig(ctx context.Context, c *Config) {
+	log.Printf("📜 Policy for IPv4: %v", c.Policy[ipnet.IP4])
+
+	if c.Policy[ipnet.IP4].IsManaged() {
+		log.Printf("📜 Managed domains for IPv4: %v", c.Targets[ipnet.IP4])
+	}
+
+	log.Printf("📜 Policy for IPv6: %v", c.Policy[ipnet.IP6])
+
+	if c.Policy[ipnet.IP6].IsManaged() {
+		log.Printf("📜 Managed domains for IPv6: %v", c.Targets[ipnet.IP6])
+	}
+
+	log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", c.TTL)
+	log.Printf("📜 Whether new DNS entries are proxied: %t", c.Proxied)
+	log.Printf("📜 Update schedule: %v", c.UpdateCron)
+	log.Printf("📜 Whether to update records on start: %t", c.UpdateOnStart)
+	log.Printf("📜 Whether to delete records on exit: %t", c.DeleteOnStop)
+	log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", c.DetectionTimeout)
+	log.Printf("📜 Timeout of each attempt to update IP addresses: %v", c.UpdateTimeout)
+	log.Printf("📜 Expiration of cached CloudFlare API responses: %v", c.CacheExpiration)
+}
+
+func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 	quiet, ok := GetenvAsQuiet("QUIET")
 	if !ok {
 		return nil, false
@@ -246,12 +212,12 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		return nil, false
 	}
 
-	targets, ip4Targets, ip6Targets, ok := readDomains(ctx, quiet)
+	ip4Targets, ip6Targets, ok := readDomains(ctx, quiet)
 	if !ok {
 		return nil, false
 	}
 
-	ip4Policy, ip6Policy, ok := readPolicies(ctx, quiet, targets, ip4Targets, ip6Targets)
+	ip4Policy, ip6Policy, ok := readPolicies(ctx, quiet, ip4Targets, ip6Targets)
 	if !ok {
 		return nil, false
 	}
@@ -261,35 +227,19 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 TTL for new DNS entries: %d (1 = automatic)", ttl)
-	}
-
 	proxied, ok := GetenvAsBool("PROXIED", false, quiet)
 	if !ok {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 Whether new DNS entries are proxied: %t", proxied)
-	}
-
-	refreshCron, ok := GetenvAsCron("REFRESH_CRON", cron.MustNew(DefaultRefreshCron), quiet)
+	updateCron, ok := GetenvAsCron("UPDATE_CRON", cron.MustNew(DefaultUpdateCron), quiet)
 	if !ok {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 Refresh schedule: %v", refreshCron)
-	}
-
-	refreshOnStart, ok := GetenvAsBool("REFRESH_ON_START", DefaultRefreshOnStart, quiet)
+	updateOnStart, ok := GetenvAsBool("UPDATE_ON_START", DefaultUpdateOnStart, quiet)
 	if !ok {
 		return nil, false
-	}
-
-	if !quiet {
-		log.Printf("📜 Whether to refresh IP addresses on start: %t", refreshOnStart)
 	}
 
 	deleteOnStop, ok := GetenvAsBool("DELETE_ON_STOP", false, quiet)
@@ -297,26 +247,14 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 Whether managed records are deleted on exit: %t", deleteOnStop)
-	}
-
-	updateTimeout, ok := GetenvAsPosDuration("CF_API_TIMEOUT", DefaultUpdateTimeout, quiet)
-	if !ok {
-		return nil, false
-	}
-
-	if !quiet {
-		log.Printf("📜 Timeout of each access to the CloudFlare API: %v", updateTimeout)
-	}
-
 	detectionTimeout, ok := GetenvAsPosDuration("DETECTION_TIMEOUT", DefaultDetectionTimeout, quiet)
 	if !ok {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 Timeout of each attempt to detect IP addresses: %v", detectionTimeout)
+	updateTimeout, ok := GetenvAsPosDuration("UPDATE_TIMEOUT", DefaultUpdateTimeout, quiet)
+	if !ok {
+		return nil, false
 	}
 
 	cacheExpiration, ok := GetenvAsPosDuration("CACHE_EXPIRATION", DefaultCacheExpiration, quiet)
@@ -324,25 +262,30 @@ func ReadConfig(ctx context.Context) (*Config, bool) {
 		return nil, false
 	}
 
-	if !quiet {
-		log.Printf("📜 Expiration of cached CloudFlare API responses: %v", cacheExpiration)
-	}
-
-	return &Config{
-		Quiet:            quiet,
-		Auth:             auth,
-		Targets:          targets,
-		IP4Targets:       ip4Targets,
-		IP6Targets:       ip6Targets,
-		IP4Policy:        ip4Policy,
-		IP6Policy:        ip6Policy,
+	c := &Config{
+		Quiet: quiet,
+		Auth:  auth,
+		Targets: map[ipnet.Type][]api.Target{
+			ipnet.IP4: ip4Targets,
+			ipnet.IP6: ip6Targets,
+		},
+		Policy: map[ipnet.Type]detector.Policy{
+			ipnet.IP4: ip4Policy,
+			ipnet.IP6: ip6Policy,
+		},
 		TTL:              ttl,
 		Proxied:          proxied,
-		RefreshCron:      refreshCron,
-		RefreshOnStart:   refreshOnStart,
+		UpdateCron:       updateCron,
+		UpdateOnStart:    updateOnStart,
 		DeleteOnStop:     deleteOnStop,
-		UpdateTimeout:    updateTimeout,
 		DetectionTimeout: detectionTimeout,
+		UpdateTimeout:    updateTimeout,
 		CacheExpiration:  cacheExpiration,
-	}, true
+	}
+
+	if !quiet {
+		PrintConfig(ctx, c)
+	}
+
+	return c, true
 }
