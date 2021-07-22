@@ -13,14 +13,14 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 )
 
-// wait returns true if the alarm is triggered before other signals come.
-func wait(signal chan os.Signal, d time.Duration) *os.Signal {
+// signalWait returns false if the alarm is triggered before other signals come.
+func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 	chanAlarm := time.After(d)
 	select {
 	case sig := <-signal:
-		return &sig
+		return sig, true
 	case <-chanAlarm:
-		return nil
+		return nil, false
 	}
 }
 
@@ -39,6 +39,26 @@ func welcome() {
 	log.Printf("🌟 CloudFlare DDNS version %s", Version)
 }
 
+func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
+	// reading the config
+	c, ok := config.ReadConfig(ctx)
+	if !ok {
+		exit()
+	}
+
+	if !c.Quiet {
+		config.PrintConfig(ctx, c)
+	}
+
+	// getting the handler
+	h, ok := c.Auth.New(c.CacheExpiration)
+	if !ok {
+		exit()
+	}
+
+	return c, h
+}
+
 func main() { //nolint:funlen,gocognit,cyclop
 	welcome()
 
@@ -50,22 +70,10 @@ func main() { //nolint:funlen,gocognit,cyclop
 
 	// catching SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
-	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	// reading the config
-	c, ok := config.ReadConfig(ctx)
-	if !ok {
-		exit()
-	}
-
-	// (re)initiating the cache
-	api.InitCache(c.CacheExpiration)
-
-	// getting the handler
-	h, ok := c.Auth.New()
-	if !ok {
-		exit()
-	}
+	c, h := initConfig(ctx)
 
 	first := true
 	updated := false
@@ -105,18 +113,33 @@ mainLoop:
 				log.Printf("😴 Checking the IP addresses %v . . .", cron.PrintPhrase(interval))
 			}
 		}
-		if sig := wait(chanSignal, interval); sig == nil {
+		if sig, ok := signalWait(chanSignal, interval); !ok {
 			continue mainLoop
 		} else {
-			if c.DeleteOnStop {
-				log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", *sig)
-				clearIPs(ctx, c, h)
-				log.Printf("👋 Done now. Bye!")
-			} else {
-				log.Printf("👋 Caught signal: %v. Bye!", *sig)
-			}
+			switch sig.(syscall.Signal) {
+			case syscall.SIGHUP:
+				log.Printf("😮 Caught signal: %v.", sig)
+				h.FlushCache()
 
-			break mainLoop
+				log.Printf("🔁 Restarting . . .")
+				c, h = initConfig(ctx)
+				continue mainLoop
+
+			case syscall.SIGINT, syscall.SIGTERM:
+				if c.DeleteOnStop {
+					log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", sig)
+					clearIPs(ctx, c, h)
+					log.Printf("👋 Done now. Bye!")
+				} else {
+					log.Printf("👋 Caught signal: %v. Bye!", sig)
+				}
+
+				break mainLoop
+
+			default:
+				log.Printf("😮 Caught unexpected signal: %v.", sig)
+				continue mainLoop
+			}
 		}
 	}
 }
