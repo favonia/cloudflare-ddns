@@ -57,6 +57,10 @@ func main() { //nolint:funlen,gocognit,cyclop
 		exit()
 	}
 
+	if !c.Quiet {
+		config.PrintConfig(ctx, c)
+	}
+
 	// getting the handler
 	h, ok := c.Auth.New(c.CacheExpiration)
 	if !ok {

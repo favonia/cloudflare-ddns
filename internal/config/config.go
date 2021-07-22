@@ -268,7 +268,7 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
-	c := &Config{
+	return &Config{
 		Quiet: quiet,
 		Auth:  auth,
 		Targets: map[ipnet.Type][]api.Target{
@@ -287,11 +287,5 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		DetectionTimeout: detectionTimeout,
 		UpdateTimeout:    updateTimeout,
 		CacheExpiration:  cacheExpiration,
-	}
-
-	if !quiet {
-		PrintConfig(ctx, c)
-	}
-
-	return c, true
+	}, true
 }
