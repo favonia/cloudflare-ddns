@@ -26,6 +26,13 @@ const (
 	CleanupIntervalFactor = 2
 )
 
+func (h *Handle) FlushCache() {
+	h.cache.listRecords[ipnet.IP4].Flush()
+	h.cache.listRecords[ipnet.IP6].Flush()
+	h.cache.activeZones.Flush()
+	h.cache.zoneOfDomain.Flush()
+}
+
 // activeZoneIDsByName replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
 func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) {
 	if ids, found := h.cache.activeZones.Get(name); found {

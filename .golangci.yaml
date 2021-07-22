@@ -3,6 +3,8 @@ linters-settings:
     local-prefixes: github.com/favonia/cloudflare-ddns-go
   maligned:
     suggest-new: true
+  exhaustive:
+    default-signifies-exhaustive: true
 
 linters:
   enable-all: true
