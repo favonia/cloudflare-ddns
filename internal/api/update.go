@@ -57,17 +57,13 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 	}
 
 	if !uptodate && len(matchedIDs) > 0 {
-		if !args.Quiet {
-			log.Printf("😃 Found an up-to-date %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, matchedIDs[0])
-		}
-
 		uptodate = true
 		matchedIDs = matchedIDs[1:]
 	}
 
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		if !args.Quiet {
-			log.Printf("🤷 No need to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+			log.Printf("🤷 %s records of %s are already up to date.", args.IPNetwork.RecordType(), domain)
 		}
 
 		return true
@@ -78,7 +74,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 
 		for i, id := range unmatchedIDs {
 			if h.updateRecord(ctx, domain, args.IPNetwork, id, args.IP) {
-				log.Printf("📝 Updated a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+				log.Printf("📡 Updated a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
 
 				uptodate = true
 				numUnmatched--
