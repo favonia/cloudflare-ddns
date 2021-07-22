@@ -10,7 +10,11 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
-	"github.com/favonia/cloudflare-ddns-go/internal/cron"
+)
+
+const (
+	IntervalUnit     = time.Second
+	IntervalLargeGap = time.Second * 10
 )
 
 // signalWait returns false if the alarm is triggered before other signals come.
@@ -76,49 +80,46 @@ func main() { //nolint:funlen,gocognit,cyclop
 	c, h := initConfig(ctx)
 
 	first := true
-	updated := false
 mainLoop:
 	for {
 		next := c.UpdateCron.Next()
 		if !first || c.UpdateOnStart {
 			updateIPs(ctx, c, h)
-			updated = true
 		}
 		first = false
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
-				log.Printf("😮 No future updating scheduled. Deleting all managed records . . .")
+				log.Printf("😮 No scheduled updates in near future. Deleting all managed records . . .")
 				clearIPs(ctx, c, h)
 				log.Printf("👋 Done now. Bye!")
 			} else {
-				log.Printf("👋 No future updating scheduled. Bye!")
+				log.Printf("👋 No scheduled updates in near future. Bye!")
 			}
 
 			break mainLoop
 		}
 
 		interval := time.Until(next)
-		if interval <= 0 {
-			if !c.Quiet {
-				log.Printf("😪 Running behind the schedule by %v.", -interval)
+		if !c.Quiet {
+			switch {
+			case interval < -IntervalLargeGap:
+				log.Printf("🏃 Checking the IP addresses now (running behind by %v) . . .", -interval.Round(IntervalUnit))
+			case interval < IntervalUnit:
+				log.Printf("🏃 Checking the IP addresses now . . .")
+			case interval < IntervalLargeGap:
+				log.Printf("🏃 Checking the IP addresses in less than %v . . .", IntervalLargeGap)
+			default:
+				log.Printf("💤 Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 			}
-			interval = 0
 		}
 
-		if !c.Quiet {
-			if updated {
-				log.Printf("😴 Checking the IP addresses again %v . . .", cron.PrintPhrase(interval))
-			} else {
-				log.Printf("😴 Checking the IP addresses %v . . .", cron.PrintPhrase(interval))
-			}
-		}
 		if sig, ok := signalWait(chanSignal, interval); !ok {
 			continue mainLoop
 		} else {
 			switch sig.(syscall.Signal) {
 			case syscall.SIGHUP:
-				log.Printf("😮 Caught signal: %v.", sig)
+				log.Printf("🚨 Caught signal: %v.", sig)
 				h.FlushCache()
 
 				log.Printf("🔁 Restarting . . .")
@@ -127,7 +128,7 @@ mainLoop:
 
 			case syscall.SIGINT, syscall.SIGTERM:
 				if c.DeleteOnStop {
-					log.Printf("😮 Caught signal: %v. Deleting all managed records . . .", sig)
+					log.Printf("🚨 Caught signal: %v. Deleting all managed records . . .", sig)
 					clearIPs(ctx, c, h)
 					log.Printf("👋 Done now. Bye!")
 				} else {
@@ -137,7 +138,7 @@ mainLoop:
 				break mainLoop
 
 			default:
-				log.Printf("😮 Caught unexpected signal: %v.", sig)
+				log.Printf("🚨 Caught unexpected signal: %v.", sig)
 				continue mainLoop
 			}
 		}

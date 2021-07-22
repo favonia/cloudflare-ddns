@@ -63,7 +63,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		if !args.Quiet {
-			log.Printf("🤷 %s records of %s are already up to date.", args.IPNetwork.RecordType(), domain)
+			log.Printf("🤷 The %s records of %s are already up to date.", args.IPNetwork.RecordType(), domain)
 		}
 
 		return true
@@ -83,7 +83,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 				break
 			} else {
 				if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-					log.Printf("🧟 Deleted a stale %s record of %s instead (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+					log.Printf("☠️ Deleted a stale %s record of %s instead (ID: %s).", args.IPNetwork.RecordType(), domain, id)
 					numUnmatched--
 				}
 				continue
@@ -102,7 +102,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 
 	for _, id := range unmatchedIDs {
 		if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-			log.Printf("🧟 Deleted a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+			log.Printf("💀 Deleted a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
 			numUnmatched--
 		}
 	}
