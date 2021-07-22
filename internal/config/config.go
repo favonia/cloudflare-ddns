@@ -55,6 +55,12 @@ func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
 	)
 
+	// foolproof checks
+	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
+		log.Printf("😡 You need to provide a real API token as CF_API_TOKEN.")
+		return "", false
+	}
+
 	switch {
 	case token != "" && tokenFile != "":
 		log.Printf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")

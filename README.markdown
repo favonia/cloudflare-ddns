@@ -75,10 +75,10 @@ docker run \
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
 ```bash
-export CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
-export DOMAINS=www.example.org
-export PROXIED=true
-go run ./cmd/ddns.go
+CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+  DOMAINS=www.example.org \
+  PROXIED=true \
+  go run ./cmd/*.go
 ```
 </details>
 
