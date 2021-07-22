@@ -90,11 +90,11 @@ mainLoop:
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
-				log.Printf("😮 No scheduled updates in near future. Deleting all managed records . . .")
+				log.Printf("🚨 No scheduled updates in near future. Deleting all managed records . . .")
 				clearIPs(ctx, c, h)
 				log.Printf("👋 Done now. Bye!")
 			} else {
-				log.Printf("👋 No scheduled updates in near future. Bye!")
+				log.Printf("🚨 No scheduled updates in near future. Bye!")
 			}
 
 			break mainLoop
@@ -132,7 +132,7 @@ mainLoop:
 					clearIPs(ctx, c, h)
 					log.Printf("👋 Done now. Bye!")
 				} else {
-					log.Printf("👋 Caught signal: %v. Bye!", sig)
+					log.Printf("🚨 Caught signal: %v. Bye!", sig)
 				}
 
 				break mainLoop
