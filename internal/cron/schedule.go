@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -17,23 +18,22 @@ type Cron struct {
 	schedule cron.Schedule
 }
 
-func New(spec string) (*Cron, bool) {
+func New(spec string) (*Cron, error) {
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
-		log.Printf(`😡 Could not parse %s as a Cron expresion: %v`, spec, err)
-		return nil, false
+		return nil, fmt.Errorf("parsing %q: %w", spec, err)
 	}
 
 	return &Cron{
 		spec:     spec,
 		schedule: sche,
-	}, true
+	}, nil
 }
 
 func MustNew(spec string) *Cron {
-	cron, ok := New(spec)
-	if !ok {
-		log.Fatalf(`🤯 schedule.MustNew failed on the specification: %v`, spec)
+	cron, err := New(spec)
+	if err != nil {
+		log.Fatalf(`🤯 schedule.MustNew failed: %v`, err)
 	}
 
 	return cron

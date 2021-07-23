@@ -55,7 +55,7 @@ func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
 	}
 
 	// getting the handler
-	h, ok := c.Auth.New(c.CacheExpiration)
+	h, ok := c.Auth.New(ctx, c.CacheExpiration)
 	if !ok {
 		exit()
 	}
