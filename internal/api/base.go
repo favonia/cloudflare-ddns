@@ -42,9 +42,9 @@ func New(ctx context.Context, token, account string, cacheExpiration time.Durati
 	}
 
 	// this is not needed, but is helpful for diagnosing the problem
-	if _, err := handle.UserDetails(ctx); err != nil {
-		log.Printf("🤔 Failed to obtain user details: %v", err)
-		log.Printf("🚨 The CloudFlare API token is probably invalid.")
+	if _, err := handle.VerifyAPIToken(ctx); err != nil {
+		log.Printf("🤔 Failed to verify the CloudFlare API token: %v", err)
+		log.Printf("🚨 Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE.")
 		return nil, false
 	}
 
