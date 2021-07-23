@@ -44,7 +44,7 @@ const (
 	DefaultUpdateCron       = "@every 5m"
 	DefaultUpdateOnStart    = true
 	DefaultDeleteOnStop     = false
-	DefaultUpdateTimeout    = time.Second * 15
+	DefaultUpdateTimeout    = time.Hour
 	DefaultDetectionTimeout = time.Second * 5
 	DefaultCacheExpiration  = time.Hour * 6
 )
@@ -216,7 +216,6 @@ func PrintConfig(ctx context.Context, c *Config) {
 	log.Printf("   🔸 Proxied:          %t", c.Proxied)
 	log.Printf("🔧 Timeouts")
 	log.Printf("   🔸 IP detection:     %v", c.DetectionTimeout)
-	log.Printf("   🔸 Record updating:  %v", c.UpdateTimeout)
 }
 
 func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
@@ -279,10 +278,7 @@ func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
 		return nil, false
 	}
 
-	updateTimeout, ok := GetenvAsPosDuration("UPDATE_TIMEOUT", DefaultUpdateTimeout, quiet)
-	if !ok {
-		return nil, false
-	}
+	updateTimeout := DefaultUpdateTimeout
 
 	return &Config{
 		Quiet: quiet,
