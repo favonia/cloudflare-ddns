@@ -40,7 +40,7 @@ func welcome() {
 		return
 	}
 
-	log.Printf("🌟 CloudFlare DDNS version %s", Version)
+	log.Printf("🌟 CloudFlare DDNS (%s)", Version)
 }
 
 func initConfig(ctx context.Context) (*config.Config, *api.Handle) {

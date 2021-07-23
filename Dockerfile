@@ -9,7 +9,7 @@ RUN \
   update-ca-certificates
 WORKDIR $GOPATH/src/github.com/favonia/cloudflare-ddns-go/
 COPY . .
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} go build -tags timetzdata -o /bin/ddns -ldflags="-w -s -X main.version=${GIT_DESCRIBE}" cmd/*.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} go build -tags timetzdata -o /bin/ddns -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" cmd/*.go
 
 FROM scratch
 COPY --from=builder /bin/ddns /bin/
