@@ -345,7 +345,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 <details>
 <summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
 
-⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate DNS responses and trick it into updating your domain with any IP address.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate or forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from CloudFlare or ipify.
 
 | Old Parameter |  | New Paramater |
 | ------------- | - | ------------- |
