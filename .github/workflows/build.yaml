@@ -1,7 +1,10 @@
 name: Building and Pushing
 on:
   push:
-    branches: main
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
 jobs:
   build:
