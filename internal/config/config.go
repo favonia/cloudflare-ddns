@@ -2,8 +2,8 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -20,7 +20,7 @@ func (t TTL) String() string {
 	if t == 1 {
 		return "automatic"
 	}
-	return fmt.Sprintf("%d", t)
+	return strconv.Itoa(int(t))
 }
 
 type Config struct {
