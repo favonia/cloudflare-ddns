@@ -43,7 +43,7 @@ func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, bool) {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Failed to parse %s: %v", key, err)
 		return b, false
 	}
 
@@ -62,7 +62,7 @@ func GetenvAsQuiet(key string) (quiet.Quiet, bool) {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Failed to parse %s: %v", key, err)
 		return def, false
 	}
 
@@ -81,7 +81,7 @@ func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, bool) {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Failed to parse %s: %v", key, err)
 		return 0, false
 	}
 
@@ -123,7 +123,7 @@ func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet qui
 	case "unmanaged":
 		return &detector.Unmanaged{}, true
 	default:
-		log.Printf("😡 Error parsing the variable %s with the value %s", key, val)
+		log.Printf("😡 Failed to parse %s: %q is not a valid policy.", key, val)
 		return nil, false
 	}
 }
@@ -142,10 +142,10 @@ func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time
 
 	switch {
 	case err != nil:
-		log.Printf("😡 Error parsing the variable %s: %v", key, err)
+		log.Printf("😡 Failed to parse %s: %v", key, err)
 		return 0, false
 	case t < 0:
-		log.Printf("😡 Time duration %v is negative.", t)
+		log.Printf("😡 Failed to parse %s: %v is negative.", key, t)
 	}
 
 	return t, true
@@ -161,9 +161,9 @@ func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedu
 		return def, true
 	}
 
-	c, ok := cron.New(val)
-	if !ok {
-		log.Printf("😡 Error parsing the variable %s.", key)
+	c, err := cron.New(val)
+	if err != nil {
+		log.Printf("😡 Failed to parse %s: %v", key, err)
 		return c, false
 	}
 

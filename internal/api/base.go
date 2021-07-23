@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
@@ -31,6 +32,35 @@ func (h *Handle) FlushCache() {
 	h.cache.listRecords[ipnet.IP6].Flush()
 	h.cache.activeZones.Flush()
 	h.cache.zoneOfDomain.Flush()
+}
+
+func New(ctx context.Context, token, account string, cacheExpiration time.Duration) (*Handle, bool) {
+	handle, err := cloudflare.NewWithAPIToken(token, cloudflare.UsingAccount(account))
+	if err != nil {
+		log.Printf("🚨 Failed to prepare the CloudFlare authentication: %v", err)
+		return nil, false
+	}
+
+	// this is not needed, but is helpful for diagnosing the problem
+	if _, err := handle.UserDetails(ctx); err != nil {
+		log.Printf("🤔 Failed to obtain user details: %v", err)
+		log.Printf("🚨 The CloudFlare API token is probably invalid.")
+		return nil, false
+	}
+
+	cleanupInterval := cacheExpiration * CleanupIntervalFactor
+
+	return &Handle{
+		cf: handle,
+		cache: Cache{
+			listRecords: map[ipnet.Type]*cache.Cache{
+				ipnet.IP4: cache.New(cacheExpiration, cleanupInterval),
+				ipnet.IP6: cache.New(cacheExpiration, cleanupInterval),
+			},
+			activeZones:  cache.New(cacheExpiration, cleanupInterval),
+			zoneOfDomain: cache.New(cacheExpiration, cleanupInterval),
+		},
+	}, true
 }
 
 // activeZoneIDsByName replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
