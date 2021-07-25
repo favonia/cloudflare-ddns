@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"sort"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -99,73 +100,69 @@ func readAuth(quiet quiet.Quiet, field *api.Auth) bool {
 	return true
 }
 
-func readDomains(quiet quiet.Quiet, field *map[ipnet.Type][]api.FQDN) bool { //nolint:funlen,cyclop
-	var rawDomains, rawIP4Domains, rawIP6Domains []string
+// deduplicate always sorts and deduplicates the input list,
+// returning true if elements are already distinct.
+func deduplicate(list *[]string) bool {
+	sort.Strings(*list)
 
-	if !ReadDomains(quiet, "DOMAINS", &rawDomains) ||
-		!ReadDomains(quiet, "IP4_DOMAINS", &rawIP4Domains) ||
-		!ReadDomains(quiet, "IP6_DOMAINS", &rawIP6Domains) {
+	if len(*list) == 0 {
+		return true
+	}
+
+	j := 0
+	for i := range *list {
+		if i == 0 || (*list)[j] == (*list)[i] {
+			continue
+		}
+		j++
+		(*list)[j] = (*list)[i]
+	}
+
+	if len(*list) == j+1 {
+		return true
+	}
+
+	*list = (*list)[:j+1]
+	return false
+}
+
+func readDomains(quiet quiet.Quiet, field map[ipnet.Type][]api.FQDN) bool {
+	var domains, ip4Domains, ip6Domains []string
+
+	if !ReadDomains(quiet, "DOMAINS", &domains) ||
+		!ReadDomains(quiet, "IP4_DOMAINS", &ip4Domains) ||
+		!ReadDomains(quiet, "IP6_DOMAINS", &ip6Domains) {
 		return false
 	}
 
-	var (
-		domainSet    = map[ipnet.Type]map[string]bool{ipnet.IP4: {}, ipnet.IP6: {}}
-		duplicateSet = map[string]bool{}
-		ip4Domains   = make([]api.FQDN, 0, len(rawDomains)+len(rawIP4Domains))
-		ip6Domains   = make([]api.FQDN, 0, len(rawDomains)+len(rawIP6Domains))
-	)
+	ip4Domains = append(ip4Domains, domains...)
+	ip6Domains = append(ip6Domains, domains...)
 
-	for _, domain := range rawDomains {
-		if domainSet[ipnet.IP4][domain] || domainSet[ipnet.IP6][domain] {
-			duplicateSet[domain] = true
-			continue
-		}
+	ip4HasDuplicates := deduplicate(&ip4Domains)
+	ip6HasDuplicates := deduplicate(&ip6Domains)
 
-		domainSet[ipnet.IP4][domain] = true
-		domainSet[ipnet.IP6][domain] = true
-		ip4Domains = append(ip4Domains, api.FQDN(domain))
-		ip6Domains = append(ip6Domains, api.FQDN(domain))
-	}
-
-	for _, domain := range rawIP4Domains {
-		if domainSet[ipnet.IP4][domain] {
-			duplicateSet[domain] = true
-			continue
-		}
-
-		domainSet[ipnet.IP4][domain] = true
-		ip4Domains = append(ip4Domains, api.FQDN(domain))
-	}
-
-	for _, domain := range rawIP6Domains {
-		if domainSet[ipnet.IP6][domain] {
-			duplicateSet[domain] = true
-			continue
-		}
-
-		domainSet[ipnet.IP6][domain] = true
-		ip6Domains = append(ip6Domains, api.FQDN(domain))
-	}
-
-	if !quiet {
-		if len(duplicateSet) > 0 {
-			duplicates := make([]string, 0, len(duplicateSet))
-			for domain := range duplicateSet {
-				duplicates = append(duplicates, domain)
-			}
-			log.Printf("🤔 Found duplicates of these domains: %v", duplicates)
+	if ip4HasDuplicates || ip6HasDuplicates {
+		if !quiet {
+			log.Printf("🤔 Duplicate domains are ignored.")
 		}
 	}
 
-	(*field)[ipnet.IP4] = ip4Domains
-	(*field)[ipnet.IP6] = ip6Domains
+	field[ipnet.IP4] = make([]api.FQDN, 0, len(ip4Domains))
+	for _, domain := range ip4Domains {
+		field[ipnet.IP4] = append(field[ipnet.IP4], api.FQDN(domain))
+	}
+
+	field[ipnet.IP6] = make([]api.FQDN, 0, len(ip6Domains))
+	for _, domain := range ip6Domains {
+		field[ipnet.IP6] = append(field[ipnet.IP6], api.FQDN(domain))
+	}
 
 	return true
 }
 
-func readPolicies(quiet quiet.Quiet, field *map[ipnet.Type]detector.Policy) bool {
-	ip4Policy := (*field)[ipnet.IP4]
-	ip6Policy := (*field)[ipnet.IP6]
+func readPolicies(quiet quiet.Quiet, field map[ipnet.Type]detector.Policy) bool {
+	ip4Policy := field[ipnet.IP4]
+	ip6Policy := field[ipnet.IP6]
 
 	if !ReadPolicy(quiet, ipnet.IP4, "IP4_POLICY", &ip4Policy) {
 		return false
@@ -175,14 +172,8 @@ func readPolicies(quiet quiet.Quiet, field *map[ipnet.Type]detector.Policy) bool
 		return false
 	}
 
-	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
-		log.Printf("😡 Both IPv4 and IPv6 are unmanaged.")
-		return false
-	}
-
-	(*field)[ipnet.IP4] = ip4Policy
-	(*field)[ipnet.IP6] = ip6Policy
-
+	field[ipnet.IP4] = ip4Policy
+	field[ipnet.IP6] = ip6Policy
 	return true
 }
 
@@ -218,8 +209,8 @@ func (c *Config) ReadEnv() bool { //nolint:cyclop
 	}
 
 	if !readAuth(c.Quiet, &c.Auth) ||
-		!readPolicies(c.Quiet, &c.Policy) ||
-		!readDomains(c.Quiet, &c.Domains) ||
+		!readPolicies(c.Quiet, c.Policy) ||
+		!readDomains(c.Quiet, c.Domains) ||
 		!ReadCron(c.Quiet, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(c.Quiet, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(c.Quiet, "DELETE_ON_STOP", &c.DeleteOnStop) ||
