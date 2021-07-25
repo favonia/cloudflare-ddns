@@ -80,7 +80,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 				break
 			} else {
 				if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-					log.Printf("☠️ Deleted a stale %s record of %s instead (ID: %s).", recordType, domain, id)
+					log.Printf("💀 Deleted a stale %s record of %s instead (ID: %s).", recordType, domain, id)
 					numUnmatched--
 				}
 				continue
