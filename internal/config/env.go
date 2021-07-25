@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
@@ -19,16 +19,15 @@ func Getenv(key string) string {
 }
 
 // ReadQuiet reads an environment variable as quiet/verbose.
-func ReadQuiet(key string, field *quiet.Quiet) bool {
+func ReadQuiet(indent pp.Indent, key string, field *quiet.Quiet) bool {
 	val := Getenv(key)
 	if val == "" {
-		log.Printf("🈳 Use default %s=%t", key, *field)
 		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 
@@ -37,11 +36,11 @@ func ReadQuiet(key string, field *quiet.Quiet) bool {
 }
 
 // ReadString reads an environment variable as a string.
-func ReadString(quiet quiet.Quiet, key string, field *string) bool {
+func ReadString(quiet quiet.Quiet, indent pp.Indent, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%q", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
 		}
 		return true
 	}
@@ -51,18 +50,18 @@ func ReadString(quiet quiet.Quiet, key string, field *string) bool {
 }
 
 // ReadBool reads an environment variable as a boolean value.
-func ReadBool(quiet quiet.Quiet, key string, field *bool) bool {
+func ReadBool(quiet quiet.Quiet, indent pp.Indent, key string, field *bool) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%t", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%t", key, *field)
 		}
 		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 
@@ -71,11 +70,11 @@ func ReadBool(quiet quiet.Quiet, key string, field *bool) bool {
 }
 
 // ReadNonnegInt reads an environment variable as an integer.
-func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
+func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%d", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%d", key, *field)
 		}
 		return true
 	}
@@ -83,10 +82,10 @@ func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
 	i, err := strconv.Atoi(val)
 	switch {
 	case err != nil:
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	case i < 0:
-		log.Printf("😡 Failed to parse %s: %v is negative.", key, i)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %d is negative.", val, i)
 	}
 
 	*field = i
@@ -95,7 +94,7 @@ func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(_ quiet.Quiet, key string, field *[]string) bool {
+func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]string) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
 	*field = make([]string, 0, len(rawList))
@@ -112,11 +111,11 @@ func ReadDomains(_ quiet.Quiet, key string, field *[]string) bool {
 }
 
 // ReadPolicy reads an environment variable and parses it as a policy.
-func ReadPolicy(quiet quiet.Quiet, ipNet ipnet.Type, key string, field *detector.Policy) bool {
+func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, ipNet ipnet.Type, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
 		}
 		return true
 	case "cloudflare":
@@ -132,17 +131,17 @@ func ReadPolicy(quiet quiet.Quiet, ipNet ipnet.Type, key string, field *detector
 		*field = &detector.Unmanaged{}
 		return true
 	default:
-		log.Printf("😡 Failed to parse %s: %q is not a valid policy.", key, val)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: not a valid policy.", val)
 		return false
 	}
 }
 
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.
-func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) bool {
+func ReadNonnegDuration(quiet quiet.Quiet, indent pp.Indent, key string, field *time.Duration) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, field)
 		}
 		return true
 	}
@@ -151,10 +150,10 @@ func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) boo
 
 	switch {
 	case err != nil:
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	case t < 0:
-		log.Printf("😡 Failed to parse %s: %v is negative.", key, t)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v is negative.", val, t)
 	}
 
 	*field = t
@@ -162,18 +161,18 @@ func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) boo
 }
 
 // ReadCron reads an environment variable and parses it as a Cron expression.
-func ReadCron(quiet quiet.Quiet, key string, field *cron.Schedule) bool {
+func ReadCron(quiet quiet.Quiet, indent pp.Indent, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
 		}
 		return true
 	}
 
 	c, err := cron.New(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v\n", val, err)
 		return false
 	}
 

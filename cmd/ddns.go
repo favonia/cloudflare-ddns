@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
+	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 )
 
 const (
@@ -28,39 +28,38 @@ func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 	}
 }
 
-func exit() {
-	os.Exit(1)
-}
-
 var Version string //nolint:gochecknoglobals
 
 func welcome() {
 	if Version == "" {
-		log.Printf("🌟 CloudFlare DDNS")
+		pp.TopPrintf(pp.EmojiStar, "CloudFlare DDNS")
 		return
 	}
 
-	log.Printf("🌟 CloudFlare DDNS (%s)", Version)
+	pp.TopPrintf(pp.EmojiStar, "CloudFlare DDNS (%s)", Version)
 }
 
 func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
 	// reading the config
 	c := config.Default()
-	if !c.ReadEnv() {
-		exit()
+	if !c.ReadEnv(pp.NoIndent) {
+		pp.TopPrintf(pp.EmojiBye, "Bye!")
+		os.Exit(1)
 	}
-	if !c.Normalize() {
-		exit()
+	if !c.Normalize(pp.NoIndent) {
+		pp.TopPrintf(pp.EmojiBye, "Bye!")
+		os.Exit(1)
 	}
 
 	if !c.Quiet {
-		config.PrintConfig(c)
+		config.PrintConfig(pp.NoIndent, c)
 	}
 
 	// getting the handler
-	h, ok := c.Auth.New(ctx, c.CacheExpiration)
+	h, ok := c.Auth.New(ctx, pp.NoIndent, c.CacheExpiration)
 	if !ok {
-		exit()
+		pp.TopPrintf(pp.EmojiBye, "Bye!")
+		os.Exit(1)
 	}
 
 	return c, h
@@ -70,14 +69,17 @@ func main() { //nolint:funlen,gocognit,cyclop
 	welcome()
 
 	// dropping the superuser privilege
-	dropPriviledges()
-	printPriviledges()
+	dropPriviledges(pp.NoIndent)
 
-	ctx := context.Background()
+	// printing the current privileges
+	printPriviledges(pp.NoIndent)
 
 	// catching SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	// context
+	ctx := context.Background()
 
 	// reading the config
 	c, h := initConfig(ctx)
@@ -87,17 +89,18 @@ mainLoop:
 	for {
 		next := c.UpdateCron.Next()
 		if !first || c.UpdateOnStart {
-			updateIPs(ctx, c, h)
+			updateIPs(ctx, pp.NoIndent, c, h)
 		}
 		first = false
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
-				log.Printf("🚨 No scheduled updates in near future. Deleting all managed records . . .")
-				clearIPs(ctx, c, h)
-				log.Printf("👋 Done now. Bye!")
+				pp.TopPrintf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
+				clearIPs(ctx, pp.NoIndent, c, h)
+				pp.TopPrintf(pp.EmojiBye, "Done now. Bye!")
 			} else {
-				log.Printf("🚨 No scheduled updates in near future. Bye!")
+				pp.TopPrintf(pp.EmojiUserError, "No scheduled updates in near future.")
+				pp.TopPrintf(pp.EmojiBye, "Bye!")
 			}
 
 			break mainLoop
@@ -107,13 +110,14 @@ mainLoop:
 		if !c.Quiet {
 			switch {
 			case interval < -IntervalLargeGap:
-				log.Printf("🏃 Checking the IP addresses now (running behind by %v) . . .", -interval.Round(IntervalUnit))
+				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses now (running behind by %v) . . .",
+					-interval.Round(IntervalUnit))
 			case interval < IntervalUnit:
-				log.Printf("🏃 Checking the IP addresses now . . .")
+				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses now . . .")
 			case interval < IntervalLargeGap:
-				log.Printf("🏃 Checking the IP addresses in less than %v . . .", IntervalLargeGap)
+				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", IntervalLargeGap)
 			default:
-				log.Printf("💤 Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
+				pp.TopPrintf(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 			}
 		}
 
@@ -122,26 +126,27 @@ mainLoop:
 		} else {
 			switch sig.(syscall.Signal) {
 			case syscall.SIGHUP:
-				log.Printf("🚨 Caught signal: %v.", sig)
+				pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v.", sig)
 				h.FlushCache()
 
-				log.Printf("🔁 Restarting . . .")
+				pp.TopPrintf(pp.EmojiNow, "Restarting . . .")
 				c, h = initConfig(ctx)
 				continue mainLoop
 
 			case syscall.SIGINT, syscall.SIGTERM:
 				if c.DeleteOnStop {
-					log.Printf("🚨 Caught signal: %v. Deleting all managed records . . .", sig)
-					clearIPs(ctx, c, h)
-					log.Printf("👋 Done now. Bye!")
+					pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
+					clearIPs(ctx, pp.NoIndent, c, h)
+					pp.TopPrintf(pp.EmojiBye, "Done now. Bye!")
 				} else {
-					log.Printf("🚨 Caught signal: %v. Bye!", sig)
+					pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v.", sig)
+					pp.TopPrintf(pp.EmojiBye, "Bye!")
 				}
 
 				break mainLoop
 
 			default:
-				log.Printf("🚨 Caught unexpected signal: %v.", sig)
+				pp.TopPrintf(pp.EmojiSignal, "Caught and ignored unexpected signal: %v.", sig)
 				continue mainLoop
 			}
 		}

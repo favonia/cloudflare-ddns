@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
 	"syscall"
 
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
+	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
@@ -27,7 +27,7 @@ func tryRaiseCap(val cap.Value) {
 	}
 }
 
-func dropSuperuserGroup() {
+func dropSuperuserGroup(indent pp.Indent) {
 	defaultGID := syscall.Getegid()
 	if defaultGID == 0 {
 		defaultGID = syscall.Getgid() // real group ID
@@ -37,10 +37,10 @@ func dropSuperuserGroup() {
 	}
 
 	gid := defaultGID
-	if !config.ReadNonnegInt(quiet.QUIET, "PGID", &gid) {
+	if !config.ReadNonnegInt(quiet.QUIET, indent, "PGID", &gid) {
 		gid = defaultGID
 	} else if gid == 0 {
-		log.Printf("😡 PGID cannot be 0. Using %d instead.", defaultGID)
+		pp.Printf(indent, pp.EmojiUserError, "PGID cannot be 0. Using %d instead.", defaultGID)
 		gid = defaultGID
 	}
 
@@ -48,15 +48,15 @@ func dropSuperuserGroup() {
 	tryRaiseCap(cap.SETGID)
 
 	if err := syscall.Setgroups([]int{}); err != nil {
-		log.Printf("🤔 Could not erase all supplementary gruop IDs: %v", err)
+		pp.Printf(indent, pp.EmojiBullet, "Failed to erase supplementary GIDs (which might be fine): %v", err)
 	}
 
 	if err := syscall.Setresgid(gid, gid, gid); err != nil {
-		log.Printf("🤔 Could not set the group ID to %d: %v", gid, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to set GID to %d: %v", gid, err)
 	}
 }
 
-func dropSuperuser() {
+func dropSuperuser(indent pp.Indent) {
 	defaultUID := syscall.Geteuid()
 	if defaultUID == 0 {
 		defaultUID = syscall.Getuid()
@@ -66,10 +66,10 @@ func dropSuperuser() {
 	}
 
 	uid := defaultUID
-	if !config.ReadNonnegInt(quiet.QUIET, "PUID", &uid) {
+	if !config.ReadNonnegInt(quiet.QUIET, indent, "PUID", &uid) {
 		uid = defaultUID
 	} else if uid == 0 {
-		log.Printf("😡 PUID cannot be 0. Using %d instead.", defaultUID)
+		pp.Printf(indent, pp.EmojiUserError, "PUID cannot be 0. Using %d instead.", defaultUID)
 		uid = defaultUID
 	}
 
@@ -77,58 +77,58 @@ func dropSuperuser() {
 	tryRaiseCap(cap.SETUID)
 
 	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		log.Printf("🤔 Could not set the user ID to %d: %v", uid, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to set UID to %d: %v", uid, err)
 	}
 }
 
-func dropCapabilities() {
+func dropCapabilities(indent pp.Indent) {
 	if err := cap.NewSet().SetProc(); err != nil {
-		log.Printf("😡 Could not drop all capabilities: %v", err)
+		pp.Printf(indent, pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
 	}
 }
 
 // dropPriviledges drops all privileges as much as possible.
-func dropPriviledges() {
+func dropPriviledges(indent pp.Indent) {
+	pp.TopPrint(pp.EmojiPriviledges, "Dropping privileges . . .")
+
 	// group ID
-	dropSuperuserGroup()
+	dropSuperuserGroup(indent + 1)
 
 	// user ID
-	dropSuperuser()
+	dropSuperuser(indent + 1)
 
 	// all remaining capabilities
-	dropCapabilities()
+	dropCapabilities(indent + 1)
 }
 
-func printCapabilities() {
+func printCapabilities(indent pp.Indent) {
 	now, err := cap.GetPID(0)
 	if err != nil {
-		log.Printf("🤯 Could not get the current capabilities: %v", err)
+		pp.Printf(indent, pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
 	} else {
 		diff, err := now.Compare(cap.NewSet())
 		if err != nil {
-			log.Printf("🤯 Could not compare capabilities: %v", err)
+			pp.Printf(indent, pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
 		} else if diff != 0 {
-			log.Printf("😰 The program still retains some additional capabilities: %v", now)
+			pp.Printf(indent, pp.EmojiError, "The program still retains some additional capabilities: %v", now)
 		}
 	}
 }
 
-func printPriviledges() {
-	log.Printf("🧑 Effective user ID: %d.", syscall.Geteuid())
-	log.Printf("👪 Effective group ID: %d.", syscall.Getegid())
+func printPriviledges(indent pp.Indent) {
+	pp.TopPrint(pp.EmojiPriviledges, "Priviledges after dropping:")
+
+	pp.Printf(indent+1, pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
+	pp.Printf(indent+1, pp.EmojiBullet, "Effective GID:      %d", syscall.Getegid())
 
 	switch groups, err := syscall.Getgroups(); {
 	case err != nil:
-		log.Printf("😡 Could not get the supplementary group IDs.")
+		pp.Printf(indent+1, pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
 	case len(groups) > 0:
-		log.Printf("👪 Supplementary group IDs: %d.", groups)
+		pp.Printf(indent+1, pp.EmojiBullet, "Supplementary GIDs: %d\n", groups)
 	default:
-		log.Printf("👪 No supplementary group IDs.")
+		pp.Print(indent+1, pp.EmojiBullet, "Supplementary GIDs: (empty)")
 	}
 
-	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
-		log.Printf("😰 The program is still run as the superuser.")
-	}
-
-	printCapabilities()
+	printCapabilities(indent + 1)
 }
