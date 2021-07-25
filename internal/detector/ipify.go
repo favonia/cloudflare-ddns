@@ -20,20 +20,20 @@ func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, b
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %s: %v\n", url, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %s: %v", url, err)
 		return nil, false
 	}
 	defer resp.Body.Close()
 
 	text, err := io.ReadAll(resp.Body)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %s.\n", url)
+		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %s.", url)
 		return nil, false
 	}
 
 	ip := net.ParseIP(string(text))
 	if ip == nil {
-		pp.Printf(indent, pp.EmojiImpossible, "The response %q is not a valid IP address.\n", text)
+		pp.Printf(indent, pp.EmojiImpossible, "The response %q is not a valid IP address.", text)
 		return nil, false
 	}
 

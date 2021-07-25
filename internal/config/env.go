@@ -172,7 +172,7 @@ func ReadCron(quiet quiet.Quiet, indent pp.Indent, key string, field *cron.Sched
 
 	c, err := cron.New(val)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v\n", val, err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 

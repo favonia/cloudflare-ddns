@@ -56,20 +56,20 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 func parseTXTRecord(indent pp.Indent, r *dnsmessage.TXTResource) (net.IP, bool) {
 	switch len(r.TXT) {
 	case 0: // len(r.TXT) == 0
-		pp.Printf(indent, pp.EmojiImpossible, "The TXT record has no strings: %v\n", r)
+		pp.Printf(indent, pp.EmojiImpossible, "The TXT record has no strings: %v", r)
 		return nil, false
 
 	case 1: // len(r.TXT) == 1
 		break
 
 	default: // len(r.TXT) > 1
-		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple strings in the TXT record: %v\n", r)
+		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple strings in the TXT record: %v", r)
 		return nil, false
 	}
 
 	ip := net.ParseIP(r.TXT[0])
 	if ip == nil {
-		pp.Printf(indent, pp.EmojiImpossible, "The TXT record %q is not a valid IP address.\n", r.TXT[0])
+		pp.Printf(indent, pp.EmojiImpossible, "The TXT record %q is not a valid IP address.", r.TXT[0])
 		return nil, false
 	}
 
@@ -101,7 +101,7 @@ func parseDNSResource(indent pp.Indent, ans *dnsmessage.Resource, name string, c
 func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) (net.IP, bool) {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Not a valid DNS response: %v\n", err)
+		pp.Printf(indent, pp.EmojiImpossible, "Not a valid DNS response: %v", err)
 		return nil, false
 	}
 

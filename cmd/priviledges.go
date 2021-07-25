@@ -125,7 +125,7 @@ func printPriviledges(indent pp.Indent) {
 	case err != nil:
 		pp.Printf(indent+1, pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
 	case len(groups) > 0:
-		pp.Printf(indent+1, pp.EmojiBullet, "Supplementary GIDs: %d\n", groups)
+		pp.Printf(indent+1, pp.EmojiBullet, "Supplementary GIDs: %d", groups)
 	default:
 		pp.Print(indent+1, pp.EmojiBullet, "Supplementary GIDs: (empty)")
 	}

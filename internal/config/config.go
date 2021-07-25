@@ -60,13 +60,13 @@ func readAuthToken(_ quiet.Quiet, indent pp.Indent) (string, bool) {
 
 	// foolproof checks
 	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
-		pp.Printf(indent, pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN.\n")
+		pp.Printf(indent, pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN.")
 		return "", false
 	}
 
 	switch {
 	case token != "" && tokenFile != "":
-		pp.Printf(indent, pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.\n")
+		pp.Printf(indent, pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
 		return "", false
 	case token != "":
 		return token, true
@@ -77,13 +77,13 @@ func readAuthToken(_ quiet.Quiet, indent pp.Indent) (string, bool) {
 		}
 
 		if token == "" {
-			pp.Printf(indent, pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty.\n")
+			pp.Printf(indent, pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty.")
 			return "", false
 		}
 
 		return token, true
 	default:
-		pp.Printf(indent, pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.\n")
+		pp.Printf(indent, pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.")
 		return "", false
 	}
 }
@@ -172,27 +172,27 @@ func readPolicies(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]dete
 
 func PrintConfig(indent pp.Indent, c *Config) {
 	pp.Printf(indent, pp.EmojiConfig, "Policies:")
-	pp.Printf(indent+1, pp.EmojiBullet, "IPv4 policy:      %v\n", c.Policy[ipnet.IP4])
+	pp.Printf(indent+1, pp.EmojiBullet, "IPv4 policy:      %v", c.Policy[ipnet.IP4])
 	if c.Policy[ipnet.IP4].IsManaged() {
-		pp.Printf(indent+1, pp.EmojiBullet, "IPv4 domains:     %v\n", c.Domains[ipnet.IP4])
+		pp.Printf(indent+1, pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
-	pp.Printf(indent+1, pp.EmojiBullet, "IPv6 policy:      %v\n", c.Policy[ipnet.IP6])
+	pp.Printf(indent+1, pp.EmojiBullet, "IPv6 policy:      %v", c.Policy[ipnet.IP6])
 	if c.Policy[ipnet.IP6].IsManaged() {
-		pp.Printf(indent+1, pp.EmojiBullet, "IPv6 domains:     %v\n", c.Domains[ipnet.IP6])
+		pp.Printf(indent+1, pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
-	pp.Printf(indent, pp.EmojiConfig, "Timing:\n")
-	pp.Printf(indent+1, pp.EmojiBullet, "Update frequency: %v\n", c.UpdateCron)
-	pp.Printf(indent+1, pp.EmojiBullet, "Update on start?  %t\n", c.UpdateOnStart)
-	pp.Printf(indent+1, pp.EmojiBullet, "Delete on stop?   %t\n", c.DeleteOnStop)
-	pp.Printf(indent+1, pp.EmojiBullet, "Cache expiration: %v\n", c.CacheExpiration)
+	pp.Printf(indent, pp.EmojiConfig, "Timing:")
+	pp.Printf(indent+1, pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
+	pp.Printf(indent+1, pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
+	pp.Printf(indent+1, pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
+	pp.Printf(indent+1, pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
 
-	pp.Printf(indent, pp.EmojiConfig, "New DNS records:\n")
-	pp.Printf(indent+1, pp.EmojiBullet, "TTL:              %v\n", c.TTL)
-	pp.Printf(indent+1, pp.EmojiBullet, "Proxied:          %t\n", c.Proxied)
+	pp.Printf(indent, pp.EmojiConfig, "New DNS records:")
+	pp.Printf(indent+1, pp.EmojiBullet, "TTL:              %v", c.TTL)
+	pp.Printf(indent+1, pp.EmojiBullet, "Proxied:          %t", c.Proxied)
 
-	pp.Printf(indent, pp.EmojiConfig, "Timeouts\n")
-	pp.Printf(indent+1, pp.EmojiBullet, "IP detection:     %v\n", c.DetectionTimeout)
+	pp.Printf(indent, pp.EmojiConfig, "Timeouts")
+	pp.Printf(indent+1, pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
 }
 
 func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
@@ -248,7 +248,7 @@ func (c *Config) checkUselessDomains(indent pp.Indent) {
 			for domain := range domainSet[ipNet] {
 				if !intersectSet[domain] {
 					pp.Printf(indent, pp.EmojiUserError,
-						"Domain %v is ignored because it is only for %v but %v is unmanaged.\n", domain, ipNet, ipNet)
+						"Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
 				}
 			}
 		}
