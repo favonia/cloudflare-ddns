@@ -5,12 +5,10 @@ import (
 	"time"
 )
 
-func absInt(i int) int {
-	if i < 0 {
-		return -i
-	}
-	return i
-}
+const (
+	minutesPerHour   = 60
+	secondsPerMinute = 60
+)
 
 func describeOffset(offset int) string {
 	sign := '+'
@@ -19,9 +17,9 @@ func describeOffset(offset int) string {
 		offset = -offset
 	}
 
-	hours := offset / 60 / 60
-	minutes := (offset / 60) % 60
-	seconds := offset % 60
+	hours := offset / secondsPerMinute / minutesPerHour
+	minutes := (offset / secondsPerMinute) % minutesPerHour
+	seconds := offset % secondsPerMinute
 
 	switch {
 	case minutes == 0 && seconds == 0:
