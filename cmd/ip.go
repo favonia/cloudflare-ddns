@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -32,12 +32,12 @@ func updateIP(ctx context.Context, c *config.Config, h *api.Handle, ipNet ipnet.
 
 	ip, ok := c.Policy[ipNet].GetIP(ctx)
 	if !ok {
-		log.Printf("🤔 Could not detect the %v address.", ipNet)
+		fmt.Printf("🤔 Could not detect the %v address.\n", ipNet)
 		return
 	}
 
 	if !c.Quiet {
-		log.Printf("🌐 Detected the %v address: %v", ipNet, ip)
+		fmt.Printf("🌐 Detected the %v address: %v\n", ipNet, ip)
 	}
 
 	setIP(ctx, c, h, ipNet, ip)

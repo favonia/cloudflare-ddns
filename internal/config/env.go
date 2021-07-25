@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -22,13 +22,13 @@ func Getenv(key string) string {
 func ReadQuiet(key string, field *quiet.Quiet) bool {
 	val := Getenv(key)
 	if val == "" {
-		log.Printf("🈳 Use default %s=%t", key, *field)
+		fmt.Printf("🈳 Use default %s=%t\n", key, *field)
 		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		fmt.Printf("😡 Failed to parse %s: %v\n", key, err)
 		return false
 	}
 
@@ -41,7 +41,7 @@ func ReadString(quiet quiet.Quiet, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%q", key, *field)
+			fmt.Printf("🈳 Use default %s=%q\n", key, *field)
 		}
 		return true
 	}
@@ -55,14 +55,14 @@ func ReadBool(quiet quiet.Quiet, key string, field *bool) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%t", key, *field)
+			fmt.Printf("🈳 Use default %s=%t\n", key, *field)
 		}
 		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		fmt.Printf("😡 Failed to parse %s: %v\n", key, err)
 		return false
 	}
 
@@ -75,7 +75,7 @@ func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%d", key, *field)
+			fmt.Printf("🈳 Use default %s=%d\n", key, *field)
 		}
 		return true
 	}
@@ -83,10 +83,10 @@ func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
 	i, err := strconv.Atoi(val)
 	switch {
 	case err != nil:
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		fmt.Printf("😡 Failed to parse %s: %v\n", key, err)
 		return false
 	case i < 0:
-		log.Printf("😡 Failed to parse %s: %v is negative.", key, i)
+		fmt.Printf("😡 Failed to parse %s: %v is negative.\n", key, i)
 	}
 
 	*field = i
@@ -116,7 +116,7 @@ func ReadPolicy(quiet quiet.Quiet, ipNet ipnet.Type, key string, field *detector
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			fmt.Printf("🈳 Use default %s=%v\n", key, *field)
 		}
 		return true
 	case "cloudflare":
@@ -132,7 +132,7 @@ func ReadPolicy(quiet quiet.Quiet, ipNet ipnet.Type, key string, field *detector
 		*field = &detector.Unmanaged{}
 		return true
 	default:
-		log.Printf("😡 Failed to parse %s: %q is not a valid policy.", key, val)
+		fmt.Printf("😡 Failed to parse %s: %q is not a valid policy.\n", key, val)
 		return false
 	}
 }
@@ -142,7 +142,7 @@ func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) boo
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			fmt.Printf("🈳 Use default %s=%v\n", key, *field)
 		}
 		return true
 	}
@@ -151,10 +151,10 @@ func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) boo
 
 	switch {
 	case err != nil:
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		fmt.Printf("😡 Failed to parse %s: %v\n", key, err)
 		return false
 	case t < 0:
-		log.Printf("😡 Failed to parse %s: %v is negative.", key, t)
+		fmt.Printf("😡 Failed to parse %s: %v is negative.\n", key, t)
 	}
 
 	*field = t
@@ -166,14 +166,14 @@ func ReadCron(quiet quiet.Quiet, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, *field)
+			fmt.Printf("🈳 Use default %s=%v\n", key, *field)
 		}
 		return true
 	}
 
 	c, err := cron.New(val)
 	if err != nil {
-		log.Printf("😡 Failed to parse %s: %v", key, err)
+		fmt.Printf("😡 Failed to parse %s: %v\n", key, err)
 		return false
 	}
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"syscall"
 
 	"kernel.org/pub/linux/libs/security/libcap/cap"
@@ -40,7 +40,7 @@ func dropSuperuserGroup() {
 	if !config.ReadNonnegInt(quiet.QUIET, "PGID", &gid) {
 		gid = defaultGID
 	} else if gid == 0 {
-		log.Printf("😡 PGID cannot be 0. Using %d instead.", defaultGID)
+		fmt.Printf("😡 PGID cannot be 0. Using %d instead.\n", defaultGID)
 		gid = defaultGID
 	}
 
@@ -48,11 +48,11 @@ func dropSuperuserGroup() {
 	tryRaiseCap(cap.SETGID)
 
 	if err := syscall.Setgroups([]int{}); err != nil {
-		log.Printf("🤔 Could not erase all supplementary gruop IDs: %v", err)
+		fmt.Printf("🤔 Could not erase all supplementary gruop IDs: %v\n", err)
 	}
 
 	if err := syscall.Setresgid(gid, gid, gid); err != nil {
-		log.Printf("🤔 Could not set the group ID to %d: %v", gid, err)
+		fmt.Printf("🤔 Could not set the group ID to %d: %v\n", gid, err)
 	}
 }
 
@@ -69,7 +69,7 @@ func dropSuperuser() {
 	if !config.ReadNonnegInt(quiet.QUIET, "PUID", &uid) {
 		uid = defaultUID
 	} else if uid == 0 {
-		log.Printf("😡 PUID cannot be 0. Using %d instead.", defaultUID)
+		fmt.Printf("😡 PUID cannot be 0. Using %d instead.\n", defaultUID)
 		uid = defaultUID
 	}
 
@@ -77,13 +77,13 @@ func dropSuperuser() {
 	tryRaiseCap(cap.SETUID)
 
 	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		log.Printf("🤔 Could not set the user ID to %d: %v", uid, err)
+		fmt.Printf("🤔 Could not set the user ID to %d: %v\n", uid, err)
 	}
 }
 
 func dropCapabilities() {
 	if err := cap.NewSet().SetProc(); err != nil {
-		log.Printf("😡 Could not drop all capabilities: %v", err)
+		fmt.Printf("😡 Could not drop all capabilities: %v\n", err)
 	}
 }
 
@@ -102,32 +102,32 @@ func dropPriviledges() {
 func printCapabilities() {
 	now, err := cap.GetPID(0)
 	if err != nil {
-		log.Printf("🤯 Could not get the current capabilities: %v", err)
+		fmt.Printf("🤯 Could not get the current capabilities: %v\n", err)
 	} else {
 		diff, err := now.Compare(cap.NewSet())
 		if err != nil {
-			log.Printf("🤯 Could not compare capabilities: %v", err)
+			fmt.Printf("🤯 Could not compare capabilities: %v\n", err)
 		} else if diff != 0 {
-			log.Printf("😰 The program still retains some additional capabilities: %v", now)
+			fmt.Printf("😰 The program still retains some additional capabilities: %v\n", now)
 		}
 	}
 }
 
 func printPriviledges() {
-	log.Printf("🧑 Effective user ID: %d.", syscall.Geteuid())
-	log.Printf("👪 Effective group ID: %d.", syscall.Getegid())
+	fmt.Printf("🧑 Effective user ID: %d.\n", syscall.Geteuid())
+	fmt.Printf("👪 Effective group ID: %d.\n", syscall.Getegid())
 
 	switch groups, err := syscall.Getgroups(); {
 	case err != nil:
-		log.Printf("😡 Could not get the supplementary group IDs.")
+		fmt.Printf("😡 Could not get the supplementary group IDs.\n")
 	case len(groups) > 0:
-		log.Printf("👪 Supplementary group IDs: %d.", groups)
+		fmt.Printf("👪 Supplementary group IDs: %d.\n", groups)
 	default:
-		log.Printf("👪 No supplementary group IDs.")
+		fmt.Printf("👪 No supplementary group IDs.\n")
 	}
 
 	if syscall.Geteuid() == 0 || syscall.Getegid() == 0 {
-		log.Printf("😰 The program is still run as the superuser.")
+		fmt.Printf("😰 The program is still run as the superuser.\n")
 	}
 
 	printCapabilities()

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"sort"
 	"time"
 
@@ -60,13 +60,13 @@ func readAuthToken(_ quiet.Quiet) (string, bool) {
 
 	// foolproof checks
 	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
-		log.Printf("😡 You need to provide a real API token as CF_API_TOKEN.")
+		fmt.Printf("😡 You need to provide a real API token as CF_API_TOKEN.\n")
 		return "", false
 	}
 
 	switch {
 	case token != "" && tokenFile != "":
-		log.Printf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
+		fmt.Printf("😡 Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.\n")
 		return "", false
 	case token != "":
 		return token, true
@@ -77,13 +77,13 @@ func readAuthToken(_ quiet.Quiet) (string, bool) {
 		}
 
 		if token == "" {
-			log.Printf("😡 The token in the file specified by CF_API_TOKEN_FILE is empty.")
+			fmt.Printf("😡 The token in the file specified by CF_API_TOKEN_FILE is empty.\n")
 			return "", false
 		}
 
 		return token, true
 	default:
-		log.Printf("😡 Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.")
+		fmt.Printf("😡 Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.\n")
 		return "", false
 	}
 }
@@ -143,7 +143,7 @@ func readDomains(quiet quiet.Quiet, field map[ipnet.Type][]api.FQDN) bool {
 
 	if ip4HasDuplicates || ip6HasDuplicates {
 		if !quiet {
-			log.Printf("🤔 Duplicate domains are ignored.")
+			fmt.Printf("🤔 Duplicate domains are ignored.\n")
 		}
 	}
 
@@ -178,25 +178,25 @@ func readPolicies(quiet quiet.Quiet, field map[ipnet.Type]detector.Policy) bool 
 }
 
 func PrintConfig(c *Config) {
-	log.Printf("🔧 Policies:")
-	log.Printf("   🔸 IPv4 policy:      %v", c.Policy[ipnet.IP4])
+	fmt.Printf("🔧 Policies:\n")
+	fmt.Printf("   🔸 IPv4 policy:      %v\n", c.Policy[ipnet.IP4])
 	if c.Policy[ipnet.IP4].IsManaged() {
-		log.Printf("   🔸 IPv4 domains:     %v", c.Domains[ipnet.IP4])
+		fmt.Printf("   🔸 IPv4 domains:     %v\n", c.Domains[ipnet.IP4])
 	}
-	log.Printf("   🔸 IPv6 policy:      %v", c.Policy[ipnet.IP6])
+	fmt.Printf("   🔸 IPv6 policy:      %v\n", c.Policy[ipnet.IP6])
 	if c.Policy[ipnet.IP6].IsManaged() {
-		log.Printf("   🔸 IPv6 domains:     %v", c.Domains[ipnet.IP6])
+		fmt.Printf("   🔸 IPv6 domains:     %v\n", c.Domains[ipnet.IP6])
 	}
-	log.Printf("🔧 Timing:")
-	log.Printf("   🔸 Update frequency: %v", c.UpdateCron)
-	log.Printf("   🔸 Update on start?  %t", c.UpdateOnStart)
-	log.Printf("   🔸 Delete on stop?   %t", c.DeleteOnStop)
-	log.Printf("   🔸 Cache expiration: %v", c.CacheExpiration)
-	log.Printf("🔧 New DNS records:")
-	log.Printf("   🔸 TTL:              %v", c.TTL)
-	log.Printf("   🔸 Proxied:          %t", c.Proxied)
-	log.Printf("🔧 Timeouts")
-	log.Printf("   🔸 IP detection:     %v", c.DetectionTimeout)
+	fmt.Printf("🔧 Timing:\n")
+	fmt.Printf("   🔸 Update frequency: %v\n", c.UpdateCron)
+	fmt.Printf("   🔸 Update on start?  %t\n", c.UpdateOnStart)
+	fmt.Printf("   🔸 Delete on stop?   %t\n", c.DeleteOnStop)
+	fmt.Printf("   🔸 Cache expiration: %v\n", c.CacheExpiration)
+	fmt.Printf("🔧 New DNS records:\n")
+	fmt.Printf("   🔸 TTL:              %v\n", c.TTL)
+	fmt.Printf("   🔸 Proxied:          %t\n", c.Proxied)
+	fmt.Printf("🔧 Timeouts\n")
+	fmt.Printf("   🔸 IP detection:     %v\n", c.DetectionTimeout)
 }
 
 func (c *Config) ReadEnv() bool { //nolint:cyclop
@@ -205,7 +205,7 @@ func (c *Config) ReadEnv() bool { //nolint:cyclop
 	}
 
 	if c.Quiet {
-		log.Printf("🔇 Quiet mode enabled.")
+		fmt.Printf("🔇 Quiet mode enabled.\n")
 	}
 
 	if !readAuth(c.Quiet, &c.Auth) ||
@@ -248,7 +248,7 @@ func (c *Config) checkUselessDomains() {
 		if !c.Policy[ipNet].IsManaged() {
 			for domain := range domainSet[ipNet] {
 				if !intersectSet[domain] {
-					log.Printf("😡 Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
+					fmt.Printf("😡 Domain %v is ignored because it is only for %v but %v is unmanaged.\n", domain, ipNet, ipNet)
 				}
 			}
 		}
@@ -257,7 +257,7 @@ func (c *Config) checkUselessDomains() {
 
 func (c *Config) Normalize() bool {
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
-		log.Printf("😡 No domains were specified.")
+		fmt.Printf("😡 No domains were specified.\n")
 		return false
 	}
 
@@ -265,13 +265,13 @@ func (c *Config) Normalize() bool {
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
 			c.Policy[ipNet] = &detector.Unmanaged{}
-			log.Printf(`🤔 IP%v_POLICY was changed to "%v" because no domains were set for %v.`,
+			fmt.Printf("🤔 IP%v_POLICY was changed to %q because no domains were set for %v.\n",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}
 	}
 
 	if !c.Policy[ipnet.IP4].IsManaged() && !c.Policy[ipnet.IP6].IsManaged() {
-		log.Printf("😡 Both IPv4 and IPv6 are unmanaged.")
+		fmt.Printf("😡 Both IPv4 and IPv6 are unmanaged.\n")
 		return false
 	}
 

@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
 	"time"
 
@@ -37,14 +37,14 @@ func (h *Handle) FlushCache() {
 func New(ctx context.Context, token, account string, cacheExpiration time.Duration) (*Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(token, cloudflare.UsingAccount(account))
 	if err != nil {
-		log.Printf("🚨 Failed to prepare the CloudFlare authentication: %v", err)
+		fmt.Printf("🚨 Failed to prepare the CloudFlare authentication: %v\n", err)
 		return nil, false
 	}
 
 	// this is not needed, but is helpful for diagnosing the problem
 	if _, err := handle.VerifyAPIToken(ctx); err != nil {
-		log.Printf("🤔 Failed to verify the CloudFlare API token: %v", err)
-		log.Printf("🚨 Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE.")
+		fmt.Printf("🤔 Failed to verify the CloudFlare API token: %v\n", err)
+		fmt.Printf("🚨 Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE.\n")
 		return nil, false
 	}
 
@@ -71,7 +71,7 @@ func (h *Handle) activeZones(ctx context.Context, name string) ([]string, bool) 
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
-		log.Printf("🤔 Failed to check the existence of a zone named %s: %v", name, err)
+		fmt.Printf("🤔 Failed to check the existence of a zone named %s: %v\n", name, err)
 		return nil, false
 	}
 
@@ -108,13 +108,13 @@ zoneSearch:
 				return zones[0], true
 
 			default: // len(zones) > 1
-				log.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.", zoneName)
+				fmt.Printf("🤔 Found multiple zones named %s. Consider specifying CF_ACCOUNT_ID.\n", zoneName)
 				return "", false
 			}
 		}
 	}
 
-	log.Printf("🤔 Failed to find the zone of %s.", domain)
+	fmt.Printf("🤔 Failed to find the zone of %s.\n", domain)
 	return "", false
 }
 
@@ -134,7 +134,7 @@ func (h *Handle) listRecords(ctx context.Context, domain string, ipNet ipnet.Typ
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
-		log.Printf("🤔 Failed to retrieve records of %s: %v", domain, err)
+		fmt.Printf("🤔 Failed to retrieve records of %s: %v\n", domain, err)
 		return nil, false
 	}
 
@@ -153,7 +153,7 @@ func (h *Handle) deleteRecord(ctx context.Context, domain string, ipNet ipnet.Ty
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-		log.Printf("😡 Failed to delete a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
+		fmt.Printf("😡 Failed to delete a stale %s record of %s (ID: %s): %v\n", ipNet.RecordType(), domain, id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain)
 
@@ -181,7 +181,7 @@ func (h *Handle) updateRecord(ctx context.Context, domain string, ipNet ipnet.Ty
 	}
 
 	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
-		log.Printf("😡 Failed to update a stale %s record of %s (ID: %s): %v", ipNet.RecordType(), domain, id, err)
+		fmt.Printf("😡 Failed to update a stale %s record of %s (ID: %s): %v\n", ipNet.RecordType(), domain, id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain)
 
@@ -214,7 +214,7 @@ func (h *Handle) createRecord(ctx context.Context,
 
 	res, err := h.cf.CreateDNSRecord(ctx, zone, payload)
 	if err != nil {
-		log.Printf("😡 Failed to add a new %s record of %s: %v", ipNet.RecordType(), domain, err)
+		fmt.Printf("😡 Failed to add a new %s record of %s: %v\n", ipNet.RecordType(), domain, err)
 
 		h.cache.listRecords[ipNet].Delete(domain)
 

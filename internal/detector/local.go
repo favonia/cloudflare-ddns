@@ -2,7 +2,7 @@ package detector
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
@@ -23,7 +23,7 @@ func (p *Local) String() string {
 func (p *Local) getIP4(_ context.Context) (net.IP, bool) {
 	conn, err := net.Dial("udp4", "1.1.1.1:443")
 	if err != nil {
-		log.Printf(`😩 Could not detect a local IPv4 address: %v`, err)
+		fmt.Printf("😩 Could not detect a local IPv4 address: %v\n", err)
 		return nil, false
 	}
 	defer conn.Close()
@@ -34,7 +34,7 @@ func (p *Local) getIP4(_ context.Context) (net.IP, bool) {
 func (p *Local) getIP6(_ context.Context) (net.IP, bool) {
 	conn, err := net.Dial("udp6", "[2606:4700:4700::1111]:443")
 	if err != nil {
-		log.Printf(`😩 Could not detect a local IPv6 address: %v`, err)
+		fmt.Printf("😩 Could not detect a local IPv6 address: %v\n", err)
 		return nil, false
 	}
 	defer conn.Close()

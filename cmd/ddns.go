@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,11 +36,11 @@ var Version string //nolint:gochecknoglobals
 
 func welcome() {
 	if Version == "" {
-		log.Printf("🌟 CloudFlare DDNS")
+		fmt.Printf("🌟 CloudFlare DDNS\n")
 		return
 	}
 
-	log.Printf("🌟 CloudFlare DDNS (%s)", Version)
+	fmt.Printf("🌟 CloudFlare DDNS (%s)\n", Version)
 }
 
 func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
@@ -93,11 +93,11 @@ mainLoop:
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
-				log.Printf("🚨 No scheduled updates in near future. Deleting all managed records . . .")
+				fmt.Printf("🚨 No scheduled updates in near future. Deleting all managed records . . .\n")
 				clearIPs(ctx, c, h)
-				log.Printf("👋 Done now. Bye!")
+				fmt.Printf("👋 Done now. Bye!\n")
 			} else {
-				log.Printf("🚨 No scheduled updates in near future. Bye!")
+				fmt.Printf("🚨 No scheduled updates in near future. Bye!\n")
 			}
 
 			break mainLoop
@@ -107,13 +107,13 @@ mainLoop:
 		if !c.Quiet {
 			switch {
 			case interval < -IntervalLargeGap:
-				log.Printf("🏃 Checking the IP addresses now (running behind by %v) . . .", -interval.Round(IntervalUnit))
+				fmt.Printf("🏃 Checking the IP addresses now (running behind by %v) . . .\n", -interval.Round(IntervalUnit))
 			case interval < IntervalUnit:
-				log.Printf("🏃 Checking the IP addresses now . . .")
+				fmt.Printf("🏃 Checking the IP addresses now . . .\n")
 			case interval < IntervalLargeGap:
-				log.Printf("🏃 Checking the IP addresses in less than %v . . .", IntervalLargeGap)
+				fmt.Printf("🏃 Checking the IP addresses in less than %v . . .\n", IntervalLargeGap)
 			default:
-				log.Printf("💤 Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
+				fmt.Printf("💤 Checking the IP addresses in about %v . . .\n", interval.Round(IntervalUnit))
 			}
 		}
 
@@ -122,26 +122,26 @@ mainLoop:
 		} else {
 			switch sig.(syscall.Signal) {
 			case syscall.SIGHUP:
-				log.Printf("🚨 Caught signal: %v.", sig)
+				fmt.Printf("🚨 Caught signal: %v.\n", sig)
 				h.FlushCache()
 
-				log.Printf("🔁 Restarting . . .")
+				fmt.Printf("🔁 Restarting . . .\n")
 				c, h = initConfig(ctx)
 				continue mainLoop
 
 			case syscall.SIGINT, syscall.SIGTERM:
 				if c.DeleteOnStop {
-					log.Printf("🚨 Caught signal: %v. Deleting all managed records . . .", sig)
+					fmt.Printf("🚨 Caught signal: %v. Deleting all managed records . . .\n", sig)
 					clearIPs(ctx, c, h)
-					log.Printf("👋 Done now. Bye!")
+					fmt.Printf("👋 Done now. Bye!\n")
 				} else {
-					log.Printf("🚨 Caught signal: %v. Bye!", sig)
+					fmt.Printf("🚨 Caught signal: %v. Bye!\n", sig)
 				}
 
 				break mainLoop
 
 			default:
-				log.Printf("🚨 Caught unexpected signal: %v.", sig)
+				fmt.Printf("🚨 Caught unexpected signal: %v.\n", sig)
 				continue mainLoop
 			}
 		}

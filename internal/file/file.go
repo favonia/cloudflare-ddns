@@ -2,22 +2,22 @@ package file
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"log"
 	"os"
 )
 
 func ReadFileAsString(path string) (string, bool) {
 	file, err := os.Open(path)
 	if err != nil {
-		log.Printf("😡 Could not open %s: %v", path, err)
+		fmt.Printf("😡 Could not open %s: %v\n", path, err)
 		return "", false
 	}
 	defer file.Close()
 
 	content, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("😡 Could not read %s: %v", path, err)
+		fmt.Printf("😡 Could not read %s: %v\n", path, err)
 		return "", false
 	}
 

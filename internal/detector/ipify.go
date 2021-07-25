@@ -2,8 +2,8 @@ package detector
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 
@@ -14,26 +14,26 @@ func getIPFromHTTP(ctx context.Context, url string) (net.IP, bool) {
 	// http.Post is avoided so that we can pass ctx
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Printf("😩 Could not generate the request to %s: %v", url, err)
+		fmt.Printf("😩 Could not generate the request to %s: %v\n", url, err)
 		return nil, false
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("😩 Could not send the request to %s: %v", url, err)
+		fmt.Printf("😩 Could not send the request to %s: %v\n", url, err)
 		return nil, false
 	}
 	defer resp.Body.Close()
 
 	text, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf(`😩 Failed to read the response from %s.`, url)
+		fmt.Printf("😩 Failed to read the response from %s.\n", url)
 		return nil, false
 	}
 
 	ip := net.ParseIP(string(text))
 	if ip == nil {
-		log.Printf(`🤯 The response %q is not a valid IP address.`, text)
+		fmt.Printf("🤯 The response %q is not a valid IP address.\n", text)
 		return nil, false
 	}
 
