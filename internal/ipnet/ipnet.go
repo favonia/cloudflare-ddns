@@ -2,7 +2,6 @@ package ipnet
 
 import (
 	"fmt"
-	"log"
 )
 
 type Type int
@@ -23,7 +22,6 @@ func (t Type) RecordType() string {
 	case IP6:
 		return "AAAA"
 	default:
-		log.Fatalf("Unknown IP Network: %s", t.String())
 		return ""
 	}
 }
