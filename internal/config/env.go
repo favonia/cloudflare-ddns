@@ -18,124 +18,133 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-// GetenvAsString reads an environment variable as a string.
-func GetenvAsString(key string, def string, quiet quiet.Quiet) (string, bool) {
+// ReadQuiet reads an environment variable as quiet/verbose.
+func ReadQuiet(key string, field *quiet.Quiet) bool {
 	val := Getenv(key)
 	if val == "" {
-		if !quiet {
-			log.Printf("🈳 Use default %s=%q", key, def)
-		}
-		return def, true
-	}
-
-	return val, true
-}
-
-// GetenvAsBool reads an environment variable as a boolean value.
-func GetenvAsBool(key string, def bool, quiet quiet.Quiet) (bool, bool) {
-	val := Getenv(key)
-	if val == "" {
-		if !quiet {
-			log.Printf("🈳 Use default %s=%t", key, def)
-		}
-		return def, true
+		log.Printf("🈳 Use default %s=%t", key, *field)
+		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
 		log.Printf("😡 Failed to parse %s: %v", key, err)
-		return b, false
+		return false
 	}
 
-	return b, true
+	*field = quiet.Quiet(b)
+	return true
 }
 
-// GetenvAsQuiet reads an environment variable as quiet/verbose.
-func GetenvAsQuiet(key string) (quiet.Quiet, bool) {
-	def := quiet.Default
-
+// ReadString reads an environment variable as a string.
+func ReadString(quiet quiet.Quiet, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
-		log.Printf("🈳 Use default %s=%t", key, def)
-		return def, true
+		if !quiet {
+			log.Printf("🈳 Use default %s=%q", key, *field)
+		}
+		return true
+	}
+
+	*field = val
+	return true
+}
+
+// ReadBool reads an environment variable as a boolean value.
+func ReadBool(quiet quiet.Quiet, key string, field *bool) bool {
+	val := Getenv(key)
+	if val == "" {
+		if !quiet {
+			log.Printf("🈳 Use default %s=%t", key, *field)
+		}
+		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
 		log.Printf("😡 Failed to parse %s: %v", key, err)
-		return def, false
+		return false
 	}
 
-	return quiet.Quiet(b), true
+	*field = b
+	return true
 }
 
-// GetenvAsInt reads an environment variable as an integer.
-func GetenvAsInt(key string, def int, quiet quiet.Quiet) (int, bool) {
+// ReadNonnegInt reads an environment variable as an integer.
+func ReadNonnegInt(quiet quiet.Quiet, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%d", key, def)
+			log.Printf("🈳 Use default %s=%d", key, *field)
 		}
-		return def, true
+		return true
 	}
 
 	i, err := strconv.Atoi(val)
-	if err != nil {
+	switch {
+	case err != nil:
 		log.Printf("😡 Failed to parse %s: %v", key, err)
-		return 0, false
+		return false
+	case i < 0:
+		log.Printf("😡 Failed to parse %s: %v is negative.", key, i)
 	}
 
-	return i, true
+	*field = i
+	return true
 }
 
-// GetenvAsNormalizedDomains reads an environment variable as a comma-separated list of domains.
+// ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func GetenvAsNormalizedDomains(key string, quiet quiet.Quiet) []string {
+func ReadDomains(_ quiet.Quiet, key string, field *[]string) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
-	list := make([]string, 0, len(rawList))
+	*field = make([]string, 0, len(rawList))
 	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
 		}
 
-		list = append(list, normalizeDomain(item))
+		*field = append(*field, normalizeDomain(item))
 	}
 
-	return list
+	return true
 }
 
-// GetenvAsPolicy reads an environment variable and parses it as a policy.
-func GetenvAsPolicy(ipNet ipnet.Type, key string, def detector.Policy, quiet quiet.Quiet) (detector.Policy, bool) {
+// ReadPolicy reads an environment variable and parses it as a policy.
+func ReadPolicy(quiet quiet.Quiet, ipNet ipnet.Type, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, def)
+			log.Printf("🈳 Use default %s=%v", key, *field)
 		}
-		return def, true
+		return true
 	case "cloudflare":
-		return &detector.Cloudflare{Net: ipNet}, true
+		*field = &detector.Cloudflare{Net: ipNet}
+		return true
 	case "ipify":
-		return &detector.Ipify{Net: ipNet}, true
+		*field = &detector.Ipify{Net: ipNet}
+		return true
 	case "local":
-		return &detector.Local{Net: ipNet}, true
+		*field = &detector.Local{Net: ipNet}
+		return true
 	case "unmanaged":
-		return &detector.Unmanaged{}, true
+		*field = &detector.Unmanaged{}
+		return true
 	default:
 		log.Printf("😡 Failed to parse %s: %q is not a valid policy.", key, val)
-		return nil, false
+		return false
 	}
 }
 
-// GetenvAsPosDuration reads an environment variable and parses it as a time duration.
-func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time.Duration, bool) {
+// ReadNonnegDuration reads an environment variable and parses it as a time duration.
+func ReadNonnegDuration(quiet quiet.Quiet, key string, field *time.Duration) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%s", key, def.String())
+			log.Printf("🈳 Use default %s=%v", key, *field)
 		}
-		return def, true
+		return true
 	}
 
 	t, err := time.ParseDuration(val)
@@ -143,29 +152,31 @@ func GetenvAsPosDuration(key string, def time.Duration, quiet quiet.Quiet) (time
 	switch {
 	case err != nil:
 		log.Printf("😡 Failed to parse %s: %v", key, err)
-		return 0, false
+		return false
 	case t < 0:
 		log.Printf("😡 Failed to parse %s: %v is negative.", key, t)
 	}
 
-	return t, true
+	*field = t
+	return true
 }
 
-// GetenvAsCron reads an environment variable and parses it as a Cron expression.
-func GetenvAsCron(key string, def cron.Schedule, quiet quiet.Quiet) (cron.Schedule, bool) {
+// ReadCron reads an environment variable and parses it as a Cron expression.
+func ReadCron(quiet quiet.Quiet, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
 		if !quiet {
-			log.Printf("🈳 Use default %s=%v", key, def)
+			log.Printf("🈳 Use default %s=%v", key, *field)
 		}
-		return def, true
+		return true
 	}
 
 	c, err := cron.New(val)
 	if err != nil {
 		log.Printf("😡 Failed to parse %s: %v", key, err)
-		return c, false
+		return false
 	}
 
-	return c, true
+	*field = c
+	return true
 }

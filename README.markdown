@@ -274,9 +274,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | ---- | ------------ | ------- | --------- | ------------- |
 | `DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `A` records | (See below) | N/A
-| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP4_DOMAINS` is not empty; otherwise, `unmanaged`
+| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv4 addresses. (See below) | No | `cloudflare`
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
-| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | (See below) | No | `cloudflare` if `DOMAINS` or `IP6_DOMAINS` is not empty; otherwise, `unmanaged`
+| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv6 addresses. (See below) | No | `cloudflare`
 
 > <details>
 > <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
