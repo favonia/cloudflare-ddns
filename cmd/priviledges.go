@@ -36,8 +36,8 @@ func dropSuperuserGroup() {
 		}
 	}
 
-	gid, ok := config.GetenvAsInt("PGID", defaultGID, quiet.QUIET)
-	if !ok {
+	gid := defaultGID
+	if !config.ReadNonnegInt(quiet.QUIET, "PGID", &gid) {
 		gid = defaultGID
 	} else if gid == 0 {
 		log.Printf("😡 PGID cannot be 0. Using %d instead.", defaultGID)
@@ -65,8 +65,8 @@ func dropSuperuser() {
 		}
 	}
 
-	uid, ok := config.GetenvAsInt("PUID", defaultUID, quiet.QUIET)
-	if !ok {
+	uid := defaultUID
+	if !config.ReadNonnegInt(quiet.QUIET, "PUID", &uid) {
 		uid = defaultUID
 	} else if uid == 0 {
 		log.Printf("😡 PUID cannot be 0. Using %d instead.", defaultUID)

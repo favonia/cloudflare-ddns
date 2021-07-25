@@ -1,9 +1,7 @@
 package config
 
 import (
-	"context"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -14,42 +12,46 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
 
-type TTL int
-
-func (t TTL) String() string {
-	if t == 1 {
-		return "automatic"
-	}
-	return strconv.Itoa(int(t))
-}
-
 type Config struct {
 	Quiet            quiet.Quiet
 	Auth             api.Auth
 	Policy           map[ipnet.Type]detector.Policy
-	Targets          map[ipnet.Type][]api.Target
+	Domains          map[ipnet.Type][]api.FQDN
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
-	TTL              TTL
+	TTL              api.TTL
 	Proxied          bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 }
 
-const (
-	DefaultTTL              = 1
-	DefaultProxied          = false
-	DefaultUpdateCron       = "@every 5m"
-	DefaultUpdateOnStart    = true
-	DefaultDeleteOnStop     = false
-	DefaultUpdateTimeout    = time.Hour
-	DefaultDetectionTimeout = time.Second * 5
-	DefaultCacheExpiration  = time.Hour * 6
-)
+// Default gives default values.
+func Default() *Config {
+	return &Config{
+		Quiet: quiet.Quiet(false),
+		Auth:  nil,
+		Policy: map[ipnet.Type]detector.Policy{
+			ipnet.IP4: &detector.Cloudflare{Net: ipnet.IP4},
+			ipnet.IP6: &detector.Cloudflare{Net: ipnet.IP6},
+		},
+		Domains: map[ipnet.Type][]api.FQDN{
+			ipnet.IP4: nil,
+			ipnet.IP6: nil,
+		},
+		UpdateCron:       cron.MustNew("@every 5m"),
+		UpdateOnStart:    true,
+		DeleteOnStop:     false,
+		CacheExpiration:  time.Hour * 6, //nolint:gomnd
+		TTL:              api.TTL(1),
+		Proxied:          false,
+		UpdateTimeout:    time.Hour,
+		DetectionTimeout: time.Second * 5, //nolint:gomnd
+	}
+}
 
-func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
+func readAuthToken(_ quiet.Quiet) (string, bool) {
 	var (
 		token     = Getenv("CF_API_TOKEN")
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
@@ -85,126 +87,114 @@ func readAuthToken(_ context.Context, _ quiet.Quiet) (string, bool) {
 	}
 }
 
-func readAuth(ctx context.Context, quiet quiet.Quiet) (api.Auth, bool) {
-	token, ok := readAuthToken(ctx, quiet)
+func readAuth(quiet quiet.Quiet, field *api.Auth) bool {
+	token, ok := readAuthToken(quiet)
 	if !ok {
-		return nil, false
+		return false
 	}
 
 	accountID := Getenv("CF_ACCOUNT_ID")
 
-	return &api.TokenAuth{Token: token, AccountID: accountID}, true
+	*field = &api.TokenAuth{Token: token, AccountID: accountID}
+	return true
 }
 
-func readDomains(_ context.Context, quiet quiet.Quiet) (ip4Targets, ip6Targets []api.Target, allOk bool) {
-	var (
-		rawDomains    = GetenvAsNormalizedDomains("DOMAINS", quiet)
-		rawIP4Domains = GetenvAsNormalizedDomains("IP4_DOMAINS", quiet)
-		rawIP6Domains = GetenvAsNormalizedDomains("IP6_DOMAINS", quiet)
+func readDomains(quiet quiet.Quiet, field *map[ipnet.Type][]api.FQDN) bool { //nolint:funlen,cyclop
+	var rawDomains, rawIP4Domains, rawIP6Domains []string
 
-		ip4DomainSet = map[string]bool{}
-		ip6DomainSet = map[string]bool{}
+	if !ReadDomains(quiet, "DOMAINS", &rawDomains) ||
+		!ReadDomains(quiet, "IP4_DOMAINS", &rawIP4Domains) ||
+		!ReadDomains(quiet, "IP6_DOMAINS", &rawIP6Domains) {
+		return false
+	}
+
+	var (
+		domainSet    = map[ipnet.Type]map[string]bool{ipnet.IP4: {}, ipnet.IP6: {}}
+		duplicateSet = map[string]bool{}
+		ip4Domains   = make([]api.FQDN, 0, len(rawDomains)+len(rawIP4Domains))
+		ip6Domains   = make([]api.FQDN, 0, len(rawDomains)+len(rawIP6Domains))
 	)
 
 	for _, domain := range rawDomains {
-		if ip4DomainSet[domain] || ip6DomainSet[domain] {
-			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
+		if domainSet[ipnet.IP4][domain] || domainSet[ipnet.IP6][domain] {
+			duplicateSet[domain] = true
 			continue
 		}
 
-		ip4DomainSet[domain] = true
-
-		ip4Targets = append(ip4Targets, &api.FQDNTarget{Domain: domain})
-		ip6Targets = append(ip6Targets, &api.FQDNTarget{Domain: domain})
+		domainSet[ipnet.IP4][domain] = true
+		domainSet[ipnet.IP6][domain] = true
+		ip4Domains = append(ip4Domains, api.FQDN(domain))
+		ip6Domains = append(ip6Domains, api.FQDN(domain))
 	}
 
 	for _, domain := range rawIP4Domains {
-		if ip4DomainSet[domain] {
-			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
+		if domainSet[ipnet.IP4][domain] {
+			duplicateSet[domain] = true
 			continue
 		}
 
-		ip4DomainSet[domain] = true
-
-		ip4Targets = append(ip4Targets, &api.FQDNTarget{Domain: domain})
+		domainSet[ipnet.IP4][domain] = true
+		ip4Domains = append(ip4Domains, api.FQDN(domain))
 	}
 
 	for _, domain := range rawIP6Domains {
-		if ip6DomainSet[domain] {
-			log.Printf("😡 Domain %s has duplicates in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS.", domain)
+		if domainSet[ipnet.IP6][domain] {
+			duplicateSet[domain] = true
 			continue
 		}
 
-		ip6DomainSet[domain] = true
-
-		ip6Targets = append(ip6Targets, &api.FQDNTarget{Domain: domain})
+		domainSet[ipnet.IP6][domain] = true
+		ip6Domains = append(ip6Domains, api.FQDN(domain))
 	}
 
-	if len(ip4Targets) == 0 && len(ip6Targets) == 0 {
-		log.Printf("😡 DOMAINS, IP4_DOMAINS, and IP6_DOMAINS are all empty or unset.")
-		return nil, nil, false
-	}
-
-	return ip4Targets, ip6Targets, true
-}
-
-func readPolicy(
-	_ context.Context, quiet quiet.Quiet,
-	ipNet ipnet.Type, key string, targets []api.Target,
-) (detector.Policy, bool) {
-	var defaultPolicy detector.Policy
-	switch {
-	case len(targets) > 0:
-		defaultPolicy = &detector.Cloudflare{Net: ipNet}
-	default:
-		defaultPolicy = &detector.Unmanaged{}
-	}
-
-	policy, ok := GetenvAsPolicy(ipnet.IP6, key, defaultPolicy, quiet)
-	switch {
-	case !ok:
-		return nil, false
-	case len(targets) == 0 && policy.IsManaged():
-		if !quiet {
-			log.Printf("🤔 No domains set for %s; %s=%s is ignored.", ipNet, key, policy)
+	if !quiet {
+		if len(duplicateSet) > 0 {
+			duplicates := make([]string, 0, len(duplicateSet))
+			for domain := range duplicateSet {
+				duplicates = append(duplicates, domain)
+			}
+			log.Printf("🤔 Found duplicates of these domains: %v", duplicates)
 		}
-		policy = &detector.Unmanaged{}
 	}
 
-	return policy, true
+	(*field)[ipnet.IP4] = ip4Domains
+	(*field)[ipnet.IP6] = ip6Domains
+
+	return true
 }
 
-func readPolicies(
-	ctx context.Context, quiet quiet.Quiet,
-	ip4Targets, ip6Targets []api.Target,
-) (ip4Policy, ip6Policy detector.Policy, allOk bool) {
-	ip4Policy, ip4Ok := readPolicy(ctx, quiet, ipnet.IP4, "IP4_POLICY", ip4Targets)
-	if !ip4Ok {
-		return nil, nil, false
+func readPolicies(quiet quiet.Quiet, field *map[ipnet.Type]detector.Policy) bool {
+	ip4Policy := (*field)[ipnet.IP4]
+	ip6Policy := (*field)[ipnet.IP6]
+
+	if !ReadPolicy(quiet, ipnet.IP4, "IP4_POLICY", &ip4Policy) {
+		return false
 	}
 
-	ip6Policy, ip6Ok := readPolicy(ctx, quiet, ipnet.IP6, "IP6_POLICY", ip6Targets)
-	if !ip6Ok {
-		return nil, nil, false
+	if !ReadPolicy(quiet, ipnet.IP6, "IP6_POLICY", &ip6Policy) {
+		return false
 	}
 
 	if !ip4Policy.IsManaged() && !ip6Policy.IsManaged() {
 		log.Printf("😡 Both IPv4 and IPv6 are unmanaged.")
-		return nil, nil, false
+		return false
 	}
 
-	return ip4Policy, ip6Policy, true
+	(*field)[ipnet.IP4] = ip4Policy
+	(*field)[ipnet.IP6] = ip6Policy
+
+	return true
 }
 
-func PrintConfig(ctx context.Context, c *Config) {
+func PrintConfig(c *Config) {
 	log.Printf("🔧 Policies:")
 	log.Printf("   🔸 IPv4 policy:      %v", c.Policy[ipnet.IP4])
 	if c.Policy[ipnet.IP4].IsManaged() {
-		log.Printf("   🔸 IPv4 domains:     %v", c.Targets[ipnet.IP4])
+		log.Printf("   🔸 IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
 	log.Printf("   🔸 IPv6 policy:      %v", c.Policy[ipnet.IP6])
 	if c.Policy[ipnet.IP6].IsManaged() {
-		log.Printf("   🔸 IPv6 domains:     %v", c.Targets[ipnet.IP6])
+		log.Printf("   🔸 IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 	log.Printf("🔧 Timing:")
 	log.Printf("   🔸 Update frequency: %v", c.UpdateCron)
@@ -218,86 +208,83 @@ func PrintConfig(ctx context.Context, c *Config) {
 	log.Printf("   🔸 IP detection:     %v", c.DetectionTimeout)
 }
 
-func ReadConfig(ctx context.Context) (*Config, bool) { //nolint:funlen,cyclop
-	quiet, ok := GetenvAsQuiet("QUIET")
-	if !ok {
-		return nil, false
+func (c *Config) ReadEnv() bool { //nolint:cyclop
+	if !ReadQuiet("QUIET", &c.Quiet) {
+		return false
 	}
 
-	if quiet {
+	if c.Quiet {
 		log.Printf("🔇 Quiet mode enabled.")
 	}
 
-	auth, ok := readAuth(ctx, quiet)
-	if !ok {
-		return nil, false
+	if !readAuth(c.Quiet, &c.Auth) ||
+		!readPolicies(c.Quiet, &c.Policy) ||
+		!readDomains(c.Quiet, &c.Domains) ||
+		!ReadCron(c.Quiet, "UPDATE_CRON", &c.UpdateCron) ||
+		!ReadBool(c.Quiet, "UPDATE_ON_START", &c.UpdateOnStart) ||
+		!ReadBool(c.Quiet, "DELETE_ON_STOP", &c.DeleteOnStop) ||
+		!ReadNonnegDuration(c.Quiet, "CACHE_EXPIRATION", &c.CacheExpiration) ||
+		!ReadNonnegInt(c.Quiet, "TTL", (*int)(&c.TTL)) ||
+		!ReadBool(c.Quiet, "PROXIED", &c.Proxied) ||
+		!ReadNonnegDuration(c.Quiet, "DETECTION_TIMEOUT", &c.DetectionTimeout) {
+		return false
 	}
 
-	ip4Targets, ip6Targets, ok := readDomains(ctx, quiet)
-	if !ok {
-		return nil, false
+	return true
+}
+
+func (c *Config) checkUselessDomains() {
+	var (
+		domainSet    = map[ipnet.Type]map[string]bool{ipnet.IP4: {}, ipnet.IP6: {}}
+		unionSet     = map[string]bool{}
+		intersectSet = map[string]bool{}
+	)
+	// calculate domainSet[IP4], domainSet[IP6], and unionSet
+	for ipNet, domains := range c.Domains {
+		for _, domain := range domains {
+			domainString := domain.String()
+			domainSet[ipNet][domainString] = true
+			unionSet[domainString] = true
+		}
 	}
 
-	ip4Policy, ip6Policy, ok := readPolicies(ctx, quiet, ip4Targets, ip6Targets)
-	if !ok {
-		return nil, false
+	// calculate intersectSet
+	for domain := range unionSet {
+		intersectSet[domain] = domainSet[ipnet.IP4][domain] && domainSet[ipnet.IP6][domain]
 	}
 
-	updateCron, ok := GetenvAsCron("UPDATE_CRON", cron.MustNew(DefaultUpdateCron), quiet)
-	if !ok {
-		return nil, false
+	for ipNet := range c.Domains {
+		if !c.Policy[ipNet].IsManaged() {
+			for domain := range domainSet[ipNet] {
+				if !intersectSet[domain] {
+					log.Printf("😡 Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
+				}
+			}
+		}
+	}
+}
+
+func (c *Config) Normalize() bool {
+	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
+		log.Printf("😡 No domains were specified.")
+		return false
 	}
 
-	updateOnStart, ok := GetenvAsBool("UPDATE_ON_START", DefaultUpdateOnStart, quiet)
-	if !ok {
-		return nil, false
+	// change useless policies to
+	for ipNet, domains := range c.Domains {
+		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
+			c.Policy[ipNet] = &detector.Unmanaged{}
+			log.Printf(`🤔 IP%v_POLICY was changed to "%v" because no domains were set for %v.`,
+				ipNet.Int(), c.Policy[ipNet], ipNet)
+		}
 	}
 
-	deleteOnStop, ok := GetenvAsBool("DELETE_ON_STOP", DefaultDeleteOnStop, quiet)
-	if !ok {
-		return nil, false
+	if !c.Policy[ipnet.IP4].IsManaged() && !c.Policy[ipnet.IP6].IsManaged() {
+		log.Printf("😡 Both IPv4 and IPv6 are unmanaged.")
+		return false
 	}
 
-	cacheExpiration, ok := GetenvAsPosDuration("CACHE_EXPIRATION", DefaultCacheExpiration, quiet)
-	if !ok {
-		return nil, false
-	}
+	c.checkUselessDomains()
 
-	ttl, ok := GetenvAsInt("TTL", DefaultTTL, quiet)
-	if !ok {
-		return nil, false
-	}
-
-	proxied, ok := GetenvAsBool("PROXIED", DefaultProxied, quiet)
-	if !ok {
-		return nil, false
-	}
-
-	detectionTimeout, ok := GetenvAsPosDuration("DETECTION_TIMEOUT", DefaultDetectionTimeout, quiet)
-	if !ok {
-		return nil, false
-	}
-
-	updateTimeout := DefaultUpdateTimeout
-
-	return &Config{
-		Quiet: quiet,
-		Auth:  auth,
-		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: ip4Policy,
-			ipnet.IP6: ip6Policy,
-		},
-		Targets: map[ipnet.Type][]api.Target{
-			ipnet.IP4: ip4Targets,
-			ipnet.IP6: ip6Targets,
-		},
-		UpdateCron:       updateCron,
-		UpdateOnStart:    updateOnStart,
-		DeleteOnStop:     deleteOnStop,
-		CacheExpiration:  cacheExpiration,
-		TTL:              TTL(ttl),
-		Proxied:          proxied,
-		DetectionTimeout: detectionTimeout,
-		UpdateTimeout:    updateTimeout,
-	}, true
+	return true
 }

@@ -45,13 +45,16 @@ func welcome() {
 
 func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
 	// reading the config
-	c, ok := config.ReadConfig(ctx)
-	if !ok {
+	c := config.Default()
+	if !c.ReadEnv() {
+		exit()
+	}
+	if !c.Normalize() {
 		exit()
 	}
 
 	if !c.Quiet {
-		config.PrintConfig(ctx, c)
+		config.PrintConfig(c)
 	}
 
 	// getting the handler

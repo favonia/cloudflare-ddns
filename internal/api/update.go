@@ -14,8 +14,8 @@ type UpdateArgs struct {
 	Quiet     quiet.Quiet
 	IPNetwork ipnet.Type
 	IP        net.IP
-	Target    Target
-	TTL       int
+	Domain    FQDN
+	TTL       TTL
 	Proxied   bool
 }
 
@@ -32,15 +32,12 @@ func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedI
 }
 
 func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:funlen,cyclop,gocognit
-	domain, ok := args.Target.domain(ctx, h)
-	if !ok {
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
-		return false
-	}
+	domain := args.Domain.String()
+	recordType := args.IPNetwork.RecordType()
 
 	rs, ok := h.listRecords(ctx, domain, args.IPNetwork)
 	if !ok {
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+		log.Printf("😡 Failed to update %s records of %s.", recordType, domain)
 		return false
 	}
 
@@ -63,7 +60,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		if !args.Quiet {
-			log.Printf("🤷 The %s records of %s are already up to date.", args.IPNetwork.RecordType(), domain)
+			log.Printf("🤷 The %s records of %s are already up to date.", recordType, domain)
 		}
 
 		return true
@@ -74,7 +71,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 
 		for i, id := range unmatchedIDs {
 			if h.updateRecord(ctx, domain, args.IPNetwork, id, args.IP) {
-				log.Printf("📡 Updated a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+				log.Printf("📡 Updated a stale %s record of %s (ID: %s).", recordType, domain, id)
 
 				uptodate = true
 				numUnmatched--
@@ -83,7 +80,7 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 				break
 			} else {
 				if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-					log.Printf("☠️ Deleted a stale %s record of %s instead (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+					log.Printf("☠️ Deleted a stale %s record of %s instead (ID: %s).", recordType, domain, id)
 					numUnmatched--
 				}
 				continue
@@ -94,27 +91,27 @@ func (h *Handle) Update(ctx context.Context, args *UpdateArgs) bool { //nolint:f
 	}
 
 	if !uptodate && args.IP != nil {
-		if id, ok := h.createRecord(ctx, domain, args.IPNetwork, args.IP, args.TTL, args.Proxied); ok {
-			log.Printf("🐣 Added a new %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+		if id, ok := h.createRecord(ctx, domain, args.IPNetwork, args.IP, args.TTL.Int(), args.Proxied); ok {
+			log.Printf("🐣 Added a new %s record of %s (ID: %s).", recordType, domain, id)
 			uptodate = true
 		}
 	}
 
 	for _, id := range unmatchedIDs {
 		if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-			log.Printf("💀 Deleted a stale %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+			log.Printf("💀 Deleted a stale %s record of %s (ID: %s).", recordType, domain, id)
 			numUnmatched--
 		}
 	}
 
 	for _, id := range matchedIDs {
 		if h.deleteRecord(ctx, domain, args.IPNetwork, id) {
-			log.Printf("👻 Removed a duplicate %s record of %s (ID: %s).", args.IPNetwork.RecordType(), domain, id)
+			log.Printf("👻 Removed a duplicate %s record of %s (ID: %s).", recordType, domain, id)
 		}
 	}
 
 	if !uptodate || numUnmatched > 0 {
-		log.Printf("😡 Failed to update %s records of %s.", args.IPNetwork.RecordType(), domain)
+		log.Printf("😡 Failed to update %s records of %s.", recordType, domain)
 		return false
 	}
 

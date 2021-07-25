@@ -27,3 +27,7 @@ func (t Type) RecordType() string {
 		return ""
 	}
 }
+
+func (t Type) Int() int {
+	return int(t)
+}

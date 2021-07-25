@@ -11,16 +11,16 @@ import (
 )
 
 func setIP(ctx context.Context, c *config.Config, h *api.Handle, ipNet ipnet.Type, ip net.IP) {
-	for _, target := range c.Targets[ipNet] {
+	for _, target := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
 		_ = h.Update(ctx, &api.UpdateArgs{
 			Quiet:     c.Quiet,
-			Target:    target,
+			Domain:    target,
 			IPNetwork: ipNet,
 			IP:        ip,
-			TTL:       int(c.TTL),
+			TTL:       c.TTL,
 			Proxied:   c.Proxied,
 		})
 	}
