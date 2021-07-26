@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 )
 
@@ -17,6 +18,6 @@ func (p *Unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *Unmanaged) GetIP(_ context.Context, _ pp.Indent) (net.IP, bool) {
+func (p *Unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) (net.IP, bool) {
 	return nil, false
 }

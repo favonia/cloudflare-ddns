@@ -34,8 +34,8 @@ func Default() *Config {
 		Quiet: quiet.Quiet(false),
 		Auth:  nil,
 		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: &detector.Cloudflare{Net: ipnet.IP4},
-			ipnet.IP6: &detector.Cloudflare{Net: ipnet.IP6},
+			ipnet.IP4: &detector.Cloudflare{},
+			ipnet.IP6: &detector.Cloudflare{},
 		},
 		Domains: map[ipnet.Type][]api.FQDN{
 			ipnet.IP4: nil,
@@ -157,11 +157,11 @@ func readPolicies(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]dete
 	ip4Policy := field[ipnet.IP4]
 	ip6Policy := field[ipnet.IP6]
 
-	if !ReadPolicy(quiet, indent, ipnet.IP4, "IP4_POLICY", &ip4Policy) {
+	if !ReadPolicy(quiet, indent, "IP4_POLICY", &ip4Policy) {
 		return false
 	}
 
-	if !ReadPolicy(quiet, indent, ipnet.IP6, "IP6_POLICY", &ip6Policy) {
+	if !ReadPolicy(quiet, indent, "IP6_POLICY", &ip6Policy) {
 		return false
 	}
 
