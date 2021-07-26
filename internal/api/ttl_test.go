@@ -9,7 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
 )
 
-var ttlTests = []int{1, 2, 30, 293, 842, 8, 37284789}
+var ttlTests = [...]int{1, 2, 30, 293, 842, 8, 37284789} //nolint:gochecknoglobals
 
 func TestTTLDescribe(t *testing.T) {
 	t.Parallel()
