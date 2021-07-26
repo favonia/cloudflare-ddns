@@ -39,7 +39,7 @@ func welcome() {
 	pp.TopPrintf(pp.EmojiStar, "CloudFlare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context) (*config.Config, *api.Handle) {
+func initConfig(ctx context.Context) (*config.Config, api.Handle) {
 	// reading the config
 	c := config.Default()
 	if !c.ReadEnv(pp.NoIndent) {

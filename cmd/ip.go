@@ -8,16 +8,17 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/config"
 	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns-go/internal/updator"
 )
 
-func setIP(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Handle, ipNet ipnet.Type, ip net.IP) {
+func setIP(ctx context.Context, indent pp.Indent, c *config.Config, h api.Handle, ipNet ipnet.Type, ip net.IP) {
 	for _, target := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		_ = h.Update(ctx, indent,
-			&api.UpdateArgs{
-				Quiet:     c.Quiet,
+		_ = updator.Do(ctx, indent, c.Quiet,
+			&updator.Args{
+				Handle:    h,
 				Domain:    target,
 				IPNetwork: ipNet,
 				IP:        ip,
@@ -27,7 +28,7 @@ func setIP(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Handl
 	}
 }
 
-func updateIP(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Handle, ipNet ipnet.Type) {
+func updateIP(ctx context.Context, indent pp.Indent, c *config.Config, h api.Handle, ipNet ipnet.Type) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
@@ -44,7 +45,7 @@ func updateIP(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Ha
 	setIP(ctx, indent, c, h, ipNet, ip)
 }
 
-func updateIPs(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Handle) {
+func updateIPs(ctx context.Context, indent pp.Indent, c *config.Config, h api.Handle) {
 	if c.Policy[ipnet.IP4].IsManaged() {
 		updateIP(ctx, indent, c, h, ipnet.IP4)
 	}
@@ -54,7 +55,7 @@ func updateIPs(ctx context.Context, indent pp.Indent, c *config.Config, h *api.H
 	}
 }
 
-func clearIPs(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Handle) {
+func clearIPs(ctx context.Context, indent pp.Indent, c *config.Config, h api.Handle) {
 	if c.Policy[ipnet.IP4].IsManaged() {
 		setIP(ctx, indent, c, h, ipnet.IP4, nil)
 	}
