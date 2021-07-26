@@ -10,7 +10,7 @@ A small and fast DDNS updater for CloudFlare.
 
 ```
 🌟 CloudFlare DDNS
-🥷 Dropping privileges . .  .
+🥷 Dropping privileges . . .
 🥷 Priviledges after dropping:
    🔸 Effective UID:      1000
    🔸 Effective GID:      1000
