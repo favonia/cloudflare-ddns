@@ -44,7 +44,7 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
 </details>
 
-<details><summary>🔌 The source code depends on four external libraries (outside the Go project).</summary>
+<details><summary>🔌 The source code depends on five external libraries (outside the Go project).</summary>
 
 - [cap](https://sites.google.com/site/fullycapable):\
   Manipulation of Linux capabilities.
@@ -54,6 +54,8 @@ The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided s
   Parsing of Cron expressions.
 - [go-cache](https://github.com/patrickmn/go-cache):\
   Essentially `map[string]interface{}` with expiration times.
+- [assert](github.com/stretchr/testify) (only for testing):\
+  A comprehensive tool set for testing Go programs.
 </details>
 
 ## 🪳 Known Bugs

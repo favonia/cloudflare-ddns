@@ -181,7 +181,7 @@ func PrintConfig(indent pp.Indent, c *Config) {
 	pp.Printf(indent+1, pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
 
 	pp.Printf(indent, pp.EmojiConfig, "New DNS records:")
-	pp.Printf(indent+1, pp.EmojiBullet, "TTL:              %v", c.TTL)
+	pp.Printf(indent+1, pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
 	pp.Printf(indent+1, pp.EmojiBullet, "Proxied:          %t", c.Proxied)
 
 	pp.Printf(indent, pp.EmojiConfig, "Timeouts")
