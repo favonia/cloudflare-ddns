@@ -30,7 +30,7 @@ type Config struct {
 // Default gives default values.
 func Default() *Config {
 	return &Config{
-		Quiet: quiet.Quiet(false),
+		Quiet: quiet.VERBOSE,
 		Auth:  nil,
 		Policy: map[ipnet.Type]detector.Policy{
 			ipnet.IP4: &detector.Cloudflare{},
