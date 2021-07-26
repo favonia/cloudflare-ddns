@@ -2,7 +2,6 @@ package detector
 
 import (
 	"context"
-	"io"
 	"net"
 	"net/http"
 
@@ -11,33 +10,15 @@ import (
 )
 
 func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, bool) {
-	// http.Post is avoided so that we can pass ctx
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Failed to prepare the HTTP request to %q: %v", url, err)
-		return nil, false
+	c := httpConn{
+		method:  http.MethodGet,
+		url:     url,
+		reader:  nil,
+		prepare: func(_ pp.Indent, _ *http.Request) bool { return true },
+		extract: func(_ pp.Indent, body []byte) (string, bool) { return string(body), true },
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %s: %v", url, err)
-		return nil, false
-	}
-	defer resp.Body.Close()
-
-	text, err := io.ReadAll(resp.Body)
-	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %s.", url)
-		return nil, false
-	}
-
-	ip := net.ParseIP(string(text))
-	if ip == nil {
-		pp.Printf(indent, pp.EmojiImpossible, "The response %q is not a valid IP address.", text)
-		return nil, false
-	}
-
-	return ip, true
+	return c.getIP(ctx, indent)
 }
 
 type Ipify struct {

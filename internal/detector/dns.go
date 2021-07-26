@@ -3,7 +3,6 @@ package detector
 import (
 	"bytes"
 	"context"
-	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -53,85 +52,79 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 	return q, true
 }
 
-func parseTXTRecord(indent pp.Indent, r *dnsmessage.TXTResource) (net.IP, bool) {
+func parseTXTRecord(indent pp.Indent, r *dnsmessage.TXTResource) (string, bool) {
 	switch len(r.TXT) {
 	case 0: // len(r.TXT) == 0
 		pp.Printf(indent, pp.EmojiImpossible, "The TXT record has no strings: %v", r)
-		return nil, false
+		return "", false
 
 	case 1: // len(r.TXT) == 1
 		break
 
 	default: // len(r.TXT) > 1
 		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple strings in the TXT record: %v", r)
-		return nil, false
+		return "", false
 	}
 
-	ip := net.ParseIP(r.TXT[0])
-	if ip == nil {
-		pp.Printf(indent, pp.EmojiImpossible, "The TXT record %q is not a valid IP address.", r.TXT[0])
-		return nil, false
-	}
-
-	return ip, true
+	return r.TXT[0], true
 }
 
-func parseDNSResource(indent pp.Indent, ans *dnsmessage.Resource, name string, class dnsmessage.Class) (net.IP, bool) {
+func parseDNSResource(indent pp.Indent, ans *dnsmessage.Resource, name string, class dnsmessage.Class) (string, bool) {
 	switch {
 	case ans.Header.Name.String() != name:
 		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is for %q, not %q.", ans.Header.Name.String(), name)
-		return nil, false
+		return "", false
 	case ans.Header.Type != dnsmessage.TypeTXT:
 		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is of type %v, not %v.", ans.Header.Type, dnsmessage.TypeTXT)
-		return nil, false
+		return "", false
 	case ans.Header.Class != class:
 		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is of class %v, not %v.", ans.Header.Class, class)
-		return nil, false
+		return "", false
 	}
 
 	txt, ok := ans.Body.(*dnsmessage.TXTResource)
 	if !ok {
 		pp.Printf(indent, pp.EmojiImpossible, "The TXT record body is not of type TXTResource: %v", ans)
-		return nil, false
+		return "", false
 	}
 
 	return parseTXTRecord(indent, txt)
 }
 
-func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) (net.IP, bool) {
+func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) (string, bool) {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
 		pp.Printf(indent, pp.EmojiImpossible, "Not a valid DNS response: %v", err)
-		return nil, false
+		return "", false
 	}
 
 	switch {
 	case msg.ID != id:
 		pp.Printf(indent, pp.EmojiImpossible, "Response ID %x differs from the query ID %x.", id, msg.ID)
-		return nil, false
+		return "", false
 
 	case !msg.Response:
 		pp.Printf(indent, pp.EmojiImpossible, "The QR (query/response) bit was not set in the response.")
-		return nil, false
+		return "", false
 
 	case msg.Truncated:
 		pp.Printf(indent, pp.EmojiImpossible, "The TC (truncation) bit was set. Something went wrong.")
-		return nil, false
+		return "", false
 
 	case msg.RCode != dnsmessage.RCodeSuccess:
 		pp.Printf(indent, pp.EmojiImpossible, "The response code is %v. The query failed.", msg.RCode)
-		return nil, false
+		return "", false
 	}
 
 	switch len(msg.Answers) {
 	case 0: // len(msg.Answers) == 0
 		pp.Printf(indent, pp.EmojiImpossible, "No DNS answers in the response.")
-		return nil, false
+		return "", false
 	case 1: // len(msg.Answers) == 1
 		return parseDNSResource(indent, &msg.Answers[0], name, class)
 	default: // len(msg.Answers) > 1
 		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple DNS answers in the response.")
-		return nil, false
+		return "", false
 	}
 }
 
@@ -145,29 +138,18 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 		return nil, false
 	}
 
-	// http.Post is avoided so that we can pass ctx
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(q))
-	if err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Failed to prepare the request for %q: %v", url, err)
-		return nil, false
+	c := httpConn{
+		method: http.MethodPost,
+		url:    url,
+		reader: bytes.NewReader(q),
+		prepare: func(_ pp.Indent, req *http.Request) bool {
+			req.Header.Set("Content-Type", "application/dns-message")
+			return true
+		},
+		extract: func(ident pp.Indent, body []byte) (string, bool) {
+			return parseDNSResponse(indent, body, id, name, class)
+		},
 	}
 
-	// set the content type for POST
-	req.Header.Set("Content-Type", "application/dns-message")
-
-	// make the request
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %q: %v", url, err)
-		return nil, false
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %q: %v", url, err)
-		return nil, false
-	}
-
-	return parseDNSResponse(indent, body, id, name, class)
+	return c.getIP(ctx, indent)
 }
