@@ -181,7 +181,8 @@ func PrintConfig(indent pp.Indent, c *Config) {
 		pp.Printf(indent+1, pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
-	pp.Printf(indent, pp.EmojiConfig, "Timing:")
+	pp.Printf(indent, pp.EmojiConfig, "Scheduling:")
+	pp.Printf(indent+1, pp.EmojiBullet, "Timezone:         %s", cron.DescribeTimezone())
 	pp.Printf(indent+1, pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
 	pp.Printf(indent+1, pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
 	pp.Printf(indent+1, pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
