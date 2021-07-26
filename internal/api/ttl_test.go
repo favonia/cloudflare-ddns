@@ -19,7 +19,7 @@ func TestTTLDescribe(t *testing.T) {
 			continue
 		}
 		ttl := api.TTL(i)
-		assert.Equalf(t, ttl.Describe(), strconv.Itoa(i), "TTL = %d should be described directly.", i)
+		assert.Equalf(t, strconv.Itoa(i), ttl.Describe(), "TTL = %d should be described directly.", i)
 	}
 }
 
@@ -29,7 +29,7 @@ func TestTTLOneDescribe(t *testing.T) {
 	ttl := api.TTL(1)
 	expected := "1 (automatic)"
 
-	assert.Equal(t, ttl.Describe(), expected, "TTL = 1 should be described as %q.", expected)
+	assert.Equal(t, expected, ttl.Describe(), "TTL = 1 should be described as %q.", expected)
 }
 
 func TestTTLString(t *testing.T) {
@@ -37,7 +37,7 @@ func TestTTLString(t *testing.T) {
 
 	for _, i := range ttlTests {
 		ttl := api.TTL(i)
-		assert.Equalf(t, ttl.String(), strconv.Itoa(i), "TTL.String() should display TTL directly.", i)
+		assert.Equalf(t, strconv.Itoa(i), ttl.String(), "TTL.String() should display TTL directly.", i)
 	}
 }
 
@@ -46,6 +46,6 @@ func TestTTLInt(t *testing.T) {
 
 	for _, i := range ttlTests {
 		ttl := api.TTL(i)
-		assert.Equalf(t, ttl.Int(), i, "TTL.Int() should recover the underlying number.")
+		assert.Equalf(t, i, ttl.Int(), "TTL.Int() should recover the underlying number.")
 	}
 }
