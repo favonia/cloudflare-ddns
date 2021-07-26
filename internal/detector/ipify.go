@@ -21,9 +21,7 @@ func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, b
 	return c.getIP(ctx, indent)
 }
 
-type Ipify struct {
-	Net ipnet.Type
-}
+type Ipify struct{}
 
 func (p *Ipify) IsManaged() bool {
 	return true
@@ -51,8 +49,8 @@ func (p *Ipify) getIP6(ctx context.Context, indent pp.Indent) (net.IP, bool) {
 	return ip.To16(), true
 }
 
-func (p *Ipify) GetIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
-	switch p.Net {
+func (p *Ipify) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+	switch ipNet {
 	case ipnet.IP4:
 		return p.getIP4(ctx, indent)
 	case ipnet.IP6:

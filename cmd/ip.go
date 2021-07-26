@@ -31,7 +31,7 @@ func updateIP(ctx context.Context, indent pp.Indent, c *config.Config, h *api.Ha
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
-	ip, ok := c.Policy[ipNet].GetIP(ctx, indent)
+	ip, ok := c.Policy[ipNet].GetIP(ctx, indent, ipNet)
 	if !ok {
 		pp.TopPrintf(pp.EmojiError, "Failed to detect the %s address.", ipNet)
 		return

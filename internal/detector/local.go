@@ -8,9 +8,7 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 )
 
-type Local struct {
-	Net ipnet.Type
-}
+type Local struct{}
 
 func (p *Local) IsManaged() bool {
 	return true
@@ -42,8 +40,8 @@ func (p *Local) getIP6(_ context.Context, indent pp.Indent) (net.IP, bool) {
 	return conn.LocalAddr().(*net.UDPAddr).IP.To16(), true
 }
 
-func (p *Local) GetIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
-	switch p.Net {
+func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+	switch ipNet {
 	case ipnet.IP4:
 		return p.getIP4(ctx, indent)
 	case ipnet.IP6:

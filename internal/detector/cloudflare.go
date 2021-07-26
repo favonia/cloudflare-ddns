@@ -10,9 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 )
 
-type Cloudflare struct {
-	Net ipnet.Type
-}
+type Cloudflare struct{}
 
 func (p *Cloudflare) IsManaged() bool {
 	return true
@@ -41,8 +39,8 @@ func (p *Cloudflare) getIP6(ctx context.Context, indent pp.Indent) (net.IP, bool
 	return ip.To16(), true
 }
 
-func (p *Cloudflare) GetIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
-	switch p.Net {
+func (p *Cloudflare) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+	switch ipNet {
 	case ipnet.IP4:
 		return p.getIP4(ctx, indent)
 	case ipnet.IP6:

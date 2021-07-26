@@ -8,7 +8,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
 )
@@ -111,7 +110,7 @@ func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]string) b
 }
 
 // ReadPolicy reads an environment variable and parses it as a policy.
-func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, ipNet ipnet.Type, key string, field *detector.Policy) bool {
+func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
 		if !quiet {
@@ -119,13 +118,13 @@ func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, ipNet ipnet.Type, key strin
 		}
 		return true
 	case "cloudflare":
-		*field = &detector.Cloudflare{Net: ipNet}
+		*field = &detector.Cloudflare{}
 		return true
 	case "ipify":
-		*field = &detector.Ipify{Net: ipNet}
+		*field = &detector.Ipify{}
 		return true
 	case "local":
-		*field = &detector.Local{Net: ipNet}
+		*field = &detector.Local{}
 		return true
 	case "unmanaged":
 		*field = &detector.Unmanaged{}
