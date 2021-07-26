@@ -26,13 +26,16 @@ func describeOffset(offset int) string {
 		return fmt.Sprintf("UTC%c%02d", sign, hours)
 	case seconds == 0:
 		return fmt.Sprintf("UTC%c%02d:%02d", sign, hours, minutes)
-	default: // this should not happen, but we can deal with it
+	default:
+		// This should not happen in reality because the UTC offsets of
+		// all current timezones on the Earth are multiples of 15 minutes.
+		// However, we can still deal with it in a reasonable way.
 		return fmt.Sprintf("UTC%c%02d:%02d:%02d", sign, hours, minutes, seconds)
 	}
 }
 
-func DescribeTimezone() string {
-	zone, offset := time.Now().Zone()
+func DescribeLocation(loc *time.Location) string {
+	zone, offset := time.Now().In(loc).Zone()
 
 	return fmt.Sprintf("%s (%s)", zone, describeOffset(offset))
 }

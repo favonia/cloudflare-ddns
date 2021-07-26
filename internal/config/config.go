@@ -174,7 +174,7 @@ func PrintConfig(indent pp.Indent, c *Config) {
 	}
 
 	pp.Printf(indent, pp.EmojiConfig, "Scheduling:")
-	pp.Printf(indent+1, pp.EmojiBullet, "Timezone:         %s", cron.DescribeTimezone())
+	pp.Printf(indent+1, pp.EmojiBullet, "Timezone:         %s", cron.DescribeLocation(time.Local))
 	pp.Printf(indent+1, pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
 	pp.Printf(indent+1, pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
 	pp.Printf(indent+1, pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
