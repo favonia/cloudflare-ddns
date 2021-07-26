@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/favonia/cloudflare-ddns-go/internal/api"
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 	"github.com/favonia/cloudflare-ddns-go/internal/detector"
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
@@ -93,17 +94,17 @@ func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) 
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]string) bool {
+func ReadDomains(_ quiet.Quiet, _ pp.Indent, key string, field *[]api.FQDN) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
-	*field = make([]string, 0, len(rawList))
+	*field = make([]api.FQDN, 0, len(rawList))
 	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
 		}
 
-		*field = append(*field, normalizeDomain(item))
+		*field = append(*field, api.NewFQDN(item))
 	}
 
 	return true

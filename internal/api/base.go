@@ -85,33 +85,31 @@ func (h *Handle) activeZones(ctx context.Context, indent pp.Indent, name string)
 	return ids, true
 }
 
-func (h *Handle) zoneOfDomain(ctx context.Context, indent pp.Indent, domain string) (string, bool) {
-	if id, found := h.cache.zoneOfDomain.Get(domain); found {
+func (h *Handle) zoneOfDomain(ctx context.Context, indent pp.Indent, domain FQDN) (string, bool) {
+	if id, found := h.cache.zoneOfDomain.Get(domain.String()); found {
 		return id.(string), true
 	}
 
 zoneSearch:
-	for i := -1; i < len(domain); i++ {
-		if i == -1 || domain[i] == '.' {
-			zoneName := domain[i+1:]
-			zones, ok := h.activeZones(ctx, indent, zoneName)
-			if !ok {
-				return "", false
-			}
+	for s := NewFQDNSplitter(domain); s.IsValid(); s.Next() {
+		zoneName := s.AfterPeriodString()
+		zones, ok := h.activeZones(ctx, indent, zoneName)
+		if !ok {
+			return "", false
+		}
 
-			switch len(zones) {
-			case 0: // len(zones) == 0
-				continue zoneSearch
-			case 1: // len(zones) == 1
-				h.cache.zoneOfDomain.SetDefault(domain, zones[0])
+		switch len(zones) {
+		case 0: // len(zones) == 0
+			continue zoneSearch
+		case 1: // len(zones) == 1
+			h.cache.zoneOfDomain.SetDefault(domain.String(), zones[0])
 
-				return zones[0], true
+			return zones[0], true
 
-			default: // len(zones) > 1
-				pp.Printf(indent, pp.EmojiImpossible,
-					"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help.", zoneName)
-				return "", false
-			}
+		default: // len(zones) > 1
+			pp.Printf(indent, pp.EmojiImpossible,
+				"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help.", zoneName)
+			return "", false
 		}
 	}
 
@@ -120,8 +118,8 @@ zoneSearch:
 }
 
 func (h *Handle) listRecords(ctx context.Context, indent pp.Indent,
-	domain string, ipNet ipnet.Type) (map[string]net.IP, bool) {
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
+	domain FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
 		return rmap.(map[string]net.IP), true
 	}
 
@@ -132,7 +130,7 @@ func (h *Handle) listRecords(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
-		Name: domain,
+		Name: domain.String(),
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
@@ -148,7 +146,7 @@ func (h *Handle) listRecords(ctx context.Context, indent pp.Indent,
 	return rmap, true
 }
 
-func (h *Handle) deleteRecord(ctx context.Context, indent pp.Indent, domain string, ipNet ipnet.Type, id string) bool {
+func (h *Handle) deleteRecord(ctx context.Context, indent pp.Indent, domain FQDN, ipNet ipnet.Type, id string) bool {
 	zone, ok := h.zoneOfDomain(ctx, indent, domain)
 	if !ok {
 		return false
@@ -158,12 +156,12 @@ func (h *Handle) deleteRecord(ctx context.Context, indent pp.Indent, domain stri
 		pp.Printf(indent, pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain, id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain.String())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
 		delete(rmap.(map[string]net.IP), id)
 	}
 
@@ -171,7 +169,7 @@ func (h *Handle) deleteRecord(ctx context.Context, indent pp.Indent, domain stri
 }
 
 func (h *Handle) updateRecord(ctx context.Context, indent pp.Indent,
-	domain string, ipNet ipnet.Type, id string, ip net.IP) bool {
+	domain FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
 	zone, ok := h.zoneOfDomain(ctx, indent, domain)
 	if !ok {
 		return false
@@ -179,7 +177,7 @@ func (h *Handle) updateRecord(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain,
+		Name:    domain.String(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
@@ -188,12 +186,12 @@ func (h *Handle) updateRecord(ctx context.Context, indent pp.Indent,
 		pp.Printf(indent, pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain, id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain.String())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
 		rmap.(map[string]net.IP)[id] = ip
 	}
 
@@ -201,7 +199,7 @@ func (h *Handle) updateRecord(ctx context.Context, indent pp.Indent,
 }
 
 func (h *Handle) createRecord(ctx context.Context, indent pp.Indent,
-	domain string, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
+	domain FQDN, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
 	zone, ok := h.zoneOfDomain(ctx, indent, domain)
 	if !ok {
 		return "", false
@@ -209,7 +207,7 @@ func (h *Handle) createRecord(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain,
+		Name:    domain.String(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 		TTL:     ttl,
@@ -220,12 +218,12 @@ func (h *Handle) createRecord(ctx context.Context, indent pp.Indent,
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to add a new %s record of %s: %v", ipNet.RecordType(), domain, err)
 
-		h.cache.listRecords[ipNet].Delete(domain)
+		h.cache.listRecords[ipNet].Delete(domain.String())
 
 		return "", false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
 		rmap.(map[string]net.IP)[res.Result.ID] = ip
 	}
 

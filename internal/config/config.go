@@ -1,7 +1,6 @@
 package config
 
 import (
-	"sort"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/api"
@@ -102,8 +101,8 @@ func readAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.
-func deduplicate(list *[]string) {
-	sort.Strings(*list)
+func deduplicate(list *[]api.FQDN) {
+	api.SortFQDNs(*list)
 
 	if len(*list) == 0 {
 		return
@@ -126,7 +125,7 @@ func deduplicate(list *[]string) {
 }
 
 func readDomains(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api.FQDN) bool {
-	var domains, ip4Domains, ip6Domains []string
+	var domains, ip4Domains, ip6Domains []api.FQDN
 
 	if !ReadDomains(quiet, indent, "DOMAINS", &domains) ||
 		!ReadDomains(quiet, indent, "IP4_DOMAINS", &ip4Domains) ||
@@ -140,15 +139,8 @@ func readDomains(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api
 	deduplicate(&ip4Domains)
 	deduplicate(&ip6Domains)
 
-	field[ipnet.IP4] = make([]api.FQDN, 0, len(ip4Domains))
-	for _, domain := range ip4Domains {
-		field[ipnet.IP4] = append(field[ipnet.IP4], api.FQDN(domain))
-	}
-
-	field[ipnet.IP6] = make([]api.FQDN, 0, len(ip6Domains))
-	for _, domain := range ip6Domains {
-		field[ipnet.IP6] = append(field[ipnet.IP6], api.FQDN(domain))
-	}
+	field[ipnet.IP4] = ip4Domains
+	field[ipnet.IP6] = ip6Domains
 
 	return true
 }
