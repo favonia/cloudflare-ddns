@@ -205,7 +205,7 @@ func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
 		pp.Printf(indent, pp.EmojiMute, "Quiet mode enabled.")
 	} else {
 		pp.Printf(indent, pp.EmojiEnvVars, "Reading settings . . .")
-		indent = 1
+		indent++
 	}
 
 	if !readAuth(c.Quiet, indent, &c.Auth) ||
