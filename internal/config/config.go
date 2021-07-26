@@ -248,7 +248,7 @@ func (c *Config) checkUselessDomains(indent pp.Indent) {
 		if !c.Policy[ipNet].IsManaged() {
 			for domain := range domainSet[ipNet] {
 				if !intersectSet[domain] {
-					pp.Printf(indent, pp.EmojiUserError,
+					pp.Printf(indent, pp.EmojiUserWarning,
 						"Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
 				}
 			}
@@ -266,7 +266,7 @@ func (c *Config) Normalize(indent pp.Indent) bool {
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
 			c.Policy[ipNet] = &detector.Unmanaged{}
-			pp.Printf(indent, pp.EmojiUserError, "IP%v_POLICY was changed to %q because no domains were set for %v.",
+			pp.Printf(indent, pp.EmojiUserWarning, "IP%v_POLICY was changed to %q because no domains were set for %v.",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}
 	}

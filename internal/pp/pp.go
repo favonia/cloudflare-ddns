@@ -39,7 +39,7 @@ const (
 	EmojiUserWarning Emoji = "😦" // warnings about possible configuration mistakes
 	EmojiError       Emoji = "😞" // errors that are not (directly) caused by user errors
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
-	EmojiGood        Emoji = "👍" // the impossible happened
+	EmojiGood        Emoji = "👍" // everything looks good
 )
 
 func (e Emoji) String() string {
