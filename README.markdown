@@ -5,6 +5,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
 [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffavonia%2Fcloudflare-ddns.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffavonia%2Fcloudflare-ddns?ref=badge_shield)
 
 A small and fast DDNS updater for CloudFlare.
 
@@ -374,3 +375,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 ## 💖 Feedback
 
 Questions, suggestions, feature requests, and contributions are all welcome! Feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ffavonia%2Fcloudflare-ddns.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ffavonia%2Fcloudflare-ddns?ref=badge_large)
