@@ -9,11 +9,6 @@ import (
 	"github.com/favonia/cloudflare-ddns-go/internal/cron"
 )
 
-type descriptionTest struct {
-	input  *time.Location
-	output string
-}
-
 func mustLoadLocation(name string) *time.Location {
 	loc, err := time.LoadLocation(name)
 	if err != nil {

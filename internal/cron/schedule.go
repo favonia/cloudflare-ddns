@@ -2,7 +2,6 @@ package cron
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -33,7 +32,7 @@ func New(spec string) (*Cron, error) {
 func MustNew(spec string) *Cron {
 	cron, err := New(spec)
 	if err != nil {
-		log.Fatalf(`🤯 schedule.MustNew failed: %v`, err)
+		panic(fmt.Errorf(`🤯 schedule.MustNew failed: %w`, err))
 	}
 
 	return cron
