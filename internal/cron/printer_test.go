@@ -26,15 +26,18 @@ func mustLoadLocation(name string) *time.Location {
 func TestDescribeLocation(t *testing.T) {
 	t.Parallel()
 
-	for _, p := range [...]descriptionTest{
-		{input: time.UTC, output: "UTC (UTC+00 now)"},
-		{input: mustLoadLocation("Asia/Thimphu"), output: "Asia/Thimphu (UTC+06 now)"},
-		{input: mustLoadLocation("Asia/Seoul"), output: "Asia/Seoul (UTC+09 now)"},
-		{input: mustLoadLocation("Asia/Shanghai"), output: "Asia/Shanghai (UTC+08 now)"},
-		{input: mustLoadLocation("Asia/Kolkata"), output: "Asia/Kolkata (UTC+05:30 now)"},
-		{input: mustLoadLocation("America/Port_of_Spain"), output: "America/Port_of_Spain (UTC−04 now)"},
-		{input: time.FixedZone("Dublin Mean Time", -1521), output: "Dublin Mean Time (UTC−00:25:21 now)"},
-		{input: time.FixedZone("Bangkok Mean Time", 24124), output: "Bangkok Mean Time (UTC+06:42:04 now)"},
+	for _, p := range [...]struct {
+		input  *time.Location
+		output string
+	}{
+		{time.UTC, "UTC (UTC+00 now)"},
+		{mustLoadLocation("Asia/Thimphu"), "Asia/Thimphu (UTC+06 now)"},
+		{mustLoadLocation("Asia/Seoul"), "Asia/Seoul (UTC+09 now)"},
+		{mustLoadLocation("Asia/Shanghai"), "Asia/Shanghai (UTC+08 now)"},
+		{mustLoadLocation("Asia/Kolkata"), "Asia/Kolkata (UTC+05:30 now)"},
+		{mustLoadLocation("America/Port_of_Spain"), "America/Port_of_Spain (UTC−04 now)"},
+		{time.FixedZone("Dublin Mean Time", -1521), "Dublin Mean Time (UTC−00:25:21 now)"},
+		{time.FixedZone("Bangkok Mean Time", 24124), "Bangkok Mean Time (UTC+06:42:04 now)"},
 	} {
 		assert.Equalf(t, p.output, cron.DescribeLocation(p.input), "Timezone descriptions should match.")
 	}
