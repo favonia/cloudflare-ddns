@@ -10,45 +10,54 @@ import (
 
 func TestString(t *testing.T) {
 	t.Parallel()
-
-	for _, c := range [...]struct {
+	for name, tc := range map[string]struct {
 		input  ipnet.Type
 		output string
 	}{
-		{ipnet.IP4, "IPv4"},
-		{ipnet.IP6, "IPv6"},
-		{ipnet.Type(100), "(unrecognized IP network)"},
+		"4":   {ipnet.IP4, "IPv4"},
+		"6":   {ipnet.IP6, "IPv6"},
+		"100": {ipnet.Type(100), "(unrecognized IP network)"},
 	} {
-		assert.Equal(t, c.output, c.input.String())
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.output, tc.input.String())
+		})
 	}
 }
 
 func TestRecordType(t *testing.T) {
 	t.Parallel()
-
-	for _, c := range [...]struct {
+	for name, tc := range map[string]struct {
 		input  ipnet.Type
 		output string
 	}{
-		{ipnet.IP4, "A"},
-		{ipnet.IP6, "AAAA"},
-		{ipnet.Type(100), ""},
+		"4":   {ipnet.IP4, "A"},
+		"6":   {ipnet.IP6, "AAAA"},
+		"100": {ipnet.Type(100), ""},
 	} {
-		assert.Equal(t, c.output, c.input.RecordType())
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.output, tc.input.RecordType())
+		})
 	}
 }
 
 func TestInt(t *testing.T) {
 	t.Parallel()
-
-	for _, c := range [...]struct {
+	for name, tc := range map[string]struct {
 		input  ipnet.Type
 		output int
 	}{
-		{ipnet.IP4, 4},
-		{ipnet.IP6, 6},
-		{ipnet.Type(100), 0},
+		"4":   {ipnet.IP4, 4},
+		"6":   {ipnet.IP6, 6},
+		"100": {ipnet.Type(100), 0},
 	} {
-		assert.Equal(t, c.output, c.input.Int())
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.output, tc.input.Int())
+		})
 	}
 }

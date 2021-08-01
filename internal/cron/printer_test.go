@@ -20,8 +20,7 @@ func mustLoadLocation(name string) *time.Location {
 
 func TestDescribeLocation(t *testing.T) {
 	t.Parallel()
-
-	for _, p := range [...]struct {
+	for _, tc := range [...]struct {
 		input  *time.Location
 		output string
 	}{
@@ -34,6 +33,10 @@ func TestDescribeLocation(t *testing.T) {
 		{time.FixedZone("Dublin Mean Time", -1521), "Dublin Mean Time (UTC−00:25:21 now)"},
 		{time.FixedZone("Bangkok Mean Time", 24124), "Bangkok Mean Time (UTC+06:42:04 now)"},
 	} {
-		assert.Equalf(t, p.output, cron.DescribeLocation(p.input), "Timezone descriptions should match.")
+		tc := tc
+		t.Run(tc.input.String(), func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.output, cron.DescribeLocation(tc.input))
+		})
 	}
 }
