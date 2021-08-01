@@ -34,6 +34,7 @@ func describeOffset(offset int) string {
 	}
 }
 
+// DescribeLocation gives a description of loc that combines loc.String() and time offset.
 func DescribeLocation(loc *time.Location) string {
 	_, offset := time.Now().In(loc).Zone()
 
