@@ -1,20 +1,31 @@
+// Package ipnet contains utility functions for IP network versions
 package ipnet
 
 import (
 	"fmt"
 )
 
+// Type is the type of IP networks.
 type Type int
 
 const (
+	// IP4 is IP version 4.
 	IP4 Type = 4
+	// IP6 is IP version 6.
 	IP6 Type = 6
 )
 
+// String returns a description of the IP network.
 func (t Type) String() string {
-	return fmt.Sprintf("IPv%d", t)
+	switch t {
+	case IP4, IP6:
+		return fmt.Sprintf("IPv%d", t)
+	default:
+		return "(unrecognized IP network)"
+	}
 }
 
+// RecordType prints out the type of DNS records for the IP network.
 func (t Type) RecordType() string {
 	switch t {
 	case IP4:
@@ -26,6 +37,12 @@ func (t Type) RecordType() string {
 	}
 }
 
+// Int returns the version of the IP networks. It is either 4 or 6.
 func (t Type) Int() int {
-	return int(t)
+	switch t {
+	case IP4, IP6:
+		return int(t)
+	default:
+		return 0
+	}
 }
