@@ -29,6 +29,7 @@ func TestMustNewPanicking(t *testing.T) {
 		"@every 5ss",
 		"@cool",
 	} {
+		s := s // redefine s to avoid capturing of the same variable
 		assert.Panics(t, func() { cron.MustNew(s) })
 	}
 }
