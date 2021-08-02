@@ -119,3 +119,40 @@ func TestReadString(t *testing.T) {
 		})
 	}
 }
+
+//nolint: paralleltest // environment vars are global
+func TestReadBool(t *testing.T) {
+	key := keyPrefix + "BOOL"
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		quiet    quiet.Quiet
+		oldField bool
+		newField bool
+		ok       bool
+	}{
+		"nil1":     {false, "", quiet.VERBOSE, true, true, true},
+		"nil2":     {false, "", quiet.QUIET, false, false, true},
+		"empty1":   {true, "", quiet.VERBOSE, true, true, true},
+		"empty2":   {true, "", quiet.QUIET, false, false, true},
+		"true1":    {true, "true", quiet.VERBOSE, true, true, true},
+		"true2":    {true, "true", quiet.QUIET, false, true, true},
+		"false1":   {true, "false", quiet.VERBOSE, true, false, true},
+		"false2":   {true, "false", quiet.QUIET, false, false, true},
+		"illform1": {true, "weird", quiet.QUIET, true, true, false},
+		"illform2": {true, "weird", quiet.VERBOSE, false, false, false},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			if tc.set {
+				set(key, tc.val)
+				defer unset(key)
+			}
+
+			field := tc.oldField
+			ok := config.ReadBool(tc.quiet, pp.Indent(1), key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
