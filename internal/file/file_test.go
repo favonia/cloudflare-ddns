@@ -1,46 +1,51 @@
 package file_test
 
 import (
+	"os"
+	"strings"
 	"testing"
+	"testing/fstest"
+	"time"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns-go/internal/file"
 	"github.com/favonia/cloudflare-ddns-go/internal/pp"
 )
 
-func mockFS() afero.Fs {
-	memfs := afero.NewMemMapFs()
-	file.FS = afero.NewReadOnlyFs(memfs)
-	return memfs
+func useMemFS(memfs fstest.MapFS) {
+	file.FS = memfs
 }
 
-func resetFS() {
-	file.FS = afero.NewOsFs()
+func useDirFS() {
+	file.FS = os.DirFS("/")
 }
 
-//nolint:paralleltest // changing file.FS
+//nolint:paralleltest // changing global var file.FS
 func TestReadStringSuccessful(t *testing.T) {
-	fs := mockFS()
-	defer resetFS()
+	path := "test/file.txt"
+	written := " hello world   " // space is intentionally added to test trimming
+	expected := strings.TrimSpace(written)
 
-	path := "/etc/file.txt"
-	written := " hello world   " // space is intentional
-	expected := "hello world"
-
-	err := afero.WriteFile(fs, path, []byte(written), 0644)
-	require.NoError(t, err)
+	useMemFS(fstest.MapFS{
+		path: &fstest.MapFile{
+			Data:    []byte(written),
+			Mode:    0644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+	defer useDirFS()
 
 	content, ok := file.ReadString(pp.NoIndent, path)
 	require.True(t, ok)
 	require.Equal(t, expected, content)
 }
 
-//nolint:paralleltest // changing file.FS
+//nolint:paralleltest // changing global var file.FS
 func TestReadStringFailing(t *testing.T) {
-	_ = mockFS()
-	defer resetFS()
+	useMemFS(fstest.MapFS{})
+	defer useDirFS()
 
 	path := "/wrong/path.txt"
 	_, ok := file.ReadString(pp.NoIndent, path)
