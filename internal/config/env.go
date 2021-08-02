@@ -86,6 +86,7 @@ func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) 
 		return false
 	case i < 0:
 		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %d is negative.", val, i)
+		return false
 	}
 
 	*field = i
