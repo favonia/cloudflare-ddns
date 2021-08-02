@@ -15,4 +15,4 @@ issues:
 
 linters:
   enable-all: true
-  disable: maligned,scopelint,golint,interfacer,nlreturn,wsl
+  disable: maligned,interfacer,nlreturn,wsl
