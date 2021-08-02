@@ -6,6 +6,13 @@ linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
 
+issues:
+  exclude-rules:
+    # False positive: https://github.com/kunwardeep/paralleltest/issues/8.
+    - linters:
+        - paralleltest
+      text: "does not use range value in test Run"
+
 linters:
   enable-all: true
-  disable: maligned,scopelint,golint,interfacer,nlreturn,wsl
+  disable: maligned,interfacer,nlreturn,wsl
