@@ -44,10 +44,8 @@ By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTP
 The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
 </details>
 
-<details><summary>🔌 The source code depends on six external libraries (outside the Go project).</summary>
+<details><summary>🔌 The source code depends on five external libraries (outside the Go project).</summary>
 
-- [afero](https://github.com/spf13/afero):\
-  A file system abstraction layer that enables testing.
 - [cap](https://sites.google.com/site/fullycapable):\
   Manipulation of Linux capabilities.
 - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
