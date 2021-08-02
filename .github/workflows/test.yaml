@@ -23,4 +23,8 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - uses: actions/checkout@v2
-      - run: go test -cover -race -v ./...
+      - run: go test -coverprofile=coverage.txt -race -v ./...
+      - uses: codecov/codecov-action@v2
+        with:
+          file: ./coverage.txt
+          flags: unittests
