@@ -53,7 +53,7 @@ func TestGetenv(t *testing.T) {
 
 //nolint: paralleltest // environment vars are global
 func TestReadQuiet(t *testing.T) {
-	key := keyPrefix + "TEST_QUIET"
+	key := keyPrefix + "QUIET"
 	for name, tc := range map[string]struct {
 		set      bool
 		val      string
@@ -81,6 +81,39 @@ func TestReadQuiet(t *testing.T) {
 
 			field := tc.oldField
 			ok := config.ReadQuiet(pp.Indent(1), key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars are global
+func TestReadString(t *testing.T) {
+	key := keyPrefix + "STRING"
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		quiet    quiet.Quiet
+		oldField string
+		newField string
+		ok       bool
+	}{
+		"nil1":    {false, "", quiet.QUIET, "original", "original", true},
+		"nil2":    {false, "", quiet.VERBOSE, "original", "original", true},
+		"empty1":  {true, "", quiet.QUIET, "original", "original", true},
+		"empty2":  {true, "", quiet.VERBOSE, "original", "original", true},
+		"random1": {true, "random", quiet.QUIET, "original", "random", true},
+		"random2": {true, "random", quiet.VERBOSE, "original", "random", true},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			if tc.set {
+				set(key, tc.val)
+				defer unset(key)
+			}
+
+			field := tc.oldField
+			ok := config.ReadString(tc.quiet, pp.Indent(1), key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
