@@ -82,7 +82,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, na
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to check the existence of a zone named %s: %v", name, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
 
@@ -97,7 +97,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, na
 }
 
 func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, indent pp.Indent, domain FQDN) (string, bool) {
-	if id, found := h.cache.zoneOfDomain.Get(domain.String()); found {
+	if id, found := h.cache.zoneOfDomain.Get(domain.ToASCII()); found {
 		return id.(string), true
 	}
 
@@ -113,7 +113,7 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneOfDomain.SetDefault(domain.String(), zones[0])
+			h.cache.zoneOfDomain.SetDefault(domain.ToASCII(), zones[0])
 
 			return zones[0], true
 
@@ -124,13 +124,13 @@ zoneSearch:
 		}
 	}
 
-	pp.Printf(indent, pp.EmojiError, "Failed to find the zone of %s.", domain)
+	pp.Printf(indent, pp.EmojiError, "Failed to find the zone of %q.", domain.Describe())
 	return "", false
 }
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
 	domain FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		return rmap.(map[string]net.IP), true
 	}
 
@@ -141,11 +141,11 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
-		Name: domain.String(),
+		Name: domain.ToASCII(),
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to retrieve records of %s: %v", domain, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
 		return nil, false
 	}
 
@@ -165,15 +165,15 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, indent pp.Indent,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v",
-			ipNet.RecordType(), domain, id, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.String())
+		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		delete(rmap.(map[string]net.IP), id)
 	}
 
@@ -189,21 +189,21 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.String(),
+		Name:    domain.ToASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
 
 	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
-			ipNet.RecordType(), domain, id, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.String())
+		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		rmap.(map[string]net.IP)[id] = ip
 	}
 
@@ -219,7 +219,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, indent pp.Indent,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.String(),
+		Name:    domain.ToASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 		TTL:     ttl,
@@ -228,14 +228,15 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, indent pp.Indent,
 
 	res, err := h.cf.CreateDNSRecord(ctx, zone, payload)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to add a new %s record of %s: %v", ipNet.RecordType(), domain, err)
+		pp.Printf(indent, pp.EmojiError, "Failed to add a new %s record of %q: %v",
+			ipNet.RecordType(), domain.Describe(), err)
 
-		h.cache.listRecords[ipNet].Delete(domain.String())
+		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
 
 		return "", false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.String()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		rmap.(map[string]net.IP)[res.Result.ID] = ip
 	}
 

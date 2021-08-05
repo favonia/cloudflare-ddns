@@ -225,7 +225,7 @@ func (c *Config) checkUselessDomains(indent pp.Indent) {
 	// calculate domainSet[IP4], domainSet[IP6], and unionSet
 	for ipNet, domains := range c.Domains {
 		for _, domain := range domains {
-			domainString := domain.String()
+			domainString := domain.ToASCII()
 			domainSet[ipNet][domainString] = true
 			unionSet[domainString] = true
 		}
