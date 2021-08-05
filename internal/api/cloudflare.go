@@ -30,7 +30,7 @@ const (
 type CloudflareAuth struct {
 	Token     string
 	AccountID string
-	URL       string
+	BaseURL   string
 }
 
 func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpiration time.Duration) (Handle, bool) {
@@ -41,8 +41,8 @@ func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpirat
 	}
 
 	// set the base URL (mostly for testing)
-	if t.URL != "" {
-		handle.BaseURL = t.URL
+	if t.BaseURL != "" {
+		handle.BaseURL = t.BaseURL
 	}
 
 	// this is not needed, but is helpful for diagnosing the problem

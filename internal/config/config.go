@@ -95,7 +95,7 @@ func readAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
 
 	accountID := Getenv("CF_ACCOUNT_ID")
 
-	*field = &api.CloudflareAuth{Token: token, AccountID: accountID, URL: ""}
+	*field = &api.CloudflareAuth{Token: token, AccountID: accountID, BaseURL: ""}
 	return true
 }
 
