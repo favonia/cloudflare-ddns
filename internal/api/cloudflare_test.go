@@ -19,7 +19,7 @@ import (
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
 func mockID(seed string) string {
-	arr := sha512.Sum512([]byte(seed)) //nolint:gosec
+	arr := sha512.Sum512([]byte(seed))
 	return hex.EncodeToString(arr[:16])
 }
 
