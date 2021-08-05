@@ -103,7 +103,7 @@ func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, indent pp.Indent, d
 
 zoneSearch:
 	for s := NewFQDNSplitter(domain); s.IsValid(); s.Next() {
-		zoneName := s.AfterPeriodString()
+		zoneName := s.Suffix()
 		zones, ok := h.ActiveZones(ctx, indent, zoneName)
 		if !ok {
 			return "", false
