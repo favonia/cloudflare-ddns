@@ -32,11 +32,11 @@ var Version string //nolint:gochecknoglobals
 
 func welcome() {
 	if Version == "" {
-		pp.TopPrintf(pp.EmojiStar, "CloudFlare DDNS")
+		pp.TopPrintf(pp.EmojiStar, "Cloudflare DDNS")
 		return
 	}
 
-	pp.TopPrintf(pp.EmojiStar, "CloudFlare DDNS (%s)", Version)
+	pp.TopPrintf(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 }
 
 func initConfig(ctx context.Context) (*config.Config, api.Handle) {
