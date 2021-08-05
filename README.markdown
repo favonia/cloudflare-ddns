@@ -54,7 +54,7 @@ The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided s
   Parsing of Cron expressions.
 - [go-cache](https://github.com/patrickmn/go-cache):\
   Essentially `map[string]interface{}` with expiration times.
-- [assert](https://github.com/stretchr/testify) (only for testing):\
+- [testify](https://github.com/stretchr/testify) (only for testing):\
   A comprehensive tool set for testing Go programs.
 </details>
 
