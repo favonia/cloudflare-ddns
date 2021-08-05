@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 // randUint16 generates a number using PRNGs, not cryptographically secure.

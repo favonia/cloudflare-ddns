@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
 func TestString(t *testing.T) {

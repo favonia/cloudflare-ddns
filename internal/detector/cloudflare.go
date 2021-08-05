@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type Cloudflare struct{}

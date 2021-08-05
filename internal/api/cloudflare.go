@@ -8,8 +8,8 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type Cache = struct {

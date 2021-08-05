@@ -5,9 +5,9 @@ import (
 
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/config"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
-	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
+	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 // tryRaiseCap will attempt raise the capabilities.

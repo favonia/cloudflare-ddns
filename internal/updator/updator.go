@@ -4,10 +4,10 @@ import (
 	"context"
 	"net"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/api"
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
-	"github.com/favonia/cloudflare-ddns-go/internal/quiet"
+	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 // Args is the type of (named) arguments to updateRecords.

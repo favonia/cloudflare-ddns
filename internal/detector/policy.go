@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type Policy interface {

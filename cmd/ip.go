@@ -4,11 +4,11 @@ import (
 	"context"
 	"net"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/api"
-	"github.com/favonia/cloudflare-ddns-go/internal/config"
-	"github.com/favonia/cloudflare-ddns-go/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
-	"github.com/favonia/cloudflare-ddns-go/internal/updator"
+	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/updator"
 )
 
 func setIP(ctx context.Context, indent pp.Indent, c *config.Config, h api.Handle, ipNet ipnet.Type, ip net.IP) {

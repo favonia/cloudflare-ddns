@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type Auth interface {
