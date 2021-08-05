@@ -7,35 +7,48 @@ import (
 	"golang.org/x/net/idna"
 )
 
+//nolint: gochecknoglobals
+// profile does C2 in UTS#46 with all checks on + removing leading dots.
+// This is the main conversion profile in use.
+var profile = idna.New(
+	idna.MapForLookup(),
+	idna.BidiRule(),
+	// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
+	idna.RemoveLeadingDots(true),
+)
+
+// FQDN is a fully qualified domain in its ASCII or Unicode (when unambiguous) form.
 type FQDN string
 
-func (f FQDN) String() string {
-	return string(f)
-}
-
-func NewFQDN(domain string) FQDN {
-	// Remove the final period for consistency
-	domain = strings.TrimSuffix(domain, ".")
-
-	// Process Punycode
-	normalized, err := idna.ToUnicode(domain)
-	if err != nil {
-		// Something appears to be wrong, but we can live with it
-		return FQDN(domain)
+// safelyToUnicode takes an ASCII form and returns the Unicode form
+// when the round trip gives the same ASCII form back without errors.
+// Otherwise, the input ASCII form is returned.
+func safelyToUnicode(ascii string) string {
+	unicode, errToA := profile.ToUnicode(ascii)
+	roundTrip, errToU := profile.ToASCII(unicode)
+	if errToA != nil || errToU != nil || roundTrip != ascii {
+		return ascii
 	}
 
-	return FQDN(normalized)
+	return unicode
 }
 
-type FQDNSlice []FQDN
+func (f FQDN) String() string { return string(f) }
 
-func (x FQDNSlice) Len() int           { return len(x) }
-func (x FQDNSlice) Less(i, j int) bool { return x[i] < x[j] }
-func (x FQDNSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+// NewFQDN normalizes a domain to its ASCII form and then stores
+// the normalized domain in its Unicode form when the round trip
+// gives back the same ASCII form without errors. Otherwise,
+// the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
+func NewFQDN(domain string) (FQDN, error) {
+	normalized, err := profile.ToASCII(domain)
 
-func SortFQDNs(s []FQDN) {
-	sort.Sort(FQDNSlice(s))
+	// Remove the final dot for consistency
+	normalized = strings.TrimSuffix(normalized, ".")
+
+	return FQDN(safelyToUnicode(normalized)), err
 }
+
+func SortFQDNs(s []FQDN) { sort.Slice(s, func(i, j int) bool { return s[i] < s[j] }) }
 
 type FQDNSplitter struct {
 	domain    string
@@ -51,23 +64,17 @@ func NewFQDNSplitter(domain FQDN) *FQDNSplitter {
 	}
 }
 
-func (s *FQDNSplitter) IsValid() bool {
-	return !s.exhausted
-}
-
+func (s *FQDNSplitter) IsValid() bool  { return !s.exhausted }
+func (s *FQDNSplitter) Suffix() string { return s.domain[s.cursor:] }
 func (s *FQDNSplitter) Next() {
 	if s.cursor == len(s.domain) {
 		s.exhausted = true
 	} else {
-		shift := strings.IndexRune(s.AfterPeriodString(), '.')
+		shift := strings.IndexRune(s.Suffix(), '.')
 		if shift == -1 {
 			s.cursor = len(s.domain)
 		} else {
 			s.cursor += shift + 1
 		}
 	}
-}
-
-func (s *FQDNSplitter) AfterPeriodString() string {
-	return s.domain[s.cursor:]
 }

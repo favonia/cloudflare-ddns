@@ -94,7 +94,7 @@ func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) 
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(_ quiet.Quiet, _ pp.Indent, key string, field *[]api.FQDN) bool {
+func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]api.FQDN) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
 	*field = make([]api.FQDN, 0, len(rawList))
@@ -104,7 +104,12 @@ func ReadDomains(_ quiet.Quiet, _ pp.Indent, key string, field *[]api.FQDN) bool
 			continue
 		}
 
-		*field = append(*field, api.NewFQDN(item))
+		item, err := api.NewFQDN(item)
+		if err != nil {
+			pp.Printf(indent, pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item, err)
+		}
+
+		*field = append(*field, item)
 	}
 
 	return true

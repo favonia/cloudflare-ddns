@@ -300,7 +300,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
 >
-> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. This updater supports internationalized domain names; [Punycode](https://en.wikipedia.org/wiki/Punycode) will be decoded and processed using [x/net/idna](https://pkg.go.dev/golang.org/x/net/idna).
+> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. This updater supports internationalized domain names using the non-transitional IDNA2008 processing.
 > </details>
 
 </details>
