@@ -1,4 +1,4 @@
-# 🌟 CloudFlare DDNS
+# 🌟 Cloudflare DDNS
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml)
@@ -6,10 +6,10 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/favonia/cloudflare-ddns)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 
-A small and fast DDNS updater for CloudFlare.
+A small and fast DDNS updater for Cloudflare.
 
 ```
-🌟 CloudFlare DDNS
+🌟 Cloudflare DDNS
 🥷 Dropping privileges . . .
 🥷 Priviledges after dropping:
    🔸 Effective UID:      1000
@@ -27,15 +27,15 @@ A small and fast DDNS updater for CloudFlare.
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Support of internationalized domain names.
 * Ability to remove stale records or choose to remove records on exit/stop.
-* Ability to obtain IP addresses from CloudFlare, ipify, or local network interfaces.
+* Ability to obtain IP addresses from Cloudflare, ipify, or local network interfaces.
 * Support of timezone and Cron expressions.
 * Full configurability via environment variables.
 * Ability to pass API tokens via a file instead of an environment variable.
-* Local caching to reduce CloudFlare API usage.
+* Local caching to reduce Cloudflare API usage.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained using [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the CloudFlare API to update DNS records. Moreover, if CloudFlare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
+By default, public IP addresses are obtained using [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
 
 ## 🛡️ Security
 
@@ -49,7 +49,7 @@ The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided s
 - [cap](https://sites.google.com/site/fullycapable):\
   Manipulation of Linux capabilities.
 - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-  The official Go binding of CloudFlare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
+  The official Go binding of Cloudflare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
 - [cron](https://github.com/robfig/cron):\
   Parsing of Cron expressions.
 - [go-cache](https://github.com/patrickmn/go-cache):\
@@ -134,7 +134,7 @@ Change `1000` to the user or group IDs you wish to use to run the updater. The s
 <details>
 <summary>🎭 Use <code>PROXIED=true</code> to hide your IP addresses.</summary>
 
-The setting `PROXIED=true` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+The setting `PROXIED=true` instructs Cloudflare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 </details>
 
 ### 🪧 Step 2: Updating the Environment File
@@ -146,7 +146,7 @@ DOMAINS=example.org,www.example.org,example.io
 ```
 
 <details>
-<summary>🔑 <code>CF_API_TOKEN</code> is your CloudFlare API token.</summary>
+<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token.</summary>
 
 The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
 </details>
@@ -226,7 +226,7 @@ Kubernetes comes with built-in support to drop superuser privileges. The updater
 <details>
 <summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6 management.</summary>
 
-The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach CloudFlare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet.](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6) Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
+The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach Cloudflare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet.](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6) Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
 
 If you manage to enable IPv6, congratulations. Feel free to remove `IP6_POLICY: "unmanaged"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. In the worst case, the updater will remove all `AAAA` records associated with the domains in `DOMAINS` and `IP6_DOMAINS` because those records will appear to be “stale.” The deleted records will be recreated once the updater correctly detects the IPv6 addresses.
 </details>
@@ -234,11 +234,11 @@ If you manage to enable IPv6, congratulations. Feel free to remove `IP6_POLICY: 
 <details>
 <summary>🎭 Use <code>PROXIED: "true"</code> to hide your IP addresses.</summary>
 
-The setting `PROXIED: "true"` instructs CloudFlare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED: "true"`. (The default value of `PROXIED` is `false`.)
+The setting `PROXIED: "true"` instructs Cloudflare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED: "true"`. (The default value of `PROXIED` is `false`.)
 </details>
 
 <details>
-<summary>🔑 <code>CF_API_TOKEN</code> is your CloudFlare API token.</summary>
+<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token.</summary>
 
 The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
 </details>
@@ -260,13 +260,13 @@ kubectl create -f cloudflare-ddns.yaml
 ### ⚙️ All Settings
 
 <details>
-<summary>🔑 CloudFlare accounts and API tokens</summary>
+<summary>🔑 Cloudflare accounts and API tokens</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_ACCOUNT_ID` | CloudFlare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
-| `CF_API_TOKEN_FILE` | Paths to files containing CloudFlare API tokens | A file that contains the token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `CF_API_TOKEN` | CloudFlare API tokens | The token to access the CloudFlare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_ACCOUNT_ID` | Cloudflare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
+| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_API_TOKEN` | Cloudflare API tokens | The token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
 
 In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
@@ -286,11 +286,11 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
 >
 > - `cloudflare`\
->  Get the public IP address by querying `whoami.cloudflare.` against [CloudFlare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
+>  Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
 > - `ipify`\
 >   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\
->   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to CloudFlare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the tool will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
+>   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the tool will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
 > - `unmanaged`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
@@ -310,11 +310,11 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached CloudFlare API responses | No | `6h0m0s` (6 hours)
+| `CACHE_EXPIRATION` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached Cloudflare API responses | No | `6h0m0s` (6 hours)
 | `DELETE_ON_STOP` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time duration with a unit, such as `1h` or `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
-| `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by CloudFlare | No | `false`
-| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to CloudFlare)
+| `PROXIED` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether new DNS records should be proxied by Cloudflare | No | `false`
+| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `UPDATE_CRON` | No | `UTC`
 | `UPDATE_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `UPDATE_ON_START` | `1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, and `False` | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
@@ -354,7 +354,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 <details>
 <summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
 
-⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate or forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from CloudFlare or ipify.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate or forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare or ipify.
 
 | Old Parameter |  | New Paramater |
 | ------------- | - | ------------- |
@@ -367,7 +367,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `DELETE_ON_STOP=true` | ✔️ | Same |
 | `INTERFACE=iface` | ✔️ | Not required for `local` policies; we can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
-| `DNS_SERVER=server` | ❌ | _Only the CloudFlare server is supported._ |
+| `DNS_SERVER=server` | ❌ | _Only the Cloudflare server is supported._ |
 
 </details>
 

@@ -36,7 +36,7 @@ type CloudflareAuth struct {
 func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to prepare the CloudFlare authentication: %v", err)
+		pp.Printf(indent, pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
 		return nil, false
 	}
 
@@ -47,7 +47,7 @@ func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpirat
 
 	// this is not needed, but is helpful for diagnosing the problem
 	if _, err := handle.VerifyAPIToken(ctx); err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "The CloudFlare API token is not valid: %v", err)
+		pp.Printf(indent, pp.EmojiUserError, "The Cloudflare API token is not valid: %v", err)
 		pp.Printf(indent, pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE.")
 		return nil, false
 	}
