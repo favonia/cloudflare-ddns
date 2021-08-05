@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 var FS = os.DirFS("/") //nolint:gochecknoglobals

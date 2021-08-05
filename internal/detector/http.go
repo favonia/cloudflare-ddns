@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type httpConn struct {

@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/file"
-	"github.com/favonia/cloudflare-ddns-go/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/file"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func useMemFS(memfs fstest.MapFS) {

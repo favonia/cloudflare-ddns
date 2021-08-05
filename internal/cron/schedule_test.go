@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/cron"
 )
 
 func TestMustNewSuccessful(t *testing.T) {

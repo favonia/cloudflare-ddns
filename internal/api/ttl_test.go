@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/favonia/cloudflare-ddns-go/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/api"
 )
 
 func TestTTLDescribe(t *testing.T) {

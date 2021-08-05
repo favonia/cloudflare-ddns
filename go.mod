@@ -1,4 +1,4 @@
-module github.com/favonia/cloudflare-ddns-go
+module github.com/favonia/cloudflare-ddns
 
 go 1.16
 
