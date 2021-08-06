@@ -23,17 +23,26 @@ type FQDN string
 // safelyToUnicode takes an ASCII form and returns the Unicode form
 // when the round trip gives the same ASCII form back without errors.
 // Otherwise, the input ASCII form is returned.
-func safelyToUnicode(ascii string) string {
+func safelyToUnicode(ascii string) (string, bool) {
 	unicode, errToA := profile.ToUnicode(ascii)
 	roundTrip, errToU := profile.ToASCII(unicode)
 	if errToA != nil || errToU != nil || roundTrip != ascii {
-		return ascii
+		return ascii, false
 	}
 
-	return unicode
+	return unicode, true
 }
 
-func (f FQDN) String() string { return string(f) }
+func (f FQDN) ToASCII() string { return string(f) }
+
+func (f FQDN) Describe() string {
+	best, ok := safelyToUnicode(string(f))
+	if !ok {
+		return string(f)
+	}
+
+	return best
+}
 
 // NewFQDN normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
@@ -45,7 +54,7 @@ func NewFQDN(domain string) (FQDN, error) {
 	// Remove the final dot for consistency
 	normalized = strings.TrimSuffix(normalized, ".")
 
-	return FQDN(safelyToUnicode(normalized)), err
+	return FQDN(normalized), err
 }
 
 func SortFQDNs(s []FQDN) { sort.Slice(s, func(i, j int) bool { return s[i] < s[j] }) }
@@ -58,7 +67,7 @@ type FQDNSplitter struct {
 
 func NewFQDNSplitter(domain FQDN) *FQDNSplitter {
 	return &FQDNSplitter{
-		domain:    domain.String(),
+		domain:    domain.ToASCII(),
 		cursor:    0,
 		exhausted: false,
 	}

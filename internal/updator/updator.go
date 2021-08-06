@@ -37,7 +37,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 
 	rs, ok := args.Handle.ListRecords(ctx, indent, args.Domain, args.IPNetwork)
 	if !ok {
-		pp.Printf(indent, pp.EmojiError, "Failed to update %s records of %s.", recordType, args.Domain)
+		pp.Printf(indent, pp.EmojiError, "Failed to update %s records of %q.", recordType, args.Domain.Describe())
 		return false
 	}
 
@@ -60,7 +60,8 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		if !quiet {
-			pp.Printf(indent, pp.EmojiAlreadyDone, "The %s records of %s are already up to date.", recordType, args.Domain)
+			pp.Printf(indent, pp.EmojiAlreadyDone, "The %s records of %q are already up to date.",
+				recordType, args.Domain.Describe())
 		}
 
 		return true
@@ -72,7 +73,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 		for i, id := range unmatchedIDs {
 			if args.Handle.UpdateRecord(ctx, indent, args.Domain, args.IPNetwork, id, args.IP) {
 				pp.Printf(indent, pp.EmojiUpdateRecord,
-					"Updated a stale %s record of %s (ID: %s).", recordType, args.Domain, id)
+					"Updated a stale %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
 
 				uptodate = true
 				numUnmatched--
@@ -82,7 +83,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 			} else {
 				if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
 					pp.Printf(indent, pp.EmojiDelRecord,
-						"Deleted a stale %s record of %s instead (ID: %s).", recordType, args.Domain, id)
+						"Deleted a stale %s record of %q instead (ID: %s).", recordType, args.Domain.Describe(), id)
 					numUnmatched--
 				}
 				continue
@@ -96,7 +97,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 		if id, ok := args.Handle.CreateRecord(ctx, indent,
 			args.Domain, args.IPNetwork, args.IP, args.TTL.Int(), args.Proxied); ok {
 			pp.Printf(indent, pp.EmojiAddRecord,
-				"Added a new %s record of %s (ID: %s).", recordType, args.Domain, id)
+				"Added a new %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
 			uptodate = true
 		}
 	}
@@ -104,7 +105,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 	for _, id := range unmatchedIDs {
 		if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
 			pp.Printf(indent, pp.EmojiDelRecord,
-				"Deleted a stale %s record of %s (ID: %s).", recordType, args.Domain, id)
+				"Deleted a stale %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
 			numUnmatched--
 		}
 	}
@@ -112,13 +113,13 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 	for _, id := range matchedIDs {
 		if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
 			pp.Printf(indent, pp.EmojiDelRecord,
-				"Deleted a duplicate %s record of %s (ID: %s).", recordType, args.Domain, id)
+				"Deleted a duplicate %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
 		}
 	}
 
 	if !uptodate || numUnmatched > 0 {
 		pp.Printf(indent, pp.EmojiError,
-			"Failed to update %s records of %s.", recordType, args.Domain)
+			"Failed to update %s records of %q.", recordType, args.Domain.Describe())
 		return false
 	}
 

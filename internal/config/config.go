@@ -95,7 +95,7 @@ func readAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
 
 	accountID := Getenv("CF_ACCOUNT_ID")
 
-	*field = &api.CloudflareAuth{Token: token, AccountID: accountID, URL: ""}
+	*field = &api.CloudflareAuth{Token: token, AccountID: accountID, BaseURL: ""}
 	return true
 }
 
@@ -225,7 +225,7 @@ func (c *Config) checkUselessDomains(indent pp.Indent) {
 	// calculate domainSet[IP4], domainSet[IP6], and unionSet
 	for ipNet, domains := range c.Domains {
 		for _, domain := range domains {
-			domainString := domain.String()
+			domainString := domain.ToASCII()
 			domainSet[ipNet][domainString] = true
 			unionSet[domainString] = true
 		}
