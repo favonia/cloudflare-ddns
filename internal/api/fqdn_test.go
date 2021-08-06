@@ -156,7 +156,6 @@ func TestSortFQDNSplitter(t *testing.T) {
 		input    string
 		expected []string
 	}{
-		// The following examples were adapted from https://unicode.org/cldr/utility/idna.jsp
 		{"...", ss{"...", "..", ".", ""}},
 		{"aaa...", ss{"aaa...", "..", ".", ""}},
 		{".aaa..", ss{".aaa..", "aaa..", ".", ""}},
