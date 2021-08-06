@@ -58,10 +58,6 @@ The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided s
   A comprehensive tool set for testing Go programs.
 </details>
 
-## 🪳 Known Bugs
-
-The upstream [cloudflare-go](https://github.com/cloudflare/cloudflare-go) library (up to version 0.19.0) contains bugs that could lead to deadlocks in rare cases. The fixes have been sent to the upstream as the [pull request #674](https://github.com/cloudflare/cloudflare-go/pull/674).
-
 ## ⛷️ Quick Start
 
 <details>
