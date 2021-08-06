@@ -28,7 +28,7 @@ const (
 	mockAccount = "account456"
 )
 
-func TestCloudflareAuthNewSuccess(t *testing.T) {
+func TestCloudflareAuthNewValid(t *testing.T) {
 	t.Parallel()
 
 	mux := http.NewServeMux()
