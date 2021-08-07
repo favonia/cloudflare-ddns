@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -192,12 +193,12 @@ func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWri
 		return
 	case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
 		return
-	case !assert.Equal(t, map[string][]string{
+	case !assert.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
 		"per_page":   {"50"},
 		"status":     {"active"},
-	}, map[string][]string(r.URL.Query())):
+	}, r.URL.Query()):
 		return
 	}
 
