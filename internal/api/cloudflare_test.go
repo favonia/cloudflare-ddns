@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,20 +18,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
-func mockID(seed string, i int) string {
-	seed = fmt.Sprintf("%s/%d", seed, i)
+func mockID(seed string, suffix int) string {
+	seed = fmt.Sprintf("%s/%d", seed, suffix)
 	arr := sha512.Sum512([]byte(seed))
 	return hex.EncodeToString(arr[:16])
 }
 
-func mockIDs(seed string, is ...int) []string {
-	ids := make([]string, 0, len(is))
-	for _, i := range is {
-		ids = append(ids, mockID(seed, i))
+func mockIDs(seed string, suffixes ...int) []string {
+	ids := make([]string, len(suffixes))
+	for i, suffix := range suffixes {
+		ids[i] = mockID(seed, suffix)
 	}
 	return ids
 }
@@ -128,6 +130,8 @@ func TestNewInvalid(t *testing.T) {
 		case !assert.Equal(t, http.MethodGet, r.Method):
 			return
 		case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
+			return
+		case !assert.Equal(t, url.Values{}, r.URL.Query()):
 			return
 		}
 
@@ -242,8 +246,7 @@ func newZonesHandler(t *testing.T, mux *http.ServeMux) *zonesHandler {
 }
 
 func (h *zonesHandler) set(numZones map[string]int, accessCount int) {
-	*(h.numZones) = numZones
-	*(h.accessCount) = accessCount
+	*(h.numZones), *(h.accessCount) = numZones, accessCount
 }
 
 func (h *zonesHandler) isExhausted() bool {
@@ -396,4 +399,147 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
 	require.False(t, ok)
 	require.Equal(t, "", zoneID)
+}
+
+func subdomain(domain api.FQDN, sub string) api.FQDN {
+	domain, _ = api.NewFQDN(fmt.Sprintf("%s.%s", sub, domain.ToASCII()))
+	return domain
+}
+
+func mockDNSRecord(id string, ipNet ipnet.Type, domain api.FQDN, ip net.IP) *cloudflare.DNSRecord {
+	return &cloudflare.DNSRecord{ //nolint:exhaustivestruct
+		ID:      id,
+		Type:    ipNet.RecordType(),
+		Name:    domain.ToASCII(),
+		Content: ip.String(),
+	}
+}
+
+func mockDNSListResponse(domain api.FQDN, ipNet ipnet.Type, ips map[string]net.IP) *cloudflare.DNSListResponse {
+	if len(ips) > 100 {
+		panic("mockDNSResponse got too many IPs.")
+	}
+
+	rs := make([]cloudflare.DNSRecord, 0, len(ips))
+	for id, ip := range ips {
+		rs = append(rs, *mockDNSRecord(id, ipNet, domain, ip))
+	}
+
+	return &cloudflare.DNSListResponse{
+		Result: rs,
+		ResultInfo: cloudflare.ResultInfo{
+			Page:       1,
+			PerPage:    100,
+			TotalPages: (len(ips) + 99) / 100,
+			Count:      len(ips),
+			Total:      len(ips),
+			Cursor:     "",
+			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustivestruct
+		},
+		Response: cloudflare.Response{
+			Success:  true,
+			Errors:   []cloudflare.ResponseInfo{},
+			Messages: []cloudflare.ResponseInfo{},
+		},
+	}
+}
+
+func TestListRecords(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+	zh.set(map[string]int{"test.org": 1}, 2)
+
+	var (
+		ipNet       ipnet.Type
+		ips         map[string]net.IP
+		accessCount int
+	)
+
+	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
+		func(w http.ResponseWriter, r *http.Request) {
+			if accessCount <= 0 {
+				return
+			}
+			accessCount--
+
+			switch {
+			case !assert.Equal(t, http.MethodGet, r.Method):
+				return
+			case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
+				return
+			case !assert.Equal(t, url.Values{
+				"name":     {"sub.test.org"},
+				"page":     {"1"},
+				"per_page": {"100"},
+				"type":     {ipNet.RecordType()},
+			}, r.URL.Query()):
+				return
+			}
+
+			bytes, err := json.Marshal(mockDNSListResponse("test.org", ipNet, ips))
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			w.Header().Set("content-type", "application/json")
+			_, err = w.Write(bytes)
+			assert.NoError(t, err)
+		})
+
+	expected := map[string]net.IP{"record1": net.ParseIP("10.10.10.10"), "record2": net.ParseIP("20.20.20.20")}
+	ipNet, ips, accessCount = ipnet.IP4, expected, 1
+	ips, ok := h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP4)
+	require.True(t, ok)
+	require.Equal(t, expected, ips)
+	require.Equal(t, 0, accessCount)
+
+	// testing the caching
+	ips, ok = h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP4)
+	require.True(t, ok)
+	require.Equal(t, expected, ips)
+	require.Equal(t, 0, accessCount)
+
+	expected = map[string]net.IP{"record1": net.ParseIP("::1"), "record2": net.ParseIP("::2")}
+	ipNet, ips, accessCount = ipnet.IP6, expected, 1
+	ips, ok = h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
+	require.True(t, ok)
+	require.Equal(t, expected, ips)
+	require.Equal(t, 0, accessCount)
+}
+
+func TestListRecordsInvalidDomain(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+	zh.set(map[string]int{"test.org": 1}, 2)
+
+	ips, ok := h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP4)
+	require.False(t, ok)
+	require.Nil(t, ips)
+
+	ips, ok = h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
+	require.False(t, ok)
+	require.Nil(t, ips)
+}
+
+func TestListRecordsInvalidZone(t *testing.T) {
+	t.Parallel()
+
+	ts, _, h := newHandle(t)
+	defer ts.Close()
+
+	ips, ok := h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP4)
+	require.False(t, ok)
+	require.Nil(t, ips)
+
+	ips, ok = h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
+	require.False(t, ok)
+	require.Nil(t, ips)
 }
