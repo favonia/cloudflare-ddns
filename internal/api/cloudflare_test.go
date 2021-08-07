@@ -21,19 +21,37 @@ import (
 
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
-func mockID(seed string, indexes ...int) string {
-	for _, i := range indexes {
-		seed = fmt.Sprintf("%s/%d", seed, i)
-	}
+func mockID(seed string, i int) string {
+	seed = fmt.Sprintf("%s/%d", seed, i)
 	arr := sha512.Sum512([]byte(seed))
 	return hex.EncodeToString(arr[:16])
 }
 
+func mockIDs(seed string, is ...int) []string {
+	ids := make([]string, 0, len(is))
+	for _, i := range is {
+		ids = append(ids, mockID(seed, i))
+	}
+	return ids
+}
+
 const (
-	mockToken     = "token123"
-	mockAccount   = "account456"
-	mockOwnerName = "Test Account"
+	mockToken   = "token123"
+	mockAccount = "account456"
 )
+
+func newServerAuth() (*httptest.Server, *http.ServeMux, *api.CloudflareAuth) {
+	mux := http.NewServeMux()
+	ts := httptest.NewServer(mux)
+
+	auth := api.CloudflareAuth{
+		Token:     mockToken,
+		AccountID: mockAccount,
+		BaseURL:   ts.URL,
+	}
+
+	return ts, mux, &auth
+}
 
 func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
@@ -42,6 +60,8 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	case !assert.Equal(t, http.MethodGet, r.Method):
 		return
 	case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
+		return
+	case !assert.Equal(t, url.Values{}, r.URL.Query()):
 		return
 	}
 
@@ -59,54 +79,48 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 					}
 				]
 			}`,
-		mockID("result"))
+		mockID("result", 0))
 }
 
-func TestCloudflareAuthNewValid(t *testing.T) {
-	t.Parallel()
+func newHandle(t *testing.T) (*httptest.Server, *http.ServeMux, api.Handle) {
+	t.Helper()
 
-	mux := http.NewServeMux()
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
+	ts, mux, auth := newServerAuth()
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
 		handleTokensVerify(t, w, r)
 	})
 
-	auth := api.CloudflareAuth{
-		Token:     mockToken,
-		AccountID: mockAccount,
-		BaseURL:   ts.URL,
-	}
-
 	h, ok := auth.New(context.Background(), 3, time.Second)
-	require.NotNil(t, h)
 	require.True(t, ok)
+	require.NotNil(t, h)
+
+	return ts, mux, h
 }
 
-func TestCloudflareAuthNewEmpty(t *testing.T) {
+func TestNewValid(t *testing.T) {
 	t.Parallel()
 
-	mux := http.NewServeMux()
-	ts := httptest.NewServer(mux)
+	ts, _, _ := newHandle(t)
+	defer ts.Close()
+}
+
+func TestNewEmpty(t *testing.T) {
+	t.Parallel()
+
+	ts, _, auth := newServerAuth()
 	defer ts.Close()
 
-	auth := api.CloudflareAuth{
-		Token:     "",
-		AccountID: mockAccount,
-		BaseURL:   ts.URL,
-	}
-
+	auth.Token = ""
 	h, ok := auth.New(context.Background(), 3, time.Second)
-	require.Nil(t, h)
 	require.False(t, ok)
+	require.Nil(t, h)
 }
 
-func TestCloudflareAuthNewInvalid(t *testing.T) {
+func TestNewInvalid(t *testing.T) {
 	t.Parallel()
 
-	mux := http.NewServeMux()
-	ts := httptest.NewServer(mux)
+	ts, mux, auth := newServerAuth()
 	defer ts.Close()
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
@@ -128,32 +142,16 @@ func TestCloudflareAuthNewInvalid(t *testing.T) {
 			}`)
 	})
 
-	auth := api.CloudflareAuth{
-		Token:     mockToken,
-		AccountID: mockAccount,
-		BaseURL:   ts.URL,
-	}
-
 	h, ok := auth.New(context.Background(), 3, time.Second)
-	require.Nil(t, h)
 	require.False(t, ok)
+	require.Nil(t, h)
 }
 
 func mockZone(zoneName string, i int) *cloudflare.Zone {
 	return &cloudflare.Zone{ //nolint:exhaustivestruct
-		ID:   mockID(zoneName, i),
-		Name: zoneName,
-		Owner: cloudflare.Owner{ //nolint:exhaustivestruct
-			ID:        mockID(mockOwnerName),
-			Name:      mockOwnerName,
-			OwnerType: "organization",
-		},
+		ID:     mockID(zoneName, i),
+		Name:   zoneName,
 		Status: "active",
-		Type:   "full",
-		Account: cloudflare.Account{ //nolint:exhaustivestruct
-			ID:   mockID(mockOwnerName),
-			Name: mockOwnerName,
-		},
 	}
 }
 
@@ -172,7 +170,7 @@ func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse 
 		ResultInfo: cloudflare.ResultInfo{
 			Page:       1,
 			PerPage:    50,
-			TotalPages: 1,
+			TotalPages: (numZones + 49) / 50,
 			Count:      numZones,
 			Total:      numZones,
 			Cursor:     "",
@@ -202,31 +200,28 @@ func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWri
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
 	bytes, err := json.Marshal(mockZonesResponse(zoneName, numZones))
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	if _, err := w.Write(bytes); assert.NoError(t, err) {
-		return
-	}
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(bytes)
+	assert.NoError(t, err)
 }
 
-//nolint:paralleltest // caching cannot be easily tested
-func TestCloudflareActiveZonesOneZone(t *testing.T) {
-	mux := http.NewServeMux()
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
+type zonesHandler struct {
+	mux         *http.ServeMux
+	numZones    *map[string]int
+	accessCount *int
+}
 
-	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		handleTokensVerify(t, w, r)
-	})
+func newZonesHandler(t *testing.T, mux *http.ServeMux) *zonesHandler {
+	t.Helper()
 
-	const mockZoneName = "test.org"
 	var (
-		numMockZones = 1
-		accessCount  = 1
+		numZones    map[string]int
+		accessCount int
 	)
 
 	mux.HandleFunc("/zones", func(w http.ResponseWriter, r *http.Request) {
@@ -235,43 +230,170 @@ func TestCloudflareActiveZonesOneZone(t *testing.T) {
 		}
 		accessCount--
 
-		handleZones(t, mockZoneName, numMockZones, w, r)
+		zoneName := r.URL.Query().Get("name")
+		handleZones(t, zoneName, numZones[zoneName], w, r)
 	})
 
-	auth := api.CloudflareAuth{
-		Token:     mockToken,
-		AccountID: mockAccount,
-		BaseURL:   ts.URL,
+	return &zonesHandler{
+		mux:         mux,
+		numZones:    &numZones,
+		accessCount: &accessCount,
 	}
+}
 
-	h, ok := auth.New(context.Background(), 3, time.Second)
-	require.NotNil(t, h)
-	require.True(t, ok)
+func (h *zonesHandler) set(numZones map[string]int, accessCount int) {
+	*(h.numZones) = numZones
+	*(h.accessCount) = accessCount
+}
 
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, mockZoneName)
-	require.Equal(t, []string{mockID(mockZoneName, 0)}, zones)
-	require.True(t, ok)
+func (h *zonesHandler) isExhausted() bool {
+	return *h.accessCount == 0
+}
 
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, mockZoneName)
-	require.Equal(t, []string{mockID(mockZoneName, 0)}, zones)
+func TestActiveZonesRoot(t *testing.T) {
+	t.Parallel()
+
+	ts, _, h := newHandle(t)
+	defer ts.Close()
+
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "")
 	require.True(t, ok)
+	require.Equal(t, []string{}, zones)
+}
+
+func TestActiveZonesTwo(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{"test.org": 2}, 1)
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
+	require.True(t, ok)
+	require.Equal(t, mockIDs("test.org", 0, 1), zones)
+	require.True(t, zh.isExhausted())
+
+	zh.set(nil, 0)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
+	require.True(t, ok)
+	require.Equal(t, mockIDs("test.org", 0, 1), zones)
+	require.True(t, zh.isExhausted())
 
 	h.FlushCache()
 
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, mockZoneName)
-	require.Nil(t, zones)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
 	require.False(t, ok)
+	require.Nil(t, zones)
+	require.True(t, zh.isExhausted())
+}
 
-	accessCount = 1
-	numMockZones = 2
+func TestActiveZonesEmpty(t *testing.T) {
+	t.Parallel()
 
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, mockZoneName)
-	require.Equal(t, []string{mockID(mockZoneName, 0), mockID(mockZoneName, 1)}, zones)
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{}, 1)
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
 	require.True(t, ok)
+	require.Equal(t, []string{}, zones)
+	require.True(t, zh.isExhausted())
 
-	numMockZones = 0 // this should not affect the result due to the caching
-
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, mockZoneName)
-	require.Equal(t, []string{mockID(mockZoneName, 0), mockID(mockZoneName, 1)}, zones)
+	zh.set(nil, 0) // this should not affect the result due to the caching
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
 	require.True(t, ok)
+	require.Equal(t, []string{}, zones)
+	require.True(t, zh.isExhausted())
+
+	h.FlushCache()
+
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
+	require.False(t, ok)
+	require.Nil(t, zones)
+	require.True(t, zh.isExhausted())
+}
+
+func TestZoneOfDomainRoot(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{"test.org": 1}, 1)
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "test.org")
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+	require.True(t, zh.isExhausted())
+
+	zh.set(nil, 0)
+	zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "test.org")
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+}
+
+func TestZoneOfDomainOneLevel(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{"test.org": 1}, 2)
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+	require.True(t, zh.isExhausted())
+
+	zh.set(nil, 0)
+	zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+}
+
+func TestZoneOfDomainNone(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{}, 3)
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
+	require.False(t, ok)
+	require.Equal(t, "", zoneID)
+	require.True(t, zh.isExhausted())
+}
+
+func TestZoneOfDomainMultiple(t *testing.T) {
+	t.Parallel()
+
+	ts, mux, h := newHandle(t)
+	defer ts.Close()
+
+	zh := newZonesHandler(t, mux)
+
+	zh.set(map[string]int{"test.org": 2}, 2)
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
+	require.False(t, ok)
+	require.Equal(t, "", zoneID)
+	require.True(t, zh.isExhausted())
+}
+
+func TestZoneOfDomainInvalid(t *testing.T) {
+	t.Parallel()
+
+	ts, _, h := newHandle(t)
+	defer ts.Close()
+
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), 3, "sub.test.org")
+	require.False(t, ok)
+	require.Equal(t, "", zoneID)
 }
