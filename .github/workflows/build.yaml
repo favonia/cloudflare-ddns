@@ -25,7 +25,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - run: "git fetch --tags --force"
+      - run: "git fetch --force --prune --unshallow --tags"
       - run: echo '::set-output name=GIT_DESCRIBE::'`git describe --tags --always --long`
         id: git-describe
       - uses: docker/build-push-action@v2
