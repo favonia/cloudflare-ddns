@@ -74,7 +74,7 @@ func (h *CloudflareHandle) FlushCache() {
 	h.cache.zoneOfDomain.Flush()
 }
 
-// ActiveZones replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
+// ActiveZones lists all active zones of the given name.
 func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, name string) ([]string, bool) {
 	if ids, found := h.cache.activeZones.Get(name); found {
 		return ids.([]string), true
