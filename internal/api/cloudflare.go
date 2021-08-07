@@ -154,6 +154,8 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
 		rmap[rs[i].ID] = net.ParseIP(rs[i].Content)
 	}
 
+	h.cache.listRecords[ipNet].SetDefault(domain.ToASCII(), rmap)
+
 	return rmap, true
 }
 
