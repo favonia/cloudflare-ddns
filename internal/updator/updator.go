@@ -20,7 +20,7 @@ type Args struct {
 	Proxied   bool
 }
 
-func SplitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedIDs []string) {
+func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedIDs []string) {
 	for id, ip := range rmap {
 		if ip.Equal(target) {
 			matchedIDs = append(matchedIDs, id)
@@ -41,7 +41,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 		return false
 	}
 
-	matchedIDs, unmatchedIDs := SplitRecords(rs, args.IP)
+	matchedIDs, unmatchedIDs := splitRecords(rs, args.IP)
 
 	// whether there was already an up-to-date record
 	uptodate := false
