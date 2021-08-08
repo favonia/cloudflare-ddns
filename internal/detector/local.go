@@ -9,8 +9,8 @@ import (
 )
 
 type Local struct {
-	policyName    string
-	remoteUDPAddr map[ipnet.Type]string
+	PolicyName    string
+	RemoteUDPAddr map[ipnet.Type]string
 }
 
 func (p *Local) IsManaged() bool {
@@ -18,11 +18,11 @@ func (p *Local) IsManaged() bool {
 }
 
 func (p *Local) String() string {
-	return p.policyName
+	return p.PolicyName
 }
 
 func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
-	remoteUDPAddr, found := p.remoteUDPAddr[ipNet]
+	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
 	if !found {
 		return nil, false
 	}
@@ -44,8 +44,8 @@ func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (
 
 func NewLocal() Policy {
 	return &Local{
-		policyName: "local",
-		remoteUDPAddr: map[ipnet.Type]string{
+		PolicyName: "local",
+		RemoteUDPAddr: map[ipnet.Type]string{
 			ipnet.IP4: "1.1.1.1:443",
 			ipnet.IP6: "[2606:4700:4700::1111]:443",
 		},

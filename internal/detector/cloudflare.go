@@ -8,11 +8,11 @@ import (
 
 func NewCloudflare() Policy {
 	return &DNSOverHTTPS{
-		policyName: "cloudflare",
-		param: map[ipnet.Type]struct {
-			url   string
-			name  string
-			class dnsmessage.Class
+		PolicyName: "cloudflare",
+		Param: map[ipnet.Type]struct {
+			URL   string
+			Name  string
+			Class dnsmessage.Class
 		}{
 			ipnet.IP4: {"https://1.1.1.1/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
 			ipnet.IP6: {"https://[2606:4700:4700::1111]/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},

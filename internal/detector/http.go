@@ -69,8 +69,8 @@ func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, b
 }
 
 type HTTP struct {
-	policyName string
-	url        map[ipnet.Type]string
+	PolicyName string
+	URL        map[ipnet.Type]string
 }
 
 func (p *HTTP) IsManaged() bool {
@@ -78,17 +78,17 @@ func (p *HTTP) IsManaged() bool {
 }
 
 func (p *HTTP) String() string {
-	return p.policyName
+	return p.PolicyName
 }
 
 func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
-	url, found := p.url[ipNet]
+	url, found := p.URL[ipNet]
 	if !found {
 		return nil, false
 	}
 
 	ip, ok := getIPFromHTTP(ctx, indent, url)
-	if !ok {
+	if !ok || ip == nil {
 		return nil, false
 	}
 

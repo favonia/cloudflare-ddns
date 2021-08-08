@@ -156,11 +156,11 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 }
 
 type DNSOverHTTPS struct {
-	policyName string
-	param      map[ipnet.Type]struct {
-		url   string
-		name  string
-		class dnsmessage.Class
+	PolicyName string
+	Param      map[ipnet.Type]struct {
+		URL   string
+		Name  string
+		Class dnsmessage.Class
 	}
 }
 
@@ -169,17 +169,17 @@ func (p *DNSOverHTTPS) IsManaged() bool {
 }
 
 func (p *DNSOverHTTPS) String() string {
-	return p.policyName
+	return p.PolicyName
 }
 
 func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
-	param, found := p.param[ipNet]
+	param, found := p.Param[ipNet]
 	if !found {
 		return nil, false
 	}
 
-	ip, ok := getIPFromDNS(ctx, indent, param.url, param.name, param.class)
-	if !ok {
+	ip, ok := getIPFromDNS(ctx, indent, param.URL, param.Name, param.Class)
+	if !ok || ip == nil {
 		return nil, false
 	}
 
