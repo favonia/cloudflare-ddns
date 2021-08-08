@@ -74,8 +74,14 @@ func (h *CloudflareHandle) FlushCache() {
 	h.cache.zoneOfDomain.Flush()
 }
 
-// ActiveZones replaces the broken built-in ZoneIDByName due to the possibility of multiple zones.
+// ActiveZones lists all active zones of the given name.
 func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, name string) ([]string, bool) {
+	// WithZoneFilters does not work with the empty zone name,
+	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
+	if name == "" {
+		return []string{}, true
+	}
+
 	if ids, found := h.cache.activeZones.Get(name); found {
 		return ids.([]string), true
 	}
@@ -114,9 +120,7 @@ zoneSearch:
 			continue zoneSearch
 		case 1: // len(zones) == 1
 			h.cache.zoneOfDomain.SetDefault(domain.ToASCII(), zones[0])
-
 			return zones[0], true
-
 		default: // len(zones) > 1
 			pp.Printf(indent, pp.EmojiImpossible,
 				"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help.", zoneName)
