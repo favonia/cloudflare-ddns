@@ -10,6 +10,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/quiet"
@@ -307,7 +308,7 @@ func TestReadNonnegDuration(t *testing.T) {
 		"nil-verbose":   {false, "", quiet.VERBOSE, 0, 0, true},
 		"empty-quiet":   {true, "", quiet.QUIET, time.Hour, time.Hour, true},
 		"empty-verbose": {true, "", quiet.VERBOSE, 200, 200, true},
-		"1s":            {true, "    1s\t   ", quiet.VERBOSE, 0, time.Second, true},
+		"100s":          {true, "    100s\t   ", quiet.VERBOSE, 0, time.Second * 100, true},
 		"1":             {true, "  1  ", quiet.QUIET, 123, 123, false},
 		"-1s":           {true, "  -1s  ", quiet.QUIET, 456, 456, false},
 		"0h":            {true, "  0h  ", quiet.QUIET, 123456, 0, true},
@@ -321,6 +322,40 @@ func TestReadNonnegDuration(t *testing.T) {
 
 			field := tc.oldField
 			ok := config.ReadNonnegDuration(tc.quiet, pp.NoIndent, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars are global
+func TestReadCron(t *testing.T) {
+	key := keyPrefix + "CRON"
+
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		quiet    quiet.Quiet
+		oldField cron.Schedule
+		newField cron.Schedule
+		ok       bool
+	}{
+		"nil-quiet":     {false, "", quiet.QUIET, cron.MustNew("@every 1h"), cron.MustNew("@every 1h"), true},
+		"nil-verbose":   {false, "", quiet.VERBOSE, cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true},
+		"empty-quiet":   {true, "", quiet.QUIET, cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true},
+		"empty-verbose": {true, "", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@yearly"), true},
+		"daily":         {true, " @daily  ", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@daily"), true},
+		"illformed":     {true, " @ddddd  ", quiet.VERBOSE, cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			if tc.set {
+				set(key, tc.val)
+				defer unset(key)
+			}
+
+			field := tc.oldField
+			ok := config.ReadCron(tc.quiet, pp.NoIndent, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
