@@ -160,6 +160,7 @@ func ReadNonnegDuration(quiet quiet.Quiet, indent pp.Indent, key string, field *
 		return false
 	case t < 0:
 		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v is negative.", val, t)
+		return false
 	}
 
 	*field = t
