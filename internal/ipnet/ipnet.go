@@ -58,3 +58,15 @@ func (t Type) NormalizeIP(ip net.IP) net.IP {
 		return ip
 	}
 }
+
+// UDPNetwork gives the network name for net.Dial.
+func (t Type) UDPNetwork() string {
+	switch t {
+	case IP4:
+		return "udp4"
+	case IP6:
+		return "udp6"
+	default:
+		return ""
+	}
+}

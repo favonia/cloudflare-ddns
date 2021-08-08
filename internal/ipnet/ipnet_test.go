@@ -84,3 +84,21 @@ func TestNormalizeIP(t *testing.T) {
 		})
 	}
 }
+
+func TestUDPNetwork(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input    ipnet.Type
+		expected string
+	}{
+		"4":   {ipnet.IP4, "udp4"},
+		"6":   {ipnet.IP6, "udp6"},
+		"100": {ipnet.Type(100), ""},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.input.UDPNetwork())
+		})
+	}
+}
