@@ -54,25 +54,33 @@ func (m *mockHandle) IsExhausted() bool {
 func (m *mockHandle) ListRecords(_ context.Context, _ pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
 	values := m.Call(eventList, 2, domain, ipNet)
-	return values[0].(map[string]net.IP), values[1].(bool)
+
+	val0, _ := values[0].(map[string]net.IP)
+	val1, _ := values[1].(bool)
+
+	return val0, val1
 }
 
 func (m *mockHandle) DeleteRecord(_ context.Context, _ pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, id string) bool {
 	values := m.Call(eventDelete, 1, domain, ipNet, id)
-	return values[0].(bool)
+	val0, _ := values[0].(bool)
+	return val0
 }
 
 func (m *mockHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
 	values := m.Call(eventUpdate, 1, domain, ipNet, id, ip)
-	return values[0].(bool)
+	val0, _ := values[0].(bool)
+	return val0
 }
 
 func (m *mockHandle) CreateRecord(ctx context.Context, indent pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
 	values := m.Call(eventCreate, 2, domain, ipNet, ip, ttl, proxied)
-	return values[0].(string), values[1].(bool)
+	val0, _ := values[0].(string)
+	val1, _ := values[1].(bool)
+	return val0, val1
 }
 
 func (m *mockHandle) FlushCache() {
@@ -89,6 +97,7 @@ func TestDo(t *testing.T) {
 		ipNetwork = ipnet.IP6
 		record1   = "record1"
 		record2   = "record2"
+		record3   = "record3"
 		ttl       = 100
 		proxied   = true
 	)
@@ -104,7 +113,7 @@ func TestDo(t *testing.T) {
 		script  []interaction
 		ok      bool
 	}{
-		"empty-nil": {
+		"0-nil": {
 			ip: nil,
 			script: []interaction{
 				{
@@ -115,7 +124,7 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
-		"empty-one": {
+		"0": {
 			ip: ip1,
 			script: []interaction{
 				{
@@ -131,7 +140,7 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
-		"one-one": {
+		"1unmatched": {
 			ip: ip1,
 			script: []interaction{
 				{
@@ -147,7 +156,33 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
-		"one-nil": {
+		"1unmatched-updatefail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventCreate,
+					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
+					values:    []interface{}{record2, true},
+				},
+			},
+			ok: true,
+		},
+		"1unmatched-nil": {
 			ip: nil,
 			script: []interaction{
 				{
@@ -162,6 +197,127 @@ func TestDo(t *testing.T) {
 				},
 			},
 			ok: true,
+		},
+		"1matched": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip1}, true},
+				},
+			},
+			ok: true,
+		},
+		"2matched": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip1, record2: ip1}, true},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{true},
+				},
+			},
+			ok: true,
+		},
+		"2unmatched": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{true},
+				},
+			},
+			ok: true,
+		},
+		"2unmatched-updatefail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record2, ip1},
+					values:    []interface{}{true},
+				},
+			},
+			ok: true,
+		},
+		"2unmatched-updatefailtwice": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record2, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventCreate,
+					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
+					values:    []interface{}{record3, true},
+				},
+			},
+			ok: true,
+		},
+		"listfail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{nil, false},
+				},
+			},
+			ok: false,
 		},
 	} {
 		tc := tc
