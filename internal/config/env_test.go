@@ -212,9 +212,23 @@ func TestReadDomains(t *testing.T) {
 		"nil-quiet":   {false, "", quiet.QUIET, ds{"test.org"}, ds{}, true},
 		"nil-verbose": {false, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
 		"empty":       {true, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
-		"test1":       {true, "書.org ,  Bücher.org  ", quiet.VERBOSE, ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true},
-		"test2":       {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", quiet.VERBOSE, ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true},
-		"illformed":   {true, "xn--:D.org", quiet.VERBOSE, ds{"random.org"}, ds{"xn--:d.org"}, true},
+		"test1": {
+			true,
+			"書.org ,  Bücher.org  ",
+			quiet.VERBOSE,
+			ds{"random.org"},
+			ds{"xn--rov.org", "xn--bcher-kva.org"},
+			true,
+		},
+		"test2": {
+			true,
+			"  \txn--rov.org    ,   xn--Bcher-kva.org  ",
+			quiet.VERBOSE,
+			ds{"random.org"},
+			ds{"xn--rov.org", "xn--bcher-kva.org"},
+			true,
+		},
+		"illformed": {true, "xn--:D.org", quiet.VERBOSE, ds{"random.org"}, ds{"xn--:d.org"}, true},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
