@@ -5,7 +5,6 @@ import (
 	"net"
 	"testing"
 
-	//"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -22,7 +21,6 @@ const (
 	eventDelete
 	eventUpdate
 	eventCreate
-	eventFlush
 )
 
 type interaction struct {
@@ -37,9 +35,7 @@ type mockHandle struct {
 }
 
 func (m *mockHandle) Call(event eventType, numValues int, arguments ...interface{}) []interface{} {
-	if len(m.script) == 0 {
-		require.Fail(m.t, "scrcipt was exhausted")
-	}
+	require.Greater(m.t, len(m.script), 0)
 
 	require.Equal(m.t, m.script[0].event, event)
 	require.Equal(m.t, len(m.script[0].values), numValues)
@@ -57,36 +53,33 @@ func (m *mockHandle) IsExhausted() bool {
 
 func (m *mockHandle) ListRecords(_ context.Context, _ pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
-
 	values := m.Call(eventList, 2, domain, ipNet)
 	return values[0].(map[string]net.IP), values[1].(bool)
 }
 
 func (m *mockHandle) DeleteRecord(_ context.Context, _ pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, id string) bool {
-
 	values := m.Call(eventDelete, 1, domain, ipNet, id)
 	return values[0].(bool)
 }
 
 func (m *mockHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
-
 	values := m.Call(eventUpdate, 1, domain, ipNet, id, ip)
 	return values[0].(bool)
 }
 
 func (m *mockHandle) CreateRecord(ctx context.Context, indent pp.Indent,
 	domain api.FQDN, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
-
 	values := m.Call(eventCreate, 2, domain, ipNet, ip, ttl, proxied)
 	return values[0].(string), values[1].(bool)
 }
 
 func (m *mockHandle) FlushCache() {
-	m.Call(eventFlush, 0)
+	require.FailNow(m.t, "updator should never call FlushCache directly")
 }
 
+//nolint: funlen
 func TestDo(t *testing.T) {
 	t.Parallel()
 
@@ -101,7 +94,7 @@ func TestDo(t *testing.T) {
 	)
 	var (
 		ip1 = net.ParseIP("::1")
-	//ip2 = net.ParseIP("::2")
+		ip2 = net.ParseIP("::2")
 	)
 
 	for name, tc := range map[string]struct {
@@ -132,8 +125,40 @@ func TestDo(t *testing.T) {
 				},
 				{
 					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, 100, true},
+					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
 					values:    []interface{}{record1, true},
+				},
+			},
+			ok: true,
+		},
+		"one-one": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{true},
+				},
+			},
+			ok: true,
+		},
+		"one-nil": {
+			ip: nil,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip1}, true},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{true},
 				},
 			},
 			ok: true,
