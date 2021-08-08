@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -248,7 +249,7 @@ func TestReadDomains(t *testing.T) {
 
 //nolint: paralleltest // environment vars are global
 func TestReadPolicy(t *testing.T) {
-	key := keyPrefix + "INT"
+	key := keyPrefix + "POLICY"
 
 	var (
 		cloudflare = &detector.Cloudflare{}
@@ -284,6 +285,42 @@ func TestReadPolicy(t *testing.T) {
 
 			field := tc.oldField
 			ok := config.ReadPolicy(tc.quiet, pp.NoIndent, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars are global
+func TestReadNonnegDuration(t *testing.T) {
+	key := keyPrefix + "DURATION"
+
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		quiet    quiet.Quiet
+		oldField time.Duration
+		newField time.Duration
+		ok       bool
+	}{
+		"nil-quiet":     {false, "", quiet.QUIET, time.Second, time.Second, true},
+		"nil-verbose":   {false, "", quiet.VERBOSE, 0, 0, true},
+		"empty-quiet":   {true, "", quiet.QUIET, time.Hour, time.Hour, true},
+		"empty-verbose": {true, "", quiet.VERBOSE, 200, 200, true},
+		"1s":            {true, "    1s\t   ", quiet.VERBOSE, 0, time.Second, true},
+		"1":             {true, "  1  ", quiet.QUIET, 123, 123, false},
+		"-1s":           {true, "  -1s  ", quiet.QUIET, 456, 456, false},
+		"0h":            {true, "  0h  ", quiet.QUIET, 123456, 0, true},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			if tc.set {
+				set(key, tc.val)
+				defer unset(key)
+			}
+
+			field := tc.oldField
+			ok := config.ReadNonnegDuration(tc.quiet, pp.NoIndent, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
