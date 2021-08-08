@@ -3,6 +3,7 @@ package updator
 import (
 	"context"
 	"net"
+	"sort"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -28,6 +29,13 @@ func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedI
 			unmatchedIDs = append(unmatchedIDs, id)
 		}
 	}
+
+	// This is to make Do deterministic so that this package is easier to test.
+	// Otherwise, sorting is not needed. The performance penality should be small
+	// because in most cases the total number of (matched and unmached) records
+	// would be zero or one.
+	sort.Strings(matchedIDs)
+	sort.Strings(unmatchedIDs)
 
 	return matchedIDs, unmatchedIDs
 }
