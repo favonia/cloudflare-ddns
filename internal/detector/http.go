@@ -68,20 +68,20 @@ func readIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, 
 	return c.getIP(ctx, indent)
 }
 
-type Http struct {
+type HTTP struct {
 	policyName string
 	url        map[ipnet.Type]string
 }
 
-func (p *Http) IsManaged() bool {
+func (p *HTTP) IsManaged() bool {
 	return true
 }
 
-func (p *Http) String() string {
+func (p *HTTP) String() string {
 	return p.policyName
 }
 
-func (p *Http) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
 	url, found := p.url[ipNet]
 	if !found {
 		return nil, false

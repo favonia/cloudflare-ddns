@@ -5,7 +5,7 @@ import (
 )
 
 func NewIpify() Policy {
-	return &Http{
+	return &HTTP{
 		policyName: "ipify",
 		url: map[ipnet.Type]string{
 			ipnet.IP4: "https://api4.ipify.org",
