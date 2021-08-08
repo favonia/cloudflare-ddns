@@ -33,8 +33,8 @@ func Default() *Config {
 		Quiet: quiet.VERBOSE,
 		Auth:  nil,
 		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: &detector.Cloudflare{},
-			ipnet.IP6: &detector.Cloudflare{},
+			ipnet.IP4: detector.NewCloudflare(),
+			ipnet.IP6: detector.NewCloudflare(),
 		},
 		Domains: map[ipnet.Type][]api.FQDN{
 			ipnet.IP4: nil,
@@ -257,7 +257,7 @@ func (c *Config) Normalize(indent pp.Indent) bool {
 	// change useless policies to
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
-			c.Policy[ipNet] = &detector.Unmanaged{}
+			c.Policy[ipNet] = detector.NewUnmanaged()
 			pp.Printf(indent, pp.EmojiUserWarning, "IP%v_POLICY was changed to %q because no domains were set for %v.",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}

@@ -253,10 +253,10 @@ func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
 	var (
-		cloudflare = &detector.Cloudflare{}
-		local      = &detector.Local{}
-		unmanaged  = &detector.Unmanaged{}
-		ipify      = &detector.Ipify{}
+		cloudflare = detector.NewCloudflare()
+		local      = detector.NewLocal()
+		unmanaged  = detector.NewUnmanaged()
+		ipify      = detector.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {

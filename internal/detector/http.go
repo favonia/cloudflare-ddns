@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -53,4 +54,43 @@ func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
 	}
 
 	return ip, true
+}
+
+func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, bool) {
+	c := httpConn{
+		method:  http.MethodGet,
+		url:     url,
+		reader:  nil,
+		prepare: func(_ pp.Indent, _ *http.Request) bool { return true },
+		extract: func(_ pp.Indent, body []byte) (string, bool) { return string(body), true },
+	}
+
+	return c.getIP(ctx, indent)
+}
+
+type HTTP struct {
+	policyName string
+	url        map[ipnet.Type]string
+}
+
+func (p *HTTP) IsManaged() bool {
+	return true
+}
+
+func (p *HTTP) String() string {
+	return p.policyName
+}
+
+func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+	url, found := p.url[ipNet]
+	if !found {
+		return nil, false
+	}
+
+	ip, ok := getIPFromHTTP(ctx, indent, url)
+	if !ok {
+		return nil, false
+	}
+
+	return ipNet.NormalizeIP(ip), true
 }

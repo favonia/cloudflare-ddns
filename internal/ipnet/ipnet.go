@@ -3,6 +3,7 @@ package ipnet
 
 import (
 	"fmt"
+	"net"
 )
 
 // Type is the type of IP networks.
@@ -44,5 +45,28 @@ func (t Type) Int() int {
 		return int(t)
 	default:
 		return 0
+	}
+}
+
+func (t Type) NormalizeIP(ip net.IP) net.IP {
+	switch t {
+	case IP4:
+		return ip.To4()
+	case IP6:
+		return ip.To16()
+	default:
+		return ip
+	}
+}
+
+// UDPNetwork gives the network name for net.Dial.
+func (t Type) UDPNetwork() string {
+	switch t {
+	case IP4:
+		return "udp4"
+	case IP6:
+		return "udp6"
+	default:
+		return ""
 	}
 }

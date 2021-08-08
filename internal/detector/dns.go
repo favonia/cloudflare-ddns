@@ -9,6 +9,7 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -152,4 +153,35 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 	}
 
 	return c.getIP(ctx, indent)
+}
+
+type DNSOverHTTPS struct {
+	policyName string
+	param      map[ipnet.Type]struct {
+		url   string
+		name  string
+		class dnsmessage.Class
+	}
+}
+
+func (p *DNSOverHTTPS) IsManaged() bool {
+	return true
+}
+
+func (p *DNSOverHTTPS) String() string {
+	return p.policyName
+}
+
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+	param, found := p.param[ipNet]
+	if !found {
+		return nil, false
+	}
+
+	ip, ok := getIPFromDNS(ctx, indent, param.url, param.name, param.class)
+	if !ok {
+		return nil, false
+	}
+
+	return ipNet.NormalizeIP(ip), true
 }
