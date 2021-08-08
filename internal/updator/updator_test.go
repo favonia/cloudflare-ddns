@@ -225,6 +225,22 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
+		"2matched-deletefail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip1, record2: ip1}, true},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{false},
+				},
+			},
+			ok: true,
+		},
 		"2unmatched": {
 			ip: ip1,
 			script: []interaction{
@@ -307,6 +323,78 @@ func TestDo(t *testing.T) {
 				},
 			},
 			ok: true,
+		},
+		"2unmatched-updatefail-deletefail-updatefail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record2, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventCreate,
+					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
+					values:    []interface{}{record3, true},
+				},
+			},
+			ok: false,
+		},
+		"2unmatched-updatefailtwice-createfail": {
+			ip: ip1,
+			script: []interaction{
+				{
+					event:     eventList,
+					arguments: []interface{}{domain, ipNetwork},
+					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record1, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record1},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventUpdate,
+					arguments: []interface{}{domain, ipNetwork, record2, ip1},
+					values:    []interface{}{false},
+				},
+				{
+					event:     eventDelete,
+					arguments: []interface{}{domain, ipNetwork, record2},
+					values:    []interface{}{true},
+				},
+				{
+					event:     eventCreate,
+					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
+					values:    []interface{}{record3, false},
+				},
+			},
+			ok: false,
 		},
 		"listfail": {
 			ip: ip1,
