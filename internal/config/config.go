@@ -33,8 +33,8 @@ func Default() *Config {
 		Quiet: quiet.VERBOSE,
 		Auth:  nil,
 		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: &detector.Cloudflare{},
-			ipnet.IP6: &detector.Cloudflare{},
+			ipnet.IP4: detector.NewCloudflare(),
+			ipnet.IP6: detector.NewCloudflare(),
 		},
 		Domains: map[ipnet.Type][]api.FQDN{
 			ipnet.IP4: nil,

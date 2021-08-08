@@ -56,7 +56,7 @@ func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
 	return ip, true
 }
 
-func readIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, bool) {
+func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, bool) {
 	c := httpConn{
 		method:  http.MethodGet,
 		url:     url,
@@ -87,7 +87,7 @@ func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (n
 		return nil, false
 	}
 
-	ip, ok := readIPFromHTTP(ctx, indent, url)
+	ip, ok := getIPFromHTTP(ctx, indent, url)
 	if !ok {
 		return nil, false
 	}
