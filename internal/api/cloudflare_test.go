@@ -63,7 +63,7 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		return
 	case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
 		return
-	case !assert.Equal(t, url.Values{}, r.URL.Query()):
+	case !assert.Empty(t, r.URL.Query()):
 		return
 	}
 
@@ -126,14 +126,9 @@ func TestNewInvalid(t *testing.T) {
 	defer ts.Close()
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case !assert.Equal(t, http.MethodGet, r.Method):
-			return
-		case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
-			return
-		case !assert.Equal(t, url.Values{}, r.URL.Query()):
-			return
-		}
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+		assert.Empty(t, r.URL.Query())
 
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Header().Set("content-type", "application/json")
@@ -190,19 +185,15 @@ func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse 
 
 func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
-	switch {
-	case !assert.Equal(t, http.MethodGet, r.Method):
-		return
-	case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
-		return
-	case !assert.Equal(t, url.Values{
+
+	assert.Equal(t, http.MethodGet, r.Method)
+	assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+	assert.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
 		"per_page":   {"50"},
 		"status":     {"active"},
-	}, r.URL.Query()):
-		return
-	}
+	}, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
 	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, numZones))
@@ -256,7 +247,7 @@ func TestActiveZonesRoot(t *testing.T) {
 
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "")
 	require.True(t, ok)
-	require.Equal(t, []string{}, zones)
+	require.Empty(t, zones)
 }
 
 func TestActiveZonesTwo(t *testing.T) {
@@ -298,13 +289,13 @@ func TestActiveZonesEmpty(t *testing.T) {
 	zh.set(map[string]int{}, 1)
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
 	require.True(t, ok)
-	require.Equal(t, []string{}, zones)
+	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
 
 	zh.set(nil, 0) // this should not affect the result due to the caching
 	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), 3, "test.org")
 	require.True(t, ok)
-	require.Equal(t, []string{}, zones)
+	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
 
 	h.FlushCache()
@@ -456,19 +447,14 @@ func TestListRecords(t *testing.T) {
 			}
 			accessCount--
 
-			switch {
-			case !assert.Equal(t, http.MethodGet, r.Method):
-				return
-			case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
-				return
-			case !assert.Equal(t, url.Values{
+			assert.Equal(t, http.MethodGet, r.Method)
+			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			assert.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
 				"per_page": {"100"},
 				"type":     {ipNet.RecordType()},
-			}, r.URL.Query()):
-				return
-			}
+			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org", ips))
@@ -555,9 +541,6 @@ func TestDeleteRecordsValid(t *testing.T) {
 	zh.set(map[string]int{"test.org": 1}, 2)
 
 	var (
-		id                string
-		ipNet             ipnet.Type
-		ip                net.IP
 		listAccessCount   int
 		deleteAccessCount int
 	)
@@ -570,8 +553,8 @@ func TestDeleteRecordsValid(t *testing.T) {
 			listAccessCount--
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org", map[string]net.IP{id: ip}))
-			assert.NoError(t, err)
+			_ = json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+				map[string]net.IP{"record1": net.ParseIP("::1")}))
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/%s", mockID("test.org", 0), "record1"),
@@ -581,21 +564,16 @@ func TestDeleteRecordsValid(t *testing.T) {
 			}
 			deleteAccessCount--
 
-			switch {
-			case !assert.Equal(t, http.MethodDelete, r.Method):
-				return
-			case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
-				return
-			case !assert.Equal(t, url.Values{}, r.URL.Query()):
-				return
-			}
+			assert.Equal(t, http.MethodDelete, r.Method)
+			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			assert.Empty(t, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse(id, ipNet, "test.org", ip))
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", net.ParseIP("::1")))
 			assert.NoError(t, err)
 		})
 
-	id, ipNet, ip, deleteAccessCount = "record1", ipnet.IP6, net.ParseIP("::1"), 1
+	deleteAccessCount = 1
 	ok := h.DeleteRecord(context.Background(), 3, "sub.test.org", ipnet.IP6, "record1")
 	require.True(t, ok)
 
@@ -604,7 +582,7 @@ func TestDeleteRecordsValid(t *testing.T) {
 	_ = h.DeleteRecord(context.Background(), 3, "sub.test.org", ipnet.IP6, "record1")
 	rs, ok := h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
-	require.Equal(t, map[string]net.IP{}, rs)
+	require.Empty(t, rs)
 }
 
 func TestDeleteRecordsInvalid(t *testing.T) {
@@ -640,9 +618,6 @@ func TestCreateRecordsValid(t *testing.T) {
 	zh.set(map[string]int{"test.org": 1}, 2)
 
 	var (
-		id                string
-		ipNet             ipnet.Type
-		ip                net.IP
 		listAccessCount   int
 		deleteAccessCount int
 	)
@@ -657,20 +632,16 @@ func TestCreateRecordsValid(t *testing.T) {
 				listAccessCount--
 
 				w.Header().Set("content-type", "application/json")
-				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org", map[string]net.IP{id: ip}))
-				assert.NoError(t, err)
+				_ = json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+					map[string]net.IP{"record1": net.ParseIP("::1")}))
 			case http.MethodPost:
 				if deleteAccessCount <= 0 {
 					return
 				}
 				deleteAccessCount--
 
-				switch {
-				case !assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"]):
-					return
-				case !assert.Equal(t, url.Values{}, r.URL.Query()):
-					return
-				}
+				assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+				assert.Empty(t, r.URL.Query())
 
 				var record cloudflare.DNSRecord
 				if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
@@ -680,24 +651,22 @@ func TestCreateRecordsValid(t *testing.T) {
 				record.ID = "record1"
 
 				w.Header().Set("content-type", "application/json")
-				if err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record)); !assert.NoError(t, err) {
-					return
-				}
-
+				err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record))
+				assert.NoError(t, err)
 			}
 		})
 
-	id, ipNet, ip, deleteAccessCount = "record1", ipnet.IP6, net.ParseIP("::1"), 1
-	actualID, ok := h.CreateRecord(context.Background(), 3, "sub.test.org", ipNet, ip, 100, false)
+	deleteAccessCount = 1
+	actualID, ok := h.CreateRecord(context.Background(), 3, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false)
 	require.True(t, ok)
-	require.Equal(t, id, actualID)
+	require.Equal(t, "record1", actualID)
 
 	listAccessCount, deleteAccessCount = 1, 1
 	_, _ = h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
-	_, _ = h.CreateRecord(context.Background(), 3, "sub.test.org", ipNet, ip, 100, false)
+	_, _ = h.CreateRecord(context.Background(), 3, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false)
 	rs, ok := h.ListRecords(context.Background(), 3, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
-	require.Equal(t, map[string]net.IP{id: ip}, rs)
+	require.Equal(t, map[string]net.IP{"record1": net.ParseIP("::1")}, rs)
 }
 
 func TestCreateRecordsInvalid(t *testing.T) {
