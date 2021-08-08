@@ -9,6 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
@@ -239,6 +240,50 @@ func TestReadDomains(t *testing.T) {
 
 			field := tc.oldField
 			ok := config.ReadDomains(quiet.QUIET, pp.NoIndent, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars are global
+func TestReadPolicy(t *testing.T) {
+	key := keyPrefix + "INT"
+
+	var (
+		cloudflare = &detector.Cloudflare{}
+		local      = &detector.Local{}
+		unmanaged  = &detector.Unmanaged{}
+		ipify      = &detector.Ipify{}
+	)
+
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		quiet    quiet.Quiet
+		oldField detector.Policy
+		newField detector.Policy
+		ok       bool
+	}{
+		"nil-quiet":     {false, "", quiet.QUIET, unmanaged, unmanaged, true},
+		"nil-verbose":   {false, "", quiet.VERBOSE, local, local, true},
+		"empty-quiet":   {true, "", quiet.QUIET, unmanaged, unmanaged, true},
+		"empty-verbose": {true, "", quiet.VERBOSE, unmanaged, unmanaged, true},
+		"cloudflare":    {true, "    cloudflare\t   ", quiet.VERBOSE, unmanaged, cloudflare, true},
+		"unmanaged":     {true, "   unmanaged   ", quiet.QUIET, cloudflare, unmanaged, true},
+		"local":         {true, "   local   ", quiet.QUIET, cloudflare, local, true},
+		"ipify":         {true, "     ipify  ", quiet.QUIET, cloudflare, ipify, true},
+		"others":        {true, "   something-else ", quiet.VERBOSE, ipify, ipify, false},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			if tc.set {
+				set(key, tc.val)
+				defer unset(key)
+			}
+
+			field := tc.oldField
+			ok := config.ReadPolicy(tc.quiet, pp.NoIndent, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
