@@ -257,7 +257,7 @@ func (c *Config) Normalize(indent pp.Indent) bool {
 	// change useless policies to
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
-			c.Policy[ipNet] = &detector.Unmanaged{}
+			c.Policy[ipNet] = detector.NewUnmanaged()
 			pp.Printf(indent, pp.EmojiUserWarning, "IP%v_POLICY was changed to %q because no domains were set for %v.",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}

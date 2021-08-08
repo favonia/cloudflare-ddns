@@ -8,16 +8,20 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-type Unmanaged struct{}
+type unmanaged struct{}
 
-func (p *Unmanaged) IsManaged() bool {
+func (p *unmanaged) IsManaged() bool {
 	return false
 }
 
-func (p *Unmanaged) String() string {
+func (p *unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *Unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) (net.IP, bool) {
+func (p *unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) (net.IP, bool) {
 	return nil, false
+}
+
+func NewUnmanaged() Policy {
+	return &unmanaged{}
 }

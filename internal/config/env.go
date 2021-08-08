@@ -131,10 +131,10 @@ func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, key string, field *detector
 		*field = detector.NewIpify()
 		return true
 	case "local":
-		*field = &detector.Local{}
+		*field = detector.NewLocal()
 		return true
 	case "unmanaged":
-		*field = &detector.Unmanaged{}
+		*field = detector.NewUnmanaged()
 		return true
 	default:
 		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: not a valid policy.", val)

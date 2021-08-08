@@ -254,8 +254,8 @@ func TestReadPolicy(t *testing.T) {
 
 	var (
 		cloudflare = detector.NewCloudflare()
-		local      = &detector.Local{}
-		unmanaged  = &detector.Unmanaged{}
+		local      = detector.NewLocal()
+		unmanaged  = detector.NewUnmanaged()
 		ipify      = detector.NewIpify()
 	)
 
