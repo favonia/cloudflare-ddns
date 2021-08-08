@@ -256,7 +256,7 @@ func TestReadPolicy(t *testing.T) {
 		cloudflare = &detector.Cloudflare{}
 		local      = &detector.Local{}
 		unmanaged  = &detector.Unmanaged{}
-		ipify      = &detector.Ipify{}
+		ipify      = detector.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {

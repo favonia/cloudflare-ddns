@@ -128,7 +128,7 @@ func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, key string, field *detector
 		*field = &detector.Cloudflare{}
 		return true
 	case "ipify":
-		*field = &detector.Ipify{}
+		*field = detector.NewIpify()
 		return true
 	case "local":
 		*field = &detector.Local{}
