@@ -288,7 +288,7 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
-		"2unmatched-updatefailtwice": {
+		"2unmatched-updatefailtwice": { //nolint: dupl // they are similar but different tests
 			ip: ip1,
 			script: []interaction{
 				{
@@ -324,7 +324,7 @@ func TestDo(t *testing.T) {
 			},
 			ok: true,
 		},
-		"2unmatched-updatefail-deletefail-updatefail": {
+		"2unmatched-updatefail-deletefail-updatefail": { //nolint: dupl // they are similar but different tests
 			ip: ip1,
 			script: []interaction{
 				{
@@ -360,7 +360,7 @@ func TestDo(t *testing.T) {
 			},
 			ok: false,
 		},
-		"2unmatched-updatefailtwice-createfail": {
+		"2unmatched-updatefailtwice-createfail": { //nolint: dupl // they are similar but different tests
 			ip: ip1,
 			script: []interaction{
 				{
