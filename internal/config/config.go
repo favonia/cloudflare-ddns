@@ -87,7 +87,7 @@ func readAuthToken(_ quiet.Quiet, indent pp.Indent) (string, bool) {
 	}
 }
 
-func readAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
+func ReadAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
 	token, ok := readAuthToken(quiet, indent)
 	if !ok {
 		return false
@@ -200,7 +200,7 @@ func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
 		indent++
 	}
 
-	if !readAuth(c.Quiet, indent, &c.Auth) ||
+	if !ReadAuth(c.Quiet, indent, &c.Auth) ||
 		!readPolicies(c.Quiet, indent, c.Policy) ||
 		!readDomains(c.Quiet, indent, c.Domains) ||
 		!ReadCron(c.Quiet, indent, "UPDATE_CRON", &c.UpdateCron) ||
