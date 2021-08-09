@@ -3,7 +3,9 @@ package detector
 import (
 	"bytes"
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"encoding/binary"
+	mathrand "math/rand"
 	"net"
 	"net/http"
 
@@ -13,13 +15,19 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// randUint16 generates a number using PRNGs, not cryptographically secure.
+// randUint16 generates a random uint16, possibly not cryptographically secure.
 func randUint16() uint16 {
-	return uint16(rand.Uint32()) //nolint:gosec // DNS-over-HTTPS and imperfect pseudorandom should be more than enough
+	buf := make([]byte, binary.Size(uint16(0)))
+	if _, err := rand.Read(buf); err != nil {
+		// DoH + a weak PRNG should be secure enough
+		return uint16(mathrand.Uint32()) //nolint:gosec
+	}
+
+	return binary.BigEndian.Uint16(buf)
 }
 
 func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
-	msg := dnsmessage.Message{
+	msg, err := (&dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
 			Response:         false, // query
@@ -41,16 +49,14 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 		Answers:     []dnsmessage.Resource{},
 		Authorities: []dnsmessage.Resource{},
 		Additionals: []dnsmessage.Resource{},
-	}
-
-	q, err := msg.Pack()
+	}).Pack()
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to prepare the DNS query: %v", err)
 
 		return nil, false
 	}
 
-	return q, true
+	return msg, true
 }
 
 func parseTXTRecord(indent pp.Indent, r *dnsmessage.TXTResource) (string, bool) {
@@ -179,7 +185,12 @@ func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.
 	}
 
 	ip, ok := getIPFromDNS(ctx, indent, param.URL, param.Name, param.Class)
-	if !ok || ip == nil {
+	if !ok {
+		return nil, false
+	}
+
+	ip = ipNet.NormalizeIP(ip)
+	if ip == nil {
 		return nil, false
 	}
 
