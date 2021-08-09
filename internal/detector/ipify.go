@@ -6,8 +6,8 @@ import (
 
 func NewIpify() Policy {
 	return &HTTP{
-		policyName: "ipify",
-		url: map[ipnet.Type]string{
+		PolicyName: "ipify",
+		URL: map[ipnet.Type]string{
 			ipnet.IP4: "https://api4.ipify.org",
 			ipnet.IP6: "https://api6.ipify.org",
 		},

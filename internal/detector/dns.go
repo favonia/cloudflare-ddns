@@ -3,9 +3,12 @@ package detector
 import (
 	"bytes"
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"encoding/binary"
+	mathrand "math/rand"
 	"net"
 	"net/http"
+	"strings"
 
 	"golang.org/x/net/dns/dnsmessage"
 
@@ -13,13 +16,19 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// randUint16 generates a number using PRNGs, not cryptographically secure.
+// randUint16 generates a random uint16, possibly not cryptographically secure.
 func randUint16() uint16 {
-	return uint16(rand.Uint32()) //nolint:gosec // DNS-over-HTTPS and imperfect pseudorandom should be more than enough
+	buf := make([]byte, binary.Size(uint16(0)))
+	if _, err := rand.Read(buf); err != nil {
+		// DoH + a weak PRNG should be secure enough
+		return uint16(mathrand.Uint32()) //nolint:gosec
+	}
+
+	return binary.BigEndian.Uint16(buf)
 }
 
 func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
-	msg := dnsmessage.Message{
+	msg, err := (&dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
 			Response:         false, // query
@@ -41,113 +50,93 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 		Answers:     []dnsmessage.Resource{},
 		Authorities: []dnsmessage.Resource{},
 		Additionals: []dnsmessage.Resource{},
-	}
-
-	q, err := msg.Pack()
+	}).Pack()
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to prepare the DNS query: %v", err)
 
 		return nil, false
 	}
 
-	return q, true
+	return msg, true
 }
 
-func parseTXTRecord(indent pp.Indent, r *dnsmessage.TXTResource) (string, bool) {
-	switch len(r.TXT) {
-	case 0: // len(r.TXT) == 0
-		pp.Printf(indent, pp.EmojiImpossible, "The TXT record has no strings: %v", r)
-		return "", false
+func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
+	name string, class dnsmessage.Class) net.IP {
+	var ipString string
 
-	case 1: // len(r.TXT) == 1
-		break
+	for _, ans := range answers {
+		if ans.Header.Name.String() != name || ans.Header.Type != dnsmessage.TypeTXT || ans.Header.Class != class {
+			continue
+		}
 
-	default: // len(r.TXT) > 1
-		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple strings in the TXT record: %v", r)
-		return "", false
+		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+
+			if ipString != "" {
+				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records.")
+				return nil
+			}
+
+			ipString = s
+		}
 	}
 
-	return r.TXT[0], true
+	if ipString == "" {
+		pp.Printf(indent, pp.EmojiImpossible, "No TXT records or TXT records have no non-empty strings.")
+		return nil
+	}
+
+	return net.ParseIP(ipString)
 }
 
-func parseDNSResource(indent pp.Indent, ans *dnsmessage.Resource, name string, class dnsmessage.Class) (string, bool) {
-	switch {
-	case ans.Header.Name.String() != name:
-		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is for %q, not %q.", ans.Header.Name.String(), name)
-		return "", false
-	case ans.Header.Type != dnsmessage.TypeTXT:
-		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is of type %v, not %v.", ans.Header.Type, dnsmessage.TypeTXT)
-		return "", false
-	case ans.Header.Class != class:
-		pp.Printf(indent, pp.EmojiImpossible, "The DNS answer is of class %v, not %v.", ans.Header.Class, class)
-		return "", false
-	}
-
-	txt, ok := ans.Body.(*dnsmessage.TXTResource)
-	if !ok {
-		pp.Printf(indent, pp.EmojiImpossible, "The TXT record body is not of type TXTResource: %v", ans)
-		return "", false
-	}
-
-	return parseTXTRecord(indent, txt)
-}
-
-func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) (string, bool) {
+func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) net.IP {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
 		pp.Printf(indent, pp.EmojiImpossible, "Not a valid DNS response: %v", err)
-		return "", false
+		return nil
 	}
 
 	switch {
 	case msg.ID != id:
 		pp.Printf(indent, pp.EmojiImpossible, "Response ID %x differs from the query ID %x.", id, msg.ID)
-		return "", false
+		return nil
 
 	case !msg.Response:
 		pp.Printf(indent, pp.EmojiImpossible, "The QR (query/response) bit was not set in the response.")
-		return "", false
+		return nil
 
 	case msg.Truncated:
 		pp.Printf(indent, pp.EmojiImpossible, "The TC (truncation) bit was set. Something went wrong.")
-		return "", false
+		return nil
 
 	case msg.RCode != dnsmessage.RCodeSuccess:
 		pp.Printf(indent, pp.EmojiImpossible, "The response code is %v. The query failed.", msg.RCode)
-		return "", false
+		return nil
 	}
 
-	switch len(msg.Answers) {
-	case 0: // len(msg.Answers) == 0
-		pp.Printf(indent, pp.EmojiImpossible, "No DNS answers in the response.")
-		return "", false
-	case 1: // len(msg.Answers) == 1
-		return parseDNSResource(indent, &msg.Answers[0], name, class)
-	default: // len(msg.Answers) > 1
-		pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple DNS answers in the response.")
-		return "", false
-	}
+	return parseDNSAnswers(indent, msg.Answers, name, class)
 }
 
 func getIPFromDNS(ctx context.Context, indent pp.Indent,
-	url string, name string, class dnsmessage.Class) (net.IP, bool) {
+	url string, name string, class dnsmessage.Class) net.IP {
 	// message ID for the DNS payloads
 	id := randUint16()
 
 	q, ok := newDNSQuery(indent, id, name, class)
 	if !ok {
-		return nil, false
+		return nil
 	}
 
 	c := httpConn{
-		method: http.MethodPost,
-		url:    url,
-		reader: bytes.NewReader(q),
-		prepare: func(_ pp.Indent, req *http.Request) bool {
-			req.Header.Set("Content-Type", "application/dns-message")
-			return true
-		},
-		extract: func(ident pp.Indent, body []byte) (string, bool) {
+		url:         url,
+		method:      http.MethodPost,
+		contentType: "application/dns-message",
+		accept:      "application/dns-message",
+		reader:      bytes.NewReader(q),
+		extract: func(indent pp.Indent, body []byte) net.IP {
 			return parseDNSResponse(indent, body, id, name, class)
 		},
 	}
@@ -156,11 +145,11 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 }
 
 type DNSOverHTTPS struct {
-	policyName string
-	param      map[ipnet.Type]struct {
-		url   string
-		name  string
-		class dnsmessage.Class
+	PolicyName string
+	Param      map[ipnet.Type]struct {
+		URL   string
+		Name  string
+		Class dnsmessage.Class
 	}
 }
 
@@ -169,19 +158,14 @@ func (p *DNSOverHTTPS) IsManaged() bool {
 }
 
 func (p *DNSOverHTTPS) String() string {
-	return p.policyName
+	return p.PolicyName
 }
 
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
-	param, found := p.param[ipNet]
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) net.IP {
+	param, found := p.Param[ipNet]
 	if !found {
-		return nil, false
+		return nil
 	}
 
-	ip, ok := getIPFromDNS(ctx, indent, param.url, param.name, param.class)
-	if !ok {
-		return nil, false
-	}
-
-	return ipNet.NormalizeIP(ip), true
+	return ipNet.NormalizeIP(getIPFromDNS(ctx, indent, param.URL, param.Name, param.Class))
 }

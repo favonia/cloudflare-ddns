@@ -11,66 +11,61 @@ import (
 )
 
 type httpConn struct {
-	method  string
-	url     string
-	reader  io.Reader
-	prepare func(pp.Indent, *http.Request) bool
-	extract func(pp.Indent, []byte) (string, bool)
+	url         string
+	method      string
+	contentType string
+	accept      string
+	reader      io.Reader
+	extract     func(pp.Indent, []byte) net.IP
 }
 
-func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) (net.IP, bool) {
+func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) net.IP {
 	req, err := http.NewRequestWithContext(ctx, d.method, d.url, d.reader)
 	if err != nil {
 		pp.Printf(indent, pp.EmojiImpossible, "Failed to prepare the request to %q: %v", d.url, err)
-		return nil, false
+		return nil
 	}
 
-	if ok := d.prepare(indent, req); !ok {
-		return nil, false
+	if d.contentType != "" {
+		req.Header.Set("Content-Type", d.contentType)
+	}
+
+	if d.accept != "" {
+		req.Header.Set("Accept", d.accept)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %q: %v", d.url, err)
-		return nil, false
+		return nil
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %q: %v", d.url, err)
-		return nil, false
+		return nil
 	}
 
-	ipString, ok := d.extract(indent, body)
-	if !ok {
-		return nil, false
-	}
-
-	ip := net.ParseIP(ipString)
-	if ip == nil {
-		pp.Printf(indent, pp.EmojiImpossible, "The response %q is not a valid IP address.", ipString)
-		return nil, false
-	}
-
-	return ip, true
+	return d.extract(indent, body)
 }
 
-func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) (net.IP, bool) {
+func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) net.IP {
 	c := httpConn{
-		method:  http.MethodGet,
-		url:     url,
-		reader:  nil,
-		prepare: func(_ pp.Indent, _ *http.Request) bool { return true },
-		extract: func(_ pp.Indent, body []byte) (string, bool) { return string(body), true },
+		url:         url,
+		method:      http.MethodGet,
+		contentType: "",
+		accept:      "",
+		reader:      nil,
+		extract:     func(_ pp.Indent, body []byte) net.IP { return net.ParseIP(string(body)) },
 	}
 
 	return c.getIP(ctx, indent)
 }
 
 type HTTP struct {
-	policyName string
-	url        map[ipnet.Type]string
+	PolicyName string
+	URL        map[ipnet.Type]string
 }
 
 func (p *HTTP) IsManaged() bool {
@@ -78,19 +73,14 @@ func (p *HTTP) IsManaged() bool {
 }
 
 func (p *HTTP) String() string {
-	return p.policyName
+	return p.PolicyName
 }
 
-func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
-	url, found := p.url[ipNet]
+func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) net.IP {
+	url, found := p.URL[ipNet]
 	if !found {
-		return nil, false
+		return nil
 	}
 
-	ip, ok := getIPFromHTTP(ctx, indent, url)
-	if !ok {
-		return nil, false
-	}
-
-	return ipNet.NormalizeIP(ip), true
+	return ipNet.NormalizeIP(getIPFromHTTP(ctx, indent, url))
 }
