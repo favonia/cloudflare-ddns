@@ -36,13 +36,3 @@ func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) n
 
 	return ipNet.NormalizeIP(conn.LocalAddr().(*net.UDPAddr).IP)
 }
-
-func NewLocal() Policy {
-	return &Local{
-		PolicyName: "local",
-		RemoteUDPAddr: map[ipnet.Type]string{
-			ipnet.IP4: "1.1.1.1:443",
-			ipnet.IP6: "[2606:4700:4700::1111]:443",
-		},
-	}
-}
