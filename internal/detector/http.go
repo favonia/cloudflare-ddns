@@ -88,9 +88,14 @@ func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (n
 	}
 
 	ip, ok := getIPFromHTTP(ctx, indent, url)
-	if !ok || ip == nil {
+	if !ok {
 		return nil, false
 	}
 
-	return ipNet.NormalizeIP(ip), true
+	ip = ipNet.NormalizeIP(ip)
+	if ip == nil {
+		return nil, false
+	}
+
+	return ip, true
 }
