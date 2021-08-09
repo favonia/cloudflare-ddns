@@ -466,7 +466,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			nil,
 		},
 	} {
-		name, tc := name, tc
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
