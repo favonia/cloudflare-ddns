@@ -22,7 +22,7 @@ func useDirFS() {
 }
 
 //nolint:paralleltest // changing global var file.FS
-func TestReadStringSuccessful(t *testing.T) {
+func TestReadStringOkay(t *testing.T) {
 	path := "test/file.txt"
 	written := " hello world   " // space is intentionally added to test trimming
 	expected := strings.TrimSpace(written)
@@ -30,7 +30,7 @@ func TestReadStringSuccessful(t *testing.T) {
 	useMemFS(fstest.MapFS{
 		path: &fstest.MapFile{
 			Data:    []byte(written),
-			Mode:    0644,
+			Mode:    0o644,
 			ModTime: time.Unix(1234, 5678),
 			Sys:     nil,
 		},
@@ -43,11 +43,29 @@ func TestReadStringSuccessful(t *testing.T) {
 }
 
 //nolint:paralleltest // changing global var file.FS
-func TestReadStringFailing(t *testing.T) {
+func TestReadStringWrongPath(t *testing.T) {
 	useMemFS(fstest.MapFS{})
 	defer useDirFS()
 
-	path := "/wrong/path.txt"
-	_, ok := file.ReadString(pp.NoIndent, path)
+	path := "wrong/path.txt"
+	content, ok := file.ReadString(pp.NoIndent, path)
 	require.False(t, ok)
+	require.Empty(t, content)
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadStringNoAccess(t *testing.T) {
+	useMemFS(fstest.MapFS{
+		"dir/file.txt": &fstest.MapFile{
+			Data:    []byte("hello"),
+			Mode:    0,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+	defer useDirFS()
+
+	content, ok := file.ReadString(pp.NoIndent, "dir")
+	require.False(t, ok)
+	require.Empty(t, content)
 }

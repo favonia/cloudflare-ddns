@@ -124,7 +124,7 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func readDomains(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api.FQDN) bool {
+func ReadDomainMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api.FQDN) bool {
 	var domains, ip4Domains, ip6Domains []api.FQDN
 
 	if !ReadDomains(quiet, indent, "DOMAINS", &domains) ||
@@ -145,7 +145,7 @@ func readDomains(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api
 	return true
 }
 
-func readPolicies(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]detector.Policy) bool {
+func ReadPolicyMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]detector.Policy) bool {
 	ip4Policy := field[ipnet.IP4]
 	ip6Policy := field[ipnet.IP6]
 
@@ -201,8 +201,8 @@ func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
 	}
 
 	if !ReadAuth(c.Quiet, indent, &c.Auth) ||
-		!readPolicies(c.Quiet, indent, c.Policy) ||
-		!readDomains(c.Quiet, indent, c.Domains) ||
+		!ReadPolicyMap(c.Quiet, indent, c.Policy) ||
+		!ReadDomainMap(c.Quiet, indent, c.Domains) ||
 		!ReadCron(c.Quiet, indent, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(c.Quiet, indent, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(c.Quiet, indent, "DELETE_ON_STOP", &c.DeleteOnStop) ||
