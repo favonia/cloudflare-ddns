@@ -138,6 +138,14 @@ func TestReadDomainMap(t *testing.T) {
 			},
 			true,
 		},
+		"empty": {
+			" ", "   ", "",
+			map[ipnet.Type][]api.FQDN{
+				ipnet.IP4: {},
+				ipnet.IP6: {},
+			},
+			true,
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
