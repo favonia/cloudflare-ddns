@@ -69,20 +69,14 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 			continue
 		}
 
-		txt, ok := ans.Body.(*dnsmessage.TXTResource)
-		if !ok {
-			pp.Printf(indent, pp.EmojiImpossible, "The TXT record body is not of type TXTResource: %v", ans)
-			return nil
-		}
-
-		for _, s := range txt.TXT {
+		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT {
 			s = strings.TrimSpace(s)
 			if s == "" {
 				continue
 			}
 
 			if ipString != "" {
-				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records: %v", answers)
+				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records: %#v", answers)
 				return nil
 			}
 
@@ -91,7 +85,7 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 	}
 
 	if ipString == "" {
-		pp.Printf(indent, pp.EmojiImpossible, "TXT records have no non-empty strings: %v", answers)
+		pp.Printf(indent, pp.EmojiImpossible, "No TXT records or TXT records have no non-empty strings: %#v", answers)
 		return nil
 	}
 
@@ -140,6 +134,7 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 		url:         url,
 		method:      http.MethodPost,
 		contentType: "application/dns-message",
+		accept:      "application/dns-message",
 		reader:      bytes.NewReader(q),
 		extract: func(indent pp.Indent, body []byte) net.IP {
 			return parseDNSResponse(indent, body, id, name, class)
