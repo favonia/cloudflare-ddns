@@ -149,11 +149,8 @@ func ReadPolicyMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]det
 	ip4Policy := field[ipnet.IP4]
 	ip6Policy := field[ipnet.IP6]
 
-	if !ReadPolicy(quiet, indent, "IP4_POLICY", &ip4Policy) {
-		return false
-	}
-
-	if !ReadPolicy(quiet, indent, "IP6_POLICY", &ip6Policy) {
+	if !ReadPolicy(quiet, indent, "IP4_POLICY", &ip4Policy) ||
+		!ReadPolicy(quiet, indent, "IP6_POLICY", &ip6Policy) {
 		return false
 	}
 

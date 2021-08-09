@@ -10,6 +10,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/quiet"
@@ -117,7 +118,7 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 	}
 }
 
-//nolint: paralleltest // environment vars and file system are global
+//nolint: paralleltest // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	unset("DOMAINS")
 	unset("IP4_DOMAINS")
@@ -158,6 +159,57 @@ func TestReadDomainMap(t *testing.T) {
 
 			field := map[ipnet.Type][]api.FQDN{}
 			ok := config.ReadDomainMap(quiet.QUIET, 2, field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, field)
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars are global
+func TestReadPolicyMap(t *testing.T) {
+	unset("IP4_POLICY")
+	unset("IP6_POLICY")
+
+	for name, tc := range map[string]struct {
+		ip4Policy string
+		ip6Policy string
+		expected  map[ipnet.Type]detector.Policy
+		ok        bool
+	}{
+		"full": {
+			"cloudflare", "ipify",
+			map[ipnet.Type]detector.Policy{
+				ipnet.IP4: detector.NewCloudflare(),
+				ipnet.IP6: detector.NewIpify(),
+			},
+			true,
+		},
+		"empty": {
+			" ", "   ",
+			map[ipnet.Type]detector.Policy{
+				ipnet.IP4: nil,
+				ipnet.IP6: nil,
+			},
+			true,
+		},
+		"illformed": {
+			" flare", "   ",
+			map[ipnet.Type]detector.Policy{
+				ipnet.IP4: nil,
+				ipnet.IP6: nil,
+			},
+			false,
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set("IP4_POLICY", tc.ip4Policy)
+			set("IP6_POLICY", tc.ip6Policy)
+			defer unset("IP4_POLICY")
+			defer unset("IP6_POLICY")
+
+			field := map[ipnet.Type]detector.Policy{ipnet.IP4: nil, ipnet.IP6: nil}
+			ok := config.ReadPolicyMap(quiet.QUIET, 2, field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})
