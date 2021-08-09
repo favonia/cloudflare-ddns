@@ -18,8 +18,8 @@ func (p *unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) (net.IP, bool) {
-	return nil, false
+func (p *unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) net.IP {
+	return nil
 }
 
 func NewUnmanaged() Policy {

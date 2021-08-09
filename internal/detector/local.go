@@ -21,25 +21,20 @@ func (p *Local) String() string {
 	return p.PolicyName
 }
 
-func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) (net.IP, bool) {
+func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) net.IP {
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
 	if !found {
-		return nil, false
+		return nil
 	}
 
 	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr)
 	if err != nil {
 		pp.Printf(indent, pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.String(), err)
-		return nil, false
+		return nil
 	}
 	defer conn.Close()
 
-	ip := ipNet.NormalizeIP(conn.LocalAddr().(*net.UDPAddr).IP)
-	if ip == nil {
-		return nil, false
-	}
-
-	return ip, true
+	return ipNet.NormalizeIP(conn.LocalAddr().(*net.UDPAddr).IP)
 }
 
 func NewLocal() Policy {

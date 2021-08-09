@@ -59,18 +59,17 @@ func TestHTTPGetIP(t *testing.T) {
 			url      string
 			ipNet    ipnet.Type
 			expected net.IP
-			ok       bool
 		}{
-			"4":      {ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4, true},
-			"6":      {ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6, true},
-			"4to6":   {ipnet.IP6, ip4Server.URL, ipnet.IP6, ip4.To16(), true},
-			"6to4":   {ipnet.IP4, ip6Server.URL, ipnet.IP4, nil, false},
-			"4-nil1": {ipnet.IP4, dummy.URL, ipnet.IP4, nil, false},
-			"6-nil1": {ipnet.IP6, dummy.URL, ipnet.IP6, nil, false},
-			"4-nil2": {ipnet.IP4, "", ipnet.IP4, nil, false},
-			"6-nil2": {ipnet.IP6, "", ipnet.IP6, nil, false},
-			"4-nil3": {ipnet.IP4, ip4Server.URL, ipnet.IP6, nil, false},
-			"6-nil3": {ipnet.IP6, ip6Server.URL, ipnet.IP4, nil, false},
+			"4":      {ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4},
+			"6":      {ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6},
+			"4to6":   {ipnet.IP6, ip4Server.URL, ipnet.IP6, ip4.To16()},
+			"6to4":   {ipnet.IP4, ip6Server.URL, ipnet.IP4, nil},
+			"4-nil1": {ipnet.IP4, dummy.URL, ipnet.IP4, nil},
+			"6-nil1": {ipnet.IP6, dummy.URL, ipnet.IP6, nil},
+			"4-nil2": {ipnet.IP4, "", ipnet.IP4, nil},
+			"6-nil2": {ipnet.IP6, "", ipnet.IP6, nil},
+			"4-nil3": {ipnet.IP4, ip4Server.URL, ipnet.IP6, nil},
+			"6-nil3": {ipnet.IP6, ip6Server.URL, ipnet.IP4, nil},
 		} {
 			name, tc := name, tc
 			t.Run(name, func(t *testing.T) {
@@ -83,9 +82,8 @@ func TestHTTPGetIP(t *testing.T) {
 					},
 				}
 
-				ip, ok := policy.GetIP(context.Background(), 3, tc.ipNet)
+				ip := policy.GetIP(context.Background(), 3, tc.ipNet)
 				require.Equal(t, tc.expected, ip)
-				require.Equal(t, tc.ok, ok)
 			})
 		}
 	})

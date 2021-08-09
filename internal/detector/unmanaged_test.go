@@ -33,8 +33,7 @@ func TestUnmanagedGetIP(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ip, ok := detector.NewUnmanaged().GetIP(context.Background(), 3, tc)
-			require.False(t, ok)
+			ip := detector.NewUnmanaged().GetIP(context.Background(), 3, tc)
 			require.Nil(t, ip)
 		})
 	}
