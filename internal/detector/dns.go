@@ -76,7 +76,7 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 			}
 
 			if ipString != "" {
-				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records: %#v", answers)
+				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records.")
 				return nil
 			}
 
@@ -85,7 +85,7 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 	}
 
 	if ipString == "" {
-		pp.Printf(indent, pp.EmojiImpossible, "No TXT records or TXT records have no non-empty strings: %#v", answers)
+		pp.Printf(indent, pp.EmojiImpossible, "No TXT records or TXT records have no non-empty strings.")
 		return nil
 	}
 
