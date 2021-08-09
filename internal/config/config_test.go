@@ -11,6 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/file"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
@@ -112,6 +113,45 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 				require.False(t, ok)
 				require.Nil(t, field)
 			}
+		})
+	}
+}
+
+//nolint: paralleltest // environment vars and file system are global
+func TestReadDomainMap(t *testing.T) {
+	unset("DOMAINS")
+	unset("IP4_DOMAINS")
+	unset("IP6_DOMAINS")
+
+	for name, tc := range map[string]struct {
+		domains    string
+		ip4Domains string
+		ip6Domains string
+		expected   map[ipnet.Type][]api.FQDN
+		ok         bool
+	}{
+		"full": {
+			"  a1, a2", "b1,  b2,b2", "c1,c2",
+			map[ipnet.Type][]api.FQDN{
+				ipnet.IP4: {"a1", "a2", "b1", "b2"},
+				ipnet.IP6: {"a1", "a2", "c1", "c2"},
+			},
+			true,
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set("DOMAINS", tc.domains)
+			set("IP4_DOMAINS", tc.ip4Domains)
+			set("IP6_DOMAINS", tc.ip6Domains)
+			defer unset("DOMAINS")
+			defer unset("IP4_DOMAINS")
+			defer unset("IP6_DOMAINS")
+
+			field := map[ipnet.Type][]api.FQDN{}
+			ok := config.ReadDomainMap(quiet.QUIET, 2, field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, field)
 		})
 	}
 }
