@@ -40,6 +40,8 @@ func TestDNSOverHTTPSString(t *testing.T) {
 
 func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	response bool, header *dnsmessage.Header, idShift uint16, answers []dnsmessage.Resource) *httptest.Server {
+	t.Helper()
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/dns-message", r.Header.Get("Content-Type"))
@@ -87,7 +89,10 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	}))
 }
 
+//nolint:funlen
 func TestDNSOverHTTPSGetIP(t *testing.T) {
+	t.Parallel()
+
 	ip4 := net.ParseIP("1.2.3.4").To4()
 	ip6 := net.ParseIP("::1:2:3:4").To16()
 
@@ -102,14 +107,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 		answers  []dnsmessage.Resource
 		expected net.IP
 	}{
-		"correct": {ipnet.IP4, ipnet.IP4, "test.",
+		"correct": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -120,14 +126,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 		},
-		"illformed": {ipnet.IP4, ipnet.IP4, "test",
+		"illformed": {
+			ipnet.IP4, ipnet.IP4, "test",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{},
+			&dnsmessage.Header{}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test"),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -138,14 +145,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"6to4": {ipnet.IP4, ipnet.IP4, "test.",
+		"6to4": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -156,14 +164,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"unmatched-id": {ipnet.IP4, ipnet.IP4, "test.",
+		"unmatched-id": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			10,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -174,22 +183,24 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"notxt": {ipnet.IP4, ipnet.IP4, "test.",
+		"notxt": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{},
 			nil,
 		},
-		"notresponse": {ipnet.IP4, ipnet.IP4, "test.",
+		"notresponse": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{},
+			&dnsmessage.Header{}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -200,14 +211,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"truncated": {ipnet.IP4, ipnet.IP4, "test.",
+		"truncated": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, Truncated: true},
+			&dnsmessage.Header{Response: true, Truncated: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -218,14 +230,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"rcode": {ipnet.IP4, ipnet.IP4, "test.",
+		"rcode": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeFormatError},
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeFormatError}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -236,14 +249,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"irrelevant-records1": {ipnet.IP4, ipnet.IP4, "test.",
+		"irrelevant-records1": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassINET,
 					},
@@ -252,7 +266,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -263,14 +277,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 		},
-		"irrelevant-records2": {ipnet.IP4, ipnet.IP4, "test.",
+		"irrelevant-records2": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -279,7 +294,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -290,14 +305,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 		},
-		"irrelevant-records3": {ipnet.IP4, ipnet.IP4, "test.",
+		"irrelevant-records3": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test.another."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -308,14 +324,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"irrelevant-records4": {ipnet.IP4, ipnet.IP4, "test.",
+		"irrelevant-records4": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -324,7 +341,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test.another."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -335,14 +352,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 		},
-		"empty-strings-and-padding": {ipnet.IP4, ipnet.IP4, "test.",
+		"empty-strings-and-padding": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -351,7 +369,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -362,14 +380,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 		},
-		"multiple1": {ipnet.IP4, ipnet.IP4, "test.",
+		"multiple1": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -380,14 +399,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"multiple2": {ipnet.IP4, ipnet.IP4, "test.",
+		"multiple2": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true},
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -396,7 +416,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -407,14 +427,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"noresponse": {ipnet.IP4, ipnet.IP4, "test.",
+		"noresponse": {
+			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			false,
-			&dnsmessage.Header{},
+			&dnsmessage.Header{}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -425,14 +446,15 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			nil,
 		},
-		"nourl": {ipnet.IP4, ipnet.IP6, "test.",
+		"nourl": {
+			ipnet.IP4, ipnet.IP6, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{},
+			&dnsmessage.Header{}, //nolint:exhaustivestruct
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
