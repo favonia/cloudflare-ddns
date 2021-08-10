@@ -125,8 +125,8 @@ func TestNewInvalid(t *testing.T) {
 		assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 		assert.Empty(t, r.URL.Query())
 
-		w.WriteHeader(http.StatusUnauthorized)
 		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w,
 			`{
 				"success": false,
