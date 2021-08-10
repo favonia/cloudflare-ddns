@@ -52,7 +52,7 @@ func TestLocalGetIP(t *testing.T) {
 		"4-nil2": {ipnet.IP4, "127.0.0.1:80", ipnet.IP6, nil},
 		"6-nil2": {ipnet.IP6, "::1:80", ipnet.IP4, nil},
 	} {
-		name, tc := name, tc
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

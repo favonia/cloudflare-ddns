@@ -71,7 +71,7 @@ func TestHTTPGetIP(t *testing.T) {
 			"4-nil3": {ipnet.IP4, ip4Server.URL, ipnet.IP6, nil},
 			"6-nil3": {ipnet.IP6, ip6Server.URL, ipnet.IP4, nil},
 		} {
-			name, tc := name, tc
+			tc := tc
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 
