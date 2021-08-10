@@ -34,12 +34,12 @@ func updateIP(ctx context.Context, indent pp.Indent, c *config.Config, h api.Han
 
 	ip := c.Policy[ipNet].GetIP(ctx, indent, ipNet)
 	if ip == nil {
-		pp.TopPrintf(pp.EmojiError, "Failed to detect the %s address.", ipNet)
+		pp.TopPrintf(pp.EmojiError, "Failed to detect the %s address.", ipNet.Describe())
 		return
 	}
 
 	if !c.Quiet {
-		pp.TopPrintf(pp.EmojiInternet, "Detected the %s address: %v", ipNet, ip)
+		pp.TopPrintf(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	}
 
 	setIP(ctx, indent, c, h, ipNet, ip)

@@ -16,8 +16,8 @@ const (
 	IP6 Type = 6
 )
 
-// String returns a description of the IP network.
-func (t Type) String() string {
+// Describe returns a description of the IP network.
+func (t Type) Describe() string {
 	switch t {
 	case IP4, IP6:
 		return fmt.Sprintf("IPv%d", t)

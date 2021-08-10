@@ -214,31 +214,20 @@ func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
 }
 
 func (c *Config) checkUselessDomains(indent pp.Indent) {
-	var (
-		domainSet    = map[ipnet.Type]map[string]bool{ipnet.IP4: {}, ipnet.IP6: {}}
-		unionSet     = map[string]bool{}
-		intersectSet = map[string]bool{}
-	)
-	// calculate domainSet[IP4], domainSet[IP6], and unionSet
-	for ipNet, domains := range c.Domains {
+	count := map[api.FQDN]int{}
+	for _, domains := range c.Domains {
 		for _, domain := range domains {
-			domainString := domain.ToASCII()
-			domainSet[ipNet][domainString] = true
-			unionSet[domainString] = true
+			count[domain]++
 		}
 	}
 
-	// calculate intersectSet
-	for domain := range unionSet {
-		intersectSet[domain] = domainSet[ipnet.IP4][domain] && domainSet[ipnet.IP6][domain]
-	}
-
-	for ipNet := range c.Domains {
+	for ipNet, domains := range c.Domains {
 		if !c.Policy[ipNet].IsManaged() {
-			for domain := range domainSet[ipNet] {
-				if !intersectSet[domain] {
+			for i := range domains {
+				if count[domains[i]] != len(c.Domains) {
 					pp.Printf(indent, pp.EmojiUserWarning,
-						"Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
+						"Domain %q is ignored because it is only for %s but %s is unmanaged.",
+						domains[i].Describe(), ipNet.Describe(), ipNet.Describe())
 				}
 			}
 		}
@@ -251,11 +240,11 @@ func (c *Config) Normalize(indent pp.Indent) bool {
 		return false
 	}
 
-	// change useless policies to
+	// change useless policies to unmanaged
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
 			c.Policy[ipNet] = detector.NewUnmanaged()
-			pp.Printf(indent, pp.EmojiUserWarning, "IP%v_POLICY was changed to %q because no domains were set for %v.",
+			pp.Printf(indent, pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %v.",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}
 	}

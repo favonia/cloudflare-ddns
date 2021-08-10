@@ -29,7 +29,7 @@ func (p *Local) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) n
 
 	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.String(), err)
+		pp.Printf(indent, pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
 		return nil
 	}
 	defer conn.Close()
