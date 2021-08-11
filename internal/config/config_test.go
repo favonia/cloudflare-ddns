@@ -13,7 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestDefaultConfigNotNil(t *testing.T) {
@@ -22,21 +22,32 @@ func TestDefaultConfigNotNil(t *testing.T) {
 	require.NotNil(t, config.Default())
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadAuthToken(t *testing.T) {
 	unset("CF_API_TOKEN")
 	unset("CF_API_TOKEN_FILE")
 	unset("CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
-		token   string
-		account string
-		ok      bool
+		token     string
+		account   string
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"full":      {"123456789", "secret account", true},
-		"noaccount": {"123456789", "", true},
-		"notoken":   {"", "account", false},
-		"copycat":   {"YOUR-CLOUDFLARE-API-TOKEN", "", false},
+		"full":      {"123456789", "secret account", true, nil},
+		"noaccount": {"123456789", "", true, nil},
+		"notoken": {
+			"", "account", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Needs either CF_API_TOKEN or CF_API_TOKEN_FILE`),
+			},
+		},
+		"copycat": {
+			"YOUR-CLOUDFLARE-API-TOKEN", "", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `You need to provide a real API token as CF_API_TOKEN`),
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -46,14 +57,15 @@ func TestReadAuthToken(t *testing.T) {
 			defer unset("CF_ACCOUNT_ID")
 
 			var field api.Auth
-			ok := config.ReadAuth(quiet.QUIET, 2, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadAuth(ppmock, &field)
+			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.True(t, ok)
 				require.Equal(t, &api.CloudflareAuth{Token: tc.token, AccountID: tc.account, BaseURL: ""}, field)
 			} else {
-				require.False(t, ok)
 				require.Nil(t, field)
 			}
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
@@ -66,7 +78,7 @@ func useDirFS() {
 	file.FS = os.DirFS("/")
 }
 
-//nolint: paralleltest // environment vars and file system are global
+//nolint:funlen,paralleltest // environment vars and file system are global
 func TestReadAuthTokenWithFile(t *testing.T) {
 	unset("CF_API_TOKEN")
 	unset("CF_API_TOKEN_FILE")
@@ -79,12 +91,34 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 		actualPath    string
 		actualContent string
 		expected      string
+		ok            bool
+		ppRecords     []pp.Record
 	}{
-		"ok":           {"", "test.txt", "secret account", "test.txt", "hello", "hello"},
-		"both":         {"123456789", "test.txt", "secret account", "test.txt", "hello", ""},
-		"wrong.path":   {"123456789", "test.txt", "secret account", "wrong.txt", "hello", ""},
-		"empty":        {"", "test.txt", "secret account", "test.txt", "", ""},
-		"invalid path": {"", "dir/test.txt", "secret account", "dir", "hello", ""},
+		"ok": {"", "test.txt", "secret account", "test.txt", "hello", "hello", true, nil},
+		"both": {
+			"123456789", "test.txt", "secret account", "test.txt", "hello", "", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set`),
+			},
+		},
+		"wrong.path": {
+			"", "test.txt", "secret account", "wrong.txt", "hello", "", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to read "test.txt": open test.txt: file does not exist`),
+			},
+		},
+		"empty": {
+			"", "test.txt", "secret account", "test.txt", "", "", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `The token in the file specified by CF_API_TOKEN_FILE is empty`),
+			},
+		},
+		"invalid path": {
+			"", "dir", "secret account", "dir/test.txt", "hello", "", false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to read "dir": read dir: invalid argument`),
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -106,19 +140,20 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 			defer useDirFS()
 
 			var field api.Auth
-			ok := config.ReadAuth(quiet.QUIET, 2, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadAuth(ppmock, &field)
+			require.Equal(t, tc.ok, ok)
 			if tc.expected != "" {
-				require.True(t, ok)
 				require.Equal(t, &api.CloudflareAuth{Token: tc.expected, AccountID: tc.account, BaseURL: ""}, field)
 			} else {
-				require.False(t, ok)
 				require.Nil(t, field)
 			}
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	unset("DOMAINS")
 	unset("IP4_DOMAINS")
@@ -130,6 +165,7 @@ func TestReadDomainMap(t *testing.T) {
 		ip6Domains string
 		expected   map[ipnet.Type][]api.FQDN
 		ok         bool
+		ppRecords  []pp.Record
 	}{
 		"full": {
 			"  a1, a2", "b1,  b2,b2", "c1,c2",
@@ -138,6 +174,7 @@ func TestReadDomainMap(t *testing.T) {
 				ipnet.IP6: {"a1", "a2", "c1", "c2"},
 			},
 			true,
+			nil,
 		},
 		"empty": {
 			" ", "   ", "",
@@ -146,6 +183,7 @@ func TestReadDomainMap(t *testing.T) {
 				ipnet.IP6: {},
 			},
 			true,
+			nil,
 		},
 	} {
 		tc := tc
@@ -158,47 +196,87 @@ func TestReadDomainMap(t *testing.T) {
 			defer unset("IP6_DOMAINS")
 
 			field := map[ipnet.Type][]api.FQDN{}
-			ok := config.ReadDomainMap(quiet.QUIET, 2, field)
+			ppmock := pp.NewMock()
+			ok := config.ReadDomainMap(ppmock, field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:funlen,paralleltest // environment vars are global
 func TestReadPolicyMap(t *testing.T) {
 	unset("IP4_POLICY")
 	unset("IP6_POLICY")
+
+	var (
+		cloudflare = detector.NewCloudflare()
+		local      = detector.NewLocal()
+		unmanaged  = detector.NewUnmanaged()
+		ipify      = detector.NewIpify()
+	)
 
 	for name, tc := range map[string]struct {
 		ip4Policy string
 		ip6Policy string
 		expected  map[ipnet.Type]detector.Policy
 		ok        bool
+		ppRecords []pp.Record
 	}{
 		"full": {
 			"cloudflare", "ipify",
 			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: detector.NewCloudflare(),
-				ipnet.IP6: detector.NewIpify(),
+				ipnet.IP4: cloudflare,
+				ipnet.IP6: ipify,
 			},
 			true,
+			nil,
+		},
+		"4": {
+			"local", "  ",
+			map[ipnet.Type]detector.Policy{
+				ipnet.IP4: local,
+				ipnet.IP6: local,
+			},
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default IP6_POLICY=local`),
+			},
+		},
+		"6": {
+			"    ", "ipify",
+			map[ipnet.Type]detector.Policy{
+				ipnet.IP4: unmanaged,
+				ipnet.IP6: ipify,
+			},
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default IP4_POLICY=unmanaged`),
+			},
 		},
 		"empty": {
 			" ", "   ",
 			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: nil,
-				ipnet.IP6: nil,
+				ipnet.IP4: unmanaged,
+				ipnet.IP6: local,
 			},
 			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default IP4_POLICY=unmanaged`),
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default IP6_POLICY=local`),
+			},
 		},
 		"illformed": {
 			" flare", "   ",
 			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: nil,
-				ipnet.IP6: nil,
+				ipnet.IP4: unmanaged,
+				ipnet.IP6: local,
 			},
 			false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "flare": not a valid policy`),
+			},
 		},
 	} {
 		tc := tc
@@ -208,10 +286,12 @@ func TestReadPolicyMap(t *testing.T) {
 			defer unset("IP4_POLICY")
 			defer unset("IP6_POLICY")
 
-			field := map[ipnet.Type]detector.Policy{ipnet.IP4: nil, ipnet.IP6: nil}
-			ok := config.ReadPolicyMap(quiet.QUIET, 2, field)
+			field := map[ipnet.Type]detector.Policy{ipnet.IP4: unmanaged, ipnet.IP6: local}
+			ppmock := pp.NewMock()
+			ok := config.ReadPolicyMap(ppmock, field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"golang.org/x/net/idna"
 )
 
-//nolint: gochecknoglobals
+//nolint:gochecknoglobals
 // profile does C2 in UTS#46 with all checks on + removing leading dots.
 // This is the main conversion profile in use.
 var profile = idna.New(

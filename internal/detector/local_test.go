@@ -9,6 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestLocalIsManaged(t *testing.T) {
@@ -40,17 +41,38 @@ func TestLocalGetIP(t *testing.T) {
 	ip6Loopback := net.ParseIP("::1").To16()
 
 	for name, tc := range map[string]struct {
-		addrKey  ipnet.Type
-		addr     string
-		ipNet    ipnet.Type
-		expected net.IP
+		addrKey   ipnet.Type
+		addr      string
+		ipNet     ipnet.Type
+		expected  net.IP
+		ppRecords []pp.Record
 	}{
-		"4":      {ipnet.IP4, "127.0.0.1:80", ipnet.IP4, ip4Loopback},
-		"6":      {ipnet.IP6, "[::1]:80", ipnet.IP6, ip6Loopback},
-		"4-nil1": {ipnet.IP4, "", ipnet.IP4, nil},
-		"6-nil1": {ipnet.IP6, "", ipnet.IP6, nil},
-		"4-nil2": {ipnet.IP4, "127.0.0.1:80", ipnet.IP6, nil},
-		"6-nil2": {ipnet.IP6, "::1:80", ipnet.IP4, nil},
+		"4": {ipnet.IP4, "127.0.0.1:80", ipnet.IP4, ip4Loopback, nil},
+		"6": {ipnet.IP6, "[::1]:80", ipnet.IP6, ip6Loopback, nil},
+		"4-nil1": {
+			ipnet.IP4, "", ipnet.IP4, nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to detect a local IPv4 address: dial udp4: missing address`),
+			},
+		},
+		"6-nil1": {
+			ipnet.IP6, "", ipnet.IP6, nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to detect a local IPv6 address: dial udp6: missing address`),
+			},
+		},
+		"4-nil2": {
+			ipnet.IP4, "127.0.0.1:80", ipnet.IP6, nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Unhandled IP network: IPv6`),
+			},
+		},
+		"6-nil2": {
+			ipnet.IP6, "::1:80", ipnet.IP4, nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Unhandled IP network: IPv4`),
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -63,8 +85,10 @@ func TestLocalGetIP(t *testing.T) {
 				},
 			}
 
-			ip := policy.GetIP(context.Background(), 3, tc.ipNet)
+			ppmock := pp.NewMock()
+			ip := policy.GetIP(context.Background(), ppmock, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

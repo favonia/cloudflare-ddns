@@ -22,7 +22,7 @@ func (t Type) Describe() string {
 	case IP4, IP6:
 		return fmt.Sprintf("IPv%d", t)
 	default:
-		return "(unrecognized IP network)"
+		return "<unrecognized IP network>"
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestUnmanagedIsManaged(t *testing.T) {
@@ -33,8 +34,10 @@ func TestUnmanagedGetIP(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			ip := detector.NewUnmanaged().GetIP(context.Background(), 3, tc)
+			ppmock := pp.NewMock()
+			ip := detector.NewUnmanaged().GetIP(context.Background(), ppmock, tc)
 			require.Nil(t, ip)
+			require.Empty(t, ppmock.Records)
 		})
 	}
 }

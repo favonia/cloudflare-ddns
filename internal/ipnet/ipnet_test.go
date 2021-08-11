@@ -17,7 +17,7 @@ func TestDescribe(t *testing.T) {
 	}{
 		"4":   {ipnet.IP4, "IPv4"},
 		"6":   {ipnet.IP6, "IPv6"},
-		"100": {ipnet.Type(100), "(unrecognized IP network)"},
+		"100": {ipnet.Type(100), "<unrecognized IP network>"},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {

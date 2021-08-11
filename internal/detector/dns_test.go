@@ -14,6 +14,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestDNSOverHTTPSIsManaged(t *testing.T) {
@@ -97,15 +98,16 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 	ip6 := net.ParseIP("::1:2:3:4").To16()
 
 	for name, tc := range map[string]struct {
-		urlKey   ipnet.Type
-		ipNet    ipnet.Type
-		name     string
-		class    dnsmessage.Class
-		response bool
-		header   *dnsmessage.Header
-		idShift  uint16
-		answers  []dnsmessage.Resource
-		expected net.IP
+		urlKey    ipnet.Type
+		ipNet     ipnet.Type
+		name      string
+		class     dnsmessage.Class
+		response  bool
+		header    *dnsmessage.Header
+		idShift   uint16
+		answers   []dnsmessage.Resource
+		expected  net.IP
+		ppRecords []pp.Record
 	}{
 		"correct": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -125,6 +127,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			ip4,
+			nil,
 		},
 		"illformed": {
 			ipnet.IP4, ipnet.IP4, "test",
@@ -144,6 +147,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to prepare the DNS query: packing Question: Name: name is not in canonical format (it must end with a .)`), //nolint:lll
+			},
 		},
 		"6to4": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -163,6 +169,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiError, `"::1:2:3:4" is not a valid IPv4 address`),
+			},
 		},
 		"unmatched-id": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -182,6 +191,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`),
+			},
 		},
 		"notxt": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -191,6 +203,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			0,
 			[]dnsmessage.Resource{},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`), //nolint:lll
+			},
 		},
 		"notresponse": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -210,6 +225,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: QR was not set`),
+			},
 		},
 		"truncated": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -229,6 +247,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: TC was set`),
+			},
 		},
 		"rcode": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -248,6 +269,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: response code is RCodeFormatError`),
+			},
 		},
 		"irrelevant-records1": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -276,6 +300,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			ip4,
+			nil,
 		},
 		"irrelevant-records2": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -304,6 +329,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			ip4,
+			nil,
 		},
 		"irrelevant-records3": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -323,6 +349,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`), //nolint:lll
+			},
 		},
 		"irrelevant-records4": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -351,6 +380,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			ip4,
+			nil,
 		},
 		"empty-strings-and-padding": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -379,6 +409,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			ip4,
+			nil,
 		},
 		"multiple1": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -398,6 +429,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`),
+			},
 		},
 		"multiple2": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -426,6 +460,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`),
+			},
 		},
 		"noresponse": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -445,6 +482,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: unpacking header: id: insufficient data for base length type`), //nolint:lll
+			},
 		},
 		"nourl": {
 			ipnet.IP4, ipnet.IP6, "test.",
@@ -464,6 +504,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Unhandled IP network: IPv6`),
+			},
 		},
 	} {
 		tc := tc
@@ -483,8 +526,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			}
 
-			ip := policy.GetIP(context.Background(), 3, tc.ipNet)
+			ppmock := pp.NewMock()
+			ip := policy.GetIP(context.Background(), ppmock, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

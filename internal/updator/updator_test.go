@@ -10,7 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 	"github.com/favonia/cloudflare-ddns/internal/updator"
 )
 
@@ -51,7 +50,7 @@ func (m *mockHandle) IsExhausted() bool {
 	return len(m.script) == 0
 }
 
-func (m *mockHandle) ListRecords(_ context.Context, _ pp.Indent,
+func (m *mockHandle) ListRecords(_ context.Context, _ pp.Fmt,
 	domain api.FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
 	values := m.Call(eventList, 2, domain, ipNet)
 
@@ -61,22 +60,22 @@ func (m *mockHandle) ListRecords(_ context.Context, _ pp.Indent,
 	return val0, val1
 }
 
-func (m *mockHandle) DeleteRecord(_ context.Context, _ pp.Indent,
+func (m *mockHandle) DeleteRecord(_ context.Context, _ pp.Fmt,
 	domain api.FQDN, ipNet ipnet.Type, id string) bool {
 	values := m.Call(eventDelete, 1, domain, ipNet, id)
 	val0, _ := values[0].(bool)
 	return val0
 }
 
-func (m *mockHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
+func (m *mockHandle) UpdateRecord(_ context.Context, _ pp.Fmt,
 	domain api.FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
 	values := m.Call(eventUpdate, 1, domain, ipNet, id, ip)
 	val0, _ := values[0].(bool)
 	return val0
 }
 
-func (m *mockHandle) CreateRecord(ctx context.Context, indent pp.Indent,
-	domain api.FQDN, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
+func (m *mockHandle) CreateRecord(_ context.Context, _ pp.Fmt,
+	domain api.FQDN, ipNet ipnet.Type, ip net.IP, ttl api.TTL, proxied bool) (string, bool) {
 	values := m.Call(eventCreate, 2, domain, ipNet, ip, ttl, proxied)
 	val0, _ := values[0].(string)
 	val1, _ := values[1].(bool)
@@ -87,18 +86,19 @@ func (m *mockHandle) FlushCache() {
 	require.FailNow(m.t, "updator should never call FlushCache directly")
 }
 
-//nolint: funlen
+//nolint:funlen
 func TestDo(t *testing.T) {
 	t.Parallel()
 
+	type anys = []interface{}
+
 	const (
-		quiet     = quiet.VERBOSE
 		domain    = api.FQDN("sub.test.org")
 		ipNetwork = ipnet.IP6
 		record1   = "record1"
 		record2   = "record2"
 		record3   = "record3"
-		ttl       = 100
+		ttl       = api.TTL(100)
 		proxied   = true
 	)
 	var (
@@ -107,313 +107,193 @@ func TestDo(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		ip      net.IP
-		ttl     api.TTL
-		proxied bool
-		script  []interaction
-		ok      bool
+		ip        net.IP
+		script    []interaction
+		ok        bool
+		ppRecords []pp.Record
 	}{
 		"0-nil": {
-			ip: nil,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{}, true},
-				},
+			nil,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{}, true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiAlreadyDone, `The AAAA records of "sub.test.org" are already up to date`),
+			},
 		},
 		"0": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{}, true},
-				},
-				{
-					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
-					values:    []interface{}{record1, true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{}, true}},
+				{eventCreate, anys{domain, ipNetwork, ip1, ttl, proxied}, anys{record1, true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiAddRecord, `Added a new AAAA record of "sub.test.org" (ID: record1)`),
+			},
 		},
 		"1unmatched": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiUpdateRecord, `Updated a stale AAAA record of "sub.test.org" (ID: record1)`),
+			},
 		},
 		"1unmatched-updatefail": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
-					values:    []interface{}{record2, true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{true}},
+				{eventCreate, anys{domain, ipNetwork, ip1, ttl, proxied}, anys{record2, true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record1)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiAddRecord, `Added a new AAAA record of "sub.test.org" (ID: record2)`),
+			},
 		},
 		"1unmatched-nil": {
-			ip: nil,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip1}, true},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{true},
-				},
+			nil,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip1}, true}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record1)`),
+			},
 		},
 		"1matched": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip1}, true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip1}, true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiAlreadyDone, `The AAAA records of "sub.test.org" are already up to date`),
+			},
 		},
 		"2matched": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip1, record2: ip1}, true},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip1, record2: ip1}, true}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a duplicate AAAA record of "sub.test.org" (ID: record2)`),
+			},
 		},
 		"2matched-deletefail": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip1, record2: ip1}, true},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{false},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip1, record2: ip1}, true}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{false}},
 			},
-			ok: true,
+			true,
+			nil,
 		},
 		"2unmatched": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2, record2: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{true}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiUpdateRecord, `Updated a stale AAAA record of "sub.test.org" (ID: record1)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record2)`),
+			},
 		},
 		"2unmatched-updatefail": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record2, ip1},
-					values:    []interface{}{true},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2, record2: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{true}},
+				{eventUpdate, anys{domain, ipNetwork, record2, ip1}, anys{true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record1)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiUpdateRecord, `Updated a stale AAAA record of "sub.test.org" (ID: record2)`),
+			},
 		},
-		"2unmatched-updatefailtwice": { //nolint: dupl // they are similar but different tests
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record2, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
-					values:    []interface{}{record3, true},
-				},
+		"2unmatched-updatefailtwice": {
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2, record2: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{true}},
+				{eventUpdate, anys{domain, ipNetwork, record2, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{true}},
+				{eventCreate, anys{domain, ipNetwork, ip1, ttl, proxied}, anys{record3, true}},
 			},
-			ok: true,
+			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record1)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record2)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiAddRecord, `Added a new AAAA record of "sub.test.org" (ID: record3)`),
+			},
 		},
-		"2unmatched-updatefail-deletefail-updatefail": { //nolint: dupl // they are similar but different tests
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record2, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
-					values:    []interface{}{record3, true},
-				},
+		"2unmatched-updatefail-deletefail-updatefail": {
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2, record2: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{false}},
+				{eventUpdate, anys{domain, ipNetwork, record2, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{true}},
+				{eventCreate, anys{domain, ipNetwork, ip1, ttl, proxied}, anys{record3, true}},
 			},
-			ok: false,
+			false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record2)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiAddRecord, `Added a new AAAA record of "sub.test.org" (ID: record3)`),
+				pp.NewRecord(0, pp.Error, pp.EmojiError, `Failed to (fully) update AAAA records of "sub.test.org"`),
+			},
 		},
-		"2unmatched-updatefailtwice-createfail": { //nolint: dupl // they are similar but different tests
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{map[string]net.IP{record1: ip2, record2: ip2}, true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record1, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record1},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventUpdate,
-					arguments: []interface{}{domain, ipNetwork, record2, ip1},
-					values:    []interface{}{false},
-				},
-				{
-					event:     eventDelete,
-					arguments: []interface{}{domain, ipNetwork, record2},
-					values:    []interface{}{true},
-				},
-				{
-					event:     eventCreate,
-					arguments: []interface{}{domain, ipNetwork, ip1, ttl, proxied},
-					values:    []interface{}{record3, false},
-				},
+		"2unmatched-updatefailtwice-createfail": {
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{map[string]net.IP{record1: ip2, record2: ip2}, true}},
+				{eventUpdate, anys{domain, ipNetwork, record1, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record1}, anys{true}},
+				{eventUpdate, anys{domain, ipNetwork, record2, ip1}, anys{false}},
+				{eventDelete, anys{domain, ipNetwork, record2}, anys{true}},
+				{eventCreate, anys{domain, ipNetwork, ip1, ttl, proxied}, anys{record3, false}},
 			},
-			ok: false,
+			false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record1)`),
+				pp.NewRecord(0, pp.Notice, pp.EmojiDelRecord, `Deleted a stale AAAA record of "sub.test.org" (ID: record2)`),
+				pp.NewRecord(0, pp.Error, pp.EmojiError, `Failed to (fully) update AAAA records of "sub.test.org"`),
+			},
 		},
 		"listfail": {
-			ip: ip1,
-			script: []interaction{
-				{
-					event:     eventList,
-					arguments: []interface{}{domain, ipNetwork},
-					values:    []interface{}{nil, false},
-				},
+			ip1,
+			[]interaction{
+				{eventList, anys{domain, ipNetwork}, anys{nil, false}},
 			},
-			ok: false,
+			false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiError, `Failed to (fully) update AAAA records of "sub.test.org"`),
+			},
 		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			m := &mockHandle{t: t, script: tc.script}
-			ok := updator.Do(context.Background(), 3,
-				quiet,
+			ppmock := pp.NewMock()
+			ok := updator.Do(context.Background(), ppmock,
 				&updator.Args{
 					Handle:    m,
 					IPNetwork: ipNetwork,
@@ -424,6 +304,7 @@ func TestDo(t *testing.T) {
 				})
 			require.Equal(t, tc.ok, ok)
 			require.True(t, m.IsExhausted())
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

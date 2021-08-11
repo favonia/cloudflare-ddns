@@ -13,7 +13,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
@@ -30,7 +29,7 @@ func unset(key string) {
 	os.Unsetenv(key)
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestGetenv(t *testing.T) {
 	key := keyPrefix + "VAR"
 	for name, tc := range map[string]struct {
@@ -55,26 +54,37 @@ func TestGetenv(t *testing.T) {
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadQuiet(t *testing.T) {
 	key := keyPrefix + "QUIET"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		oldField quiet.Quiet
-		newField quiet.Quiet
-		ok       bool
+		set       bool
+		val       string
+		oldField  pp.Level
+		newField  pp.Level
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil1":     {false, "", quiet.VERBOSE, quiet.VERBOSE, true},
-		"nil2":     {false, "", quiet.QUIET, quiet.QUIET, true},
-		"empty1":   {true, "  ", quiet.VERBOSE, quiet.VERBOSE, true},
-		"empty2":   {true, " ", quiet.QUIET, quiet.QUIET, true},
-		"true1":    {true, "true   ", quiet.VERBOSE, quiet.QUIET, true},
-		"true2":    {true, " true", quiet.QUIET, quiet.QUIET, true},
-		"false1":   {true, "    false ", quiet.VERBOSE, quiet.VERBOSE, true},
-		"false2":   {true, " false    ", quiet.QUIET, quiet.VERBOSE, true},
-		"illform1": {true, "weird", quiet.VERBOSE, quiet.VERBOSE, false},
-		"illform2": {true, "weird", quiet.QUIET, quiet.QUIET, false},
+		"nil1":   {false, "", pp.Verbose, pp.Verbose, true, nil},
+		"nil2":   {false, "", pp.Quiet, pp.Quiet, true, nil},
+		"empty1": {true, "  ", pp.Verbose, pp.Verbose, true, nil},
+		"empty2": {true, " ", pp.Quiet, pp.Quiet, true, nil},
+		"true1":  {true, "true   ", pp.Verbose, pp.Quiet, true, nil},
+		"true2":  {true, " true", pp.Quiet, pp.Quiet, true, nil},
+		"false1": {true, "    false ", pp.Verbose, pp.Verbose, true, nil},
+		"false2": {true, " false    ", pp.Quiet, pp.Verbose, true, nil},
+		"illform1": {
+			true, "weird", pp.Verbose, pp.Verbose, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "weird": strconv.ParseBool: parsing "weird": invalid syntax`), //nolint:lll
+			},
+		},
+		"illform2": {
+			true, "weird", pp.Quiet, pp.Quiet, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "weird": strconv.ParseBool: parsing "weird": invalid syntax`), //nolint:lll
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -83,68 +93,67 @@ func TestReadQuiet(t *testing.T) {
 				defer unset(key)
 			}
 
-			field := tc.oldField
-			ok := config.ReadQuiet(pp.Indent(1), key, &field)
+			ppmock := pp.NewMock()
+			ppmock.SetLevel(tc.oldField)
+			ok := config.ReadQuiet(ppmock, key)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.newField, ppmock.Level)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
-func TestReadString(t *testing.T) {
-	key := keyPrefix + "STRING"
-	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField string
-		newField string
-		ok       bool
-	}{
-		"nil1":    {false, "", quiet.VERBOSE, "original", "original", true},
-		"nil2":    {false, "", quiet.QUIET, "original", "original", true},
-		"empty1":  {true, "  ", quiet.VERBOSE, "original", "original", true},
-		"empty2":  {true, " ", quiet.QUIET, "original", "original", true},
-		"random1": {true, " ran dom ", quiet.VERBOSE, "original", "ran dom", true},
-		"random2": {true, "  random", quiet.QUIET, "original", "random", true},
-	} {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
-
-			field := tc.oldField
-			ok := config.ReadString(tc.quiet, pp.Indent(1), key, &field)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
-		})
-	}
-}
-
-//nolint: paralleltest // environment vars are global
+//nolint:funlen,paralleltest // environment vars are global
 func TestReadBool(t *testing.T) {
 	key := keyPrefix + "BOOL"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField bool
-		newField bool
-		ok       bool
+		set       bool
+		val       string
+		oldField  bool
+		newField  bool
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil1":     {false, "", quiet.VERBOSE, true, true, true},
-		"nil2":     {false, "", quiet.QUIET, false, false, true},
-		"empty1":   {true, " ", quiet.VERBOSE, true, true, true},
-		"empty2":   {true, " \t ", quiet.QUIET, false, false, true},
-		"true1":    {true, "true ", quiet.VERBOSE, true, true, true},
-		"true2":    {true, " \t true", quiet.QUIET, false, true, true},
-		"false1":   {true, "false ", quiet.VERBOSE, true, false, true},
-		"false2":   {true, " false", quiet.QUIET, false, false, true},
-		"illform1": {true, "weird\t  ", quiet.VERBOSE, false, false, false},
-		"illform2": {true, " weird", quiet.QUIET, true, true, false},
+		"nil1": {
+			false, "", true, true, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-BOOL=true`),
+			},
+		},
+		"nil2": {
+			false, "", false, false, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-BOOL=false`),
+			},
+		},
+		"empty1": {
+			true, " ", true, true, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-BOOL=true`),
+			},
+		},
+		"empty2": {
+			true, " \t ", false, false, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-BOOL=false`),
+			},
+		},
+		"true1":  {true, "true ", true, true, true, nil},
+		"true2":  {true, " \t true", false, true, true, nil},
+		"false1": {true, "false ", true, false, true, nil},
+		"false2": {true, " false", false, false, true, nil},
+		"illform1": {
+			true, "weird\t  ", false, false, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "weird": strconv.ParseBool: parsing "weird": invalid syntax`), //nolint:lll
+			},
+		},
+		"illform2": {
+			true, " weird", true, true, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "weird": strconv.ParseBool: parsing "weird": invalid syntax`), //nolint:lll
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -154,36 +163,59 @@ func TestReadBool(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadBool(tc.quiet, pp.Indent(1), key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadBool(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadNonnegInt(t *testing.T) {
 	key := keyPrefix + "INT"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField int
-		newField int
-		ok       bool
+		set       bool
+		val       string
+		oldField  int
+		newField  int
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, 100, 100, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, 100, 100, true},
-		"empty-quiet":   {true, "", quiet.QUIET, 100, 100, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, 100, 100, true},
-		"zero":          {true, "0   ", quiet.VERBOSE, 100, 0, true},
-		"-1-quiet":      {true, "   -1", quiet.QUIET, 100, 100, false},
-		"-1-verbose":    {true, "   -1", quiet.VERBOSE, 100, 100, false},
-		"1":             {true, "   1   ", quiet.VERBOSE, 100, 1, true},
-		"1.0":           {true, "   1.0   ", quiet.VERBOSE, 100, 100, false},
-		"words-quiet":   {true, "   words   ", quiet.QUIET, 100, 100, false},
-		"words-verbose": {true, "   words   ", quiet.VERBOSE, 100, 100, false},
-		"9999999":       {true, "   9999999   ", quiet.VERBOSE, 100, 9999999, true},
+		"nil": {
+			false, "", 100, 100, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-INT=100`),
+			},
+		},
+		"empty": {
+			true, "", 100, 100, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-INT=100`),
+			},
+		},
+		"zero": {true, "0   ", 100, 0, true, nil},
+		"-1": {
+			true, "   -1", 100, 100, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "-1": -1 is negative`),
+			},
+		},
+		"1": {true, "   1   ", 100, 1, true, nil},
+		"1.0": {
+			true, "   1.0   ", 100, 100, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "1.0": strconv.Atoi: parsing "1.0": invalid syntax`), //nolint:lll
+			},
+		},
+		"words": {
+			true, "   words   ", 100, 100, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "words": strconv.Atoi: parsing "words": invalid syntax`), //nolint:lll
+			},
+		},
+		"9999999": {true, "   9999999   ", 100, 9999999, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -193,45 +225,40 @@ func TestReadNonnegInt(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadNonnegInt(tc.quiet, pp.NoIndent, key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadNonnegInt(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
 	type ds = []api.FQDN
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField ds
-		newField ds
-		ok       bool
+		set       bool
+		val       string
+		oldField  ds
+		newField  ds
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil-quiet":   {false, "", quiet.QUIET, ds{"test.org"}, ds{}, true},
-		"nil-verbose": {false, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
-		"empty":       {true, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
-		"test1": {
-			true,
-			"書.org ,  Bücher.org  ",
-			quiet.VERBOSE,
+		"nil":   {false, "", ds{"test.org"}, ds{}, true, nil},
+		"empty": {true, "", ds{"test.org"}, ds{}, true, nil},
+		"test1": {true, "書.org ,  Bücher.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil},
+		"test2": {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil}, //nolint:lll
+		"illformed": {
+			true, "xn--:D.org",
 			ds{"random.org"},
-			ds{"xn--rov.org", "xn--bcher-kva.org"},
+			ds{"xn--:d.org"},
 			true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Domain "xn--:d.org" was added but it is ill-formed: idna: disallowed rune U+003A`), //nolint:lll
+			},
 		},
-		"test2": {
-			true,
-			"  \txn--rov.org    ,   xn--Bcher-kva.org  ",
-			quiet.VERBOSE,
-			ds{"random.org"},
-			ds{"xn--rov.org", "xn--bcher-kva.org"},
-			true,
-		},
-		"illformed": {true, "xn--:D.org", quiet.VERBOSE, ds{"random.org"}, ds{"xn--:d.org"}, true},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -241,14 +268,16 @@ func TestReadDomains(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadDomains(quiet.QUIET, pp.NoIndent, key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadDomains(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
@@ -260,22 +289,35 @@ func TestReadPolicy(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField detector.Policy
-		newField detector.Policy
-		ok       bool
+		set       bool
+		val       string
+		oldField  detector.Policy
+		newField  detector.Policy
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, unmanaged, unmanaged, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, local, local, true},
-		"empty-quiet":   {true, "", quiet.QUIET, unmanaged, unmanaged, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, unmanaged, unmanaged, true},
-		"cloudflare":    {true, "    cloudflare\t   ", quiet.VERBOSE, unmanaged, cloudflare, true},
-		"unmanaged":     {true, "   unmanaged   ", quiet.QUIET, cloudflare, unmanaged, true},
-		"local":         {true, "   local   ", quiet.QUIET, cloudflare, local, true},
-		"ipify":         {true, "     ipify  ", quiet.QUIET, cloudflare, ipify, true},
-		"others":        {true, "   something-else ", quiet.VERBOSE, ipify, ipify, false},
+		"nil": {
+			false, "", unmanaged, unmanaged, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-POLICY=unmanaged`),
+			},
+		},
+		"empty": {
+			true, "", local, local, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-POLICY=local`),
+			},
+		},
+		"cloudflare": {true, "    cloudflare\t   ", unmanaged, cloudflare, true, nil},
+		"unmanaged":  {true, "   unmanaged   ", cloudflare, unmanaged, true, nil},
+		"local":      {true, "   local   ", cloudflare, local, true, nil},
+		"ipify":      {true, "     ipify  ", cloudflare, ipify, true, nil},
+		"others": {
+			true, "   something-else ", ipify, ipify, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "something-else": not a valid policy`),
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -285,33 +327,53 @@ func TestReadPolicy(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadPolicy(tc.quiet, pp.NoIndent, key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadPolicy(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadNonnegDuration(t *testing.T) {
 	key := keyPrefix + "DURATION"
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField time.Duration
-		newField time.Duration
-		ok       bool
+		set       bool
+		val       string
+		oldField  time.Duration
+		newField  time.Duration
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, time.Second, time.Second, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, 0, 0, true},
-		"empty-quiet":   {true, "", quiet.QUIET, time.Hour, time.Hour, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, 200, 200, true},
-		"100s":          {true, "    100s\t   ", quiet.VERBOSE, 0, time.Second * 100, true},
-		"1":             {true, "  1  ", quiet.QUIET, 123, 123, false},
-		"-1s":           {true, "  -1s  ", quiet.QUIET, 456, 456, false},
-		"0h":            {true, "  0h  ", quiet.QUIET, 123456, 0, true},
+		"nil": {
+			false, "", time.Second, time.Second, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-DURATION=1s`),
+			},
+		},
+		"empty": {
+			true, "", 0, 0, true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-DURATION=0s`),
+			},
+		},
+		"100s": {true, "    100s\t   ", 0, time.Second * 100, true, nil},
+		"1": {
+			true, "  1  ", 123, 123, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "1": time: missing unit in duration "1"`),
+			},
+		},
+		"-1s": {
+			true, "  -1s  ", 456, 456, false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "-1s": -1s is negative`),
+			},
+		},
+		"0h": {true, "  0h  ", 123456, 0, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -321,31 +383,46 @@ func TestReadNonnegDuration(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadNonnegDuration(tc.quiet, pp.NoIndent, key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadNonnegDuration(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadCron(t *testing.T) {
 	key := keyPrefix + "CRON"
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField cron.Schedule
-		newField cron.Schedule
-		ok       bool
+		set       bool
+		val       string
+		oldField  cron.Schedule
+		newField  cron.Schedule
+		ok        bool
+		ppRecords []pp.Record
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, cron.MustNew("@every 1h"), cron.MustNew("@every 1h"), true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true},
-		"empty-quiet":   {true, "", quiet.QUIET, cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true},
-		"empty-verbose": {true, "", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@yearly"), true},
-		"daily":         {true, " @daily  ", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@daily"), true},
-		"illformed":     {true, " @ddddd  ", quiet.VERBOSE, cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false},
+		"nil": {
+			false, "", cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-CRON=* * * * *`),
+			},
+		},
+		"empty": {
+			true, "", cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Info, pp.EmojiBullet, `Use default TEST-11D39F6A9A97AFAFD87CCEB-CRON=@every 3m`),
+			},
+		},
+		"@": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
+		"illformed": {
+			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
+			[]pp.Record{
+				pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to parse "@ddddd": parsing "@ddddd": unrecognized descriptor: @ddddd`), //nolint:lll
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -355,9 +432,11 @@ func TestReadCron(t *testing.T) {
 			}
 
 			field := tc.oldField
-			ok := config.ReadCron(tc.quiet, pp.NoIndent, key, &field)
+			ppmock := pp.NewMock()
+			ok := config.ReadCron(ppmock, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
+			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

@@ -37,9 +37,11 @@ func TestReadStringOkay(t *testing.T) {
 	})
 	defer useDirFS()
 
-	content, ok := file.ReadString(pp.NoIndent, path)
+	ppmock := pp.NewMock()
+	content, ok := file.ReadString(ppmock, path)
 	require.True(t, ok)
 	require.Equal(t, expected, content)
+	require.Empty(t, ppmock.Records)
 }
 
 //nolint:paralleltest // changing global var file.FS
@@ -47,10 +49,16 @@ func TestReadStringWrongPath(t *testing.T) {
 	useMemFS(fstest.MapFS{})
 	defer useDirFS()
 
-	path := "wrong/path.txt"
-	content, ok := file.ReadString(pp.NoIndent, path)
+	path := "/wrong/path.txt"
+	ppmock := pp.NewMock()
+	content, ok := file.ReadString(ppmock, path)
 	require.False(t, ok)
 	require.Empty(t, content)
+	require.Equal(t,
+		[]pp.Record{
+			pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to read "/wrong/path.txt": open /wrong/path.txt: file does not exist`), //nolint:lll
+		},
+		ppmock.Records)
 }
 
 //nolint:paralleltest // changing global var file.FS
@@ -65,7 +73,13 @@ func TestReadStringNoAccess(t *testing.T) {
 	})
 	defer useDirFS()
 
-	content, ok := file.ReadString(pp.NoIndent, "dir")
+	ppmock := pp.NewMock()
+	content, ok := file.ReadString(ppmock, "dir")
 	require.False(t, ok)
 	require.Empty(t, content)
+	require.Equal(t,
+		[]pp.Record{
+			pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to read "dir": read dir: invalid argument`),
+		},
+		ppmock.Records)
 }
