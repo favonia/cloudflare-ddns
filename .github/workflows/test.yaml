@@ -23,7 +23,9 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - uses: actions/checkout@v2
-      - run: go test -coverpkg=./... -coverprofile=coverage.txt -race -v ./...
+      - run: |
+          go generate ./...
+          go test -coverpkg=./... -coverprofile=coverage.txt -race -v ./...
       - uses: codecov/codecov-action@v2
         with:
           file: ./coverage.txt
