@@ -9,15 +9,14 @@
 A small and fast DDNS updater for Cloudflare.
 
 ```
+🔇 Quiet mode enabled
 🌟 Cloudflare DDNS
-🥷 Dropping privileges . . .
 🥷 Priviledges after dropping:
    🔸 Effective UID:      1000
    🔸 Effective GID:      1000
    🔸 Supplementary GIDs: (empty)
-🔇 Quiet mode enabled.
-🐣 Added a new A record of "……" (ID: ……).
-🐣 Added a new AAAA record of "……" (ID: ……).
+🐣 Added a new A record of "……" (ID: ……)
+🐣 Added a new AAAA record of "……" (ID: ……)
 ```
 
 ## 📜 Highlights
