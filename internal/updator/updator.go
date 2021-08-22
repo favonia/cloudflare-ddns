@@ -39,7 +39,7 @@ func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedI
 	return matchedIDs, unmatchedIDs
 }
 
-func Do(ctx context.Context, ppfmt pp.Fmt, args *Args) bool { //nolint:funlen,cyclop,gocognit
+func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyclop,gocognit
 	recordType := args.IPNetwork.RecordType()
 	domainDescription := args.Domain.Describe()
 

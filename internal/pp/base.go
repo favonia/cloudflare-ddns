@@ -1,12 +1,12 @@
 package pp
 
-type Fmt interface {
+//go:generate mockgen -destination=../mocks/mock_pp.go -package=mocks . PP
+
+type PP interface {
 	GetLevel() Level
 	SetLevel(Level)
 	IsEnabledFor(Level) bool
-	IncIndent() Fmt
-	Printf(Level, Emoji, string, ...interface{})
-	Debugf(Emoji, string, ...interface{})
+	IncIndent() PP
 	Infof(Emoji, string, ...interface{})
 	Noticef(Emoji, string, ...interface{})
 	Warningf(Emoji, string, ...interface{})

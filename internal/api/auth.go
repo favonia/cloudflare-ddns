@@ -8,5 +8,5 @@ import (
 )
 
 type Auth interface {
-	New(context.Context, pp.Fmt, time.Duration) (Handle, bool)
+	New(context.Context, pp.PP, time.Duration) (Handle, bool)
 }

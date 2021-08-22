@@ -12,7 +12,7 @@ type formatter struct {
 	level  Level
 }
 
-func New(writer io.Writer) Fmt {
+func New(writer io.Writer) PP {
 	return &formatter{
 		writer: writer,
 		indent: 0,
@@ -32,7 +32,7 @@ func (f *formatter) IsEnabledFor(lvl Level) bool {
 	return lvl >= f.level
 }
 
-func (f *formatter) IncIndent() Fmt {
+func (f *formatter) IncIndent() PP {
 	return &formatter{
 		writer: f.writer,
 		indent: f.indent + 1,
@@ -55,10 +55,6 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 
 func (f *formatter) Printf(lvl Level, emoji Emoji, format string, args ...interface{}) {
 	f.output(lvl, emoji, fmt.Sprintf(format, args...))
-}
-
-func (f *formatter) Debugf(emoji Emoji, format string, args ...interface{}) {
-	f.Printf(Debug, emoji, format, args...)
 }
 
 func (f *formatter) Infof(emoji Emoji, format string, args ...interface{}) {

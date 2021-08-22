@@ -7,7 +7,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func NormalizeIP(ppfmt pp.Fmt, ipNet ipnet.Type, ip net.IP) net.IP {
+func NormalizeIP(ppfmt pp.PP, ipNet ipnet.Type, ip net.IP) net.IP {
 	if ip == nil {
 		return nil
 	}

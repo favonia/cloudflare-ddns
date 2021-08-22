@@ -26,7 +26,7 @@ func tryRaiseCap(val cap.Value) {
 	}
 }
 
-func dropSuperuserGroup(ppfmt pp.Fmt) {
+func dropSuperuserGroup(ppfmt pp.PP) {
 	defaultGID := syscall.Getegid()
 	if defaultGID == 0 {
 		defaultGID = syscall.Getgid() // real group ID
@@ -55,7 +55,7 @@ func dropSuperuserGroup(ppfmt pp.Fmt) {
 	}
 }
 
-func dropSuperuser(ppfmt pp.Fmt) {
+func dropSuperuser(ppfmt pp.PP) {
 	defaultUID := syscall.Geteuid()
 	if defaultUID == 0 {
 		defaultUID = syscall.Getuid()
@@ -80,14 +80,14 @@ func dropSuperuser(ppfmt pp.Fmt) {
 	}
 }
 
-func dropCapabilities(ppfmt pp.Fmt) {
+func dropCapabilities(ppfmt pp.PP) {
 	if err := cap.NewSet().SetProc(); err != nil {
 		ppfmt.Errorf(pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
 	}
 }
 
 // dropPriviledges drops all privileges as much as possible.
-func dropPriviledges(ppfmt pp.Fmt) {
+func dropPriviledges(ppfmt pp.PP) {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiPriviledges, "Dropping privileges . . .")
 		ppfmt = ppfmt.IncIndent()
@@ -103,7 +103,7 @@ func dropPriviledges(ppfmt pp.Fmt) {
 	dropCapabilities(ppfmt)
 }
 
-func printCapabilities(ppfmt pp.Fmt) {
+func printCapabilities(ppfmt pp.PP) {
 	now, err := cap.GetPID(0)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
@@ -117,7 +117,7 @@ func printCapabilities(ppfmt pp.Fmt) {
 	}
 }
 
-func printPriviledges(ppfmt pp.Fmt) {
+func printPriviledges(ppfmt pp.PP) {
 	ppfmt.Noticef(pp.EmojiPriviledges, "Priviledges after dropping:")
 	inner := ppfmt.IncIndent()
 

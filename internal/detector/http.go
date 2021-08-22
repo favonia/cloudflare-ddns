@@ -16,10 +16,10 @@ type httpConn struct {
 	contentType string
 	accept      string
 	reader      io.Reader
-	extract     func(pp.Fmt, []byte) net.IP
+	extract     func(pp.PP, []byte) net.IP
 }
 
-func (d *httpConn) getIP(ctx context.Context, ppfmt pp.Fmt) net.IP {
+func (d *httpConn) getIP(ctx context.Context, ppfmt pp.PP) net.IP {
 	req, err := http.NewRequestWithContext(ctx, d.method, d.url, d.reader)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", d.url, err)
@@ -50,14 +50,14 @@ func (d *httpConn) getIP(ctx context.Context, ppfmt pp.Fmt) net.IP {
 	return d.extract(ppfmt, body)
 }
 
-func getIPFromHTTP(ctx context.Context, ppfmt pp.Fmt, url string) net.IP {
+func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) net.IP {
 	c := httpConn{
 		url:         url,
 		method:      http.MethodGet,
 		contentType: "",
 		accept:      "",
 		reader:      nil,
-		extract:     func(_ pp.Fmt, body []byte) net.IP { return net.ParseIP(string(body)) },
+		extract:     func(_ pp.PP, body []byte) net.IP { return net.ParseIP(string(body)) },
 	}
 
 	return c.getIP(ctx, ppfmt)
@@ -76,7 +76,7 @@ func (p *HTTP) String() string {
 	return p.PolicyName
 }
 
-func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.Fmt, ipNet ipnet.Type) net.IP {
+func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP {
 	url, found := p.URL[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())

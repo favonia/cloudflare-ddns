@@ -48,7 +48,7 @@ func Default() *Config {
 	}
 }
 
-func readAuthToken(ppfmt pp.Fmt) (string, bool) {
+func readAuthToken(ppfmt pp.PP) (string, bool) {
 	var (
 		token     = Getenv("CF_API_TOKEN")
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
@@ -84,7 +84,7 @@ func readAuthToken(ppfmt pp.Fmt) (string, bool) {
 	}
 }
 
-func ReadAuth(ppfmt pp.Fmt, field *api.Auth) bool {
+func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 	token, ok := readAuthToken(ppfmt)
 	if !ok {
 		return false
@@ -121,7 +121,7 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.Fmt, field map[ipnet.Type][]api.FQDN) bool {
+func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
 	var domains, ip4Domains, ip6Domains []api.FQDN
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
@@ -142,7 +142,7 @@ func ReadDomainMap(ppfmt pp.Fmt, field map[ipnet.Type][]api.FQDN) bool {
 	return true
 }
 
-func ReadPolicyMap(ppfmt pp.Fmt, field map[ipnet.Type]detector.Policy) bool {
+func ReadPolicyMap(ppfmt pp.PP, field map[ipnet.Type]detector.Policy) bool {
 	ip4Policy := field[ipnet.IP4]
 	ip6Policy := field[ipnet.IP6]
 
@@ -156,7 +156,7 @@ func ReadPolicyMap(ppfmt pp.Fmt, field map[ipnet.Type]detector.Policy) bool {
 	return true
 }
 
-func PrintConfig(ppfmt pp.Fmt, c *Config) {
+func PrintConfig(ppfmt pp.PP, c *Config) {
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
 	ppfmt = ppfmt.IncIndent()
 
@@ -187,7 +187,7 @@ func PrintConfig(ppfmt pp.Fmt, c *Config) {
 	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
 }
 
-func (c *Config) ReadEnv(ppfmt pp.Fmt) bool { //nolint:cyclop
+func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Noticef(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
@@ -209,7 +209,7 @@ func (c *Config) ReadEnv(ppfmt pp.Fmt) bool { //nolint:cyclop
 	return true
 }
 
-func (c *Config) checkUselessDomains(ppfmt pp.Fmt) {
+func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	count := map[api.FQDN]int{}
 	for _, domains := range c.Domains {
 		for _, domain := range domains {
@@ -230,7 +230,7 @@ func (c *Config) checkUselessDomains(ppfmt pp.Fmt) {
 	}
 }
 
-func (c *Config) Normalize(ppfmt pp.Fmt) bool {
+func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
 		return false

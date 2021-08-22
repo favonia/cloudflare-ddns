@@ -30,7 +30,7 @@ func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 
 var Version string //nolint:gochecknoglobals
 
-func welcome(ppfmt pp.Fmt) {
+func welcome(ppfmt pp.PP) {
 	if Version == "" {
 		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS")
 		return
@@ -39,7 +39,7 @@ func welcome(ppfmt pp.Fmt) {
 	ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context, ppfmt pp.Fmt) (*config.Config, api.Handle) {
+func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 	// reading the config
 	c := config.Default()
 	if !c.ReadEnv(ppfmt) {

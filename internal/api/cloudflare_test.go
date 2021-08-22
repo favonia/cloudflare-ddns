@@ -14,11 +14,13 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -43,9 +45,12 @@ const (
 	mockAccount = "account456"
 )
 
-func newServerAuth() (*httptest.Server, *http.ServeMux, *api.CloudflareAuth) {
+func newServerAuth(t *testing.T) (*http.ServeMux, *api.CloudflareAuth) {
+	t.Helper()
+
 	mux := http.NewServeMux()
 	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
 
 	auth := api.CloudflareAuth{
 		Token:     mockToken,
@@ -53,7 +58,7 @@ func newServerAuth() (*httptest.Server, *http.ServeMux, *api.CloudflareAuth) {
 		BaseURL:   ts.URL,
 	}
 
-	return ts, mux, &auth
+	return mux, &auth
 }
 
 func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
@@ -80,54 +85,49 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		mockID("result", 0))
 }
 
-func newHandle(t *testing.T) (*httptest.Server, *http.ServeMux, api.Handle) {
+func newHandle(t *testing.T) (*http.ServeMux, api.Handle) {
 	t.Helper()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, auth := newServerAuth()
+	mux, auth := newServerAuth(t)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
 		handleTokensVerify(t, w, r)
 	})
 
-	ppmock := pp.NewMock()
-	h, ok := auth.New(context.Background(), ppmock, time.Second)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
-	require.Empty(t, ppmock.Records)
 
-	return ts, mux, h
+	return mux, h
 }
 
 func TestNewValid(t *testing.T) {
 	t.Parallel()
 
-	ts, _, _ := newHandle(t)
-	defer ts.Close()
+	_, _ = newHandle(t)
 }
 
 func TestNewEmpty(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, auth := newServerAuth()
-	defer ts.Close()
+	_, auth := newServerAuth(t)
 
 	auth.Token = ""
-	ppmock := pp.NewMock()
-	h, ok := auth.New(context.Background(), ppmock, time.Second)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
+	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.False(t, ok)
 	require.Nil(t, h)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Failed to prepare the Cloudflare authentication: invalid credentials: API Token must not be empty`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func TestNewInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, auth := newServerAuth()
-	defer ts.Close()
+	mux, auth := newServerAuth(t)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -145,16 +145,14 @@ func TestNewInvalid(t *testing.T) {
 			}`)
 	})
 
-	ppmock := pp.NewMock()
-	h, ok := auth.New(context.Background(), ppmock, time.Second)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is not valid: %v", gomock.Any()),
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE"),
+	)
+	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.False(t, ok)
 	require.Nil(t, h)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Error, pp.EmojiUserError, `The Cloudflare API token is not valid: HTTP status 401: Invalid API Token (1000)`), //nolint:lll
-			pp.NewRecord(0, pp.Error, pp.EmojiUserError, `Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE`),
-		},
-		ppmock.Records)
 }
 
 func mockZone(zoneName string, i int) *cloudflare.Zone {
@@ -252,104 +250,102 @@ func (h *zonesHandler) isExhausted() bool {
 
 func TestActiveZonesRoot(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "")
 	require.True(t, ok)
 	require.Empty(t, zones)
-	require.Empty(t, ppmock.Records)
 }
 
 func TestActiveZonesTwo(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 
 	zh.set(map[string]int{"test.org": 2}, 1)
-	ppmock := pp.NewMock()
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
-	require.Empty(t, ppmock.Records)
 
 	zh.set(nil, 0)
-	ppmock.Clear()
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP = mocks.NewMockPP(mockCtrl)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
-	require.Empty(t, ppmock.Records)
 
 	h.FlushCache()
 
-	ppmock.Clear()
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP = mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to check the existence of a zone named %q: %v",
+		"test.org",
+		gomock.Any(),
+	)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "test.org": error unmarshalling the JSON response: unexpected end of JSON input`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func TestActiveZonesEmpty(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 
 	zh.set(map[string]int{}, 1)
-	ppmock := pp.NewMock()
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
-	require.Empty(t, ppmock.Records)
 
 	zh.set(nil, 0) // this should not affect the result due to the caching
-	ppmock.Clear()
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP = mocks.NewMockPP(mockCtrl)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
-	require.Empty(t, ppmock.Records)
 
 	h.FlushCache()
 
-	ppmock.Clear()
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), ppmock, "test.org")
+	mockPP = mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to check the existence of a zone named %q: %v",
+		"test.org",
+		gomock.Any(),
+	)
+	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "test.org": error unmarshalling the JSON response: unexpected end of JSON input`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
+//nolint:funlen
 func TestZoneOfDomain(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		zone        string
-		domain      api.FQDN
-		numZones    map[string]int
-		accessCount int
-		expected    string
-		ok          bool
-		ppRecords   []pp.Record
+		zone          string
+		domain        api.FQDN
+		numZones      map[string]int
+		accessCount   int
+		expected      string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
 		"root": {"test.org", "test.org", map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
 		"one":  {"test.org", "sub.test.org", map[string]int{"test.org": 1}, 2, mockID("test.org", 0), true, nil},
@@ -357,43 +353,51 @@ func TestZoneOfDomain(t *testing.T) {
 			"test.org", "sub.test.org",
 			map[string]int{},
 			3, "", false,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to find the zone of "sub.test.org"`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
 			},
 		},
 		"multiple": {
 			"test.org", "sub.test.org",
 			map[string]int{"test.org": 2},
 			2, "", false,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Found multiple active zones named "test.org". Specifying CF_ACCOUNT_ID might help`), //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible,
+					"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
+					"test.org",
+				)
 			},
 		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ts, mux, h := newHandle(t)
-			defer ts.Close()
+			mockCtrl := gomock.NewController(t)
+			mux, h := newHandle(t)
 
 			zh := newZonesHandler(t, mux)
 
 			zh.set(tc.numZones, tc.accessCount)
-			ppmock := pp.NewMock()
-			zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), ppmock, tc.domain)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, zoneID)
 			require.True(t, zh.isExhausted())
-			require.Equal(t, tc.ppRecords, ppmock.Records)
 
 			if tc.ok {
 				zh.set(nil, 0)
-				ppmock.Clear()
-				zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), ppmock, tc.domain)
+				mockPP = mocks.NewMockPP(mockCtrl)
+				if tc.prepareMockPP != nil {
+					tc.prepareMockPP(mockPP)
+				}
+				zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
 				require.True(t, zh.isExhausted())
-				require.Equal(t, tc.ppRecords, ppmock.Records)
 			}
 		})
 	}
@@ -401,19 +405,20 @@ func TestZoneOfDomain(t *testing.T) {
 
 func TestZoneOfDomainInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), ppmock, "sub.test.org")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, "sub.test.org")
 	require.False(t, ok)
 	require.Equal(t, "", zoneID)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func mockDNSRecord(id string, ipNet ipnet.Type, domain api.FQDN, ip net.IP) *cloudflare.DNSRecord {
@@ -457,9 +462,9 @@ func mockDNSListResponse(ipNet ipnet.Type, domain api.FQDN, ips map[string]net.I
 
 func TestListRecords(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
@@ -493,76 +498,68 @@ func TestListRecords(t *testing.T) {
 
 	expected := map[string]net.IP{"record1": net.ParseIP("::1"), "record2": net.ParseIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
-	ppmock := pp.NewMock()
-	ips, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	ips, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
 	require.Equal(t, expected, ips)
 	require.Equal(t, 0, accessCount)
-	require.Empty(t, ppmock.Records)
 
 	// testing the caching
-	ppmock.Clear()
-	ips, ok = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	ips, ok = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
 	require.Equal(t, expected, ips)
-	require.Empty(t, ppmock.Records)
 }
 
 func TestListRecordsInvalidDomain(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
 
-	ppmock := pp.NewMock()
-	ips, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP4)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
+	ips, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP4)
 	require.False(t, ok)
 	require.Nil(t, ips)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to retrieve records of "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 
-	ppmock.Clear()
-	ips, ok = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
+	ips, ok = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.False(t, ok)
 	require.Nil(t, ips)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to retrieve records of "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func TestListRecordsInvalidZone(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	ips, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP4)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ips, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP4)
 	require.False(t, ok)
 	require.Nil(t, ips)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 
-	ppmock.Clear()
-	ips, ok = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ips, ok = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.False(t, ok)
 	require.Nil(t, ips)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func envelopDNSRecordResponse(record *cloudflare.DNSRecord) *cloudflare.DNSRecordResponse {
@@ -589,11 +586,11 @@ func mockDNSRecordResponse(id string, ipNet ipnet.Type, domain api.FQDN, ip net.
 	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, domain, ip))
 }
 
-func TestDeleteRecordsValid(t *testing.T) {
+func TestDeleteRecordValid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
@@ -632,62 +629,60 @@ func TestDeleteRecordsValid(t *testing.T) {
 		})
 
 	deleteAccessCount = 1
-	ppmock := pp.NewMock()
-	ok := h.DeleteRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	ok := h.DeleteRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1")
 	require.True(t, ok)
-	require.Empty(t, ppmock.Records)
 
 	listAccessCount, deleteAccessCount = 1, 1
-	ppmock.Clear()
-	_, _ = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
-	_ = h.DeleteRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1")
-	rs, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	_, _ = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
+	_ = h.DeleteRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1")
+	rs, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
 	require.Empty(t, rs)
-	require.Empty(t, ppmock.Records)
 }
 
-func TestDeleteRecordsInvalid(t *testing.T) {
+func TestDeleteRecordInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
 
-	ppmock := pp.NewMock()
-	ok := h.DeleteRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+		"AAAA",
+		"sub.test.org",
+		"record1",
+		gomock.Any(),
+	)
+	ok := h.DeleteRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1")
 	require.False(t, ok)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to delete a stale AAAA record of "sub.test.org" (ID: record1): error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
-func TestDeleteRecordsZoneInvalid(t *testing.T) {
+func TestDeleteRecordZoneInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	ok := h.DeleteRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ok := h.DeleteRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1")
 	require.False(t, ok)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 //nolint:funlen
 func TestUpdateRecordValid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
@@ -736,62 +731,60 @@ func TestUpdateRecordValid(t *testing.T) {
 		})
 
 	updateAccessCount = 1
-	ppmock := pp.NewMock()
-	ok := h.UpdateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::2"))
+	mockPP := mocks.NewMockPP(mockCtrl)
+	ok := h.UpdateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::2"))
 	require.True(t, ok)
-	require.Empty(t, ppmock.Records)
 
 	listAccessCount, updateAccessCount = 1, 1
-	ppmock.Clear()
-	_, _ = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
-	_ = h.UpdateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::2"))
-	rs, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	_, _ = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
+	_ = h.UpdateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::2"))
+	rs, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
 	require.Equal(t, map[string]net.IP{"record1": net.ParseIP("::2")}, rs)
-	require.Empty(t, ppmock.Records)
 }
 
 func TestUpdateRecordInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
 
-	ppmock := pp.NewMock()
-	ok := h.UpdateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::1"))
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+		"AAAA",
+		"sub.test.org",
+		"record1",
+		gomock.Any(),
+	)
+	ok := h.UpdateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::1"))
 	require.False(t, ok)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to update a stale AAAA record of "sub.test.org" (ID: record1): error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func TestUpdateRecordInvalidZone(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	ok := h.UpdateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::1"))
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ok := h.UpdateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, "record1", net.ParseIP("::1"))
 	require.False(t, ok)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 //nolint:funlen
 func TestCreateRecordValid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
@@ -841,55 +834,52 @@ func TestCreateRecordValid(t *testing.T) {
 		})
 
 	createAccessCount = 1
-	ppmock := pp.NewMock()
-	actualID, ok := h.CreateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	mockPP := mocks.NewMockPP(mockCtrl)
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
 	require.True(t, ok)
 	require.Equal(t, "record1", actualID)
-	require.Empty(t, ppmock.Records)
 
 	listAccessCount, createAccessCount = 1, 1
-	ppmock.Clear()
-	_, _ = h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
-	_, _ = h.CreateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false)
-	rs, ok := h.ListRecords(context.Background(), ppmock, "sub.test.org", ipnet.IP6)
+	mockPP = mocks.NewMockPP(mockCtrl)
+	_, _ = h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
+	_, _ = h.CreateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false)
+	rs, ok := h.ListRecords(context.Background(), mockPP, "sub.test.org", ipnet.IP6)
 	require.True(t, ok)
 	require.Equal(t, map[string]net.IP{"record1": net.ParseIP("::1")}, rs)
-	require.Empty(t, ppmock.Records)
 }
 
 func TestCreateRecordInvalid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, mux, h := newHandle(t)
-	defer ts.Close()
+	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
 	zh.set(map[string]int{"test.org": 1}, 2)
 
-	ppmock := pp.NewMock()
-	actualID, ok := h.CreateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
+		"AAAA",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to add a new AAAA record of "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }
 
 func TestCreateRecordInvalidZone(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
 
-	ts, _, h := newHandle(t)
-	defer ts.Close()
+	_, h := newHandle(t)
 
-	ppmock := pp.NewMock()
-	actualID, ok := h.CreateRecord(context.Background(), ppmock, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, "sub.test.org", ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
-	require.Equal(t,
-		[]pp.Record{
-			pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to check the existence of a zone named "sub.test.org": error unmarshalling the JSON response error body: invalid character 'p' after top-level value`), //nolint:lll
-		},
-		ppmock.Records)
 }

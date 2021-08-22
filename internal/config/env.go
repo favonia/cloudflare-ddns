@@ -18,7 +18,7 @@ func Getenv(key string) string {
 }
 
 // ReadQuiet reads an environment variable as quiet/verbose.
-func ReadQuiet(ppfmt pp.Fmt, key string) bool {
+func ReadQuiet(ppfmt pp.PP, key string) bool {
 	val := Getenv(key)
 	if val == "" {
 		return true
@@ -40,7 +40,7 @@ func ReadQuiet(ppfmt pp.Fmt, key string) bool {
 }
 
 // ReadBool reads an environment variable as a boolean value.
-func ReadBool(ppfmt pp.Fmt, key string, field *bool) bool {
+func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 	val := Getenv(key)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%t", key, *field)
@@ -58,7 +58,7 @@ func ReadBool(ppfmt pp.Fmt, key string, field *bool) bool {
 }
 
 // ReadNonnegInt reads an environment variable as an integer.
-func ReadNonnegInt(ppfmt pp.Fmt, key string, field *int) bool {
+func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
@@ -81,7 +81,7 @@ func ReadNonnegInt(ppfmt pp.Fmt, key string, field *int) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(ppfmt pp.Fmt, key string, field *[]api.FQDN) bool {
+func ReadDomains(ppfmt pp.PP, key string, field *[]api.FQDN) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
 	*field = make([]api.FQDN, 0, len(rawList))
@@ -93,7 +93,7 @@ func ReadDomains(ppfmt pp.Fmt, key string, field *[]api.FQDN) bool {
 
 		item, err := api.NewFQDN(item)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item, err)
+			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
 		}
 
 		*field = append(*field, item)
@@ -103,10 +103,10 @@ func ReadDomains(ppfmt pp.Fmt, key string, field *[]api.FQDN) bool {
 }
 
 // ReadPolicy reads an environment variable and parses it as a policy.
-func ReadPolicy(ppfmt pp.Fmt, key string, field *detector.Policy) bool {
+func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
 		return true
 	case "cloudflare":
 		*field = detector.NewCloudflare()
@@ -127,10 +127,10 @@ func ReadPolicy(ppfmt pp.Fmt, key string, field *detector.Policy) bool {
 }
 
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.
-func ReadNonnegDuration(ppfmt pp.Fmt, key string, field *time.Duration) bool {
+func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, field)
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%v", key, *field)
 		return true
 	}
 
@@ -150,10 +150,10 @@ func ReadNonnegDuration(ppfmt pp.Fmt, key string, field *time.Duration) bool {
 }
 
 // ReadCron reads an environment variable and parses it as a Cron expression.
-func ReadCron(ppfmt pp.Fmt, key string, field *cron.Schedule) bool {
+func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
 		return true
 	}
 

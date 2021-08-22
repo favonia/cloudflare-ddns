@@ -33,7 +33,7 @@ type CloudflareAuth struct {
 	BaseURL   string
 }
 
-func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.Fmt, cacheExpiration time.Duration) (Handle, bool) {
+func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
@@ -75,7 +75,7 @@ func (h *CloudflareHandle) FlushCache() {
 }
 
 // ActiveZones lists all active zones of the given name.
-func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.Fmt, name string) ([]string, bool) {
+func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
 	if name == "" {
@@ -102,7 +102,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.Fmt, name s
 	return ids, true
 }
 
-func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.Fmt, domain FQDN) (string, bool) {
+func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain FQDN) (string, bool) {
 	if id, found := h.cache.zoneOfDomain.Get(domain.ToASCII()); found {
 		return id.(string), true
 	}
@@ -132,7 +132,7 @@ zoneSearch:
 	return "", false
 }
 
-func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.Fmt,
+func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		return rmap.(map[string]net.IP), true
@@ -163,7 +163,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.Fmt,
 	return rmap, true
 }
 
-func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.Fmt,
+func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type, id string) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -186,7 +186,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.Fmt,
 	return true
 }
 
-func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.Fmt,
+func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -216,7 +216,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.Fmt,
 	return true
 }
 
-func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.Fmt,
+func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {

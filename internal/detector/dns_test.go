@@ -8,12 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/dns/dnsmessage"
 
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -98,16 +100,16 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 	ip6 := net.ParseIP("::1:2:3:4").To16()
 
 	for name, tc := range map[string]struct {
-		urlKey    ipnet.Type
-		ipNet     ipnet.Type
-		name      string
-		class     dnsmessage.Class
-		response  bool
-		header    *dnsmessage.Header
-		idShift   uint16
-		answers   []dnsmessage.Resource
-		expected  net.IP
-		ppRecords []pp.Record
+		urlKey        ipnet.Type
+		ipNet         ipnet.Type
+		name          string
+		class         dnsmessage.Class
+		response      bool
+		header        *dnsmessage.Header
+		idShift       uint16
+		answers       []dnsmessage.Resource
+		expected      net.IP
+		prepareMockPP func(*mocks.MockPP)
 	}{
 		"correct": {
 			ipnet.IP4, ipnet.IP4, "test.",
@@ -147,8 +149,12 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiError, `Failed to prepare the DNS query: packing Question: Name: name is not in canonical format (it must end with a .)`), //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiError,
+					"Failed to prepare the DNS query: %v",
+					gomock.Any(),
+				)
 			},
 		},
 		"6to4": {
@@ -169,8 +175,13 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiError, `"::1:2:3:4" is not a valid IPv4 address`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiError,
+					"%q is not a valid %s address",
+					ip6,
+					"IPv4",
+				)
 			},
 		},
 		"unmatched-id": {
@@ -191,8 +202,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`,
+				)
 			},
 		},
 		"notxt": {
@@ -203,8 +216,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			0,
 			[]dnsmessage.Resource{},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`), //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`,
+				)
 			},
 		},
 		"notresponse": {
@@ -225,8 +240,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: QR was not set`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: QR was not set`,
+				)
 			},
 		},
 		"truncated": {
@@ -247,8 +264,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: TC was set`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: TC was set`,
+				)
 			},
 		},
 		"rcode": {
@@ -269,8 +288,12 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: response code is RCodeFormatError`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible,
+					"Invalid DNS response: response code is %v",
+					dnsmessage.RCodeFormatError,
+				)
 			},
 		},
 		"irrelevant-records1": {
@@ -349,8 +372,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`), //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`,
+				)
 			},
 		},
 		"irrelevant-records4": {
@@ -429,8 +454,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`,
+				)
 			},
 		},
 		"multiple2": {
@@ -460,8 +487,10 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`,
+				)
 			},
 		},
 		"noresponse": {
@@ -482,8 +511,12 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Invalid DNS response: unpacking header: id: insufficient data for base length type`), //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible,
+					"Invalid DNS response: %v",
+					gomock.Any(),
+				)
 			},
 		},
 		"nourl": {
@@ -504,14 +537,19 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			},
 			nil,
-			[]pp.Record{
-				pp.NewRecord(0, pp.Warning, pp.EmojiImpossible, `Unhandled IP network: IPv6`),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiImpossible,
+					"Unhandled IP network: %s",
+					"IPv6",
+				)
 			},
 		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			mockCtrl := gomock.NewController(t)
 
 			server := setupServer(t, tc.name, tc.class, tc.response, tc.header, tc.idShift, tc.answers)
 
@@ -526,10 +564,12 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 				},
 			}
 
-			ppmock := pp.NewMock()
-			ip := policy.GetIP(context.Background(), ppmock, tc.ipNet)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ip := policy.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
-			require.Equal(t, tc.ppRecords, ppmock.Records)
 		})
 	}
 }

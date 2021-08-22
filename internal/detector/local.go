@@ -21,7 +21,7 @@ func (p *Local) String() string {
 	return p.PolicyName
 }
 
-func (p *Local) GetIP(ctx context.Context, ppfmt pp.Fmt, ipNet ipnet.Type) net.IP {
+func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP {
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())

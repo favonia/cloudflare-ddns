@@ -27,7 +27,7 @@ func randUint16() uint16 {
 	return binary.BigEndian.Uint16(buf)
 }
 
-func newDNSQuery(ppfmt pp.Fmt, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
+func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
 	msg, err := (&dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
@@ -60,7 +60,7 @@ func newDNSQuery(ppfmt pp.Fmt, id uint16, name string, class dnsmessage.Class) (
 	return msg, true
 }
 
-func parseDNSAnswers(ppfmt pp.Fmt, answers []dnsmessage.Resource,
+func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 	name string, class dnsmessage.Class) net.IP {
 	var ipString string
 
@@ -92,7 +92,7 @@ func parseDNSAnswers(ppfmt pp.Fmt, answers []dnsmessage.Resource,
 	return net.ParseIP(ipString)
 }
 
-func parseDNSResponse(ppfmt pp.Fmt, r []byte, id uint16, name string, class dnsmessage.Class) net.IP {
+func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsmessage.Class) net.IP {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: %v", err)
@@ -120,7 +120,7 @@ func parseDNSResponse(ppfmt pp.Fmt, r []byte, id uint16, name string, class dnsm
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, ppfmt pp.Fmt,
+func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	url string, name string, class dnsmessage.Class) net.IP {
 	// message ID for the DNS payloads
 	id := randUint16()
@@ -136,7 +136,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.Fmt,
 		contentType: "application/dns-message",
 		accept:      "application/dns-message",
 		reader:      bytes.NewReader(q),
-		extract: func(ppfmt pp.Fmt, body []byte) net.IP {
+		extract: func(ppfmt pp.PP, body []byte) net.IP {
 			return parseDNSResponse(ppfmt, body, id, name, class)
 		},
 	}
@@ -161,7 +161,7 @@ func (p *DNSOverHTTPS) String() string {
 	return p.PolicyName
 }
 
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.Fmt, ipNet ipnet.Type) net.IP {
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
