@@ -156,7 +156,7 @@ func ReadPolicyMap(ppfmt pp.PP, field map[ipnet.Type]detector.Policy) bool {
 	return true
 }
 
-func PrintConfig(ppfmt pp.PP, c *Config) {
+func Print(ppfmt pp.PP, c *Config) {
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
 	ppfmt = ppfmt.IncIndent()
 
