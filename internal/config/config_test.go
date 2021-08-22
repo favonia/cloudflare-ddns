@@ -25,9 +25,9 @@ func TestDefaultConfigNotNil(t *testing.T) {
 
 //nolint:paralleltest // environment vars are global
 func TestReadAuthToken(t *testing.T) {
-	unset("CF_API_TOKEN")
-	unset("CF_API_TOKEN_FILE")
-	unset("CF_ACCOUNT_ID")
+	unset(t, "CF_API_TOKEN")
+	unset(t, "CF_API_TOKEN_FILE")
+	unset(t, "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
 		token         string
@@ -54,10 +54,8 @@ func TestReadAuthToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			set("CF_API_TOKEN", tc.token)
-			set("CF_ACCOUNT_ID", tc.account)
-			defer unset("CF_API_TOKEN")
-			defer unset("CF_ACCOUNT_ID")
+			store(t, "CF_API_TOKEN", tc.token)
+			store(t, "CF_ACCOUNT_ID", tc.account)
 
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -82,9 +80,9 @@ func useMemFS(memfs fstest.MapFS) {
 
 //nolint:funlen,paralleltest // environment vars and file system are global
 func TestReadAuthTokenWithFile(t *testing.T) {
-	unset("CF_API_TOKEN")
-	unset("CF_API_TOKEN_FILE")
-	unset("CF_ACCOUNT_ID")
+	unset(t, "CF_API_TOKEN")
+	unset(t, "CF_API_TOKEN_FILE")
+	unset(t, "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
 		token         string
@@ -126,12 +124,9 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			set("CF_API_TOKEN", tc.token)
-			set("CF_API_TOKEN_FILE", tc.tokenFile)
-			set("CF_ACCOUNT_ID", tc.account)
-			defer unset("CF_API_TOKEN")
-			defer unset("CF_API_TOKEN_FILE")
-			defer unset("CF_ACCOUNT_ID")
+			store(t, "CF_API_TOKEN", tc.token)
+			store(t, "CF_API_TOKEN_FILE", tc.tokenFile)
+			store(t, "CF_ACCOUNT_ID", tc.account)
 
 			useMemFS(fstest.MapFS{
 				tc.actualPath: &fstest.MapFile{
@@ -160,10 +155,6 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 
 //nolint:paralleltest // environment vars are global
 func TestReadDomainMap(t *testing.T) {
-	unset("DOMAINS")
-	unset("IP4_DOMAINS")
-	unset("IP6_DOMAINS")
-
 	for name, tc := range map[string]struct {
 		domains       string
 		ip4Domains    string
@@ -195,12 +186,9 @@ func TestReadDomainMap(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			set("DOMAINS", tc.domains)
-			set("IP4_DOMAINS", tc.ip4Domains)
-			set("IP6_DOMAINS", tc.ip6Domains)
-			defer unset("DOMAINS")
-			defer unset("IP4_DOMAINS")
-			defer unset("IP6_DOMAINS")
+			store(t, "DOMAINS", tc.domains)
+			store(t, "IP4_DOMAINS", tc.ip4Domains)
+			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
 			field := map[ipnet.Type][]api.FQDN{}
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -216,9 +204,6 @@ func TestReadDomainMap(t *testing.T) {
 
 //nolint:funlen,paralleltest // environment vars are global
 func TestReadPolicyMap(t *testing.T) {
-	unset("IP4_POLICY")
-	unset("IP6_POLICY")
-
 	var (
 		cloudflare = detector.NewCloudflare()
 		local      = detector.NewLocal()
@@ -294,10 +279,8 @@ func TestReadPolicyMap(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			set("IP4_POLICY", tc.ip4Policy)
-			set("IP6_POLICY", tc.ip6Policy)
-			defer unset("IP4_POLICY")
-			defer unset("IP6_POLICY")
+			store(t, "IP4_POLICY", tc.ip4Policy)
+			store(t, "IP6_POLICY", tc.ip6Policy)
 
 			field := map[ipnet.Type]detector.Policy{ipnet.IP4: unmanaged, ipnet.IP6: local}
 			mockPP := mocks.NewMockPP(mockCtrl)

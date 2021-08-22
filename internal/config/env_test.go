@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -19,17 +18,25 @@ import (
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
 
-func set(key string, val string) {
-	if os.Getenv(key) != "" {
-		panic(fmt.Sprintf("%s was already set", key))
+func rawSet(key string, set bool, val string) {
+	if set {
+		os.Setenv(key, val)
+	} else {
+		os.Unsetenv(key)
 	}
-
-	os.Setenv(key, val)
 }
 
-func unset(key string) {
-	os.Unsetenv(key)
+func set(t *testing.T, key string, set bool, val string) {
+	t.Helper()
+
+	oldVal, oldSet := os.LookupEnv(key)
+
+	rawSet(key, set, val)
+	t.Cleanup(func() { rawSet(key, oldSet, oldVal) })
 }
+
+func store(t *testing.T, key string, val string) { t.Helper(); set(t, key, true, val) }
+func unset(t *testing.T, key string)             { t.Helper(); set(t, key, false, "") }
 
 //nolint:paralleltest // environment vars are global
 func TestGetenv(t *testing.T) {
@@ -47,10 +54,7 @@ func TestGetenv(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 			require.Equal(t, tc.expected, config.Getenv(key))
 		})
 	}
@@ -90,10 +94,7 @@ func TestReadQuiet(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -164,10 +165,7 @@ func TestReadBool(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -230,10 +228,7 @@ func TestReadNonnegInt(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -277,10 +272,7 @@ func TestReadDomains(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -340,10 +332,7 @@ func TestReadPolicy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -400,10 +389,7 @@ func TestReadNonnegDuration(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -453,10 +439,7 @@ func TestReadCron(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
