@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 )
 
 func TestUnmanagedIsManaged(t *testing.T) {
@@ -32,8 +34,10 @@ func TestUnmanagedGetIP(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			mockCtrl := gomock.NewController(t)
 
-			ip := detector.NewUnmanaged().GetIP(context.Background(), 3, tc)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			ip := detector.NewUnmanaged().GetIP(context.Background(), mockPP, tc)
 			require.Nil(t, ip)
 		})
 	}

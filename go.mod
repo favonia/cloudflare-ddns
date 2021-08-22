@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/cloudflare/cloudflare-go v0.20.0
+	github.com/golang/mock v1.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.7.0

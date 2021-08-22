@@ -11,5 +11,5 @@ import (
 type Policy interface {
 	IsManaged() bool
 	String() string
-	GetIP(context.Context, pp.Indent, ipnet.Type) net.IP
+	GetIP(context.Context, pp.PP, ipnet.Type) net.IP
 }

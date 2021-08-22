@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
@@ -30,7 +31,7 @@ func unset(key string) {
 	os.Unsetenv(key)
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestGetenv(t *testing.T) {
 	key := keyPrefix + "VAR"
 	for name, tc := range map[string]struct {
@@ -55,200 +56,245 @@ func TestGetenv(t *testing.T) {
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadQuiet(t *testing.T) {
 	key := keyPrefix + "QUIET"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		oldField quiet.Quiet
-		newField quiet.Quiet
-		ok       bool
+		set           bool
+		val           string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil1":     {false, "", quiet.VERBOSE, quiet.VERBOSE, true},
-		"nil2":     {false, "", quiet.QUIET, quiet.QUIET, true},
-		"empty1":   {true, "  ", quiet.VERBOSE, quiet.VERBOSE, true},
-		"empty2":   {true, " ", quiet.QUIET, quiet.QUIET, true},
-		"true1":    {true, "true   ", quiet.VERBOSE, quiet.QUIET, true},
-		"true2":    {true, " true", quiet.QUIET, quiet.QUIET, true},
-		"false1":   {true, "    false ", quiet.VERBOSE, quiet.VERBOSE, true},
-		"false2":   {true, " false    ", quiet.QUIET, quiet.VERBOSE, true},
-		"illform1": {true, "weird", quiet.VERBOSE, quiet.VERBOSE, false},
-		"illform2": {true, "weird", quiet.QUIET, quiet.QUIET, false},
+		"nil":   {false, "", true, nil},
+		"empty": {true, " ", true, nil},
+		"true": {
+			true, " true", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().SetLevel(pp.Notice)
+			},
+		},
+		"false": {
+			true, "    false ", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().SetLevel(pp.Info)
+			},
+		},
+		"illform": {
+			true, "weird", false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
-			field := tc.oldField
-			ok := config.ReadQuiet(pp.Indent(1), key, &field)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
-		})
-	}
-}
-
-//nolint: paralleltest // environment vars are global
-func TestReadString(t *testing.T) {
-	key := keyPrefix + "STRING"
-	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField string
-		newField string
-		ok       bool
-	}{
-		"nil1":    {false, "", quiet.VERBOSE, "original", "original", true},
-		"nil2":    {false, "", quiet.QUIET, "original", "original", true},
-		"empty1":  {true, "  ", quiet.VERBOSE, "original", "original", true},
-		"empty2":  {true, " ", quiet.QUIET, "original", "original", true},
-		"random1": {true, " ran dom ", quiet.VERBOSE, "original", "ran dom", true},
-		"random2": {true, "  random", quiet.QUIET, "original", "random", true},
-	} {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
 			}
 
-			field := tc.oldField
-			ok := config.ReadString(tc.quiet, pp.Indent(1), key, &field)
+			var wrappedPP pp.PP = mockPP
+
+			ok := config.ReadQuiet(key, &wrappedPP)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:funlen,paralleltest // environment vars are global
 func TestReadBool(t *testing.T) {
 	key := keyPrefix + "BOOL"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField bool
-		newField bool
-		ok       bool
+		set           bool
+		val           string
+		oldField      bool
+		newField      bool
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil1":     {false, "", quiet.VERBOSE, true, true, true},
-		"nil2":     {false, "", quiet.QUIET, false, false, true},
-		"empty1":   {true, " ", quiet.VERBOSE, true, true, true},
-		"empty2":   {true, " \t ", quiet.QUIET, false, false, true},
-		"true1":    {true, "true ", quiet.VERBOSE, true, true, true},
-		"true2":    {true, " \t true", quiet.QUIET, false, true, true},
-		"false1":   {true, "false ", quiet.VERBOSE, true, false, true},
-		"false2":   {true, " false", quiet.QUIET, false, false, true},
-		"illform1": {true, "weird\t  ", quiet.VERBOSE, false, false, false},
-		"illform2": {true, " weird", quiet.QUIET, true, true, false},
+		"nil1": {
+			false, "", true, true, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", true)
+			},
+		},
+		"nil2": {
+			false, "", false, false, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", false)
+			},
+		},
+		"empty1": {
+			true, " ", true, true, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", true)
+			},
+		},
+		"empty2": {
+			true, " \t ", false, false, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", false)
+			},
+		},
+		"true1":  {true, "true ", true, true, true, nil},
+		"true2":  {true, " \t true", false, true, true, nil},
+		"false1": {true, "false ", true, false, true, nil},
+		"false2": {true, " false", false, false, true, nil},
+		"illform1": {
+			true, "weird\t  ", false, false, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+			},
+		},
+		"illform2": {
+			true, " weird", true, true, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadBool(tc.quiet, pp.Indent(1), key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadBool(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:funlen,paralleltest // environment vars are global
 func TestReadNonnegInt(t *testing.T) {
 	key := keyPrefix + "INT"
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField int
-		newField int
-		ok       bool
+		set           bool
+		val           string
+		oldField      int
+		newField      int
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, 100, 100, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, 100, 100, true},
-		"empty-quiet":   {true, "", quiet.QUIET, 100, 100, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, 100, 100, true},
-		"zero":          {true, "0   ", quiet.VERBOSE, 100, 0, true},
-		"-1-quiet":      {true, "   -1", quiet.QUIET, 100, 100, false},
-		"-1-verbose":    {true, "   -1", quiet.VERBOSE, 100, 100, false},
-		"1":             {true, "   1   ", quiet.VERBOSE, 100, 1, true},
-		"1.0":           {true, "   1.0   ", quiet.VERBOSE, 100, 100, false},
-		"words-quiet":   {true, "   words   ", quiet.QUIET, 100, 100, false},
-		"words-verbose": {true, "   words   ", quiet.VERBOSE, 100, 100, false},
-		"9999999":       {true, "   9999999   ", quiet.VERBOSE, 100, 9999999, true},
+		"nil": {
+			false, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TEST-11D39F6A9A97AFAFD87CCEB-INT", 100)
+			},
+		},
+		"empty": {
+			true, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TEST-11D39F6A9A97AFAFD87CCEB-INT", 100)
+			},
+		},
+		"zero": {true, "0   ", 100, 0, true, nil},
+		"-1": {
+			true, "   -1", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %d is negative", "-1", gomock.Any())
+			},
+		},
+		"1": {true, "   1   ", 100, 1, true, nil},
+		"1.0": {
+			true, "   1.0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "1.0", gomock.Any())
+			},
+		},
+		"words": {
+			true, "   word   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
+			},
+		},
+		"9999999": {true, "   9999999   ", 100, 9999999, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadNonnegInt(tc.quiet, pp.NoIndent, key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadNonnegInt(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
 	type ds = []api.FQDN
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField ds
-		newField ds
-		ok       bool
+		set           bool
+		val           string
+		oldField      ds
+		newField      ds
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil-quiet":   {false, "", quiet.QUIET, ds{"test.org"}, ds{}, true},
-		"nil-verbose": {false, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
-		"empty":       {true, "", quiet.VERBOSE, ds{"test.org"}, ds{}, true},
-		"test1": {
-			true,
-			"書.org ,  Bücher.org  ",
-			quiet.VERBOSE,
+		"nil":   {false, "", ds{"test.org"}, ds{}, true, nil},
+		"empty": {true, "", ds{"test.org"}, ds{}, true, nil},
+		"test1": {true, "書.org ,  Bücher.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil},
+		"test2": {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil}, //nolint:lll
+		"illformed": {
+			true, "xn--:D.org",
 			ds{"random.org"},
-			ds{"xn--rov.org", "xn--bcher-kva.org"},
+			ds{"xn--:d.org"},
 			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "xn--:d.org", gomock.Any()) //nolint:lll
+			},
 		},
-		"test2": {
-			true,
-			"  \txn--rov.org    ,   xn--Bcher-kva.org  ",
-			quiet.VERBOSE,
-			ds{"random.org"},
-			ds{"xn--rov.org", "xn--bcher-kva.org"},
-			true,
-		},
-		"illformed": {true, "xn--:D.org", quiet.VERBOSE, ds{"random.org"}, ds{"xn--:d.org"}, true},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadDomains(quiet.QUIET, pp.NoIndent, key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadDomains(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
@@ -260,102 +306,164 @@ func TestReadPolicy(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField detector.Policy
-		newField detector.Policy
-		ok       bool
+		set           bool
+		val           string
+		oldField      detector.Policy
+		newField      detector.Policy
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, unmanaged, unmanaged, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, local, local, true},
-		"empty-quiet":   {true, "", quiet.QUIET, unmanaged, unmanaged, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, unmanaged, unmanaged, true},
-		"cloudflare":    {true, "    cloudflare\t   ", quiet.VERBOSE, unmanaged, cloudflare, true},
-		"unmanaged":     {true, "   unmanaged   ", quiet.QUIET, cloudflare, unmanaged, true},
-		"local":         {true, "   local   ", quiet.QUIET, cloudflare, local, true},
-		"ipify":         {true, "     ipify  ", quiet.QUIET, cloudflare, ipify, true},
-		"others":        {true, "   something-else ", quiet.VERBOSE, ipify, ipify, false},
+		"nil": {
+			false, "", unmanaged, unmanaged, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "unmanaged")
+			},
+		},
+		"empty": {
+			true, "", local, local, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "local")
+			},
+		},
+		"cloudflare": {true, "    cloudflare\t   ", unmanaged, cloudflare, true, nil},
+		"unmanaged":  {true, "   unmanaged   ", cloudflare, unmanaged, true, nil},
+		"local":      {true, "   local   ", cloudflare, local, true, nil},
+		"ipify":      {true, "     ipify  ", cloudflare, ipify, true, nil},
+		"others": {
+			true, "   something-else ", ipify, ipify, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", "something-else")
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadPolicy(tc.quiet, pp.NoIndent, key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadPolicy(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadNonnegDuration(t *testing.T) {
 	key := keyPrefix + "DURATION"
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField time.Duration
-		newField time.Duration
-		ok       bool
+		set           bool
+		val           string
+		oldField      time.Duration
+		newField      time.Duration
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, time.Second, time.Second, true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, 0, 0, true},
-		"empty-quiet":   {true, "", quiet.QUIET, time.Hour, time.Hour, true},
-		"empty-verbose": {true, "", quiet.VERBOSE, 200, 200, true},
-		"100s":          {true, "    100s\t   ", quiet.VERBOSE, 0, time.Second * 100, true},
-		"1":             {true, "  1  ", quiet.QUIET, 123, 123, false},
-		"-1s":           {true, "  -1s  ", quiet.QUIET, 456, 456, false},
-		"0h":            {true, "  0h  ", quiet.QUIET, 123456, 0, true},
+		"nil": {
+			false, "", time.Second, time.Second, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "TEST-11D39F6A9A97AFAFD87CCEB-DURATION", time.Second)
+			},
+		},
+		"empty": {
+			true, "", 0, 0, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "TEST-11D39F6A9A97AFAFD87CCEB-DURATION", time.Duration(0))
+			},
+		},
+		"100s": {true, "    100s\t   ", 0, time.Second * 100, true, nil},
+		"1": {
+			true, "  1  ", 123, 123, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "1", gomock.Any())
+			},
+		},
+		"-1s": {
+			true, "  -1s  ", 456, 456, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v is negative", "-1s", -time.Second)
+			},
+		},
+		"0h": {true, "  0h  ", 123456, 0, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadNonnegDuration(tc.quiet, pp.NoIndent, key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadNonnegDuration(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
 	}
 }
 
-//nolint: paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadCron(t *testing.T) {
 	key := keyPrefix + "CRON"
 
 	for name, tc := range map[string]struct {
-		set      bool
-		val      string
-		quiet    quiet.Quiet
-		oldField cron.Schedule
-		newField cron.Schedule
-		ok       bool
+		set           bool
+		val           string
+		oldField      cron.Schedule
+		newField      cron.Schedule
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil-quiet":     {false, "", quiet.QUIET, cron.MustNew("@every 1h"), cron.MustNew("@every 1h"), true},
-		"nil-verbose":   {false, "", quiet.VERBOSE, cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true},
-		"empty-quiet":   {true, "", quiet.QUIET, cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true},
-		"empty-verbose": {true, "", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@yearly"), true},
-		"daily":         {true, " @daily  ", quiet.VERBOSE, cron.MustNew("@yearly"), cron.MustNew("@daily"), true},
-		"illformed":     {true, " @ddddd  ", quiet.VERBOSE, cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false},
+		"nil": {
+			false, "", cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "* * * * *")
+			},
+		},
+		"empty": {
+			true, "", cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "@every 3m")
+			},
+		},
+		"@": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
+		"illformed": {
+			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "@ddddd", gomock.Any())
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
 			if tc.set {
 				set(key, tc.val)
 				defer unset(key)
 			}
 
 			field := tc.oldField
-			ok := config.ReadCron(tc.quiet, pp.NoIndent, key, &field)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadCron(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

@@ -16,13 +16,13 @@ type httpConn struct {
 	contentType string
 	accept      string
 	reader      io.Reader
-	extract     func(pp.Indent, []byte) net.IP
+	extract     func(pp.PP, []byte) net.IP
 }
 
-func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) net.IP {
+func (d *httpConn) getIP(ctx context.Context, ppfmt pp.PP) net.IP {
 	req, err := http.NewRequestWithContext(ctx, d.method, d.url, d.reader)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Failed to prepare the request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", d.url, err)
 		return nil
 	}
 
@@ -36,31 +36,31 @@ func (d *httpConn) getIP(ctx context.Context, indent pp.Indent) net.IP {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to send the request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", d.url, err)
 		return nil
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to read the response from %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", d.url, err)
 		return nil
 	}
 
-	return d.extract(indent, body)
+	return d.extract(ppfmt, body)
 }
 
-func getIPFromHTTP(ctx context.Context, indent pp.Indent, url string) net.IP {
+func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) net.IP {
 	c := httpConn{
 		url:         url,
 		method:      http.MethodGet,
 		contentType: "",
 		accept:      "",
 		reader:      nil,
-		extract:     func(_ pp.Indent, body []byte) net.IP { return net.ParseIP(string(body)) },
+		extract:     func(_ pp.PP, body []byte) net.IP { return net.ParseIP(string(body)) },
 	}
 
-	return c.getIP(ctx, indent)
+	return c.getIP(ctx, ppfmt)
 }
 
 type HTTP struct {
@@ -76,11 +76,12 @@ func (p *HTTP) String() string {
 	return p.PolicyName
 }
 
-func (p *HTTP) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) net.IP {
+func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP {
 	url, found := p.URL[ipNet]
 	if !found {
+		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return nil
 	}
 
-	return ipNet.NormalizeIP(getIPFromHTTP(ctx, indent, url))
+	return NormalizeIP(ppfmt, ipNet, getIPFromHTTP(ctx, ppfmt, url))
 }

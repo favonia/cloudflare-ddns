@@ -27,7 +27,7 @@ func randUint16() uint16 {
 	return binary.BigEndian.Uint16(buf)
 }
 
-func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
+func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
 	msg, err := (&dnsmessage.Message{
 		Header: dnsmessage.Header{
 			ID:               id,
@@ -52,7 +52,7 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 		Additionals: []dnsmessage.Resource{},
 	}).Pack()
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to prepare the DNS query: %v", err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to prepare the DNS query: %v", err)
 
 		return nil, false
 	}
@@ -60,7 +60,7 @@ func newDNSQuery(indent pp.Indent, id uint16, name string, class dnsmessage.Clas
 	return msg, true
 }
 
-func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
+func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 	name string, class dnsmessage.Class) net.IP {
 	var ipString string
 
@@ -76,7 +76,7 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 			}
 
 			if ipString != "" {
-				pp.Printf(indent, pp.EmojiImpossible, "Unexpected multiple non-empty strings in TXT records.")
+				ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: more than one string in TXT records")
 				return nil
 			}
 
@@ -85,47 +85,47 @@ func parseDNSAnswers(indent pp.Indent, answers []dnsmessage.Resource,
 	}
 
 	if ipString == "" {
-		pp.Printf(indent, pp.EmojiImpossible, "No TXT records or TXT records have no non-empty strings.")
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: no TXT records or all TXT records are empty")
 		return nil
 	}
 
 	return net.ParseIP(ipString)
 }
 
-func parseDNSResponse(indent pp.Indent, r []byte, id uint16, name string, class dnsmessage.Class) net.IP {
+func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsmessage.Class) net.IP {
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Not a valid DNS response: %v", err)
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: %v", err)
 		return nil
 	}
 
 	switch {
 	case msg.ID != id:
-		pp.Printf(indent, pp.EmojiImpossible, "Response ID %x differs from the query ID %x.", id, msg.ID)
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: mismatched transaction ID")
 		return nil
 
 	case !msg.Response:
-		pp.Printf(indent, pp.EmojiImpossible, "The QR (query/response) bit was not set in the response.")
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: QR was not set")
 		return nil
 
 	case msg.Truncated:
-		pp.Printf(indent, pp.EmojiImpossible, "The TC (truncation) bit was set. Something went wrong.")
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: TC was set")
 		return nil
 
 	case msg.RCode != dnsmessage.RCodeSuccess:
-		pp.Printf(indent, pp.EmojiImpossible, "The response code is %v. The query failed.", msg.RCode)
+		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: response code is %v", msg.RCode)
 		return nil
 	}
 
-	return parseDNSAnswers(indent, msg.Answers, name, class)
+	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, indent pp.Indent,
+func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	url string, name string, class dnsmessage.Class) net.IP {
 	// message ID for the DNS payloads
 	id := randUint16()
 
-	q, ok := newDNSQuery(indent, id, name, class)
+	q, ok := newDNSQuery(ppfmt, id, name, class)
 	if !ok {
 		return nil
 	}
@@ -136,12 +136,12 @@ func getIPFromDNS(ctx context.Context, indent pp.Indent,
 		contentType: "application/dns-message",
 		accept:      "application/dns-message",
 		reader:      bytes.NewReader(q),
-		extract: func(indent pp.Indent, body []byte) net.IP {
-			return parseDNSResponse(indent, body, id, name, class)
+		extract: func(ppfmt pp.PP, body []byte) net.IP {
+			return parseDNSResponse(ppfmt, body, id, name, class)
 		},
 	}
 
-	return c.getIP(ctx, indent)
+	return c.getIP(ctx, ppfmt)
 }
 
 type DNSOverHTTPS struct {
@@ -161,11 +161,12 @@ func (p *DNSOverHTTPS) String() string {
 	return p.PolicyName
 }
 
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, indent pp.Indent, ipNet ipnet.Type) net.IP {
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP {
 	param, found := p.Param[ipNet]
 	if !found {
+		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return nil
 	}
 
-	return ipNet.NormalizeIP(getIPFromDNS(ctx, indent, param.URL, param.Name, param.Class))
+	return NormalizeIP(ppfmt, ipNet, getIPFromDNS(ctx, ppfmt, param.URL, param.Name, param.Class))
 }

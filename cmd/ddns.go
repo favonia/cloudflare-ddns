@@ -30,49 +30,56 @@ func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 
 var Version string //nolint:gochecknoglobals
 
-func welcome() {
+func welcome(ppfmt pp.PP) {
 	if Version == "" {
-		pp.TopPrintf(pp.EmojiStar, "Cloudflare DDNS")
+		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS")
 		return
 	}
 
-	pp.TopPrintf(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
+	ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context) (*config.Config, api.Handle) {
+func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 	// reading the config
 	c := config.Default()
-	if !c.ReadEnv(pp.NoIndent) {
-		pp.TopPrintf(pp.EmojiBye, "Bye!")
+	if !c.ReadEnv(ppfmt) {
+		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		os.Exit(1)
 	}
-	if !c.Normalize(pp.NoIndent) {
-		pp.TopPrintf(pp.EmojiBye, "Bye!")
+	if !c.Normalize(ppfmt) {
+		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		os.Exit(1)
 	}
 
-	if !c.Quiet {
-		config.PrintConfig(pp.NoIndent, c)
-	}
+	config.PrintConfig(ppfmt, c)
 
 	// getting the handler
-	h, ok := c.Auth.New(ctx, pp.NoIndent, c.CacheExpiration)
+	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
 	if !ok {
-		pp.TopPrintf(pp.EmojiBye, "Bye!")
+		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		os.Exit(1)
 	}
 
 	return c, h
 }
 
-func main() { //nolint:funlen,gocognit,cyclop
-	welcome()
+func main() { //nolint:funlen,cyclop
+	ppfmt := pp.New(os.Stdout)
+	if !config.ReadQuiet("QUIET", &ppfmt) {
+		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
+		return
+	}
+	if !ppfmt.IsEnabledFor(pp.Info) {
+		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
+	}
+
+	welcome(ppfmt)
 
 	// dropping the superuser privilege
-	dropPriviledges(pp.NoIndent)
+	dropPriviledges(ppfmt)
 
 	// printing the current privileges
-	printPriviledges(pp.NoIndent)
+	printPriviledges(ppfmt)
 
 	// catching SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
@@ -82,43 +89,41 @@ func main() { //nolint:funlen,gocognit,cyclop
 	ctx := context.Background()
 
 	// reading the config
-	c, h := initConfig(ctx)
+	c, h := initConfig(ctx, ppfmt)
 
 	first := true
 mainLoop:
 	for {
 		next := c.UpdateCron.Next()
 		if !first || c.UpdateOnStart {
-			updateIPs(ctx, pp.NoIndent, c, h)
+			updateIPs(ctx, ppfmt, c, h)
 		}
 		first = false
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
-				pp.TopPrintf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
-				clearIPs(ctx, pp.NoIndent, c, h)
-				pp.TopPrintf(pp.EmojiBye, "Done now. Bye!")
+				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
+				clearIPs(ctx, ppfmt, c, h)
+				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
 			} else {
-				pp.TopPrintf(pp.EmojiUserError, "No scheduled updates in near future.")
-				pp.TopPrintf(pp.EmojiBye, "Bye!")
+				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
+				ppfmt.Noticef(pp.EmojiBye, "Bye!")
 			}
 
 			break mainLoop
 		}
 
 		interval := time.Until(next)
-		if !c.Quiet {
-			switch {
-			case interval < -IntervalLargeGap:
-				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses now (running behind by %v) . . .",
-					-interval.Round(IntervalUnit))
-			case interval < IntervalUnit:
-				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses now . . .")
-			case interval < IntervalLargeGap:
-				pp.TopPrintf(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", IntervalLargeGap)
-			default:
-				pp.TopPrintf(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
-			}
+		switch {
+		case interval < -IntervalLargeGap:
+			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now (running behind by %v) . . .",
+				-interval.Round(IntervalUnit))
+		case interval < IntervalUnit:
+			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now . . .")
+		case interval < IntervalLargeGap:
+			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", IntervalLargeGap)
+		default:
+			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 		}
 
 		if sig, ok := signalWait(chanSignal, interval); !ok {
@@ -126,27 +131,27 @@ mainLoop:
 		} else {
 			switch sig.(syscall.Signal) {
 			case syscall.SIGHUP:
-				pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v.", sig)
+				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
 				h.FlushCache()
 
-				pp.TopPrintf(pp.EmojiNow, "Restarting . . .")
-				c, h = initConfig(ctx)
+				ppfmt.Noticef(pp.EmojiNow, "Restarting . . .")
+				c, h = initConfig(ctx, ppfmt)
 				continue mainLoop
 
 			case syscall.SIGINT, syscall.SIGTERM:
 				if c.DeleteOnStop {
-					pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
-					clearIPs(ctx, pp.NoIndent, c, h)
-					pp.TopPrintf(pp.EmojiBye, "Done now. Bye!")
+					ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
+					clearIPs(ctx, ppfmt, c, h)
+					ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
 				} else {
-					pp.TopPrintf(pp.EmojiSignal, "Caught signal: %v.", sig)
-					pp.TopPrintf(pp.EmojiBye, "Bye!")
+					ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
+					ppfmt.Noticef(pp.EmojiBye, "Bye!")
 				}
 
 				break mainLoop
 
 			default:
-				pp.TopPrintf(pp.EmojiSignal, "Caught and ignored unexpected signal: %v.", sig)
+				ppfmt.Noticef(pp.EmojiSignal, "Caught and ignored unexpected signal: %v", sig)
 				continue mainLoop
 			}
 		}

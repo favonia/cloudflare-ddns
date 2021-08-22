@@ -7,7 +7,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 // tryRaiseCap will attempt raise the capabilities.
@@ -27,7 +26,7 @@ func tryRaiseCap(val cap.Value) {
 	}
 }
 
-func dropSuperuserGroup(indent pp.Indent) {
+func dropSuperuserGroup(ppfmt pp.PP) {
 	defaultGID := syscall.Getegid()
 	if defaultGID == 0 {
 		defaultGID = syscall.Getgid() // real group ID
@@ -37,10 +36,10 @@ func dropSuperuserGroup(indent pp.Indent) {
 	}
 
 	gid := defaultGID
-	if !config.ReadNonnegInt(quiet.QUIET, indent, "PGID", &gid) {
+	if !config.ReadNonnegInt(ppfmt, "PGID", &gid) {
 		gid = defaultGID
 	} else if gid == 0 {
-		pp.Printf(indent, pp.EmojiUserError, "PGID cannot be 0. Using %d instead.", defaultGID)
+		ppfmt.Errorf(pp.EmojiUserError, "PGID cannot be 0. Using %d instead", defaultGID)
 		gid = defaultGID
 	}
 
@@ -48,15 +47,15 @@ func dropSuperuserGroup(indent pp.Indent) {
 	tryRaiseCap(cap.SETGID)
 
 	if err := syscall.Setgroups([]int{}); err != nil {
-		pp.Printf(indent, pp.EmojiBullet, "Failed to erase supplementary GIDs (which might be fine): %v", err)
+		ppfmt.Infof(pp.EmojiBullet, "Failed to erase supplementary GIDs (which might be fine): %v", err)
 	}
 
 	if err := syscall.Setresgid(gid, gid, gid); err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to set GID to %d: %v", gid, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to set GID to %d: %v", gid, err)
 	}
 }
 
-func dropSuperuser(indent pp.Indent) {
+func dropSuperuser(ppfmt pp.PP) {
 	defaultUID := syscall.Geteuid()
 	if defaultUID == 0 {
 		defaultUID = syscall.Getuid()
@@ -66,10 +65,10 @@ func dropSuperuser(indent pp.Indent) {
 	}
 
 	uid := defaultUID
-	if !config.ReadNonnegInt(quiet.QUIET, indent, "PUID", &uid) {
+	if !config.ReadNonnegInt(ppfmt, "PUID", &uid) {
 		uid = defaultUID
 	} else if uid == 0 {
-		pp.Printf(indent, pp.EmojiUserError, "PUID cannot be 0. Using %d instead.", defaultUID)
+		ppfmt.Errorf(pp.EmojiUserError, "PUID cannot be 0. Using %d instead", defaultUID)
 		uid = defaultUID
 	}
 
@@ -77,58 +76,62 @@ func dropSuperuser(indent pp.Indent) {
 	tryRaiseCap(cap.SETUID)
 
 	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to set UID to %d: %v", uid, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to set UID to %d: %v", uid, err)
 	}
 }
 
-func dropCapabilities(indent pp.Indent) {
+func dropCapabilities(ppfmt pp.PP) {
 	if err := cap.NewSet().SetProc(); err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
+		ppfmt.Errorf(pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
 	}
 }
 
 // dropPriviledges drops all privileges as much as possible.
-func dropPriviledges(indent pp.Indent) {
-	pp.TopPrint(pp.EmojiPriviledges, "Dropping privileges . . .")
+func dropPriviledges(ppfmt pp.PP) {
+	if ppfmt.IsEnabledFor(pp.Info) {
+		ppfmt.Infof(pp.EmojiPriviledges, "Dropping privileges . . .")
+		ppfmt = ppfmt.IncIndent()
+	}
 
 	// group ID
-	dropSuperuserGroup(indent + 1)
+	dropSuperuserGroup(ppfmt)
 
 	// user ID
-	dropSuperuser(indent + 1)
+	dropSuperuser(ppfmt)
 
 	// all remaining capabilities
-	dropCapabilities(indent + 1)
+	dropCapabilities(ppfmt)
 }
 
-func printCapabilities(indent pp.Indent) {
+func printCapabilities(ppfmt pp.PP) {
 	now, err := cap.GetPID(0)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
+		ppfmt.Errorf(pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
 	} else {
 		diff, err := now.Compare(cap.NewSet())
 		if err != nil {
-			pp.Printf(indent, pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
+			ppfmt.Errorf(pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
 		} else if diff != 0 {
-			pp.Printf(indent, pp.EmojiError, "The program still retains some additional capabilities: %v", now)
+			ppfmt.Errorf(pp.EmojiError, "The program still retains some additional capabilities: %v", now)
 		}
 	}
 }
 
-func printPriviledges(indent pp.Indent) {
-	pp.TopPrint(pp.EmojiPriviledges, "Priviledges after dropping:")
+func printPriviledges(ppfmt pp.PP) {
+	ppfmt.Noticef(pp.EmojiPriviledges, "Priviledges after dropping:")
+	inner := ppfmt.IncIndent()
 
-	pp.Printf(indent+1, pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
-	pp.Printf(indent+1, pp.EmojiBullet, "Effective GID:      %d", syscall.Getegid())
+	inner.Noticef(pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
+	inner.Noticef(pp.EmojiBullet, "Effective GID:      %d", syscall.Getegid())
 
 	switch groups, err := syscall.Getgroups(); {
 	case err != nil:
-		pp.Printf(indent+1, pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
+		inner.Errorf(pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
 	case len(groups) > 0:
-		pp.Printf(indent+1, pp.EmojiBullet, "Supplementary GIDs: %d", groups)
+		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %d", groups)
 	default:
-		pp.Print(indent+1, pp.EmojiBullet, "Supplementary GIDs: (empty)")
+		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (empty)")
 	}
 
-	printCapabilities(indent + 1)
+	printCapabilities(inner)
 }

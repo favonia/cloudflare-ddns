@@ -33,10 +33,10 @@ type CloudflareAuth struct {
 	BaseURL   string
 }
 
-func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpiration time.Duration) (Handle, bool) {
+func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
 		return nil, false
 	}
 
@@ -47,8 +47,8 @@ func (t *CloudflareAuth) New(ctx context.Context, indent pp.Indent, cacheExpirat
 
 	// this is not needed, but is helpful for diagnosing the problem
 	if _, err := handle.VerifyAPIToken(ctx); err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "The Cloudflare API token is not valid: %v", err)
-		pp.Printf(indent, pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE.")
+		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is not valid: %v", err)
+		ppfmt.Errorf(pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE")
 		return nil, false
 	}
 
@@ -75,7 +75,7 @@ func (h *CloudflareHandle) FlushCache() {
 }
 
 // ActiveZones lists all active zones of the given name.
-func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, name string) ([]string, bool) {
+func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
 	if name == "" {
@@ -88,7 +88,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, na
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
 
@@ -102,7 +102,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, indent pp.Indent, na
 	return ids, true
 }
 
-func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, indent pp.Indent, domain FQDN) (string, bool) {
+func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain FQDN) (string, bool) {
 	if id, found := h.cache.zoneOfDomain.Get(domain.ToASCII()); found {
 		return id.(string), true
 	}
@@ -110,7 +110,7 @@ func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, indent pp.Indent, d
 zoneSearch:
 	for s := NewFQDNSplitter(domain); s.IsValid(); s.Next() {
 		zoneName := s.Suffix()
-		zones, ok := h.ActiveZones(ctx, indent, zoneName)
+		zones, ok := h.ActiveZones(ctx, ppfmt, zoneName)
 		if !ok {
 			return "", false
 		}
@@ -122,23 +122,23 @@ zoneSearch:
 			h.cache.zoneOfDomain.SetDefault(domain.ToASCII(), zones[0])
 			return zones[0], true
 		default: // len(zones) > 1
-			pp.Printf(indent, pp.EmojiImpossible,
-				"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help.", zoneName)
+			ppfmt.Warningf(pp.EmojiImpossible,
+				"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help", zoneName)
 			return "", false
 		}
 	}
 
-	pp.Printf(indent, pp.EmojiError, "Failed to find the zone of %q.", domain.Describe())
+	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
 	return "", false
 }
 
-func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
+func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
 		return rmap.(map[string]net.IP), true
 	}
 
-	zone, ok := h.ZoneOfDomain(ctx, indent, domain)
+	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return nil, false
 	}
@@ -149,7 +149,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
 		return nil, false
 	}
 
@@ -163,15 +163,15 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, indent pp.Indent,
 	return rmap, true
 }
 
-func (h *CloudflareHandle) DeleteRecord(ctx context.Context, indent pp.Indent,
+func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type, id string) bool {
-	zone, ok := h.ZoneOfDomain(ctx, indent, domain)
+	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
@@ -186,9 +186,9 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, indent pp.Indent,
 	return true
 }
 
-func (h *CloudflareHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
+func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	domain FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
-	zone, ok := h.ZoneOfDomain(ctx, indent, domain)
+	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
@@ -201,7 +201,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
 	}
 
 	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
@@ -216,9 +216,9 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, indent pp.Indent,
 	return true
 }
 
-func (h *CloudflareHandle) CreateRecord(ctx context.Context, indent pp.Indent,
-	domain FQDN, ipNet ipnet.Type, ip net.IP, ttl int, proxied bool) (string, bool) {
-	zone, ok := h.ZoneOfDomain(ctx, indent, domain)
+func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
+	domain FQDN, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool) (string, bool) {
+	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
 	}
@@ -228,13 +228,13 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, indent pp.Indent,
 		Name:    domain.ToASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
-		TTL:     ttl,
+		TTL:     ttl.Int(),
 		Proxied: &proxied,
 	}
 
 	res, err := h.cf.CreateDNSRecord(ctx, zone, payload)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiError, "Failed to add a new %s record of %q: %v",
+		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 
 		h.cache.listRecords[ipNet].Delete(domain.ToASCII())

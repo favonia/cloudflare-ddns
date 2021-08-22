@@ -9,11 +9,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 type Config struct {
-	Quiet            quiet.Quiet
 	Auth             api.Auth
 	Policy           map[ipnet.Type]detector.Policy
 	Domains          map[ipnet.Type][]api.FQDN
@@ -30,8 +28,7 @@ type Config struct {
 // Default gives default values.
 func Default() *Config {
 	return &Config{
-		Quiet: quiet.VERBOSE,
-		Auth:  nil,
+		Auth: nil,
 		Policy: map[ipnet.Type]detector.Policy{
 			ipnet.IP4: detector.NewCloudflare(),
 			ipnet.IP6: detector.NewCloudflare(),
@@ -51,7 +48,7 @@ func Default() *Config {
 	}
 }
 
-func readAuthToken(_ quiet.Quiet, indent pp.Indent) (string, bool) {
+func readAuthToken(ppfmt pp.PP) (string, bool) {
 	var (
 		token     = Getenv("CF_API_TOKEN")
 		tokenFile = Getenv("CF_API_TOKEN_FILE")
@@ -59,36 +56,36 @@ func readAuthToken(_ quiet.Quiet, indent pp.Indent) (string, bool) {
 
 	// foolproof checks
 	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
-		pp.Printf(indent, pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN.")
+		ppfmt.Errorf(pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN")
 		return "", false
 	}
 
 	switch {
 	case token != "" && tokenFile != "":
-		pp.Printf(indent, pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set.")
+		ppfmt.Errorf(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
 		return "", false
 	case token != "":
 		return token, true
 	case tokenFile != "":
-		token, ok := file.ReadString(indent, tokenFile)
+		token, ok := file.ReadString(ppfmt, tokenFile)
 		if !ok {
 			return "", false
 		}
 
 		if token == "" {
-			pp.Printf(indent, pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty.")
+			ppfmt.Errorf(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
 			return "", false
 		}
 
 		return token, true
 	default:
-		pp.Printf(indent, pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE.")
+		ppfmt.Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
 		return "", false
 	}
 }
 
-func ReadAuth(quiet quiet.Quiet, indent pp.Indent, field *api.Auth) bool {
-	token, ok := readAuthToken(quiet, indent)
+func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
+	token, ok := readAuthToken(ppfmt)
 	if !ok {
 		return false
 	}
@@ -124,12 +121,12 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func ReadDomainMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]api.FQDN) bool {
+func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
 	var domains, ip4Domains, ip6Domains []api.FQDN
 
-	if !ReadDomains(quiet, indent, "DOMAINS", &domains) ||
-		!ReadDomains(quiet, indent, "IP4_DOMAINS", &ip4Domains) ||
-		!ReadDomains(quiet, indent, "IP6_DOMAINS", &ip6Domains) {
+	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
+		!ReadDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
+		!ReadDomains(ppfmt, "IP6_DOMAINS", &ip6Domains) {
 		return false
 	}
 
@@ -145,12 +142,12 @@ func ReadDomainMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type][]a
 	return true
 }
 
-func ReadPolicyMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]detector.Policy) bool {
+func ReadPolicyMap(ppfmt pp.PP, field map[ipnet.Type]detector.Policy) bool {
 	ip4Policy := field[ipnet.IP4]
 	ip6Policy := field[ipnet.IP6]
 
-	if !ReadPolicy(quiet, indent, "IP4_POLICY", &ip4Policy) ||
-		!ReadPolicy(quiet, indent, "IP6_POLICY", &ip6Policy) {
+	if !ReadPolicy(ppfmt, "IP4_POLICY", &ip4Policy) ||
+		!ReadPolicy(ppfmt, "IP6_POLICY", &ip6Policy) {
 		return false
 	}
 
@@ -159,113 +156,101 @@ func ReadPolicyMap(quiet quiet.Quiet, indent pp.Indent, field map[ipnet.Type]det
 	return true
 }
 
-func PrintConfig(indent pp.Indent, c *Config) {
-	pp.Printf(indent, pp.EmojiConfig, "Policies:")
-	pp.Printf(indent+1, pp.EmojiBullet, "IPv4 policy:      %v", c.Policy[ipnet.IP4])
+func PrintConfig(ppfmt pp.PP, c *Config) {
+	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
+	ppfmt = ppfmt.IncIndent()
+
+	inner := ppfmt.IncIndent()
+
+	ppfmt.Infof(pp.EmojiConfig, "Policies:")
+	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %v", c.Policy[ipnet.IP4])
 	if c.Policy[ipnet.IP4].IsManaged() {
-		pp.Printf(indent+1, pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
+		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
-	pp.Printf(indent+1, pp.EmojiBullet, "IPv6 policy:      %v", c.Policy[ipnet.IP6])
+	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %v", c.Policy[ipnet.IP6])
 	if c.Policy[ipnet.IP6].IsManaged() {
-		pp.Printf(indent+1, pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
+		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
-	pp.Printf(indent, pp.EmojiConfig, "Scheduling:")
-	pp.Printf(indent+1, pp.EmojiBullet, "Timezone:         %s", cron.DescribeLocation(time.Local))
-	pp.Printf(indent+1, pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
-	pp.Printf(indent+1, pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
-	pp.Printf(indent+1, pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
-	pp.Printf(indent+1, pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
+	ppfmt.Infof(pp.EmojiConfig, "Scheduling:")
+	inner.Infof(pp.EmojiBullet, "Timezone:         %s", cron.DescribeLocation(time.Local))
+	inner.Infof(pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
+	inner.Infof(pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
+	inner.Infof(pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
+	inner.Infof(pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
 
-	pp.Printf(indent, pp.EmojiConfig, "New DNS records:")
-	pp.Printf(indent+1, pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
-	pp.Printf(indent+1, pp.EmojiBullet, "Proxied:          %t", c.Proxied)
+	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
+	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
+	inner.Infof(pp.EmojiBullet, "Proxied:          %t", c.Proxied)
 
-	pp.Printf(indent, pp.EmojiConfig, "Timeouts")
-	pp.Printf(indent+1, pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
+	ppfmt.Infof(pp.EmojiConfig, "Timeouts")
+	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
 }
 
-func (c *Config) ReadEnv(indent pp.Indent) bool { //nolint:cyclop
-	if !ReadQuiet(indent, "QUIET", &c.Quiet) {
-		return false
+func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
+	if ppfmt.IsEnabledFor(pp.Info) {
+		ppfmt.Noticef(pp.EmojiEnvVars, "Reading settings . . .")
+		ppfmt = ppfmt.IncIndent()
 	}
 
-	if c.Quiet {
-		pp.Printf(indent, pp.EmojiMute, "Quiet mode enabled.")
-	} else {
-		pp.Printf(indent, pp.EmojiEnvVars, "Reading settings . . .")
-		indent++
-	}
-
-	if !ReadAuth(c.Quiet, indent, &c.Auth) ||
-		!ReadPolicyMap(c.Quiet, indent, c.Policy) ||
-		!ReadDomainMap(c.Quiet, indent, c.Domains) ||
-		!ReadCron(c.Quiet, indent, "UPDATE_CRON", &c.UpdateCron) ||
-		!ReadBool(c.Quiet, indent, "UPDATE_ON_START", &c.UpdateOnStart) ||
-		!ReadBool(c.Quiet, indent, "DELETE_ON_STOP", &c.DeleteOnStop) ||
-		!ReadNonnegDuration(c.Quiet, indent, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadNonnegInt(c.Quiet, indent, "TTL", (*int)(&c.TTL)) ||
-		!ReadBool(c.Quiet, indent, "PROXIED", &c.Proxied) ||
-		!ReadNonnegDuration(c.Quiet, indent, "DETECTION_TIMEOUT", &c.DetectionTimeout) {
+	if !ReadAuth(ppfmt, &c.Auth) ||
+		!ReadPolicyMap(ppfmt, c.Policy) ||
+		!ReadDomainMap(ppfmt, c.Domains) ||
+		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
+		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
+		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
+		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
+		!ReadNonnegInt(ppfmt, "TTL", (*int)(&c.TTL)) ||
+		!ReadBool(ppfmt, "PROXIED", &c.Proxied) ||
+		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) {
 		return false
 	}
 
 	return true
 }
 
-func (c *Config) checkUselessDomains(indent pp.Indent) {
-	var (
-		domainSet    = map[ipnet.Type]map[string]bool{ipnet.IP4: {}, ipnet.IP6: {}}
-		unionSet     = map[string]bool{}
-		intersectSet = map[string]bool{}
-	)
-	// calculate domainSet[IP4], domainSet[IP6], and unionSet
-	for ipNet, domains := range c.Domains {
+func (c *Config) checkUselessDomains(ppfmt pp.PP) {
+	count := map[api.FQDN]int{}
+	for _, domains := range c.Domains {
 		for _, domain := range domains {
-			domainString := domain.ToASCII()
-			domainSet[ipNet][domainString] = true
-			unionSet[domainString] = true
+			count[domain]++
 		}
 	}
 
-	// calculate intersectSet
-	for domain := range unionSet {
-		intersectSet[domain] = domainSet[ipnet.IP4][domain] && domainSet[ipnet.IP6][domain]
-	}
-
-	for ipNet := range c.Domains {
+	for ipNet, domains := range c.Domains {
 		if !c.Policy[ipNet].IsManaged() {
-			for domain := range domainSet[ipNet] {
-				if !intersectSet[domain] {
-					pp.Printf(indent, pp.EmojiUserWarning,
-						"Domain %v is ignored because it is only for %v but %v is unmanaged.", domain, ipNet, ipNet)
+			for i := range domains {
+				if count[domains[i]] != len(c.Domains) {
+					ppfmt.Warningf(pp.EmojiUserWarning,
+						"Domain %q is ignored because it is only for %s but %s is unmanaged",
+						domains[i].Describe(), ipNet.Describe(), ipNet.Describe())
 				}
 			}
 		}
 	}
 }
 
-func (c *Config) Normalize(indent pp.Indent) bool {
+func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
-		pp.Printf(indent, pp.EmojiUserError, "No domains were specified.")
+		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
 		return false
 	}
 
-	// change useless policies to
+	// change useless policies to unmanaged
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
 			c.Policy[ipNet] = detector.NewUnmanaged()
-			pp.Printf(indent, pp.EmojiUserWarning, "IP%v_POLICY was changed to %q because no domains were set for %v.",
+			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %v",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}
 	}
 
 	if !c.Policy[ipnet.IP4].IsManaged() && !c.Policy[ipnet.IP6].IsManaged() {
-		pp.Printf(indent, pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged.")
+		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged")
 		return false
 	}
 
-	c.checkUselessDomains(indent)
+	c.checkUselessDomains(ppfmt)
 
 	return true
 }

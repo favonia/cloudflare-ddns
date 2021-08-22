@@ -18,7 +18,7 @@ func (p *unmanaged) String() string {
 	return "unmanaged"
 }
 
-func (p *unmanaged) GetIP(_ context.Context, _ pp.Indent, _ ipnet.Type) net.IP {
+func (p *unmanaged) GetIP(_ context.Context, _ pp.PP, _ ipnet.Type) net.IP {
 	return nil
 }
 

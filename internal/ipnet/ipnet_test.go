@@ -9,7 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
-func TestString(t *testing.T) {
+func TestDescribe(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		input    ipnet.Type
@@ -17,12 +17,12 @@ func TestString(t *testing.T) {
 	}{
 		"4":   {ipnet.IP4, "IPv4"},
 		"6":   {ipnet.IP6, "IPv6"},
-		"100": {ipnet.Type(100), "(unrecognized IP network)"},
+		"100": {ipnet.Type(100), "<unrecognized IP network>"},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.expected, tc.input.String())
+			require.Equal(t, tc.expected, tc.input.Describe())
 		})
 	}
 }

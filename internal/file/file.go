@@ -10,10 +10,10 @@ import (
 
 var FS = os.DirFS("/") //nolint:gochecknoglobals
 
-func ReadString(indent pp.Indent, path string) (string, bool) {
+func ReadString(ppfmt pp.PP, path string) (string, bool) {
 	body, err := fs.ReadFile(FS, path)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to read %q: %v", path, err)
 		return "", false
 	}
 

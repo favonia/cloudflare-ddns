@@ -8,7 +8,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 // Args is the type of (named) arguments to updateRecords.
@@ -40,12 +39,13 @@ func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedI
 	return matchedIDs, unmatchedIDs
 }
 
-func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bool { //nolint:funlen,cyclop,gocognit
+func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyclop,gocognit
 	recordType := args.IPNetwork.RecordType()
+	domainDescription := args.Domain.Describe()
 
-	rs, ok := args.Handle.ListRecords(ctx, indent, args.Domain, args.IPNetwork)
+	rs, ok := args.Handle.ListRecords(ctx, ppfmt, args.Domain, args.IPNetwork)
 	if !ok {
-		pp.Printf(indent, pp.EmojiError, "Failed to update %s records of %q.", recordType, args.Domain.Describe())
+		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
 		return false
 	}
 
@@ -67,11 +67,7 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 	}
 
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiAlreadyDone, "The %s records of %q are already up to date.",
-				recordType, args.Domain.Describe())
-		}
-
+		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
 		return true
 	}
 
@@ -79,9 +75,9 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 		var unhandled []string
 
 		for i, id := range unmatchedIDs {
-			if args.Handle.UpdateRecord(ctx, indent, args.Domain, args.IPNetwork, id, args.IP) {
-				pp.Printf(indent, pp.EmojiUpdateRecord,
-					"Updated a stale %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
+			if args.Handle.UpdateRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id, args.IP) {
+				ppfmt.Noticef(pp.EmojiUpdateRecord,
+					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 
 				uptodate = true
 				numUnmatched--
@@ -89,9 +85,9 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 
 				break
 			} else {
-				if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
-					pp.Printf(indent, pp.EmojiDelRecord,
-						"Deleted a stale %s record of %q instead (ID: %s).", recordType, args.Domain.Describe(), id)
+				if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+					ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)",
+						recordType, domainDescription, id)
 					numUnmatched--
 				}
 				continue
@@ -102,32 +98,29 @@ func Do(ctx context.Context, indent pp.Indent, quiet quiet.Quiet, args *Args) bo
 	}
 
 	if !uptodate && args.IP != nil {
-		if id, ok := args.Handle.CreateRecord(ctx, indent,
-			args.Domain, args.IPNetwork, args.IP, args.TTL.Int(), args.Proxied); ok {
-			pp.Printf(indent, pp.EmojiAddRecord,
-				"Added a new %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
+		if id, ok := args.Handle.CreateRecord(ctx, ppfmt,
+			args.Domain, args.IPNetwork, args.IP, args.TTL, args.Proxied); ok {
+			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
 			uptodate = true
 		}
 	}
 
 	for _, id := range unmatchedIDs {
-		if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
-			pp.Printf(indent, pp.EmojiDelRecord,
-				"Deleted a stale %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
+		if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 			numUnmatched--
 		}
 	}
 
 	for _, id := range matchedIDs {
-		if args.Handle.DeleteRecord(ctx, indent, args.Domain, args.IPNetwork, id) {
-			pp.Printf(indent, pp.EmojiDelRecord,
-				"Deleted a duplicate %s record of %q (ID: %s).", recordType, args.Domain.Describe(), id)
+		if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a duplicate %s record of %q (ID: %s)",
+				recordType, domainDescription, id)
 		}
 	}
 
 	if !uptodate || numUnmatched > 0 {
-		pp.Printf(indent, pp.EmojiError,
-			"Failed to update %s records of %q.", recordType, args.Domain.Describe())
+		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
 		return false
 	}
 

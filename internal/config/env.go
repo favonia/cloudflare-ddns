@@ -10,7 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/quiet"
 )
 
 // Getenv reads an environment variable and trim the space.
@@ -19,7 +18,7 @@ func Getenv(key string) string {
 }
 
 // ReadQuiet reads an environment variable as quiet/verbose.
-func ReadQuiet(indent pp.Indent, key string, field *quiet.Quiet) bool {
+func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	val := Getenv(key)
 	if val == "" {
 		return true
@@ -27,41 +26,30 @@ func ReadQuiet(indent pp.Indent, key string, field *quiet.Quiet) bool {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		(*ppfmt).Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 
-	*field = quiet.Quiet(b)
-	return true
-}
-
-// ReadString reads an environment variable as a string.
-func ReadString(quiet quiet.Quiet, indent pp.Indent, key string, field *string) bool {
-	val := Getenv(key)
-	if val == "" {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
-		}
-		return true
+	if b {
+		*ppfmt = (*ppfmt).SetLevel(pp.Quiet)
+	} else {
+		*ppfmt = (*ppfmt).SetLevel(pp.Verbose)
 	}
 
-	*field = val
 	return true
 }
 
 // ReadBool reads an environment variable as a boolean value.
-func ReadBool(quiet quiet.Quiet, indent pp.Indent, key string, field *bool) bool {
+func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 	val := Getenv(key)
 	if val == "" {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%t", key, *field)
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%t", key, *field)
 		return true
 	}
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 
@@ -70,22 +58,20 @@ func ReadBool(quiet quiet.Quiet, indent pp.Indent, key string, field *bool) bool
 }
 
 // ReadNonnegInt reads an environment variable as an integer.
-func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) bool {
+func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%d", key, *field)
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
 		return true
 	}
 
 	i, err := strconv.Atoi(val)
 	switch {
 	case err != nil:
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	case i < 0:
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %d is negative.", val, i)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %d is negative", val, i)
 		return false
 	}
 
@@ -95,7 +81,7 @@ func ReadNonnegInt(quiet quiet.Quiet, indent pp.Indent, key string, field *int) 
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]api.FQDN) bool {
+func ReadDomains(ppfmt pp.PP, key string, field *[]api.FQDN) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
 	*field = make([]api.FQDN, 0, len(rawList))
@@ -107,7 +93,7 @@ func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]api.FQDN)
 
 		item, err := api.NewFQDN(item)
 		if err != nil {
-			pp.Printf(indent, pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item, err)
+			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
 		}
 
 		*field = append(*field, item)
@@ -117,12 +103,10 @@ func ReadDomains(_ quiet.Quiet, indent pp.Indent, key string, field *[]api.FQDN)
 }
 
 // ReadPolicy reads an environment variable and parses it as a policy.
-func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, key string, field *detector.Policy) bool {
+func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
 		return true
 	case "cloudflare":
 		*field = detector.NewCloudflare()
@@ -137,18 +121,16 @@ func ReadPolicy(quiet quiet.Quiet, indent pp.Indent, key string, field *detector
 		*field = detector.NewUnmanaged()
 		return true
 	default:
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: not a valid policy.", val)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", val)
 		return false
 	}
 }
 
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.
-func ReadNonnegDuration(quiet quiet.Quiet, indent pp.Indent, key string, field *time.Duration) bool {
+func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	val := Getenv(key)
 	if val == "" {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, field)
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%v", key, *field)
 		return true
 	}
 
@@ -156,10 +138,10 @@ func ReadNonnegDuration(quiet quiet.Quiet, indent pp.Indent, key string, field *
 
 	switch {
 	case err != nil:
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	case t < 0:
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v is negative.", val, t)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v is negative", val, t)
 		return false
 	}
 
@@ -168,18 +150,16 @@ func ReadNonnegDuration(quiet quiet.Quiet, indent pp.Indent, key string, field *
 }
 
 // ReadCron reads an environment variable and parses it as a Cron expression.
-func ReadCron(quiet quiet.Quiet, indent pp.Indent, key string, field *cron.Schedule) bool {
+func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
-		if !quiet {
-			pp.Printf(indent, pp.EmojiBullet, "Use default %s=%s", key, *field)
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
 		return true
 	}
 
 	c, err := cron.New(val)
 	if err != nil {
-		pp.Printf(indent, pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 

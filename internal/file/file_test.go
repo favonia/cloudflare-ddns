@@ -7,27 +7,29 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/file"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func useMemFS(memfs fstest.MapFS) {
+func useMemFS(t *testing.T, memfs fstest.MapFS) {
+	t.Helper()
 	file.FS = memfs
-}
-
-func useDirFS() {
-	file.FS = os.DirFS("/")
+	t.Cleanup(func() { file.FS = os.DirFS("/") })
 }
 
 //nolint:paralleltest // changing global var file.FS
 func TestReadStringOkay(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	path := "test/file.txt"
 	written := " hello world   " // space is intentionally added to test trimming
 	expected := strings.TrimSpace(written)
 
-	useMemFS(fstest.MapFS{
+	useMemFS(t, fstest.MapFS{
 		path: &fstest.MapFile{
 			Data:    []byte(written),
 			Mode:    0o644,
@@ -35,27 +37,30 @@ func TestReadStringOkay(t *testing.T) {
 			Sys:     nil,
 		},
 	})
-	defer useDirFS()
 
-	content, ok := file.ReadString(pp.NoIndent, path)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	content, ok := file.ReadString(mockPP, path)
 	require.True(t, ok)
 	require.Equal(t, expected, content)
 }
 
 //nolint:paralleltest // changing global var file.FS
 func TestReadStringWrongPath(t *testing.T) {
-	useMemFS(fstest.MapFS{})
-	defer useDirFS()
+	mockCtrl := gomock.NewController(t)
+	useMemFS(t, fstest.MapFS{})
 
-	path := "wrong/path.txt"
-	content, ok := file.ReadString(pp.NoIndent, path)
+	path := "/wrong/path.txt"
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", path, gomock.Any())
+	content, ok := file.ReadString(mockPP, path)
 	require.False(t, ok)
 	require.Empty(t, content)
 }
 
 //nolint:paralleltest // changing global var file.FS
 func TestReadStringNoAccess(t *testing.T) {
-	useMemFS(fstest.MapFS{
+	mockCtrl := gomock.NewController(t)
+	useMemFS(t, fstest.MapFS{
 		"dir/file.txt": &fstest.MapFile{
 			Data:    []byte("hello"),
 			Mode:    0,
@@ -63,9 +68,10 @@ func TestReadStringNoAccess(t *testing.T) {
 			Sys:     nil,
 		},
 	})
-	defer useDirFS()
 
-	content, ok := file.ReadString(pp.NoIndent, "dir")
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
+	content, ok := file.ReadString(mockPP, "dir")
 	require.False(t, ok)
 	require.Empty(t, content)
 }
