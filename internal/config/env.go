@@ -18,7 +18,7 @@ func Getenv(key string) string {
 }
 
 // ReadQuiet reads an environment variable as quiet/verbose.
-func ReadQuiet(ppfmt pp.PP, key string) bool {
+func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	val := Getenv(key)
 	if val == "" {
 		return true
@@ -26,14 +26,14 @@ func ReadQuiet(ppfmt pp.PP, key string) bool {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		(*ppfmt).Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
 		return false
 	}
 
 	if b {
-		ppfmt.SetLevel(pp.Quiet)
+		*ppfmt = (*ppfmt).SetLevel(pp.Quiet)
 	} else {
-		ppfmt.SetLevel(pp.Verbose)
+		*ppfmt = (*ppfmt).SetLevel(pp.Verbose)
 	}
 
 	return true

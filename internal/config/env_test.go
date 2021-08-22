@@ -100,7 +100,9 @@ func TestReadQuiet(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			ok := config.ReadQuiet(mockPP, key)
+			var wrappedPP pp.PP = mockPP
+
+			ok := config.ReadQuiet(key, &wrappedPP)
 			require.Equal(t, tc.ok, ok)
 		})
 	}

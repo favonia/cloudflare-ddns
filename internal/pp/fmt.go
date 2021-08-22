@@ -20,12 +20,12 @@ func New(writer io.Writer) PP {
 	}
 }
 
-func (f *formatter) GetLevel() Level {
-	return f.level
-}
-
-func (f *formatter) SetLevel(lvl Level) {
-	f.level = lvl
+func (f *formatter) SetLevel(lvl Level) PP {
+	return &formatter{
+		writer: f.writer,
+		indent: f.indent,
+		level:  lvl,
+	}
 }
 
 func (f *formatter) IsEnabledFor(lvl Level) bool {
@@ -53,22 +53,22 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 	fmt.Fprintln(f.writer, line)
 }
 
-func (f *formatter) Printf(lvl Level, emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) printf(lvl Level, emoji Emoji, format string, args ...interface{}) {
 	f.output(lvl, emoji, fmt.Sprintf(format, args...))
 }
 
 func (f *formatter) Infof(emoji Emoji, format string, args ...interface{}) {
-	f.Printf(Info, emoji, format, args...)
+	f.printf(Info, emoji, format, args...)
 }
 
 func (f *formatter) Noticef(emoji Emoji, format string, args ...interface{}) {
-	f.Printf(Notice, emoji, format, args...)
+	f.printf(Notice, emoji, format, args...)
 }
 
 func (f *formatter) Warningf(emoji Emoji, format string, args ...interface{}) {
-	f.Printf(Warning, emoji, format, args...)
+	f.printf(Warning, emoji, format, args...)
 }
 
 func (f *formatter) Errorf(emoji Emoji, format string, args ...interface{}) {
-	f.Printf(Error, emoji, format, args...)
+	f.printf(Error, emoji, format, args...)
 }

@@ -65,7 +65,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 
 func main() { //nolint:funlen,cyclop
 	ppfmt := pp.New(os.Stdout)
-	if !config.ReadQuiet(ppfmt, "QUIET") {
+	if !config.ReadQuiet("QUIET", &ppfmt) {
 		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
 		return
 	}
