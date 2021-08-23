@@ -121,7 +121,7 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.FQDN) bool {
 	var domains, ip4Domains, ip6Domains []api.FQDN
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
@@ -136,39 +136,43 @@ func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
 	deduplicate(&ip4Domains)
 	deduplicate(&ip6Domains)
 
-	field[ipnet.IP4] = ip4Domains
-	field[ipnet.IP6] = ip6Domains
+	*field = map[ipnet.Type][]api.FQDN{
+		ipnet.IP4: ip4Domains,
+		ipnet.IP6: ip6Domains,
+	}
 
 	return true
 }
 
-func ReadPolicyMap(ppfmt pp.PP, field map[ipnet.Type]detector.Policy) bool {
-	ip4Policy := field[ipnet.IP4]
-	ip6Policy := field[ipnet.IP6]
+func ReadPolicyMap(ppfmt pp.PP, field *map[ipnet.Type]detector.Policy) bool {
+	ip4Policy := (*field)[ipnet.IP4]
+	ip6Policy := (*field)[ipnet.IP6]
 
 	if !ReadPolicy(ppfmt, "IP4_POLICY", &ip4Policy) ||
 		!ReadPolicy(ppfmt, "IP6_POLICY", &ip6Policy) {
 		return false
 	}
 
-	field[ipnet.IP4] = ip4Policy
-	field[ipnet.IP6] = ip6Policy
+	*field = map[ipnet.Type]detector.Policy{
+		ipnet.IP4: ip4Policy,
+		ipnet.IP6: ip6Policy,
+	}
 	return true
 }
 
-func PrintConfig(ppfmt pp.PP, c *Config) {
+func Print(ppfmt pp.PP, c *Config) {
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
 	ppfmt = ppfmt.IncIndent()
 
 	inner := ppfmt.IncIndent()
 
 	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %v", c.Policy[ipnet.IP4])
-	if c.Policy[ipnet.IP4].IsManaged() {
+	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %s", detector.Name(c.Policy[ipnet.IP4]))
+	if c.Policy[ipnet.IP4] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %v", c.Policy[ipnet.IP6])
-	if c.Policy[ipnet.IP6].IsManaged() {
+	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %s", detector.Name(c.Policy[ipnet.IP6]))
+	if c.Policy[ipnet.IP6] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
@@ -194,8 +198,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadPolicyMap(ppfmt, c.Policy) ||
-		!ReadDomainMap(ppfmt, c.Domains) ||
+		!ReadPolicyMap(ppfmt, &c.Policy) ||
+		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
@@ -218,7 +222,7 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	}
 
 	for ipNet, domains := range c.Domains {
-		if !c.Policy[ipNet].IsManaged() {
+		if c.Policy[ipNet] == nil {
 			for i := range domains {
 				if count[domains[i]] != len(c.Domains) {
 					ppfmt.Warningf(pp.EmojiUserWarning,
@@ -238,14 +242,14 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 
 	// change useless policies to unmanaged
 	for ipNet, domains := range c.Domains {
-		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
-			c.Policy[ipNet] = detector.NewUnmanaged()
-			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %v",
-				ipNet.Int(), c.Policy[ipNet], ipNet)
+		if len(domains) == 0 && c.Policy[ipNet] != nil {
+			c.Policy[ipNet] = nil
+			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %s",
+				ipNet.Int(), detector.Name(c.Policy[ipNet]), ipNet.Describe())
 		}
 	}
 
-	if !c.Policy[ipnet.IP4].IsManaged() && !c.Policy[ipnet.IP6].IsManaged() {
+	if c.Policy[ipnet.IP4] == nil && c.Policy[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged")
 		return false
 	}

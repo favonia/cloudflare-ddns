@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -19,16 +18,29 @@ import (
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
 
-func set(key string, val string) {
-	if os.Getenv(key) != "" {
-		panic(fmt.Sprintf("%s was already set", key))
+func rawSet(key string, set bool, val string) {
+	if set {
+		os.Setenv(key, val)
+	} else {
+		os.Unsetenv(key)
 	}
-
-	os.Setenv(key, val)
 }
 
-func unset(key string) {
-	os.Unsetenv(key)
+func set(t *testing.T, key string, set bool, val string) {
+	t.Helper()
+
+	oldVal, oldSet := os.LookupEnv(key)
+
+	rawSet(key, set, val)
+	t.Cleanup(func() { rawSet(key, oldSet, oldVal) })
+}
+
+func store(t *testing.T, key string, val string) { t.Helper(); set(t, key, true, val) }
+func unset(t *testing.T, keys ...string) {
+	t.Helper()
+	for _, k := range keys {
+		set(t, k, false, "")
+	}
 }
 
 //nolint:paralleltest // environment vars are global
@@ -47,10 +59,7 @@ func TestGetenv(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 			require.Equal(t, tc.expected, config.Getenv(key))
 		})
 	}
@@ -90,10 +99,7 @@ func TestReadQuiet(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -164,10 +170,7 @@ func TestReadBool(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -230,10 +233,7 @@ func TestReadNonnegInt(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -277,10 +277,7 @@ func TestReadDomains(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -299,9 +296,9 @@ func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
 	var (
+		unmanaged  detector.Policy
 		cloudflare = detector.NewCloudflare()
 		local      = detector.NewLocal()
-		unmanaged  = detector.NewUnmanaged()
 		ipify      = detector.NewIpify()
 	)
 
@@ -340,10 +337,7 @@ func TestReadPolicy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -400,10 +394,7 @@ func TestReadNonnegDuration(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -432,13 +423,23 @@ func TestReadCron(t *testing.T) {
 		"nil": {
 			false, "", cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "* * * * *")
+				m.EXPECT().Infof(
+					pp.EmojiBullet,
+					"Use default %s=%v",
+					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					cron.MustNew("* * * * *"),
+				)
 			},
 		},
 		"empty": {
 			true, "", cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "@every 3m")
+				m.EXPECT().Infof(
+					pp.EmojiBullet,
+					"Use default %s=%v",
+					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					cron.MustNew("@every 3m"),
+				)
 			},
 		},
 		"@": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
@@ -453,10 +454,7 @@ func TestReadCron(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			if tc.set {
-				set(key, tc.val)
-				defer unset(key)
-			}
+			set(t, key, tc.set, tc.val)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)

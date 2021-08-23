@@ -8,14 +8,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 )
 
-func TestCloudflareIsManaged(t *testing.T) {
+func TestCloudflareName(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, detector.NewCloudflare().IsManaged())
-}
-
-func TestCloudflareString(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, "cloudflare", detector.NewCloudflare().String())
+	require.Equal(t, "cloudflare", detector.Name(detector.NewCloudflare()))
 }
