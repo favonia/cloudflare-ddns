@@ -14,26 +14,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestLocalIsManaged(t *testing.T) {
+func TestLocalName(t *testing.T) {
 	t.Parallel()
 
-	policy := detector.Local{
-		PolicyName:    "",
-		RemoteUDPAddr: nil,
-	}
-
-	require.True(t, policy.IsManaged())
-}
-
-func TestLocalString(t *testing.T) {
-	t.Parallel()
-
-	policy := detector.Local{
+	policy := &detector.Local{
 		PolicyName:    "very secret name",
 		RemoteUDPAddr: nil,
 	}
 
-	require.Equal(t, "very secret name", policy.String())
+	require.Equal(t, "very secret name", detector.Name(policy))
 }
 
 func TestLocalGetIP(t *testing.T) {

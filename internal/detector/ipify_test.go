@@ -8,14 +8,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 )
 
-func TestIpifyIsManaged(t *testing.T) {
+func TestIpifyName(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, detector.NewIpify().IsManaged())
-}
-
-func TestIpifyString(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, "ipify", detector.NewIpify().String())
+	require.Equal(t, "ipify", detector.Name(detector.NewIpify()))
 }

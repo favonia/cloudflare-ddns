@@ -17,26 +17,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestHTTPIsManaged(t *testing.T) {
+func TestHTTPName(t *testing.T) {
 	t.Parallel()
 
-	policy := detector.HTTP{
-		PolicyName: "",
-		URL:        nil,
-	}
-
-	require.True(t, policy.IsManaged())
-}
-
-func TestHTTPString(t *testing.T) {
-	t.Parallel()
-
-	policy := detector.HTTP{
+	policy := &detector.HTTP{
 		PolicyName: "very secret name",
 		URL:        nil,
 	}
 
-	require.Equal(t, "very secret name", policy.String())
+	require.Equal(t, "very secret name", detector.Name(policy))
 }
 
 //nolint:funlen

@@ -291,9 +291,9 @@ func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
 	var (
+		unmanaged  detector.Policy
 		cloudflare = detector.NewCloudflare()
 		local      = detector.NewLocal()
-		unmanaged  = detector.NewUnmanaged()
 		ipify      = detector.NewIpify()
 	)
 

@@ -163,12 +163,12 @@ func Print(ppfmt pp.PP, c *Config) {
 	inner := ppfmt.IncIndent()
 
 	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %v", c.Policy[ipnet.IP4])
-	if c.Policy[ipnet.IP4].IsManaged() {
+	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %s", detector.Name(c.Policy[ipnet.IP4]))
+	if c.Policy[ipnet.IP4] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %v", c.Policy[ipnet.IP6])
-	if c.Policy[ipnet.IP6].IsManaged() {
+	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %s", detector.Name(c.Policy[ipnet.IP6]))
+	if c.Policy[ipnet.IP6] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
@@ -218,7 +218,7 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	}
 
 	for ipNet, domains := range c.Domains {
-		if !c.Policy[ipNet].IsManaged() {
+		if c.Policy[ipNet] == nil {
 			for i := range domains {
 				if count[domains[i]] != len(c.Domains) {
 					ppfmt.Warningf(pp.EmojiUserWarning,
@@ -238,14 +238,14 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 
 	// change useless policies to unmanaged
 	for ipNet, domains := range c.Domains {
-		if len(domains) == 0 && c.Policy[ipNet].IsManaged() {
-			c.Policy[ipNet] = detector.NewUnmanaged()
+		if len(domains) == 0 && c.Policy[ipNet] != nil {
+			c.Policy[ipNet] = nil
 			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %v",
 				ipNet.Int(), c.Policy[ipNet], ipNet)
 		}
 	}
 
-	if !c.Policy[ipnet.IP4].IsManaged() && !c.Policy[ipnet.IP6].IsManaged() {
+	if c.Policy[ipnet.IP4] == nil && c.Policy[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged")
 		return false
 	}

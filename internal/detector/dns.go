@@ -153,11 +153,7 @@ type DNSOverHTTPS struct {
 	}
 }
 
-func (p *DNSOverHTTPS) IsManaged() bool {
-	return true
-}
-
-func (p *DNSOverHTTPS) String() string {
+func (p *DNSOverHTTPS) name() string {
 	return p.PolicyName
 }
 

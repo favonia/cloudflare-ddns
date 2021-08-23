@@ -13,11 +13,7 @@ type Local struct {
 	RemoteUDPAddr map[ipnet.Type]string
 }
 
-func (p *Local) IsManaged() bool {
-	return true
-}
-
-func (p *Local) String() string {
+func (p *Local) name() string {
 	return p.PolicyName
 }
 

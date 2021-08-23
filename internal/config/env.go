@@ -106,7 +106,7 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]api.FQDN) bool {
 func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 	switch val := Getenv(key); val {
 	case "":
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, detector.Name(*field))
 		return true
 	case "cloudflare":
 		*field = detector.NewCloudflare()
@@ -118,7 +118,7 @@ func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 		*field = detector.NewLocal()
 		return true
 	case "unmanaged":
-		*field = detector.NewUnmanaged()
+		*field = nil
 		return true
 	default:
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", val)

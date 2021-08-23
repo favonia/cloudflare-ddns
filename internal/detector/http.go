@@ -68,11 +68,7 @@ type HTTP struct {
 	URL        map[ipnet.Type]string
 }
 
-func (p *HTTP) IsManaged() bool {
-	return true
-}
-
-func (p *HTTP) String() string {
+func (p *HTTP) name() string {
 	return p.PolicyName
 }
 

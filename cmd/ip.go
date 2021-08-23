@@ -44,7 +44,7 @@ func updateIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, 
 
 func updateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle) {
 	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		if c.Policy[ipNet].IsManaged() {
+		if c.Policy[ipNet] != nil {
 			updateIP(ctx, ppfmt, c, h, ipNet)
 		}
 	}
@@ -52,7 +52,7 @@ func updateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle)
 
 func clearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle) {
 	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		if c.Policy[ipNet].IsManaged() {
+		if c.Policy[ipNet] != nil {
 			setIP(ctx, ppfmt, c, h, ipNet, nil)
 		}
 	}

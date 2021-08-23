@@ -19,26 +19,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestDNSOverHTTPSIsManaged(t *testing.T) {
+func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	policy := detector.DNSOverHTTPS{
-		PolicyName: "",
-		Param:      nil,
-	}
-
-	require.True(t, policy.IsManaged())
-}
-
-func TestDNSOverHTTPSString(t *testing.T) {
-	t.Parallel()
-
-	policy := detector.DNSOverHTTPS{
+	policy := &detector.DNSOverHTTPS{
 		PolicyName: "very secret name",
 		Param:      nil,
 	}
 
-	require.Equal(t, "very secret name", policy.String())
+	require.Equal(t, "very secret name", detector.Name(policy))
 }
 
 func setupServer(t *testing.T, name string, class dnsmessage.Class,

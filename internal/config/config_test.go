@@ -10,6 +10,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -205,9 +206,9 @@ func TestReadDomainMap(t *testing.T) {
 //nolint:funlen,paralleltest // environment vars are global
 func TestReadPolicyMap(t *testing.T) {
 	var (
+		unmanaged  detector.Policy
 		cloudflare = detector.NewCloudflare()
 		local      = detector.NewLocal()
-		unmanaged  = detector.NewUnmanaged()
 		ipify      = detector.NewIpify()
 	)
 
@@ -294,9 +295,11 @@ func TestReadPolicyMap(t *testing.T) {
 	}
 }
 
-func TestPrint(t *testing.T) {
+func TestPrintDefault(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
@@ -305,21 +308,51 @@ func TestPrint(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %v", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %v", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", gomock.Any()),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.FQDN(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.FQDN(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", gomock.Any()),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", gomock.Any()),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", gomock.Any()),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", gomock.Any()),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 	)
 	config.Print(mockPP, config.Default())
+}
+
+func TestPrintEmpty(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().IncIndent().Return(mockPP),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "unmanaged"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "unmanaged"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.Schedule(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Duration(0)),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "0"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
+	)
+	config.Print(mockPP, &config.Config{})
 }

@@ -9,7 +9,14 @@ import (
 )
 
 type Policy interface {
-	IsManaged() bool
-	String() string
+	name() string
 	GetIP(context.Context, pp.PP, ipnet.Type) net.IP
+}
+
+func Name(p Policy) string {
+	if p == nil {
+		return "unmanaged"
+	}
+
+	return p.name()
 }
