@@ -356,3 +356,143 @@ func TestPrintEmpty(t *testing.T) {
 	)
 	config.Print(mockPP, &config.Config{})
 }
+
+func TestNormalize(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		input         *config.Config
+		ok            bool
+		expected      *config.Config
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil": {
+			input:    &config.Config{},
+			ok:       false,
+			expected: &config.Config{},
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified")
+			},
+		},
+		"empty": {
+			input: &config.Config{
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {},
+					ipnet.IP6: {},
+				},
+			},
+			ok: false,
+			expected: &config.Config{
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {},
+					ipnet.IP6: {},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified")
+			},
+		},
+		"empty-ip6": {
+			input: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: detector.NewCloudflare(),
+					ipnet.IP6: detector.NewCloudflare(),
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c")},
+					ipnet.IP6: {},
+				},
+			},
+			ok: true,
+			expected: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: detector.NewCloudflare(),
+					ipnet.IP6: nil,
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c")},
+					ipnet.IP6: {},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning,
+					"IP%d_POLICY was changed to %q because no domains were set for %s",
+					6, "unmanaged", "IPv6")
+			},
+		},
+		"empty-ip6-unmanaged-ip4": {
+			input: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: nil,
+					ipnet.IP6: detector.NewCloudflare(),
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c")},
+					ipnet.IP6: {},
+				},
+			},
+			ok: false,
+			expected: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: nil,
+					ipnet.IP6: nil,
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c")},
+					ipnet.IP6: {},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiUserWarning,
+						"IP%d_POLICY was changed to %q because no domains were set for %s",
+						6, "unmanaged", "IPv6"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged"),
+				)
+			},
+		},
+		"ignored-ip4-domains": {
+			input: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: nil,
+					ipnet.IP6: detector.NewCloudflare(),
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
+					ipnet.IP6: {api.FQDN("a.b.c")},
+				},
+			},
+			ok: true,
+			expected: &config.Config{
+				Policy: map[ipnet.Type]detector.Policy{
+					ipnet.IP4: nil,
+					ipnet.IP6: detector.NewCloudflare(),
+				},
+				Domains: map[ipnet.Type][]api.FQDN{
+					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
+					ipnet.IP6: {api.FQDN("a.b.c")},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning,
+					"Domain %q is ignored because it is only for %s but %s is unmanaged",
+					"d.e.f", "IPv4", "IPv4")
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+
+			cfg := tc.input
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := cfg.Normalize(mockPP)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, cfg)
+		})
+	}
+}

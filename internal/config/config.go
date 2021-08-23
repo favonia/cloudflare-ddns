@@ -240,8 +240,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	for ipNet, domains := range c.Domains {
 		if len(domains) == 0 && c.Policy[ipNet] != nil {
 			c.Policy[ipNet] = nil
-			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %v",
-				ipNet.Int(), c.Policy[ipNet], ipNet)
+			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %s",
+				ipNet.Int(), detector.Name(c.Policy[ipNet]), ipNet.Describe())
 		}
 	}
 
