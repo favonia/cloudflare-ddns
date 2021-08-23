@@ -36,7 +36,12 @@ func set(t *testing.T, key string, set bool, val string) {
 }
 
 func store(t *testing.T, key string, val string) { t.Helper(); set(t, key, true, val) }
-func unset(t *testing.T, key string)             { t.Helper(); set(t, key, false, "") }
+func unset(t *testing.T, keys ...string) {
+	t.Helper()
+	for _, k := range keys {
+		set(t, k, false, "")
+	}
+}
 
 //nolint:paralleltest // environment vars are global
 func TestGetenv(t *testing.T) {

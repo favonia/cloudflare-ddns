@@ -26,9 +26,7 @@ func TestDefaultConfigNotNil(t *testing.T) {
 
 //nolint:paralleltest // environment vars are global
 func TestReadAuthToken(t *testing.T) {
-	unset(t, "CF_API_TOKEN")
-	unset(t, "CF_API_TOKEN_FILE")
-	unset(t, "CF_ACCOUNT_ID")
+	unset(t, "CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
 		token         string
@@ -81,9 +79,7 @@ func useMemFS(memfs fstest.MapFS) {
 
 //nolint:funlen,paralleltest // environment vars and file system are global
 func TestReadAuthTokenWithFile(t *testing.T) {
-	unset(t, "CF_API_TOKEN")
-	unset(t, "CF_API_TOKEN_FILE")
-	unset(t, "CF_ACCOUNT_ID")
+	unset(t, "CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
 		token         string
