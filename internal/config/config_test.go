@@ -300,6 +300,7 @@ func TestPrintDefault(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
@@ -319,6 +320,7 @@ func TestPrintDefault(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
 	)
 	config.Print(mockPP, config.Default())
 }
@@ -332,6 +334,7 @@ func TestPrintEmpty(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
@@ -349,12 +352,24 @@ func TestPrintEmpty(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
 	)
 	config.Print(mockPP, &config.Config{})
 }
 
+func TestPrintHidden(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().IsEnabledFor(pp.Info).Return(false)
+	config.Print(mockPP, &config.Config{})
+}
+
 //nolint:paralleltest // environment variables are global
-func TestReadEnvOnlyToken(t *testing.T) {
+func TestReadEnvWithOnlyToken(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	unset(t,
@@ -381,6 +396,7 @@ func TestReadEnvOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", 0),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "PROXIED", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
 	)
 	ok := cfg.ReadEnv(mockPP)
 	require.True(t, ok)
