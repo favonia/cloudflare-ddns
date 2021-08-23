@@ -432,6 +432,8 @@ func TestReadEnvEmpty(t *testing.T) {
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 
+	var empty config.Config
+
 	for name, tc := range map[string]struct {
 		input         *config.Config
 		ok            bool
@@ -439,22 +441,22 @@ func TestNormalize(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
-			input:    &config.Config{},
+			input:    &empty,
 			ok:       false,
-			expected: &config.Config{},
+			expected: &empty,
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified")
 			},
 		},
 		"empty": {
-			input: &config.Config{
+			input: &config.Config{ //nolint:exhaustivestruct
 				Domains: map[ipnet.Type][]api.FQDN{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
 			},
 			ok: false,
-			expected: &config.Config{
+			expected: &config.Config{ //nolint:exhaustivestruct
 				Domains: map[ipnet.Type][]api.FQDN{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
@@ -465,7 +467,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"empty-ip6": {
-			input: &config.Config{
+			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: detector.NewCloudflare(),
 					ipnet.IP6: detector.NewCloudflare(),
@@ -476,7 +478,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: true,
-			expected: &config.Config{
+			expected: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: detector.NewCloudflare(),
 					ipnet.IP6: nil,
@@ -493,7 +495,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"empty-ip6-unmanaged-ip4": {
-			input: &config.Config{
+			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
@@ -504,7 +506,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: false,
-			expected: &config.Config{
+			expected: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
@@ -524,7 +526,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"ignored-ip4-domains": {
-			input: &config.Config{
+			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
@@ -535,7 +537,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: true,
-			expected: &config.Config{
+			expected: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
