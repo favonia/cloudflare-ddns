@@ -184,7 +184,7 @@ func TestReadBool(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadNonnegInt(t *testing.T) {
 	key := keyPrefix + "INT"
 	for name, tc := range map[string]struct {
