@@ -121,7 +121,7 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.FQDN) bool {
 	var domains, ip4Domains, ip6Domains []api.FQDN
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
@@ -136,23 +136,27 @@ func ReadDomainMap(ppfmt pp.PP, field map[ipnet.Type][]api.FQDN) bool {
 	deduplicate(&ip4Domains)
 	deduplicate(&ip6Domains)
 
-	field[ipnet.IP4] = ip4Domains
-	field[ipnet.IP6] = ip6Domains
+	*field = map[ipnet.Type][]api.FQDN{
+		ipnet.IP4: ip4Domains,
+		ipnet.IP6: ip6Domains,
+	}
 
 	return true
 }
 
-func ReadPolicyMap(ppfmt pp.PP, field map[ipnet.Type]detector.Policy) bool {
-	ip4Policy := field[ipnet.IP4]
-	ip6Policy := field[ipnet.IP6]
+func ReadPolicyMap(ppfmt pp.PP, field *map[ipnet.Type]detector.Policy) bool {
+	ip4Policy := (*field)[ipnet.IP4]
+	ip6Policy := (*field)[ipnet.IP6]
 
 	if !ReadPolicy(ppfmt, "IP4_POLICY", &ip4Policy) ||
 		!ReadPolicy(ppfmt, "IP6_POLICY", &ip6Policy) {
 		return false
 	}
 
-	field[ipnet.IP4] = ip4Policy
-	field[ipnet.IP6] = ip6Policy
+	*field = map[ipnet.Type]detector.Policy{
+		ipnet.IP4: ip4Policy,
+		ipnet.IP6: ip6Policy,
+	}
 	return true
 }
 
@@ -194,8 +198,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadPolicyMap(ppfmt, c.Policy) ||
-		!ReadDomainMap(ppfmt, c.Domains) ||
+		!ReadPolicyMap(ppfmt, &c.Policy) ||
+		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||

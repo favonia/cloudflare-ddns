@@ -423,13 +423,23 @@ func TestReadCron(t *testing.T) {
 		"nil": {
 			false, "", cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "* * * * *")
+				m.EXPECT().Infof(
+					pp.EmojiBullet,
+					"Use default %s=%v",
+					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					cron.MustNew("* * * * *"),
+				)
 			},
 		},
 		"empty": {
 			true, "", cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-CRON", "@every 3m")
+				m.EXPECT().Infof(
+					pp.EmojiBullet,
+					"Use default %s=%v",
+					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					cron.MustNew("@every 3m"),
+				)
 			},
 		},
 		"@": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},

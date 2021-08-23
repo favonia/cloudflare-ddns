@@ -192,7 +192,7 @@ func TestReadDomainMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadDomainMap(mockPP, field)
+			ok := config.ReadDomainMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})
@@ -284,7 +284,7 @@ func TestReadPolicyMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadPolicyMap(mockPP, field)
+			ok := config.ReadPolicyMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})
@@ -353,6 +353,61 @@ func TestPrintEmpty(t *testing.T) {
 	config.Print(mockPP, &config.Config{})
 }
 
+//nolint:paralleltest // environment variables are global
+func TestReadEnvOnlyToken(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	unset(t,
+		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
+		"IP4_POLICY", "IP6_POLICY",
+		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
+		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+
+	store(t, "CF_API_TOKEN", "deadbeaf")
+
+	var cfg config.Config
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Noticef(pp.EmojiEnvVars, "Reading settings . . ."),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_POLICY", "unmanaged"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_POLICY", "unmanaged"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_CRON", cron.Schedule(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", 0),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "PROXIED", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
+	)
+	ok := cfg.ReadEnv(mockPP)
+	require.True(t, ok)
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvEmpty(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	unset(t,
+		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
+		"IP4_POLICY", "IP6_POLICY",
+		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
+		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+
+	var cfg config.Config
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Noticef(pp.EmojiEnvVars, "Reading settings . . ."),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		innerMockPP.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
+	)
+	ok := cfg.ReadEnv(mockPP)
+	require.False(t, ok)
+}
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 

@@ -153,7 +153,7 @@ func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, (*field).String())
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%v", key, *field)
 		return true
 	}
 
