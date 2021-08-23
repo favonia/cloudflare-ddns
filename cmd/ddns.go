@@ -51,7 +51,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 		os.Exit(1)
 	}
 
-	config.Print(ppfmt, c)
+	c.Print(ppfmt)
 
 	// getting the handler
 	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)

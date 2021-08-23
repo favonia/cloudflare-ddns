@@ -322,7 +322,7 @@ func TestPrintDefault(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
 	)
-	config.Print(mockPP, config.Default())
+	config.Default().Print(mockPP)
 }
 
 func TestPrintEmpty(t *testing.T) {
@@ -354,7 +354,8 @@ func TestPrintEmpty(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
 	)
-	config.Print(mockPP, &config.Config{})
+	var cfg config.Config
+	cfg.Print(mockPP)
 }
 
 func TestPrintHidden(t *testing.T) {
@@ -365,7 +366,9 @@ func TestPrintHidden(t *testing.T) {
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().IsEnabledFor(pp.Info).Return(false)
-	config.Print(mockPP, &config.Config{})
+
+	var cfg config.Config
+	cfg.Print(mockPP)
 }
 
 //nolint:paralleltest // environment variables are global
@@ -424,6 +427,8 @@ func TestReadEnvEmpty(t *testing.T) {
 	ok := cfg.ReadEnv(mockPP)
 	require.False(t, ok)
 }
+
+//nolint:funlen
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 

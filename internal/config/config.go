@@ -43,8 +43,8 @@ func Default() *Config {
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
 		TTL:              api.TTL(1),
 		Proxied:          false,
-		UpdateTimeout:    time.Second * 30,
-		DetectionTimeout: time.Second * 5, //nolint:gomnd
+		UpdateTimeout:    time.Second * 30, //nolint:gomnd
+		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 	}
 }
 
@@ -160,7 +160,7 @@ func ReadPolicyMap(ppfmt pp.PP, field *map[ipnet.Type]detector.Policy) bool {
 	return true
 }
 
-func Print(ppfmt pp.PP, c *Config) {
+func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		return
 	}
