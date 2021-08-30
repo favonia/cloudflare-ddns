@@ -65,7 +65,7 @@ gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v2 v2.2.3/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-kernel.org/pub/linux/libs/security/libcap/cap v1.2.54 h1:yfGytsMb2q/Yd3nEWUQOBdvKqahV3m0KngJ06MqBgiA=
-kernel.org/pub/linux/libs/security/libcap/cap v1.2.54/go.mod h1:UOlmfWGWnnpT0blSgzVqNGOM4ytGp9SoH9YM5zDFCnc=
-kernel.org/pub/linux/libs/security/libcap/psx v1.2.54 h1:kRFgk8nk2fLvkBknMEkOFcbk/Y8DYnztHWj+qyDF8dU=
-kernel.org/pub/linux/libs/security/libcap/psx v1.2.54/go.mod h1:+l6Ee2F59XiJ2I6WR5ObpC1utCQJZ/VLsEbQCD8RG24=
+kernel.org/pub/linux/libs/security/libcap/cap v1.2.55 h1:IM/+/S8NdkXEGMGsKF8kb3y0+tp5GoaUaCL4nWaxfhY=
+kernel.org/pub/linux/libs/security/libcap/cap v1.2.55/go.mod h1:6l0VIfmbblrwm/ACJk757hdF62QeFoRTXNDTMS7dmJQ=
+kernel.org/pub/linux/libs/security/libcap/psx v1.2.55 h1:kv+IyFKvag+cN99CAyDJThTjaC1v4qC5o3olhAxy7YQ=
+kernel.org/pub/linux/libs/security/libcap/psx v1.2.55/go.mod h1:+l6Ee2F59XiJ2I6WR5ObpC1utCQJZ/VLsEbQCD8RG24=
