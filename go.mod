@@ -9,5 +9,5 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.55
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.56
 )
