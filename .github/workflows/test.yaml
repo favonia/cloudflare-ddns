@@ -8,7 +8,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        go-version: [1.16.x]
+        go-version: [1.17.x]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v2
