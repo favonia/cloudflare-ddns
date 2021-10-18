@@ -15,7 +15,7 @@ type Args struct {
 	Handle    api.Handle
 	IPNetwork ipnet.Type
 	IP        net.IP
-	Domain    api.FQDN
+	Domain    api.Domain
 	TTL       api.TTL
 	Proxied   bool
 }

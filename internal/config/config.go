@@ -14,7 +14,7 @@ import (
 type Config struct {
 	Auth             api.Auth
 	Policy           map[ipnet.Type]detector.Policy
-	Domains          map[ipnet.Type][]api.FQDN
+	Domains          map[ipnet.Type][]api.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
 	DeleteOnStop     bool
@@ -33,7 +33,7 @@ func Default() *Config {
 			ipnet.IP4: detector.NewCloudflare(),
 			ipnet.IP6: detector.NewCloudflare(),
 		},
-		Domains: map[ipnet.Type][]api.FQDN{
+		Domains: map[ipnet.Type][]api.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
 		},
@@ -98,8 +98,8 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.
-func deduplicate(list *[]api.FQDN) {
-	api.SortFQDNs(*list)
+func deduplicate(list *[]api.Domain) {
+	api.SortDomains(*list)
 
 	if len(*list) == 0 {
 		return
@@ -121,8 +121,8 @@ func deduplicate(list *[]api.FQDN) {
 	*list = (*list)[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.FQDN) bool {
-	var domains, ip4Domains, ip6Domains []api.FQDN
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
+	var domains, ip4Domains, ip6Domains []api.Domain
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
 		!ReadDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
@@ -136,7 +136,7 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.FQDN) bool {
 	deduplicate(&ip4Domains)
 	deduplicate(&ip6Domains)
 
-	*field = map[ipnet.Type][]api.FQDN{
+	*field = map[ipnet.Type][]api.Domain{
 		ipnet.IP4: ip4Domains,
 		ipnet.IP6: ip6Domains,
 	}
@@ -220,7 +220,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 }
 
 func (c *Config) checkUselessDomains(ppfmt pp.PP) {
-	count := map[api.FQDN]int{}
+	count := map[api.Domain]int{}
 	for _, domains := range c.Domains {
 		for _, domain := range domains {
 			count[domain]++

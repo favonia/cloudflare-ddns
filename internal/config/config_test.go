@@ -156,22 +156,22 @@ func TestReadDomainMap(t *testing.T) {
 		domains       string
 		ip4Domains    string
 		ip6Domains    string
-		expected      map[ipnet.Type][]api.FQDN
+		expected      map[ipnet.Type][]api.Domain
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
 			"  a1, a2", "b1,  b2,b2", "c1,c2",
-			map[ipnet.Type][]api.FQDN{
-				ipnet.IP4: {"a1", "a2", "b1", "b2"},
-				ipnet.IP6: {"a1", "a2", "c1", "c2"},
+			map[ipnet.Type][]api.Domain{
+				ipnet.IP4: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("b1"), api.FQDN("b2")},
+				ipnet.IP6: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("c1"), api.FQDN("c2")},
 			},
 			true,
 			nil,
 		},
 		"empty": {
 			" ", "   ", "",
-			map[ipnet.Type][]api.FQDN{
+			map[ipnet.Type][]api.Domain{
 				ipnet.IP4: {},
 				ipnet.IP6: {},
 			},
@@ -187,7 +187,7 @@ func TestReadDomainMap(t *testing.T) {
 			store(t, "IP4_DOMAINS", tc.ip4Domains)
 			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
-			field := map[ipnet.Type][]api.FQDN{}
+			field := map[ipnet.Type][]api.Domain{}
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -306,9 +306,9 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.FQDN(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.FQDN(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
@@ -450,14 +450,14 @@ func TestNormalize(t *testing.T) {
 		},
 		"empty": {
 			input: &config.Config{ //nolint:exhaustivestruct
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustivestruct
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
@@ -472,7 +472,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: detector.NewCloudflare(),
 					ipnet.IP6: detector.NewCloudflare(),
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
@@ -483,7 +483,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: detector.NewCloudflare(),
 					ipnet.IP6: nil,
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
@@ -500,7 +500,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
@@ -511,7 +511,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
@@ -531,7 +531,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
 					ipnet.IP6: {api.FQDN("a.b.c")},
 				},
@@ -542,7 +542,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflare(),
 				},
-				Domains: map[ipnet.Type][]api.FQDN{
+				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
 					ipnet.IP6: {api.FQDN("a.b.c")},
 				},
