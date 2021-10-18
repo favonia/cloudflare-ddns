@@ -111,7 +111,7 @@ func TestNewFQDN(t *testing.T) {
 		{"نامه\u200Cای.de", "xn--mgba3gch31f060k.de", true, ""},
 		// some other test cases
 		{"xn--a.xn--a.xn--a.com", "xn--a.xn--a.xn--a.com", false, "idna: invalid label \"\\u0080\""},
-		{"a.com...｡", "a.com...", true, ""},
+		{"a.com...｡", "a.com", true, ""},
 		{"..｡..a.com", "a.com", true, ""},
 	} {
 		tc := tc
