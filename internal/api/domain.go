@@ -10,19 +10,27 @@ import (
 //nolint:gochecknoglobals
 // profile does C2 in UTS#46 with all checks on + removing leading dots.
 // This is the main conversion profile in use.
-var profile = idna.New(
-	idna.MapForLookup(),
-	idna.BidiRule(),
-	// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
-	idna.RemoveLeadingDots(true),
+var (
+	profileDroppingLeadingDots = idna.New(
+		idna.MapForLookup(),
+		idna.BidiRule(),
+		// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
+		idna.RemoveLeadingDots(true),
+	)
+	profileKeepingLeadingDots = idna.New(
+		idna.MapForLookup(),
+		idna.BidiRule(),
+		// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
+		idna.RemoveLeadingDots(false),
+	)
 )
 
 // safelyToUnicode takes an ASCII form and returns the Unicode form
 // when the round trip gives the same ASCII form back without errors.
 // Otherwise, the input ASCII form is returned.
 func safelyToUnicode(ascii string) (string, bool) {
-	unicode, errToA := profile.ToUnicode(ascii)
-	roundTrip, errToU := profile.ToASCII(unicode)
+	unicode, errToA := profileKeepingLeadingDots.ToUnicode(ascii)
+	roundTrip, errToU := profileKeepingLeadingDots.ToASCII(unicode)
 	if errToA != nil || errToU != nil || roundTrip != ascii {
 		return ascii, false
 	}
@@ -35,7 +43,7 @@ func safelyToUnicode(ascii string) (string, bool) {
 // gives back the same ASCII form without errors. Otherwise,
 // the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
 func NewDomain(domain string) (Domain, error) {
-	normalized, err := profile.ToASCII(domain)
+	normalized, err := profileDroppingLeadingDots.ToASCII(domain)
 
 	// Remove the final dot for consistency
 	normalized = strings.TrimRight(normalized, ".")
@@ -45,7 +53,7 @@ func NewDomain(domain string) (Domain, error) {
 		return Wildcard(""), nil
 	case strings.HasPrefix(normalized, "*."):
 		// redo the normalization after removing the offending "*"
-		normalized, err := profile.ToASCII(strings.TrimPrefix(normalized, "*."))
+		normalized, err := profileKeepingLeadingDots.ToASCII(strings.TrimPrefix(normalized, "*."))
 		return Wildcard(normalized), err
 	default:
 		return FQDN(normalized), err
