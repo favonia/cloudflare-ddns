@@ -261,13 +261,9 @@ func TestReadDomains(t *testing.T) {
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil":   {false, "", ds{f("test.org")}, ds{}, true, nil},
-		"empty": {true, "", ds{f("test.org")}, ds{}, true, nil},
-		"star": {true, "*", ds{}, ds{f("*")}, true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "*", gomock.Any()) //nolint:lll
-			},
-		},
+		"nil":       {false, "", ds{f("test.org")}, ds{}, true, nil},
+		"empty":     {true, "", ds{f("test.org")}, ds{}, true, nil},
+		"star":      {true, "*", ds{}, ds{w("")}, true, nil},
 		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
 		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
 		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll

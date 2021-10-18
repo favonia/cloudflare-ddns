@@ -5,7 +5,7 @@ import "strings"
 // FQDN is a fully qualified domain in its ASCII or Unicode (when unambiguous) form.
 type FQDN string
 
-func (f FQDN) String() string { return string(f) }
+func (f FQDN) DNSNameASCII() string { return string(f) }
 
 func (f FQDN) Describe() string {
 	best, ok := safelyToUnicode(string(f))
@@ -33,7 +33,6 @@ func (f FQDN) Split() DomainSplitter {
 
 func (s *FQDNSplitter) IsValid() bool         { return !s.exhausted }
 func (s *FQDNSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
-func (s *FQDNSplitter) DNSNameASCII() string  { return s.domain }
 func (s *FQDNSplitter) Next() {
 	if s.cursor == len(s.domain) {
 		s.exhausted = true

@@ -6,7 +6,7 @@ import "strings"
 // represnting the wildcard domain name under the zone.
 type Wildcard string
 
-func (w Wildcard) String() string {
+func (w Wildcard) DNSNameASCII() string {
 	if string(w) == "" {
 		return "*"
 	}
@@ -25,41 +25,30 @@ func (w Wildcard) Describe() string {
 }
 
 type WildcardSplitter struct {
-	domain       string
-	prefixCursor int
-	suffixCursor int
-	exhausted    bool
+	domain    string
+	cursor    int
+	exhausted bool
 }
 
 func (w Wildcard) Split() DomainSplitter {
 	return &WildcardSplitter{
-		domain:       string(w),
-		suffixCursor: 0,
-		prefixCursor: 0,
-		exhausted:    false,
+		domain:    string(w),
+		cursor:    0,
+		exhausted: false,
 	}
 }
 
 func (s *WildcardSplitter) IsValid() bool         { return !s.exhausted }
-func (s *WildcardSplitter) ZoneNameASCII() string { return s.domain[s.suffixCursor:] }
-func (s *WildcardSplitter) DNSNameASCII() string {
-	if s.suffixCursor <= 0 {
-		return "*"
-	}
-	return "*." + s.domain[:s.prefixCursor]
-}
-
+func (s *WildcardSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
 func (s *WildcardSplitter) Next() {
-	if s.suffixCursor == len(s.domain) {
+	if s.cursor == len(s.domain) {
 		s.exhausted = true
 	} else {
 		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
 		if shift == -1 {
-			s.prefixCursor = len(s.domain)
-			s.suffixCursor = len(s.domain)
+			s.cursor = len(s.domain)
 		} else {
-			s.suffixCursor += shift + 1
-			s.prefixCursor = s.suffixCursor - 1
+			s.cursor += shift + 1
 		}
 	}
 }

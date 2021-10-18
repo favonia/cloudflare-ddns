@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -12,12 +11,11 @@ import (
 type DomainSplitter interface {
 	IsValid() bool
 	ZoneNameASCII() string
-	DNSNameASCII() string
 	Next()
 }
 
 type Domain interface {
-	fmt.Stringer
+	DNSNameASCII() string
 	Describe() string
 	Split() DomainSplitter
 }

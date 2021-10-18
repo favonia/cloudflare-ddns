@@ -15,9 +15,9 @@ func TestWildcardString(t *testing.T) {
 	require.NoError(t, quick.Check(
 		func(s string) bool {
 			if s == "" {
-				return api.Wildcard(s).String() == "*"
+				return api.Wildcard(s).DNSNameASCII() == "*"
 			}
-			return api.Wildcard(s).String() == "*."+s
+			return api.Wildcard(s).DNSNameASCII() == "*."+s
 		},
 		nil,
 	))
@@ -72,27 +72,24 @@ func TestWildcardDescribe(t *testing.T) {
 
 func TestWildcardSplitter(t *testing.T) {
 	t.Parallel()
-	type r = struct {
-		dns  string
-		zone string
-	}
+	type r = string
 	for _, tc := range [...]struct {
 		input    string
 		expected []r
 	}{
-		{"a.b.c", []r{{"*", "a.b.c"}, {"*.a", "b.c"}, {"*.a.b", "c"}, {"*.a.b.c", ""}}},
-		{"...", []r{{"*", "..."}, {"*.", ".."}, {"*..", "."}, {"*...", ""}}},
-		{"aaa...", []r{{"*", "aaa..."}, {"*.aaa", ".."}, {"*.aaa.", "."}, {"*.aaa..", ""}}},
-		{".aaa..", []r{{"*", ".aaa.."}, {"*.", "aaa.."}, {"*..aaa", "."}, {"*..aaa.", ""}}},
-		{"..aaa.", []r{{"*", "..aaa."}, {"*.", ".aaa."}, {"*..", "aaa."}, {"*...aaa", ""}}},
-		{"...aaa", []r{{"*", "...aaa"}, {"*.", "..aaa"}, {"*..", ".aaa"}, {"*...", "aaa"}, {"*....aaa", ""}}},
+		{"a.b.c", []r{"a.b.c", "b.c", "c", ""}},
+		{"...", []r{"...", "..", ".", ""}},
+		{"aaa...", []r{"aaa...", "..", ".", ""}},
+		{".aaa..", []r{".aaa..", "aaa..", ".", ""}},
+		{"..aaa.", []r{"..aaa.", ".aaa.", "aaa.", ""}},
+		{"...aaa", []r{"...aaa", "..aaa", ".aaa", "aaa", ""}},
 	} {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
 			for s := api.Wildcard(tc.input).Split(); s.IsValid(); s.Next() {
-				rs = append(rs, r{s.DNSNameASCII(), s.ZoneNameASCII()})
+				rs = append(rs, s.ZoneNameASCII())
 			}
 			require.Equal(t, tc.expected, rs)
 		})

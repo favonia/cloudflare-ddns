@@ -94,8 +94,8 @@ func TestNewDomain(t *testing.T) {
 		{"*.xn--a.xn--a.xn--a.com", w("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
 		{"*.a.com...｡", w("a.com"), true, ""},
 		{"*...｡..a.com", w("a.com"), true, ""},
-		{"*......", f("*"), false, "idna: disallowed rune U+002A"},
-		{"*｡｡｡｡｡｡", f("*"), false, "idna: disallowed rune U+002A"},
+		{"*......", w(""), true, ""},
+		{"*｡｡｡｡｡｡", w(""), true, ""},
 	} {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
@@ -104,6 +104,7 @@ func TestNewDomain(t *testing.T) {
 			require.Equal(t, tc.expected, normalized)
 			if tc.ok {
 				require.NoError(t, err)
+				require.Empty(t, tc.errString)
 			} else {
 				require.EqualError(t, err, tc.errString)
 			}
@@ -131,7 +132,7 @@ func TestSortDomains(t *testing.T) {
 			switch {
 			case !assert.ElementsMatch(t, copied, merged):
 				return false
-			case !sort.SliceIsSorted(merged, func(i, j int) bool { return merged[i].String() < merged[j].String() }):
+			case !sort.SliceIsSorted(merged, func(i, j int) bool { return merged[i].DNSNameASCII() < merged[j].DNSNameASCII() }):
 				return false
 			default:
 				return true

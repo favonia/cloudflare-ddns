@@ -41,6 +41,8 @@ func NewDomain(domain string) (Domain, error) {
 	normalized = strings.TrimRight(normalized, ".")
 
 	switch {
+	case normalized == "*":
+		return Wildcard(""), nil
 	case strings.HasPrefix(normalized, "*."):
 		// redo the normalization after removing the offending "*"
 		normalized, err := profile.ToASCII(strings.TrimPrefix(normalized, "*."))
@@ -51,5 +53,5 @@ func NewDomain(domain string) (Domain, error) {
 }
 
 func SortDomains(s []Domain) {
-	sort.Slice(s, func(i, j int) bool { return s[i].String() < s[j].String() })
+	sort.Slice(s, func(i, j int) bool { return s[i].DNSNameASCII() < s[j].DNSNameASCII() })
 }

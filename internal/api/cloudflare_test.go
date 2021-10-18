@@ -335,38 +335,25 @@ func TestActiveZonesEmpty(t *testing.T) {
 }
 
 //nolint:funlen
-func TestLocateDomain(t *testing.T) {
+func TestZoneOfDomain(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		zone            string
-		domain          api.Domain
-		numZones        map[string]int
-		accessCount     int
-		expectedZone    string
-		expectedDNSName string
-		ok              bool
-		prepareMockPP   func(*mocks.MockPP)
+		zone          string
+		domain        api.Domain
+		numZones      map[string]int
+		accessCount   int
+		expected      string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
-		"root": {
-			"test.org", api.FQDN("test.org"),
-			map[string]int{"test.org": 1},
-			1, mockID("test.org", 0), "test.org", true, nil,
-		},
-		"wildcard": {
-			"test.org", api.Wildcard("test.org"),
-			map[string]int{"test.org": 1},
-			1, mockID("test.org", 0), "*", true, nil,
-		},
-		"one": {
-			"test.org", api.FQDN("sub.test.org"),
-			map[string]int{"test.org": 1},
-			2, mockID("test.org", 0), "sub.test.org", true, nil,
-		},
+		"root":     {"test.org", api.FQDN("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
+		"wildcard": {"test.org", api.Wildcard("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
+		"one":      {"test.org", api.FQDN("sub.test.org"), map[string]int{"test.org": 1}, 2, mockID("test.org", 0), true, nil},
 		"none": {
 			"test.org", api.FQDN("sub.test.org"),
 			map[string]int{},
-			3, "", "", false,
+			3, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
 			},
@@ -374,7 +361,7 @@ func TestLocateDomain(t *testing.T) {
 		"none/wildcard": {
 			"test.org", api.Wildcard("test.org"),
 			map[string]int{},
-			2, "", "", false,
+			2, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org")
 			},
@@ -382,7 +369,7 @@ func TestLocateDomain(t *testing.T) {
 		"multiple": {
 			"test.org", api.FQDN("sub.test.org"),
 			map[string]int{"test.org": 2},
-			2, "", "", false,
+			2, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiImpossible,
@@ -394,7 +381,7 @@ func TestLocateDomain(t *testing.T) {
 		"multiple/wildcard": {
 			"test.org", api.Wildcard("test.org"),
 			map[string]int{"test.org": 2},
-			1, "", "", false,
+			1, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiImpossible,
@@ -417,9 +404,9 @@ func TestLocateDomain(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			zoneID, ok := h.(*api.CloudflareHandle).LocateDomain(context.Background(), mockPP, tc.domain)
+			zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, api.LocatedDomain{Zone: tc.expectedZone, DNSName: tc.expectedDNSName}, zoneID)
+			require.Equal(t, tc.expected, zoneID)
 			require.True(t, zh.isExhausted())
 
 			if tc.ok {
@@ -428,16 +415,16 @@ func TestLocateDomain(t *testing.T) {
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				zoneID, ok = h.(*api.CloudflareHandle).LocateDomain(context.Background(), mockPP, tc.domain)
+				zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
-				require.Equal(t, api.LocatedDomain{Zone: tc.expectedZone, DNSName: tc.expectedDNSName}, zoneID)
+				require.Equal(t, tc.expected, zoneID)
 				require.True(t, zh.isExhausted())
 			}
 		})
 	}
 }
 
-func TestLocateDomainInvalid(t *testing.T) {
+func TestZoneOfDomainInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 
@@ -450,9 +437,9 @@ func TestLocateDomainInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	locatedDomain, ok := h.(*api.CloudflareHandle).LocateDomain(context.Background(), mockPP, api.FQDN("sub.test.org"))
+	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, api.FQDN("sub.test.org"))
 	require.False(t, ok)
-	require.Equal(t, api.LocatedDomain{Zone: "", DNSName: ""}, locatedDomain)
+	require.Equal(t, "", zoneID)
 }
 
 func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip net.IP) *cloudflare.DNSRecord {
@@ -571,14 +558,14 @@ func TestListRecordsWildcard(t *testing.T) {
 			assert.Equal(t, http.MethodGet, r.Method)
 			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			assert.Equal(t, url.Values{
-				"name":     {"*"},
+				"name":     {"*.test.org"},
 				"page":     {"1"},
 				"per_page": {"100"},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "*", ips))
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "*.test.org", ips))
 			assert.NoError(t, err)
 		})
 
