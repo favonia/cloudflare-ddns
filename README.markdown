@@ -25,6 +25,7 @@ A small and fast DDNS updater for Cloudflare.
 * Ability to update multiple domains across different zones.
 * Ability to enable or disable IPv4 and IPv6 individually.
 * Support of internationalized domain names.
+* Support of wildcard domain names (_e.g._, `*.example.org`).
 * Ability to remove stale records or choose to remove records on exit/stop.
 * Ability to obtain IP addresses from Cloudflare, ipify, or local network interfaces.
 * Support of timezone and Cron expressions.
@@ -273,10 +274,10 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage | (See below) | N/A
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `A` records | (See below) | N/A
+| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage | (See below) | N/A
+| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `A` records | (See below) | N/A
 | `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv4 addresses. (See below) | No | `cloudflare`
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
+| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
 | `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv6 addresses. (See below) | No | `cloudflare`
 
 > <details>

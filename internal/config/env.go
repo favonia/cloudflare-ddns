@@ -81,17 +81,17 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(ppfmt pp.PP, key string, field *[]api.FQDN) bool {
+func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
-	*field = make([]api.FQDN, 0, len(rawList))
+	*field = make([]api.Domain, 0, len(rawList))
 	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
 		}
 
-		item, err := api.NewFQDN(item)
+		item, err := api.NewDomain(item)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
 		}

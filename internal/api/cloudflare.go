@@ -102,14 +102,14 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	return ids, true
 }
 
-func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain FQDN) (string, bool) {
-	if id, found := h.cache.zoneOfDomain.Get(domain.ToASCII()); found {
+func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain Domain) (string, bool) {
+	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
 		return id.(string), true
 	}
 
 zoneSearch:
-	for s := NewFQDNSplitter(domain); s.IsValid(); s.Next() {
-		zoneName := s.Suffix()
+	for s := domain.Split(); s.IsValid(); s.Next() {
+		zoneName := s.ZoneNameASCII()
 		zones, ok := h.ActiveZones(ctx, ppfmt, zoneName)
 		if !ok {
 			return "", false
@@ -119,7 +119,7 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneOfDomain.SetDefault(domain.ToASCII(), zones[0])
+			h.cache.zoneOfDomain.SetDefault(domain.DNSNameASCII(), zones[0])
 			return zones[0], true
 		default: // len(zones) > 1
 			ppfmt.Warningf(pp.EmojiImpossible,
@@ -133,8 +133,8 @@ zoneSearch:
 }
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	domain FQDN, ipNet ipnet.Type) (map[string]net.IP, bool) {
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
+	domain Domain, ipNet ipnet.Type) (map[string]net.IP, bool) {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		return rmap.(map[string]net.IP), true
 	}
 
@@ -145,7 +145,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustivestruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
-		Name: domain.ToASCII(),
+		Name: domain.DNSNameASCII(),
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
@@ -158,13 +158,13 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		rmap[rs[i].ID] = net.ParseIP(rs[i].Content)
 	}
 
-	h.cache.listRecords[ipNet].SetDefault(domain.ToASCII(), rmap)
+	h.cache.listRecords[ipNet].SetDefault(domain.DNSNameASCII(), rmap)
 
 	return rmap, true
 }
 
 func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	domain FQDN, ipNet ipnet.Type, id string) bool {
+	domain Domain, ipNet ipnet.Type, id string) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
@@ -174,12 +174,12 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		delete(rmap.(map[string]net.IP), id)
 	}
 
@@ -187,7 +187,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain FQDN, ipNet ipnet.Type, id string, ip net.IP) bool {
+	domain Domain, ipNet ipnet.Type, id string, ip net.IP) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
@@ -195,7 +195,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.ToASCII(),
+		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
@@ -204,12 +204,12 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		rmap.(map[string]net.IP)[id] = ip
 	}
 
@@ -217,7 +217,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain FQDN, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool) (string, bool) {
+	domain Domain, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
@@ -225,7 +225,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustivestruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.ToASCII(),
+		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 		TTL:     ttl.Int(),
@@ -237,12 +237,12 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 
-		h.cache.listRecords[ipNet].Delete(domain.ToASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
 		return "", false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.ToASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		rmap.(map[string]net.IP)[res.Result.ID] = ip
 	}
 

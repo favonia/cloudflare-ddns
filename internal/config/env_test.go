@@ -250,7 +250,9 @@ func TestReadNonnegInt(t *testing.T) {
 //nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
-	type ds = []api.FQDN
+	type ds = []api.Domain
+	type f = api.FQDN
+	type w = api.Wildcard
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
@@ -259,17 +261,29 @@ func TestReadDomains(t *testing.T) {
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil":   {false, "", ds{"test.org"}, ds{}, true, nil},
-		"empty": {true, "", ds{"test.org"}, ds{}, true, nil},
-		"test1": {true, "書.org ,  Bücher.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil},
-		"test2": {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{"random.org"}, ds{"xn--rov.org", "xn--bcher-kva.org"}, true, nil}, //nolint:lll
-		"illformed": {
+		"nil":       {false, "", ds{f("test.org")}, ds{}, true, nil},
+		"empty":     {true, "", ds{f("test.org")}, ds{}, true, nil},
+		"star":      {true, "*", ds{}, ds{w("")}, true, nil},
+		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
+		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
+		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll
+		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil}, //nolint:lll
+		"illformed1": {
 			true, "xn--:D.org",
-			ds{"random.org"},
-			ds{"xn--:d.org"},
+			ds{f("random.org")},
+			ds{f("xn--:d.org")},
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "xn--:d.org", gomock.Any()) //nolint:lll
+			},
+		},
+		"illformed2": {
+			true, "*.xn--:D.org",
+			ds{f("random.org")},
+			ds{w("xn--:d.org")},
+			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "*.xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
 	} {
