@@ -1,6 +1,18 @@
-# Change Log
+# [1.2.0](https://github.com/favonia/cloudflare-ddns/compare/v1.1.0...v1.2.0) (2021-10-18)
 
-## [1.1.0](https://github.com/favonia/cloudflare-ddns/compare/v1.0.0...v1.1.0) (2021-08-23)
+
+### Bug Fixes
+
+* **api:** remove all trailing dots ([#95](https://github.com/favonia/cloudflare-ddns/issues/95)) ([f4ec041](https://github.com/favonia/cloudflare-ddns/commit/f4ec041372e1dd4839106124b241f7b4a9aa0b15))
+
+
+### Features
+
+* **api:** support wildcard domains ([#94](https://github.com/favonia/cloudflare-ddns/issues/94)) ([feafcf4](https://github.com/favonia/cloudflare-ddns/commit/feafcf47a7b1bad8be44235d04c3804babb67c51))
+
+
+
+# [1.1.0](https://github.com/favonia/cloudflare-ddns/compare/v1.0.0...v1.1.0) (2021-08-23)
 
 
 ### Bug Fixes
