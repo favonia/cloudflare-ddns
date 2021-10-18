@@ -52,7 +52,7 @@ func NewFQDN(domain string) (FQDN, error) {
 	normalized, err := profile.ToASCII(domain)
 
 	// Remove the final dot for consistency
-	normalized = strings.TrimSuffix(normalized, ".")
+	normalized = strings.TrimRight(normalized, ".")
 
 	return FQDN(normalized), err
 }
