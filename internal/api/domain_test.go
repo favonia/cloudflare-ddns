@@ -93,7 +93,7 @@ func TestNewDomain(t *testing.T) {
 		{"..｡..a.com", f("a.com"), true, ""},
 		{"*.xn--a.xn--a.xn--a.com", w("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
 		{"*.a.com...｡", w("a.com"), true, ""},
-		{"*...｡..a.com", w("a.com"), true, ""},
+		{"*...｡..a.com", w(".....a.com"), true, ""},
 		{"*......", w(""), true, ""},
 		{"*｡｡｡｡｡｡", w(""), true, ""},
 	} {
