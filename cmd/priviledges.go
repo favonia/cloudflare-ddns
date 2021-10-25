@@ -108,7 +108,7 @@ func printCapabilities(ppfmt pp.PP) {
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
 	} else {
-		diff, err := now.Compare(cap.NewSet())
+		diff, err := now.Cf(cap.NewSet())
 		if err != nil {
 			ppfmt.Errorf(pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
 		} else if diff != 0 {
