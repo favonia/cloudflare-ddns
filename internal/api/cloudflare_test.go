@@ -348,8 +348,8 @@ func TestZoneOfDomain(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"root":     {"test.org", api.FQDN("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
-		"wildcard": {"test.org", api.Wildcard("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
-		"one":      {"test.org", api.FQDN("sub.test.org"), map[string]int{"test.org": 1}, 2, mockID("test.org", 0), true, nil},
+		"wildcard": {"test.org", api.Wildcard("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
+		"one":      {"test.org", api.FQDN("sub.test.org"), map[string]int{"test.org": 1}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
 		"none": {
 			"test.org", api.FQDN("sub.test.org"),
 			map[string]int{},
