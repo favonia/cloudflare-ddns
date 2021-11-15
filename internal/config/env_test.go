@@ -310,10 +310,11 @@ func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
 	var (
-		unmanaged  detector.Policy
-		cloudflare = detector.NewCloudflare()
-		local      = detector.NewLocal()
-		ipify      = detector.NewIpify()
+		unmanaged       detector.Policy
+		cloudflareDOH   = detector.NewCloudflareDOH()
+		cloudflareTrace = detector.NewCloudflareTrace()
+		local           = detector.NewLocal()
+		ipify           = detector.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
@@ -336,10 +337,16 @@ func TestReadPolicy(t *testing.T) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "local")
 			},
 		},
-		"cloudflare": {true, "    cloudflare\t   ", unmanaged, cloudflare, true, nil},
-		"unmanaged":  {true, "   unmanaged   ", cloudflare, unmanaged, true, nil},
-		"local":      {true, "   local   ", cloudflare, local, true, nil},
-		"ipify":      {true, "     ipify  ", cloudflare, ipify, true, nil},
+		"cloudflare": {true, "    cloudflare\t   ", unmanaged, cloudflareTrace, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, `The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+			},
+		},
+		"cloudflare.trace": {true, " cloudflare.trace", unmanaged, cloudflareTrace, true, nil},
+		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", unmanaged, cloudflareDOH, true, nil},
+		"unmanaged":        {true, "   unmanaged   ", cloudflareTrace, unmanaged, true, nil},
+		"local":            {true, "   local   ", cloudflareTrace, local, true, nil},
+		"ipify":            {true, "     ipify  ", cloudflareTrace, ipify, true, nil},
 		"others": {
 			true, "   something-else ", ipify, ipify, false,
 			func(m *mocks.MockPP) {

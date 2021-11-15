@@ -30,8 +30,8 @@ func Default() *Config {
 	return &Config{
 		Auth: nil,
 		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: detector.NewCloudflare(),
-			ipnet.IP6: detector.NewCloudflare(),
+			ipnet.IP4: detector.NewCloudflareTrace(),
+			ipnet.IP6: detector.NewCloudflareTrace(),
 		},
 		Domains: map[ipnet.Type][]api.Domain{
 			ipnet.IP4: nil,

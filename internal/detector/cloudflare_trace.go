@@ -41,7 +41,7 @@ type CloudflareTrace struct {
 
 func NewCloudflareTrace() Policy {
 	return &CloudflareTrace{
-		PolicyName: "cloudflare-trace",
+		PolicyName: "cloudflare.trace",
 		Param: map[ipnet.Type]struct {
 			URL   string
 			Field string
