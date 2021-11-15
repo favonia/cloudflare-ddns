@@ -35,7 +35,7 @@ A small and fast DDNS updater for Cloudflare.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained using [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
+By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
 
 ## 🛡️ Security
 
@@ -276,15 +276,19 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | ---- | ------------ | ------- | --------- | ------------- |
 | `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `A` records | (See below) | N/A
-| `IP4_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv4 addresses. (See below) | No | `cloudflare`
+| `IP4_POLICY` | `cloudflare`, `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `unmanaged` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
-| `IP6_POLICY` | `cloudflare`, `ipify`, `local`, and `unmanaged` | How to detect IPv6 addresses. (See below) | No | `cloudflare`
+| `IP6_POLICY` | `cloudflare`, `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `unmanaged` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
 
 > <details>
 > <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
 >
 > - `cloudflare`\
+>  Deprecated; currently an alias of `cloudflare.trace`.
+> - `cloudflare.doh`\
 >  Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
+> - `cloudflare.trace`\
+>  Get the public IP address by parsing the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
 > - `ipify`\
 >   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\

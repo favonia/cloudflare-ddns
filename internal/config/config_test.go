@@ -202,10 +202,11 @@ func TestReadDomainMap(t *testing.T) {
 //nolint:funlen,paralleltest // environment vars are global
 func TestReadPolicyMap(t *testing.T) {
 	var (
-		unmanaged  detector.Policy
-		cloudflare = detector.NewCloudflare()
-		local      = detector.NewLocal()
-		ipify      = detector.NewIpify()
+		unmanaged       detector.Policy
+		cloudflareTrace = detector.NewCloudflareTrace()
+		cloudflareDOH   = detector.NewCloudflareDOH()
+		local           = detector.NewLocal()
+		ipify           = detector.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
@@ -218,11 +219,13 @@ func TestReadPolicyMap(t *testing.T) {
 		"full": {
 			"cloudflare", "ipify",
 			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: cloudflare,
+				ipnet.IP4: cloudflareTrace,
 				ipnet.IP6: ipify,
 			},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, `The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+			},
 		},
 		"4": {
 			"local", "  ",
@@ -236,10 +239,10 @@ func TestReadPolicyMap(t *testing.T) {
 			},
 		},
 		"6": {
-			"    ", "ipify",
+			"    ", "cloudflare.doh",
 			map[ipnet.Type]detector.Policy{
 				ipnet.IP4: unmanaged,
-				ipnet.IP6: ipify,
+				ipnet.IP6: cloudflareDOH,
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -305,9 +308,9 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
@@ -469,8 +472,8 @@ func TestNormalize(t *testing.T) {
 		"empty-ip6": {
 			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
-					ipnet.IP4: detector.NewCloudflare(),
-					ipnet.IP6: detector.NewCloudflare(),
+					ipnet.IP4: detector.NewCloudflareTrace(),
+					ipnet.IP6: detector.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
@@ -480,7 +483,7 @@ func TestNormalize(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
-					ipnet.IP4: detector.NewCloudflare(),
+					ipnet.IP4: detector.NewCloudflareTrace(),
 					ipnet.IP6: nil,
 				},
 				Domains: map[ipnet.Type][]api.Domain{
@@ -498,7 +501,7 @@ func TestNormalize(t *testing.T) {
 			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflare(),
+					ipnet.IP6: detector.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
@@ -529,7 +532,7 @@ func TestNormalize(t *testing.T) {
 			input: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflare(),
+					ipnet.IP6: detector.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
@@ -540,7 +543,7 @@ func TestNormalize(t *testing.T) {
 			expected: &config.Config{ //nolint:exhaustivestruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflare(),
+					ipnet.IP6: detector.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},

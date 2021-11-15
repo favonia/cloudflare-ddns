@@ -6,9 +6,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
-func NewCloudflare() Policy {
+func NewCloudflareDOH() Policy {
 	return &DNSOverHTTPS{
-		PolicyName: "cloudflare",
+		PolicyName: "cloudflare.doh",
 		Param: map[ipnet.Type]struct {
 			URL   string
 			Name  string

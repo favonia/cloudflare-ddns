@@ -109,7 +109,14 @@ func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, detector.Name(*field))
 		return true
 	case "cloudflare":
-		*field = detector.NewCloudflare()
+		ppfmt.Warningf(pp.EmojiUserWarning, `The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+		*field = detector.NewCloudflareTrace()
+		return true
+	case "cloudflare.trace":
+		*field = detector.NewCloudflareTrace()
+		return true
+	case "cloudflare.doh":
+		*field = detector.NewCloudflareDOH()
 		return true
 	case "ipify":
 		*field = detector.NewIpify()

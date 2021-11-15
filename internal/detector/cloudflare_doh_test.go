@@ -11,5 +11,5 @@ import (
 func TestCloudflareName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "cloudflare", detector.Name(detector.NewCloudflare()))
+	require.Equal(t, "cloudflare.doh", detector.Name(detector.NewCloudflareDOH()))
 }
