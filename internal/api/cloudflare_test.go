@@ -147,7 +147,7 @@ func TestNewInvalid(t *testing.T) {
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is not valid: %v", gomock.Any()),
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", gomock.Any()),
 		mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE"),
 	)
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
