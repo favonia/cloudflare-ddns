@@ -506,10 +506,9 @@ func TestListRecords(t *testing.T) {
 			assert.Equal(t, http.MethodGet, r.Method)
 			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			assert.Equal(t, url.Values{
-				"name":     {"sub.test.org"},
-				"page":     {"1"},
-				"per_page": {"100"},
-				"type":     {ipNet.RecordType()},
+				"name": {"sub.test.org"},
+				"page": {"1"},
+				"type": {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
@@ -558,10 +557,9 @@ func TestListRecordsWildcard(t *testing.T) {
 			assert.Equal(t, http.MethodGet, r.Method)
 			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			assert.Equal(t, url.Values{
-				"name":     {"*.test.org"},
-				"page":     {"1"},
-				"per_page": {"100"},
-				"type":     {ipNet.RecordType()},
+				"name": {"*.test.org"},
+				"page": {"1"},
+				"type": {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
