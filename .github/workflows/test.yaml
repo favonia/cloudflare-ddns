@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: |
           go install github.com/golang/mock/mockgen@latest
           go generate ./...
