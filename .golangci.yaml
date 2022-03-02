@@ -15,4 +15,9 @@ issues:
 
 linters:
   enable-all: true
-  disable: maligned,interfacer,nlreturn,wsl
+  disable:
+    - maligned
+    - interfacer
+    - nlreturn
+    - wsl
+    - typecheck # typecheck could not recognize io.ReadAll and os.DirFS
