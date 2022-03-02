@@ -31,5 +31,5 @@ func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) net.IP
 	}
 	defer conn.Close()
 
-	return NormalizeIP(ppfmt, ipNet, conn.LocalAddr().(*net.UDPAddr).IP)
+	return NormalizeIP(ppfmt, ipNet, conn.LocalAddr().(*net.UDPAddr).IP) //nolint:forcetypeassert
 }

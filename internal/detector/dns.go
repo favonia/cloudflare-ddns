@@ -69,7 +69,7 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 			continue
 		}
 
-		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT {
+		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT { //nolint:forcetypeassert
 			s = strings.TrimSpace(s)
 			if s == "" {
 				continue

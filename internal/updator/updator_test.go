@@ -15,7 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updator"
 )
 
-//nolint:funlen
+//nolint:funlen,maintidx
 func TestDo(t *testing.T) {
 	t.Parallel()
 

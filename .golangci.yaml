@@ -15,4 +15,12 @@ issues:
 
 linters:
   enable-all: true
-  disable: maligned,interfacer,nlreturn,wsl
+  disable:
+    - maligned
+    - interfacer
+    - nlreturn
+    - wsl
+      # ireturn works poorly for the style with private types and public interfaces
+    - ireturn
+      # varnamelen complains too much, in my opinion
+    - varnamelen

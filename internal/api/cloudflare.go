@@ -83,7 +83,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	}
 
 	if ids, found := h.cache.activeZones.Get(name); found {
-		return ids.([]string), true
+		return ids.([]string), true //nolint:forcetypeassert
 	}
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
@@ -104,7 +104,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 
 func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain Domain) (string, bool) {
 	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
-		return id.(string), true
+		return id.(string), true //nolint:forcetypeassert
 	}
 
 zoneSearch:
@@ -135,7 +135,7 @@ zoneSearch:
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain Domain, ipNet ipnet.Type) (map[string]net.IP, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		return rmap.(map[string]net.IP), true
+		return rmap.(map[string]net.IP), true //nolint:forcetypeassert
 	}
 
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
@@ -180,7 +180,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		delete(rmap.(map[string]net.IP), id)
+		delete(rmap.(map[string]net.IP), id) //nolint:forcetypeassert
 	}
 
 	return true
@@ -210,7 +210,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]net.IP)[id] = ip
+		rmap.(map[string]net.IP)[id] = ip //nolint:forcetypeassert
 	}
 
 	return true
@@ -243,7 +243,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]net.IP)[res.Result.ID] = ip
+		rmap.(map[string]net.IP)[res.Result.ID] = ip //nolint:forcetypeassert
 	}
 
 	return res.Result.ID, true
