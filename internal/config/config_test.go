@@ -224,7 +224,8 @@ func TestReadPolicyMap(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, `The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+				m.EXPECT().Warningf(pp.EmojiUserWarning,
+					`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
 			},
 		},
 		"4": {

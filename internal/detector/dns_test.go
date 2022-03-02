@@ -81,7 +81,7 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	}))
 }
 
-//nolint:funlen
+//nolint:funlen,maintidx
 func TestDNSOverHTTPSGetIP(t *testing.T) {
 	t.Parallel()
 

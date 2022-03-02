@@ -305,7 +305,7 @@ func TestReadDomains(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment vars are global
+//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
 func TestReadPolicy(t *testing.T) {
 	key := keyPrefix + "POLICY"
 
@@ -337,9 +337,11 @@ func TestReadPolicy(t *testing.T) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "local")
 			},
 		},
-		"cloudflare": {true, "    cloudflare\t   ", unmanaged, cloudflareTrace, true,
+		"cloudflare": {
+			true, "    cloudflare\t   ", unmanaged, cloudflareTrace, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, `The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+				m.EXPECT().Warningf(pp.EmojiUserWarning,
+					`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
 			},
 		},
 		"cloudflare.trace": {true, " cloudflare.trace", unmanaged, cloudflareTrace, true, nil},

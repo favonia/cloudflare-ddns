@@ -104,7 +104,8 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 				},
 			},
-			"4-nil4": {ipnet.IP4, dummy.URL, "nonexisting4", ipnet.IP4, nil,
+			"4-nil4": {
+				ipnet.IP4, dummy.URL, "nonexisting4", ipnet.IP4, nil,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Errorf(pp.EmojiImpossible,
 						`Failed to find the IP address in the response of %q: %s`,
@@ -112,7 +113,8 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 						[]byte("ip=none"))
 				},
 			},
-			"6-nil4": {ipnet.IP6, dummy.URL, "nonexisting6", ipnet.IP6, nil,
+			"6-nil4": {
+				ipnet.IP6, dummy.URL, "nonexisting6", ipnet.IP6, nil,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Errorf(pp.EmojiImpossible,
 						`Failed to find the IP address in the response of %q: %s`,

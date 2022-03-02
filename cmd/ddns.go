@@ -129,7 +129,7 @@ mainLoop:
 		if sig, ok := signalWait(chanSignal, interval); !ok {
 			continue mainLoop
 		} else {
-			switch sig.(syscall.Signal) {
+			switch sig.(syscall.Signal) { //nolint:forcetypeassert
 			case syscall.SIGHUP:
 				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
 				h.FlushCache()

@@ -20,4 +20,7 @@ linters:
     - interfacer
     - nlreturn
     - wsl
-    - typecheck # typecheck could not recognize io.ReadAll and os.DirFS
+      # ireturn works poorly for the style with private types and public interfaces
+    - ireturn
+      # varnamelen complains too much, in my opinion
+    - varnamelen

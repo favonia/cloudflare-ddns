@@ -679,8 +679,9 @@ func TestDeleteRecordValid(t *testing.T) {
 			listAccessCount--
 
 			w.Header().Set("content-type", "application/json")
-			_ = json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 				map[string]net.IP{"record1": net.ParseIP("::1")}))
+			assert.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
@@ -772,8 +773,9 @@ func TestUpdateRecordValid(t *testing.T) {
 			listAccessCount--
 
 			w.Header().Set("content-type", "application/json")
-			_ = json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 				map[string]net.IP{"record1": net.ParseIP("::1")}))
+			assert.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
@@ -875,8 +877,9 @@ func TestCreateRecordValid(t *testing.T) {
 				listAccessCount--
 
 				w.Header().Set("content-type", "application/json")
-				_ = json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 					map[string]net.IP{"record1": net.ParseIP("::1")}))
+				assert.NoError(t, err)
 			case http.MethodPost:
 				if createAccessCount <= 0 {
 					return
