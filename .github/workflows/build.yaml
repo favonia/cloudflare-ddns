@@ -59,6 +59,8 @@ jobs:
         name: Build alpine-flavored Docker images
         if: ${{ github.event_name != 'pull_request' }}
         with:
+          # "push" is guarded at the step level
+          push: true
           target: "alpine"
           build-args: ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: ${{ env.platforms }}
