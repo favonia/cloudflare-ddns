@@ -51,7 +51,7 @@ jobs:
         with:
           images: ${{ github.repository }}
           flavor: |
-            prefix=-alpine
+            suffix=-alpine
           tags: |
             type=edge
             type=semver,pattern={{version}}
