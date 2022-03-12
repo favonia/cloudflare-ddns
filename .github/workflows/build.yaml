@@ -50,9 +50,11 @@ jobs:
         id: meta-alpine
         with:
           images: ${{ github.repository }}
+          flavor: |
+            prefix=-alpine
           tags: |
-            type=edge,suffix=-alpine
-            type=semver,pattern={{version}},suffix=-alpine
+            type=edge
+            type=semver,pattern={{version}}
       - uses: docker/build-push-action@v2
         name: Build alpine-flavored Docker images
         if: ${{ github.event_name != 'pull_request' }}
