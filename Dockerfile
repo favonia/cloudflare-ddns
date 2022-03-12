@@ -15,7 +15,7 @@ COPY ["cmd", "cmd"]
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} go build -tags timetzdata -o /bin/ddns -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" cmd/*.go
 ENTRYPOINT ["/bin/ddns"]
 
-FROM scratch
+FROM scratch AS minimal
 COPY --from=alpine /bin/ddns /bin/
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ENTRYPOINT ["/bin/ddns"]

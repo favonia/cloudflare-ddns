@@ -30,7 +30,6 @@ jobs:
         id: git-describe
       - uses: docker/metadata-action@v3
         name: Calculate metadata for alpine-flavored Docker images
-        if: ${{ github.event_name != 'pull_request' }}
         id: meta-alpine
         with:
           images: ${{ github.repository }}
@@ -41,18 +40,16 @@ jobs:
             type=semver,pattern={{version}}
       - uses: docker/build-push-action@v2
         name: Build alpine-flavored Docker images
-        if: ${{ github.event_name != 'pull_request' }}
         with:
-          # "push" is guarded at the step level
-          push: true
           target: "alpine"
+          push: ${{ github.event_name != 'pull_request' }}
           build-args: ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta-alpine.outputs.tags }}
           labels: ${{ steps.meta-alpine.outputs.labels }}
       - uses: docker/metadata-action@v3
         name: Calculate metadata for minimal Docker images
-        id: meta
+        id: meta-minimal
         with:
           images: ${{ github.repository }}
           tags: |
@@ -61,8 +58,9 @@ jobs:
       - uses: docker/build-push-action@v2
         name: Build minimal Docker images
         with:
+          target: "minimal"
           push: ${{ github.event_name != 'pull_request' }}
           build-args: ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: ${{ env.platforms }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-minimal.outputs.tags }}
+          labels: ${{ steps.meta-minimal.outputs.labels }}
