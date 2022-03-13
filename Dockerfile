@@ -20,7 +20,6 @@ RUN \
   apk add --no-cache ca-certificates && \
   update-ca-certificates
 COPY --from=build /bin/ddns /bin/
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ENTRYPOINT ["/bin/ddns"]
 
 FROM scratch AS minimal
