@@ -1,6 +1,6 @@
 # The Go compiler is run under linux/amd64 because GitHub Actions is using linux/amd64
 # and it is slow to run the compiler via QEMU.
-FROM --platform=linux/amd64 golang:alpine AS build
+FROM --platform=linux/amd64 golang:1.17.8-alpine3.15 AS build
 ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH
@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v}
 
 # After the compilation is done, we copied the program into alpine images
 # with matching architectures.
-FROM alpine AS alpine
+FROM alpine:3.15.1 AS alpine
 RUN \
   apk update && \
   apk add --no-cache ca-certificates && \
