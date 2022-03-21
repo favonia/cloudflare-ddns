@@ -61,7 +61,8 @@ func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([
 }
 
 func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
-	name string, class dnsmessage.Class) net.IP {
+	name string, class dnsmessage.Class,
+) net.IP {
 	var ipString string
 
 	for _, ans := range answers {
@@ -121,7 +122,8 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 }
 
 func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
-	url string, name string, class dnsmessage.Class) net.IP {
+	url string, name string, class dnsmessage.Class,
+) net.IP {
 	// message ID for the DNS payloads
 	id := randUint16()
 

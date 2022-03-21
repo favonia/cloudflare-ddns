@@ -133,7 +133,8 @@ zoneSearch:
 }
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type) (map[string]net.IP, bool) {
+	domain Domain, ipNet ipnet.Type,
+) (map[string]net.IP, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		return rmap.(map[string]net.IP), true //nolint:forcetypeassert
 	}
@@ -164,7 +165,8 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string) bool {
+	domain Domain, ipNet ipnet.Type, id string,
+) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
@@ -187,7 +189,8 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string, ip net.IP) bool {
+	domain Domain, ipNet ipnet.Type, id string, ip net.IP,
+) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
@@ -217,7 +220,8 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool) (string, bool) {
+	domain Domain, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool,
+) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false

@@ -1,6 +1,9 @@
 linters-settings:
   gci:
-    local-prefixes: github.com/favonia/cloudflare-ddns
+    sections:
+      - standard
+      - default
+      - pkgPrefix(github.com/favonia/cloudflare-ddns)
   maligned:
     suggest-new: true
   exhaustive:
