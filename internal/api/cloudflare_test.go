@@ -6,9 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"testing"
 	"time"
@@ -23,6 +23,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func mustIP(ip string) netip.Addr {
+	return netip.MustParseAddr(ip)
+}
 
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
@@ -442,7 +446,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	require.Equal(t, "", zoneID)
 }
 
-func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip net.IP) *cloudflare.DNSRecord {
+func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip netip.Addr) *cloudflare.DNSRecord {
 	return &cloudflare.DNSRecord{ //nolint:exhaustivestruct
 		ID:      id,
 		Type:    ipNet.RecordType(),
@@ -451,7 +455,7 @@ func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip net.IP) *cloudfl
 	}
 }
 
-func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]net.IP) *cloudflare.DNSListResponse {
+func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]netip.Addr) *cloudflare.DNSListResponse {
 	if len(ips) > 100 {
 		panic("mockDNSResponse got too many IPs")
 	}
@@ -492,7 +496,7 @@ func TestListRecords(t *testing.T) {
 
 	var (
 		ipNet       ipnet.Type
-		ips         map[string]net.IP
+		ips         map[string]netip.Addr
 		accessCount int
 	)
 
@@ -516,7 +520,7 @@ func TestListRecords(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-	expected := map[string]net.IP{"record1": net.ParseIP("::1"), "record2": net.ParseIP("::2")}
+	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
 	mockPP := mocks.NewMockPP(mockCtrl)
 	ips, ok := h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
@@ -543,7 +547,7 @@ func TestListRecordsWildcard(t *testing.T) {
 
 	var (
 		ipNet       ipnet.Type
-		ips         map[string]net.IP
+		ips         map[string]netip.Addr
 		accessCount int
 	)
 
@@ -567,7 +571,7 @@ func TestListRecordsWildcard(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-	expected := map[string]net.IP{"record1": net.ParseIP("::1"), "record2": net.ParseIP("::2")}
+	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
 	mockPP := mocks.NewMockPP(mockCtrl)
 	ips, ok := h.ListRecords(context.Background(), mockPP, api.Wildcard("test.org"), ipnet.IP6)
@@ -653,7 +657,7 @@ func envelopDNSRecordResponse(record *cloudflare.DNSRecord) *cloudflare.DNSRecor
 	}
 }
 
-func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip net.IP) *cloudflare.DNSRecordResponse {
+func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip netip.Addr) *cloudflare.DNSRecordResponse {
 	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, name, ip))
 }
 
@@ -680,7 +684,7 @@ func TestDeleteRecordValid(t *testing.T) {
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-				map[string]net.IP{"record1": net.ParseIP("::1")}))
+				map[string]netip.Addr{"record1": mustIP("::1")}))
 			assert.NoError(t, err)
 		})
 
@@ -696,7 +700,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			assert.Empty(t, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", net.ParseIP("::1")))
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", mustIP("::1")))
 			assert.NoError(t, err)
 		})
 
@@ -774,7 +778,7 @@ func TestUpdateRecordValid(t *testing.T) {
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-				map[string]net.IP{"record1": net.ParseIP("::1")}))
+				map[string]netip.Addr{"record1": mustIP("::1")}))
 			assert.NoError(t, err)
 		})
 
@@ -799,22 +803,22 @@ func TestUpdateRecordValid(t *testing.T) {
 			assert.Equal(t, "::2", record.Content)
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", net.ParseIP("::2")))
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", mustIP("::2"))) //nolint:lll
 			assert.NoError(t, err)
 		})
 
 	updateAccessCount = 1
 	mockPP := mocks.NewMockPP(mockCtrl)
-	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", net.ParseIP("::2"))
+	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	require.True(t, ok)
 
 	listAccessCount, updateAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
 	_, _ = h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
-	_ = h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", net.ParseIP("::2"))
+	_ = h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	rs, ok := h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
-	require.Equal(t, map[string]net.IP{"record1": net.ParseIP("::2")}, rs)
+	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::2")}, rs)
 }
 
 func TestUpdateRecordInvalid(t *testing.T) {
@@ -833,7 +837,7 @@ func TestUpdateRecordInvalid(t *testing.T) {
 		"record1",
 		gomock.Any(),
 	)
-	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", net.ParseIP("::1"))
+	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::1"))
 	require.False(t, ok)
 }
 
@@ -848,7 +852,7 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", net.ParseIP("::1"))
+	ok := h.UpdateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::1"))
 	require.False(t, ok)
 }
 
@@ -878,7 +882,7 @@ func TestCreateRecordValid(t *testing.T) {
 
 				w.Header().Set("content-type", "application/json")
 				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-					map[string]net.IP{"record1": net.ParseIP("::1")}))
+					map[string]netip.Addr{"record1": mustIP("::1")}))
 				assert.NoError(t, err)
 			case http.MethodPost:
 				if createAccessCount <= 0 {
@@ -909,17 +913,17 @@ func TestCreateRecordValid(t *testing.T) {
 
 	createAccessCount = 1
 	mockPP := mocks.NewMockPP(mockCtrl)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
 	require.True(t, ok)
 	require.Equal(t, "record1", actualID)
 
 	listAccessCount, createAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
 	_, _ = h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
-	_, _ = h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	_, _ = h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
 	rs, ok := h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
-	require.Equal(t, map[string]net.IP{"record1": net.ParseIP("::1")}, rs)
+	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::1")}, rs)
 }
 
 func TestCreateRecordInvalid(t *testing.T) {
@@ -937,7 +941,7 @@ func TestCreateRecordInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
 }
@@ -953,7 +957,7 @@ func TestCreateRecordInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, net.ParseIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
 }

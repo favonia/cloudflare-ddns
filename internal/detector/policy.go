@@ -2,7 +2,7 @@ package detector
 
 import (
 	"context"
-	"net"
+	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -10,7 +10,7 @@ import (
 
 type Policy interface {
 	name() string
-	GetIP(context.Context, pp.PP, ipnet.Type) net.IP
+	GetIP(context.Context, pp.PP, ipnet.Type) netip.Addr
 }
 
 func Name(p Policy) string {

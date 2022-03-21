@@ -1,22 +1,24 @@
 package detector
 
 import (
-	"net"
+	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func NormalizeIP(ppfmt pp.PP, ipNet ipnet.Type, ip net.IP) net.IP {
-	if ip == nil {
-		return nil
+func NormalizeIP(ppfmt pp.PP, ipNet ipnet.Type, ip netip.Addr) netip.Addr {
+	var invalidIP netip.Addr
+
+	if !ip.IsValid() {
+		return invalidIP
 	}
 
-	val := ipNet.NormalizeIP(ip)
-	if val == nil {
+	ip, ok := ipNet.NormalizeIP(ip)
+	if !ok {
 		ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", ip, ipNet.Describe())
-		return nil
+		return invalidIP
 	}
 
-	return val
+	return ip
 }

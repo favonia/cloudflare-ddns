@@ -2,7 +2,7 @@ package detector_test
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -28,38 +28,39 @@ func TestLocalName(t *testing.T) {
 func TestLocalGetIP(t *testing.T) {
 	t.Parallel()
 
-	ip4Loopback := net.ParseIP("127.0.0.1").To4()
-	ip6Loopback := net.ParseIP("::1").To16()
+	ip4Loopback := netip.MustParseAddr("127.0.0.1")
+	ip6Loopback := netip.MustParseAddr("::1")
+	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
 		addrKey       ipnet.Type
 		addr          string
 		ipNet         ipnet.Type
-		expected      net.IP
+		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"4": {ipnet.IP4, "127.0.0.1:80", ipnet.IP4, ip4Loopback, nil},
 		"6": {ipnet.IP6, "[::1]:80", ipnet.IP6, ip6Loopback, nil},
 		"4-nil1": {
-			ipnet.IP4, "", ipnet.IP4, nil,
+			ipnet.IP4, "", ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
 			},
 		},
 		"6-nil1": {
-			ipnet.IP6, "", ipnet.IP6, nil,
+			ipnet.IP6, "", ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
 			},
 		},
 		"4-nil2": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP6, nil,
+			ipnet.IP4, "127.0.0.1:80", ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 			},
 		},
 		"6-nil2": {
-			ipnet.IP6, "::1:80", ipnet.IP4, nil,
+			ipnet.IP6, "::1:80", ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},

@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -134,9 +134,9 @@ zoneSearch:
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain Domain, ipNet ipnet.Type,
-) (map[string]net.IP, bool) {
+) (map[string]netip.Addr, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		return rmap.(map[string]net.IP), true //nolint:forcetypeassert
+		return rmap.(map[string]netip.Addr), true //nolint:forcetypeassert
 	}
 
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
@@ -154,9 +154,13 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false
 	}
 
-	rmap := map[string]net.IP{}
+	rmap := map[string]netip.Addr{}
 	for i := range rs {
-		rmap[rs[i].ID] = net.ParseIP(rs[i].Content)
+		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
+		if err != nil {
+			ppfmt.Errorf(pp.EmojiImpossible, "Could not parse the IP address in records of %q: %v", domain.Describe(), err)
+			return nil, false
+		}
 	}
 
 	h.cache.listRecords[ipNet].SetDefault(domain.DNSNameASCII(), rmap)
@@ -182,14 +186,14 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		delete(rmap.(map[string]net.IP), id) //nolint:forcetypeassert
+		delete(rmap.(map[string]netip.Addr), id) //nolint:forcetypeassert
 	}
 
 	return true
 }
 
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string, ip net.IP,
+	domain Domain, ipNet ipnet.Type, id string, ip netip.Addr,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -213,14 +217,14 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]net.IP)[id] = ip //nolint:forcetypeassert
+		rmap.(map[string]netip.Addr)[id] = ip //nolint:forcetypeassert
 	}
 
 	return true
 }
 
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, ip net.IP, ttl TTL, proxied bool,
+	domain Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
 ) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -247,7 +251,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]net.IP)[res.Result.ID] = ip //nolint:forcetypeassert
+		rmap.(map[string]netip.Addr)[res.Result.ID] = ip //nolint:forcetypeassert
 	}
 
 	return res.Result.ID, true

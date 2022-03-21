@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"net"
+	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
@@ -11,7 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updator"
 )
 
-func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, ipNet ipnet.Type, ip net.IP) {
+func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, ipNet ipnet.Type, ip netip.Addr) {
 	for _, target := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
@@ -33,7 +33,7 @@ func updateIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, 
 	defer cancel()
 
 	ip := c.Policy[ipNet].GetIP(ctx, ppfmt, ipNet)
-	if ip == nil {
+	if !ip.IsValid() {
 		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 		return
 	}
@@ -53,7 +53,7 @@ func updateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle)
 func clearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle) {
 	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Policy[ipNet] != nil {
-			setIP(ctx, ppfmt, c, h, ipNet, nil)
+			setIP(ctx, ppfmt, c, h, ipNet, netip.Addr{})
 		}
 	}
 }
