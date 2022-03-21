@@ -31,7 +31,8 @@ func TestDNSOverHTTPSName(t *testing.T) {
 }
 
 func setupServer(t *testing.T, name string, class dnsmessage.Class,
-	response bool, header *dnsmessage.Header, idShift uint16, answers []dnsmessage.Resource) *httptest.Server {
+	response bool, header *dnsmessage.Header, idShift uint16, answers []dnsmessage.Resource,
+) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
