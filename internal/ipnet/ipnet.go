@@ -3,7 +3,7 @@ package ipnet
 
 import (
 	"fmt"
-	"net"
+	"net/netip"
 )
 
 // Type is the type of IP networks.
@@ -48,14 +48,21 @@ func (t Type) Int() int {
 	}
 }
 
-func (t Type) NormalizeIP(ip net.IP) net.IP {
+func (t Type) NormalizeIP(ip netip.Addr) (netip.Addr, bool) {
+	if !ip.IsValid() {
+		return ip, false
+	}
+
 	switch t {
 	case IP4:
-		return ip.To4()
+		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
+		ip = ip.Unmap()
+		return ip, ip.Is4()
 	case IP6:
-		return ip.To16()
+		ip = netip.AddrFrom16(ip.As16())
+		return ip, ip.Is6()
 	default:
-		return ip
+		return ip, true
 	}
 }
 

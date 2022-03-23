@@ -1,13 +1,17 @@
 package ipnet_test
 
 import (
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
+
+func mustIP(ip string) netip.Addr {
+	return netip.MustParseAddr(ip)
+}
 
 func TestDescribe(t *testing.T) {
 	t.Parallel()
@@ -67,20 +71,23 @@ func TestNormalizeIP(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		ipNet    ipnet.Type
-		ip       net.IP
-		expected net.IP
+		ip       netip.Addr
+		expected netip.Addr
+		ok       bool
 	}{
-		"4-1::2":             {ipnet.IP4, net.ParseIP("1::2").To16(), nil},
-		"4-::ffff:0a0a:0a0a": {ipnet.IP4, net.ParseIP("::ffff:0a0a:0a0a").To16(), net.ParseIP("10.10.10.10").To4()},
-		"6-1::2":             {ipnet.IP6, net.ParseIP("1::2").To16(), net.ParseIP("1::2").To16()},
-		"6-10.10.10.10":      {ipnet.IP6, net.ParseIP("10.10.10.10").To4(), net.ParseIP("10.10.10.10").To16()},
-		"100-nil":            {100, nil, nil},
-		"100-10.10.10.10":    {100, net.ParseIP("10.10.10.10").To4(), net.ParseIP("10.10.10.10").To4()},
+		"4-1::2":             {ipnet.IP4, mustIP("1::2"), mustIP("1::2"), false},
+		"4-::ffff:0a0a:0a0a": {ipnet.IP4, mustIP("::ffff:0a0a:0a0a"), mustIP("10.10.10.10"), true},
+		"6-1::2":             {ipnet.IP6, mustIP("1::2"), mustIP("1::2"), true},
+		"6-10.10.10.10":      {ipnet.IP6, mustIP("10.10.10.10"), mustIP("::ffff:10.10.10.10"), true},
+		"100-nil":            {100, netip.Addr{}, netip.Addr{}, false},
+		"100-10.10.10.10":    {100, mustIP("10.10.10.10"), mustIP("10.10.10.10"), true},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.expected, tc.ipNet.NormalizeIP(tc.ip))
+			ip, ok := tc.ipNet.NormalizeIP(tc.ip)
+			require.Equal(t, tc.expected, ip)
+			require.Equal(t, tc.ok, ok)
 		})
 	}
 }

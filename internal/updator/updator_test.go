@@ -2,7 +2,7 @@ package updator_test
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,6 +14,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/updator"
 )
+
+func mustIP(ip string) netip.Addr {
+	return netip.MustParseAddr(ip)
+}
 
 //nolint:funlen,maintidx
 func TestDo(t *testing.T) {
@@ -31,24 +35,25 @@ func TestDo(t *testing.T) {
 		proxied   = true
 	)
 	var (
-		ip1 = net.ParseIP("::1")
-		ip2 = net.ParseIP("::2")
+		ip1       = mustIP("::1")
+		ip2       = mustIP("::2")
+		invalidIP = netip.Addr{}
 	)
 
 	for name, tc := range map[string]struct {
-		ip                net.IP
+		ip                netip.Addr
 		ok                bool
 		prepareMockPP     func(m *mocks.MockPP)
 		prepareMockHandle func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle)
 	}{
 		"0-nil": {
-			nil,
+			invalidIP,
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{}, true)
+				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true)
 			},
 		},
 		"0": {
@@ -59,7 +64,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true),
 					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, ttl, proxied).Return(record1, true),
 				)
 			},
@@ -77,7 +82,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(true),
 				)
 			},
@@ -93,7 +98,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, ttl, proxied).Return(record2, true),
@@ -101,14 +106,14 @@ func TestDo(t *testing.T) {
 			},
 		},
 		"1unmatched-nil": {
-			nil,
+			invalidIP,
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip1}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 				)
 			},
@@ -120,7 +125,7 @@ func TestDo(t *testing.T) {
 				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip1}, true)
+				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true)
 			},
 		},
 		"2matched": {
@@ -137,7 +142,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip1, record2: ip1}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true), //nolint:lll
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
 				)
 			},
@@ -148,7 +153,7 @@ func TestDo(t *testing.T) {
 			nil,
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip1, record2: ip1}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true), //nolint:lll
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(false),
 				)
 			},
@@ -170,7 +175,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2, record2: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(true),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
 				)
@@ -193,7 +198,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2, record2: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record2, ip1).Return(true),
@@ -212,7 +217,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2, record2: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record2, ip1).Return(false),
@@ -234,7 +239,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2, record2: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(false),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record2, ip1).Return(false),
@@ -256,7 +261,7 @@ func TestDo(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]net.IP{record1: ip2, record2: ip2}, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record2, ip1).Return(false),

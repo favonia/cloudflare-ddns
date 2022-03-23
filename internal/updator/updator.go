@@ -2,7 +2,7 @@ package updator
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"sort"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -14,17 +14,23 @@ import (
 type Args struct {
 	Handle    api.Handle
 	IPNetwork ipnet.Type
-	IP        net.IP
+	IP        netip.Addr
 	Domain    api.Domain
 	TTL       api.TTL
 	Proxied   bool
 }
 
-func splitRecords(rmap map[string]net.IP, target net.IP) (matchedIDs, unmatchedIDs []string) {
-	for id, ip := range rmap {
-		if ip.Equal(target) {
-			matchedIDs = append(matchedIDs, id)
-		} else {
+func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
+	if target.IsValid() {
+		for id, ip := range rmap {
+			if ip == target {
+				matchedIDs = append(matchedIDs, id)
+			} else {
+				unmatchedIDs = append(unmatchedIDs, id)
+			}
+		}
+	} else {
+		for id := range rmap {
 			unmatchedIDs = append(unmatchedIDs, id)
 		}
 	}
@@ -57,7 +63,7 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 	numUnmatched := len(unmatchedIDs)
 
 	// delete every record if ip is `nil`
-	if args.IP == nil {
+	if !args.IP.IsValid() {
 		uptodate = true
 	}
 
@@ -71,7 +77,7 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 		return true
 	}
 
-	if !uptodate && args.IP != nil {
+	if !uptodate && args.IP.IsValid() {
 		var unhandled []string
 
 		for i, id := range unmatchedIDs {
@@ -97,7 +103,7 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 		unmatchedIDs = unhandled
 	}
 
-	if !uptodate && args.IP != nil {
+	if !uptodate && args.IP.IsValid() {
 		if id, ok := args.Handle.CreateRecord(ctx, ppfmt,
 			args.Domain, args.IPNetwork, args.IP, args.TTL, args.Proxied); ok {
 			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
