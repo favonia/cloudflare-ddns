@@ -446,16 +446,16 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	require.Equal(t, "", zoneID)
 }
 
-func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip netip.Addr) *cloudflare.DNSRecord {
+func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip string) *cloudflare.DNSRecord {
 	return &cloudflare.DNSRecord{ //nolint:exhaustivestruct
 		ID:      id,
 		Type:    ipNet.RecordType(),
 		Name:    name,
-		Content: ip.String(),
+		Content: ip,
 	}
 }
 
-func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]netip.Addr) *cloudflare.DNSListResponse {
+func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]string) *cloudflare.DNSListResponse {
 	if len(ips) > 100 {
 		panic("mockDNSResponse got too many IPs")
 	}
@@ -482,6 +482,20 @@ func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]netip.Add
 			Messages: []cloudflare.ResponseInfo{},
 		},
 	}
+}
+
+func mockDNSListResponseFromAddr(ipNet ipnet.Type, name string, ips map[string]netip.Addr) *cloudflare.DNSListResponse {
+	if len(ips) > 100 {
+		panic("mockDNSResponse got too many IPs")
+	}
+
+	strings := make(map[string]string)
+
+	for id, ip := range ips {
+		strings[id] = ip.String()
+	}
+
+	return mockDNSListResponse(ipNet, name, strings)
 }
 
 //nolint:dupl
@@ -516,7 +530,7 @@ func TestListRecords(t *testing.T) {
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org", ips))
+			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "test.org", ips))
 			assert.NoError(t, err)
 		})
 
@@ -533,6 +547,70 @@ func TestListRecords(t *testing.T) {
 	ips, ok = h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.Equal(t, expected, ips)
+}
+
+func TestListRecordsInvalidIPAddress(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+
+	mux, h := newHandle(t)
+
+	zh := newZonesHandler(t, mux)
+	zh.set(map[string]int{"test.org": 1}, 2)
+
+	var (
+		ipNet       ipnet.Type
+		ips         map[string]netip.Addr
+		accessCount int
+	)
+
+	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
+		func(w http.ResponseWriter, r *http.Request) {
+			if accessCount <= 0 {
+				return
+			}
+			accessCount--
+
+			assert.Equal(t, http.MethodGet, r.Method)
+			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			assert.Equal(t, url.Values{
+				"name": {"sub.test.org"},
+				"page": {"1"},
+				"type": {ipNet.RecordType()},
+			}, r.URL.Query())
+
+			w.Header().Set("content-type", "application/json")
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
+				map[string]string{"record1": "::1", "record2": "NOT AN IP"},
+			))
+			assert.NoError(t, err)
+		})
+
+	ipNet, accessCount = ipnet.IP6, 1
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiImpossible,
+		"Could not parse the IP address in records of %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ips, ok := h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
+	require.False(t, ok)
+	require.Nil(t, ips)
+	require.Equal(t, 0, accessCount)
+
+	// testing the (no) caching
+	mockPP = mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(
+		pp.EmojiError,
+		"Failed to retrieve records of %q: %v",
+		"sub.test.org",
+		gomock.Any(),
+	)
+	ips, ok = h.ListRecords(context.Background(), mockPP, api.FQDN("sub.test.org"), ipnet.IP6)
+	require.False(t, ok)
+	require.Nil(t, ips)
+	require.Equal(t, 0, accessCount)
 }
 
 //nolint:dupl
@@ -567,7 +645,7 @@ func TestListRecordsWildcard(t *testing.T) {
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "*.test.org", ips))
+			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "*.test.org", ips))
 			assert.NoError(t, err)
 		})
 
@@ -657,7 +735,7 @@ func envelopDNSRecordResponse(record *cloudflare.DNSRecord) *cloudflare.DNSRecor
 	}
 }
 
-func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip netip.Addr) *cloudflare.DNSRecordResponse {
+func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip string) *cloudflare.DNSRecordResponse {
 	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, name, ip))
 }
 
@@ -683,7 +761,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			listAccessCount--
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
+			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
 				map[string]netip.Addr{"record1": mustIP("::1")}))
 			assert.NoError(t, err)
 		})
@@ -700,7 +778,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			assert.Empty(t, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", mustIP("::1")))
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"))
 			assert.NoError(t, err)
 		})
 
@@ -778,7 +856,7 @@ func TestUpdateRecordValid(t *testing.T) {
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-				map[string]netip.Addr{"record1": mustIP("::1")}))
+				map[string]string{"record1": "::1"}))
 			assert.NoError(t, err)
 		})
 
@@ -803,7 +881,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			assert.Equal(t, "::2", record.Content)
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", mustIP("::2"))) //nolint:lll
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2")) //nolint:lll
 			assert.NoError(t, err)
 		})
 
@@ -882,7 +960,7 @@ func TestCreateRecordValid(t *testing.T) {
 
 				w.Header().Set("content-type", "application/json")
 				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-					map[string]netip.Addr{"record1": mustIP("::1")}))
+					map[string]string{"record1": "::1"}))
 				assert.NoError(t, err)
 			case http.MethodPost:
 				if createAccessCount <= 0 {
