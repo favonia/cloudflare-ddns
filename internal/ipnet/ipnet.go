@@ -59,7 +59,6 @@ func (t Type) NormalizeIP(ip netip.Addr) (netip.Addr, bool) {
 		ip = ip.Unmap()
 		return ip, ip.Is4()
 	case IP6:
-		// FIXME: wait until netip gets updated
 		ip = netip.AddrFrom16(ip.As16())
 		return ip, ip.Is6()
 	default:
