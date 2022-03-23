@@ -549,6 +549,7 @@ func TestListRecords(t *testing.T) {
 	require.Equal(t, expected, ips)
 }
 
+//nolint:funlen
 func TestListRecordsInvalidIPAddress(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
@@ -881,7 +882,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			assert.Equal(t, "::2", record.Content)
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2")) //nolint:lll
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
 			assert.NoError(t, err)
 		})
 
