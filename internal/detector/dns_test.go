@@ -122,7 +122,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			ip4,
 			nil,
 		},
-		"illformed": {
+		"illformed-query": {
 			ipnet.IP4, ipnet.IP4, "test",
 			dnsmessage.ClassCHAOS,
 			true,
@@ -426,6 +426,32 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			ip4,
 			nil,
+		},
+		"illformed-ip": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true}, //nolint:exhaustivestruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustivestruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{"I am definitely not an IP address"},
+					},
+				},
+			},
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(
+					pp.EmojiImpossible,
+					`Invalid DNS response: failed to parse the IP address in the TXT record: %s`,
+					"I am definitely not an IP address",
+				)
+			},
 		},
 		"multiple1": {
 			ipnet.IP4, ipnet.IP4, "test.",
