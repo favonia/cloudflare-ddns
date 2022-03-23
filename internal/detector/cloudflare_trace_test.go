@@ -73,8 +73,8 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 			"4-nil1": {
 				ipnet.IP4, dummy.URL, "ip", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(
-						pp.EmojiImpossible,
+					m.EXPECT().Warningf(
+						pp.EmojiError,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,
 						"none")
@@ -83,8 +83,8 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 			"6-nil1": {
 				ipnet.IP6, dummy.URL, "ip", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(
-						pp.EmojiImpossible,
+					m.EXPECT().Warningf(
+						pp.EmojiError,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,
 						"none")
@@ -127,7 +127,7 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 			"4-nil4": {
 				ipnet.IP4, dummy.URL, "nonexisting4", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(pp.EmojiImpossible,
+					m.EXPECT().Warningf(pp.EmojiError,
 						`Failed to find the IP address in the response of %q: %s`,
 						dummy.URL,
 						[]byte("ip=none"))
@@ -136,7 +136,7 @@ func TestCloudflareTraceGetIP(t *testing.T) {
 			"6-nil4": {
 				ipnet.IP6, dummy.URL, "nonexisting6", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(pp.EmojiImpossible,
+					m.EXPECT().Warningf(pp.EmojiError,
 						`Failed to find the IP address in the response of %q: %s`,
 						dummy.URL,
 						[]byte("ip=none"))

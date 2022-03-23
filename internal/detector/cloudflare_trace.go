@@ -23,13 +23,13 @@ func getIPFromCloudflareTrace(ctx context.Context, ppfmt pp.PP, url string, fiel
 			re := regexp.MustCompile(`(?m:^` + regexp.QuoteMeta(field) + `=(.*)$)`)
 			matched := re.FindSubmatch(body)
 			if matched == nil {
-				ppfmt.Errorf(pp.EmojiImpossible, `Failed to find the IP address in the response of %q: %s`, url, body)
+				ppfmt.Warningf(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
 				return invalidIP
 			}
 			ipString := string(matched[1])
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Errorf(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Warningf(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
 				return invalidIP
 			}
 			return ip

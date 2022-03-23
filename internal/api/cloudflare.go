@@ -158,7 +158,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	for i := range rs {
 		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiImpossible, "Could not parse the IP address in records of %q: %v", domain.Describe(), err)
+			ppfmt.Warningf(pp.EmojiImpossible, "Could not parse the IP address in records of %q: %v", domain.Describe(), err)
 			return nil, false
 		}
 	}
