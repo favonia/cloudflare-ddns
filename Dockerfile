@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v}
 
 # After the compilation is done, we copied the program into alpine images
 # with matching architectures.
-FROM alpine:3.15.2 AS alpine
+FROM alpine:3.15.3 AS alpine
 RUN \
   apk update && \
   apk add --no-cache ca-certificates && \
