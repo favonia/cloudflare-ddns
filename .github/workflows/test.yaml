@@ -24,7 +24,7 @@ jobs:
           go install github.com/golang/mock/mockgen@latest
           go generate ./...
           go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
-      - uses: codecov/codecov-action@v2
+      - uses: codecov/codecov-action@v3
         with:
           file: ./coverage.txt
           flags: unittests
