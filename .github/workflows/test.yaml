@@ -21,9 +21,9 @@ jobs:
           go-version: 1.18
       - uses: actions/checkout@v3
       - run: |
-          go install github.com/golang/mock/mockgen@latest
+          CGO_ENABLED=1 go install github.com/golang/mock/mockgen@latest
           go generate ./...
-          go test -race -v ./...
+          CGO_ENABLED=1 go test -race -v ./...
   test-linux:
     name: Test (Linux)
     runs-on: ubuntu-latest
