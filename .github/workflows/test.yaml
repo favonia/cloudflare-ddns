@@ -4,8 +4,28 @@ on:
     branches: main
   pull_request:
 jobs:
-  test:
-    name: Test
+  test-macos:
+    name: Test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/checkout@v3
+      - run: |
+          go install github.com/golang/mock/mockgen@latest
+          go generate ./...
+          go test -race -v ./...
+  test-linux:
+    name: Test (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v3
