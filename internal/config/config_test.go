@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -295,6 +296,39 @@ func TestReadPolicyMap(t *testing.T) {
 	}
 }
 
+type someMatcher struct {
+	matchers []gomock.Matcher
+}
+
+func (sm someMatcher) Matches(x interface{}) bool {
+	for _, m := range sm.matchers {
+		if m.Matches(x) {
+			return true
+		}
+	}
+	return false
+}
+
+func (sm someMatcher) String() string {
+	ss := make([]string, 0, len(sm.matchers))
+	for _, matcher := range sm.matchers {
+		ss = append(ss, matcher.String())
+	}
+	return strings.Join(ss, " | ")
+}
+
+func Some(xs ...interface{}) gomock.Matcher {
+	ms := make([]gomock.Matcher, 0, len(xs))
+	for _, x := range xs {
+		if m, ok := x.(gomock.Matcher); ok {
+			ms = append(ms, m)
+		} else {
+			ms = append(ms, gomock.Eq(x))
+		}
+	}
+	return someMatcher{ms}
+}
+
 func TestPrintDefault(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
@@ -314,7 +348,7 @@ func TestPrintDefault(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
@@ -346,7 +380,7 @@ func TestPrintEmpty(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "unmanaged"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "unmanaged"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.Schedule(nil)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
