@@ -28,6 +28,8 @@ func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, ipN
 	}
 }
 
+var ipv6MessageDisplayed = false //nolint:gochecknoglobals
+
 func updateIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, ipNet ipnet.Type) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
@@ -35,6 +37,11 @@ func updateIP(ctx context.Context, ppfmt pp.PP, c *config.Config, h api.Handle, 
 	ip := c.Policy[ipNet].GetIP(ctx, ppfmt, ipNet)
 	if !ip.IsValid() {
 		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		if !ipv6MessageDisplayed && ipNet == ipnet.IP6 {
+			ipv6MessageDisplayed = true
+			ppfmt.Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups.") //nolint:lll
+			ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns")                //nolint:lll
+		}
 		return
 	}
 

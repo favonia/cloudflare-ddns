@@ -114,7 +114,7 @@ services:
 <details>
 <summary>📡 Use <code>network_mode: host</code> (as a hack) to enable IPv6 or read more.</summary>
 
-The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the [proper way to enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/).
+The setting `network_mode: host` is for IPv6. If you wish to keep the network separated from the host network, check out the [proper way to enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6.](https://github.com/favonia/cloudflare-ddns/issues/119)
 </details>
 
 <details>
