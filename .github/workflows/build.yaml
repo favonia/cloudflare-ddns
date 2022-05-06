@@ -43,7 +43,7 @@ jobs:
           tags: |
             type=edge
             type=semver,pattern={{version}}
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v3
         name: Build alpine-flavored Docker images
         with:
           target: "alpine"
@@ -60,7 +60,7 @@ jobs:
           tags: |
             type=edge
             type=semver,pattern={{version}}
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v3
         name: Build minimal Docker images
         with:
           target: "minimal"
