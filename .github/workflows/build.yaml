@@ -33,7 +33,7 @@ jobs:
       - run: echo '::set-output name=GIT_DESCRIBE::'`git describe --tags --always --long`
         name: Run `git describe` and save its output
         id: git-describe
-      - uses: docker/metadata-action@v3
+      - uses: docker/metadata-action@v4
         name: Calculate metadata for alpine-flavored Docker images
         id: meta-alpine
         with:
@@ -52,7 +52,7 @@ jobs:
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta-alpine.outputs.tags }}
           labels: ${{ steps.meta-alpine.outputs.labels }}
-      - uses: docker/metadata-action@v3
+      - uses: docker/metadata-action@v4
         name: Calculate metadata for minimal Docker images
         id: meta-minimal
         with:
