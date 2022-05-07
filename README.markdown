@@ -112,18 +112,24 @@ services:
 ```
 
 <details>
-<summary>📡 Use <code>network_mode: host</code> (as a hack) to enable IPv6 or read more.</summary>
+<summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
 
-The setting `network_mode: host` is to enable IPv6 by using the host network directly, assuming that the host itself supports IPv6. If you wish to keep the network separated from the host network, check out the [proper way to enable IPv6 support](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about using IPv6 in Docker.](https://github.com/favonia/cloudflare-ddns/issues/119) Please note that the complete support of IPv6 is still under development! Here is a Docker configuration (as `/etc/docker/daemon.json` on Linux) that might work:
-```json
-{
-  "ipv6": true,
-  "fixed-cidr-v6": "fd00/8",
-  "experimental": true,
-  "ip6tables": true
-}
-```
-The IPv6 support is still experimental, and it is crucial to check the latest documentation and carefully test your setup.
+The easiest way to enable IPv6 is to use `network_mode: host` so that the tool can access the host IPv6 network directly. If you wish to keep the tool isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6.](https://github.com/favonia/cloudflare-ddns/issues/119) If your host OS is Linux, here’s the tl;dr:
+
+1. Use `network_mode: bridge` instead of `network_mode: host`.
+2. Edit or create `/etc/docker/daemon.json` with the following content:
+   ```json
+   {
+     "ipv6": true,
+     "fixed-cidr-v6": "fd00::/8",
+     "experimental": true,
+     "ip6tables": true
+   }
+   ```
+3. Restart the Docker daemon:
+   ```sh
+   systemctl restart docker.service
+   ```
 </details>
 
 <details>
