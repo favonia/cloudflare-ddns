@@ -16,16 +16,6 @@ COPY ["internal", "internal"]
 COPY ["cmd", "cmd"]
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} go build -tags timetzdata -o /bin/ddns -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" cmd/*.go
 
-# After the compilation is done, we copied the program into alpine images
-# with matching architectures.
-FROM alpine:3.15.4 AS alpine
-RUN \
-  apk update && \
-  apk add --no-cache ca-certificates && \
-  update-ca-certificates
-COPY --from=build /bin/ddns /bin/
-ENTRYPOINT ["/bin/ddns"]
-
 # The minimal images contain only the program and the consolidated certificates.
 FROM scratch AS minimal
 COPY --from=build /bin/ddns /bin/
