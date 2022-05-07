@@ -7,10 +7,7 @@ on:
   release:
     types: [published]
 env:
-  # This is limited by what's officially supported by https://github.com/alpinelinux/docker-alpine
-  # as long as we wish to release alpine-flavored images. "linux/riscv64" was not added because
-  # it only has an "edge" release for now.
-  platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/s390x"
+  platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/riscv64,linux/s390x"
 jobs:
   build:
     name: Build
