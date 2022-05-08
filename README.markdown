@@ -126,7 +126,7 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the tool c
      "ip6tables": true
    }
    ```
-3. Restart the Docker daemon:
+3. Restart the Docker daemon (if you are using systemd):
    ```sh
    systemctl restart docker.service
    ```
