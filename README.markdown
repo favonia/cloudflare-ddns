@@ -334,7 +334,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `UPDATE_CRON` | No | `UTC`
-| `UPDATE_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
+| `UPDATE_CRON` | Cron expressions. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `UPDATE_ON_START` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `30s` (30 seconds)
 
