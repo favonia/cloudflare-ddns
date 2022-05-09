@@ -272,3 +272,20 @@ func TestEndPoints(t *testing.T) {
 		})
 	}
 }
+
+func TestEndPointsIllFormed(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", "blah", gomock.Any())
+
+	m := &monitor.HealthChecks{
+		BaseURL:         "://#?",
+		RedactedBaseURL: "blah",
+		Timeout:         monitor.HealthChecksDefaultTimeout,
+		MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+	}
+
+	ok := m.Success(context.Background(), mockPP)
+	require.False(t, ok)
+}

@@ -20,7 +20,7 @@ type HealthChecks struct {
 }
 
 const (
-	HeathChecksDefaultTimeout     = 10 * time.Second
+	HealthChecksDefaultTimeout    = 10 * time.Second
 	HealthChecksDefaultMaxRetries = 5
 )
 
@@ -40,7 +40,7 @@ func NewHealthChecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
 	return &HealthChecks{
 		BaseURL:         url.String(),
 		RedactedBaseURL: url.Redacted(),
-		Timeout:         HeathChecksDefaultTimeout,
+		Timeout:         HealthChecksDefaultTimeout,
 		MaxRetries:      HealthChecksDefaultMaxRetries,
 	}, true
 }
@@ -53,7 +53,7 @@ func (h *HealthChecks) DescribeBaseURL() string {
 	return h.RedactedBaseURL
 }
 
-func (h *HealthChecks) reallyPing(ctx context.Context, ppfmt pp.PP, url string, redatedURL string) bool {
+func (h *HealthChecks) ping(ctx context.Context, ppfmt pp.PP, url string, redatedURL string) bool {
 	for retries := 0; retries < h.MaxRetries; retries++ {
 		ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 		defer cancel()
@@ -116,15 +116,15 @@ func (h *HealthChecks) reallyPing(ctx context.Context, ppfmt pp.PP, url string, 
 }
 
 func (h *HealthChecks) Success(ctx context.Context, ppfmt pp.PP) bool {
-	return h.reallyPing(ctx, ppfmt, h.BaseURL, h.RedactedBaseURL)
+	return h.ping(ctx, ppfmt, h.BaseURL, h.RedactedBaseURL)
 }
 
 func (h *HealthChecks) Start(ctx context.Context, ppfmt pp.PP) bool {
-	return h.reallyPing(ctx, ppfmt, h.BaseURL+"/start", h.RedactedBaseURL+"/start")
+	return h.ping(ctx, ppfmt, h.BaseURL+"/start", h.RedactedBaseURL+"/start")
 }
 
 func (h *HealthChecks) Failure(ctx context.Context, ppfmt pp.PP) bool {
-	return h.reallyPing(ctx, ppfmt, h.BaseURL+"/fail", h.RedactedBaseURL+"/fail")
+	return h.ping(ctx, ppfmt, h.BaseURL+"/fail", h.RedactedBaseURL+"/fail")
 }
 
 func (h *HealthChecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int) bool {
@@ -133,5 +133,5 @@ func (h *HealthChecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int) bo
 		return false
 	}
 
-	return h.reallyPing(ctx, ppfmt, fmt.Sprintf("%s/%d", h.BaseURL, code), fmt.Sprintf("%s/%d", h.RedactedBaseURL, code))
+	return h.ping(ctx, ppfmt, fmt.Sprintf("%s/%d", h.BaseURL, code), fmt.Sprintf("%s/%d", h.RedactedBaseURL, code))
 }

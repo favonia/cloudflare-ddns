@@ -518,7 +518,7 @@ func TestReadHealthChecksURL(t *testing.T) {
 			[]mon{&monitor.HealthChecks{
 				BaseURL:         "https://hi.org/1234",
 				RedactedBaseURL: "https://hi.org/1234",
-				Timeout:         monitor.HeathChecksDefaultTimeout,
+				Timeout:         monitor.HealthChecksDefaultTimeout,
 				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
@@ -530,7 +530,7 @@ func TestReadHealthChecksURL(t *testing.T) {
 			[]mon{&monitor.HealthChecks{
 				BaseURL:         "https://me:pass@hi.org/1234",
 				RedactedBaseURL: "https://me:xxxxx@hi.org/1234",
-				Timeout:         monitor.HeathChecksDefaultTimeout,
+				Timeout:         monitor.HealthChecksDefaultTimeout,
 				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
