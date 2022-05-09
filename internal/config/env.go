@@ -135,23 +135,6 @@ func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 	}
 }
 
-// ReadHealthChecksURL reads the base URL of the healthcheck.io endpoint.
-func ReadHealthChecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
-	val := Getenv(key)
-
-	if val == "" {
-		return true
-	}
-
-	h, ok := monitor.NewHealthChecks(ppfmt, val)
-	if !ok {
-		return false
-	}
-
-	*field = append(*field, h)
-	return true
-}
-
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.
 func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	val := Getenv(key)
@@ -190,5 +173,22 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	}
 
 	*field = c
+	return true
+}
+
+// ReadHealthChecksURL reads the base URL of the healthcheck.io endpoint.
+func ReadHealthChecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+	val := Getenv(key)
+
+	if val == "" {
+		return true
+	}
+
+	h, ok := monitor.NewHealthChecks(ppfmt, val)
+	if !ok {
+		return false
+	}
+
+	*field = append(*field, h)
 	return true
 }
