@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -295,6 +297,39 @@ func TestReadPolicyMap(t *testing.T) {
 	}
 }
 
+type someMatcher struct {
+	matchers []gomock.Matcher
+}
+
+func (sm someMatcher) Matches(x interface{}) bool {
+	for _, m := range sm.matchers {
+		if m.Matches(x) {
+			return true
+		}
+	}
+	return false
+}
+
+func (sm someMatcher) String() string {
+	ss := make([]string, 0, len(sm.matchers))
+	for _, matcher := range sm.matchers {
+		ss = append(ss, matcher.String())
+	}
+	return strings.Join(ss, " | ")
+}
+
+func Some(xs ...interface{}) gomock.Matcher {
+	ms := make([]gomock.Matcher, 0, len(xs))
+	for _, x := range xs {
+		if m, ok := x.(gomock.Matcher); ok {
+			ms = append(ms, m)
+		} else {
+			ms = append(ms, gomock.Eq(x))
+		}
+	}
+	return someMatcher{ms}
+}
+
 func TestPrintDefault(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
@@ -314,7 +349,7 @@ func TestPrintDefault(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
@@ -322,9 +357,10 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 	config.Default().Print(mockPP)
 }
@@ -346,7 +382,7 @@ func TestPrintEmpty(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "unmanaged"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "unmanaged"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", "UTC (UTC+00 now)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.Schedule(nil)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
@@ -354,12 +390,56 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "0"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 	var cfg config.Config
 	cfg.Print(mockPP)
+}
+
+func TestPrintMonitors(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	c := config.Default()
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().IncIndent().Return(mockPP),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-17s %v", "Healthchecks.io:", "http://user:xxxxx@host/path"),
+	)
+
+	m, ok := monitor.NewHealthChecks(mockPP, "http://user:pass@host/path")
+	require.True(t, ok)
+
+	c.Monitors = []monitor.Monitor{m}
+	c.Print(mockPP)
 }
 
 func TestPrintHidden(t *testing.T) {
@@ -453,14 +533,14 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"empty": {
-			input: &config.Config{ //nolint:exhaustivestruct
+			input: &config.Config{ //nolint:exhaustruct
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
 			},
 			ok: false,
-			expected: &config.Config{ //nolint:exhaustivestruct
+			expected: &config.Config{ //nolint:exhaustruct
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
@@ -471,7 +551,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"empty-ip6": {
-			input: &config.Config{ //nolint:exhaustivestruct
+			input: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: detector.NewCloudflareTrace(),
 					ipnet.IP6: detector.NewCloudflareTrace(),
@@ -482,7 +562,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustivestruct
+			expected: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: detector.NewCloudflareTrace(),
 					ipnet.IP6: nil,
@@ -499,7 +579,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"empty-ip6-unmanaged-ip4": {
-			input: &config.Config{ //nolint:exhaustivestruct
+			input: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflareTrace(),
@@ -510,7 +590,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: false,
-			expected: &config.Config{ //nolint:exhaustivestruct
+			expected: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
@@ -530,7 +610,7 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"ignored-ip4-domains": {
-			input: &config.Config{ //nolint:exhaustivestruct
+			input: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflareTrace(),
@@ -541,7 +621,7 @@ func TestNormalize(t *testing.T) {
 				},
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustivestruct
+			expected: &config.Config{ //nolint:exhaustruct
 				Policy: map[ipnet.Type]detector.Policy{
 					ipnet.IP4: nil,
 					ipnet.IP6: detector.NewCloudflareTrace(),
@@ -568,7 +648,7 @@ func TestNormalize(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := cfg.Normalize(mockPP)
+			ok := cfg.NormalizeDomains(mockPP)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, cfg)
 		})

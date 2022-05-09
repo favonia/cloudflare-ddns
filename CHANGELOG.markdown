@@ -1,3 +1,32 @@
+# [1.4.0](https://github.com/favonia/cloudflare-ddns/compare/v1.3.0...v1.4.0) (2022-05-09)
+
+
+### Bug Fixes
+
+* **api:** revise the token verification message ([#104](https://github.com/favonia/cloudflare-ddns/issues/104)) ([209afdc](https://github.com/favonia/cloudflare-ddns/commit/209afdcc52b95bf10f1f077b6ffdd5bfcee62a0b))
+* updating was wrongly restricted by detection timeout ([#159](https://github.com/favonia/cloudflare-ddns/issues/159)) ([b3fc809](https://github.com/favonia/cloudflare-ddns/commit/b3fc8091f75617659f8463a0748317a1048b8d39))
+
+
+### Features
+
+* **monitor:** support healthchecks.io ([#160](https://github.com/favonia/cloudflare-ddns/issues/160)) ([f83f5fb](https://github.com/favonia/cloudflare-ddns/commit/f83f5fbf26855d41e1beb3efe77f2a3476bab541))
+
+
+
+# [1.3.0](https://github.com/favonia/cloudflare-ddns/compare/v1.2.0...v1.3.0) (2021-11-15)
+
+
+### Bug Fixes
+
+* **api:** keep leading dots after the beginning `*` is removed ([#97](https://github.com/favonia/cloudflare-ddns/issues/97)) ([bb2da38](https://github.com/favonia/cloudflare-ddns/commit/bb2da3845e0ac9a6d1b48c2242755e40d0fab944))
+
+
+### Features
+
+* **detector:** re-implement the cdn-cgi/trace parser ([#102](https://github.com/favonia/cloudflare-ddns/issues/102)) ([ebf0639](https://github.com/favonia/cloudflare-ddns/commit/ebf06395c341b97a9f2e3c8618cc21eed2365b3d))
+
+
+
 # [1.3.0](https://github.com/favonia/cloudflare-ddns/compare/v1.2.0...v1.3.0) (2021-11-15)
 
 

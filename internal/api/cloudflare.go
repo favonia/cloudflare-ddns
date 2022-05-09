@@ -19,8 +19,9 @@ type Cache = struct {
 }
 
 type CloudflareHandle struct {
-	cf    *cloudflare.API
-	cache Cache
+	cf        *cloudflare.API
+	accountID string
+	cache     Cache
 }
 
 const (
@@ -55,7 +56,8 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 	cleanupInterval := cacheExpiration * CleanupIntervalFactor
 
 	return &CloudflareHandle{
-		cf: handle,
+		cf:        handle,
+		accountID: t.AccountID,
 		cache: Cache{
 			listRecords: map[ipnet.Type]*cache.Cache{
 				ipnet.IP4: cache.New(cacheExpiration, cleanupInterval),
@@ -86,7 +88,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		return ids.([]string), true //nolint:forcetypeassert
 	}
 
-	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.cf.AccountID, "active"))
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, "active"))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
@@ -144,7 +146,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally unspecified
+	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
 		Name: domain.DNSNameASCII(),
 		Type: ipNet.RecordType(),
@@ -200,7 +202,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
@@ -231,7 +233,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
