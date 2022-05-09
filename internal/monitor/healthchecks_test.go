@@ -17,6 +17,43 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+func TestSetHealthChecksMaxRetries(t *testing.T) {
+	t.Parallel()
+
+	m := &monitor.HealthChecks{
+		BaseURL:         "",
+		RedactedBaseURL: "",
+		Timeout:         0,
+		MaxRetries:      0,
+	}
+
+	monitor.SetHealthChecksMaxRetries(42)(m)
+
+	require.Equal(t, m,
+		&monitor.HealthChecks{
+			BaseURL:         "",
+			RedactedBaseURL: "",
+			Timeout:         0,
+			MaxRetries:      42,
+		},
+	)
+}
+
+func TestSetHealthChecksMaxRetriesPanic(t *testing.T) {
+	t.Parallel()
+
+	require.Panics(t,
+		func() {
+			monitor.SetHealthChecksMaxRetries(0)
+		},
+	)
+	require.Panics(t,
+		func() {
+			monitor.SetHealthChecksMaxRetries(-1)
+		},
+	)
+}
+
 func TestNewHealthChecks(t *testing.T) {
 	t.Parallel()
 
