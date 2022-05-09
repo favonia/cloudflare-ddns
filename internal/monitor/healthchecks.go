@@ -70,6 +70,7 @@ func (h *HealthChecks) DescribeBaseURL() string {
 	return h.RedactedBaseURL
 }
 
+//nolint: funlen
 func (h *HealthChecks) ping(ctx context.Context, ppfmt pp.PP, url string, redatedURL string) bool {
 	for retries := 0; retries < h.MaxRetries; retries++ {
 		if retries > 0 {
