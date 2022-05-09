@@ -35,8 +35,8 @@ func TestNewHealthChecksFail1(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `The URL %q does not look like a valid Healthchecks URL.`, url.PathEscape("this is not a valid URL")),
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`),
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `The URL %q does not look like a valid Healthchecks URL.`, url.PathEscape("this is not a valid URL")), //nolint: lll
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`),                    //nolint: lll
 	)
 	_, ok := monitor.NewHealthChecks(mockPP, "this is not a valid URL")
 	require.False(t, ok)
