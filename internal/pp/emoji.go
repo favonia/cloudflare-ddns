@@ -16,6 +16,9 @@ const (
 	EmojiDelRecord    Emoji = "💀" // deleting DNS records
 	EmojiUpdateRecord Emoji = "📡" // updating DNS records
 
+	EmojiNotification Emoji = "🔔" // sending out notifications, pinging, health checks
+	EmojiRepeatOnce   Emoji = "🔂" // repeating things once
+
 	EmojiSignal      Emoji = "🚨" // catching signals
 	EmojiAlreadyDone Emoji = "🤷" // DNS records were already up to date
 	EmojiNow         Emoji = "🏃" // an event that is happening now or immediately
@@ -26,7 +29,6 @@ const (
 	EmojiUserWarning Emoji = "😦" // warnings about possible configuration mistakes
 	EmojiError       Emoji = "😞" // errors that are not (directly) caused by user errors
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
-	EmojiGood        Emoji = "👍" // everything looks good
 )
 
 const indentPrefix = "   "

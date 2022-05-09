@@ -146,7 +146,7 @@ mainLoop:
 			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
 			h.FlushCache()
 
-			ppfmt.Noticef(pp.EmojiNow, "Restarting . . .")
+			ppfmt.Noticef(pp.EmojiRepeatOnce, "Restarting . . .")
 			c, h = initConfig(ctx, ppfmt)
 			continue mainLoop
 

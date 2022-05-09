@@ -3,8 +3,10 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -56,23 +58,60 @@ func (h *HealthChecks) reallyPing(ctx context.Context, ppfmt pp.PP, url string, 
 		ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 		defer cancel()
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", redatedURL, err)
-			continue
+			return false
 		}
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", redatedURL, err)
+			ppfmt.Infof(pp.EmojiRepeatOnce, "Trying again . . .")
+			continue
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", redatedURL, err)
+			ppfmt.Infof(pp.EmojiRepeatOnce, "Trying again . . .")
 			continue
 		}
 
-		resp.Body.Close()
+		/*
+			Code and body for uuid API:
+
+			200 OK
+			200 OK (not found)
+			200 OK (rate limited)
+			400 invalid url format
+
+			Code and body for the slug API:
+
+			200 OK
+			400 invalid url format
+			404 not found
+			409 ambiguous slug
+			429 rate limit exceeded
+		*/
+
+		bodyAsString := strings.TrimSpace(string(body))
+		if bodyAsString != "OK" {
+			ppfmt.Warningf(
+				pp.EmojiError,
+				"Failed to ping %q; got response code: %d %s",
+				redatedURL,
+				resp.StatusCode,
+				bodyAsString,
+			)
+			return false
+		}
+
+		ppfmt.Infof(pp.EmojiNotification, "Successfully pinged %q.", redatedURL)
 		return true
 	}
 
-	ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q within %d time(s).", redatedURL, h.MaxRetries)
+	ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q in %d time(s).", redatedURL, h.MaxRetries)
 	return false
 }
 
