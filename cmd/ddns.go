@@ -105,6 +105,8 @@ mainLoop:
 			} else {
 				monitor.FailureAll(ctx, ppfmt, c.Monitors)
 			}
+		} else if first {
+			monitor.SuccessAll(ctx, ppfmt, c.Monitors)
 		}
 		first = false
 
