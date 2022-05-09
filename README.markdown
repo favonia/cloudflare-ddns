@@ -358,7 +358,7 @@ The updater will also try to drop supplementary group IDs.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
-| `HEALTHCHECKS` | Healthchecks.io base ping URLs, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` | If set, the tool will ping Healthchecks.io when it successfully updates IP addresses | No | N/A
+| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` | If set, the tool will ping Healthchecks.io when it successfully updates IP addresses | No | N/A
 </details>
 
 ### 🔂 Restarting the Container
