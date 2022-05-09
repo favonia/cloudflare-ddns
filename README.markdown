@@ -329,13 +329,13 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached Cloudflare API responses | No | `6h0m0s` (6 hours)
-| `DELETE_ON_STOP` | Boolean values, such as `true` and `false` and `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether managed DNS records should be deleted on exit | No | `false`
+| `DELETE_ON_STOP` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
-| `PROXIED` | Boolean values, such as `true` and `false` and `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
+| `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `UPDATE_CRON` | No | `UTC`
 | `UPDATE_CRON` | Cron expressions; [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format). | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
-| `UPDATE_ON_START` | Boolean values, such as `true` and `false` and `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
+| `UPDATE_ON_START` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `30s` (30 seconds)
 
 Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
@@ -357,7 +357,7 @@ The updater will also try to drop supplementary group IDs.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `QUIET` | Boolean values, such as `true` and `false` and `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
+| `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
 | `HEALTHCHECKS` | Healthchecks.io base ping URLs, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` | If set, the tool will ping Healthchecks.io when it successfully updates IP addresses | No | N/A
 </details>
 
