@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -15,6 +16,41 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func TestNewHealthChecks(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	m, ok := monitor.NewHealthChecks(mockPP, "https://user:pass@host/path")
+	require.True(t, ok)
+	h, ok := m.(*monitor.HealthChecks)
+	require.True(t, ok)
+	require.Equal(t, "https://user:pass@host/path", h.BaseURL)
+}
+
+func TestNewHealthChecksFail1(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `The URL %q does not look like a valid Healthchecks URL.`, url.PathEscape("this is not a valid URL")),
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`),
+	)
+	_, ok := monitor.NewHealthChecks(mockPP, "this is not a valid URL")
+	require.False(t, ok)
+}
+
+func TestNewHealthChecksFail2(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL %q: %v", "://#?", gomock.Any())
+	_, ok := monitor.NewHealthChecks(mockPP, "://#?")
+	require.False(t, ok)
+}
 
 func TestDescripbeService(t *testing.T) {
 	t.Parallel()
