@@ -42,7 +42,7 @@ func NewHealthChecks(ppfmt pp.PP, rawURL string, os ...HealthChecksOption) (Moni
 		return nil, false
 	}
 
-	if !(url.IsAbs() && url.Opaque == "" && url.Host != "" && url.Fragment == "" && url.ForceQuery == false && url.RawQuery == "") { //nolint: lll
+	if !(url.IsAbs() && url.Opaque == "" && url.Host != "" && url.Fragment == "" && !url.ForceQuery && url.RawQuery == "") { //nolint: lll
 		ppfmt.Errorf(pp.EmojiUserError, `The URL %q does not look like a valid Healthchecks URL.`, url.Redacted())
 		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`)
 		return nil, false

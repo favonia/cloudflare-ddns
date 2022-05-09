@@ -19,11 +19,14 @@ issues:
 linters:
   enable-all: true
   disable:
-    - maligned
+    - execinquery # the linter crashes: https://github.com/lufeee/execinquery/issues/3
+    - exhaustivestruct # deprecated
+    - golint # deprecated
     - interfacer
+    - ireturn # ireturn works poorly for the style with private types and public interfaces
+    - maligned
     - nlreturn
+    - scopelint # deprecated
+    - varnamelen # varnamelen complains too much, in my opinion
     - wsl
-      # ireturn works poorly for the style with private types and public interfaces
-    - ireturn
-      # varnamelen complains too much, in my opinion
-    - varnamelen
+    - nonamedreturns # named returns are needed in the internal updator package
