@@ -8,6 +8,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -23,6 +24,7 @@ type Config struct {
 	Proxied          bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
+	Monitors         []monitor.Monitor
 }
 
 // Default gives default values.
@@ -45,6 +47,7 @@ func Default() *Config {
 		Proxied:          false,
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
+		Monitors:         nil,
 	}
 }
 
@@ -191,9 +194,18 @@ func (c *Config) Print(ppfmt pp.PP) {
 	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
 	inner.Infof(pp.EmojiBullet, "Proxied:          %t", c.Proxied)
 
-	ppfmt.Infof(pp.EmojiConfig, "Timeouts")
+	ppfmt.Infof(pp.EmojiConfig, "Timeouts:")
 	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
 	inner.Infof(pp.EmojiBullet, "Record updating:  %v", c.UpdateTimeout)
+
+	if len(c.Monitors) > 0 {
+		ppfmt.Infof(pp.EmojiConfig, "Monitors:")
+		for _, m := range c.Monitors {
+			inner.Infof(pp.EmojiBullet, "%-17s %v", m.DescribeService()+":", m.DescribeBaseURL())
+		}
+	} else {
+		ppfmt.Infof(pp.EmojiConfig, "Monitors: (none)")
+	}
 }
 
 func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
@@ -212,7 +224,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadNonnegInt(ppfmt, "TTL", (*int)(&c.TTL)) ||
 		!ReadBool(ppfmt, "PROXIED", &c.Proxied) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
-		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) {
+		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
+		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
 		return false
 	}
 
@@ -240,7 +253,7 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	}
 }
 
-func (c *Config) Normalize(ppfmt pp.PP) bool {
+func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
 		return false

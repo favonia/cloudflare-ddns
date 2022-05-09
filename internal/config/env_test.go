@@ -13,6 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -485,6 +486,86 @@ func TestReadCron(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			ok := config.ReadCron(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
+func TestReadHealthChecksURL(t *testing.T) {
+	key := keyPrefix + "HEALTHCHECKS"
+
+	type mon = monitor.Monitor
+
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      []mon
+		newField      []mon
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"unset": {
+			false, "", []mon{}, []mon{}, true, nil,
+		},
+		"empty": {
+			true, "", []mon{}, []mon{}, true, nil,
+		},
+		"example": {
+			true, "https://hi.org/1234",
+			[]mon{},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:         "https://hi.org/1234",
+				RedactedBaseURL: "https://hi.org/1234",
+				Timeout:         monitor.HealthChecksDefaultTimeout,
+				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
+		},
+		"password": {
+			true, "https://me:pass@hi.org/1234",
+			[]mon{},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:         "https://me:pass@hi.org/1234",
+				RedactedBaseURL: "https://me:xxxxx@hi.org/1234",
+				Timeout:         monitor.HealthChecksDefaultTimeout,
+				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
+		},
+		"illformed": {
+			true, "https://hi.org/1234?hello=123",
+			[]mon{},
+			[]mon{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(
+					pp.EmojiUserError,
+					"The URL %q does not look like a valid Healthchecks URL.",
+					"https://hi.org/1234?hello=123",
+				)
+				m.EXPECT().Errorf(
+					pp.EmojiUserError,
+					`A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`,
+				)
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			set(t, key, tc.set, tc.val)
+
+			field := append([]mon{}, tc.oldField...)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadHealthChecksURL(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
