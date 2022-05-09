@@ -6,6 +6,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+//go:generate mockgen -destination=../mocks/mock_monitor.go -package=mocks . Monitor
+
 type Monitor interface {
 	DescribeService() string
 	DescribeBaseURL() string
