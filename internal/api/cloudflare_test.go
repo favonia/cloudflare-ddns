@@ -160,7 +160,7 @@ func TestNewInvalid(t *testing.T) {
 }
 
 func mockZone(zoneName string, i int) *cloudflare.Zone {
-	return &cloudflare.Zone{ //nolint:exhaustivestruct
+	return &cloudflare.Zone{ //nolint:exhaustruct
 		ID:     mockID(zoneName, i),
 		Name:   zoneName,
 		Status: "active",
@@ -186,7 +186,7 @@ func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse 
 			Count:      numZones,
 			Total:      numZones,
 			Cursor:     "",
-			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustivestruct
+			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustruct
 		},
 		Response: cloudflare.Response{
 			Success:  true,
@@ -447,7 +447,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 }
 
 func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip string) *cloudflare.DNSRecord {
-	return &cloudflare.DNSRecord{ //nolint:exhaustivestruct
+	return &cloudflare.DNSRecord{ //nolint:exhaustruct
 		ID:      id,
 		Type:    ipNet.RecordType(),
 		Name:    name,
@@ -474,7 +474,7 @@ func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]string) *
 			Count:      len(ips),
 			Total:      len(ips),
 			Cursor:     "",
-			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustivestruct
+			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustruct
 		},
 		Response: cloudflare.Response{
 			Success:  true,
@@ -726,7 +726,7 @@ func envelopDNSRecordResponse(record *cloudflare.DNSRecord) *cloudflare.DNSRecor
 			Count:      1,
 			Total:      1,
 			Cursor:     "",
-			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustivestruct
+			Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustruct
 		},
 		Response: cloudflare.Response{
 			Success:  true,

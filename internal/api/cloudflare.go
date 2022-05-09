@@ -146,7 +146,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally unspecified
+	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
 		Name: domain.DNSNameASCII(),
 		Type: ipNet.RecordType(),
@@ -202,7 +202,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
@@ -233,7 +233,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	//nolint:exhaustivestruct // Other fields are intentionally omitted
+	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
