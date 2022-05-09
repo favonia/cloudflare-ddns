@@ -9,6 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -46,8 +47,9 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		os.Exit(1)
 	}
-	if !c.Normalize(ppfmt) {
+	if !c.NormalizeDomains(ppfmt) {
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
 		os.Exit(1)
 	}
 
@@ -57,13 +59,14 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
 	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
 	if !ok {
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
 		os.Exit(1)
 	}
 
 	return c, h
 }
 
-func main() { //nolint:funlen,cyclop
+func main() { //nolint:funlen,cyclop,gocognit
 	ppfmt := pp.New(os.Stdout)
 	if !config.ReadQuiet("QUIET", &ppfmt) {
 		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
@@ -90,26 +93,34 @@ func main() { //nolint:funlen,cyclop
 
 	// reading the config
 	c, h := initConfig(ctx, ppfmt)
+	monitor.StartAll(ctx, ppfmt, c.Monitors)
 
 	first := true
 mainLoop:
 	for {
 		next := c.UpdateCron.Next()
 		if !first || c.UpdateOnStart {
-			updateIPs(ctx, ppfmt, c, h)
+			if updateIPs(ctx, ppfmt, c, h) {
+				monitor.SuccessAll(ctx, ppfmt, c.Monitors)
+			} else {
+				monitor.FailureAll(ctx, ppfmt, c.Monitors)
+			}
 		}
 		first = false
 
 		if next.IsZero() {
 			if c.DeleteOnStop {
 				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
-				clearIPs(ctx, ppfmt, c, h)
+				if !clearIPs(ctx, ppfmt, c, h) {
+					monitor.FailureAll(ctx, ppfmt, c.Monitors)
+				}
 				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
 			} else {
 				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 				ppfmt.Noticef(pp.EmojiBye, "Bye!")
 			}
 
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0)
 			break mainLoop
 		}
 
@@ -126,34 +137,37 @@ mainLoop:
 			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 		}
 
-		if sig, ok := signalWait(chanSignal, interval); !ok {
+		sig, ok := signalWait(chanSignal, interval)
+		if !ok {
 			continue mainLoop
-		} else {
-			switch sig.(syscall.Signal) { //nolint:forcetypeassert
-			case syscall.SIGHUP:
-				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
-				h.FlushCache()
+		}
+		switch sig.(syscall.Signal) { //nolint:forcetypeassert
+		case syscall.SIGHUP:
+			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
+			h.FlushCache()
 
-				ppfmt.Noticef(pp.EmojiNow, "Restarting . . .")
-				c, h = initConfig(ctx, ppfmt)
-				continue mainLoop
+			ppfmt.Noticef(pp.EmojiNow, "Restarting . . .")
+			c, h = initConfig(ctx, ppfmt)
+			continue mainLoop
 
-			case syscall.SIGINT, syscall.SIGTERM:
-				if c.DeleteOnStop {
-					ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
-					clearIPs(ctx, ppfmt, c, h)
-					ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
-				} else {
-					ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
-					ppfmt.Noticef(pp.EmojiBye, "Bye!")
+		case syscall.SIGINT, syscall.SIGTERM:
+			if c.DeleteOnStop {
+				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
+				if !clearIPs(ctx, ppfmt, c, h) {
+					monitor.FailureAll(ctx, ppfmt, c.Monitors)
 				}
-
-				break mainLoop
-
-			default:
-				ppfmt.Noticef(pp.EmojiSignal, "Caught and ignored unexpected signal: %v", sig)
-				continue mainLoop
+				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
+			} else {
+				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
+				ppfmt.Noticef(pp.EmojiBye, "Bye!")
 			}
+
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0)
+			break mainLoop
+
+		default:
+			ppfmt.Noticef(pp.EmojiSignal, "Caught and ignored unexpected signal: %v", sig)
+			continue mainLoop
 		}
 	}
 }

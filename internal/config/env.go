@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/detector"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -132,6 +133,23 @@ func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", val)
 		return false
 	}
+}
+
+// ReadHealthChecksURL reads the base URL of the healthcheck.io endpoint.
+func ReadHealthChecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+	val := Getenv(key)
+
+	if val == "" {
+		return true
+	}
+
+	h, ok := monitor.NewHealthChecks(ppfmt, val)
+	if !ok {
+		return false
+	}
+
+	*field = append(*field, h)
+	return true
 }
 
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.

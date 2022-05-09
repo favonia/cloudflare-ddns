@@ -356,7 +356,7 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
 	)
@@ -388,7 +388,7 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "0"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
 	)
@@ -602,7 +602,7 @@ func TestNormalize(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := cfg.Normalize(mockPP)
+			ok := cfg.NormalizeDomains(mockPP)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, cfg)
 		})
