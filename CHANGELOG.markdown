@@ -3,7 +3,7 @@
 
 ### Bug Fixes
 
-* **cloudflare:** revise the token verification message ([#104](https://github.com/favonia/cloudflare-ddns/issues/104)) ([209afdc](https://github.com/favonia/cloudflare-ddns/commit/209afdcc52b95bf10f1f077b6ffdd5bfcee62a0b))
+* **api:** revise the token verification message ([#104](https://github.com/favonia/cloudflare-ddns/issues/104)) ([209afdc](https://github.com/favonia/cloudflare-ddns/commit/209afdcc52b95bf10f1f077b6ffdd5bfcee62a0b))
 * updating was wrongly restricted by detection timeout ([#159](https://github.com/favonia/cloudflare-ddns/issues/159)) ([b3fc809](https://github.com/favonia/cloudflare-ddns/commit/b3fc8091f75617659f8463a0748317a1048b8d39))
 
 
