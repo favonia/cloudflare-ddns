@@ -22,7 +22,7 @@ func TestNewHealthChecks(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := monitor.NewHealthChecks(mockPP, "https://user:pass@host/path")
+	m, ok := monitor.NewHealthChecks(mockPP, "https://user:pass@host/path", monitor.SetHealthChecksMaxRetries(100))
 	require.True(t, ok)
 	h, ok := m.(*monitor.HealthChecks)
 	require.True(t, ok)
@@ -131,7 +131,7 @@ func TestEndPoints(t *testing.T) {
 				return m.Success(context.Background(), ppfmt)
 			},
 			"/",
-			[]action{ActionAbort, ActionAbort, ActionAbort, ActionAbort, ActionAbort},
+			[]action{ActionAbort, ActionAbort, ActionAbort},
 			false, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -141,11 +141,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                 //nolint: lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", gomock.Any(), gomock.Any()), //nolint: lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                 //nolint: lll
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", gomock.Any(), gomock.Any()), //nolint: lll
-					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                 //nolint: lll
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", gomock.Any(), gomock.Any()), //nolint: lll
-					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                 //nolint: lll
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q in %d time(s).", gomock.Any(), 5), //nolint: lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q in %d time(s).", gomock.Any(), 3), //nolint: lll
 				)
 			},
 		},
@@ -264,7 +260,7 @@ func TestEndPoints(t *testing.T) {
 				}
 			}))
 
-			m, ok := monitor.NewHealthChecks(mockPP, server.URL)
+			m, ok := monitor.NewHealthChecks(mockPP, server.URL, monitor.SetHealthChecksMaxRetries(3))
 			require.True(t, ok)
 			ok = tc.endpoint(mockPP, m)
 			require.Equal(t, tc.ok, ok)

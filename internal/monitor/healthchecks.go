@@ -24,7 +24,18 @@ const (
 	HealthChecksDefaultMaxRetries = 5
 )
 
-func NewHealthChecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
+type HealthChecksOption func(*HealthChecks)
+
+func SetHealthChecksMaxRetries(maxRetries int) HealthChecksOption {
+	if maxRetries <= 0 {
+		panic("maxRetries <= 0")
+	}
+	return func(h *HealthChecks) {
+		h.MaxRetries = maxRetries
+	}
+}
+
+func NewHealthChecks(ppfmt pp.PP, rawURL string, os ...HealthChecksOption) (Monitor, bool) {
 	url, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL %q: %v", rawURL, err)
@@ -37,12 +48,18 @@ func NewHealthChecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
 		return nil, false
 	}
 
-	return &HealthChecks{
+	h := &HealthChecks{
 		BaseURL:         url.String(),
 		RedactedBaseURL: url.Redacted(),
 		Timeout:         HealthChecksDefaultTimeout,
 		MaxRetries:      HealthChecksDefaultMaxRetries,
-	}, true
+	}
+
+	for _, o := range os {
+		o(h)
+	}
+
+	return h, true
 }
 
 func (h *HealthChecks) DescribeService() string {
@@ -55,6 +72,10 @@ func (h *HealthChecks) DescribeBaseURL() string {
 
 func (h *HealthChecks) ping(ctx context.Context, ppfmt pp.PP, url string, redatedURL string) bool {
 	for retries := 0; retries < h.MaxRetries; retries++ {
+		if retries > 0 {
+			time.Sleep(time.Second << (retries - 1))
+		}
+
 		ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 		defer cancel()
 
