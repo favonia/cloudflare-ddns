@@ -109,7 +109,24 @@ func TestEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"success-fail": {
+		"success/notok": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Success(context.Background(), ppfmt)
+			},
+			"/",
+			[]action{ActionAbort, ActionAbort, ActionNotOk},
+			false, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", gomock.Any(), gomock.Any()),                 //nolint: lll
+					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                 //nolint: lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", gomock.Any(), gomock.Any()),                 //nolint: lll
+					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                 //nolint: lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to ping %q; got response code: %d %s", gomock.Any(), 400, "invalid url format"), //nolint: lll
+				)
+			},
+		},
+		"success/abort/all": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt)
 			},
@@ -166,7 +183,7 @@ func TestEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"exitstatus0": {
+		"exitstatus/0": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.ExitStatus(context.Background(), ppfmt, 0)
 			},
@@ -183,7 +200,7 @@ func TestEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"exitstatus1": {
+		"exitstatus/1": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.ExitStatus(context.Background(), ppfmt, 1)
 			},
@@ -198,6 +215,17 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                 //nolint: lll
 					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged %q.", gomock.Any()),                            //nolint: lll
 				)
+			},
+		},
+		"exitstatus/-1": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.ExitStatus(context.Background(), ppfmt, -1)
+			},
+			"",
+			nil,
+			false, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255.", -1)
 			},
 		},
 	} {
