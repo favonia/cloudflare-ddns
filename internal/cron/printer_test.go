@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 )
@@ -36,7 +36,7 @@ func TestDescribeLocation(t *testing.T) {
 		tc := tc
 		t.Run(tc.input.String(), func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc.output, cron.DescribeLocation(tc.input))
+			require.Equal(t, tc.output, cron.DescribeLocation(tc.input))
 		})
 	}
 }

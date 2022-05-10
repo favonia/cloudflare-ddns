@@ -1,4 +1,4 @@
-package updator_test
+package setter_test
 
 import (
 	"context"
@@ -12,15 +12,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/updator"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func mustIP(ip string) netip.Addr {
-	return netip.MustParseAddr(ip)
-}
-
 //nolint:funlen,maintidx
-func TestDo(t *testing.T) {
+func TestSet(t *testing.T) {
 	t.Parallel()
 
 	type anys = []interface{}
@@ -35,8 +31,8 @@ func TestDo(t *testing.T) {
 		proxied   = true
 	)
 	var (
-		ip1       = mustIP("::1")
-		ip2       = mustIP("::2")
+		ip1       = netip.MustParseAddr("::1")
+		ip2       = netip.MustParseAddr("::2")
 		invalidIP = netip.Addr{}
 	)
 
@@ -297,15 +293,10 @@ func TestDo(t *testing.T) {
 				tc.prepareMockHandle(ctx, mockPP, mockHandle)
 			}
 
-			ok := updator.Do(ctx, mockPP,
-				&updator.Args{
-					Handle:    mockHandle,
-					IPNetwork: ipNetwork,
-					IP:        tc.ip,
-					Domain:    domain,
-					TTL:       ttl,
-					Proxied:   proxied,
-				})
+			s, ok := setter.New(mockPP, mockHandle, ttl, proxied)
+			require.True(t, ok)
+
+			ok = s.Set(ctx, mockPP, domain, ipNetwork, tc.ip)
 			require.Equal(t, tc.ok, ok)
 		})
 	}

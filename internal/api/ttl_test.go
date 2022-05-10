@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 )
@@ -25,7 +25,7 @@ func TestTTLDescribe(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc.description, api.TTL(tc.seconds).Describe())
+			require.Equal(t, tc.description, api.TTL(tc.seconds).Describe())
 		})
 	}
 }
@@ -46,7 +46,7 @@ func TestTTLString(t *testing.T) {
 		tc := tc
 		t.Run(tc.str, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc.str, api.TTL(tc.seconds).String())
+			require.Equal(t, tc.str, api.TTL(tc.seconds).String())
 		})
 	}
 }
@@ -59,7 +59,7 @@ func TestTTLInt(t *testing.T) {
 		i := i
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, i, api.TTL(i).Int())
+			require.Equal(t, i, api.TTL(i).Int())
 		})
 	}
 }

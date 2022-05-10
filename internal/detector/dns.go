@@ -169,7 +169,7 @@ type DNSOverHTTPS struct {
 	}
 }
 
-func (p *DNSOverHTTPS) name() string {
+func (p *DNSOverHTTPS) Name() string {
 	return p.PolicyName
 }
 
