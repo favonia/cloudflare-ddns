@@ -1,4 +1,4 @@
-package updator
+package setter
 
 import (
 	"context"
@@ -10,14 +10,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Args is the type of (named) arguments to updateRecords.
-type Args struct {
-	Handle    api.Handle
-	IPNetwork ipnet.Type
-	IP        netip.Addr
-	Domain    api.Domain
-	TTL       api.TTL
-	Proxied   bool
+type setter struct {
+	Handle  api.Handle
+	TTL     api.TTL
+	Proxied bool
 }
 
 func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
@@ -45,25 +41,34 @@ func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, un
 	return matchedIDs, unmatchedIDs
 }
 
-func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyclop,gocognit
-	recordType := args.IPNetwork.RecordType()
-	domainDescription := args.Domain.Describe()
+func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL, proxied bool) (Setter, bool) {
+	return &setter{
+		Handle:  handle,
+		TTL:     ttl,
+		Proxied: proxied,
+	}, true
+}
 
-	rs, ok := args.Handle.ListRecords(ctx, ppfmt, args.Domain, args.IPNetwork)
+//nolint: funlen,cyclop,gocognit
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr) bool { //nolint: lll
+	recordType := ipnet.RecordType()
+	domainDescription := domain.Describe()
+
+	rs, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
 		return false
 	}
 
-	matchedIDs, unmatchedIDs := splitRecords(rs, args.IP)
+	matchedIDs, unmatchedIDs := splitRecords(rs, ip)
 
 	// whether there was already an up-to-date record
 	uptodate := false
 	// whether everything works
 	numUnmatched := len(unmatchedIDs)
 
-	// delete every record if ip is `nil`
-	if !args.IP.IsValid() {
+	// delete every record if ip is not valid; this means we should delete all matching records
+	if !ip.IsValid() {
 		uptodate = true
 	}
 
@@ -77,11 +82,11 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 		return true
 	}
 
-	if !uptodate && args.IP.IsValid() {
+	if !uptodate && ip.IsValid() {
 		var unhandled []string
 
 		for i, id := range unmatchedIDs {
-			if args.Handle.UpdateRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id, args.IP) {
+			if s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
 					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 
@@ -91,7 +96,7 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 
 				break
 			} else {
-				if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 					ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)",
 						recordType, domainDescription, id)
 					numUnmatched--
@@ -103,23 +108,23 @@ func Do(ctx context.Context, ppfmt pp.PP, args *Args) bool { //nolint:funlen,cyc
 		unmatchedIDs = unhandled
 	}
 
-	if !uptodate && args.IP.IsValid() {
-		if id, ok := args.Handle.CreateRecord(ctx, ppfmt,
-			args.Domain, args.IPNetwork, args.IP, args.TTL, args.Proxied); ok {
+	if !uptodate && ip.IsValid() {
+		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
+			domain, ipnet, ip, s.TTL, s.Proxied); ok {
 			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
 			uptodate = true
 		}
 	}
 
 	for _, id := range unmatchedIDs {
-		if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 			numUnmatched--
 		}
 	}
 
 	for _, id := range matchedIDs {
-		if args.Handle.DeleteRecord(ctx, ppfmt, args.Domain, args.IPNetwork, id) {
+		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a duplicate %s record of %q (ID: %s)",
 				recordType, domainDescription, id)
 		}

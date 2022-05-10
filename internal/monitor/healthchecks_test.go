@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -20,23 +19,11 @@ import (
 func TestSetHealthChecksMaxRetries(t *testing.T) {
 	t.Parallel()
 
-	m := &monitor.HealthChecks{
-		BaseURL:         "",
-		RedactedBaseURL: "",
-		Timeout:         0,
-		MaxRetries:      0,
-	}
+	m := &monitor.HealthChecks{} //nolint: exhaustruct
 
 	monitor.SetHealthChecksMaxRetries(42)(m)
 
-	require.Equal(t, m,
-		&monitor.HealthChecks{
-			BaseURL:         "",
-			RedactedBaseURL: "",
-			Timeout:         0,
-			MaxRetries:      42,
-		},
-	)
+	require.Equal(t, m, &monitor.HealthChecks{MaxRetries: 42}) //nolint: exhaustruct
 }
 
 func TestSetHealthChecksMaxRetriesPanic(t *testing.T) {
@@ -60,10 +47,13 @@ func TestNewHealthChecks(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := monitor.NewHealthChecks(mockPP, "https://user:pass@host/path", monitor.SetHealthChecksMaxRetries(100))
+	require.Equal(t, m, &monitor.HealthChecks{
+		BaseURL:         "https://user:pass@host/path",
+		RedactedBaseURL: "https://user:xxxxx@host/path",
+		Timeout:         monitor.HealthChecksDefaultTimeout,
+		MaxRetries:      100,
+	})
 	require.True(t, ok)
-	h, ok := m.(*monitor.HealthChecks)
-	require.True(t, ok)
-	require.Equal(t, "https://user:pass@host/path", h.BaseURL)
 }
 
 func TestNewHealthChecksFail1(t *testing.T) {
@@ -274,26 +264,26 @@ func TestEndPoints(t *testing.T) {
 			visited := 0
 			pinged := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, http.MethodGet, r.Method)
-				assert.Equal(t, tc.url, r.URL.EscapedPath())
+				require.Equal(t, http.MethodGet, r.Method)
+				require.Equal(t, tc.url, r.URL.EscapedPath())
 
 				visited++
-				assert.LessOrEqual(t, visited, len(tc.actions))
+				require.LessOrEqual(t, visited, len(tc.actions))
 				switch tc.actions[visited-1] {
 				case ActionOk:
 					pinged = true
 					_, err := io.WriteString(w, "OK")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				case ActionNotOk:
 					w.WriteHeader(http.StatusBadRequest)
 					_, err := io.WriteString(w, "invalid url format")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				case ActionAbort:
 					panic(http.ErrAbortHandler)
 				case ActionFail:
-					assert.FailNow(t, "failing the test")
+					require.FailNow(t, "failing the test")
 				default:
-					assert.FailNow(t, "failing the test")
+					require.FailNow(t, "failing the test")
 				}
 			}))
 

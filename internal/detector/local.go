@@ -14,7 +14,7 @@ type Local struct {
 	RemoteUDPAddr map[ipnet.Type]string
 }
 
-func (p *Local) name() string {
+func (p *Local) Name() string {
 	return p.PolicyName
 }
 

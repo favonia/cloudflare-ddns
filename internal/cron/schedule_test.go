@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 )
@@ -19,7 +19,7 @@ func TestMustNewSuccessful(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc, cron.MustNew(tc).String())
+			require.Equal(t, tc, cron.MustNew(tc).String())
 		})
 	}
 }
@@ -34,7 +34,7 @@ func TestMustNewPanicking(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			assert.Panics(t, func() { cron.MustNew(tc) })
+			require.Panics(t, func() { cron.MustNew(tc) })
 		})
 	}
 }
@@ -52,7 +52,7 @@ func TestNext(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-			assert.WithinDuration(t, time.Now().Add(tc.interval), cron.MustNew(tc.spec).Next(), delta)
+			require.WithinDuration(t, time.Now().Add(tc.interval), cron.MustNew(tc.spec).Next(), delta)
 		})
 	}
 }

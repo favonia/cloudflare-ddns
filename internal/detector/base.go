@@ -8,8 +8,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+//go:generate mockgen -destination=../mocks/mock_policy.go -package=mocks . Policy
+
 type Policy interface {
-	name() string
+	Name() string
 	GetIP(context.Context, pp.PP, ipnet.Type) netip.Addr
 }
 
@@ -18,5 +20,5 @@ func Name(p Policy) string {
 		return "unmanaged"
 	}
 
-	return p.name()
+	return p.Name()
 }

@@ -78,7 +78,7 @@ type HTTP struct {
 	URL        map[ipnet.Type]string
 }
 
-func (p *HTTP) name() string {
+func (p *HTTP) Name() string {
 	return p.PolicyName
 }
 

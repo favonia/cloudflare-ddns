@@ -60,7 +60,7 @@ func NewCloudflareTrace() Policy {
 	}
 }
 
-func (p *CloudflareTrace) name() string {
+func (p *CloudflareTrace) Name() string {
 	return p.PolicyName
 }
 
