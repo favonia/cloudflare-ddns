@@ -36,41 +36,41 @@ var Version string //nolint:gochecknoglobals
 func welcome(ppfmt pp.PP) {
 	if Version == "" {
 		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS")
-		return
+	} else {
+		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 	}
-
-	ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 }
 
 func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, setter.Setter) {
-	// reading the config
 	c := config.Default()
-	if !c.ReadEnv(ppfmt) {
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		os.Exit(1)
-	}
-	if !c.NormalizeDomains(ppfmt) {
+	bye := func() {
+		// Usually, this is called only after initConfig,
+		// but we are exiting early.
+		monitor.StartAll(ctx, ppfmt, c.Monitors)
+
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
 		os.Exit(1)
 	}
 
+	// Read the config
+	if !c.ReadEnv(ppfmt) || !c.NormalizeDomains(ppfmt) {
+		bye()
+	}
+
+	// Print the config
 	c.Print(ppfmt)
 
-	// getting the handler
+	// Get the handler
 	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
 	if !ok {
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
-		os.Exit(1)
+		bye()
 	}
 
-	// getting the setter
+	// Get the setter
 	s, ok := setter.New(ppfmt, h, c.TTL, c.Proxied)
 	if !ok {
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
-		os.Exit(1)
+		bye()
 	}
 
 	return c, h, s
@@ -88,21 +88,23 @@ func main() { //nolint:funlen,cyclop,gocognit
 
 	welcome(ppfmt)
 
-	// dropping the superuser privilege
+	// Drop the superuser privilege
 	dropPriviledges(ppfmt)
 
-	// printing the current privileges
+	// Print the current privileges
 	printPriviledges(ppfmt)
 
-	// catching SIGINT and SIGTERM
+	// Catch SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	// context
+	// Get the context
 	ctx := context.Background()
 
-	// reading the config
+	// Read the config and get the handler and the setter
 	c, h, s := initConfig(ctx, ppfmt)
+
+	// Start the tool now
 	monitor.StartAll(ctx, ppfmt, c.Monitors)
 
 	first := true
@@ -115,7 +117,7 @@ mainLoop:
 			} else {
 				monitor.FailureAll(ctx, ppfmt, c.Monitors)
 			}
-		} else if first {
+		} else {
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors)
 		}
 		first = false
