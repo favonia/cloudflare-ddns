@@ -60,47 +60,58 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 		return false
 	}
 
+	// The intention of these two lists is to find or create a good record and then delete everything else.
 	matchedIDs, unmatchedIDs := splitRecords(rs, ip)
 
-	// whether there was already an up-to-date record
-	uptodate := false
-	// whether everything works
-	numUnmatched := len(unmatchedIDs)
+	// If ip is not valid, this should be vacuously true.
+	// If ip is valid, then we will check matchedIDs and unmatchedIDs, but before that,
+	// it is considered not up to date.
+	uptodate := !ip.IsValid()
 
-	// delete every record if ip is not valid; this means we should delete all matching records
-	if !ip.IsValid() {
-		uptodate = true
-	}
-
+	// First, if there's a matched ID, use it and delete everything else.
+	// Note that this implies ip is valid, for otherwise uptodate would be true.
 	if !uptodate && len(matchedIDs) > 0 {
 		uptodate = true
 		matchedIDs = matchedIDs[1:]
 	}
 
+	// If it's up to date and there's nothing else, we are done!
 	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
 		return true
 	}
 
+	// This counts the stale records that have not being deleted yet.
+	// We need a different variable (instead of checking len(unmatchedIDs) all the times)
+	// because when we fail to delete a record, we might remove it from unmatchedIDs,
+	// but that stale record should still be counted in numUndeletedUnmatched
+	numUndeletedUnmatched := len(unmatchedIDs)
+
+	// If somehow it's still not up to date, it means there are no matched records but ip is valid.
+	// This means we have to change a record or create a new one with the desired ip.
 	if !uptodate && ip.IsValid() {
 		var unhandled []string
 
+		// Let's go through all stale records
 		for i, id := range unmatchedIDs {
+			// Let's try to update it first.
 			if s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
 					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 
 				uptodate = true
-				numUnmatched--
+				numUndeletedUnmatched--
 				unhandled = unmatchedIDs[i+1:]
 
 				break
 			} else {
+				// If the updating fails, we will delete it.
 				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 					ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)",
 						recordType, domainDescription, id)
-					numUnmatched--
+					numUndeletedUnmatched--
 				}
+				// No matter whether the deletion succeeds, move on.
 				continue
 			}
 		}
@@ -108,6 +119,9 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 		unmatchedIDs = unhandled
 	}
 
+	// If it's still not up to date, it means there are no stale records or that we fail to update one of them.
+	// The last resort is to create a new record with the correct ip.
+	// The checking "ip.IsValid()" is redundant but it does not hurt. (This function is too complicated.)
 	if !uptodate && ip.IsValid() {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, s.TTL, s.Proxied); ok {
@@ -116,13 +130,15 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 		}
 	}
 
+	// Now, we should try to delete all remaining stale records.
 	for _, id := range unmatchedIDs {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
-			numUnmatched--
+			numUndeletedUnmatched--
 		}
 	}
 
+	// We should also delete all duplicate records even if they are up to date.
 	for _, id := range matchedIDs {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a duplicate %s record of %q (ID: %s)",
@@ -130,7 +146,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 		}
 	}
 
-	if !uptodate || numUnmatched > 0 {
+	// It is okay to have duplicates, but it is not okay to have stale records.
+	if !uptodate || numUndeletedUnmatched > 0 {
 		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
 		return false
 	}
