@@ -19,7 +19,6 @@ issues:
 linters:
   enable-all: true
   disable:
-    - execinquery # the linter crashes: https://github.com/lufeee/execinquery/issues/3
     - exhaustivestruct # deprecated
     - golint # deprecated
     - interfacer
