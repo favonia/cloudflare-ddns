@@ -8,9 +8,9 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 // Getenv reads an environment variable and trim the space.
@@ -103,35 +103,106 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
 	return true
 }
 
-// ReadPolicy reads an environment variable and parses it as a policy.
-func ReadPolicy(ppfmt pp.PP, key string, field *detector.Policy) bool {
-	switch val := Getenv(key); val {
-	case "":
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, detector.Name(*field))
-		return true
-	case "cloudflare":
-		ppfmt.Warningf(pp.EmojiUserWarning,
-			`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
-		*field = detector.NewCloudflareTrace()
-		return true
-	case "cloudflare.trace":
-		*field = detector.NewCloudflareTrace()
-		return true
-	case "cloudflare.doh":
-		*field = detector.NewCloudflareDOH()
-		return true
-	case "ipify":
-		*field = detector.NewIpify()
-		return true
-	case "local":
-		*field = detector.NewLocal()
-		return true
-	case "unmanaged":
-		*field = nil
-		return true
-	default:
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", val)
-		return false
+// ReadProvider reads an environment variable and parses it as a provider.
+//
+// policyKey was the name of the deprecated parameters IP4/6_POLICY.
+//nolint: funlen, cyclop
+func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
+	if val := Getenv(key); val == "" {
+		// parsing of the deprecated parameter
+		switch valPolicy := Getenv(keyDeprecated); valPolicy {
+		case "":
+			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, provider.Name(*field))
+			return true
+		case "cloudflare":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`,
+				keyDeprecated, key, key,
+			)
+			*field = provider.NewCloudflareTrace()
+			return true
+		case "cloudflare.trace":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`The parameter %s was deprecated; use %s=%s`,
+				keyDeprecated, key, valPolicy,
+			)
+			*field = provider.NewCloudflareTrace()
+			return true
+		case "cloudflare.doh":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`The parameter %s was deprecated; use %s=%s`,
+				keyDeprecated, key, valPolicy,
+			)
+			*field = provider.NewCloudflareDOH()
+			return true
+		case "ipify":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`The parameter %s was deprecated; use %s=%s`,
+				keyDeprecated, key, valPolicy,
+			)
+			*field = provider.NewIpify()
+			return true
+		case "local":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`The parameter %s was deprecated; use %s=%s`,
+				keyDeprecated, key, valPolicy,
+			)
+			*field = provider.NewLocal()
+			return true
+		case "unmanaged":
+			ppfmt.Warningf(
+				pp.EmojiUserWarning,
+				`The parameter %s was deprecated; use %s=none`,
+				keyDeprecated, key,
+			)
+			*field = nil
+			return true
+		default:
+			ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", valPolicy)
+			return false
+		}
+	} else {
+		if Getenv(keyDeprecated) != "" {
+			ppfmt.Errorf(
+				pp.EmojiUserError,
+				`You cannot use the new parameter %s and the deprecated %s at the same time.`,
+				key, keyDeprecated,
+			)
+			return false
+		}
+
+		switch val {
+		case "cloudflare":
+			ppfmt.Errorf(
+				pp.EmojiUserError,
+				`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+				key, key,
+			)
+			return false
+		case "cloudflare.trace":
+			*field = provider.NewCloudflareTrace()
+			return true
+		case "cloudflare.doh":
+			*field = provider.NewCloudflareDOH()
+			return true
+		case "ipify":
+			*field = provider.NewIpify()
+			return true
+		case "local":
+			*field = provider.NewLocal()
+			return true
+		case "none":
+			*field = nil
+			return true
+		default:
+			ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", val)
+			return false
+		}
 	}
 }
 

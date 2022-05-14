@@ -12,12 +12,12 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 func TestDefaultConfigNotNil(t *testing.T) {
@@ -202,79 +202,76 @@ func TestReadDomainMap(t *testing.T) {
 }
 
 //nolint:funlen,paralleltest // environment vars are global
-func TestReadPolicyMap(t *testing.T) {
+func TestReadProviderMap(t *testing.T) {
 	var (
-		unmanaged       detector.Policy
-		cloudflareTrace = detector.NewCloudflareTrace()
-		cloudflareDOH   = detector.NewCloudflareDOH()
-		local           = detector.NewLocal()
-		ipify           = detector.NewIpify()
+		none            provider.Provider
+		cloudflareTrace = provider.NewCloudflareTrace()
+		cloudflareDOH   = provider.NewCloudflareDOH()
+		local           = provider.NewLocal()
+		ipify           = provider.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
-		ip4Policy     string
-		ip6Policy     string
-		expected      map[ipnet.Type]detector.Policy
+		ip4Provider   string
+		ip6Provider   string
+		expected      map[ipnet.Type]provider.Provider
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
-			"cloudflare", "ipify",
-			map[ipnet.Type]detector.Policy{
+			"cloudflare.trace", "ipify",
+			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: cloudflareTrace,
 				ipnet.IP6: ipify,
 			},
 			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
-			},
+			nil,
 		},
 		"4": {
 			"local", "  ",
-			map[ipnet.Type]detector.Policy{
+			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: local,
 				ipnet.IP6: local,
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_POLICY", "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "local")
 			},
 		},
 		"6": {
 			"    ", "cloudflare.doh",
-			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: unmanaged,
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: none,
 				ipnet.IP6: cloudflareDOH,
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_POLICY", "unmanaged")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none")
 			},
 		},
 		"empty": {
 			" ", "   ",
-			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: unmanaged,
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: none,
 				ipnet.IP6: local,
 			},
 			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_POLICY", "unmanaged"),
-					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_POLICY", "local"),
+					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
+					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "local"),
 				)
 			},
 		},
 		"illformed": {
 			" flare", "   ",
-			map[ipnet.Type]detector.Policy{
-				ipnet.IP4: unmanaged,
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: none,
 				ipnet.IP6: local,
 			},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", "flare")
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "flare")
 			},
 		},
 	} {
@@ -282,15 +279,15 @@ func TestReadPolicyMap(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
-			store(t, "IP4_POLICY", tc.ip4Policy)
-			store(t, "IP6_POLICY", tc.ip6Policy)
+			store(t, "IP4_PROVIDER", tc.ip4Provider)
+			store(t, "IP6_PROVIDER", tc.ip6Provider)
 
-			field := map[ipnet.Type]detector.Policy{ipnet.IP4: unmanaged, ipnet.IP6: local}
+			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local}
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadPolicyMap(mockPP, &field)
+			ok := config.ReadProviderMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})
@@ -344,9 +341,9 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
@@ -379,8 +376,8 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "unmanaged"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "unmanaged"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "none"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.Schedule(nil)),
@@ -415,9 +412,9 @@ func TestPrintMonitors(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 policy:      %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
@@ -461,7 +458,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 
 	unset(t,
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-		"IP4_POLICY", "IP6_POLICY",
+		"IP4_PROVIDER", "IP6_PROVIDER",
 		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
 		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
 
@@ -474,8 +471,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Noticef(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_POLICY", "unmanaged"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_POLICY", "unmanaged"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_CRON", cron.Schedule(nil)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
@@ -495,6 +492,7 @@ func TestReadEnvEmpty(t *testing.T) {
 
 	unset(t,
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
+		"IP4_PROVIDER", "IP6_PROVIDER",
 		"IP4_POLICY", "IP6_POLICY",
 		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
 		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
@@ -552,9 +550,9 @@ func TestNormalize(t *testing.T) {
 		},
 		"empty-ip6": {
 			input: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
-					ipnet.IP4: detector.NewCloudflareTrace(),
-					ipnet.IP6: detector.NewCloudflareTrace(),
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP4: provider.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
@@ -563,8 +561,8 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
-					ipnet.IP4: detector.NewCloudflareTrace(),
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: nil,
 				},
 				Domains: map[ipnet.Type][]api.Domain{
@@ -574,15 +572,15 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					"IP%d_POLICY was changed to %q because no domains were set for %s",
-					6, "unmanaged", "IPv6")
+					"IP%d_PROVIDER was changed to %q because no domains were set for %s",
+					6, "none", "IPv6")
 			},
 		},
-		"empty-ip6-unmanaged-ip4": {
+		"empty-ip6-none-ip4": {
 			input: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
+				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c")},
@@ -591,7 +589,7 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
+				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
@@ -603,17 +601,17 @@ func TestNormalize(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
-						"IP%d_POLICY was changed to %q because no domains were set for %s",
-						6, "unmanaged", "IPv6"),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged"),
+						"IP%d_PROVIDER was changed to %q because no domains were set for %s",
+						6, "none", "IPv6"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled"),
 				)
 			},
 		},
 		"ignored-ip4-domains": {
 			input: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
+				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
@@ -622,9 +620,9 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Policy: map[ipnet.Type]detector.Policy{
+				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
-					ipnet.IP6: detector.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
@@ -633,7 +631,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					"Domain %q is ignored because it is only for %s but %s is unmanaged",
+					"Domain %q is ignored because it is only for %s but %s is disabled",
 					"d.e.f", "IPv4", "IPv4")
 			},
 		},

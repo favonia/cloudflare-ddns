@@ -1,4 +1,4 @@
-package detector_test
+package provider_test
 
 import (
 	"context"
@@ -11,21 +11,21 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 func TestHTTPName(t *testing.T) {
 	t.Parallel()
 
-	policy := &detector.HTTP{
-		PolicyName: "very secret name",
-		URL:        nil,
+	p := &provider.HTTP{
+		ProviderName: "very secret name",
+		URL:          nil,
 	}
 
-	require.Equal(t, "very secret name", detector.Name(policy))
+	require.Equal(t, "very secret name", provider.Name(p))
 }
 
 //nolint:funlen
@@ -129,8 +129,8 @@ func TestHTTPGetIP(t *testing.T) {
 				t.Parallel()
 				mockCtrl := gomock.NewController(t)
 
-				policy := &detector.HTTP{
-					PolicyName: "",
+				provider := &provider.HTTP{
+					ProviderName: "secret name",
 					URL: map[ipnet.Type]string{
 						tc.urlKey: tc.url,
 					},
@@ -140,7 +140,7 @@ func TestHTTPGetIP(t *testing.T) {
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				ip := policy.GetIP(context.Background(), mockPP, tc.ipNet)
+				ip := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 				require.Equal(t, tc.expected, ip)
 			})
 		}

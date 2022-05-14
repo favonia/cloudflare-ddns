@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"bytes"
@@ -161,8 +161,8 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 }
 
 type DNSOverHTTPS struct {
-	PolicyName string
-	Param      map[ipnet.Type]struct {
+	ProviderName string
+	Param        map[ipnet.Type]struct {
 		URL   string
 		Name  string
 		Class dnsmessage.Class
@@ -170,7 +170,7 @@ type DNSOverHTTPS struct {
 }
 
 func (p *DNSOverHTTPS) Name() string {
-	return p.PolicyName
+	return p.ProviderName
 }
 
 func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {

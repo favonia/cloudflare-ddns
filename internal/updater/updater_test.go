@@ -35,49 +35,59 @@ func TestUpdateIPs(t *testing.T) {
 		)
 	}
 
-	type mockmap = map[ipnet.Type]func(ppfmt pp.PP, m *mocks.MockPolicy)
-	policy4 := func(ppfmt pp.PP, m *mocks.MockPolicy) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(ip4) }
-	policy6 := func(ppfmt pp.PP, m *mocks.MockPolicy) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(ip6) }
+	type mockmap = map[ipnet.Type]func(ppfmt pp.PP, m *mocks.MockProvider)
+	provider4 := func(ppfmt pp.PP, m *mocks.MockProvider) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(ip4) }
+	provider6 := func(ppfmt pp.PP, m *mocks.MockProvider) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(ip6) }
 
 	for name, tc := range map[string]struct {
-		ipv6MessageDisplayed bool
 		ok                   bool
+		MessageShouldDisplay map[ipnet.Type]bool
 		prepareMockPP        func(m *mocks.MockPP)
-		prepareMockPolicy    mockmap
+		prepareMockProvider  mockmap
 		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
-		"none": {false, true, nil, mockmap{}, nil},
+		"none": {true, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockmap{}, nil},
 		"ip4only": {
-			false, true, pp4only,
-			mockmap{ipnet.IP4: policy4},
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			pp4only,
+			mockmap{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, ip4).Return(true)
 			},
 		},
 		"ip4only/setfail": {
-			false, false, pp4only,
-			mockmap{ipnet.IP4: policy4},
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			pp4only,
+			mockmap{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, ip4).Return(false)
 			},
 		},
 		"ip6only": {
-			false, true, pp6only,
-			mockmap{ipnet.IP6: policy6},
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			pp6only,
+			mockmap{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip6.hello"), ipnet.IP6, ip6).Return(true)
 			},
 		},
 		"ip6only/setfail": {
-			false, false, pp6only,
-			mockmap{ipnet.IP6: policy6},
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			pp6only,
+			mockmap{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip6.hello"), ipnet.IP6, ip6).Return(false)
 			},
 		},
 		"both": {
-			false, true, ppBoth,
-			mockmap{ipnet.IP4: policy4, ipnet.IP6: policy6},
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			ppBoth,
+			mockmap{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, ip4).Return(true),
@@ -86,8 +96,10 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"both/setfail1": {
-			false, false, ppBoth,
-			mockmap{ipnet.IP4: policy4, ipnet.IP6: policy6},
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			ppBoth,
+			mockmap{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, ip4).Return(false),
@@ -96,8 +108,10 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"both/setfail2": {
-			false, false, ppBoth,
-			mockmap{ipnet.IP4: policy4, ipnet.IP6: policy6},
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			ppBoth,
+			mockmap{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, ip4).Return(true),
@@ -106,36 +120,40 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip4fails": {
-			false, false,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none"), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv6", ip6),
 				)
 			},
 			mockmap{
-				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockPolicy) {
+				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
 					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(netip.Addr{})
 				},
-				ipnet.IP6: policy6,
+				ipnet.IP6: provider6,
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip6.hello"), ipnet.IP6, ip6).Return(true)
 			},
 		},
 		"ip6fails": {
-			false, false,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups."), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),                //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                       //nolint:lll
 				)
 			},
 			mockmap{
-				ipnet.IP4: policy4,
-				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockPolicy) {
+				ipnet.IP4: provider4,
+				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
 					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{})
 				},
 			},
@@ -144,7 +162,8 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip6fails/again": {
-			true, false,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: false},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -152,8 +171,8 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 			mockmap{
-				ipnet.IP4: policy4,
-				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockPolicy) {
+				ipnet.IP4: provider4,
+				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
 					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{})
 				},
 			},
@@ -162,20 +181,23 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"bothfail": {
-			false, false,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none"), //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups."), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),                //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                       //nolint:lll
 				)
 			},
 			mockmap{
-				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockPolicy) {
+				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
 					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(netip.Addr{})
 				},
-				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockPolicy) {
+				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
 					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{})
 				},
 			},
@@ -193,19 +215,19 @@ func TestUpdateIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				if tc.prepareMockPolicy[ipnet] == nil {
-					conf.Policy[ipnet] = nil
+				updater.MessageShouldDisplay[ipnet] = tc.MessageShouldDisplay[ipnet]
+				if tc.prepareMockProvider[ipnet] == nil {
+					conf.Provider[ipnet] = nil
 					continue
 				}
-				mockPolicy := mocks.NewMockPolicy(mockCtrl)
-				tc.prepareMockPolicy[ipnet](mockPP, mockPolicy)
-				conf.Policy[ipnet] = mockPolicy
+				mockProvider := mocks.NewMockProvider(mockCtrl)
+				tc.prepareMockProvider[ipnet](mockPP, mockProvider)
+				conf.Provider[ipnet] = mockProvider
 			}
 			mockSetter := mocks.NewMockSetter(mockCtrl)
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			updater.IPv6MessageDisplayed = tc.ipv6MessageDisplayed
 			ok := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, tc.ok, ok)
 		})
@@ -225,43 +247,59 @@ func TestClearIPs(t *testing.T) {
 
 	//nolint: paralleltest // updater.IPv6MessageDisplayed is a global variable
 	for name, tc := range map[string]struct {
-		ipv6MessageDisplayed bool
 		ok                   bool
+		MessageShouldDisplay map[ipnet.Type]bool
 		prepareMockPP        func(m *mocks.MockPP)
-		prepareMockPolicy    mockmap
+		prepareMockProvider  mockmap
 		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
-		"none": {false, true, nil, mockmap{}, nil},
+		"none": {
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
+			mockmap{},
+			nil,
+		},
 		"ip4only": {
-			false, true, nil,
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, netip.Addr{}).Return(true)
 			},
 		},
 		"ip4only/setfail": {
-			false, false, nil,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip4.hello"), ipnet.IP4, netip.Addr{}).Return(false)
 			},
 		},
 		"ip6only": {
-			false, true, nil,
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip6.hello"), ipnet.IP6, netip.Addr{}).Return(true)
 			},
 		},
 		"ip6only/setfail": {
-			false, false, nil,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, api.FQDN("ip6.hello"), ipnet.IP6, netip.Addr{}).Return(false)
 			},
 		},
 		"both": {
-			false, true, nil,
+			true,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
@@ -271,7 +309,9 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail1": {
-			false, false, nil,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
@@ -281,7 +321,9 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail2": {
-			false, false, nil,
+			false,
+			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			nil,
 			mockmap{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
@@ -302,18 +344,18 @@ func TestClearIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				if !tc.prepareMockPolicy[ipnet] {
-					conf.Policy[ipnet] = nil
+				updater.MessageShouldDisplay[ipnet] = tc.MessageShouldDisplay[ipnet]
+				if !tc.prepareMockProvider[ipnet] {
+					conf.Provider[ipnet] = nil
 					continue
 				}
 
-				conf.Policy[ipnet] = mocks.NewMockPolicy(mockCtrl)
+				conf.Provider[ipnet] = mocks.NewMockProvider(mockCtrl)
 			}
 			mockSetter := mocks.NewMockSetter(mockCtrl)
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			updater.IPv6MessageDisplayed = tc.ipv6MessageDisplayed
 			ok := updater.ClearIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, tc.ok, ok)
 		})

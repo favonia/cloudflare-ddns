@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"context"
@@ -8,16 +8,16 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -destination=../mocks/mock_policy.go -package=mocks . Policy
+//go:generate mockgen -destination=../mocks/mock_provider.go -package=mocks . Provider
 
-type Policy interface {
+type Provider interface {
 	Name() string
 	GetIP(context.Context, pp.PP, ipnet.Type) netip.Addr
 }
 
-func Name(p Policy) string {
+func Name(p Provider) string {
 	if p == nil {
-		return "unmanaged"
+		return "none"
 	}
 
 	return p.Name()

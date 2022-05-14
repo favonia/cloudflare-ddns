@@ -11,10 +11,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
@@ -307,53 +307,140 @@ func TestReadDomains(t *testing.T) {
 }
 
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
-func TestReadPolicy(t *testing.T) {
-	key := keyPrefix + "POLICY"
+func TestReadProvider(t *testing.T) {
+	key := keyPrefix + "PROVIDER"
+	keyDeprecated := keyPrefix + "DEPRECATED"
 
 	var (
-		unmanaged       detector.Policy
-		cloudflareDOH   = detector.NewCloudflareDOH()
-		cloudflareTrace = detector.NewCloudflareTrace()
-		local           = detector.NewLocal()
-		ipify           = detector.NewIpify()
+		none            provider.Provider
+		cloudflareDOH   = provider.NewCloudflareDOH()
+		cloudflareTrace = provider.NewCloudflareTrace()
+		local           = provider.NewLocal()
+		ipify           = provider.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      detector.Policy
-		newField      detector.Policy
+		setDeprecated bool
+		valDeprecated string
+		oldField      provider.Provider
+		newField      provider.Provider
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
-			false, "", unmanaged, unmanaged, true,
+			false, "", false, "", none, none, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "unmanaged")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "none")
+			},
+		},
+		"deprecated/empty": {
+			false, "", true, "", local, local, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
+			},
+		},
+		"deprecated/cloudflare": {
+			false, "", true, "    cloudflare\t   ", none, cloudflareTrace, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`,
+					keyDeprecated, key, key,
+				)
+			},
+		},
+		"deprecated/cloudflare.trace": {
+			false, "", true, " cloudflare.trace", none, cloudflareTrace, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"cloudflare.trace",
+				)
+			},
+		},
+		"deprecated/cloudflare.doh": {
+			false, "", true, "    \tcloudflare.doh   ", none, cloudflareDOH, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"cloudflare.doh",
+				)
+			},
+		},
+		"deprecated/unmanaged": {
+			false, "", true, "   unmanaged   ", cloudflareTrace, none, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=none`,
+					keyDeprecated,
+					key,
+				)
+			},
+		},
+		"deprecated/local": {
+			false, "", true, "   local   ", cloudflareTrace, local, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"local",
+				)
+			},
+		},
+		"deprecated/ipify": {
+			false, "", true, "     ipify  ", cloudflareTrace, ipify, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"ipify",
+				)
+			},
+		},
+		"deprecated/others": {
+			false, "", true, "   something-else ", ipify, ipify, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
 			},
 		},
 		"empty": {
-			true, "", local, local, true,
+			false, "", false, "", local, local, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"cloudflare": {
-			true, "    cloudflare\t   ", unmanaged, cloudflareTrace, true,
+			true, "    cloudflare\t   ", false, "", none, none, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+				m.EXPECT().Errorf(
+					pp.EmojiUserError,
+					`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+					key, key,
+				)
 			},
 		},
-		"cloudflare.trace": {true, " cloudflare.trace", unmanaged, cloudflareTrace, true, nil},
-		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", unmanaged, cloudflareDOH, true, nil},
-		"unmanaged":        {true, "   unmanaged   ", cloudflareTrace, unmanaged, true, nil},
-		"local":            {true, "   local   ", cloudflareTrace, local, true, nil},
-		"ipify":            {true, "     ipify  ", cloudflareTrace, ipify, true, nil},
+		"cloudflare.trace": {true, " cloudflare.trace", false, "", none, cloudflareTrace, true, nil},
+		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, cloudflareDOH, true, nil},
+		"none":             {true, "   none   ", false, "", cloudflareTrace, none, true, nil},
+		"local":            {true, "   local   ", false, "", cloudflareTrace, local, true, nil},
+		"ipify":            {true, "     ipify  ", false, "", cloudflareTrace, ipify, true, nil},
 		"others": {
-			true, "   something-else ", ipify, ipify, false,
+			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", "something-else")
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
 			},
 		},
 	} {
@@ -362,13 +449,14 @@ func TestReadPolicy(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			set(t, key, tc.set, tc.val)
+			set(t, keyDeprecated, tc.setDeprecated, tc.valDeprecated)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadPolicy(mockPP, key, &field)
+			ok := config.ReadProvider(mockPP, key, keyDeprecated, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
