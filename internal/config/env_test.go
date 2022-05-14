@@ -11,10 +11,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
@@ -129,25 +129,25 @@ func TestReadBool(t *testing.T) {
 		"nil1": {
 			false, "", true, true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", true)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, true)
 			},
 		},
 		"nil2": {
 			false, "", false, false, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", false)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, false)
 			},
 		},
 		"empty1": {
 			true, " ", true, true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", true)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, true)
 			},
 		},
 		"empty2": {
 			true, " \t ", false, false, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "TEST-11D39F6A9A97AFAFD87CCEB-BOOL", false)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, false)
 			},
 		},
 		"true1":  {true, "true ", true, true, true, nil},
@@ -199,13 +199,13 @@ func TestReadNonnegInt(t *testing.T) {
 		"nil": {
 			false, "", 100, 100, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TEST-11D39F6A9A97AFAFD87CCEB-INT", 100)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
 			},
 		},
 		"empty": {
 			true, "", 100, 100, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TEST-11D39F6A9A97AFAFD87CCEB-INT", 100)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
 			},
 		},
 		"zero": {true, "0   ", 100, 0, true, nil},
@@ -307,53 +307,150 @@ func TestReadDomains(t *testing.T) {
 }
 
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
-func TestReadPolicy(t *testing.T) {
-	key := keyPrefix + "POLICY"
+func TestReadProvider(t *testing.T) {
+	key := keyPrefix + "PROVIDER"
+	keyDeprecated := keyPrefix + "DEPRECATED"
 
 	var (
-		unmanaged       detector.Policy
-		cloudflareDOH   = detector.NewCloudflareDOH()
-		cloudflareTrace = detector.NewCloudflareTrace()
-		local           = detector.NewLocal()
-		ipify           = detector.NewIpify()
+		none            provider.Provider
+		cloudflareDOH   = provider.NewCloudflareDOH()
+		cloudflareTrace = provider.NewCloudflareTrace()
+		local           = provider.NewLocal()
+		ipify           = provider.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      detector.Policy
-		newField      detector.Policy
+		setDeprecated bool
+		valDeprecated string
+		oldField      provider.Provider
+		newField      provider.Provider
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
-			false, "", unmanaged, unmanaged, true,
+			false, "", false, "", none, none, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "unmanaged")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "none")
+			},
+		},
+		"deprecated/empty": {
+			false, "", true, "", local, local, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
+			},
+		},
+		"deprecated/cloudflare": {
+			false, "", true, "    cloudflare\t   ", none, cloudflareTrace, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint: lll
+					keyDeprecated, key, key,
+				)
+			},
+		},
+		"deprecated/cloudflare.trace": {
+			false, "", true, " cloudflare.trace", none, cloudflareTrace, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"cloudflare.trace",
+				)
+			},
+		},
+		"deprecated/cloudflare.doh": {
+			false, "", true, "    \tcloudflare.doh   ", none, cloudflareDOH, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"cloudflare.doh",
+				)
+			},
+		},
+		"deprecated/unmanaged": {
+			false, "", true, "   unmanaged   ", cloudflareTrace, none, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=none`,
+					keyDeprecated,
+					key,
+				)
+			},
+		},
+		"deprecated/local": {
+			false, "", true, "   local   ", cloudflareTrace, local, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"local",
+				)
+			},
+		},
+		"deprecated/ipify": {
+			false, "", true, "     ipify  ", cloudflareTrace, ipify, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`The parameter %s was deprecated; use %s=%s`,
+					keyDeprecated,
+					key,
+					"ipify",
+				)
+			},
+		},
+		"deprecated/others": {
+			false, "", true, "   something-else ", ipify, ipify, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
+			},
+		},
+		"conflicts": {
+			true, "cloudflare.doh", true, "cloudflare.doh", ipify, ipify, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(
+					pp.EmojiUserError,
+					`Cannot have both %s and %s set.`,
+					key, keyDeprecated,
+				)
 			},
 		},
 		"empty": {
-			true, "", local, local, true,
+			false, "", false, "", local, local, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TEST-11D39F6A9A97AFAFD87CCEB-POLICY", "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"cloudflare": {
-			true, "    cloudflare\t   ", unmanaged, cloudflareTrace, true,
+			true, "    cloudflare\t   ", false, "", none, none, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					`The policy "cloudflare" was deprecated; use "cloudflare.doh" or "cloudflare.trace" instead.`)
+				m.EXPECT().Errorf(
+					pp.EmojiUserError,
+					`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+					key, key,
+				)
 			},
 		},
-		"cloudflare.trace": {true, " cloudflare.trace", unmanaged, cloudflareTrace, true, nil},
-		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", unmanaged, cloudflareDOH, true, nil},
-		"unmanaged":        {true, "   unmanaged   ", cloudflareTrace, unmanaged, true, nil},
-		"local":            {true, "   local   ", cloudflareTrace, local, true, nil},
-		"ipify":            {true, "     ipify  ", cloudflareTrace, ipify, true, nil},
+		"cloudflare.trace": {true, " cloudflare.trace", false, "", none, cloudflareTrace, true, nil},
+		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, cloudflareDOH, true, nil},
+		"none":             {true, "   none   ", false, "", cloudflareTrace, none, true, nil},
+		"local":            {true, "   local   ", false, "", cloudflareTrace, local, true, nil},
+		"ipify":            {true, "     ipify  ", false, "", cloudflareTrace, ipify, true, nil},
 		"others": {
-			true, "   something-else ", ipify, ipify, false,
+			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid policy", "something-else")
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
 			},
 		},
 	} {
@@ -362,13 +459,14 @@ func TestReadPolicy(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			set(t, key, tc.set, tc.val)
+			set(t, keyDeprecated, tc.setDeprecated, tc.valDeprecated)
 
 			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadPolicy(mockPP, key, &field)
+			ok := config.ReadProvider(mockPP, key, keyDeprecated, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -390,13 +488,13 @@ func TestReadNonnegDuration(t *testing.T) {
 		"nil": {
 			false, "", time.Second, time.Second, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "TEST-11D39F6A9A97AFAFD87CCEB-DURATION", time.Second)
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", key, time.Second)
 			},
 		},
 		"empty": {
 			true, "", 0, 0, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "TEST-11D39F6A9A97AFAFD87CCEB-DURATION", time.Duration(0))
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", key, time.Duration(0))
 			},
 		},
 		"100s": {true, "    100s\t   ", 0, time.Second * 100, true, nil},
@@ -450,7 +548,7 @@ func TestReadCron(t *testing.T) {
 				m.EXPECT().Infof(
 					pp.EmojiBullet,
 					"Use default %s=%v",
-					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					key,
 					cron.MustNew("* * * * *"),
 				)
 			},
@@ -461,7 +559,7 @@ func TestReadCron(t *testing.T) {
 				m.EXPECT().Infof(
 					pp.EmojiBullet,
 					"Use default %s=%v",
-					"TEST-11D39F6A9A97AFAFD87CCEB-CRON",
+					key,
 					cron.MustNew("@every 3m"),
 				)
 			},

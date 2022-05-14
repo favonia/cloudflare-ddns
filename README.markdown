@@ -206,7 +206,7 @@ spec:
       labels:
         app: cloudflare-ddns
     spec:
-      restartPolicy: Always
+      restartolicy: Always
       containers:
         - name: cloudflare-ddns
           image: favonia/cloudflare-ddns:latest
@@ -215,8 +215,8 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
           env:
-            - name: "IP6_POLICY"
-              value: "unmanaged"
+            - name: "IP6_PROVIDER"
+              value: "none"
             - name: "PROXIED"
               value: "true"
             - name: "CF_API_TOKEN"
@@ -238,11 +238,11 @@ Kubernetes comes with built-in support to drop superuser privileges. The updater
 </details>
 
 <details>
-<summary>📡 Use <code>IP6_POLICY: "unmanaged"</code> to disable IPv6 management.</summary>
+<summary>📡 Use <code>IP6_PROVIDER: "none"</code> to disable IPv6 management.</summary>
 
 The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach Cloudflare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet.](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6) Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
 
-If you manage to enable IPv6, congratulations. Feel free to remove `IP6_POLICY: "unmanaged"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. In the worst case, the updater will remove all `AAAA` records associated with the domains in `DOMAINS` and `IP6_DOMAINS` because those records will appear to be “stale.” The deleted records will be recreated once the updater correctly detects the IPv6 addresses.
+If you manage to enable IPv6, congratulations. Feel free to remove `IP6_PROVIDER: "none"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. In the worst case, the updater will remove all `AAAA` records associated with the domains in `DOMAINS` and `IP6_DOMAINS` because those records will appear to be “stale.” The deleted records will be recreated once the updater correctly detects the IPv6 addresses.
 </details>
 
 <details>
@@ -292,12 +292,12 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | ---- | ------------ | ------- | --------- | ------------- |
 | `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `A` records | (See below) | N/A
-| `IP4_POLICY` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `unmanaged` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
-| `IP6_POLICY` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `unmanaged` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
 
 > <details>
-> <summary>📜 Available policies for <code>IP4_POLICY</code> and <code>IP6_POLICY</code></summary>
+> <summary>📜 Available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code></summary>
 >
 > - `cloudflare.doh`\
 >  Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
@@ -307,12 +307,10 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 >   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\
 >   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the tool will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
-> - `unmanaged`\
+> - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
-> - `cloudflare`\
->  Deprecated; currently an alias of `cloudflare.trace`.
 >
-> The option `IP4_POLICY` is governing IPv4 addresses and `A`-type records, while the option `IP6_POLICY` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
+> The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
 > </details>
 
 > <details>
@@ -380,10 +378,10 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `API_KEY_FILE=file` | ✔️ | Use `CF_API_TOKEN_FILE=file` |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️ | Use `DOMAINS=sub.example.org` directly |
 | `PROXIED=true` | ✔️ | Same |
-| `RRTYPE=A` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP6_POLICY=unmanaged` to disable IPv6 |
-| `RRTYPE=AAAA` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_POLICY=unmanaged` to disable IPv4 |
+| `RRTYPE=A` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
+| `RRTYPE=AAAA` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
 | `DELETE_ON_STOP=true` | ✔️ | Same |
-| `INTERFACE=iface` | ✔️ | Not required for `local` policies; we can handle multiple network interfaces |
+| `INTERFACE=iface` | ✔️ | Not required for `local` providers; we can handle multiple network interfaces |
 | `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
 | `DNS_SERVER=server` | ❌ | _Only the Cloudflare server is supported._ |
 

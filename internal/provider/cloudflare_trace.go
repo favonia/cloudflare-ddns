@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"context"
@@ -40,16 +40,16 @@ func getIPFromCloudflareTrace(ctx context.Context, ppfmt pp.PP, url string, fiel
 }
 
 type CloudflareTrace struct {
-	PolicyName string
-	Param      map[ipnet.Type]struct {
+	ProviderName string
+	Param        map[ipnet.Type]struct {
 		URL   string
 		Field string
 	}
 }
 
-func NewCloudflareTrace() Policy {
+func NewCloudflareTrace() Provider {
 	return &CloudflareTrace{
-		PolicyName: "cloudflare.trace",
+		ProviderName: "cloudflare.trace",
 		Param: map[ipnet.Type]struct {
 			URL   string
 			Field string
@@ -61,7 +61,7 @@ func NewCloudflareTrace() Policy {
 }
 
 func (p *CloudflareTrace) Name() string {
-	return p.PolicyName
+	return p.ProviderName
 }
 
 func (p *CloudflareTrace) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {

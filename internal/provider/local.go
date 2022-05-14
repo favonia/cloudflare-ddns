@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 )
 
 type Local struct {
-	PolicyName    string
+	ProviderName  string
 	RemoteUDPAddr map[ipnet.Type]string
 }
 
 func (p *Local) Name() string {
-	return p.PolicyName
+	return p.ProviderName
 }
 
 func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {

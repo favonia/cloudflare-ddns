@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"golang.org/x/net/dns/dnsmessage"
@@ -6,9 +6,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
-func NewCloudflareDOH() Policy {
+func NewCloudflareDOH() Provider {
 	return &DNSOverHTTPS{
-		PolicyName: "cloudflare.doh",
+		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]struct {
 			URL   string
 			Name  string
