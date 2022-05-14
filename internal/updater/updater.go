@@ -47,7 +47,6 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none")                       //nolint:lll
 			case ipnet.IP4:
 				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none") //nolint:lll
-			default:
 			}
 		}
 	}

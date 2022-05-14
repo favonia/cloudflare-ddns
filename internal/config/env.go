@@ -170,7 +170,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		if Getenv(keyDeprecated) != "" {
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`You cannot use the new parameter %s and the deprecated %s at the same time.`,
+				`Cannot have both %s and %s set.`,
 				key, keyDeprecated,
 			)
 			return false
