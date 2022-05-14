@@ -117,7 +117,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`,
+				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint: lll
 				keyDeprecated, key, key,
 			)
 			*field = provider.NewCloudflareTrace()
