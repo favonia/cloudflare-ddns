@@ -110,7 +110,11 @@ func main() { //nolint:funlen,cyclop,gocognit
 	first := true
 mainLoop:
 	for {
+		// The next time to run the updater.
+		// This is called before running the updater so that the timer would not be delayed by the updating.
 		next := c.UpdateCron.Next()
+
+		// Update the IP
 		if !first || c.UpdateOnStart {
 			if updater.UpdateIPs(ctx, ppfmt, c, s) {
 				monitor.SuccessAll(ctx, ppfmt, c.Monitors)
@@ -122,6 +126,7 @@ mainLoop:
 		}
 		first = false
 
+		// Maybe there's nothing scheduled in near future?
 		if next.IsZero() {
 			if c.DeleteOnStop {
 				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
@@ -138,6 +143,7 @@ mainLoop:
 			break mainLoop
 		}
 
+		// Display the remaining time interval
 		interval := time.Until(next)
 		switch {
 		case interval < -IntervalLargeGap:
@@ -151,8 +157,10 @@ mainLoop:
 			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 		}
 
+		// Wait for the next signal or the alarm, whichever comes first
 		sig, ok := signalWait(chanSignal, interval)
 		if !ok {
+			// The alarm comes first
 			continue mainLoop
 		}
 		switch sig.(syscall.Signal) { //nolint:forcetypeassert
