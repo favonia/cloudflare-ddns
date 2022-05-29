@@ -286,15 +286,21 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
 
 <details>
-<summary>📍 Policies (strategies to detect IP addresses) and domains</summary>
+<summary>📍 Domains and IP providers</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage | (See below) | N/A
+| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for both `A` and `AAAA` records | (See below) | N/A
 | `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `A` records | (See below) | N/A
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
+
+> <details>
+> <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
+>
+> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`. Otherwise, if all of them are empty, then this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing that is fully compatible with IDNA2008.
+> </details>
 
 > <details>
 > <summary>📜 Available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code></summary>
@@ -311,12 +317,6 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
 > The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
-> </details>
-
-> <details>
-> <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
->
-> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`, for otherwise this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. This updater supports internationalized domain names using the non-transitional IDNA2008 processing.
 > </details>
 
 </details>
