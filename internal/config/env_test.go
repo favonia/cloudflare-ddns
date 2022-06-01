@@ -19,21 +19,15 @@ import (
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
 
-func rawSet(key string, set bool, val string) {
-	if set {
-		os.Setenv(key, val)
-	} else {
-		os.Unsetenv(key)
-	}
-}
-
 func set(t *testing.T, key string, set bool, val string) {
 	t.Helper()
 
-	oldVal, oldSet := os.LookupEnv(key)
-
-	rawSet(key, set, val)
-	t.Cleanup(func() { rawSet(key, oldSet, oldVal) })
+	if set {
+		t.Setenv(key, val)
+	} else {
+		t.Setenv(key, "")
+		os.Unsetenv(key)
+	}
 }
 
 func store(t *testing.T, key string, val string) { t.Helper(); set(t, key, true, val) }

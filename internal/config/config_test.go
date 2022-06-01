@@ -327,8 +327,8 @@ func Some(xs ...interface{}) gomock.Matcher {
 	return someMatcher{ms}
 }
 
+//nolint: paralleltest // changing the environment variable TZ
 func TestPrintDefault(t *testing.T) {
-	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
@@ -362,8 +362,8 @@ func TestPrintDefault(t *testing.T) {
 	config.Default().Print(mockPP)
 }
 
+//nolint: paralleltest // changing the environment variable TZ
 func TestPrintEmpty(t *testing.T) {
-	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
@@ -396,8 +396,8 @@ func TestPrintEmpty(t *testing.T) {
 	cfg.Print(mockPP)
 }
 
+//nolint: paralleltest // changing the environment variable TZ
 func TestPrintMonitors(t *testing.T) {
-	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
@@ -439,8 +439,8 @@ func TestPrintMonitors(t *testing.T) {
 	c.Print(mockPP)
 }
 
+//nolint:paralleltest // environment vars are global
 func TestPrintHidden(t *testing.T) {
-	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
