@@ -14,13 +14,13 @@ var (
 	profileDroppingLeadingDots = idna.New(
 		idna.MapForLookup(),
 		idna.BidiRule(),
-		// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
+		idna.Transitional(false),
 		idna.RemoveLeadingDots(true),
 	)
 	profileKeepingLeadingDots = idna.New(
 		idna.MapForLookup(),
 		idna.BidiRule(),
-		// idna.Transitional(false), // https://go-review.googlesource.com/c/text/+/317729/
+		idna.Transitional(false),
 		idna.RemoveLeadingDots(false),
 	)
 )
