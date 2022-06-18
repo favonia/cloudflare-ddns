@@ -38,20 +38,6 @@
 
 ### Features
 
-* **detector:** re-implement the cdn-cgi/trace parser ([#102](https://github.com/favonia/cloudflare-ddns/issues/102)) ([ebf0639](https://github.com/favonia/cloudflare-ddns/commit/ebf06395c341b97a9f2e3c8618cc21eed2365b3d))
-
-
-
-# [1.3.0](https://github.com/favonia/cloudflare-ddns/compare/v1.2.0...v1.3.0) (2021-11-15)
-
-
-### Bug Fixes
-
-* **api:** keep leading dots after the beginning `*` is removed ([#97](https://github.com/favonia/cloudflare-ddns/issues/97)) ([bb2da38](https://github.com/favonia/cloudflare-ddns/commit/bb2da3845e0ac9a6d1b48c2242755e40d0fab944))
-
-
-### Features
-
 * **detector:** re-implement the cdn-cgi/trace parser and make it the new default policy; deprecate “cloudflare” in favor of “cloudflare.doh” or “cloudflare.trace” ([#102](https://github.com/favonia/cloudflare-ddns/issues/102)) ([ebf0639](https://github.com/favonia/cloudflare-ddns/commit/ebf06395c341b97a9f2e3c8618cc21eed2365b3d))
 
 
