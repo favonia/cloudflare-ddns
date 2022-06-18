@@ -206,7 +206,7 @@ spec:
       labels:
         app: cloudflare-ddns
     spec:
-      restartolicy: Always
+      restartPolicy: Always
       containers:
         - name: cloudflare-ddns
           image: favonia/cloudflare-ddns:latest
