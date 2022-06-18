@@ -1,3 +1,18 @@
+# [1.5.0](https://github.com/favonia/cloudflare-ddns/compare/v1.4.0...1.5.0) (2022-06-18)
+
+
+### Bug Fixes
+
+* **file:** accept absolute paths ([#173](https://github.com/favonia/cloudflare-ddns/issues/173)) ([79bcd9b](https://github.com/favonia/cloudflare-ddns/commit/79bcd9b6b48f1557652459d6156a75503b8bc462))
+* always ping "starting" before "exiting" ([c05082a](https://github.com/favonia/cloudflare-ddns/commit/c05082a60cb959ece83a28de4f357d40941ac377))
+
+
+### BREAKING CHANGES
+
+* rename `IP4/6_POLICY` to `IP4/6_PROVIDER` ([#167](https://github.com/favonia/cloudflare-ddns/issues/167)) ([1dcd4e4](https://github.com/favonia/cloudflare-ddns/commit/1dcd4e4a23148bf2ba163dbb823cf60dad8e7e8f))
+
+
+
 # [1.4.0](https://github.com/favonia/cloudflare-ddns/compare/v1.3.0...v1.4.0) (2022-05-09)
 
 
