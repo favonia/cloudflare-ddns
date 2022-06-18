@@ -1,4 +1,4 @@
-# [1.5.0](https://github.com/favonia/cloudflare-ddns/compare/v1.4.0...1.5.0) (2022-06-18)
+# [1.5.0](https://github.com/favonia/cloudflare-ddns/compare/v1.4.0...v1.5.0) (2022-06-18)
 
 
 ### Bug Fixes
