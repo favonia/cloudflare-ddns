@@ -7,7 +7,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.7.4
 	golang.org/x/net v0.0.0-20220526153639-5463443f8c37
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.64
 )
