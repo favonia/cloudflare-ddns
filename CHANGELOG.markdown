@@ -1,3 +1,12 @@
+# [1.5.1](https://github.com/favonia/cloudflare-ddns/compare/v1.5.0...v1.5.1) (2022-06-23)
+
+
+### Bug Fixes
+
+* **file:** fix arguments of pp.Errorf ([55c5988](https://github.com/favonia/cloudflare-ddns/commit/55c598831b15094b7edd9928bc89bba0cc1a048b))
+
+
+
 # [1.5.0](https://github.com/favonia/cloudflare-ddns/compare/v1.4.0...v1.5.0) (2022-06-18)
 
 
