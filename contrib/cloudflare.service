@@ -1,7 +1,8 @@
 [Unit]
 Description=Cloudflare DNS Updater
 Documentation=https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown
-Wants=network-online.target
+Requires=network-online.target
+After=network-online.target
 
 [Install]
 WantedBy=multi-user.target
@@ -13,7 +14,6 @@ Delegate=yes
 LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity
-TimeoutStartSec=0
 Restart=always
 User=ddns
 ExecStart=/usr/local/bin/ddns
