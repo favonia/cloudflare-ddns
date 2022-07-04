@@ -1,4 +1,4 @@
-package detector
+package provider
 
 import (
 	"context"
@@ -74,12 +74,12 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) netip.Addr {
 }
 
 type HTTP struct {
-	PolicyName string
-	URL        map[ipnet.Type]string
+	ProviderName string
+	URL          map[ipnet.Type]string
 }
 
-func (p *HTTP) name() string {
-	return p.PolicyName
+func (p *HTTP) Name() string {
+	return p.ProviderName
 }
 
 func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {

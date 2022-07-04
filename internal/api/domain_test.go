@@ -5,7 +5,6 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -129,14 +128,14 @@ func TestSortDomains(t *testing.T) {
 			copied := make([]api.Domain, len(merged))
 			copy(copied, merged)
 			api.SortDomains(merged)
-			switch {
-			case !assert.ElementsMatch(t, copied, merged):
-				return false
-			case !sort.SliceIsSorted(merged, func(i, j int) bool { return merged[i].DNSNameASCII() < merged[j].DNSNameASCII() }):
-				return false
-			default:
-				return true
-			}
+
+			require.ElementsMatch(t, copied, merged)
+			require.True(t, sort.SliceIsSorted(merged,
+				func(i, j int) bool {
+					return merged[i].DNSNameASCII() < merged[j].DNSNameASCII()
+				}))
+
+			return true
 		},
 		nil,
 	))

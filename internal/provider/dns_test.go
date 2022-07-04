@@ -1,4 +1,4 @@
-package detector_test
+package provider_test
 
 import (
 	"context"
@@ -9,25 +9,24 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/dns/dnsmessage"
 
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	policy := &detector.DNSOverHTTPS{
-		PolicyName: "very secret name",
-		Param:      nil,
+	p := &provider.DNSOverHTTPS{
+		ProviderName: "very secret name",
+		Param:        nil,
 	}
 
-	require.Equal(t, "very secret name", detector.Name(policy))
+	require.Equal(t, "very secret name", provider.Name(p))
 }
 
 func setupServer(t *testing.T, name string, class dnsmessage.Class,
@@ -36,18 +35,18 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/dns-message", r.Header.Get("Content-Type"))
-		assert.Equal(t, "application/dns-message", r.Header.Get("Accept"))
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "application/dns-message", r.Header.Get("Content-Type"))
+		require.Equal(t, "application/dns-message", r.Header.Get("Accept"))
 
 		var msg dnsmessage.Message
 		body, err := io.ReadAll(r.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = msg.Unpack(body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t,
+		require.Equal(t,
 			[]dnsmessage.Question{
 				{
 					Name:  dnsmessage.MustNewName(name),
@@ -71,14 +70,14 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 			Authorities: []dnsmessage.Resource{},
 			Additionals: []dnsmessage.Resource{},
 		}).Pack()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = msg.Unpack(response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/dns-message")
 		_, err = w.Write(response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}))
 }
 
@@ -570,8 +569,8 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 
 			server := setupServer(t, tc.name, tc.class, tc.response, tc.header, tc.idShift, tc.answers)
 
-			policy := &detector.DNSOverHTTPS{
-				PolicyName: "",
+			provider := &provider.DNSOverHTTPS{
+				ProviderName: "",
 				Param: map[ipnet.Type]struct {
 					URL   string
 					Name  string
@@ -585,7 +584,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip := policy.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
 		})
 	}

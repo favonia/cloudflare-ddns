@@ -11,6 +11,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
+	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
 const (
@@ -34,36 +36,44 @@ var Version string //nolint:gochecknoglobals
 func welcome(ppfmt pp.PP) {
 	if Version == "" {
 		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS")
-		return
+	} else {
+		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 	}
-
-	ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle) {
-	// reading the config
+func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, setter.Setter) {
 	c := config.Default()
-	if !c.ReadEnv(ppfmt) {
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		os.Exit(1)
-	}
-	if !c.NormalizeDomains(ppfmt) {
+	bye := func() {
+		// Usually, this is called only after initConfig,
+		// but we are exiting early.
+		monitor.StartAll(ctx, ppfmt, c.Monitors)
+
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
 		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
 		os.Exit(1)
 	}
 
+	// Read the config
+	if !c.ReadEnv(ppfmt) || !c.NormalizeDomains(ppfmt) {
+		bye()
+	}
+
+	// Print the config
 	c.Print(ppfmt)
 
-	// getting the handler
+	// Get the handler
 	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
 	if !ok {
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
-		os.Exit(1)
+		bye()
 	}
 
-	return c, h
+	// Get the setter
+	s, ok := setter.New(ppfmt, h, c.TTL, c.Proxied)
+	if !ok {
+		bye()
+	}
+
+	return c, h, s
 }
 
 func main() { //nolint:funlen,cyclop,gocognit
@@ -78,42 +88,49 @@ func main() { //nolint:funlen,cyclop,gocognit
 
 	welcome(ppfmt)
 
-	// dropping the superuser privilege
+	// Drop the superuser privilege
 	dropPriviledges(ppfmt)
 
-	// printing the current privileges
+	// Print the current privileges
 	printPriviledges(ppfmt)
 
-	// catching SIGINT and SIGTERM
+	// Catch SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
 	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	// context
+	// Get the context
 	ctx := context.Background()
 
-	// reading the config
-	c, h := initConfig(ctx, ppfmt)
+	// Read the config and get the handler and the setter
+	c, h, s := initConfig(ctx, ppfmt)
+
+	// Start the tool now
 	monitor.StartAll(ctx, ppfmt, c.Monitors)
 
 	first := true
 mainLoop:
 	for {
+		// The next time to run the updater.
+		// This is called before running the updater so that the timer would not be delayed by the updating.
 		next := c.UpdateCron.Next()
+
+		// Update the IP
 		if !first || c.UpdateOnStart {
-			if updateIPs(ctx, ppfmt, c, h) {
+			if updater.UpdateIPs(ctx, ppfmt, c, s) {
 				monitor.SuccessAll(ctx, ppfmt, c.Monitors)
 			} else {
 				monitor.FailureAll(ctx, ppfmt, c.Monitors)
 			}
-		} else if first {
+		} else {
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors)
 		}
 		first = false
 
+		// Maybe there's nothing scheduled in near future?
 		if next.IsZero() {
 			if c.DeleteOnStop {
 				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
-				if !clearIPs(ctx, ppfmt, c, h) {
+				if !updater.ClearIPs(ctx, ppfmt, c, s) {
 					monitor.FailureAll(ctx, ppfmt, c.Monitors)
 				}
 				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
@@ -126,6 +143,7 @@ mainLoop:
 			break mainLoop
 		}
 
+		// Display the remaining time interval
 		interval := time.Until(next)
 		switch {
 		case interval < -IntervalLargeGap:
@@ -139,8 +157,10 @@ mainLoop:
 			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
 		}
 
+		// Wait for the next signal or the alarm, whichever comes first
 		sig, ok := signalWait(chanSignal, interval)
 		if !ok {
+			// The alarm comes first
 			continue mainLoop
 		}
 		switch sig.(syscall.Signal) { //nolint:forcetypeassert
@@ -149,13 +169,13 @@ mainLoop:
 			h.FlushCache()
 
 			ppfmt.Noticef(pp.EmojiRepeatOnce, "Restarting . . .")
-			c, h = initConfig(ctx, ppfmt)
+			c, h, s = initConfig(ctx, ppfmt)
 			continue mainLoop
 
 		case syscall.SIGINT, syscall.SIGTERM:
 			if c.DeleteOnStop {
 				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
-				if !clearIPs(ctx, ppfmt, c, h) {
+				if !updater.ClearIPs(ctx, ppfmt, c, s) {
 					monitor.FailureAll(ctx, ppfmt, c.Monitors)
 				}
 				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")

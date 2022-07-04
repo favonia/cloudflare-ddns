@@ -35,7 +35,7 @@ type CloudflareAuth struct {
 }
 
 func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
-	handle, err := cloudflare.NewWithAPIToken(t.Token, cloudflare.UsingAccount(t.AccountID))
+	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
 		return nil, false

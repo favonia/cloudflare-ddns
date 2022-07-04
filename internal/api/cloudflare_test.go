@@ -15,7 +15,6 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -68,9 +67,9 @@ func newServerAuth(t *testing.T) (*http.ServeMux, *api.CloudflareAuth) {
 func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
-	assert.Equal(t, http.MethodGet, r.Method)
-	assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-	assert.Empty(t, r.URL.Query())
+	require.Equal(t, http.MethodGet, r.Method)
+	require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+	require.Empty(t, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
 	fmt.Fprintf(w,
@@ -134,9 +133,9 @@ func TestNewInvalid(t *testing.T) {
 	mux, auth := newServerAuth(t)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-		assert.Empty(t, r.URL.Query())
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+		require.Empty(t, r.URL.Query())
 
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -199,9 +198,9 @@ func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse 
 func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
-	assert.Equal(t, http.MethodGet, r.Method)
-	assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-	assert.Equal(t, url.Values{
+	require.Equal(t, http.MethodGet, r.Method)
+	require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+	require.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
 		"per_page":   {"50"},
@@ -210,7 +209,7 @@ func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWri
 
 	w.Header().Set("content-type", "application/json")
 	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, numZones))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type zonesHandler struct {
@@ -521,9 +520,9 @@ func TestListRecords(t *testing.T) {
 			}
 			accessCount--
 
-			assert.Equal(t, http.MethodGet, r.Method)
-			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-			assert.Equal(t, url.Values{
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, url.Values{
 				"name": {"sub.test.org"},
 				"page": {"1"},
 				"type": {ipNet.RecordType()},
@@ -531,7 +530,7 @@ func TestListRecords(t *testing.T) {
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "test.org", ips))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
@@ -572,9 +571,9 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			}
 			accessCount--
 
-			assert.Equal(t, http.MethodGet, r.Method)
-			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-			assert.Equal(t, url.Values{
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, url.Values{
 				"name": {"sub.test.org"},
 				"page": {"1"},
 				"type": {ipNet.RecordType()},
@@ -584,7 +583,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
 				map[string]string{"record1": "::1", "record2": "NOT AN IP"},
 			))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	ipNet, accessCount = ipnet.IP6, 1
@@ -637,9 +636,9 @@ func TestListRecordsWildcard(t *testing.T) {
 			}
 			accessCount--
 
-			assert.Equal(t, http.MethodGet, r.Method)
-			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-			assert.Equal(t, url.Values{
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, url.Values{
 				"name": {"*.test.org"},
 				"page": {"1"},
 				"type": {ipNet.RecordType()},
@@ -647,7 +646,7 @@ func TestListRecordsWildcard(t *testing.T) {
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "*.test.org", ips))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
@@ -764,7 +763,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
 				map[string]netip.Addr{"record1": mustIP("::1")}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
@@ -774,13 +773,13 @@ func TestDeleteRecordValid(t *testing.T) {
 			}
 			deleteAccessCount--
 
-			assert.Equal(t, http.MethodDelete, r.Method)
-			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-			assert.Empty(t, r.URL.Query())
+			require.Equal(t, http.MethodDelete, r.Method)
+			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Empty(t, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	deleteAccessCount = 1
@@ -849,7 +848,7 @@ func TestUpdateRecordValid(t *testing.T) {
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, http.MethodGet, r.Method)
 			if listAccessCount <= 0 {
 				return
 			}
@@ -858,32 +857,31 @@ func TestUpdateRecordValid(t *testing.T) {
 			w.Header().Set("content-type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 				map[string]string{"record1": "::1"}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, http.MethodPatch, r.Method)
+			require.Equal(t, http.MethodPatch, r.Method)
 			if updateAccessCount <= 0 {
 				return
 			}
 			updateAccessCount--
 
-			assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-			assert.Empty(t, r.URL.Query())
+			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Empty(t, r.URL.Query())
 
 			var record cloudflare.DNSRecord
-			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
-				return
-			}
+			err := json.NewDecoder(r.Body).Decode(&record)
+			require.NoError(t, err)
 
-			assert.Equal(t, "sub.test.org", record.Name)
-			assert.Equal(t, ipnet.IP6.RecordType(), record.Type)
-			assert.Equal(t, "::2", record.Content)
+			require.Equal(t, "sub.test.org", record.Name)
+			require.Equal(t, ipnet.IP6.RecordType(), record.Type)
+			require.Equal(t, "::2", record.Content)
 
 			w.Header().Set("content-type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
-			assert.NoError(t, err)
+			err = json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
+			require.NoError(t, err)
 		})
 
 	updateAccessCount = 1
@@ -962,31 +960,30 @@ func TestCreateRecordValid(t *testing.T) {
 				w.Header().Set("content-type", "application/json")
 				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 					map[string]string{"record1": "::1"}))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			case http.MethodPost:
 				if createAccessCount <= 0 {
 					return
 				}
 				createAccessCount--
 
-				assert.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
-				assert.Empty(t, r.URL.Query())
+				require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+				require.Empty(t, r.URL.Query())
 
 				var record cloudflare.DNSRecord
-				if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
-					return
-				}
+				err := json.NewDecoder(r.Body).Decode(&record)
+				require.NoError(t, err)
 
-				assert.Equal(t, "sub.test.org", record.Name)
-				assert.Equal(t, ipnet.IP6.RecordType(), record.Type)
-				assert.Equal(t, "::1", record.Content)
-				assert.Equal(t, 100, record.TTL)
-				assert.Equal(t, false, *record.Proxied)
+				require.Equal(t, "sub.test.org", record.Name)
+				require.Equal(t, ipnet.IP6.RecordType(), record.Type)
+				require.Equal(t, "::1", record.Content)
+				require.Equal(t, 100, record.TTL)
+				require.Equal(t, false, *record.Proxied)
 				record.ID = "record1"
 
 				w.Header().Set("content-type", "application/json")
-				err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record))
-				assert.NoError(t, err)
+				err = json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record))
+				require.NoError(t, err)
 			}
 		})
 

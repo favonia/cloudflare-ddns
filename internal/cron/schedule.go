@@ -8,12 +8,6 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// Schedule tells the next time a scheduled event should happen.
-type Schedule = interface {
-	Next() time.Time
-	String() string
-}
-
 // cronSchedule holds a parsed cron expression and its original input.
 type cronSchedule struct {
 	spec     string

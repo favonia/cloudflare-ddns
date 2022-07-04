@@ -5,16 +5,16 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/detector"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 type Config struct {
 	Auth             api.Auth
-	Policy           map[ipnet.Type]detector.Policy
+	Provider         map[ipnet.Type]provider.Provider
 	Domains          map[ipnet.Type][]api.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
@@ -31,9 +31,9 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		Auth: nil,
-		Policy: map[ipnet.Type]detector.Policy{
-			ipnet.IP4: detector.NewCloudflareTrace(),
-			ipnet.IP6: detector.NewCloudflareTrace(),
+		Provider: map[ipnet.Type]provider.Provider{
+			ipnet.IP4: provider.NewCloudflareTrace(),
+			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
 		Domains: map[ipnet.Type][]api.Domain{
 			ipnet.IP4: nil,
@@ -147,18 +147,18 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
 	return true
 }
 
-func ReadPolicyMap(ppfmt pp.PP, field *map[ipnet.Type]detector.Policy) bool {
-	ip4Policy := (*field)[ipnet.IP4]
-	ip6Policy := (*field)[ipnet.IP6]
+func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool {
+	ip4Provider := (*field)[ipnet.IP4]
+	ip6Provider := (*field)[ipnet.IP6]
 
-	if !ReadPolicy(ppfmt, "IP4_POLICY", &ip4Policy) ||
-		!ReadPolicy(ppfmt, "IP6_POLICY", &ip6Policy) {
+	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", &ip4Provider) ||
+		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", &ip6Provider) {
 		return false
 	}
 
-	*field = map[ipnet.Type]detector.Policy{
-		ipnet.IP4: ip4Policy,
-		ipnet.IP6: ip6Policy,
+	*field = map[ipnet.Type]provider.Provider{
+		ipnet.IP4: ip4Provider,
+		ipnet.IP6: ip6Provider,
 	}
 	return true
 }
@@ -174,12 +174,12 @@ func (c *Config) Print(ppfmt pp.PP) {
 	inner := ppfmt.IncIndent()
 
 	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 policy:      %s", detector.Name(c.Policy[ipnet.IP4]))
-	if c.Policy[ipnet.IP4] != nil {
+	inner.Infof(pp.EmojiBullet, "IPv4 provider:    %s", provider.Name(c.Provider[ipnet.IP4]))
+	if c.Provider[ipnet.IP4] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 policy:      %s", detector.Name(c.Policy[ipnet.IP6]))
-	if c.Policy[ipnet.IP6] != nil {
+	inner.Infof(pp.EmojiBullet, "IPv6 provider:    %s", provider.Name(c.Provider[ipnet.IP6]))
+	if c.Provider[ipnet.IP6] != nil {
 		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
 	}
 
@@ -215,7 +215,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadPolicyMap(ppfmt, &c.Policy) ||
+		!ReadProviderMap(ppfmt, &c.Provider) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
@@ -241,11 +241,11 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	}
 
 	for ipNet, domains := range c.Domains {
-		if c.Policy[ipNet] == nil {
+		if c.Provider[ipNet] == nil {
 			for i := range domains {
 				if count[domains[i]] != len(c.Domains) {
 					ppfmt.Warningf(pp.EmojiUserWarning,
-						"Domain %q is ignored because it is only for %s but %s is unmanaged",
+						"Domain %q is ignored because it is only for %s but %s is disabled",
 						domains[i].Describe(), ipNet.Describe(), ipNet.Describe())
 				}
 			}
@@ -259,17 +259,17 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		return false
 	}
 
-	// change useless policies to unmanaged
+	// change useless policies to none
 	for ipNet, domains := range c.Domains {
-		if len(domains) == 0 && c.Policy[ipNet] != nil {
-			c.Policy[ipNet] = nil
-			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_POLICY was changed to %q because no domains were set for %s",
-				ipNet.Int(), detector.Name(c.Policy[ipNet]), ipNet.Describe())
+		if len(domains) == 0 && c.Provider[ipNet] != nil {
+			c.Provider[ipNet] = nil
+			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains were set for %s",
+				ipNet.Int(), provider.Name(c.Provider[ipNet]), ipNet.Describe())
 		}
 	}
 
-	if c.Policy[ipnet.IP4] == nil && c.Policy[ipnet.IP6] == nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are unmanaged")
+	if c.Provider[ipnet.IP4] == nil && c.Provider[ipnet.IP6] == nil {
+		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled")
 		return false
 	}
 
