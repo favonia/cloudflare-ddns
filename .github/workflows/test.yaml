@@ -20,6 +20,8 @@ jobs:
         with:
           go-version: 1.18
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - run: |
           go install github.com/golang/mock/mockgen@latest
           go generate ./...
