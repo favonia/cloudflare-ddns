@@ -171,6 +171,15 @@ func TestReadDomainMap(t *testing.T) {
 			true,
 			nil,
 		},
+		"duplicate": {
+			"  a1, a1", "a1,  a1,a1", "*.a1,a1,*.a1,*.a1",
+			map[ipnet.Type][]api.Domain{
+				ipnet.IP4: {api.FQDN("a1")},
+				ipnet.IP6: {api.FQDN("a1"), api.Wildcard("a1")},
+			},
+			true,
+			nil,
+		},
 		"empty": {
 			" ", "   ", "",
 			map[ipnet.Type][]api.Domain{
@@ -196,7 +205,8 @@ func TestReadDomainMap(t *testing.T) {
 			}
 			ok := config.ReadDomainMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, field)
+			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
+			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])
 		})
 	}
 }
