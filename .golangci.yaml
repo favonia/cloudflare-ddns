@@ -3,7 +3,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - pkgPrefix(github.com/favonia/cloudflare-ddns)
+      - prefix(github.com/favonia/cloudflare-ddns)
   maligned:
     suggest-new: true
   exhaustive:
@@ -21,11 +21,12 @@ linters:
   disable:
     - exhaustivestruct # deprecated
     - golint # deprecated
-    - interfacer
+    - interfacer # deprecated
     - ireturn # ireturn works poorly for the style with private types and public interfaces
-    - maligned
-    - nlreturn
+    - maligned # deprecated, and I value readability over bytes saved by alignment
     - scopelint # deprecated
+    - nlreturn # I don't agree with the style enforced by nlreturn
     - varnamelen # varnamelen complains too much, in my opinion
-    - wsl
+    - wsl # I don't agree with the style enforced by wsl
+    - nosnakecase # revive's var-naming check seems to be better
     - nonamedreturns # named returns are needed in the internal updator package
