@@ -242,11 +242,11 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 
 	for ipNet, domains := range c.Domains {
 		if c.Provider[ipNet] == nil {
-			for i := range domains {
-				if count[domains[i]] != len(c.Domains) {
+			for _, domain := range domains {
+				if count[domain] != len(c.Domains) {
 					ppfmt.Warningf(pp.EmojiUserWarning,
 						"Domain %q is ignored because it is only for %s but %s is disabled",
-						domains[i].Describe(), ipNet.Describe(), ipNet.Describe())
+						domain.Describe(), ipNet.Describe(), ipNet.Describe())
 				}
 			}
 		}
