@@ -3,7 +3,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - pkgPrefix(github.com/favonia/cloudflare-ddns)
+      - prefix(github.com/favonia/cloudflare-ddns)
   maligned:
     suggest-new: true
   exhaustive:
@@ -28,4 +28,5 @@ linters:
     - scopelint # deprecated
     - varnamelen # varnamelen complains too much, in my opinion
     - wsl
+    - nosnakecase # revive's var-naming check seems to be better
     - nonamedreturns # named returns are needed in the internal updator package
