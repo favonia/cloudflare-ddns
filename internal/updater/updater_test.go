@@ -234,10 +234,8 @@ func TestUpdateIPs(t *testing.T) {
 	}
 }
 
-//nolint:funlen
+//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestClearIPs(t *testing.T) {
-	t.Parallel()
-
 	domains := map[ipnet.Type][]api.Domain{
 		ipnet.IP4: {api.FQDN("ip4.hello")},
 		ipnet.IP6: {api.FQDN("ip6.hello")},
@@ -245,7 +243,6 @@ func TestClearIPs(t *testing.T) {
 
 	type mockmap = map[ipnet.Type]bool
 
-	//nolint: paralleltest // updater.IPv6MessageDisplayed is a global variable
 	for name, tc := range map[string]struct {
 		ok                   bool
 		MessageShouldDisplay map[ipnet.Type]bool
