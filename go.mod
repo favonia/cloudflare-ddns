@@ -1,6 +1,6 @@
 module github.com/favonia/cloudflare-ddns
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cloudflare/cloudflare-go v0.46.0
