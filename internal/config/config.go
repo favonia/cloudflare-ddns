@@ -201,7 +201,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	if len(c.Monitors) > 0 {
 		ppfmt.Infof(pp.EmojiConfig, "Monitors:")
 		for _, m := range c.Monitors {
-			inner.Infof(pp.EmojiBullet, "%-17s %v", m.DescribeService()+":", m.DescribeBaseURL())
+			inner.Infof(pp.EmojiBullet, "%-17s (URL redacted)", m.DescribeService()+":")
 		}
 	} else {
 		ppfmt.Infof(pp.EmojiConfig, "Monitors: (none)")

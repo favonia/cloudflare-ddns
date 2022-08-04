@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -584,6 +585,13 @@ func TestReadCron(t *testing.T) {
 	}
 }
 
+func urlMustParse(t *testing.T, u string) *url.URL {
+	t.Helper()
+	url, err := url.Parse(u)
+	require.Nil(t, err)
+	return url
+}
+
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
 func TestReadHealthChecksURL(t *testing.T) {
 	key := keyPrefix + "HEALTHCHECKS"
@@ -608,10 +616,9 @@ func TestReadHealthChecksURL(t *testing.T) {
 			true, "https://hi.org/1234",
 			[]mon{},
 			[]mon{&monitor.HealthChecks{
-				BaseURL:         "https://hi.org/1234",
-				RedactedBaseURL: "https://hi.org/1234",
-				Timeout:         monitor.HealthChecksDefaultTimeout,
-				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+				BaseURL:    urlMustParse(t, "https://hi.org/1234"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -620,30 +627,34 @@ func TestReadHealthChecksURL(t *testing.T) {
 			true, "https://me:pass@hi.org/1234",
 			[]mon{},
 			[]mon{&monitor.HealthChecks{
-				BaseURL:         "https://me:pass@hi.org/1234",
-				RedactedBaseURL: "https://me:xxxxx@hi.org/1234",
-				Timeout:         monitor.HealthChecksDefaultTimeout,
-				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+				BaseURL:    urlMustParse(t, "https://me:pass@hi.org/1234"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
 		},
-		"illformed": {
+		"fragment": {
+			true, "https://hi.org/1234#fragment",
+			[]mon{},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:    urlMustParse(t, "https://hi.org/1234#fragment"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
+		},
+		"query": {
 			true, "https://hi.org/1234?hello=123",
 			[]mon{},
-			[]mon{},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(
-					pp.EmojiUserError,
-					"The URL %q does not look like a valid Healthchecks URL.",
-					"https://hi.org/1234?hello=123",
-				)
-				m.EXPECT().Errorf(
-					pp.EmojiUserError,
-					`A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`,
-				)
-			},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:    urlMustParse(t, "https://hi.org/1234?hello=123"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
 		},
 	} {
 		tc := tc
