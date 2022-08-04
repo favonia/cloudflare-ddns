@@ -36,7 +36,7 @@ A small and fast DDNS updater for Cloudflare.
 
 ## 🕵️ Privacy
 
-By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the tool to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
+By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the updater to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
 
 ## 🛡️ Security
 
@@ -115,7 +115,7 @@ services:
 <details>
 <summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the tool can access the host IPv6 network directly. If you wish to keep the tool isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6.](https://github.com/favonia/cloudflare-ddns/issues/119) If your host OS is Linux, here’s the tl;dr:
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. If you wish to keep the updater isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6.](https://github.com/favonia/cloudflare-ddns/issues/119) If your host OS is Linux, here’s the tl;dr:
 
 1. Use `network_mode: bridge` instead of `network_mode: host`.
 2. Edit or create `/etc/docker/daemon.json` with the following content:
@@ -168,7 +168,7 @@ The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which
 <details>
 <summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
 
-The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the tool will identify their zones automatically.
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
 </details>
 
 ### 🚀 Step 3: Building the Container
@@ -260,7 +260,7 @@ The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which
 <details>
 <summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
 
-The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs this tool to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---this tool will identify their zones automatically.
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
 </details>
 
 ### 🚀 Step 2: Creating the Deployment
@@ -290,16 +290,16 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for both `A` and `AAAA` records | (See below) | N/A
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `A` records | (See below) | N/A
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains this tool should manage for `AAAA` records | (See below) | N/A
+| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | N/A
+| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records | (See below) | N/A
+| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records | (See below) | N/A
 | `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
 
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
 >
-> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`. Otherwise, if all of them are empty, then this updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing that is fully compatible with IDNA2008.
+> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`. Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing that is fully compatible with IDNA2008.
 > </details>
 
 > <details>
@@ -312,7 +312,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `ipify`\
 >   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\
->   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the tool will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the tool will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
+>   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
@@ -344,20 +344,22 @@ Note that the update schedule _does not_ take the time to update records into co
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `PGID` | Non-zero POSIX group ID | The group ID this tool should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
-| `PUID` | Non-zero POSIX user ID | The user ID this tool should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
+| `PGID` | Non-zero POSIX group ID | The group ID the updater should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
+| `PUID` | Non-zero POSIX user ID | The user ID the updater should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 
 The updater will also try to drop supplementary group IDs.
 </details>
 
 <details>
-<summary>👁️ Monitoring the tool</summary>
+<summary>👁️ Monitoring the updater</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
-| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` | If set, the tool will ping Healthchecks.io when it successfully updates IP addresses | No | N/A
+| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | N/A
 </details>
+
+For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol.](https://healthchecks.io/docs/http_api/)
 
 ### 🔂 Restarting the Container
 
