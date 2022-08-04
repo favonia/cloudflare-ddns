@@ -106,7 +106,7 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
 // ReadProvider reads an environment variable and parses it as a provider.
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
-//nolint: funlen, cyclop
+//nolint:funlen, cyclop
 func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
 	if val := Getenv(key); val == "" {
 		// parsing of the deprecated parameter
@@ -117,7 +117,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint: lll
+				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint:lll
 				keyDeprecated, key, key,
 			)
 			*field = provider.NewCloudflareTrace()
@@ -180,7 +180,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+				`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint:lll
 				key, key,
 			)
 			return false

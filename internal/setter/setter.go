@@ -49,8 +49,8 @@ func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL, proxied bool) (Setter, bo
 	}, true
 }
 
-//nolint: funlen,cyclop,gocognit
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr) bool { //nolint: lll
+//nolint:funlen,cyclop,gocognit
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr) bool { //nolint:lll
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
