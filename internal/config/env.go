@@ -106,6 +106,7 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
 // ReadProvider reads an environment variable and parses it as a provider.
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
+//
 //nolint:funlen, cyclop
 func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
 	if val := Getenv(key); val == "" {

@@ -7,9 +7,10 @@ import (
 	"golang.org/x/net/idna"
 )
 
-//nolint:gochecknoglobals
-// profile does C2 in UTS#46 with all checks on + removing leading dots.
+// profileDroppingLeadingDots does C2 in UTS#46 with all checks on + removing leading dots.
 // This is the main conversion profile in use.
+//
+//nolint:gochecknoglobals
 var (
 	profileDroppingLeadingDots = idna.New(
 		idna.MapForLookup(),

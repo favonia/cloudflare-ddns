@@ -42,7 +42,7 @@ func NewHealthChecks(ppfmt pp.PP, rawURL string, os ...HealthChecksOption) (Moni
 		return nil, false
 	}
 
-	if !(url.IsAbs() && url.Opaque == "" && url.Host != "") { //nolint:lll
+	if !(url.IsAbs() && url.Opaque == "" && url.Host != "") {
 		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks.io URL (redacted) does not look like a valid URL.`)
 		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`)
 		return nil, false
