@@ -127,12 +127,9 @@ func (h *HealthChecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string) b
 
 		bodyAsString := strings.TrimSpace(string(body))
 		if bodyAsString != "OK" {
-			ppfmt.Warningf(
-				pp.EmojiError,
+			ppfmt.Warningf(pp.EmojiError,
 				"Failed to ping the %s endpoint of Healthchecks.io; got response code: %d %s",
-				endpointDescription,
-				resp.StatusCode,
-				bodyAsString,
+				endpointDescription, resp.StatusCode, bodyAsString,
 			)
 			return false
 		}
