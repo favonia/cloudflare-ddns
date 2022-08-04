@@ -337,7 +337,7 @@ func Some(xs ...interface{}) gomock.Matcher {
 	return someMatcher{ms}
 }
 
-//nolint: paralleltest // changing the environment variable TZ
+//nolint:paralleltest // changing the environment variable TZ
 func TestPrintDefault(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
@@ -372,7 +372,7 @@ func TestPrintDefault(t *testing.T) {
 	config.Default().Print(mockPP)
 }
 
-//nolint: paralleltest // changing the environment variable TZ
+//nolint:paralleltest // changing the environment variable TZ
 func TestPrintEmpty(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
@@ -406,7 +406,7 @@ func TestPrintEmpty(t *testing.T) {
 	cfg.Print(mockPP)
 }
 
-//nolint: paralleltest // changing the environment variable TZ
+//nolint:paralleltest // changing the environment variable TZ
 func TestPrintMonitors(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
@@ -439,7 +439,7 @@ func TestPrintMonitors(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-17s %v", "Healthchecks.io:", "http://user:xxxxx@host/path"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-17s (URL redacted)", "Healthchecks.io:"),
 	)
 
 	m, ok := monitor.NewHealthChecks(mockPP, "http://user:pass@host/path")
