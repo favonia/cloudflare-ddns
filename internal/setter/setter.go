@@ -56,7 +56,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 
 	rs, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
-		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
+		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return false
 	}
 
@@ -148,7 +148,9 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 
 	// It is okay to have duplicates, but it is not okay to have stale records.
 	if !uptodate || numUndeletedUnmatched > 0 {
-		ppfmt.Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", recordType, domainDescription)
+		ppfmt.Errorf(pp.EmojiError,
+			"Failed to complete updating of %s records of %q; records might be inconsistent",
+			recordType, domainDescription)
 		return false
 	}
 

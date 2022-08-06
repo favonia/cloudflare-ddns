@@ -230,7 +230,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
 					m.EXPECT().Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),
-					m.EXPECT().Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", "AAAA", "sub.test.org"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -252,7 +252,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
 					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
-					m.EXPECT().Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", "AAAA", "sub.test.org"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -270,7 +270,7 @@ func TestSet(t *testing.T) {
 			ip1,
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiError, "Failed to (fully) update %s records of %q", "AAAA", "sub.test.org")
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false)
