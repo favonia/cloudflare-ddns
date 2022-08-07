@@ -4,7 +4,7 @@
 
 ### 🐋 Docker-based
 
-Docker's `always` restart policy (using `restart: always` as in the README or the [option `--restart always`](https://docs.docker.com/engine/reference/run/#restart-policies---restart) with `docker run`) will run the service at boot along with the Docker daemon. Make sure that the Docker daemon is started at boot.
+Docker's `always` restart policy will start the updater at boot along with the Docker daemon. You can specify `restart: always` in Docker Compose as in the [main README](../README.markdown) or use the [option `--restart always`](https://docs.docker.com/engine/reference/run/#restart-policies---restart) with `docker run`. Make sure the Docker daemon is started at boot.
 
 ### 🧑‍💻 Systemd-based
 
