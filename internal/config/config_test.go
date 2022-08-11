@@ -666,7 +666,7 @@ func TestNormalize(t *testing.T) {
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {api.FQDN("a.b.c"), api.FQDN("g.h.i")},
 				},
 			},
 			ok: true,
@@ -677,7 +677,7 @@ func TestNormalize(t *testing.T) {
 				},
 				Domains: map[ipnet.Type][]api.Domain{
 					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {api.FQDN("a.b.c"), api.FQDN("g.h.i")},
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {

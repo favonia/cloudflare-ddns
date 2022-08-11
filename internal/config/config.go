@@ -251,7 +251,12 @@ func (c *Config) checkUselessDomains(ppfmt pp.PP) {
 	for ipNet, domains := range c.Domains {
 		if c.Provider[ipNet] == nil {
 			for _, domain := range domains {
-				if count[domain] != len(c.Domains) {
+				// there are only two possible values here:
+				// count[domain] = 0, len(c.Domains) = 0: impossible---NormalizeDomains would have erred
+				// count[domain] = 1, len(c.Domains) = 1: impossible---NormalizeDomains would have erred
+				// count[domain] = 1, len(c.Domains) = 2: the warning is displayed
+				// count[domain] = 2, len(c.Domains) = 2: the other IPv4/6 still works for this domain
+				if count[domain] == 1 {
 					ppfmt.Warningf(pp.EmojiUserWarning,
 						"Domain %q is ignored because it is only for %s but %s is disabled",
 						domain.Describe(), ipNet.Describe(), ipNet.Describe())
