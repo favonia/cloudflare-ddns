@@ -42,9 +42,9 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 			MessageShouldDisplay[ipNet] = false
 			switch ipNet {
 			case ipnet.IP6:
-				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups.") //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns")                //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none")                       //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups") //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns")               //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none")                      //nolint:lll
 			case ipnet.IP4:
 				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none") //nolint:lll
 			}

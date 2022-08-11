@@ -146,9 +146,9 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
-					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups."), //nolint:lll
-					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),                //nolint:lll
-					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                       //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),               //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                      //nolint:lll
 				)
 			},
 			mockmap{
@@ -188,9 +188,9 @@ func TestUpdateIPs(t *testing.T) {
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none"), //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
-					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups."), //nolint:lll
-					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),                //nolint:lll
-					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                       //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns"),               //nolint:lll
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none"),                      //nolint:lll
 				)
 			},
 			mockmap{

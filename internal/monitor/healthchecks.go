@@ -38,7 +38,7 @@ func SetHealthChecksMaxRetries(maxRetries int) HealthChecksOption {
 func NewHealthChecks(ppfmt pp.PP, rawURL string, os ...HealthChecksOption) (Monitor, bool) {
 	url, err := url.Parse(rawURL)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks.io URL (redacted).")
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks.io URL (redacted)")
 		return nil, false
 	}
 
@@ -134,13 +134,13 @@ func (h *HealthChecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string) b
 			return false
 		}
 
-		ppfmt.Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", endpointDescription)
+		ppfmt.Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", endpointDescription)
 		return true
 	}
 
 	ppfmt.Warningf(
 		pp.EmojiError,
-		"Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io in %d time(s).",
+		"Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io in %d time(s)",
 		endpointDescription, h.MaxRetries)
 	return false
 }
@@ -159,7 +159,7 @@ func (h *HealthChecks) Failure(ctx context.Context, ppfmt pp.PP) bool {
 
 func (h *HealthChecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int) bool {
 	if code < 0 || code > 255 {
-		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255.", code)
+		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255", code)
 		return false
 	}
 

@@ -77,7 +77,7 @@ func TestNewHealthChecksFail2(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks.io URL (redacted).")
+	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks.io URL (redacted)")
 	_, ok := monitor.NewHealthChecks(mockPP, "://#?")
 	require.False(t, ok)
 }
@@ -125,7 +125,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                                     //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `default (root)`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                                     //nolint:lll
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", `default (root)`),                            //nolint:lll
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", `default (root)`),                             //nolint:lll
 				)
 			},
 		},
@@ -161,7 +161,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                                     //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `default (root)`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                                     //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io in %d time(s).", `default (root)`, 3), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io in %d time(s)", `default (root)`, 3),  //nolint:lll
 				)
 			},
 		},
@@ -178,7 +178,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                               //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `"/start"`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                               //nolint:lll
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", `"/start"`),                            //nolint:lll
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", `"/start"`),                             //nolint:lll
 				)
 			},
 		},
@@ -195,7 +195,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                              //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `"/fail"`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                              //nolint:lll
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", `"/fail"`),                            //nolint:lll
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", `"/fail"`),                             //nolint:lll
 				)
 			},
 		},
@@ -212,7 +212,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                           //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `"/0"`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                           //nolint:lll
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", `"/0"`),                            //nolint:lll
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", `"/0"`),                             //nolint:lll
 				)
 			},
 		},
@@ -229,7 +229,7 @@ func TestEndPoints(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                           //nolint:lll
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks.io: %v", `"/1"`, gomock.Any()), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),                                                                           //nolint:lll
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io.", `"/1"`),                            //nolint:lll
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks.io", `"/1"`),                             //nolint:lll
 				)
 			},
 		},
@@ -241,7 +241,7 @@ func TestEndPoints(t *testing.T) {
 			nil,
 			false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255.", -1)
+				m.EXPECT().Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255", -1)
 			},
 		},
 	} {
