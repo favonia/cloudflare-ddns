@@ -407,8 +407,8 @@ func TestPrintDomains(t *testing.T) {
 
 	c := config.Default()
 
-	c.Domains[ipnet.IP4] = []api.Domain{api.MustNewDomain("test4.org"), api.MustNewDomain("*.test4.org")}
-	c.Domains[ipnet.IP6] = []api.Domain{api.MustNewDomain("test6.org"), api.MustNewDomain("*.test6.org")}
+	c.Domains[ipnet.IP4] = []api.Domain{api.FQDN("test4.org"), api.Wildcard("test4.org")}
+	c.Domains[ipnet.IP6] = []api.Domain{api.FQDN("test6.org"), api.Wildcard("test6.org")}
 
 	c.Print(mockPP)
 }
