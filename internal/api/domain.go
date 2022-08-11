@@ -61,6 +61,7 @@ func NewDomain(domain string) (Domain, error) {
 	}
 }
 
+// MustNewDomain normalizes the domain and ignores all errors.
 func MustNewDomain(domain string) Domain {
 	d, _ := NewDomain(domain)
 	return d

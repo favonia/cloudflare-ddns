@@ -2,8 +2,8 @@ package api
 
 import "strings"
 
-// Wildcard is a fully qualified zone name in its ASCII or Unicode (when unambiguous) form,
-// represnting the wildcard domain name under the zone.
+// Wildcard is a fully qualified zone name in its ASCII form, represnting the wildcard domain name
+// under the zone. For example, Wildcard("example.org") represents "*.example.org".
 type Wildcard string
 
 func (w Wildcard) DNSName() string {
