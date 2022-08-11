@@ -105,13 +105,13 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 }
 
 func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain Domain) (string, bool) {
-	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
+	if id, found := h.cache.zoneOfDomain.Get(domain.DNSName()); found {
 		return id.(string), true //nolint:forcetypeassert
 	}
 
 zoneSearch:
 	for s := domain.Split(); s.IsValid(); s.Next() {
-		zoneName := s.ZoneNameASCII()
+		zoneName := s.ZoneName()
 		zones, ok := h.ActiveZones(ctx, ppfmt, zoneName)
 		if !ok {
 			return "", false
@@ -121,7 +121,7 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneOfDomain.SetDefault(domain.DNSNameASCII(), zones[0])
+			h.cache.zoneOfDomain.SetDefault(domain.DNSName(), zones[0])
 			return zones[0], true
 		default: // len(zones) > 1
 			ppfmt.Warningf(pp.EmojiImpossible,
@@ -137,7 +137,7 @@ zoneSearch:
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain Domain, ipNet ipnet.Type,
 ) (map[string]netip.Addr, bool) {
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSName()); found {
 		return rmap.(map[string]netip.Addr), true //nolint:forcetypeassert
 	}
 
@@ -148,7 +148,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
-		Name: domain.DNSNameASCII(),
+		Name: domain.DNSName(),
 		Type: ipNet.RecordType(),
 	})
 	if err != nil {
@@ -165,7 +165,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	h.cache.listRecords[ipNet].SetDefault(domain.DNSNameASCII(), rmap)
+	h.cache.listRecords[ipNet].SetDefault(domain.DNSName(), rmap)
 
 	return rmap, true
 }
@@ -182,12 +182,12 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSName())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSName()); found {
 		delete(rmap.(map[string]netip.Addr), id) //nolint:forcetypeassert
 	}
 
@@ -204,7 +204,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.DNSNameASCII(),
+		Name:    domain.DNSName(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
@@ -213,12 +213,12 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSName())
 
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSName()); found {
 		rmap.(map[string]netip.Addr)[id] = ip //nolint:forcetypeassert
 	}
 
@@ -235,7 +235,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
 	payload := cloudflare.DNSRecord{
-		Name:    domain.DNSNameASCII(),
+		Name:    domain.DNSName(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 		TTL:     ttl.Int(),
@@ -247,12 +247,12 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 
-		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
+		h.cache.listRecords[ipNet].Delete(domain.DNSName())
 
 		return "", false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
+	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSName()); found {
 		rmap.(map[string]netip.Addr)[res.Result.ID] = ip //nolint:forcetypeassert
 	}
 

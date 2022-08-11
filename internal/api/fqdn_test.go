@@ -14,7 +14,7 @@ func TestFQDNString(t *testing.T) {
 
 	require.NoError(t, quick.Check(
 		func(s string) bool {
-			return api.FQDN(s).DNSNameASCII() == s
+			return api.FQDN(s).DNSName() == s
 		},
 		nil,
 	))
@@ -86,7 +86,7 @@ func TestFQDNSplitter(t *testing.T) {
 			t.Parallel()
 			var rs []r
 			for s := api.FQDN(tc.input).Split(); s.IsValid(); s.Next() {
-				rs = append(rs, s.ZoneNameASCII())
+				rs = append(rs, s.ZoneName())
 			}
 			require.Equal(t, tc.expected, rs)
 		})

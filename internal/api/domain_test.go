@@ -108,6 +108,11 @@ func TestNewDomain(t *testing.T) {
 				require.EqualError(t, err, tc.errString)
 			}
 		})
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			normalized := api.MustNewDomain(tc.input)
+			require.Equal(t, tc.expected, normalized)
+		})
 	}
 }
 
@@ -132,7 +137,7 @@ func TestSortDomains(t *testing.T) {
 			require.ElementsMatch(t, copied, merged)
 			require.True(t, sort.SliceIsSorted(merged,
 				func(i, j int) bool {
-					return merged[i].DNSNameASCII() < merged[j].DNSNameASCII()
+					return merged[i].DNSName() < merged[j].DNSName()
 				}))
 
 			return true

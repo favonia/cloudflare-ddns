@@ -10,12 +10,12 @@ import (
 
 type DomainSplitter interface {
 	IsValid() bool
-	ZoneNameASCII() string
+	ZoneName() string
 	Next()
 }
 
 type Domain interface {
-	DNSNameASCII() string
+	DNSName() string
 	Describe() string
 	Split() DomainSplitter
 }
