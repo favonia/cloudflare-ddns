@@ -61,6 +61,12 @@ func NewDomain(domain string) (Domain, error) {
 	}
 }
 
+// MustNewDomain normalizes the domain and ignores all errors.
+func MustNewDomain(domain string) Domain {
+	d, _ := NewDomain(domain)
+	return d
+}
+
 func SortDomains(s []Domain) {
 	sort.Slice(s, func(i, j int) bool { return s[i].DNSNameASCII() < s[j].DNSNameASCII() })
 }

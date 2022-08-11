@@ -108,6 +108,11 @@ func TestNewDomain(t *testing.T) {
 				require.EqualError(t, err, tc.errString)
 			}
 		})
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			normalized := api.MustNewDomain(tc.input)
+			require.Equal(t, tc.expected, normalized)
+		})
 	}
 }
 

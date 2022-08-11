@@ -2,7 +2,7 @@ package api
 
 import "strings"
 
-// FQDN is a fully qualified domain in its ASCII or Unicode (when unambiguous) form.
+// FQDN is a fully qualified domain in its ASCII form.
 type FQDN string
 
 func (f FQDN) DNSNameASCII() string { return string(f) }

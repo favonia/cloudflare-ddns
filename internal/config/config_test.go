@@ -352,9 +352,9 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []string{}),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []string{}),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
@@ -370,6 +370,47 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 	config.Default().Print(mockPP)
+}
+
+//nolint:paralleltest // changing the environment variable TZ
+func TestPrintDomains(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().IncIndent().Return(mockPP),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []string{"test4.org", "*.test4.org"}),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []string{"test6.org", "*.test6.org"}),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %t", false),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
+	)
+
+	c := config.Default()
+
+	c.Domains[ipnet.IP4] = []api.Domain{api.MustNewDomain("test4.org"), api.MustNewDomain("*.test4.org")}
+	c.Domains[ipnet.IP6] = []api.Domain{api.MustNewDomain("test6.org"), api.MustNewDomain("*.test6.org")}
+
+	c.Print(mockPP)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -423,9 +464,9 @@ func TestPrintMonitors(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []api.Domain(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %v", []string{}),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []api.Domain(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %v", []string{}),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
