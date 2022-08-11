@@ -68,5 +68,5 @@ func MustNewDomain(domain string) Domain {
 }
 
 func SortDomains(s []Domain) {
-	sort.Slice(s, func(i, j int) bool { return s[i].DNSName() < s[j].DNSName() })
+	sort.Slice(s, func(i, j int) bool { return s[i].DNSNameASCII() < s[j].DNSNameASCII() })
 }

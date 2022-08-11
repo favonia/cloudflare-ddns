@@ -15,9 +15,9 @@ func TestWildcardString(t *testing.T) {
 	require.NoError(t, quick.Check(
 		func(s string) bool {
 			if s == "" {
-				return api.Wildcard(s).DNSName() == "*"
+				return api.Wildcard(s).DNSNameASCII() == "*"
 			}
-			return api.Wildcard(s).DNSName() == "*."+s
+			return api.Wildcard(s).DNSNameASCII() == "*."+s
 		},
 		nil,
 	))
@@ -89,7 +89,7 @@ func TestWildcardSplitter(t *testing.T) {
 			t.Parallel()
 			var rs []r
 			for s := api.Wildcard(tc.input).Split(); s.IsValid(); s.Next() {
-				rs = append(rs, s.ZoneName())
+				rs = append(rs, s.ZoneNameASCII())
 			}
 			require.Equal(t, tc.expected, rs)
 		})

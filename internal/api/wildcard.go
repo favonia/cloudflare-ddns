@@ -6,7 +6,7 @@ import "strings"
 // under the zone. For example, Wildcard("example.org") represents "*.example.org".
 type Wildcard string
 
-func (w Wildcard) DNSName() string {
+func (w Wildcard) DNSNameASCII() string {
 	if string(w) == "" {
 		return "*"
 	}
@@ -38,13 +38,13 @@ func (w Wildcard) Split() DomainSplitter {
 	}
 }
 
-func (s *WildcardSplitter) IsValid() bool    { return !s.exhausted }
-func (s *WildcardSplitter) ZoneName() string { return s.domain[s.cursor:] }
+func (s *WildcardSplitter) IsValid() bool         { return !s.exhausted }
+func (s *WildcardSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
 func (s *WildcardSplitter) Next() {
 	if s.cursor == len(s.domain) {
 		s.exhausted = true
 	} else {
-		shift := strings.IndexRune(s.ZoneName(), '.')
+		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
 		if shift == -1 {
 			s.cursor = len(s.domain)
 		} else {

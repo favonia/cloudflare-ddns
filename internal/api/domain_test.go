@@ -137,7 +137,7 @@ func TestSortDomains(t *testing.T) {
 			require.ElementsMatch(t, copied, merged)
 			require.True(t, sort.SliceIsSorted(merged,
 				func(i, j int) bool {
-					return merged[i].DNSName() < merged[j].DNSName()
+					return merged[i].DNSNameASCII() < merged[j].DNSNameASCII()
 				}))
 
 			return true
