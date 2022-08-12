@@ -12,5 +12,5 @@ import (
 //go:generate mockgen -destination=../mocks/mock_setter.go -package=mocks . Setter
 
 type Setter interface {
-	Set(ctx context.Context, ppfmt pp.PP, Domain api.Domain, IPNetwork ipnet.Type, IP netip.Addr) bool
+	Set(ctx context.Context, ppfmt pp.PP, Domain api.Domain, IPNetwork ipnet.Type, IP netip.Addr, proxied bool) bool
 }
