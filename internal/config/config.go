@@ -22,7 +22,8 @@ type Config struct {
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
 	TTL              api.TTL
-	Proxied          bool
+	DefaultProxied   bool
+	ProxiedByDomain  map[api.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
@@ -45,7 +46,8 @@ func Default() *Config {
 		DeleteOnStop:     false,
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
 		TTL:              api.TTL(1),
-		Proxied:          false,
+		DefaultProxied:   false,
+		ProxiedByDomain:  map[api.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 		Monitors:         nil,
@@ -164,7 +166,53 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
+func ReadProxiedDomains(ppfmt pp.PP, field *map[api.Domain]bool) bool {
+	var proxiedDomains, nonProxiedDomains []api.Domain
+
+	if !ReadDomains(ppfmt, "PROXIED_DOMAINS", &proxiedDomains) ||
+		!ReadDomains(ppfmt, "NON_PROXIED_DOMAINS", &nonProxiedDomains) {
+		return false
+	}
+
+	deduplicate(&proxiedDomains)
+	deduplicate(&nonProxiedDomains)
+
+	if len(proxiedDomains)+len(nonProxiedDomains) > 0 {
+		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes")  //nolint:lll
+		ppfmt.Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199") //nolint:lll
+		ppfmt.Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback")        //nolint:lll
+	}
+
+	// the new map to be created
+	m := map[api.Domain]bool{}
+
+	// all proxied domains
+	for _, proxiedDomain := range proxiedDomains {
+		m[proxiedDomain] = true
+	}
+
+	// non-proxied domains
+	for _, nonProxiedDomain := range nonProxiedDomains {
+		if proxied, ok := m[nonProxiedDomain]; ok && !proxied {
+			ppfmt.Errorf(pp.EmojiUserError,
+				"Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS",
+				nonProxiedDomain.Describe())
+			return false
+		}
+
+		m[nonProxiedDomain] = false
+	}
+
+	*field = m
+
+	return true
+}
+
 func describeDomains(domains []api.Domain) string {
+	if len(domains) == 0 {
+		return "(none)"
+	}
+
 	descriptions := make([]string, 0, len(domains))
 	for _, domain := range domains {
 		descriptions = append(descriptions, domain.Describe())
@@ -201,7 +249,16 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
 	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
-	inner.Infof(pp.EmojiBullet, "Proxied:          %t", c.Proxied)
+	{
+		proxiedMapping := map[bool][]api.Domain{}
+		proxiedMapping[true] = make([]api.Domain, 0, len(c.ProxiedByDomain))
+		proxiedMapping[false] = make([]api.Domain, 0, len(c.ProxiedByDomain))
+		for domain, proxied := range c.ProxiedByDomain {
+			proxiedMapping[proxied] = append(proxiedMapping[proxied], domain)
+		}
+		inner.Infof(pp.EmojiBullet, "Proxied:          %s", describeDomains(proxiedMapping[true]))
+		inner.Infof(pp.EmojiBullet, "Non-proxied:      %s", describeDomains(proxiedMapping[false]))
+	}
 
 	ppfmt.Infof(pp.EmojiConfig, "Timeouts:")
 	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
@@ -217,7 +274,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	if ppfmt.IsEnabledFor(pp.Info) {
-		ppfmt.Noticef(pp.EmojiEnvVars, "Reading settings . . .")
+		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
@@ -229,43 +286,24 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
 		!ReadNonnegInt(ppfmt, "TTL", (*int)(&c.TTL)) ||
-		!ReadBool(ppfmt, "PROXIED", &c.Proxied) ||
+		!ReadBool(ppfmt, "PROXIED", &c.DefaultProxied) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
+		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||
+		!ReadProxiedDomains(ppfmt, &c.ProxiedByDomain) {
 		return false
 	}
 
 	return true
 }
 
-func (c *Config) checkUselessDomains(ppfmt pp.PP) {
-	count := map[api.Domain]int{}
-	for _, domains := range c.Domains {
-		for _, domain := range domains {
-			count[domain]++
-		}
-	}
-
-	for ipNet, domains := range c.Domains {
-		if c.Provider[ipNet] == nil {
-			for _, domain := range domains {
-				// there are only two possible values here:
-				// count[domain] = 0, len(c.Domains) = 0: impossible---NormalizeDomains would have erred
-				// count[domain] = 1, len(c.Domains) = 1: impossible---NormalizeDomains would have erred
-				// count[domain] = 1, len(c.Domains) = 2: the warning is displayed
-				// count[domain] = 2, len(c.Domains) = 2: the other IPv4/6 still works for this domain
-				if count[domain] == 1 {
-					ppfmt.Warningf(pp.EmojiUserWarning,
-						"Domain %q is ignored because it is only for %s but %s is disabled",
-						domain.Describe(), ipNet.Describe(), ipNet.Describe())
-				}
-			}
-		}
-	}
-}
-
+//nolint:funlen,gocognit,cyclop
 func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
+	if ppfmt.IsEnabledFor(pp.Info) {
+		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
+		ppfmt = ppfmt.IncIndent()
+	}
+
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
 		return false
@@ -280,12 +318,63 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		}
 	}
 
+	// check if all policies are none
 	if c.Provider[ipnet.IP4] == nil && c.Provider[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled")
 		return false
 	}
 
-	c.checkUselessDomains(ppfmt)
+	// domainSet is the set of managed domains.
+	domainSet := map[api.Domain]bool{}
+	for ipNet, domains := range c.Domains {
+		if c.Provider[ipNet] != nil {
+			for _, domain := range domains {
+				domainSet[domain] = true
+			}
+		}
+	}
+
+	// check if some domains are unused
+	for ipNet, domains := range c.Domains {
+		if c.Provider[ipNet] == nil {
+			for _, domain := range domains {
+				if !domainSet[domain] {
+					ppfmt.Warningf(pp.EmojiUserWarning,
+						"Domain %q is ignored because it is only for %s but %s is disabled",
+						domain.Describe(), ipNet.Describe(), ipNet.Describe())
+				}
+			}
+		}
+	}
+
+	// fill in the default "proxied"
+	if c.ProxiedByDomain == nil {
+		c.ProxiedByDomain = map[api.Domain]bool{}
+		ppfmt.Warningf(pp.EmojiImpossible,
+			"Internal failure: ProxiedByDomain was nil, and is re-initialized",
+		)
+		ppfmt.Warningf(pp.EmojiImpossible,
+			"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+		)
+	}
+	for domain := range domainSet {
+		if _, ok := c.ProxiedByDomain[domain]; !ok {
+			c.ProxiedByDomain[domain] = c.DefaultProxied
+		}
+	}
+
+	// check if some domain-specific "proxied" setting is not used
+	envMap := map[bool]string{true: "PROXIED_DOMAINS", false: "NON_PROXIED_DOMAINS"}
+	if len(c.ProxiedByDomain) > len(domainSet) {
+		for domain, proxied := range c.ProxiedByDomain {
+			if !domainSet[domain] {
+				delete(c.ProxiedByDomain, domain)
+				ppfmt.Warningf(pp.EmojiUserWarning,
+					"Domain %q was listed in %s, but it is ignored because it is not managed by the updater",
+					domain.Describe(), envMap[proxied])
+			}
+		}
+	}
 
 	return true
 }

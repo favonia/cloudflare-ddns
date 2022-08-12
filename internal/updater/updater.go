@@ -4,11 +4,28 @@ import (
 	"context"
 	"net/netip"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
+
+func getProxied(ppfmt pp.PP, c *config.Config, domain api.Domain) bool {
+	if proxied, ok := c.ProxiedByDomain[domain]; ok {
+		return proxied
+	}
+
+	c.ProxiedByDomain[domain] = c.DefaultProxied
+	ppfmt.Warningf(pp.EmojiImpossible,
+		"Internal failure: ProxiedByDomain[%s] was not set, and is reset to %t",
+		domain.Describe(), c.DefaultProxied,
+	)
+	ppfmt.Warningf(pp.EmojiImpossible,
+		"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+	)
+	return c.DefaultProxied
+}
 
 func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr) bool {
 	ok := true
@@ -17,7 +34,7 @@ func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, 
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		if !s.Set(ctx, ppfmt, domain, ipNet, ip) {
+		if !s.Set(ctx, ppfmt, domain, ipNet, ip, getProxied(ppfmt, c, domain)) {
 			ok = false
 		}
 	}
@@ -56,7 +73,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
 	ok := true
 
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip := detectIP(ctx, ppfmt, c, ipNet)
 			if !ip.IsValid() {
@@ -76,7 +93,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
 	ok := true
 
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			if !setIP(ctx, ppfmt, c, s, ipNet, netip.Addr{}) {
 				ok = false

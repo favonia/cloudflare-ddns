@@ -11,9 +11,8 @@ import (
 )
 
 type setter struct {
-	Handle  api.Handle
-	TTL     api.TTL
-	Proxied bool
+	Handle api.Handle
+	TTL    api.TTL
 }
 
 func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
@@ -41,16 +40,15 @@ func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, un
 	return matchedIDs, unmatchedIDs
 }
 
-func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL, proxied bool) (Setter, bool) {
+func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL) (Setter, bool) {
 	return &setter{
-		Handle:  handle,
-		TTL:     ttl,
-		Proxied: proxied,
+		Handle: handle,
+		TTL:    ttl,
 	}, true
 }
 
 //nolint:funlen,cyclop,gocognit
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr) bool { //nolint:lll
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr, proxied bool) bool { //nolint:lll
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
@@ -124,7 +122,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 	// The checking "ip.IsValid()" is redundant but it does not hurt. (This function is too complicated.)
 	if !uptodate && ip.IsValid() {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
-			domain, ipnet, ip, s.TTL, s.Proxied); ok {
+			domain, ipnet, ip, s.TTL, proxied); ok {
 			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
 			uptodate = true
 		}
