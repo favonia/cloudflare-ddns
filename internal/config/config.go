@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -163,12 +164,12 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
-func describeDomains(domains []api.Domain) []string {
+func describeDomains(domains []api.Domain) string {
 	descriptions := make([]string, 0, len(domains))
 	for _, domain := range domains {
 		descriptions = append(descriptions, domain.Describe())
 	}
-	return descriptions
+	return strings.Join(descriptions, ", ")
 }
 
 func (c *Config) Print(ppfmt pp.PP) {
@@ -184,11 +185,11 @@ func (c *Config) Print(ppfmt pp.PP) {
 	ppfmt.Infof(pp.EmojiConfig, "Policies:")
 	inner.Infof(pp.EmojiBullet, "IPv4 provider:    %s", provider.Name(c.Provider[ipnet.IP4]))
 	if c.Provider[ipnet.IP4] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", describeDomains(c.Domains[ipnet.IP4]))
+		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %s", describeDomains(c.Domains[ipnet.IP4]))
 	}
 	inner.Infof(pp.EmojiBullet, "IPv6 provider:    %s", provider.Name(c.Provider[ipnet.IP6]))
 	if c.Provider[ipnet.IP6] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", describeDomains(c.Domains[ipnet.IP6]))
+		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %s", describeDomains(c.Domains[ipnet.IP6]))
 	}
 
 	ppfmt.Infof(pp.EmojiConfig, "Scheduling:")
