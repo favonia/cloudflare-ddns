@@ -104,27 +104,27 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.
-func deduplicate(list *[]api.Domain) {
-	api.SortDomains(*list)
+func deduplicate(list []api.Domain) []api.Domain {
+	api.SortDomains(list)
 
-	if len(*list) == 0 {
-		return
+	if len(list) == 0 {
+		return list
 	}
 
 	j := 0
-	for i := range *list {
-		if i == 0 || (*list)[j] == (*list)[i] {
+	for i := range list {
+		if i == 0 || list[j] == list[i] {
 			continue
 		}
 		j++
-		(*list)[j] = (*list)[i]
+		list[j] = list[i]
 	}
 
-	if len(*list) == j+1 {
-		return
+	if len(list) == j+1 {
+		return list
 	}
 
-	*list = (*list)[:j+1]
+	return list[:j+1]
 }
 
 func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
@@ -136,11 +136,8 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
 		return false
 	}
 
-	ip4Domains = append(ip4Domains, domains...)
-	ip6Domains = append(ip6Domains, domains...)
-
-	deduplicate(&ip4Domains)
-	deduplicate(&ip6Domains)
+	ip4Domains = deduplicate(append(ip4Domains, domains...))
+	ip6Domains = deduplicate(append(ip6Domains, domains...))
 
 	*field = map[ipnet.Type][]api.Domain{
 		ipnet.IP4: ip4Domains,
@@ -174,8 +171,8 @@ func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 		return false
 	}
 
-	deduplicate(&proxiedDomains)
-	deduplicate(&nonProxiedDomains)
+	proxiedDomains = deduplicate(proxiedDomains)
+	nonProxiedDomains = deduplicate(nonProxiedDomains)
 
 	if len(proxiedDomains) > 0 || len(nonProxiedDomains) > 0 {
 		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes")  //nolint:lll
@@ -255,6 +252,9 @@ func (c *Config) Print(ppfmt pp.PP) {
 		proxiedMapping[false] = make([]api.Domain, 0, len(c.ProxiedByDomain))
 		for domain, proxied := range c.ProxiedByDomain {
 			proxiedMapping[proxied] = append(proxiedMapping[proxied], domain)
+		}
+		for b := range proxiedMapping {
+			proxiedMapping[b] = deduplicate(proxiedMapping[b])
 		}
 		inner.Infof(pp.EmojiBullet, "Proxied:          %s", describeDomains(proxiedMapping[true]))
 		inner.Infof(pp.EmojiBullet, "Non-proxied:      %s", describeDomains(proxiedMapping[false]))

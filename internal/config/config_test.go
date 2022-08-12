@@ -511,6 +511,49 @@ func TestPrintEmpty(t *testing.T) {
 }
 
 //nolint:paralleltest // changing the environment variable TZ
+func TestPrintProxiedByDomain(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	c := config.Default()
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder( //nolint:dupl
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().IncIndent().Return(mockPP),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %s", "(none)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "a, b"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "c, d"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+	)
+
+	c.ProxiedByDomain = map[api.Domain]bool{}
+	c.ProxiedByDomain[api.FQDN("a")] = true
+	c.ProxiedByDomain[api.FQDN("b")] = true
+	c.ProxiedByDomain[api.FQDN("c")] = false
+	c.ProxiedByDomain[api.FQDN("d")] = false
+	c.Print(mockPP)
+}
+
+//nolint:paralleltest // changing the environment variable TZ
 func TestPrintMonitors(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
