@@ -367,7 +367,6 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 	config.Default().Print(mockPP)
 }
@@ -402,7 +401,6 @@ func TestPrintDomains(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 
 	c := config.Default()
@@ -441,7 +439,6 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors: (none)"),
 	)
 	var cfg config.Config
 	cfg.Print(mockPP)
