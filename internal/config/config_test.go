@@ -723,7 +723,49 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
-		"ignored-proxied": {
+		"proxied-nil": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP4: nil,
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]api.Domain{
+					ipnet.IP4: nil,
+					ipnet.IP6: {api.FQDN("a.b.c")},
+				},
+				DefaultProxied:  true,
+				ProxiedByDomain: nil,
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP4: nil,
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]api.Domain{
+					ipnet.IP4: nil,
+					ipnet.IP6: {api.FQDN("a.b.c")},
+				},
+				DefaultProxied: true,
+				ProxiedByDomain: map[api.Domain]bool{
+					api.FQDN("a.b.c"): true,
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Warningf(pp.EmojiImpossible,
+						"Internal failure: ProxiedByDomain is re-initialized because it was nil",
+					),
+					m.EXPECT().Warningf(pp.EmojiImpossible,
+						"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+					),
+				)
+			},
+		},
+		"proxied-ignored": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,

@@ -351,7 +351,7 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	if c.ProxiedByDomain == nil {
 		c.ProxiedByDomain = map[api.Domain]bool{}
 		ppfmt.Warningf(pp.EmojiImpossible,
-			"Internal failure: ProxiedByDomain was nil, and is re-initialized",
+			"Internal failure: ProxiedByDomain is re-initialized because it was nil",
 		)
 		ppfmt.Warningf(pp.EmojiImpossible,
 			"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
