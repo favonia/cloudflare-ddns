@@ -32,6 +32,7 @@ A small and fast DDNS updater for Cloudflare.
 * Full configurability via environment variables.
 * Ability to pass API tokens via a file instead of an environment variable.
 * Local caching to reduce Cloudflare API usage.
+* Per-domain proxy settings _(experimental)._
 * Integration with [Healthchecks.io](https://healthchecks.io).
 
 ## 🕵️ Privacy
@@ -336,6 +337,13 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `UPDATE_ON_START` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `30s` (30 seconds)
 
+Experimental features: (Please share your usage at [this GitHub issue.](https://github.com/favonia/cloudflare-ddns/issues/199))
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
+| `PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
+| `NON_PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should **not** be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
+
 Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 </details>
 
@@ -356,7 +364,7 @@ The updater will also try to drop supplementary group IDs.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
-| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | N/A
+| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | `""` (unset)
 </details>
 
 For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol.](https://healthchecks.io/docs/http_api/)
