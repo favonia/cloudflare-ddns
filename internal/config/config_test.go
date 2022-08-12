@@ -198,7 +198,7 @@ func TestReadDomainMap(t *testing.T) {
 			store(t, "IP4_DOMAINS", tc.ip4Domains)
 			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
-			field := map[ipnet.Type][]api.Domain{}
+			var field map[ipnet.Type][]api.Domain
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -298,6 +298,69 @@ func TestReadProviderMap(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			ok := config.ReadProviderMap(mockPP, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadProxiedByDomain(t *testing.T) {
+	for name, tc := range map[string]struct {
+		proxiedDomains    string
+		nonProxiedDomains string
+		ok                bool
+		expected          map[api.Domain]bool
+		prepareMockPP     func(*mocks.MockPP)
+	}{
+		"empty": {
+			" ", "   ",
+			true,
+			map[api.Domain]bool{},
+			nil,
+		},
+		"both": {
+			"  a1, a2", "b1",
+			true,
+			map[api.Domain]bool{
+				api.FQDN("a1"): true,
+				api.FQDN("a2"): true,
+				api.FQDN("b1"): false,
+			},
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes"),  //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback"),        //nolint:lll
+				)
+			},
+		},
+		"overlapping": {
+			"  a1 ", "a1",
+			false,
+			nil,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes"),  //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback"),        //nolint:lll
+					m.EXPECT().Errorf(pp.EmojiUserError, "Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS", "a1"))
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			store(t, "PROXIED_DOMAINS", tc.proxiedDomains)
+			store(t, "NON_PROXIED_DOMAINS", tc.nonProxiedDomains)
+
+			var field map[api.Domain]bool
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadProxiedByDomain(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})

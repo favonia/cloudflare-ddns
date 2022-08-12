@@ -166,7 +166,7 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
-func ReadProxiedDomains(ppfmt pp.PP, field *map[api.Domain]bool) bool {
+func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	var proxiedDomains, nonProxiedDomains []api.Domain
 
 	if !ReadDomains(ppfmt, "PROXIED_DOMAINS", &proxiedDomains) ||
@@ -177,7 +177,7 @@ func ReadProxiedDomains(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	deduplicate(&proxiedDomains)
 	deduplicate(&nonProxiedDomains)
 
-	if len(proxiedDomains)+len(nonProxiedDomains) > 0 {
+	if len(proxiedDomains) > 0 || len(nonProxiedDomains) > 0 {
 		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes")  //nolint:lll
 		ppfmt.Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199") //nolint:lll
 		ppfmt.Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback")        //nolint:lll
@@ -193,7 +193,7 @@ func ReadProxiedDomains(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 
 	// non-proxied domains
 	for _, nonProxiedDomain := range nonProxiedDomains {
-		if proxied, ok := m[nonProxiedDomain]; ok && !proxied {
+		if proxied, ok := m[nonProxiedDomain]; ok && proxied {
 			ppfmt.Errorf(pp.EmojiUserError,
 				"Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS",
 				nonProxiedDomain.Describe())
@@ -290,7 +290,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
 		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||
-		!ReadProxiedDomains(ppfmt, &c.ProxiedByDomain) {
+		!ReadProxiedByDomain(ppfmt, &c.ProxiedByDomain) {
 		return false
 	}
 
