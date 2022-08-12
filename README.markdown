@@ -323,28 +323,35 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
 
 <details>
-<summary>⏳ Schedules, timeouts, and parameters of new DNS records</summary>
+<summary>⏳ Schedules and timeouts</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `CACHE_EXPIRATION` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The expiration of cached Cloudflare API responses | No | `6h0m0s` (6 hours)
 | `DELETE_ON_STOP` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether managed DNS records should be deleted on exit | No | `false`
 | `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses | No | `5s` (5 seconds)
-| `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
-| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 | `TZ` | Recognized timezones, such as `UTC` | The timezone used for logging and parsing `UPDATE_CRON` | No | `UTC`
 | `UPDATE_CRON` | Cron expressions. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) | The schedule to re-check IP addresses and update DNS records (if necessary) | No | `@every 5m` (every 5 minutes)
 | `UPDATE_ON_START` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `30s` (30 seconds)
 
-Experimental features: (Please share your usage at [this GitHub issue.](https://github.com/favonia/cloudflare-ddns/issues/199))
+Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
+</details>
+
+<details>
+<summary>🆕 Parameters of new DNS records</summary>
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| ---- | ------------ | ------- | --------- | ------------- |
+| `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
+| `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
+
+Experimental features: (Please [share your usage at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the interface. Thanks!)
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
 | `NON_PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should **not** be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
-
-Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 </details>
 
 <details>
