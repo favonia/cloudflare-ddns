@@ -385,7 +385,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 ## 🚵 Migration Guides
 
 <details>
-<summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a>.</summary>
+<summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns.</a></summary>
 
 ⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate or forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare or ipify.
 
@@ -399,8 +399,25 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `RRTYPE=AAAA` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
 | `DELETE_ON_STOP=true` | ✔️ | Same |
 | `INTERFACE=iface` | ✔️ | Not required for `local` providers; we can handle multiple network interfaces |
-| `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image._ |
-| `DNS_SERVER=server` | ❌ | _Only the Cloudflare server is supported._ |
+| `CUSTOM_LOOKUP_CMD=cmd` | ❌ | _There is not even a shell in the minimum Docker image_ |
+| `DNS_SERVER=server` | ❌ | _Only the secure Cloudflare and ipify are supported_ |
+
+</details>
+
+<details>
+<summary>I am migrating from <a href="https://github.com/timothymiller/cloudflare-ddns">timothymiller/cloudflare-ddns.</a></summary>
+
+| Old JSON Key |  | New Paramater |
+| ------------ | - | ------------- |
+| `cloudflare.authentication.api_token` | ✔️ | Use `CF_API_TOKEN=key` |
+| `cloudflare.authentication.api_key` | ❌ | _Use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)_ |
+| `cloudflare.zone_id` | ✔️ | Not needed; automatically retrieved from the server |
+| `cloudflare.subdomains[].name` | ✔️ | Use `DOMAINS` with **fully qualified domain names** (FQDNs); for example, if your zone is `example.org` and your subdomain is `www`, use `DOMAINS=sub.example.org` |
+| `cloudflare.subdomains[].proxied` | ✔️ | Use `PROXIED=true` or `PROXIED=false` to specify the global proxy setting, and then use `PROXIED_DOMAINS` and `NON_PROXIED_DOMAINS` with **fully qualified domain names** (FQDNs) to override the global setting if desired |
+| `a` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
+| `aaaa` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
+| `proxied` | ✔️ | Use `PROXIED=true` or `PROXIED=false` |
+| `purgeUnknownRecords` | ❌ | _The updater never deletes unmanaged DNS records_ |
 
 </details>
 
