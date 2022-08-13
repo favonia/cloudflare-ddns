@@ -96,19 +96,20 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
+		// see https://api.cloudflare.com/#zone-list-zones for possible statuses
 		switch zone.Status {
-		case "active":
+		case "active": // fully working
 			ids = append(ids, zone.ID)
 		case
-			"deactivated",
-			"initializing",
-			"moved",
-			"pending":
+			"deactivated",  // violating term of service, etc.
+			"initializing", // the setup was just started?
+			"moved",        // domain registrar not pointing to Cloudflare
+			"pending":      // the setup was not completed
 			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", name, zone.Status)
 			ppfmt.Warningf(pp.EmojiWarning, "Some features might stop working", name, zone.Status)
 			ids = append(ids, zone.ID)
 		case
-			"deleted":
+			"deleted": // archived, pending/moved for too long
 			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
 			// skip these
 		default:
