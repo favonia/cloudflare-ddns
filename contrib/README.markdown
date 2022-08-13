@@ -8,7 +8,7 @@ Docker's `always` restart policy will start the updater at boot along with the D
 
 ### 🧑‍💻 Systemd-based
 
-*Warnings:* Docker, by default, enforces better isolation than Systemd. Moreover, the sample Systemd service unit file intentionally turns off several protections for efficiency and convenience. Using the Docker-based method above is recommended for better security.
+⚠️ Docker, by default, enforces better isolation than Systemd. Moreover, the sample Systemd service unit file intentionally turns off several protections for efficiency and convenience. Using the Docker-based method above is recommended for better security.
 
-- See `cloudflare.service` for a sample Systemd service unit file.
-- See `cloudflare.service.env` for a sample Systemd environment file.
+- See [cloudflare.service](cloudflare.service) for a sample Systemd service unit file.
+- See [cloudflare.service.env](cloudflare.service.env) for a sample Systemd environment file.
