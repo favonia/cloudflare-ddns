@@ -104,16 +104,16 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 			"initializing",
 			"moved",
 			"pending":
-			ppfmt.Warningf(pp.EmojiUserWarning, "Found a zone named %q whose status is %q; your Cloudflare setup is incomplete", name, zone.Status)
-			ppfmt.Warningf(pp.EmojiUserWarning, "The updater will proceed as usual, but some features might stop working", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiWarning, "Some features might stop working", name, zone.Status)
 			ids = append(ids, zone.ID)
 		case
 			"deleted":
-			ppfmt.Infof(pp.EmojiWarning, "Skipped a zone named %q whose status is %q", name, zone.Status)
+			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
 			// skip these
 		default:
-			ppfmt.Warningf(pp.EmojiImpossible, "Found a zone %q whose status is %q, but the status is not mentioned by the Cloudflare documentation", name, zone.Status)
-			ppfmt.Warningf(pp.EmojiImpossible, "The updater will proceed as usual, but please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
 			ids = append(ids, zone.ID)
 		}
 	}

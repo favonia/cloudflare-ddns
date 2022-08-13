@@ -158,22 +158,24 @@ func TestNewInvalid(t *testing.T) {
 	require.Nil(t, h)
 }
 
-func mockZone(zoneName string, i int) *cloudflare.Zone {
+func mockZone(name string, i int, status string) *cloudflare.Zone {
 	return &cloudflare.Zone{ //nolint:exhaustruct
-		ID:     mockID(zoneName, i),
-		Name:   zoneName,
-		Status: "active",
+		ID:     mockID(name, i),
+		Name:   name,
+		Status: status,
 	}
 }
 
-func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse {
+func mockZonesResponse(zoneName string, zoneStatuses []string) *cloudflare.ZonesResponse {
+	numZones := len(zoneStatuses)
+
 	if numZones > 50 {
 		panic("mockZonesResponse got too many zone names")
 	}
 
-	zones := make([]cloudflare.Zone, numZones)
-	for i := 0; i < numZones; i++ {
-		zones[i] = *mockZone(zoneName, i)
+	zones := make([]cloudflare.Zone, len(zoneStatuses))
+	for i, status := range zoneStatuses {
+		zones[i] = *mockZone(zoneName, i, status)
 	}
 
 	return &cloudflare.ZonesResponse{
@@ -195,7 +197,7 @@ func mockZonesResponse(zoneName string, numZones int) *cloudflare.ZonesResponse 
 	}
 }
 
-func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWriter, r *http.Request) {
+func handleZones(t *testing.T, zoneName string, zoneStatuses []string, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
 	require.Equal(t, http.MethodGet, r.Method)
@@ -204,26 +206,25 @@ func handleZones(t *testing.T, zoneName string, numZones int, w http.ResponseWri
 		"account.id": {mockAccount},
 		"name":       {zoneName},
 		"per_page":   {"50"},
-		"status":     {"active"},
 	}, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
-	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, numZones))
+	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, zoneStatuses))
 	require.NoError(t, err)
 }
 
 type zonesHandler struct {
-	mux         *http.ServeMux
-	numZones    *map[string]int
-	accessCount *int
+	mux          *http.ServeMux
+	zoneStatuses *map[string][]string
+	accessCount  *int
 }
 
 func newZonesHandler(t *testing.T, mux *http.ServeMux) *zonesHandler {
 	t.Helper()
 
 	var (
-		numZones    map[string]int
-		accessCount int
+		zoneStatuses map[string][]string
+		accessCount  int
 	)
 
 	mux.HandleFunc("/zones", func(w http.ResponseWriter, r *http.Request) {
@@ -233,18 +234,18 @@ func newZonesHandler(t *testing.T, mux *http.ServeMux) *zonesHandler {
 		accessCount--
 
 		zoneName := r.URL.Query().Get("name")
-		handleZones(t, zoneName, numZones[zoneName], w, r)
+		handleZones(t, zoneName, zoneStatuses[zoneName], w, r)
 	})
 
 	return &zonesHandler{
-		mux:         mux,
-		numZones:    &numZones,
-		accessCount: &accessCount,
+		mux:          mux,
+		zoneStatuses: &zoneStatuses,
+		accessCount:  &accessCount,
 	}
 }
 
-func (h *zonesHandler) set(numZones map[string]int, accessCount int) {
-	*(h.numZones), *(h.accessCount) = numZones, accessCount
+func (h *zonesHandler) set(zoneStatuses map[string][]string, accessCount int) {
+	*(h.zoneStatuses), *(h.accessCount) = zoneStatuses, accessCount
 }
 
 func (h *zonesHandler) isExhausted() bool {
@@ -271,7 +272,7 @@ func TestActiveZonesTwo(t *testing.T) {
 
 	zh := newZonesHandler(t, mux)
 
-	zh.set(map[string]int{"test.org": 2}, 1)
+	zh.set(map[string][]string{"test.org": {"active", "active"}}, 1)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
@@ -308,7 +309,7 @@ func TestActiveZonesEmpty(t *testing.T) {
 
 	zh := newZonesHandler(t, mux)
 
-	zh.set(map[string]int{}, 1)
+	zh.set(map[string][]string{}, 1)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
@@ -344,18 +345,18 @@ func TestZoneOfDomain(t *testing.T) {
 	for name, tc := range map[string]struct {
 		zone          string
 		domain        api.Domain
-		numZones      map[string]int
+		zoneStatuses  map[string][]string
 		accessCount   int
 		expected      string
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"root":     {"test.org", api.FQDN("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil},
-		"wildcard": {"test.org", api.Wildcard("test.org"), map[string]int{"test.org": 1}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
-		"one":      {"test.org", api.FQDN("sub.test.org"), map[string]int{"test.org": 1}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
+		"root":     {"test.org", api.FQDN("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},     //nolint:lll
+		"wildcard": {"test.org", api.Wildcard("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
+		"one":      {"test.org", api.FQDN("sub.test.org"), map[string][]string{"test.org": {"active"}}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
 		"none": {
 			"test.org", api.FQDN("sub.test.org"),
-			map[string]int{},
+			map[string][]string{},
 			3, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
@@ -363,7 +364,7 @@ func TestZoneOfDomain(t *testing.T) {
 		},
 		"none/wildcard": {
 			"test.org", api.Wildcard("test.org"),
-			map[string]int{},
+			map[string][]string{},
 			2, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org")
@@ -371,7 +372,7 @@ func TestZoneOfDomain(t *testing.T) {
 		},
 		"multiple": {
 			"test.org", api.FQDN("sub.test.org"),
-			map[string]int{"test.org": 2},
+			map[string][]string{"test.org": {"active", "active"}},
 			2, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
@@ -383,13 +384,57 @@ func TestZoneOfDomain(t *testing.T) {
 		},
 		"multiple/wildcard": {
 			"test.org", api.Wildcard("test.org"),
-			map[string]int{"test.org": 2},
+			map[string][]string{"test.org": {"active", "active"}},
 			1, "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiImpossible,
 					"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
 					"test.org",
+				)
+			},
+		},
+		"deleted": {
+			"test.org", api.FQDN("test.org"),
+			map[string][]string{"test.org": {"deleted"}},
+			2, "", false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", "test.org", "deleted"),
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
+				)
+			},
+		},
+		"pending": {
+			"test.org", api.FQDN("test.org"),
+			map[string][]string{"test.org": {"pending"}},
+			1, mockID("test.org", 0), true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", "test.org", "pending"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiWarning, "Some features might stop working", "test.org", "pending"),
+				)
+			},
+		},
+		"initializing": {
+			"test.org", api.FQDN("test.org"),
+			map[string][]string{"test.org": {"initializing"}},
+			1, mockID("test.org", 0), true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", "test.org", "initializing"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiWarning, "Some features might stop working", "test.org", "initializing"),
+				)
+			},
+		},
+		"undocumented": {
+			"test.org", api.FQDN("test.org"),
+			map[string][]string{"test.org": {"some-undocumented-status"}},
+			1, mockID("test.org", 0), true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q", "test.org", "some-undocumented-status"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"),  //nolint:lll
 				)
 			},
 		},
@@ -402,7 +447,7 @@ func TestZoneOfDomain(t *testing.T) {
 
 			zh := newZonesHandler(t, mux)
 
-			zh.set(tc.numZones, tc.accessCount)
+			zh.set(tc.zoneStatuses, tc.accessCount)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -414,10 +459,7 @@ func TestZoneOfDomain(t *testing.T) {
 
 			if tc.ok {
 				zh.set(nil, 0)
-				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMockPP != nil {
-					tc.prepareMockPP(mockPP)
-				}
+				mockPP = mocks.NewMockPP(mockCtrl) // there shouldn't be any messages
 				zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
@@ -505,7 +547,7 @@ func TestListRecords(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	var (
 		ipNet       ipnet.Type
@@ -556,7 +598,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	var (
 		ipNet       ipnet.Type
@@ -621,7 +663,7 @@ func TestListRecordsWildcard(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 1)
+	zh.set(map[string][]string{"test.org": {"active"}}, 1)
 
 	var (
 		ipNet       ipnet.Type
@@ -671,7 +713,7 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
@@ -746,7 +788,7 @@ func TestDeleteRecordValid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	var (
 		listAccessCount   int
@@ -803,7 +845,7 @@ func TestDeleteRecordInvalid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
@@ -839,7 +881,7 @@ func TestUpdateRecordValid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	var (
 		listAccessCount   int
@@ -905,7 +947,7 @@ func TestUpdateRecordInvalid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
@@ -941,7 +983,7 @@ func TestCreateRecordValid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	var (
 		listAccessCount   int
@@ -1009,7 +1051,7 @@ func TestCreateRecordInvalid(t *testing.T) {
 	mux, h := newHandle(t)
 
 	zh := newZonesHandler(t, mux)
-	zh.set(map[string]int{"test.org": 1}, 2)
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
