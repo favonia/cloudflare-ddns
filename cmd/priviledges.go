@@ -147,7 +147,7 @@ func printPriviledges(ppfmt pp.PP) {
 	case len(groups) > 0:
 		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %d", groups)
 	default:
-		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (empty)")
+		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (none)")
 	}
 
 	printCapabilities(inner)

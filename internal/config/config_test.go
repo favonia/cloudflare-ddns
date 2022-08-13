@@ -329,9 +329,9 @@ func TestReadProxiedByDomain(t *testing.T) {
 			},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes"),  //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback"),        //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features"),
+					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback"),
 				)
 			},
 		},
@@ -341,9 +341,9 @@ func TestReadProxiedByDomain(t *testing.T) {
 			nil,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes"),  //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback"),        //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features"),
+					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback"),
 					m.EXPECT().Errorf(pp.EmojiUserError, "Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS", "a1"))
 			},
 		},
