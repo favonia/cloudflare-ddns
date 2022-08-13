@@ -88,15 +88,34 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		return ids.([]string), true //nolint:forcetypeassert
 	}
 
-	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, "active"))
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, ""))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
 
 	ids := make([]string, 0, len(res.Result))
-	for i := range res.Result {
-		ids = append(ids, res.Result[i].ID)
+	for _, zone := range res.Result {
+		switch zone.Status {
+		case "active":
+			ids = append(ids, zone.ID)
+		case
+			"deactivated",
+			"initializing",
+			"moved",
+			"pending":
+			ppfmt.Warningf(pp.EmojiUserWarning, "Found a zone named %q whose status is %q; your Cloudflare setup is incomplete", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiUserWarning, "The updater will proceed as usual, but some features might stop working", name, zone.Status)
+			ids = append(ids, zone.ID)
+		case
+			"deleted":
+			ppfmt.Infof(pp.EmojiWarning, "Skipped a zone named %q whose status is %q", name, zone.Status)
+			// skip these
+		default:
+			ppfmt.Warningf(pp.EmojiImpossible, "Found a zone %q whose status is %q, but the status is not mentioned by the Cloudflare documentation", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiImpossible, "The updater will proceed as usual, but please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+			ids = append(ids, zone.ID)
+		}
 	}
 
 	h.cache.activeZones.SetDefault(name, ids)

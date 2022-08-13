@@ -30,6 +30,7 @@ const (
 	EmojiUserError   Emoji = "😡" // configuration mistakes made by users
 	EmojiUserWarning Emoji = "😦" // warnings about possible configuration mistakes
 	EmojiError       Emoji = "😞" // errors that are not (directly) caused by user errors
+	EmojiWarning     Emoji = "😐" // warnings about something unusual
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
 )
 
