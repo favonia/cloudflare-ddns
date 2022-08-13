@@ -118,7 +118,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint:lll
+				`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace`,
 				keyDeprecated, key, key,
 			)
 			*field = provider.NewCloudflareTrace()
@@ -126,7 +126,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare.trace":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewCloudflareTrace()
@@ -134,7 +134,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare.doh":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewCloudflareDOH()
@@ -142,7 +142,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "ipify":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewIpify()
@@ -150,7 +150,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "local":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewLocal()
@@ -158,7 +158,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "unmanaged":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=none`,
+				`Parameter %s was deprecated; use %s=none`,
 				keyDeprecated, key,
 			)
 			*field = nil
@@ -171,7 +171,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		if Getenv(keyDeprecated) != "" {
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`Cannot have both %s and %s set.`,
+				`Cannot have both %s and %s set`,
 				key, keyDeprecated,
 			)
 			return false
@@ -181,7 +181,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint:lll
+				`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
 				key, key,
 			)
 			return false

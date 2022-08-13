@@ -341,7 +341,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint:lll
+					`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace`, //nolint:lll
 					keyDeprecated, key, key,
 				)
 			},
@@ -351,7 +351,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.trace",
@@ -363,7 +363,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.doh",
@@ -375,7 +375,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=none`,
+					`Parameter %s was deprecated; use %s=none`,
 					keyDeprecated,
 					key,
 				)
@@ -386,7 +386,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"local",
@@ -398,7 +398,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"ipify",
@@ -416,7 +416,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`Cannot have both %s and %s set.`,
+					`Cannot have both %s and %s set`,
 					key, keyDeprecated,
 				)
 			},
@@ -432,7 +432,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint:lll
+					`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
 					key, key,
 				)
 			},

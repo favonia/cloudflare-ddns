@@ -11,10 +11,10 @@ A small and fast DDNS updater for Cloudflare.
 ```
 🔇 Quiet mode enabled
 🌟 Cloudflare DDNS
-🥷 Priviledges after dropping:
+🥷 Remaining priviledges:
    🔸 Effective UID:      1000
    🔸 Effective GID:      1000
-   🔸 Supplementary GIDs: (empty)
+   🔸 Supplementary GIDs: (none)
 🐣 Added a new A record of "……" (ID: ……)
 🐣 Added a new AAAA record of "……" (ID: ……)
 ```
@@ -346,7 +346,7 @@ Note that the update schedule _does not_ take the time to update records into co
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
-Experimental features: (Please [share your usage at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the interface. Thanks!)
+Experimental features: (Please [share your case at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the design. Thanks!)
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |

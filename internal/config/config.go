@@ -175,9 +175,9 @@ func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	nonProxiedDomains = deduplicate(nonProxiedDomains)
 
 	if len(proxiedDomains) > 0 || len(nonProxiedDomains) > 0 {
-		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental and subject to changes")  //nolint:lll
-		ppfmt.Warningf(pp.EmojiExperimental, "Please share your usage at https://github.com/favonia/cloudflare-ddns/issues/199") //nolint:lll
-		ppfmt.Warningf(pp.EmojiExperimental, "We might redesign or remove this feature based on your (lack of) feedback")        //nolint:lll
+		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features")
+		ppfmt.Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199") //nolint:lll
+		ppfmt.Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback")
 	}
 
 	// the new map to be created
