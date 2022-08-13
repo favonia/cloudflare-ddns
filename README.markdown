@@ -339,7 +339,7 @@ Note that the update schedule _does not_ take the time to update records into co
 </details>
 
 <details>
-<summary>🆕 Parameters of new DNS records</summary>
+<summary>🐣 Parameters of new DNS records</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
