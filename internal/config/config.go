@@ -163,6 +163,24 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
+func ReadTTL(ppfmt pp.PP, field *api.TTL) bool {
+	if !ReadNonnegInt(ppfmt, "TTL", (*int)(field)) {
+		return false
+	}
+
+	// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
+	// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
+	// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+	//
+	// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+	// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+
+	if *field != 1 && (*field < 30 || *field > 86400) {
+		ppfmt.Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", int(*field))
+	}
+	return true
+}
+
 func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	var proxiedDomains, nonProxiedDomains []api.Domain
 
@@ -285,7 +303,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadNonnegInt(ppfmt, "TTL", (*int)(&c.TTL)) ||
+		!ReadTTL(ppfmt, &c.TTL) ||
 		!ReadBool(ppfmt, "PROXIED", &c.DefaultProxied) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
