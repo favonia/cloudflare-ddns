@@ -21,51 +21,45 @@ A small and fast DDNS updater for Cloudflare.
 
 ## 📜 Highlights
 
-* Ultra-small Docker images (about 2.5 MB) for all common architectures.
-* Ability to update multiple domains across different zones.
-* Ability to enable or disable IPv4 and IPv6 individually.
-* Support of internationalized domain names.
-* Support of wildcard domain names (_e.g._, `*.example.org`).
-* Ability to remove stale records or choose to remove records on exit/stop.
-* Ability to obtain IP addresses from Cloudflare, ipify, or local network interfaces.
-* Support of timezone and Cron expressions.
-* Full configurability via environment variables.
-* Ability to pass API tokens via a file instead of an environment variable.
-* Local caching to reduce Cloudflare API usage.
-* Per-domain proxy settings _(experimental)._
-* Integration with [Healthchecks.io](https://healthchecks.io).
+### 🏄 Efficiency
 
-## 🕵️ Privacy
+The Docker images are ultra-small (about 2.5 MB), smaller than other updaters which claim to be small. In addition to the efficient Go runtime, it caches Cloudflare API responses to reduce the API usage.
 
-By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the updater to use [ipify](https://www.ipify.org), which claims not to log any visitor information.
+### 💯 Comprehensive Support of Domain Names
 
-## 🛡️ Security
+Simply list all the domain names and you are done!
 
-<details><summary>🚷 The superuser privilege is immediately dropped after the updater starts.</summary>
+* Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. The Cloudflare API [has rough edges when it comes to internationalized domain names](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832), but the updater smooths them out.
+* Wildcard domain names (_e.g._, `*.example.org`) are also supported.
+* Unlike many other tools, this updater automatically finds the DNS zones of domain names.
+* You can enable or disable IPv4 (A records), IPv6 (AAAA records), and Cloudflare proxying for each domain. _(The per-domain proxy setting is experimental and [wants your feedback.](https://github.com/favonia/cloudflare-ddns/issues/199))_
 
-The updater honors `PGID` and `PUID` and will drop Linux capabilities (divided superuser privileges).
-</details>
+### 🕵️ Privacy
 
-<details><summary>🔌 The source code depends on six external libraries (outside the Go project).</summary>
+By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the updater to use [ipify](https://www.ipify.org), which claims not to log any visitor information. [Open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you want the updater to support other method to detect public IP addresses.
 
-- [cap](https://sites.google.com/site/fullycapable):\
-  Manipulation of Linux capabilities.
-- [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-  The official Go binding of Cloudflare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
-- [cron](https://github.com/robfig/cron):\
-  Parsing of Cron expressions.
-- [go-cache](https://github.com/patrickmn/go-cache):\
-  Essentially `map[string]interface{}` with expiration times.
-- [mock](https://github.com/golang/mock) (for testing only):\
-  A comprehensive, semi-official framework for mocking.
-- [testify](https://github.com/stretchr/testify) (for testing only):\
-  A comprehensive tool set for testing Go programs.
-</details>
+### 🛡️ Security
+
+* The superuser privileges are immediately dropped after the updater starts.
+* Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
+* The updater uses only established open-source libraries. <details><summary>🔌 Full list of external Go libraries.</summary>
+  - [cap](https://sites.google.com/site/fullycapable):\
+    Manipulation of Linux capabilities.
+  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
+    The official Go binding of Cloudflare API v4. It provides robust handling of pagination, rate limiting, and other tricky details.
+  - [cron](https://github.com/robfig/cron):\
+    Parsing of Cron expressions.
+  - [go-cache](https://github.com/patrickmn/go-cache):\
+    Essentially `map[string]interface{}` with expiration times.
+  - [mock](https://github.com/golang/mock) (for testing only):\
+    A comprehensive, semi-official framework for mocking.
+  - [testify](https://github.com/stretchr/testify) (for testing only):\
+    A comprehensive tool set for testing Go programs.
+  </details>
 
 ## ⛷️ Quick Start
 
-<details>
-<summary>🐋 Directly run the provided Docker images.</summary>
+<details><summary>🐋 Directly run the provided Docker images.</summary>
 
 ```bash
 docker run \
@@ -77,8 +71,7 @@ docker run \
 ```
 </details>
 
-<details>
-<summary>🧬 Directly run the updater from its source.</summary>
+<details><summary>🧬 Directly run the updater from its source on Linux.</summary>
 
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
@@ -88,6 +81,8 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   PROXIED=true \
   go run ./cmd/*.go
 ```
+
+For non-Linux operating systems, please use Docker images instead.
 </details>
 
 ## 🐋 Deployment with Docker Compose
