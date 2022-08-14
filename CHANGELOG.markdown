@@ -1,3 +1,13 @@
+## [1.6.1](https://github.com/favonia/cloudflare-ddns/compare/v1.6.0...v1.6.1) (2022-08-13)
+
+
+### Bug Fixes
+
+* **api:** accept non-active zones ([#203](https://github.com/favonia/cloudflare-ddns/issues/203)) ([06a8af6](https://github.com/favonia/cloudflare-ddns/commit/06a8af6e712635aae97540c230fd5a60a1100818))
+* prefer shorter messages ([#204](https://github.com/favonia/cloudflare-ddns/issues/204)) ([7212559](https://github.com/favonia/cloudflare-ddns/commit/7212559496f7583325ee2d59a1c69bfa9bd7a5eb))
+
+
+
 # [1.6.0](https://github.com/favonia/cloudflare-ddns/compare/v1.5.1...v1.6.0) (2022-08-12)
 
 
