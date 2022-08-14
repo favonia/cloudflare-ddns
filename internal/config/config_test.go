@@ -27,7 +27,7 @@ func TestDefaultConfigNotNil(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
-func TestReadAuthToken(t *testing.T) {
+func TestReadAuth(t *testing.T) {
 	unset(t, "CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
@@ -80,7 +80,7 @@ func useMemFS(memfs fstest.MapFS) {
 }
 
 //nolint:funlen,paralleltest // environment vars and file system are global
-func TestReadAuthTokenWithFile(t *testing.T) {
+func TestReadAuthWithFile(t *testing.T) {
 	unset(t, "CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID")
 
 	for name, tc := range map[string]struct {
@@ -148,65 +148,6 @@ func TestReadAuthTokenWithFile(t *testing.T) {
 			} else {
 				require.Nil(t, field)
 			}
-		})
-	}
-}
-
-//nolint:paralleltest // environment vars are global
-func TestReadDomainMap(t *testing.T) {
-	for name, tc := range map[string]struct {
-		domains       string
-		ip4Domains    string
-		ip6Domains    string
-		expected      map[ipnet.Type][]api.Domain
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
-	}{
-		"full": {
-			"  a1, a2", "b1,  b2,b2", "c1,c2",
-			map[ipnet.Type][]api.Domain{
-				ipnet.IP4: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("b1"), api.FQDN("b2")},
-				ipnet.IP6: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("c1"), api.FQDN("c2")},
-			},
-			true,
-			nil,
-		},
-		"duplicate": {
-			"  a1, a1", "a1,  a1,a1", "*.a1,a1,*.a1,*.a1",
-			map[ipnet.Type][]api.Domain{
-				ipnet.IP4: {api.FQDN("a1")},
-				ipnet.IP6: {api.FQDN("a1"), api.Wildcard("a1")},
-			},
-			true,
-			nil,
-		},
-		"empty": {
-			" ", "   ", "",
-			map[ipnet.Type][]api.Domain{
-				ipnet.IP4: {},
-				ipnet.IP6: {},
-			},
-			true,
-			nil,
-		},
-	} {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
-			store(t, "DOMAINS", tc.domains)
-			store(t, "IP4_DOMAINS", tc.ip4Domains)
-			store(t, "IP6_DOMAINS", tc.ip6Domains)
-
-			var field map[ipnet.Type][]api.Domain
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-			ok := config.ReadDomainMap(mockPP, &field)
-			require.Equal(t, tc.ok, ok)
-			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
-			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])
 		})
 	}
 }
@@ -300,6 +241,138 @@ func TestReadProviderMap(t *testing.T) {
 			ok := config.ReadProviderMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainMap(t *testing.T) {
+	for name, tc := range map[string]struct {
+		domains       string
+		ip4Domains    string
+		ip6Domains    string
+		expected      map[ipnet.Type][]api.Domain
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"full": {
+			"  a1, a2", "b1,  b2,b2", "c1,c2",
+			map[ipnet.Type][]api.Domain{
+				ipnet.IP4: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("b1"), api.FQDN("b2")},
+				ipnet.IP6: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("c1"), api.FQDN("c2")},
+			},
+			true,
+			nil,
+		},
+		"duplicate": {
+			"  a1, a1", "a1,  a1,a1", "*.a1,a1,*.a1,*.a1",
+			map[ipnet.Type][]api.Domain{
+				ipnet.IP4: {api.FQDN("a1")},
+				ipnet.IP6: {api.FQDN("a1"), api.Wildcard("a1")},
+			},
+			true,
+			nil,
+		},
+		"empty": {
+			" ", "   ", "",
+			map[ipnet.Type][]api.Domain{
+				ipnet.IP4: {},
+				ipnet.IP6: {},
+			},
+			true,
+			nil,
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			store(t, "DOMAINS", tc.domains)
+			store(t, "IP4_DOMAINS", tc.ip4Domains)
+			store(t, "IP6_DOMAINS", tc.ip6Domains)
+
+			var field map[ipnet.Type][]api.Domain
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadDomainMap(mockPP, &field)
+			require.Equal(t, tc.ok, ok)
+			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
+			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])
+		})
+	}
+}
+
+//nolint:paralleltest,funlen // environment vars are global
+func TestReadTTL(t *testing.T) {
+	key := "TTL"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      api.TTL
+		newField      api.TTL
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil": {
+			false, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"empty": {
+			true, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"0": {
+			true, "0   ", 100, 0, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 0)
+			},
+		},
+		"-1": {
+			true, "   -1", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %d is negative", "-1", gomock.Any())
+			},
+		},
+		"1": {true, "   1   ", 100, 1, true, nil},
+		"20": {
+			true, "   20   ", 100, 20, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 20)
+			},
+		},
+		"words": {
+			true, "   word   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
+			},
+		},
+		"9999999": {
+			true, "   9999999   ", 100, 9999999, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 9999999)
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			set(t, key, tc.set, tc.val)
+
+			field := tc.oldField
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadTTL(mockPP, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
 		})
 	}
 }
@@ -636,6 +709,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", 0),
+		innerMockPP.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 0), //nolint:lll
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "PROXIED", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
