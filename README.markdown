@@ -68,7 +68,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 docker run \
   --network host \
   -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
-  -e DOMAINS=www.example.org \
+  -e DOMAINS=example.org,www.example.org,example.io \
   -e PROXIED=true \
   favonia/cloudflare-ddns
 ```
@@ -80,7 +80,7 @@ You need the [Go tool](https://golang.org/doc/install) to run the updater from i
 
 ```bash
 CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
-  DOMAINS=www.example.org \
+  DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
   go run ./cmd/*.go
 ```
@@ -106,8 +106,8 @@ services:
     environment:
       - PGID=1000
       - PUID=1000
-      - CF_API_TOKEN
-      - DOMAINS
+      - CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+      - DOMAINS=example.org,www.example.org,example.io
       - PROXIED=true
 ```
 
@@ -219,7 +219,7 @@ spec:
             - name: "PROXIED"
               value: "true"
             - name: "CF_API_TOKEN"
-              value: YOUR-CLOUDFLARE-API-TOKEN
+              value: "YOUR-CLOUDFLARE-API-TOKEN"
             - name: "DOMAINS"
               value: "example.org,www.example.org,example.io"
 ```
