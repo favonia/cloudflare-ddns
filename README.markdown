@@ -25,7 +25,7 @@ A small and fast DDNS updater for Cloudflare.
 
 * 🤏 The Docker images are ultra-small (about 2.5 MB).
 * 🔁 The Go runtime will re-use existing HTTP connections.
-* 🗃️ It caches Cloudflare API responses to reduce the API usage.
+* 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
 ### 💯 Comprehensive Support of Domain Names
 
