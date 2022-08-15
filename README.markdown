@@ -86,7 +86,7 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   go run ./cmd/*.go
 ```
 
-For non-Linux operating systems, please use Docker images instead.
+👉 For non-Linux operating systems, please use Docker images instead.
 </details>
 
 ## 🐋 Deployment with Docker Compose
@@ -334,7 +334,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `UPDATE_ON_START` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether to check IP addresses on start regardless of `UPDATE_CRON` | No | `true`
 | `UPDATE_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No | `30s` (30 seconds)
 
-Note that the update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
+⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 </details>
 
 <details>
@@ -345,7 +345,7 @@ Note that the update schedule _does not_ take the time to update records into co
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
-Experimental features: (Please [share your case at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the design. Thanks!)
+🧪 Experimental features: (Please [share your case at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the design. Thanks!)
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -361,7 +361,7 @@ Experimental features: (Please [share your case at this GitHub issue](https://gi
 | `PGID` | Non-zero POSIX group ID | The group ID the updater should assume | No | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000`
 | `PUID` | Non-zero POSIX user ID | The user ID the updater should assume | No | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`
 
-The updater will also try to drop supplementary group IDs.
+👉 The updater will also try to drop supplementary group IDs.
 </details>
 
 <details>
