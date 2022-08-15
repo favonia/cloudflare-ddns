@@ -31,10 +31,10 @@ A small and fast DDNS updater for Cloudflare.
 
 Simply list all the domain names and you are done!
 
-* 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. The Cloudflare API [has rough edges when it comes to internationalized domain names,](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832) but the updater smooths them out.
+* 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. The Cloudflare API [has rough edges when it comes to internationalized domain names](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832), but the updater smooths them out.
 * 🃏 Wildcard domain names (_e.g._, `*.example.org`) are also supported.
 * 🔍 Unlike many other tools, this updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
-* 🔘 You can toggle IPv4 (`A` records), IPv6 (`AAAA` records), and Cloudflare proxying for each domain. _(The per-domain proxy setting is experimental and [wants your feedback.](https://github.com/favonia/cloudflare-ddns/issues/199))_
+* 🔘 You can toggle IPv4 (`A` records), IPv6 (`AAAA` records), and Cloudflare proxying for each domain. _(The per-domain proxy setting is experimental and [wants your feedback](https://github.com/favonia/cloudflare-ddns/issues/199).)_
 
 ### 🕵️ Privacy
 
@@ -45,7 +45,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 * 🛑 The superuser privileges are immediately dropped after the updater starts.
 * 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
 * 📚 The updater uses only established open-source Go libraries.
-  <details><summary>🔌 Full list of external Go libraries.</summary>
+  <details><summary>🔌 Full list of external Go libraries:</summary>
   - [cap](https://sites.google.com/site/fullycapable):\
     Manipulation of Linux capabilities.
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
@@ -114,7 +114,7 @@ services:
 <details>
 <summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. If you wish to keep the updater isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6.](https://github.com/favonia/cloudflare-ddns/issues/119) If your host OS is Linux, here’s the tl;dr:
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. If you wish to keep the updater isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6](https://github.com/favonia/cloudflare-ddns/issues/119). If your host OS is Linux, here’s the tl;dr:
 
 1. Use `network_mode: bridge` instead of `network_mode: host`.
 2. Edit or create `/etc/docker/daemon.json` with the following content:
@@ -239,7 +239,7 @@ Kubernetes comes with built-in support to drop superuser privileges. The updater
 <details>
 <summary>📡 Use <code>IP6_PROVIDER: "none"</code> to disable IPv6 management.</summary>
 
-The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach Cloudflare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet.](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6) Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
+The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach Cloudflare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
 
 If you manage to enable IPv6, congratulations. Feel free to remove `IP6_PROVIDER: "none"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. In the worst case, the updater will remove all `AAAA` records associated with the domains in `DOMAINS` and `IP6_DOMAINS` because those records will appear to be “stale.” The deleted records will be recreated once the updater correctly detects the IPv6 addresses.
 </details>
@@ -302,7 +302,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > </details>
 
 > <details>
-> <summary>📜 Available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code></summary>
+> <summary>📜 Full list of available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code>:</summary>
 >
 > - `cloudflare.doh`\
 >  Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
@@ -369,10 +369,10 @@ The updater will also try to drop supplementary group IDs.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
-| `HEALTHCHECKS` | [Healthchecks.io ping URLs,](https://healthchecks.io/docs/) such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | `""` (unset)
-</details>
+| `HEALTHCHECKS` | [Healthchecks.io ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | `""` (unset)
 
-For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol.](https://healthchecks.io/docs/http_api/)
+For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol](https://healthchecks.io/docs/http_api/).
+</details>
 
 ### 🔂 Restarting the Container
 
