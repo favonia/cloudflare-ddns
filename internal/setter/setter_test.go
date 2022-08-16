@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -23,7 +24,7 @@ func TestSet(t *testing.T) {
 	type anys = []interface{}
 
 	const (
-		domain    = api.FQDN("sub.test.org")
+		domain    = domain.FQDN("sub.test.org")
 		ipNetwork = ipnet.IP6
 		record1   = "record1"
 		record2   = "record2"
@@ -274,6 +275,24 @@ func TestSet(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle, proxied bool) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false)
+			},
+		},
+		"impossible-invalidIP-records": {
+			invalidIP,
+			true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
+					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+				)
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle, proxied bool) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: invalidIP}, true), //nolint:lll
+
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
+				)
 			},
 		},
 	} {

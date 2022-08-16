@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -82,17 +82,17 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
+func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
-	*field = make([]api.Domain, 0, len(rawList))
+	*field = make([]domain.Domain, 0, len(rawList))
 	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
 		}
 
-		item, err := api.NewDomain(item)
+		item, err := domain.New(item)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
 		}

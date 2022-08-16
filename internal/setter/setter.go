@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -15,7 +16,8 @@ type setter struct {
 	TTL    api.TTL
 }
 
-func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
+// partitionRecords partitions record maps into matched and unmatched ones.
+func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
 	if target.IsValid() {
 		for id, ip := range rmap {
 			if ip == target {
@@ -40,6 +42,7 @@ func splitRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, un
 	return matchedIDs, unmatchedIDs
 }
 
+// New creates a new Setter.
 func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL) (Setter, bool) {
 	return &setter{
 		Handle: handle,
@@ -47,8 +50,10 @@ func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL) (Setter, bool) {
 	}, true
 }
 
+// Set calls the DNS service API to update the API of one domain.
+//
 //nolint:funlen,cyclop,gocognit
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet ipnet.Type, ip netip.Addr, proxied bool) bool { //nolint:lll
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, proxied bool) bool { //nolint:lll
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
@@ -59,47 +64,58 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 	}
 
 	// The intention of these two lists is to find or create a good record and then delete everything else.
-	matchedIDs, unmatchedIDs := splitRecords(rs, ip)
+	matchedIDs, unmatchedIDsToUpdate := partitionRecords(rs, ip)
 
-	// If ip is not valid, this should be vacuously true.
-	// If ip is valid, then we will check matchedIDs and unmatchedIDs, but before that,
-	// it is considered not up to date.
-	uptodate := !ip.IsValid()
+	// Whether the correct DNS record is already present
+	uptodate := false
 
-	// First, if there's a matched ID, use it and delete everything else.
-	// Note that this implies ip is valid, for otherwise uptodate would be true.
-	if !uptodate && len(matchedIDs) > 0 {
+	// If ip is not valid, it is considered "up to date", but we have to delete all existing records
+	if !ip.IsValid() {
+		// matchedIDs must be empty, due to how partitionRecords works
 		uptodate = true
-		matchedIDs = matchedIDs[1:]
 	}
 
-	// If it's up to date and there's nothing else, we are done!
-	if uptodate && len(matchedIDs) == 0 && len(unmatchedIDs) == 0 {
+	// duplicateMatchedIDs are to be deleted; this is set when uptodate becomes true
+	var duplicateMatchedIDs []string
+
+	// If it's still not up to date, and there's a matched ID, use it and delete everything else.
+	// Note that this implies ip is valid, for otherwise uptodate would already be true.
+	if !uptodate && len(matchedIDs) > 0 {
+		uptodate = true
+		duplicateMatchedIDs = matchedIDs[1:]
+	}
+
+	// If it's up to date and there are no other records, we are done!
+	if uptodate && len(duplicateMatchedIDs) == 0 && len(unmatchedIDsToUpdate) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
 		return true
 	}
 
 	// This counts the stale records that have not being deleted yet.
-	// We need a different variable (instead of checking len(unmatchedIDs) all the times)
-	// because when we fail to delete a record, we might remove it from unmatchedIDs,
-	// but that stale record should still be counted in numUndeletedUnmatched
-	numUndeletedUnmatched := len(unmatchedIDs)
+	// We need a different variable (instead of using len(unmatchedIDsToUpdate) all the times)
+	// because when we fail to delete a record, we will give up and remove that record from
+	// unmatchedIDsToUpdate, but that stale record should still be counted in numUndeletedUnmatched
+	// so that we know we have failed to complete the updating.
+	numUndeletedUnmatched := len(unmatchedIDsToUpdate)
 
 	// If somehow it's still not up to date, it means there are no matched records but ip is valid.
 	// This means we have to change a record or create a new one with the desired ip.
-	if !uptodate && ip.IsValid() {
+	if !uptodate {
+		// Temporary variable for the new unmatchedIDsToUpdate
 		var unhandled []string
 
 		// Let's go through all stale records
-		for i, id := range unmatchedIDs {
+		for i, id := range unmatchedIDsToUpdate {
 			// Let's try to update it first.
 			if s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
+				// If the updating succeeds, we can move on to the next stage!
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
 					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 
+				// Now it's up to date! matchedIDs must be empty for otherwise uptodate would have been true
 				uptodate = true
 				numUndeletedUnmatched--
-				unhandled = unmatchedIDs[i+1:]
+				unhandled = unmatchedIDsToUpdate[i+1:]
 
 				break
 			} else {
@@ -107,29 +123,33 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 					ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)",
 						recordType, domainDescription, id)
+
+					// Only when the deletion succeeds, we decrease the counter for undeleted incorrect records.
 					numUndeletedUnmatched--
 				}
+
 				// No matter whether the deletion succeeds, move on.
 				continue
 			}
 		}
 
-		unmatchedIDs = unhandled
+		unmatchedIDsToUpdate = unhandled
 	}
 
-	// If it's still not up to date, it means there are no stale records or that we fail to update one of them.
-	// The last resort is to create a new record with the correct ip.
-	// The checking "ip.IsValid()" is redundant but it does not hurt. (This function is too complicated.)
-	if !uptodate && ip.IsValid() {
+	// If it's still not up to date at this point, it means there are no stale records or that all attempts to
+	// update one of them failed. The last resort is to create a new record with the correct ip.
+	if !uptodate {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, s.TTL, proxied); ok {
 			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
+
+			// Now it's up to date! matchedIDs and unmatchedIDsToUpdate must both be empty at this point
 			uptodate = true
 		}
 	}
 
 	// Now, we should try to delete all remaining stale records.
-	for _, id := range unmatchedIDs {
+	for _, id := range unmatchedIDsToUpdate {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 			numUndeletedUnmatched--
@@ -137,14 +157,15 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain api.Domain, ipnet 
 	}
 
 	// We should also delete all duplicate records even if they are up to date.
-	for _, id := range matchedIDs {
+	// This has lower priority than deleting the stale records.
+	for _, id := range duplicateMatchedIDs {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a duplicate %s record of %q (ID: %s)",
 				recordType, domainDescription, id)
 		}
 	}
 
-	// It is okay to have duplicates, but it is not okay to have stale records.
+	// Check whether we are done. It is okay to have duplicates, but it is not okay to have (undeleted) stale records.
 	if !uptodate || numUndeletedUnmatched > 0 {
 		ppfmt.Errorf(pp.EmojiError,
 			"Failed to complete updating of %s records of %q; records might be inconsistent",

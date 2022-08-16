@@ -1,4 +1,4 @@
-package api
+package domain
 
 import (
 	"sort"
@@ -43,7 +43,7 @@ func safelyToUnicode(ascii string) (string, bool) {
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,
 // the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
-func NewDomain(domain string) (Domain, error) {
+func New(domain string) (Domain, error) {
 	normalized, err := profileDroppingLeadingDots.ToASCII(domain)
 
 	// Remove the final dot for consistency

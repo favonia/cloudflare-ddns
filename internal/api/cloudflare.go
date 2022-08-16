@@ -8,6 +8,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -124,7 +125,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	return ids, true
 }
 
-func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain Domain) (string, bool) {
+func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (string, bool) {
 	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
 		return id.(string), true //nolint:forcetypeassert
 	}
@@ -155,7 +156,7 @@ zoneSearch:
 }
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type,
+	domain domain.Domain, ipNet ipnet.Type,
 ) (map[string]netip.Addr, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		return rmap.(map[string]netip.Addr), true //nolint:forcetypeassert
@@ -191,7 +192,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string,
+	domain domain.Domain, ipNet ipnet.Type, id string,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -215,7 +216,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string, ip netip.Addr,
+	domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -246,7 +247,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
+	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
 ) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {

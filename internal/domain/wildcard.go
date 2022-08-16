@@ -1,4 +1,4 @@
-package api
+package domain
 
 import "strings"
 
@@ -30,7 +30,7 @@ type WildcardSplitter struct {
 	exhausted bool
 }
 
-func (w Wildcard) Split() DomainSplitter {
+func (w Wildcard) Split() Splitter {
 	return &WildcardSplitter{
 		domain:    string(w),
 		cursor:    0,
