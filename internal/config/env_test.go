@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -246,9 +246,9 @@ func TestReadNonnegInt(t *testing.T) {
 //nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
-	type ds = []api.Domain
-	type f = api.FQDN
-	type w = api.Wildcard
+	type ds = []domain.Domain
+	type f = domain.FQDN
+	type w = domain.Wildcard
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string

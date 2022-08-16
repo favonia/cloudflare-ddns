@@ -1,4 +1,4 @@
-package api_test
+package domain_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
 func TestWildcardString(t *testing.T) {
@@ -15,9 +15,9 @@ func TestWildcardString(t *testing.T) {
 	require.NoError(t, quick.Check(
 		func(s string) bool {
 			if s == "" {
-				return api.Wildcard(s).DNSNameASCII() == "*"
+				return domain.Wildcard(s).DNSNameASCII() == "*"
 			}
-			return api.Wildcard(s).DNSNameASCII() == "*."+s
+			return domain.Wildcard(s).DNSNameASCII() == "*."+s
 		},
 		nil,
 	))
@@ -65,7 +65,7 @@ func TestWildcardDescribe(t *testing.T) {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.expected, api.Wildcard(tc.input).Describe())
+			require.Equal(t, tc.expected, domain.Wildcard(tc.input).Describe())
 		})
 	}
 }
@@ -88,7 +88,7 @@ func TestWildcardSplitter(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
-			for s := api.Wildcard(tc.input).Split(); s.IsValid(); s.Next() {
+			for s := domain.Wildcard(tc.input).Split(); s.IsValid(); s.Next() {
 				rs = append(rs, s.ZoneNameASCII())
 			}
 			require.Equal(t, tc.expected, rs)

@@ -1,4 +1,4 @@
-package api_test
+package domain_test
 
 import (
 	"sort"
@@ -7,17 +7,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
 //nolint:funlen
-func TestNewDomain(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
-	type f = api.FQDN
-	type w = api.Wildcard
+	type f = domain.FQDN
+	type w = domain.Wildcard
 	for _, tc := range [...]struct {
 		input     string
-		expected  api.Domain
+		expected  domain.Domain
 		ok        bool
 		errString string
 	}{
@@ -99,7 +99,7 @@ func TestNewDomain(t *testing.T) {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			normalized, err := api.NewDomain(tc.input)
+			normalized, err := domain.New(tc.input)
 			require.Equal(t, tc.expected, normalized)
 			if tc.ok {
 				require.NoError(t, err)
@@ -115,8 +115,8 @@ func TestSortDomains(t *testing.T) {
 	t.Parallel()
 
 	require.NoError(t, quick.Check(
-		func(fs []api.FQDN, ws []api.Wildcard) bool {
-			merged := make([]api.Domain, 0, len(fs)+len(ws))
+		func(fs []domain.FQDN, ws []domain.Wildcard) bool {
+			merged := make([]domain.Domain, 0, len(fs)+len(ws))
 
 			for _, f := range fs {
 				merged = append(merged, f)
@@ -125,9 +125,9 @@ func TestSortDomains(t *testing.T) {
 				merged = append(merged, w)
 			}
 
-			copied := make([]api.Domain, len(merged))
+			copied := make([]domain.Domain, len(merged))
 			copy(copied, merged)
-			api.SortDomains(merged)
+			domain.SortDomains(merged)
 
 			require.ElementsMatch(t, copied, merged)
 			require.True(t, sort.SliceIsSorted(merged,

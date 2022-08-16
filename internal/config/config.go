@@ -6,6 +6,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
@@ -16,14 +17,14 @@ import (
 type Config struct {
 	Auth             api.Auth
 	Provider         map[ipnet.Type]provider.Provider
-	Domains          map[ipnet.Type][]api.Domain
+	Domains          map[ipnet.Type][]domain.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
 	TTL              api.TTL
 	DefaultProxied   bool
-	ProxiedByDomain  map[api.Domain]bool
+	ProxiedByDomain  map[domain.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
@@ -37,7 +38,7 @@ func Default() *Config {
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
-		Domains: map[ipnet.Type][]api.Domain{
+		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
 		},
@@ -47,7 +48,7 @@ func Default() *Config {
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
 		TTL:              api.TTL(1),
 		DefaultProxied:   false,
-		ProxiedByDomain:  map[api.Domain]bool{},
+		ProxiedByDomain:  map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 		Monitors:         nil,
@@ -104,8 +105,8 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.
-func deduplicate(list []api.Domain) []api.Domain {
-	api.SortDomains(list)
+func deduplicate(list []domain.Domain) []domain.Domain {
+	domain.SortDomains(list)
 
 	if len(list) == 0 {
 		return list
@@ -127,8 +128,8 @@ func deduplicate(list []api.Domain) []api.Domain {
 	return list[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
-	var domains, ip4Domains, ip6Domains []api.Domain
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
+	var domains, ip4Domains, ip6Domains []domain.Domain
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
 		!ReadDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
@@ -139,7 +140,7 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
 	ip4Domains = deduplicate(append(ip4Domains, domains...))
 	ip6Domains = deduplicate(append(ip6Domains, domains...))
 
-	*field = map[ipnet.Type][]api.Domain{
+	*field = map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: ip4Domains,
 		ipnet.IP6: ip6Domains,
 	}
@@ -181,8 +182,8 @@ func ReadTTL(ppfmt pp.PP, field *api.TTL) bool {
 	return true
 }
 
-func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
-	var proxiedDomains, nonProxiedDomains []api.Domain
+func ReadProxiedByDomain(ppfmt pp.PP, field *map[domain.Domain]bool) bool {
+	var proxiedDomains, nonProxiedDomains []domain.Domain
 
 	if !ReadDomains(ppfmt, "PROXIED_DOMAINS", &proxiedDomains) ||
 		!ReadDomains(ppfmt, "NON_PROXIED_DOMAINS", &nonProxiedDomains) {
@@ -199,7 +200,7 @@ func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	}
 
 	// the new map to be created
-	m := map[api.Domain]bool{}
+	m := map[domain.Domain]bool{}
 
 	// all proxied domains
 	for _, proxiedDomain := range proxiedDomains {
@@ -223,7 +224,7 @@ func ReadProxiedByDomain(ppfmt pp.PP, field *map[api.Domain]bool) bool {
 	return true
 }
 
-func describeDomains(domains []api.Domain) string {
+func describeDomains(domains []domain.Domain) string {
 	if len(domains) == 0 {
 		return "(none)"
 	}
@@ -265,9 +266,9 @@ func (c *Config) Print(ppfmt pp.PP) {
 	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
 	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
 	{
-		proxiedMapping := map[bool][]api.Domain{}
-		proxiedMapping[true] = make([]api.Domain, 0, len(c.ProxiedByDomain))
-		proxiedMapping[false] = make([]api.Domain, 0, len(c.ProxiedByDomain))
+		proxiedMapping := map[bool][]domain.Domain{}
+		proxiedMapping[true] = make([]domain.Domain, 0, len(c.ProxiedByDomain))
+		proxiedMapping[false] = make([]domain.Domain, 0, len(c.ProxiedByDomain))
 		for domain, proxied := range c.ProxiedByDomain {
 			proxiedMapping[proxied] = append(proxiedMapping[proxied], domain)
 		}
@@ -343,7 +344,7 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	}
 
 	// domainSet is the set of managed domains.
-	domainSet := map[api.Domain]bool{}
+	domainSet := map[domain.Domain]bool{}
 	for ipNet, domains := range c.Domains {
 		if c.Provider[ipNet] != nil {
 			for _, domain := range domains {
@@ -367,7 +368,7 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 
 	// fill in the default "proxied"
 	if c.ProxiedByDomain == nil {
-		c.ProxiedByDomain = map[api.Domain]bool{}
+		c.ProxiedByDomain = map[domain.Domain]bool{}
 		ppfmt.Warningf(pp.EmojiImpossible,
 			"Internal failure: ProxiedByDomain is re-initialized because it was nil",
 		)

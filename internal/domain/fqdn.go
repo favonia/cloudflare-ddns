@@ -1,4 +1,4 @@
-package api
+package domain
 
 import "strings"
 
@@ -23,7 +23,7 @@ type FQDNSplitter struct {
 	exhausted bool
 }
 
-func (f FQDN) Split() DomainSplitter {
+func (f FQDN) Split() Splitter {
 	return &FQDNSplitter{
 		domain:    string(f),
 		cursor:    0,

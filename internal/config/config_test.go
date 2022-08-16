@@ -12,6 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -251,31 +252,31 @@ func TestReadDomainMap(t *testing.T) {
 		domains       string
 		ip4Domains    string
 		ip6Domains    string
-		expected      map[ipnet.Type][]api.Domain
+		expected      map[ipnet.Type][]domain.Domain
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
 			"  a1, a2", "b1,  b2,b2", "c1,c2",
-			map[ipnet.Type][]api.Domain{
-				ipnet.IP4: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("b1"), api.FQDN("b2")},
-				ipnet.IP6: {api.FQDN("a1"), api.FQDN("a2"), api.FQDN("c1"), api.FQDN("c2")},
+			map[ipnet.Type][]domain.Domain{
+				ipnet.IP4: {domain.FQDN("a1"), domain.FQDN("a2"), domain.FQDN("b1"), domain.FQDN("b2")},
+				ipnet.IP6: {domain.FQDN("a1"), domain.FQDN("a2"), domain.FQDN("c1"), domain.FQDN("c2")},
 			},
 			true,
 			nil,
 		},
 		"duplicate": {
 			"  a1, a1", "a1,  a1,a1", "*.a1,a1,*.a1,*.a1",
-			map[ipnet.Type][]api.Domain{
-				ipnet.IP4: {api.FQDN("a1")},
-				ipnet.IP6: {api.FQDN("a1"), api.Wildcard("a1")},
+			map[ipnet.Type][]domain.Domain{
+				ipnet.IP4: {domain.FQDN("a1")},
+				ipnet.IP6: {domain.FQDN("a1"), domain.Wildcard("a1")},
 			},
 			true,
 			nil,
 		},
 		"empty": {
 			" ", "   ", "",
-			map[ipnet.Type][]api.Domain{
+			map[ipnet.Type][]domain.Domain{
 				ipnet.IP4: {},
 				ipnet.IP6: {},
 			},
@@ -291,7 +292,7 @@ func TestReadDomainMap(t *testing.T) {
 			store(t, "IP4_DOMAINS", tc.ip4Domains)
 			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
-			var field map[ipnet.Type][]api.Domain
+			var field map[ipnet.Type][]domain.Domain
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -383,22 +384,22 @@ func TestReadProxiedByDomain(t *testing.T) {
 		proxiedDomains    string
 		nonProxiedDomains string
 		ok                bool
-		expected          map[api.Domain]bool
+		expected          map[domain.Domain]bool
 		prepareMockPP     func(*mocks.MockPP)
 	}{
 		"empty": {
 			" ", "   ",
 			true,
-			map[api.Domain]bool{},
+			map[domain.Domain]bool{},
 			nil,
 		},
 		"both": {
 			"  a1, a2", "b1",
 			true,
-			map[api.Domain]bool{
-				api.FQDN("a1"): true,
-				api.FQDN("a2"): true,
-				api.FQDN("b1"): false,
+			map[domain.Domain]bool{
+				domain.FQDN("a1"): true,
+				domain.FQDN("a2"): true,
+				domain.FQDN("b1"): false,
 			},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -428,7 +429,7 @@ func TestReadProxiedByDomain(t *testing.T) {
 			store(t, "PROXIED_DOMAINS", tc.proxiedDomains)
 			store(t, "NON_PROXIED_DOMAINS", tc.nonProxiedDomains)
 
-			var field map[api.Domain]bool
+			var field map[domain.Domain]bool
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -543,8 +544,8 @@ func TestPrintDomains(t *testing.T) {
 
 	c := config.Default()
 
-	c.Domains[ipnet.IP4] = []api.Domain{api.FQDN("test4.org"), api.Wildcard("test4.org")}
-	c.Domains[ipnet.IP6] = []api.Domain{api.FQDN("test6.org"), api.Wildcard("test6.org")}
+	c.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
+	c.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}
 
 	c.Print(mockPP)
 }
@@ -618,11 +619,11 @@ func TestPrintProxiedByDomain(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
 	)
 
-	c.ProxiedByDomain = map[api.Domain]bool{}
-	c.ProxiedByDomain[api.FQDN("a")] = true
-	c.ProxiedByDomain[api.FQDN("b")] = true
-	c.ProxiedByDomain[api.FQDN("c")] = false
-	c.ProxiedByDomain[api.FQDN("d")] = false
+	c.ProxiedByDomain = map[domain.Domain]bool{}
+	c.ProxiedByDomain[domain.FQDN("a")] = true
+	c.ProxiedByDomain[domain.FQDN("b")] = true
+	c.ProxiedByDomain[domain.FQDN("c")] = false
+	c.ProxiedByDomain[domain.FQDN("d")] = false
 	c.Print(mockPP)
 }
 
@@ -769,19 +770,19 @@ func TestNormalize(t *testing.T) {
 		},
 		"empty": {
 			input: &config.Config{ //nolint:exhaustruct
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustruct
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -798,11 +799,11 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -810,12 +811,12 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: nil,
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): false,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): false,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -835,11 +836,11 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -847,11 +848,11 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -871,11 +872,11 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
-					ipnet.IP6: {api.FQDN("a.b.c"), api.FQDN("g.h.i")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{},
+				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -883,13 +884,13 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
-					ipnet.IP4: {api.FQDN("a.b.c"), api.FQDN("d.e.f")},
-					ipnet.IP6: {api.FQDN("a.b.c"), api.FQDN("g.h.i")},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): false,
-					api.FQDN("g.h.i"): false,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): false,
+					domain.FQDN("g.h.i"): false,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -909,9 +910,9 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
 				DefaultProxied:  true,
 				ProxiedByDomain: nil,
@@ -922,13 +923,13 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
 				DefaultProxied: true,
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): true,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -951,14 +952,14 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): true,
-					api.FQDN("d.e.f"): true,
-					api.FQDN("g.h.i"): false,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
+					domain.FQDN("d.e.f"): true,
+					domain.FQDN("g.h.i"): false,
 				},
 			},
 			ok: true,
@@ -967,12 +968,12 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): true,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -993,12 +994,12 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): true,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
 				},
 			},
 			ok: true,
@@ -1007,12 +1008,12 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]api.Domain{
+				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {api.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
-				ProxiedByDomain: map[api.Domain]bool{
-					api.FQDN("a.b.c"): true,
+				ProxiedByDomain: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {

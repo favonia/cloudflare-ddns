@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/netip"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func getProxied(ppfmt pp.PP, c *config.Config, domain api.Domain) bool {
+func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	if proxied, ok := c.ProxiedByDomain[domain]; ok {
 		return proxied
 	}
