@@ -445,7 +445,7 @@ type someMatcher struct {
 	matchers []gomock.Matcher
 }
 
-func (sm someMatcher) Matches(x interface{}) bool {
+func (sm someMatcher) Matches(x any) bool {
 	for _, m := range sm.matchers {
 		if m.Matches(x) {
 			return true
@@ -462,7 +462,7 @@ func (sm someMatcher) String() string {
 	return strings.Join(ss, " | ")
 }
 
-func Some(xs ...interface{}) gomock.Matcher {
+func Some(xs ...any) gomock.Matcher {
 	ms := make([]gomock.Matcher, 0, len(xs))
 	for _, x := range xs {
 		if m, ok := x.(gomock.Matcher); ok {

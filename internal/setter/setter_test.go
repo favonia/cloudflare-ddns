@@ -21,8 +21,6 @@ import (
 func TestSet(t *testing.T) {
 	t.Parallel()
 
-	type anys = []interface{}
-
 	const (
 		domain    = domain.FQDN("sub.test.org")
 		ipNetwork = ipnet.IP6

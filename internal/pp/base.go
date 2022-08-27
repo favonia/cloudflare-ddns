@@ -6,8 +6,8 @@ type PP interface {
 	SetLevel(Level) PP
 	IsEnabledFor(Level) bool
 	IncIndent() PP
-	Infof(Emoji, string, ...interface{})
-	Noticef(Emoji, string, ...interface{})
-	Warningf(Emoji, string, ...interface{})
-	Errorf(Emoji, string, ...interface{})
+	Infof(Emoji, string, ...any)
+	Noticef(Emoji, string, ...any)
+	Warningf(Emoji, string, ...any)
+	Errorf(Emoji, string, ...any)
 }

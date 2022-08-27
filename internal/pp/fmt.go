@@ -53,22 +53,22 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 	fmt.Fprintln(f.writer, line)
 }
 
-func (f *formatter) printf(lvl Level, emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) printf(lvl Level, emoji Emoji, format string, args ...any) {
 	f.output(lvl, emoji, fmt.Sprintf(format, args...))
 }
 
-func (f *formatter) Infof(emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) Infof(emoji Emoji, format string, args ...any) {
 	f.printf(Info, emoji, format, args...)
 }
 
-func (f *formatter) Noticef(emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
 }
 
-func (f *formatter) Warningf(emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) Warningf(emoji Emoji, format string, args ...any) {
 	f.printf(Warning, emoji, format, args...)
 }
 
-func (f *formatter) Errorf(emoji Emoji, format string, args ...interface{}) {
+func (f *formatter) Errorf(emoji Emoji, format string, args ...any) {
 	f.printf(Error, emoji, format, args...)
 }
