@@ -29,14 +29,24 @@ var (
 // safelyToUnicode takes an ASCII form and returns the Unicode form
 // when the round trip gives the same ASCII form back without errors.
 // Otherwise, the input ASCII form is returned.
-func safelyToUnicode(ascii string) (string, bool) {
+func safelyToUnicode(ascii string) string {
 	unicode, errToA := profileKeepingLeadingDots.ToUnicode(ascii)
 	roundTrip, errToU := profileKeepingLeadingDots.ToASCII(unicode)
 	if errToA != nil || errToU != nil || roundTrip != ascii {
-		return ascii, false
+		return ascii
 	}
 
-	return unicode, true
+	return unicode
+}
+
+// toASCII normalizes a domain with best efforts, ignoring errors.
+func toASCII(domain string) string {
+	normalized, _ := profileDroppingLeadingDots.ToASCII(domain)
+
+	// Remove the final dot for consistency
+	normalized = strings.TrimRight(normalized, ".")
+
+	return normalized
 }
 
 // NewDomain normalizes a domain to its ASCII form and then stores

@@ -15,13 +15,11 @@ func (w Wildcard) DNSNameASCII() string {
 }
 
 func (w Wildcard) Describe() string {
-	best, ok := safelyToUnicode(string(w))
-	if !ok {
-		// use the unconverted string if the conversation failed
-		return "*." + string(w)
+	if string(w) == "" {
+		return "*"
 	}
 
-	return "*." + best
+	return "*." + safelyToUnicode(string(w))
 }
 
 type WildcardSplitter struct {

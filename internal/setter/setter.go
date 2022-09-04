@@ -13,7 +13,6 @@ import (
 
 type setter struct {
 	Handle api.Handle
-	TTL    api.TTL
 }
 
 // partitionRecords partitions record maps into matched and unmatched ones.
@@ -43,17 +42,16 @@ func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs
 }
 
 // New creates a new Setter.
-func New(_ppfmt pp.PP, handle api.Handle, ttl api.TTL) (Setter, bool) {
+func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	return &setter{
 		Handle: handle,
-		TTL:    ttl,
 	}, true
 }
 
 // Set calls the DNS service API to update the API of one domain.
 //
 //nolint:funlen,cyclop,gocognit
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, proxied bool) bool { //nolint:lll
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool) bool { //nolint:lll
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
@@ -140,7 +138,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 	// update one of them failed. The last resort is to create a new record with the correct ip.
 	if !uptodate {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
-			domain, ipnet, ip, s.TTL, proxied); ok {
+			domain, ipnet, ip, ttl, proxied); ok {
 			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
 
 			// Now it's up to date! matchedIDs and unmatchedIDsToUpdate must both be empty at this point

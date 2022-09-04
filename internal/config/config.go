@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,9 +24,10 @@ type Config struct {
 	UpdateOnStart    bool
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
-	TTL              api.TTL
-	DefaultProxied   bool
-	ProxiedByDomain  map[domain.Domain]bool
+	TTLTemplate      string
+	TTL              map[domain.Domain]api.TTL
+	ProxiedTemplate  string
+	Proxied          map[domain.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
@@ -46,9 +49,10 @@ func Default() *Config {
 		UpdateOnStart:    true,
 		DeleteOnStop:     false,
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
-		TTL:              api.TTL(1),
-		DefaultProxied:   false,
-		ProxiedByDomain:  map[domain.Domain]bool{},
+		TTLTemplate:      "1",
+		TTL:              map[domain.Domain]api.TTL{},
+		ProxiedTemplate:  "false",
+		Proxied:          map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 		Monitors:         nil,
@@ -164,64 +168,43 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
-func ReadTTL(ppfmt pp.PP, field *api.TTL) bool {
-	if !ReadNonnegInt(ppfmt, "TTL", (*int)(field)) {
-		return false
-	}
+func ParseProxied(ppfmt pp.PP, domain domain.Domain, val string) (bool, bool) {
+	res, err := strconv.ParseBool(strings.TrimSpace(val))
 
-	// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
-	// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
-	// We thus accept the union of both ranges---1 (auto) and [30, 86400].
-	//
-	// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
-	// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean: %v", domain.Describe(), val, err)
+		return false, false
 
-	if *field != 1 && (*field < 30 || *field > 86400) {
-		ppfmt.Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", int(*field))
+	default:
+		return res, true
 	}
-	return true
 }
 
-func ReadProxiedByDomain(ppfmt pp.PP, field *map[domain.Domain]bool) bool {
-	var proxiedDomains, nonProxiedDomains []domain.Domain
+// ParseTTL turns a string into a valid TTL value.
+//
+// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
+// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
+// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+//
+// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+func ParseTTL(ppfmt pp.PP, domain domain.Domain, val string) (api.TTL, bool) {
+	val = strings.TrimSpace(val)
+	res, err := strconv.Atoi(val)
 
-	if !ReadDomains(ppfmt, "PROXIED_DOMAINS", &proxiedDomains) ||
-		!ReadDomains(ppfmt, "NON_PROXIED_DOMAINS", &nonProxiedDomains) {
-		return false
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", domain.Describe(), val, err)
+		return 0, false
+
+	case res != 1 && (res < 30 || res > 86400):
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), res)
+		return 0, false
+
+	default:
+		return api.TTL(res), true
 	}
-
-	proxiedDomains = deduplicate(proxiedDomains)
-	nonProxiedDomains = deduplicate(nonProxiedDomains)
-
-	if len(proxiedDomains) > 0 || len(nonProxiedDomains) > 0 {
-		ppfmt.Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features")
-		ppfmt.Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199") //nolint:lll
-		ppfmt.Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback")
-	}
-
-	// the new map to be created
-	m := map[domain.Domain]bool{}
-
-	// all proxied domains
-	for _, proxiedDomain := range proxiedDomains {
-		m[proxiedDomain] = true
-	}
-
-	// non-proxied domains
-	for _, nonProxiedDomain := range nonProxiedDomains {
-		if proxied, ok := m[nonProxiedDomain]; ok && proxied {
-			ppfmt.Errorf(pp.EmojiUserError,
-				"Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS",
-				nonProxiedDomain.Describe())
-			return false
-		}
-
-		m[nonProxiedDomain] = false
-	}
-
-	*field = m
-
-	return true
 }
 
 func describeDomains(domains []domain.Domain) string {
@@ -236,6 +219,22 @@ func describeDomains(domains []domain.Domain) string {
 	return strings.Join(descriptions, ", ")
 }
 
+func inverseMap[K comparable](m map[domain.Domain]K) ([]K, map[K][]domain.Domain) {
+	inverse := map[K][]domain.Domain{}
+
+	for dom, val := range m {
+		inverse[val] = append(inverse[val], dom)
+	}
+
+	keys := make([]K, 0, len(inverse))
+	for val := range inverse {
+		domain.SortDomains(inverse[val])
+		keys = append(keys, val)
+	}
+
+	return keys, inverse
+}
+
 func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		return
@@ -247,46 +246,49 @@ func (c *Config) Print(ppfmt pp.PP) {
 	inner := ppfmt.IncIndent()
 
 	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 provider:    %s", provider.Name(c.Provider[ipnet.IP4]))
+	inner.Infof(pp.EmojiBullet, "IPv4 provider:             %s", provider.Name(c.Provider[ipnet.IP4]))
 	if c.Provider[ipnet.IP4] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %s", describeDomains(c.Domains[ipnet.IP4]))
+		inner.Infof(pp.EmojiBullet, "IPv4 domains:              %s", describeDomains(c.Domains[ipnet.IP4]))
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 provider:    %s", provider.Name(c.Provider[ipnet.IP6]))
+	inner.Infof(pp.EmojiBullet, "IPv6 provider:             %s", provider.Name(c.Provider[ipnet.IP6]))
 	if c.Provider[ipnet.IP6] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %s", describeDomains(c.Domains[ipnet.IP6]))
+		inner.Infof(pp.EmojiBullet, "IPv6 domains:              %s", describeDomains(c.Domains[ipnet.IP6]))
 	}
 
 	ppfmt.Infof(pp.EmojiConfig, "Scheduling:")
-	inner.Infof(pp.EmojiBullet, "Timezone:         %s", cron.DescribeLocation(time.Local))
-	inner.Infof(pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
-	inner.Infof(pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
-	inner.Infof(pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
-	inner.Infof(pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
+	inner.Infof(pp.EmojiBullet, "Timezone:                  %s", cron.DescribeLocation(time.Local))
+	inner.Infof(pp.EmojiBullet, "Update frequency:          %v", c.UpdateCron)
+	inner.Infof(pp.EmojiBullet, "Update on start?           %t", c.UpdateOnStart)
+	inner.Infof(pp.EmojiBullet, "Delete on stop?            %t", c.DeleteOnStop)
+	inner.Infof(pp.EmojiBullet, "Cache expiration:          %v", c.CacheExpiration)
 
 	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
-	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
 	{
-		proxiedMapping := map[bool][]domain.Domain{}
-		proxiedMapping[true] = make([]domain.Domain, 0, len(c.ProxiedByDomain))
-		proxiedMapping[false] = make([]domain.Domain, 0, len(c.ProxiedByDomain))
-		for domain, proxied := range c.ProxiedByDomain {
-			proxiedMapping[proxied] = append(proxiedMapping[proxied], domain)
+		vals, inverseMap := inverseMap[api.TTL](c.TTL)
+		api.SortTTLs(vals)
+		for _, val := range vals {
+			inner.Infof(
+				pp.EmojiBullet,
+				"%-26s %s",
+				fmt.Sprintf("Domains with TTL=%s:", val.Describe()),
+				describeDomains(inverseMap[val]),
+			)
 		}
-		for b := range proxiedMapping {
-			proxiedMapping[b] = deduplicate(proxiedMapping[b])
-		}
-		inner.Infof(pp.EmojiBullet, "Proxied:          %s", describeDomains(proxiedMapping[true]))
-		inner.Infof(pp.EmojiBullet, "Non-proxied:      %s", describeDomains(proxiedMapping[false]))
+	}
+	{
+		_, inverseMap := inverseMap[bool](c.Proxied)
+		inner.Infof(pp.EmojiBullet, "Proxied domains:           %s", describeDomains(inverseMap[true]))
+		inner.Infof(pp.EmojiBullet, "Non-proxied domains:       %s", describeDomains(inverseMap[false]))
 	}
 
 	ppfmt.Infof(pp.EmojiConfig, "Timeouts:")
-	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
-	inner.Infof(pp.EmojiBullet, "Record updating:  %v", c.UpdateTimeout)
+	inner.Infof(pp.EmojiBullet, "IP detection:              %v", c.DetectionTimeout)
+	inner.Infof(pp.EmojiBullet, "Record updating:           %v", c.UpdateTimeout)
 
 	if len(c.Monitors) > 0 {
 		ppfmt.Infof(pp.EmojiConfig, "Monitors:")
 		for _, m := range c.Monitors {
-			inner.Infof(pp.EmojiBullet, "%-17s (URL redacted)", m.DescribeService()+":")
+			inner.Infof(pp.EmojiBullet, "%-26s (URL redacted)", m.DescribeService()+":")
 		}
 	}
 }
@@ -304,12 +306,11 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadTTL(ppfmt, &c.TTL) ||
-		!ReadBool(ppfmt, "PROXIED", &c.DefaultProxied) ||
+		!ReadString(ppfmt, "TTL", &c.TTLTemplate) ||
+		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||
-		!ReadProxiedByDomain(ppfmt, &c.ProxiedByDomain) {
+		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
 		return false
 	}
 
@@ -366,33 +367,34 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		}
 	}
 
-	// fill in the default "proxied"
-	if c.ProxiedByDomain == nil {
-		c.ProxiedByDomain = map[domain.Domain]bool{}
-		ppfmt.Warningf(pp.EmojiImpossible,
-			"Internal failure: ProxiedByDomain is re-initialized because it was nil",
-		)
-		ppfmt.Warningf(pp.EmojiImpossible,
-			"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
-		)
-	}
-	for domain := range domainSet {
-		if _, ok := c.ProxiedByDomain[domain]; !ok {
-			c.ProxiedByDomain[domain] = c.DefaultProxied
+	// fill in c.Proxied
+	c.Proxied = map[domain.Domain]bool{}
+	for dom := range domainSet {
+		proxiedString, ok := domain.ExecTemplate(ppfmt, c.ProxiedTemplate, dom)
+		if !ok {
+			return false
 		}
+
+		proxied, ok := ParseProxied(ppfmt, dom, proxiedString)
+		if !ok {
+			return false
+		}
+		c.Proxied[dom] = proxied
 	}
 
-	// check if some domain-specific "proxied" setting is not used
-	envMap := map[bool]string{true: "PROXIED_DOMAINS", false: "NON_PROXIED_DOMAINS"}
-	if len(c.ProxiedByDomain) > len(domainSet) {
-		for domain, proxied := range c.ProxiedByDomain {
-			if !domainSet[domain] {
-				delete(c.ProxiedByDomain, domain)
-				ppfmt.Warningf(pp.EmojiUserWarning,
-					"Domain %q was listed in %s, but it is ignored because it is not managed by the updater",
-					domain.Describe(), envMap[proxied])
-			}
+	// fill in c.TTL
+	c.TTL = map[domain.Domain]api.TTL{}
+	for dom := range domainSet {
+		ttlString, ok := domain.ExecTemplate(ppfmt, c.TTLTemplate, dom)
+		if !ok {
+			return false
 		}
+
+		ttl, ok := ParseTTL(ppfmt, dom, ttlString)
+		if !ok {
+			return false
+		}
+		c.TTL[dom] = ttl
 	}
 
 	return true

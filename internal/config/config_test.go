@@ -305,138 +305,67 @@ func TestReadDomainMap(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,funlen // environment vars are global
-func TestReadTTL(t *testing.T) {
-	key := "TTL"
+//nolint:funlen
+func TestParseTTL(t *testing.T) {
+	t.Parallel()
+
+	domain, _ := domain.New("example.io")
 	for name, tc := range map[string]struct {
-		set           bool
 		val           string
-		oldField      api.TTL
-		newField      api.TTL
+		ttl           api.TTL
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil": {
-			false, "", 100, 100, true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
-			},
-		},
 		"empty": {
-			true, "", 100, 100, true,
+			"", 0, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", domain.Describe(), "", gomock.Any())
 			},
 		},
 		"0": {
-			true, "0   ", 100, 0, true,
+			"0   ", 0, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 0)
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), 0) //nolint:lll
 			},
 		},
 		"-1": {
-			true, "   -1", 100, 100, false,
+			"   -1", 0, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %d is negative", "-1", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), -1) //nolint:lll
 			},
 		},
-		"1": {true, "   1   ", 100, 1, true, nil},
+		"1": {"   1   ", 1, true, nil},
 		"20": {
-			true, "   20   ", 100, 20, true,
+			"   20   ", 0, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 20)
-			},
-		},
-		"words": {
-			true, "   word   ", 100, 100, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), 20) //nolint:lll
 			},
 		},
 		"9999999": {
-			true, "   9999999   ", 100, 9999999, true,
+			"   9999999   ", 0, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 9999999)
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), 9999999) //nolint:lll
+			},
+		},
+		"words": {
+			"   word   ", 0, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", domain.Describe(), "word", gomock.Any())
 			},
 		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			mockCtrl := gomock.NewController(t)
-
-			set(t, key, tc.set, tc.val)
-
-			field := tc.oldField
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadTTL(mockPP, &field)
+			ttl, ok := config.ParseTTL(mockPP, domain, tc.val)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
-		})
-	}
-}
-
-//nolint:paralleltest // environment vars are global
-func TestReadProxiedByDomain(t *testing.T) {
-	for name, tc := range map[string]struct {
-		proxiedDomains    string
-		nonProxiedDomains string
-		ok                bool
-		expected          map[domain.Domain]bool
-		prepareMockPP     func(*mocks.MockPP)
-	}{
-		"empty": {
-			" ", "   ",
-			true,
-			map[domain.Domain]bool{},
-			nil,
-		},
-		"both": {
-			"  a1, a2", "b1",
-			true,
-			map[domain.Domain]bool{
-				domain.FQDN("a1"): true,
-				domain.FQDN("a2"): true,
-				domain.FQDN("b1"): false,
-			},
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features"),
-					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback"),
-				)
-			},
-		},
-		"overlapping": {
-			"  a1 ", "a1",
-			false,
-			nil,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiExperimental, "PROXIED_DOMAINS and NON_PROXIED_DOMAINS are experimental features"),
-					m.EXPECT().Warningf(pp.EmojiExperimental, "Please share your case at https://github.com/favonia/cloudflare-ddns/issues/199"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiExperimental, "We might remove these features based on your (lack of) feedback"),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Domain %q appeared in both PROXIED_DOMAINS and NON_PROXIED_DOMAINS", "a1"))
-			},
-		},
-	} {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
-			store(t, "PROXIED_DOMAINS", tc.proxiedDomains)
-			store(t, "NON_PROXIED_DOMAINS", tc.nonProxiedDomains)
-
-			var field map[domain.Domain]bool
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-			ok := config.ReadProxiedByDomain(mockPP, &field)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, field)
+			require.Equal(t, tc.ttl, ttl)
 		})
 	}
 }
@@ -482,70 +411,88 @@ func TestPrintDefault(t *testing.T) {
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder( //nolint:dupl
+	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:             %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:              %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:             %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:              %s", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:                  %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")), //nolint:lll
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency:          %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?           %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?            %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration:          %v", time.Hour*6),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied domains:           %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied domains:       %s", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:              %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:           %v", time.Second*30),
 	)
 	config.Default().Print(mockPP)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
-func TestPrintDomains(t *testing.T) {
+func TestPrintMaps(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder( //nolint:dupl
+	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %s", "test4.org, *.test4.org"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %s", "test6.org, *.test6.org"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:             %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:              %s", "test4.org, *.test4.org"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:             %s", "cloudflare.trace"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:              %s", "test6.org, *.test6.org"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:                  %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")), //nolint:lll
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency:          %v", cron.MustNew("@every 5m")),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?           %t", true),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?            %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration:          %v", time.Hour*6),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-26s %s", "Domains with TTL=1 (auto):", "a, c"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-26s %s", "Domains with TTL=30000:", "b, d"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied domains:           %s", "a, b"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied domains:       %s", "c, d"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:              %v", time.Second*5),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:           %v", time.Second*30),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-26s (URL redacted)", "Healthchecks.io:"),
 	)
 
 	c := config.Default()
 
 	c.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
 	c.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}
+
+	c.TTL = map[domain.Domain]api.TTL{}
+	c.TTL[domain.FQDN("a")] = 1
+	c.TTL[domain.FQDN("b")] = 30000
+	c.TTL[domain.FQDN("c")] = 1
+	c.TTL[domain.FQDN("d")] = 30000
+
+	c.Proxied = map[domain.Domain]bool{}
+	c.Proxied[domain.FQDN("a")] = true
+	c.Proxied[domain.FQDN("b")] = true
+	c.Proxied[domain.FQDN("c")] = false
+	c.Proxied[domain.FQDN("d")] = false
+
+	m, ok := monitor.NewHealthChecks(mockPP, "http://user:pass@host/path")
+	require.True(t, ok)
+	c.Monitors = []monitor.Monitor{m}
 
 	c.Print(mockPP)
 }
@@ -564,111 +511,23 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(mockPP),
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "none"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:             %s", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:             %s", "none"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.Schedule(nil)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:                  %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")), //nolint:lll
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency:          %v", cron.Schedule(nil)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?           %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?            %t", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration:          %v", time.Duration(0)),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "0"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied domains:           %s", "(none)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied domains:       %s", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Duration(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:              %v", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:           %v", time.Duration(0)),
 	)
 	var cfg config.Config
 	cfg.Print(mockPP)
-}
-
-//nolint:paralleltest // changing the environment variable TZ
-func TestPrintProxiedByDomain(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	store(t, "TZ", "UTC")
-
-	c := config.Default()
-
-	mockPP := mocks.NewMockPP(mockCtrl)
-	innerMockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder( //nolint:dupl
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
-		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
-		mockPP.EXPECT().IncIndent().Return(mockPP),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %s", "(none)"),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "a, b"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "c, d"),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
-	)
-
-	c.ProxiedByDomain = map[domain.Domain]bool{}
-	c.ProxiedByDomain[domain.FQDN("a")] = true
-	c.ProxiedByDomain[domain.FQDN("b")] = true
-	c.ProxiedByDomain[domain.FQDN("c")] = false
-	c.ProxiedByDomain[domain.FQDN("d")] = false
-	c.Print(mockPP)
-}
-
-//nolint:paralleltest // changing the environment variable TZ
-func TestPrintMonitors(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	store(t, "TZ", "UTC")
-
-	c := config.Default()
-
-	mockPP := mocks.NewMockPP(mockCtrl)
-	innerMockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder(
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
-		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
-		mockPP.EXPECT().IncIndent().Return(mockPP),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Policies:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv4 domains:     %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 provider:    %s", "cloudflare.trace"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IPv6 domains:     %s", "(none)"),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Timezone:         %s", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update frequency: %v", cron.MustNew("@every 5m")),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Update on start?  %t", true),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Delete on stop?   %t", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Cache expiration: %v", time.Hour*6),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "TTL:              %s", "1 (automatic)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Proxied:          %s", "(none)"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Non-proxied:      %s", "(none)"),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "IP detection:     %v", time.Second*5),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Record updating:  %v", time.Second*30),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-17s (URL redacted)", "Healthchecks.io:"),
-	)
-
-	m, ok := monitor.NewHealthChecks(mockPP, "http://user:pass@host/path")
-	require.True(t, ok)
-
-	c.Monitors = []monitor.Monitor{m}
-	c.Print(mockPP)
 }
 
 //nolint:paralleltest // environment vars are global
@@ -709,9 +568,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", 0),
-		innerMockPP.EXPECT().Warningf(pp.EmojiUserWarning, "TTL value (%i) should be 1 (automatic) or between 30 and 86400", 0), //nolint:lll
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "PROXIED", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "TTL", ""),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "PROXIED", ""),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
 	)
@@ -743,7 +601,7 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-//nolint:funlen,maintidx
+//nolint:funlen
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 
@@ -774,7 +632,6 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -782,7 +639,6 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -803,7 +659,8 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
+				TTLTemplate:     "1",
+				ProxiedTemplate: "false",
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -815,7 +672,12 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{
+				TTLTemplate: "1",
+				TTL: map[domain.Domain]api.TTL{
+					domain.FQDN("a.b.c"): 1,
+				},
+				ProxiedTemplate: "false",
+				Proxied: map[domain.Domain]bool{
 					domain.FQDN("a.b.c"): false,
 				},
 			},
@@ -840,7 +702,6 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			ok: false,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -852,7 +713,6 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 					ipnet.IP6: {},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -876,7 +736,8 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{},
+				TTLTemplate:     "1",
+				ProxiedTemplate: "false",
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -888,7 +749,13 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 				},
-				ProxiedByDomain: map[domain.Domain]bool{
+				TTLTemplate: "1",
+				TTL: map[domain.Domain]api.TTL{
+					domain.FQDN("a.b.c"): 1,
+					domain.FQDN("g.h.i"): 1,
+				},
+				ProxiedTemplate: "false",
+				Proxied: map[domain.Domain]bool{
 					domain.FQDN("a.b.c"): false,
 					domain.FQDN("g.h.i"): false,
 				},
@@ -904,7 +771,7 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
-		"proxied-nil": {
+		"template": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
@@ -912,10 +779,10 @@ func TestNormalize(t *testing.T) {
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				DefaultProxied:  true,
-				ProxiedByDomain: nil,
+				TTLTemplate:     `{{if suffix "b.c"}}60{{else if domain "d.e.f" "a.bb.c" }}90{{else}}120{{end}}`,
+				ProxiedTemplate: ` {{not (domain "a.bb.c")}} `,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -925,95 +792,19 @@ func TestNormalize(t *testing.T) {
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				DefaultProxied: true,
-				ProxiedByDomain: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
+				TTLTemplate: `{{if suffix "b.c"}}60{{else if domain "d.e.f" "a.bb.c" }}90{{else}}120{{end}}`,
+				TTL: map[domain.Domain]api.TTL{
+					domain.FQDN("a.b.c"):   60,
+					domain.FQDN("a.bb.c"):  90,
+					domain.FQDN("a.d.e.f"): 120,
 				},
-			},
-			prepareMockPP: func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
-					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Warningf(pp.EmojiImpossible,
-						"Internal failure: ProxiedByDomain is re-initialized because it was nil",
-					),
-					m.EXPECT().Warningf(pp.EmojiImpossible,
-						"Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
-					),
-				)
-			},
-		},
-		"proxied-ignored": {
-			input: &config.Config{ //nolint:exhaustruct
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedByDomain: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
-					domain.FQDN("d.e.f"): true,
-					domain.FQDN("g.h.i"): false,
-				},
-			},
-			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedByDomain: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
-				},
-			},
-			prepareMockPP: func(m *mocks.MockPP) {
-				call0 := m.EXPECT().IsEnabledFor(pp.Info).Return(true)
-				call1 := m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . .").After(call0)
-				call2 := m.EXPECT().IncIndent().Return(m).After(call1)
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					"Domain %q was listed in %s, but it is ignored because it is not managed by the updater",
-					"d.e.f", "PROXIED_DOMAINS").After(call2)
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					"Domain %q was listed in %s, but it is ignored because it is not managed by the updater",
-					"g.h.i", "NON_PROXIED_DOMAINS").After(call2)
-			},
-		},
-		"good": {
-			input: &config.Config{ //nolint:exhaustruct
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedByDomain: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
-				},
-			},
-			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedByDomain: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
+				ProxiedTemplate: ` {{not (domain "a.bb.c")}} `,
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"):   true,
+					domain.FQDN("a.bb.c"):  false,
+					domain.FQDN("a.d.e.f"): true,
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {

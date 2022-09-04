@@ -62,6 +62,55 @@ func TestGetenv(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
+func TestReadString(t *testing.T) {
+	key := keyPrefix + "STRING"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      string
+		newField      string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"unset": {
+			false, "", "hi", "hi", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hi")
+			},
+		},
+		"empty1": {
+			true, " ", "hello", "hello", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hello")
+			},
+		},
+		"empty2": {
+			true, " \t ", "aloha", "aloha", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "aloha")
+			},
+		},
+		"string": {true, "string ", "hey", "string", true, nil},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			set(t, key, tc.set, tc.val)
+
+			field := tc.oldField
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadString(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadQuiet(t *testing.T) {
 	key := keyPrefix + "QUIET"
 	for name, tc := range map[string]struct {
@@ -223,7 +272,6 @@ func TestReadNonnegInt(t *testing.T) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
 			},
 		},
-		"9999999": {true, "   9999999   ", 100, 9999999, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
