@@ -357,7 +357,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 >   Returns `true` if and only if the target domain has one of `patterns` as itself or its parent (or ancestor). Note that labels in domains must fully match; for example, the suffix `b.org` will not match `www.bb.org` because `bb.org` and `b.org` are incomparable, while the suffix `bb.org` will match `www.bb.org`.
 >
 > Some examples:
-> - `TTL={{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`
+> - `TTL={{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c"}} 90 {{else}} 120 {{end}}`
 >
 >   For the domain `b.c` and its descendants, the TTL is 60, and for the domains `d.e.f` and `a.bb.c`, the TTL is 90, and then for all other domains, the TTL is 120.
 > - `PROXIED={{and (suffix "b.c") (not (domain "a.b.c"))}}`
