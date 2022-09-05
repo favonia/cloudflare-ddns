@@ -881,6 +881,28 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"template/error/proxied/ill-formed": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				TTLTemplate:     `1`,
+				ProxiedTemplate: `{{domain 12345}}`,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Could not execute the template %q: %v", "{{domain 12345}}", gomock.Any()), //nolint:lll
+				)
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
