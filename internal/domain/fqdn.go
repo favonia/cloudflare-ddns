@@ -8,13 +8,7 @@ type FQDN string
 func (f FQDN) DNSNameASCII() string { return string(f) }
 
 func (f FQDN) Describe() string {
-	best, ok := safelyToUnicode(string(f))
-	if !ok {
-		// use the unconverted string if the conversation failed
-		return string(f)
-	}
-
-	return best
+	return safelyToUnicode(string(f))
 }
 
 type FQDNSplitter struct {

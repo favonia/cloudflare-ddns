@@ -15,7 +15,7 @@ func TestTTLDescribe(t *testing.T) {
 		seconds     int
 		description string
 	}{
-		"automatic": {1, "1 (automatic)"},
+		"automatic": {1, "1 (auto)"},
 		"2":         {2, "2"},
 		"30":        {30, "30"},
 		"293":       {293, "293"},

@@ -23,7 +23,6 @@ func TestWildcardString(t *testing.T) {
 	))
 }
 
-//nolint:dupl
 func TestWildcardDescribe(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]struct {
@@ -58,6 +57,7 @@ func TestWildcardDescribe(t *testing.T) {
 		{"xn--mgba3gch31f.de", "*.نامهای.de"},
 		{"xn--mgba3gch31f060k.de", "*.نامه\u200cای.de"},
 		// some other test cases
+		{"", "*"},
 		{"xn--a.xn--a.xn--a.com", "*.xn--a.xn--a.xn--a.com"},
 		{"a.com....", "*.a.com...."},
 		{"a.com", "*.a.com"},
@@ -70,6 +70,7 @@ func TestWildcardDescribe(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestWildcardSplitter(t *testing.T) {
 	t.Parallel()
 	type r = string

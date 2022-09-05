@@ -68,7 +68,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	}
 
 	// Get the setter
-	s, ok := setter.New(ppfmt, h, c.TTL)
+	s, ok := setter.New(ppfmt, h)
 	if !ok {
 		bye()
 	}

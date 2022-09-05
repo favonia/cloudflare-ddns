@@ -20,7 +20,6 @@ func TestFQDNString(t *testing.T) {
 	))
 }
 
-//nolint:dupl
 func TestFQDNDescribe(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]struct {
@@ -67,6 +66,7 @@ func TestFQDNDescribe(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestFQDNSplitter(t *testing.T) {
 	t.Parallel()
 	type r = string

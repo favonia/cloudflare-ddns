@@ -18,6 +18,17 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
+func ReadString(ppfmt pp.PP, key string, field *string) bool {
+	val := Getenv(key)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		return true
+	}
+
+	*field = val
+	return true
+}
+
 // ReadQuiet reads an environment variable as quiet/verbose.
 func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	val := Getenv(key)
