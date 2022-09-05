@@ -345,12 +345,26 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
-🧪 Experimental features: (Please [share your case at this GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/199) so that we can further revise the design. Thanks!)
+> <details>
+> <summary>🧪 Experimental support of Go templates:</summary>
+>
+> Both `PROXIED` and `TTL` can be [Go templates](https://pkg.go.dev/text/template) for per-domain settings. For example, `PROXIED={{not (suffix "example.org")}}` means all domains should be proxied except domains like `www.example.org` and `example.org`. The Go templates are executed with the following two custom functions:
+> - `domain(patterns ...string) bool`
+>
+>   Returns `true` if and only if the target domain matches one of `patterns`. All domains are normalized before comparison; for example, internationalized domain names are converted to Punycode before comparing them.
+> - `suffix(patterns ...string) bool`
+>
+>   Returns `true` if and only if the target domain has one of `patterns` as itself or its parent (or ancestor). Note that labels in domains must fully match; for example, the suffix `b.org` will not match `www.bb.org` because `bb.org` and `b.org` are incomparable, while the suffix `bb.org` will match `www.bb.org`.
+>
+> Some examples:
+> - `TTL={{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`
+>
+>   For the domain `b.c` and its descendants, the TTL is 60, and for the domains `d.e.f` and `a.bb.c`, the TTL is 90, and then for all other domains, the TTL is 120.
+> - `PROXIED={{and (suffix "b.c") (not (domain "a.b.c"))}}`
+>
+>   Proxy the domain `b.c` and its descendants except for the domain `a.b.c`.
+> </details>
 
-| Name | Valid Values | Meaning | Required? | Default Value |
-| ---- | ------------ | ------- | --------- | ------------- |
-| `PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
-| `NON_PROXIED_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains for which the new DNS records should **not** be proxied by Cloudflare, overriding the global setting (`PROXIED`) for these domains | No | `""` (empty)
 </details>
 
 <details>
@@ -412,7 +426,7 @@ If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after
 | `cloudflare.authentication.api_key` | ❌ | _Use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)_ |
 | `cloudflare.zone_id` | ✔️ | Not needed; automatically retrieved from the server |
 | `cloudflare.subdomains[].name` | ✔️ | Use `DOMAINS` with **fully qualified domain names** (FQDNs); for example, if your zone is `example.org` and your subdomain is `www`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied` | ✔️ | Use `PROXIED=true` or `PROXIED=false` to specify the global proxy setting, and then use `PROXIED_DOMAINS` and `NON_PROXIED_DOMAINS` with **fully qualified domain names** (FQDNs) to override the global setting if desired |
+| `cloudflare.subdomains[].proxied` | ✔️ | Use the experimental support of Go templates in `PROXIED` to specify per-domain settings; see above for the detailed documentation |
 | `a` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
 | `aaaa` | ✔️ | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
 | `proxied` | ✔️ | Use `PROXIED=true` or `PROXIED=false` |

@@ -781,7 +781,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				TTLTemplate:     `{{if suffix "b.c"}}60{{else if domain "d.e.f" "a.bb.c" }}90{{else}}120{{end}}`,
+				TTLTemplate:     `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
 				ProxiedTemplate: ` {{not (domain "a.bb.c")}} `,
 			},
 			ok: true,
@@ -794,7 +794,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				TTLTemplate: `{{if suffix "b.c"}}60{{else if domain "d.e.f" "a.bb.c" }}90{{else}}120{{end}}`,
+				TTLTemplate: `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
 				TTL: map[domain.Domain]api.TTL{
 					domain.FQDN("a.b.c"):   60,
 					domain.FQDN("a.bb.c"):  90,
