@@ -219,7 +219,7 @@ func describeDomains(domains []domain.Domain) string {
 	return strings.Join(descriptions, ", ")
 }
 
-func inverseMap[K comparable](m map[domain.Domain]K) ([]K, map[K][]domain.Domain) {
+func getInverseMap[K comparable](m map[domain.Domain]K) ([]K, map[K][]domain.Domain) {
 	inverse := map[K][]domain.Domain{}
 
 	for dom, val := range m {
@@ -242,53 +242,54 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
 	ppfmt = ppfmt.IncIndent()
-
 	inner := ppfmt.IncIndent()
 
-	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 provider:             %s", provider.Name(c.Provider[ipnet.IP4]))
+	section := func(title string) { ppfmt.Infof(pp.EmojiConfig, title) }
+	item := func(title string, format string, values ...any) {
+		inner.Infof(pp.EmojiBullet, "%-24s %s", title, fmt.Sprintf(format, values...))
+	}
+
+	section("IP providers:")
+	item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	if c.Provider[ipnet.IP4] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv4 domains:              %s", describeDomains(c.Domains[ipnet.IP4]))
+		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 provider:             %s", provider.Name(c.Provider[ipnet.IP6]))
+	item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	if c.Provider[ipnet.IP6] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv6 domains:              %s", describeDomains(c.Domains[ipnet.IP6]))
+		item("IPv6 domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
 	}
 
-	ppfmt.Infof(pp.EmojiConfig, "Scheduling:")
-	inner.Infof(pp.EmojiBullet, "Timezone:                  %s", cron.DescribeLocation(time.Local))
-	inner.Infof(pp.EmojiBullet, "Update frequency:          %v", c.UpdateCron)
-	inner.Infof(pp.EmojiBullet, "Update on start?           %t", c.UpdateOnStart)
-	inner.Infof(pp.EmojiBullet, "Delete on stop?            %t", c.DeleteOnStop)
-	inner.Infof(pp.EmojiBullet, "Cache expiration:          %v", c.CacheExpiration)
+	section("Scheduling:")
+	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
+	item("Update frequency:", "%v", c.UpdateCron)
+	item("Update on start?", "%t", c.UpdateOnStart)
+	item("Delete on stop?", "%t", c.DeleteOnStop)
+	item("Cache expiration:", "%v", c.CacheExpiration)
 
-	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
-	{
-		vals, inverseMap := inverseMap[api.TTL](c.TTL)
+	if len(c.TTL) > 0 {
+		section("TTL of new records:")
+		vals, inverseMap := getInverseMap[api.TTL](c.TTL)
 		api.SortTTLs(vals)
 		for _, val := range vals {
-			inner.Infof(
-				pp.EmojiBullet,
-				"%-26s %s",
-				fmt.Sprintf("Domains with TTL %s:", val.Describe()),
-				describeDomains(inverseMap[val]),
-			)
+			item(fmt.Sprintf("TTL is %s:", val.Describe()), describeDomains(inverseMap[val]))
 		}
 	}
-	{
-		_, inverseMap := inverseMap[bool](c.Proxied)
-		inner.Infof(pp.EmojiBullet, "Proxied domains:           %s", describeDomains(inverseMap[true]))
-		inner.Infof(pp.EmojiBullet, "Non-proxied domains:       %s", describeDomains(inverseMap[false]))
+
+	if len(c.Proxied) > 0 {
+		section("Proxy for new records:")
+		_, inverseMap := getInverseMap[bool](c.Proxied)
+		item("Proxied:", "%s", describeDomains(inverseMap[true]))
+		item("Unproxied (DNS only):", "%s", describeDomains(inverseMap[false]))
 	}
 
-	ppfmt.Infof(pp.EmojiConfig, "Timeouts:")
-	inner.Infof(pp.EmojiBullet, "IP detection:              %v", c.DetectionTimeout)
-	inner.Infof(pp.EmojiBullet, "Record updating:           %v", c.UpdateTimeout)
+	section("Timeouts:")
+	item("IP detection:", "%v", c.DetectionTimeout)
+	item("Record updating:", "%v", c.UpdateTimeout)
 
 	if len(c.Monitors) > 0 {
-		ppfmt.Infof(pp.EmojiConfig, "Monitors:")
+		section("Monitors:")
 		for _, m := range c.Monitors {
-			inner.Infof(pp.EmojiBullet, "%-26s (URL redacted)", m.DescribeService()+":")
+			item(m.DescribeService()+":", "%s", "(URL redacted)")
 		}
 	}
 }
