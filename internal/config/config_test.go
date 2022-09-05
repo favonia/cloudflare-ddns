@@ -633,13 +633,8 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP6: {},
 				},
 			},
-			ok: false,
-			expected: &config.Config{ //nolint:exhaustruct
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {},
-					ipnet.IP6: {},
-				},
-			},
+			ok:       false,
+			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
@@ -666,7 +661,6 @@ func TestNormalize(t *testing.T) {
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
-					ipnet.IP6: nil,
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
@@ -695,7 +689,6 @@ func TestNormalize(t *testing.T) {
 		"empty-ip6-none-ip4": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
@@ -703,17 +696,8 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP6: {},
 				},
 			},
-			ok: false,
-			expected: &config.Config{ //nolint:exhaustruct
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
-					ipnet.IP6: nil,
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-					ipnet.IP6: {},
-				},
-			},
+			ok:       false,
+			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
@@ -729,7 +713,6 @@ func TestNormalize(t *testing.T) {
 		"ignored-ip4-domains": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
@@ -742,7 +725,6 @@ func TestNormalize(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
@@ -774,11 +756,9 @@ func TestNormalize(t *testing.T) {
 		"template": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
 				TTLTemplate:     `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
@@ -787,11 +767,9 @@ func TestNormalize(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: nil,
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: nil,
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
 				TTLTemplate: `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
@@ -815,6 +793,94 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"template/invalid/ttl": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				},
+				TTLTemplate:     `{{if}}`,
+				ProxiedTemplate: ` {{not (domain "a.b.c")}} `,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "%q is not a valid template: %v", "{{if}}", gomock.Any()),
+				)
+			},
+		},
+		"template/error/ttl": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				TTLTemplate:     `not a number`,
+				ProxiedTemplate: `{{not (domain "a.b.c")}}`,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", "a.b.c", "not a number", gomock.Any()),
+				)
+			},
+		},
+		"template/error/ttl/out-of-range": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				TTLTemplate:     `{{if (domain "a.b.c")}} 2 {{end}}`,
+				ProxiedTemplate: `{{not (domain "a.b.c")}}`,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", "a.b.c", 2),
+				)
+			},
+		},
+		"template/error/proxied": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				TTLTemplate:     `1`,
+				ProxiedTemplate: `{{12345}}`,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", "a.b.c", "12345", gomock.Any()), //nolint:lll
+				)
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -828,7 +894,11 @@ func TestNormalize(t *testing.T) {
 			}
 			ok := cfg.NormalizeDomains(mockPP)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, cfg)
+			if tc.ok {
+				require.Equal(t, tc.expected, cfg)
+			} else {
+				require.Equal(t, tc.input, cfg)
+			}
 		})
 	}
 }

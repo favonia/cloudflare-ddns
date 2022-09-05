@@ -16,7 +16,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-//nolint:funlen,maintidx
+//nolint:funlen
 func TestSet(t *testing.T) {
 	t.Parallel()
 

@@ -24,6 +24,7 @@ linters:
     - ifshort # deprecated
     - interfacer # deprecated
     - ireturn # ireturn works poorly for the style with private types and public interfaces
+    - maintidx # It seems the linter never leads to code changes
     - maligned # deprecated, and I value readability over bytes saved by alignment
     - nlreturn # I don't agree with the style enforced by nlreturn
     - nonamedreturns # named returns are needed in the internal updator package

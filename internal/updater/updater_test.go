@@ -17,7 +17,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
-//nolint:funlen,paralleltest,maintidx // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPs(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")

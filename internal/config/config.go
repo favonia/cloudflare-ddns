@@ -173,7 +173,7 @@ func ParseProxied(ppfmt pp.PP, domain domain.Domain, val string) (bool, bool) {
 
 	switch {
 	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean: %v", domain.Describe(), val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", domain.Describe(), val, err)
 		return false, false
 
 	default:
@@ -317,8 +317,17 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	return true
 }
 
+// NormalizeDomains normalizes the fields Provider, TTL and Proxied.
+// When errors are reported, the original configuration remain unchanged.
+//
 //nolint:funlen,gocognit,cyclop
 func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
+	// New maps
+	providerMap := map[ipnet.Type]provider.Provider{}
+	ttlMap := map[domain.Domain]api.TTL{}
+	proxiedMap := map[domain.Domain]bool{}
+	activeDomainSet := map[domain.Domain]bool{}
+
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.IncIndent()
@@ -329,73 +338,79 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		return false
 	}
 
-	// change useless policies to none
+	// fill in providerMap and activeDomainSet
 	for ipNet, domains := range c.Domains {
-		if len(domains) == 0 && c.Provider[ipNet] != nil {
-			c.Provider[ipNet] = nil
+		if c.Provider[ipNet] == nil {
+			continue
+		}
+
+		if len(domains) == 0 {
 			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains were set for %s",
-				ipNet.Int(), provider.Name(c.Provider[ipNet]), ipNet.Describe())
+				ipNet.Int(), provider.Name(nil), ipNet.Describe())
+
+			continue
+		}
+
+		providerMap[ipNet] = c.Provider[ipNet]
+		for _, domain := range domains {
+			activeDomainSet[domain] = true
 		}
 	}
 
 	// check if all policies are none
-	if c.Provider[ipnet.IP4] == nil && c.Provider[ipnet.IP6] == nil {
+	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled")
 		return false
 	}
 
-	// domainSet is the set of managed domains.
-	domainSet := map[domain.Domain]bool{}
-	for ipNet, domains := range c.Domains {
-		if c.Provider[ipNet] != nil {
-			for _, domain := range domains {
-				domainSet[domain] = true
-			}
-		}
-	}
-
 	// check if some domains are unused
 	for ipNet, domains := range c.Domains {
-		if c.Provider[ipNet] == nil {
-			for _, domain := range domains {
-				if !domainSet[domain] {
-					ppfmt.Warningf(pp.EmojiUserWarning,
-						"Domain %q is ignored because it is only for %s but %s is disabled",
-						domain.Describe(), ipNet.Describe(), ipNet.Describe())
-				}
+		if providerMap[ipNet] != nil {
+			continue
+		}
+
+		for _, domain := range domains {
+			if activeDomainSet[domain] {
+				continue
 			}
+
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"Domain %q is ignored because it is only for %s but %s is disabled",
+				domain.Describe(), ipNet.Describe(), ipNet.Describe())
 		}
 	}
 
-	// fill in c.Proxied
-	c.Proxied = map[domain.Domain]bool{}
-	for dom := range domainSet {
-		proxiedString, ok := domain.ExecTemplate(ppfmt, c.ProxiedTemplate, dom)
-		if !ok {
-			return false
+	// fill in ttlMap and proxyMap
+	for dom := range activeDomainSet {
+		{
+			ttlString, ok := domain.ExecTemplate(ppfmt, c.TTLTemplate, dom)
+			if !ok {
+				return false
+			}
+			ttl, ok := ParseTTL(ppfmt, dom, ttlString)
+			if !ok {
+				return false
+			}
+			ttlMap[dom] = ttl
 		}
 
-		proxied, ok := ParseProxied(ppfmt, dom, proxiedString)
-		if !ok {
-			return false
+		{
+			proxiedString, ok := domain.ExecTemplate(ppfmt, c.ProxiedTemplate, dom)
+			if !ok {
+				return false
+			}
+
+			proxied, ok := ParseProxied(ppfmt, dom, proxiedString)
+			if !ok {
+				return false
+			}
+			proxiedMap[dom] = proxied
 		}
-		c.Proxied[dom] = proxied
 	}
 
-	// fill in c.TTL
-	c.TTL = map[domain.Domain]api.TTL{}
-	for dom := range domainSet {
-		ttlString, ok := domain.ExecTemplate(ppfmt, c.TTLTemplate, dom)
-		if !ok {
-			return false
-		}
-
-		ttl, ok := ParseTTL(ppfmt, dom, ttlString)
-		if !ok {
-			return false
-		}
-		c.TTL[dom] = ttl
-	}
+	c.Provider = providerMap
+	c.TTL = ttlMap
+	c.Proxied = proxiedMap
 
 	return true
 }

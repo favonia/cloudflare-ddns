@@ -39,7 +39,7 @@ func templateFuncs(target Domain) template.FuncMap {
 func ExecTemplate(ppfmt pp.PP, tmpl string, target Domain) (string, bool) {
 	t, err := template.New("").Funcs(templateFuncs(target)).Parse(tmpl)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiUserError, "%q is not a valid template: %v", tmpl, err)
+		ppfmt.Errorf(pp.EmojiUserError, "%q is not a valid template: %v", tmpl, err)
 		return "", false
 	}
 
