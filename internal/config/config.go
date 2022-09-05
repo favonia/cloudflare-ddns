@@ -270,7 +270,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 			inner.Infof(
 				pp.EmojiBullet,
 				"%-26s %s",
-				fmt.Sprintf("Domains with TTL=%s:", val.Describe()),
+				fmt.Sprintf("Domains with TTL %s:", val.Describe()),
 				describeDomains(inverseMap[val]),
 			)
 		}
