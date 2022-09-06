@@ -168,20 +168,18 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
-func ParseProxied(ppfmt pp.PP, domain domain.Domain, val string) (bool, bool) {
-	res, err := strconv.ParseBool(strings.TrimSpace(val))
-
-	switch {
-	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", domain.Describe(), val, err)
+func ParseProxied(ppfmt pp.PP, dom domain.Domain, val string) (bool, bool) {
+	val = strings.TrimSpace(val)
+	res, err := strconv.ParseBool(val)
+	if err != nil {
+		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", dom.Describe(), val, err)
 		return false, false
-
-	default:
-		return res, true
 	}
+
+	return res, true
 }
 
-// ParseTTL turns a string into a valid TTL value.
+// ParseTTL turns a template into a valid TTL value.
 //
 // According to [API documentation], the valid range is 1 (auto) and [60, 86400].
 // According to [DNS documentation], the valid range is "Auto" and [30, 86400].
@@ -189,17 +187,16 @@ func ParseProxied(ppfmt pp.PP, domain domain.Domain, val string) (bool, bool) {
 //
 // [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
 // [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
-func ParseTTL(ppfmt pp.PP, domain domain.Domain, val string) (api.TTL, bool) {
+func ParseTTL(ppfmt pp.PP, dom domain.Domain, val string) (api.TTL, bool) {
 	val = strings.TrimSpace(val)
 	res, err := strconv.Atoi(val)
-
 	switch {
 	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", domain.Describe(), val, err)
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", dom.Describe(), val, err)
 		return 0, false
 
 	case res != 1 && (res < 30 || res > 86400):
-		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", domain.Describe(), res)
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", dom.Describe(), res)
 		return 0, false
 
 	default:
@@ -219,20 +216,20 @@ func describeDomains(domains []domain.Domain) string {
 	return strings.Join(descriptions, ", ")
 }
 
-func getInverseMap[K comparable](m map[domain.Domain]K) ([]K, map[K][]domain.Domain) {
-	inverse := map[K][]domain.Domain{}
+func getInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
+	inverse := map[V][]domain.Domain{}
 
 	for dom, val := range m {
 		inverse[val] = append(inverse[val], dom)
 	}
 
-	keys := make([]K, 0, len(inverse))
+	vals := make([]V, 0, len(inverse))
 	for val := range inverse {
 		domain.SortDomains(inverse[val])
-		keys = append(keys, val)
+		vals = append(vals, val)
 	}
 
-	return keys, inverse
+	return vals, inverse
 }
 
 func (c *Config) Print(ppfmt pp.PP) {
@@ -268,7 +265,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	if len(c.TTL) > 0 {
 		section("TTL of new records:")
-		vals, inverseMap := getInverseMap[api.TTL](c.TTL)
+		vals, inverseMap := getInverseMap(c.TTL)
 		api.SortTTLs(vals)
 		for _, val := range vals {
 			item(fmt.Sprintf("TTL is %s:", val.Describe()), describeDomains(inverseMap[val]))
@@ -277,7 +274,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	if len(c.Proxied) > 0 {
 		section("Proxy for new records:")
-		_, inverseMap := getInverseMap[bool](c.Proxied)
+		_, inverseMap := getInverseMap(c.Proxied)
 		item("Proxied:", "%s", describeDomains(inverseMap[true]))
 		item("Unproxied (DNS only):", "%s", describeDomains(inverseMap[false]))
 	}
@@ -294,7 +291,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 }
 
-func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
+func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
@@ -318,10 +315,28 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	return true
 }
 
+func assignMap[V any](ppfmt pp.PP,
+	m map[domain.Domain]V,
+	e func(domain.Domain) (string, bool),
+	p func(pp.PP, domain.Domain, string) (V, bool),
+	dom domain.Domain,
+) bool {
+	str, ok := e(dom)
+	if !ok {
+		return false
+	}
+	val, ok := p(ppfmt, dom, str)
+	if !ok {
+		return false
+	}
+	m[dom] = val
+	return true
+}
+
 // NormalizeDomains normalizes the fields Provider, TTL and Proxied.
 // When errors are reported, the original configuration remain unchanged.
 //
-//nolint:funlen,gocognit,cyclop
+//nolint:funlen
 func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	// New maps
 	providerMap := map[ipnet.Type]provider.Provider{}
@@ -382,30 +397,19 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	}
 
 	// fill in ttlMap and proxyMap
+	ttlExec, ok := domain.ParseTemplate(ppfmt, c.TTLTemplate)
+	if !ok {
+		return false
+	}
+	proxiedExec, ok := domain.ParseTemplate(ppfmt, c.ProxiedTemplate)
+	if !ok {
+		return false
+	}
+
 	for dom := range activeDomainSet {
-		{
-			ttlString, ok := domain.ExecTemplate(ppfmt, c.TTLTemplate, dom)
-			if !ok {
-				return false
-			}
-			ttl, ok := ParseTTL(ppfmt, dom, ttlString)
-			if !ok {
-				return false
-			}
-			ttlMap[dom] = ttl
-		}
-
-		{
-			proxiedString, ok := domain.ExecTemplate(ppfmt, c.ProxiedTemplate, dom)
-			if !ok {
-				return false
-			}
-
-			proxied, ok := ParseProxied(ppfmt, dom, proxiedString)
-			if !ok {
-				return false
-			}
-			proxiedMap[dom] = proxied
+		if !assignMap(ppfmt, ttlMap, ttlExec, ParseTTL, dom) ||
+			!assignMap(ppfmt, proxiedMap, proxiedExec, ParseProxied, dom) {
+			return false
 		}
 	}
 

@@ -118,7 +118,7 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
 //
-//nolint:funlen, cyclop
+//nolint:funlen
 func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
 	if val := Getenv(key); val == "" {
 		// parsing of the deprecated parameter

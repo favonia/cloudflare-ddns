@@ -11,12 +11,9 @@ func hasSuffix(s, suffix string) bool {
 	return len(suffix) == 0 || (strings.HasSuffix(s, suffix) && (len(s) == len(suffix) || s[len(s)-len(suffix)-1] == '.'))
 }
 
-// templateFuncs returns the function maps for running the template.
-// "domains" to match a domain in a list, and "suffix" to match a domain with a suffix in a list.
-func templateFuncs(target Domain) template.FuncMap {
-	targetASCII := target.DNSNameASCII()
-
-	return template.FuncMap{
+func ParseTemplate(ppfmt pp.PP, tmpl string) (func(target Domain) (string, bool), bool) {
+	var targetASCII string
+	funcMap := template.FuncMap{
 		"domain": func(rawDomains ...string) (bool, error) {
 			for _, rawDomain := range rawDomains {
 				if targetASCII == toASCII(rawDomain) {
@@ -34,20 +31,23 @@ func templateFuncs(target Domain) template.FuncMap {
 			return false, nil
 		},
 	}
-}
 
-func ExecTemplate(ppfmt pp.PP, tmpl string, target Domain) (string, bool) {
-	t, err := template.New("").Funcs(templateFuncs(target)).Parse(tmpl)
+	t, err := template.New("").Funcs(funcMap).Parse(tmpl)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "%q is not a valid template: %v", tmpl, err)
-		return "", false
+		return nil, false
 	}
 
-	var output strings.Builder
-	if err = t.Execute(&output, nil); err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Could not execute the template %q: %v", tmpl, err)
-		return "", false
+	exec := func(target Domain) (string, bool) {
+		targetASCII = target.DNSNameASCII()
+
+		var output strings.Builder
+		if err = t.Execute(&output, nil); err != nil {
+			ppfmt.Errorf(pp.EmojiUserError, "Could not execute the template %q: %v", tmpl, err)
+			return "", false
+		}
+		return output.String(), true
 	}
 
-	return output.String(), true
+	return exec, true
 }

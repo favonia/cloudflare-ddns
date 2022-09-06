@@ -50,7 +50,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 
 // Set calls the DNS service API to update the API of one domain.
 //
-//nolint:funlen,cyclop,gocognit
+//nolint:funlen
 func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool) bool { //nolint:lll
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
