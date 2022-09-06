@@ -1,3 +1,17 @@
+# [1.7.0](https://github.com/favonia/cloudflare-ddns/compare/v1.6.1...v1.7.0) (2022-09-06)
+
+
+### Features
+
+* **config:** accept templates for PROXIED and TTL ([#214](https://github.com/favonia/cloudflare-ddns/issues/214)) ([a78b96b](https://github.com/favonia/cloudflare-ddns/commit/a78b96bf44dcbdbc2cfcd82eee18c4baffba6d77))
+* warn about incorrect TTL values ([#206](https://github.com/favonia/cloudflare-ddns/issues/206)) ([c6a7ea8](https://github.com/favonia/cloudflare-ddns/commit/c6a7ea89e3651b5d770d9348e99aec8e34120356))
+
+### BREAKING CHANGES
+
+* experimental `PROXIED_DOMAINS` and `NON_PROXIED_DOMAINS` introduced in 1.6.0 are no longer supported; they are replaced by the new experimental template system
+
+
+
 ## [1.6.1](https://github.com/favonia/cloudflare-ddns/compare/v1.6.0...v1.6.1) (2022-08-13)
 
 
