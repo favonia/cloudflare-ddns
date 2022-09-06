@@ -810,6 +810,28 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"template/invalid/proxied": {
+			input: &config.Config{ //nolint:exhaustruct
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				},
+				TTLTemplate:     `1`,
+				ProxiedTemplate: `{{range}}`,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "%q is not a valid template: %v", `{{range}}`, gomock.Any()),
+				)
+			},
+		},
 		"template/error/ttl": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
