@@ -232,6 +232,8 @@ func getInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Dom
 	return vals, inverse
 }
 
+const itemTitleWidth = 24
+
 func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		return
@@ -243,7 +245,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section := func(title string) { ppfmt.Infof(pp.EmojiConfig, title) }
 	item := func(title string, format string, values ...any) {
-		inner.Infof(pp.EmojiBullet, "%-24s %s", title, fmt.Sprintf(format, values...))
+		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
 
 	section("IP providers:")

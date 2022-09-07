@@ -17,11 +17,13 @@ import (
 )
 
 // randUint16 generates a random uint16, possibly not cryptographically secure.
+//
+//nolint:gosec
 func randUint16() uint16 {
 	buf := make([]byte, binary.Size(uint16(0)))
 	if _, err := rand.Read(buf); err != nil {
 		// DoH + a weak PRNG should be secure enough
-		return uint16(mathrand.Uint32()) //nolint:gosec
+		return uint16(mathrand.Uint32())
 	}
 
 	return binary.BigEndian.Uint16(buf)
