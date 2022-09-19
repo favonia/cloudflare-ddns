@@ -34,7 +34,7 @@ Simply list all the domain names and you are done!
 * 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. _(The updater smooths out [some rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
 * 🃏 Wildcard domain names (_e.g._, `*.example.org`) are also supported.
 * 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
-* 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying and change TTL for each domain.
+* 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying and change TTL on a per-domain basis.
 
 ### 🕵️ Privacy
 
