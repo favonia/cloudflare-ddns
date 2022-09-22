@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -16,6 +16,17 @@ import (
 // Getenv reads an environment variable and trim the space.
 func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
+}
+
+func ReadString(ppfmt pp.PP, key string, field *string) bool {
+	val := Getenv(key)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		return true
+	}
+
+	*field = val
+	return true
 }
 
 // ReadQuiet reads an environment variable as quiet/verbose.
@@ -82,17 +93,17 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 // Spaces are trimed.
-func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
+func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
 	rawList := strings.Split(Getenv(key), ",")
 
-	*field = make([]api.Domain, 0, len(rawList))
+	*field = make([]domain.Domain, 0, len(rawList))
 	for _, item := range rawList {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
 		}
 
-		item, err := api.NewDomain(item)
+		item, err := domain.New(item)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
 		}
@@ -106,7 +117,8 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]api.Domain) bool {
 // ReadProvider reads an environment variable and parses it as a provider.
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
-//nolint: funlen, cyclop
+//
+//nolint:funlen
 func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
 	if val := Getenv(key); val == "" {
 		// parsing of the deprecated parameter
@@ -117,7 +129,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint: lll
+				`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace`,
 				keyDeprecated, key, key,
 			)
 			*field = provider.NewCloudflareTrace()
@@ -125,7 +137,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare.trace":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewCloudflareTrace()
@@ -133,7 +145,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare.doh":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewCloudflareDOH()
@@ -141,7 +153,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "ipify":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewIpify()
@@ -149,7 +161,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "local":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=%s`,
+				`Parameter %s was deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
 			*field = provider.NewLocal()
@@ -157,7 +169,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "unmanaged":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
-				`The parameter %s was deprecated; use %s=none`,
+				`Parameter %s was deprecated; use %s=none`,
 				keyDeprecated, key,
 			)
 			*field = nil
@@ -170,7 +182,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		if Getenv(keyDeprecated) != "" {
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`Cannot have both %s and %s set.`,
+				`Cannot have both %s and %s set`,
 				key, keyDeprecated,
 			)
 			return false
@@ -180,7 +192,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case "cloudflare":
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+				`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
 				key, key,
 			)
 			return false

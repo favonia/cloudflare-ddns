@@ -6,11 +6,12 @@ const (
 	EmojiStar   Emoji = "🌟" // stars attached to the tool name
 	EmojiBullet Emoji = "🔸" // generic bullet points
 
-	EmojiEnvVars     Emoji = "📖" // reading configuration
-	EmojiConfig      Emoji = "🔧" // showing configuration
-	EmojiInternet    Emoji = "🌐" // network address detection
-	EmojiPriviledges Emoji = "🥷" // /privileges
-	EmojiMute        Emoji = "🔇" // quiet mode
+	EmojiEnvVars      Emoji = "📖" // reading configuration
+	EmojiConfig       Emoji = "🔧" // showing configuration
+	EmojiInternet     Emoji = "🌐" // network address detection
+	EmojiPriviledges  Emoji = "🥷" // /privileges
+	EmojiMute         Emoji = "🔇" // quiet mode
+	EmojiExperimental Emoji = "🧪" // experimental features
 
 	EmojiAddRecord    Emoji = "🐣" // adding new DNS records
 	EmojiDelRecord    Emoji = "💀" // deleting DNS records
@@ -25,9 +26,11 @@ const (
 	EmojiAlarm       Emoji = "⏰" // an event that is scheduled to happen, but not immediately
 	EmojiBye         Emoji = "👋" // bye!
 
+	EmojiGood        Emoji = "😊" // good news
 	EmojiUserError   Emoji = "😡" // configuration mistakes made by users
 	EmojiUserWarning Emoji = "😦" // warnings about possible configuration mistakes
 	EmojiError       Emoji = "😞" // errors that are not (directly) caused by user errors
+	EmojiWarning     Emoji = "😐" // warnings about something unusual
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
 )
 

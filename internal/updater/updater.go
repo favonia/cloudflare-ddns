@@ -4,11 +4,37 @@ import (
 	"context"
 	"net/netip"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
+
+func getTTL(ppfmt pp.PP, c *config.Config, domain domain.Domain) api.TTL {
+	if ttl, ok := c.TTL[domain]; ok {
+		return ttl
+	}
+
+	ppfmt.Warningf(pp.EmojiImpossible,
+		"TTL[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+		domain.Describe(),
+	)
+	return api.TTLAuto
+}
+
+func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
+	if proxied, ok := c.Proxied[domain]; ok {
+		return proxied
+	}
+
+	ppfmt.Warningf(pp.EmojiImpossible,
+		"Proxied[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+		domain.Describe(),
+	)
+	return false
+}
 
 func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr) bool {
 	ok := true
@@ -17,7 +43,9 @@ func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, 
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		if !s.Set(ctx, ppfmt, domain, ipNet, ip) {
+		if !s.Set(ctx, ppfmt, domain, ipNet, ip,
+			getTTL(ppfmt, c, domain),
+			getProxied(ppfmt, c, domain)) {
 			ok = false
 		}
 	}
@@ -42,11 +70,11 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 			MessageShouldDisplay[ipNet] = false
 			switch ipNet {
 			case ipnet.IP6:
-				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker, Kubernetes, or other frameworks, IPv6 networks often require additional setups.") //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks in the README at https://github.com/favonia/cloudflare-ddns")                //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable IPv6 with IP6_PROVIDER=none")                       //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns")      //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none") //nolint:lll
 			case ipnet.IP4:
-				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable IPv4 with IP4_PROVIDER=none") //nolint:lll
+				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
 			}
 		}
 	}
@@ -56,7 +84,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
 	ok := true
 
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip := detectIP(ctx, ppfmt, c, ipNet)
 			if !ip.IsValid() {
@@ -76,7 +104,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
 	ok := true
 
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			if !setIP(ctx, ppfmt, c, s, ipNet, netip.Addr{}) {
 				ok = false

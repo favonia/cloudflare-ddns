@@ -68,7 +68,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	}
 
 	// Get the setter
-	s, ok := setter.New(ppfmt, h, c.TTL, c.Proxied)
+	s, ok := setter.New(ppfmt, h)
 	if !ok {
 		bye()
 	}
@@ -76,7 +76,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	return c, h, s
 }
 
-func main() { //nolint:funlen,cyclop,gocognit
+func main() { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
 	if !config.ReadQuiet("QUIET", &ppfmt) {
 		ppfmt.Noticef(pp.EmojiUserError, "Bye!")

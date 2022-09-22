@@ -1,4 +1,4 @@
-package api
+package domain
 
 import (
 	"sort"
@@ -7,9 +7,10 @@ import (
 	"golang.org/x/net/idna"
 )
 
-//nolint:gochecknoglobals
-// profile does C2 in UTS#46 with all checks on + removing leading dots.
+// profileDroppingLeadingDots does C2 in UTS#46 with all checks on + removing leading dots.
 // This is the main conversion profile in use.
+//
+//nolint:gochecknoglobals
 var (
 	profileDroppingLeadingDots = idna.New(
 		idna.MapForLookup(),
@@ -28,21 +29,31 @@ var (
 // safelyToUnicode takes an ASCII form and returns the Unicode form
 // when the round trip gives the same ASCII form back without errors.
 // Otherwise, the input ASCII form is returned.
-func safelyToUnicode(ascii string) (string, bool) {
+func safelyToUnicode(ascii string) string {
 	unicode, errToA := profileKeepingLeadingDots.ToUnicode(ascii)
 	roundTrip, errToU := profileKeepingLeadingDots.ToASCII(unicode)
 	if errToA != nil || errToU != nil || roundTrip != ascii {
-		return ascii, false
+		return ascii
 	}
 
-	return unicode, true
+	return unicode
+}
+
+// toASCII normalizes a domain with best efforts, ignoring errors.
+func toASCII(domain string) string {
+	normalized, _ := profileDroppingLeadingDots.ToASCII(domain)
+
+	// Remove the final dot for consistency
+	normalized = strings.TrimRight(normalized, ".")
+
+	return normalized
 }
 
 // NewDomain normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,
 // the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
-func NewDomain(domain string) (Domain, error) {
+func New(domain string) (Domain, error) {
 	normalized, err := profileDroppingLeadingDots.ToASCII(domain)
 
 	// Remove the final dot for consistency

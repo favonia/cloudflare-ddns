@@ -1,20 +1,14 @@
-package api
+package domain
 
 import "strings"
 
-// FQDN is a fully qualified domain in its ASCII or Unicode (when unambiguous) form.
+// FQDN is a fully qualified domain in its ASCII form.
 type FQDN string
 
 func (f FQDN) DNSNameASCII() string { return string(f) }
 
 func (f FQDN) Describe() string {
-	best, ok := safelyToUnicode(string(f))
-	if !ok {
-		// use the unconverted string if the conversation failed
-		return string(f)
-	}
-
-	return best
+	return safelyToUnicode(string(f))
 }
 
 type FQDNSplitter struct {
@@ -23,7 +17,7 @@ type FQDNSplitter struct {
 	exhausted bool
 }
 
-func (f FQDN) Split() DomainSplitter {
+func (f FQDN) Split() Splitter {
 	return &FQDNSplitter{
 		domain:    string(f),
 		cursor:    0,

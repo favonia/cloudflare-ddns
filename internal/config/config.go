@@ -1,10 +1,14 @@
 package config
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
@@ -15,13 +19,15 @@ import (
 type Config struct {
 	Auth             api.Auth
 	Provider         map[ipnet.Type]provider.Provider
-	Domains          map[ipnet.Type][]api.Domain
+	Domains          map[ipnet.Type][]domain.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
-	TTL              api.TTL
-	Proxied          bool
+	TTLTemplate      string
+	TTL              map[domain.Domain]api.TTL
+	ProxiedTemplate  string
+	Proxied          map[domain.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
@@ -35,7 +41,7 @@ func Default() *Config {
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
-		Domains: map[ipnet.Type][]api.Domain{
+		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
 		},
@@ -43,8 +49,10 @@ func Default() *Config {
 		UpdateOnStart:    true,
 		DeleteOnStop:     false,
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
-		TTL:              api.TTL(1),
-		Proxied:          false,
+		TTLTemplate:      "1",
+		TTL:              map[domain.Domain]api.TTL{},
+		ProxiedTemplate:  "false",
+		Proxied:          map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 		Monitors:         nil,
@@ -101,31 +109,31 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.
-func deduplicate(list *[]api.Domain) {
-	api.SortDomains(*list)
+func deduplicate(list []domain.Domain) []domain.Domain {
+	domain.SortDomains(list)
 
-	if len(*list) == 0 {
-		return
+	if len(list) == 0 {
+		return list
 	}
 
 	j := 0
-	for i := range *list {
-		if i == 0 || (*list)[j] == (*list)[i] {
+	for i := range list {
+		if i == 0 || list[j] == list[i] {
 			continue
 		}
 		j++
-		(*list)[j] = (*list)[i]
+		list[j] = list[i]
 	}
 
-	if len(*list) == j+1 {
-		return
+	if len(list) == j+1 {
+		return list
 	}
 
-	*list = (*list)[:j+1]
+	return list[:j+1]
 }
 
-func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
-	var domains, ip4Domains, ip6Domains []api.Domain
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
+	var domains, ip4Domains, ip6Domains []domain.Domain
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
 		!ReadDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
@@ -133,13 +141,10 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]api.Domain) bool {
 		return false
 	}
 
-	ip4Domains = append(ip4Domains, domains...)
-	ip6Domains = append(ip6Domains, domains...)
+	ip4Domains = deduplicate(append(ip4Domains, domains...))
+	ip6Domains = deduplicate(append(ip6Domains, domains...))
 
-	deduplicate(&ip4Domains)
-	deduplicate(&ip6Domains)
-
-	*field = map[ipnet.Type][]api.Domain{
+	*field = map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: ip4Domains,
 		ipnet.IP6: ip6Domains,
 	}
@@ -163,6 +168,72 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 	return true
 }
 
+func ParseProxied(ppfmt pp.PP, dom domain.Domain, val string) (bool, bool) {
+	val = strings.TrimSpace(val)
+	res, err := strconv.ParseBool(val)
+	if err != nil {
+		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", dom.Describe(), val, err)
+		return false, false
+	}
+
+	return res, true
+}
+
+// ParseTTL turns a template into a valid TTL value.
+//
+// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
+// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
+// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+//
+// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+func ParseTTL(ppfmt pp.PP, dom domain.Domain, val string) (api.TTL, bool) {
+	val = strings.TrimSpace(val)
+	res, err := strconv.Atoi(val)
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", dom.Describe(), val, err)
+		return 0, false
+
+	case res != 1 && (res < 30 || res > 86400):
+		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", dom.Describe(), res)
+		return 0, false
+
+	default:
+		return api.TTL(res), true
+	}
+}
+
+func describeDomains(domains []domain.Domain) string {
+	if len(domains) == 0 {
+		return "(none)"
+	}
+
+	descriptions := make([]string, 0, len(domains))
+	for _, domain := range domains {
+		descriptions = append(descriptions, domain.Describe())
+	}
+	return strings.Join(descriptions, ", ")
+}
+
+func getInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
+	inverse := map[V][]domain.Domain{}
+
+	for dom, val := range m {
+		inverse[val] = append(inverse[val], dom)
+	}
+
+	vals := make([]V, 0, len(inverse))
+	for val := range inverse {
+		domain.SortDomains(inverse[val])
+		vals = append(vals, val)
+	}
+
+	return vals, inverse
+}
+
+const itemTitleWidth = 24
+
 func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		return
@@ -170,47 +241,61 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
 	ppfmt = ppfmt.IncIndent()
-
 	inner := ppfmt.IncIndent()
 
-	ppfmt.Infof(pp.EmojiConfig, "Policies:")
-	inner.Infof(pp.EmojiBullet, "IPv4 provider:    %s", provider.Name(c.Provider[ipnet.IP4]))
+	section := func(title string) { ppfmt.Infof(pp.EmojiConfig, title) }
+	item := func(title string, format string, values ...any) {
+		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
+	}
+
+	section("IP providers:")
+	item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	if c.Provider[ipnet.IP4] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv4 domains:     %v", c.Domains[ipnet.IP4])
+		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
 	}
-	inner.Infof(pp.EmojiBullet, "IPv6 provider:    %s", provider.Name(c.Provider[ipnet.IP6]))
+	item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	if c.Provider[ipnet.IP6] != nil {
-		inner.Infof(pp.EmojiBullet, "IPv6 domains:     %v", c.Domains[ipnet.IP6])
+		item("IPv6 domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
 	}
 
-	ppfmt.Infof(pp.EmojiConfig, "Scheduling:")
-	inner.Infof(pp.EmojiBullet, "Timezone:         %s", cron.DescribeLocation(time.Local))
-	inner.Infof(pp.EmojiBullet, "Update frequency: %v", c.UpdateCron)
-	inner.Infof(pp.EmojiBullet, "Update on start?  %t", c.UpdateOnStart)
-	inner.Infof(pp.EmojiBullet, "Delete on stop?   %t", c.DeleteOnStop)
-	inner.Infof(pp.EmojiBullet, "Cache expiration: %v", c.CacheExpiration)
+	section("Scheduling:")
+	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
+	item("Update frequency:", "%v", c.UpdateCron)
+	item("Update on start?", "%t", c.UpdateOnStart)
+	item("Delete on stop?", "%t", c.DeleteOnStop)
+	item("Cache expiration:", "%v", c.CacheExpiration)
 
-	ppfmt.Infof(pp.EmojiConfig, "New DNS records:")
-	inner.Infof(pp.EmojiBullet, "TTL:              %s", c.TTL.Describe())
-	inner.Infof(pp.EmojiBullet, "Proxied:          %t", c.Proxied)
+	if len(c.TTL) > 0 {
+		section("TTL of new records:")
+		vals, inverseMap := getInverseMap(c.TTL)
+		api.SortTTLs(vals)
+		for _, val := range vals {
+			item(fmt.Sprintf("TTL is %s:", val.Describe()), describeDomains(inverseMap[val]))
+		}
+	}
 
-	ppfmt.Infof(pp.EmojiConfig, "Timeouts:")
-	inner.Infof(pp.EmojiBullet, "IP detection:     %v", c.DetectionTimeout)
-	inner.Infof(pp.EmojiBullet, "Record updating:  %v", c.UpdateTimeout)
+	if len(c.Proxied) > 0 {
+		section("Proxy for new records:")
+		_, inverseMap := getInverseMap(c.Proxied)
+		item("Proxied:", "%s", describeDomains(inverseMap[true]))
+		item("Unproxied (DNS only):", "%s", describeDomains(inverseMap[false]))
+	}
+
+	section("Timeouts:")
+	item("IP detection:", "%v", c.DetectionTimeout)
+	item("Record updating:", "%v", c.UpdateTimeout)
 
 	if len(c.Monitors) > 0 {
-		ppfmt.Infof(pp.EmojiConfig, "Monitors:")
+		section("Monitors:")
 		for _, m := range c.Monitors {
-			inner.Infof(pp.EmojiBullet, "%-17s %v", m.DescribeService()+":", m.DescribeBaseURL())
+			item(m.DescribeService()+":", "%s", "(URL redacted)")
 		}
-	} else {
-		ppfmt.Infof(pp.EmojiConfig, "Monitors: (none)")
 	}
 }
 
-func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
+func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
-		ppfmt.Noticef(pp.EmojiEnvVars, "Reading settings . . .")
+		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
@@ -221,8 +306,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadNonnegInt(ppfmt, "TTL", (*int)(&c.TTL)) ||
-		!ReadBool(ppfmt, "PROXIED", &c.Proxied) ||
+		!ReadString(ppfmt, "TTL", &c.TTLTemplate) ||
+		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
 		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
@@ -232,48 +317,107 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool { //nolint:cyclop
 	return true
 }
 
-func (c *Config) checkUselessDomains(ppfmt pp.PP) {
-	count := map[api.Domain]int{}
-	for _, domains := range c.Domains {
-		for _, domain := range domains {
-			count[domain]++
-		}
+func assignMap[V any](ppfmt pp.PP,
+	m map[domain.Domain]V,
+	e func(domain.Domain) (string, bool),
+	p func(pp.PP, domain.Domain, string) (V, bool),
+	dom domain.Domain,
+) bool {
+	str, ok := e(dom)
+	if !ok {
+		return false
 	}
-
-	for ipNet, domains := range c.Domains {
-		if c.Provider[ipNet] == nil {
-			for i := range domains {
-				if count[domains[i]] != len(c.Domains) {
-					ppfmt.Warningf(pp.EmojiUserWarning,
-						"Domain %q is ignored because it is only for %s but %s is disabled",
-						domains[i].Describe(), ipNet.Describe(), ipNet.Describe())
-				}
-			}
-		}
+	val, ok := p(ppfmt, dom, str)
+	if !ok {
+		return false
 	}
+	m[dom] = val
+	return true
 }
 
+// NormalizeDomains normalizes the fields Provider, TTL and Proxied.
+// When errors are reported, the original configuration remain unchanged.
+//
+//nolint:funlen
 func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
+	// New maps
+	providerMap := map[ipnet.Type]provider.Provider{}
+	ttlMap := map[domain.Domain]api.TTL{}
+	proxiedMap := map[domain.Domain]bool{}
+	activeDomainSet := map[domain.Domain]bool{}
+
+	if ppfmt.IsEnabledFor(pp.Info) {
+		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
+		ppfmt = ppfmt.IncIndent()
+	}
+
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
 		return false
 	}
 
-	// change useless policies to none
+	// fill in providerMap and activeDomainSet
 	for ipNet, domains := range c.Domains {
-		if len(domains) == 0 && c.Provider[ipNet] != nil {
-			c.Provider[ipNet] = nil
+		if c.Provider[ipNet] == nil {
+			continue
+		}
+
+		if len(domains) == 0 {
 			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains were set for %s",
-				ipNet.Int(), provider.Name(c.Provider[ipNet]), ipNet.Describe())
+				ipNet.Int(), provider.Name(nil), ipNet.Describe())
+
+			continue
+		}
+
+		providerMap[ipNet] = c.Provider[ipNet]
+		for _, domain := range domains {
+			activeDomainSet[domain] = true
 		}
 	}
 
-	if c.Provider[ipnet.IP4] == nil && c.Provider[ipnet.IP6] == nil {
+	// check if all policies are none
+	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled")
 		return false
 	}
 
-	c.checkUselessDomains(ppfmt)
+	// check if some domains are unused
+	for ipNet, domains := range c.Domains {
+		if providerMap[ipNet] != nil {
+			continue
+		}
+
+		for _, domain := range domains {
+			if activeDomainSet[domain] {
+				continue
+			}
+
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"Domain %q is ignored because it is only for %s but %s is disabled",
+				domain.Describe(), ipNet.Describe(), ipNet.Describe())
+		}
+	}
+
+	// fill in ttlMap and proxyMap
+	ttlExec, ok := domain.ParseTemplate(ppfmt, c.TTLTemplate)
+	if !ok {
+		return false
+	}
+	proxiedExec, ok := domain.ParseTemplate(ppfmt, c.ProxiedTemplate)
+	if !ok {
+		return false
+	}
+
+	for dom := range activeDomainSet {
+		if !assignMap(ppfmt, ttlMap, ttlExec, ParseTTL, dom) ||
+			!assignMap(ppfmt, proxiedMap, proxiedExec, ParseProxied, dom) {
+			return false
+		}
+	}
+
+	c.Provider = providerMap
+	c.TTL = ttlMap
+	c.Proxied = proxiedMap
 
 	return true
 }

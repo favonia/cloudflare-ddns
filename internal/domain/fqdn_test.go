@@ -1,4 +1,4 @@
-package api_test
+package domain_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
 func TestFQDNString(t *testing.T) {
@@ -14,13 +14,12 @@ func TestFQDNString(t *testing.T) {
 
 	require.NoError(t, quick.Check(
 		func(s string) bool {
-			return api.FQDN(s).DNSNameASCII() == s
+			return domain.FQDN(s).DNSNameASCII() == s
 		},
 		nil,
 	))
 }
 
-//nolint:dupl
 func TestFQDNDescribe(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]struct {
@@ -62,11 +61,12 @@ func TestFQDNDescribe(t *testing.T) {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.expected, api.FQDN(tc.input).Describe())
+			require.Equal(t, tc.expected, domain.FQDN(tc.input).Describe())
 		})
 	}
 }
 
+//nolint:dupl
 func TestFQDNSplitter(t *testing.T) {
 	t.Parallel()
 	type r = string
@@ -85,7 +85,7 @@ func TestFQDNSplitter(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
-			for s := api.FQDN(tc.input).Split(); s.IsValid(); s.Next() {
+			for s := domain.FQDN(tc.input).Split(); s.IsValid(); s.Next() {
 				rs = append(rs, s.ZoneNameASCII())
 			}
 			require.Equal(t, tc.expected, rs)

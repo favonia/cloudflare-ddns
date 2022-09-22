@@ -1,3 +1,50 @@
+# [1.7.0](https://github.com/favonia/cloudflare-ddns/compare/v1.6.1...v1.7.0) (2022-09-06)
+
+
+### Features
+
+* **config:** accept templates for PROXIED and TTL ([#214](https://github.com/favonia/cloudflare-ddns/issues/214)) ([a78b96b](https://github.com/favonia/cloudflare-ddns/commit/a78b96bf44dcbdbc2cfcd82eee18c4baffba6d77))
+* warn about incorrect TTL values ([#206](https://github.com/favonia/cloudflare-ddns/issues/206)) ([c6a7ea8](https://github.com/favonia/cloudflare-ddns/commit/c6a7ea89e3651b5d770d9348e99aec8e34120356))
+
+### BREAKING CHANGES
+
+* experimental `PROXIED_DOMAINS` and `NON_PROXIED_DOMAINS` introduced in 1.6.0 are no longer supported; they are replaced by the new experimental template system
+
+
+
+## [1.6.1](https://github.com/favonia/cloudflare-ddns/compare/v1.6.0...v1.6.1) (2022-08-13)
+
+
+### Bug Fixes
+
+* **api:** accept non-active zones ([#203](https://github.com/favonia/cloudflare-ddns/issues/203)) ([06a8af6](https://github.com/favonia/cloudflare-ddns/commit/06a8af6e712635aae97540c230fd5a60a1100818))
+* prefer shorter messages ([#204](https://github.com/favonia/cloudflare-ddns/issues/204)) ([7212559](https://github.com/favonia/cloudflare-ddns/commit/7212559496f7583325ee2d59a1c69bfa9bd7a5eb))
+
+
+
+# [1.6.0](https://github.com/favonia/cloudflare-ddns/compare/v1.5.1...v1.6.0) (2022-08-12)
+
+
+### Bug Fixes
+
+* **config:** don't print "Monitors: (none)" ([#201](https://github.com/favonia/cloudflare-ddns/issues/201)) ([472aef4](https://github.com/favonia/cloudflare-ddns/commit/472aef46bca4c3599e1c75fed9c09419fd43c04d))
+* **config:** print wildcard domains with prefix `*.` ([#198](https://github.com/favonia/cloudflare-ddns/issues/198)) ([caf370c](https://github.com/favonia/cloudflare-ddns/commit/caf370c257e693b1550860486e80a5a629bdb884))
+* **config:** separate printed domains with comma ([#200](https://github.com/favonia/cloudflare-ddns/issues/200)) ([d658d58](https://github.com/favonia/cloudflare-ddns/commit/d658d58845a2b56b291a7d0d3df567ebc90cc0f2))
+* **setter:** print out better error messages ([#195](https://github.com/favonia/cloudflare-ddns/issues/195)) ([68007f8](https://github.com/favonia/cloudflare-ddns/commit/68007f803d819653610d0932db84ca2a9d710f6c))
+
+
+### Features
+
+* add systemd unit file for non-Docker users ([#139](https://github.com/favonia/cloudflare-ddns/issues/139)) ([bbe48ae](https://github.com/favonia/cloudflare-ddns/commit/bbe48ae14ca36c1e6dac877550211af384f17f87))
+* per-domain proxy settings ([#202](https://github.com/favonia/cloudflare-ddns/issues/202)) ([8b456cf](https://github.com/favonia/cloudflare-ddns/commit/8b456cfc407d43b5389a62952c3a5aad9f5c4756))
+
+
+### Others
+
+* use Go 1.19 ([#193](https://github.com/favonia/cloudflare-ddns/issues/193)) ([889a7c2](https://github.com/favonia/cloudflare-ddns/commit/889a7c25314921b40191ece578958bb28cb000af))
+
+
+
 # [1.5.1](https://github.com/favonia/cloudflare-ddns/compare/v1.5.0...v1.5.1) (2022-06-23)
 
 

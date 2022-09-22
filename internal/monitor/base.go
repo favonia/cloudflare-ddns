@@ -10,7 +10,6 @@ import (
 
 type Monitor interface {
 	DescribeService() string
-	DescribeBaseURL() string
 	Success(context.Context, pp.PP) bool
 	Start(context.Context, pp.PP) bool
 	Failure(context.Context, pp.PP) bool

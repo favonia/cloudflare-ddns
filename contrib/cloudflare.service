@@ -1,5 +1,5 @@
 [Unit]
-Description=Cloudflare DNS Updater
+Description=Cloudflare DDNS Updater
 Documentation=https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown
 Requires=network-online.target
 After=network-online.target

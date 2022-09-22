@@ -1,9 +1,9 @@
-package api
+package domain
 
 import "strings"
 
-// Wildcard is a fully qualified zone name in its ASCII or Unicode (when unambiguous) form,
-// represnting the wildcard domain name under the zone.
+// Wildcard is a fully qualified zone name in its ASCII form, represnting the wildcard domain name
+// under the zone. For example, Wildcard("example.org") represents "*.example.org".
 type Wildcard string
 
 func (w Wildcard) DNSNameASCII() string {
@@ -15,13 +15,11 @@ func (w Wildcard) DNSNameASCII() string {
 }
 
 func (w Wildcard) Describe() string {
-	best, ok := safelyToUnicode(string(w))
-	if !ok {
-		// use the unconverted string if the conversation failed
-		return "*." + string(w)
+	if string(w) == "" {
+		return "*"
 	}
 
-	return "*." + best
+	return "*." + safelyToUnicode(string(w))
 }
 
 type WildcardSplitter struct {
@@ -30,7 +28,7 @@ type WildcardSplitter struct {
 	exhausted bool
 }
 
-func (w Wildcard) Split() DomainSplitter {
+func (w Wildcard) Split() Splitter {
 	return &WildcardSplitter{
 		domain:    string(w),
 		cursor:    0,

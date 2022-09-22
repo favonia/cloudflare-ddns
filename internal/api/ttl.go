@@ -1,10 +1,13 @@
 package api
 
 import (
+	"sort"
 	"strconv"
 )
 
 type TTL int
+
+const TTLAuto = 1
 
 func (t TTL) Int() int {
 	return int(t)
@@ -15,8 +18,12 @@ func (t TTL) String() string {
 }
 
 func (t TTL) Describe() string {
-	if t == 1 {
-		return "1 (automatic)"
+	if t == TTLAuto {
+		return "1 (auto)"
 	}
 	return strconv.Itoa(t.Int())
+}
+
+func SortTTLs(s []TTL) {
+	sort.Slice(s, func(i, j int) bool { return int(s[i]) < int(s[j]) })
 }

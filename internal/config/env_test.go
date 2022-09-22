@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -8,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -56,6 +57,55 @@ func TestGetenv(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			require.Equal(t, tc.expected, config.Getenv(key))
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadString(t *testing.T) {
+	key := keyPrefix + "STRING"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      string
+		newField      string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"unset": {
+			false, "", "hi", "hi", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hi")
+			},
+		},
+		"empty1": {
+			true, " ", "hello", "hello", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hello")
+			},
+		},
+		"empty2": {
+			true, " \t ", "aloha", "aloha", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "aloha")
+			},
+		},
+		"string": {true, "string ", "hey", "string", true, nil},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			set(t, key, tc.set, tc.val)
+
+			field := tc.oldField
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadString(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
 		})
 	}
 }
@@ -222,7 +272,6 @@ func TestReadNonnegInt(t *testing.T) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
 			},
 		},
-		"9999999": {true, "   9999999   ", 100, 9999999, true, nil},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -245,9 +294,9 @@ func TestReadNonnegInt(t *testing.T) {
 //nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
-	type ds = []api.Domain
-	type f = api.FQDN
-	type w = api.Wildcard
+	type ds = []domain.Domain
+	type f = domain.FQDN
+	type w = domain.Wildcard
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
@@ -340,7 +389,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Both the parameter %s and the provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace instead.`, //nolint: lll
+					`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace`, //nolint:lll
 					keyDeprecated, key, key,
 				)
 			},
@@ -350,7 +399,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.trace",
@@ -362,7 +411,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.doh",
@@ -374,7 +423,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=none`,
+					`Parameter %s was deprecated; use %s=none`,
 					keyDeprecated,
 					key,
 				)
@@ -385,7 +434,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"local",
@@ -397,7 +446,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`The parameter %s was deprecated; use %s=%s`,
+					`Parameter %s was deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"ipify",
@@ -415,7 +464,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`Cannot have both %s and %s set.`,
+					`Cannot have both %s and %s set`,
 					key, keyDeprecated,
 				)
 			},
@@ -431,7 +480,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`The parameter %s does not accept the provider "cloudflare"; use "cloudflare.doh" or "cloudflare.trace" instead.`, //nolint: lll
+					`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
 					key, key,
 				)
 			},
@@ -584,6 +633,13 @@ func TestReadCron(t *testing.T) {
 	}
 }
 
+func urlMustParse(t *testing.T, u string) *url.URL {
+	t.Helper()
+	url, err := url.Parse(u)
+	require.Nil(t, err)
+	return url
+}
+
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
 func TestReadHealthChecksURL(t *testing.T) {
 	key := keyPrefix + "HEALTHCHECKS"
@@ -608,10 +664,9 @@ func TestReadHealthChecksURL(t *testing.T) {
 			true, "https://hi.org/1234",
 			[]mon{},
 			[]mon{&monitor.HealthChecks{
-				BaseURL:         "https://hi.org/1234",
-				RedactedBaseURL: "https://hi.org/1234",
-				Timeout:         monitor.HealthChecksDefaultTimeout,
-				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+				BaseURL:    urlMustParse(t, "https://hi.org/1234"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -620,30 +675,34 @@ func TestReadHealthChecksURL(t *testing.T) {
 			true, "https://me:pass@hi.org/1234",
 			[]mon{},
 			[]mon{&monitor.HealthChecks{
-				BaseURL:         "https://me:pass@hi.org/1234",
-				RedactedBaseURL: "https://me:xxxxx@hi.org/1234",
-				Timeout:         monitor.HealthChecksDefaultTimeout,
-				MaxRetries:      monitor.HealthChecksDefaultMaxRetries,
+				BaseURL:    urlMustParse(t, "https://me:pass@hi.org/1234"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
 		},
-		"illformed": {
+		"fragment": {
+			true, "https://hi.org/1234#fragment",
+			[]mon{},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:    urlMustParse(t, "https://hi.org/1234#fragment"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
+		},
+		"query": {
 			true, "https://hi.org/1234?hello=123",
 			[]mon{},
-			[]mon{},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(
-					pp.EmojiUserError,
-					"The URL %q does not look like a valid Healthchecks URL.",
-					"https://hi.org/1234?hello=123",
-				)
-				m.EXPECT().Errorf(
-					pp.EmojiUserError,
-					`A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`,
-				)
-			},
+			[]mon{&monitor.HealthChecks{
+				BaseURL:    urlMustParse(t, "https://hi.org/1234?hello=123"),
+				Timeout:    monitor.HealthChecksDefaultTimeout,
+				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+			}},
+			true,
+			nil,
 		},
 	} {
 		tc := tc

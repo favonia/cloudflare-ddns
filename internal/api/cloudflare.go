@@ -8,6 +8,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/patrickmn/go-cache"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -88,15 +89,35 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		return ids.([]string), true //nolint:forcetypeassert
 	}
 
-	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, "active"))
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, ""))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
 
 	ids := make([]string, 0, len(res.Result))
-	for i := range res.Result {
-		ids = append(ids, res.Result[i].ID)
+	for _, zone := range res.Result {
+		// see https://api.cloudflare.com/#zone-list-zones for possible statuses
+		switch zone.Status {
+		case "active": // fully working
+			ids = append(ids, zone.ID)
+		case
+			"deactivated",  // violating term of service, etc.
+			"initializing", // the setup was just started?
+			"moved",        // domain registrar not pointing to Cloudflare
+			"pending":      // the setup was not completed
+			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiWarning, "Some features might stop working", name, zone.Status)
+			ids = append(ids, zone.ID)
+		case
+			"deleted": // archived, pending/moved for too long
+			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
+			// skip these
+		default:
+			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q", name, zone.Status)
+			ppfmt.Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+			ids = append(ids, zone.ID)
+		}
 	}
 
 	h.cache.activeZones.SetDefault(name, ids)
@@ -104,7 +125,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	return ids, true
 }
 
-func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain Domain) (string, bool) {
+func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (string, bool) {
 	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
 		return id.(string), true //nolint:forcetypeassert
 	}
@@ -135,7 +156,7 @@ zoneSearch:
 }
 
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type,
+	domain domain.Domain, ipNet ipnet.Type,
 ) (map[string]netip.Addr, bool) {
 	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
 		return rmap.(map[string]netip.Addr), true //nolint:forcetypeassert
@@ -171,7 +192,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string,
+	domain domain.Domain, ipNet ipnet.Type, id string,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -195,7 +216,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, id string, ip netip.Addr,
+	domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -226,7 +247,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
+	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
 ) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {

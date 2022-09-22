@@ -135,7 +135,7 @@ func printCapabilities(ppfmt pp.PP) {
 
 // printPriviledges prints out all remaining privileges.
 func printPriviledges(ppfmt pp.PP) {
-	ppfmt.Noticef(pp.EmojiPriviledges, "Priviledges after dropping:")
+	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining priviledges:")
 	inner := ppfmt.IncIndent()
 
 	inner.Noticef(pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
@@ -147,7 +147,7 @@ func printPriviledges(ppfmt pp.PP) {
 	case len(groups) > 0:
 		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %d", groups)
 	default:
-		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (empty)")
+		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (none)")
 	}
 
 	printCapabilities(inner)
