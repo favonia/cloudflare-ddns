@@ -3,6 +3,7 @@ module github.com/favonia/cloudflare-ddns
 go 1.19
 
 require (
+	github.com/CloudyKit/jet/v6 v6.1.0
 	github.com/cloudflare/cloudflare-go v0.50.0
 	github.com/golang/mock v1.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -13,6 +14,7 @@ require (
 )
 
 require (
+	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

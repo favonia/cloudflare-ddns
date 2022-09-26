@@ -1,3 +1,7 @@
+github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 h1:sR+/8Yb4slttB4vD+b9btVEnWgL3Q00OBTzVT8B9C0c=
+github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53/go.mod h1:+3IMCy2vIlbG1XG/0ggNQv0SvxCAIpPM5b1nCz56Xno=
+github.com/CloudyKit/jet/v6 v6.1.0 h1:hvO96X345XagdH1fAoBjpBYG4a1ghhL/QzalkduPuXk=
+github.com/CloudyKit/jet/v6 v6.1.0/go.mod h1:d3ypHeIRNo2+XyqnGA8s+aphtcVpjP5hPwP/Lzo7Ro4=
 github.com/cloudflare/cloudflare-go v0.50.0 h1:RS4tttMecD1rYCiMMfJeW8s9OEhCm85Y+70RJuOoxNA=
 github.com/cloudflare/cloudflare-go v0.50.0/go.mod h1:4+j2gGo6xyrFiYmpa2y4mNzu7pPPN42kyv1b2EqiZGQ=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
