@@ -31,7 +31,7 @@ func randUint16() uint16 {
 
 func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
 	msg, err := (&dnsmessage.Message{
-		Header: dnsmessage.Header{
+		Header: dnsmessage.Header{ //nolint:exhaustruct
 			ID:               id,
 			Response:         false, // query
 			OpCode:           0,     // query

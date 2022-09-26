@@ -14,21 +14,21 @@ func hasSuffix(s, suffix string) bool {
 func ParseTemplate(ppfmt pp.PP, tmpl string) (func(target Domain) (string, bool), bool) {
 	var targetASCII string
 	funcMap := template.FuncMap{
-		"domain": func(rawDomains ...string) (bool, error) {
+		"domain": func(rawDomains ...string) bool {
 			for _, rawDomain := range rawDomains {
 				if targetASCII == toASCII(rawDomain) {
-					return true, nil
+					return true
 				}
 			}
-			return false, nil
+			return false
 		},
-		"suffix": func(rawSuffixes ...string) (bool, error) {
+		"suffix": func(rawSuffixes ...string) bool {
 			for _, rawSuffix := range rawSuffixes {
 				if hasSuffix(targetASCII, toASCII(rawSuffix)) {
-					return true, nil
+					return true
 				}
 			}
-			return false, nil
+			return false
 		},
 	}
 
