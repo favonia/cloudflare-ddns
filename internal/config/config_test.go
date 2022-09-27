@@ -756,8 +756,8 @@ func TestNormalize(t *testing.T) {
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				TTLTemplate:     `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
-				ProxiedTemplate: ` {{not (domain "a.bb.c")}} `,
+				TTLTemplate:     `{{if hasSuffix("b.c")}} 60 {{else if inDomains("d.e.f","a.bb.c") }} 90 {{else}} 120 {{end}}`,
+				ProxiedTemplate: ` {{true && !inDomains("a.bb.c")}} `,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -767,13 +767,13 @@ func TestNormalize(t *testing.T) {
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				TTLTemplate: `{{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c" }} 90 {{else}} 120 {{end}}`,
+				TTLTemplate: `{{if hasSuffix("b.c")}} 60 {{else if inDomains("d.e.f","a.bb.c") }} 90 {{else}} 120 {{end}}`,
 				TTL: map[domain.Domain]api.TTL{
 					domain.FQDN("a.b.c"):   60,
 					domain.FQDN("a.bb.c"):  90,
 					domain.FQDN("a.d.e.f"): 120,
 				},
-				ProxiedTemplate: ` {{not (domain "a.bb.c")}} `,
+				ProxiedTemplate: ` {{true && !inDomains("a.bb.c")}} `,
 				Proxied: map[domain.Domain]bool{
 					domain.FQDN("a.b.c"):   true,
 					domain.FQDN("a.bb.c"):  false,
@@ -797,7 +797,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
 				TTLTemplate:     `{{if}}`,
-				ProxiedTemplate: ` {{not (domain "a.b.c")}} `,
+				ProxiedTemplate: ` {{!inDomains("a.b.c")}} `,
 			},
 			ok:       false,
 			expected: nil,
@@ -806,7 +806,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "%q is not a valid template: %v", "{{if}}", gomock.Any()),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Could not parse the template %q: %v", "{{if}}", gomock.Any()),
 				)
 			},
 		},
@@ -828,7 +828,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "%q is not a valid template: %v", `{{range}}`, gomock.Any()),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Could not parse the template %q: %v", `{{range}}`, gomock.Any()),
 				)
 			},
 		},
@@ -841,7 +841,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
 				TTLTemplate:     `not a number`,
-				ProxiedTemplate: `{{not (domain "a.b.c")}}`,
+				ProxiedTemplate: `{{!inDomans("a.b.c")}}`,
 			},
 			ok:       false,
 			expected: nil,
@@ -862,8 +862,8 @@ func TestNormalize(t *testing.T) {
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
-				TTLTemplate:     `{{if (domain "a.b.c")}} 2 {{end}}`,
-				ProxiedTemplate: `{{not (domain "a.b.c")}}`,
+				TTLTemplate:     `{{if inDomains("a.b.c")}} 2 {{end}}`,
+				ProxiedTemplate: `{{!inDomains("a.b.c")}}`,
 			},
 			ok:       false,
 			expected: nil,
@@ -907,7 +907,7 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP6: {domain.FQDN("a.b.c")},
 				},
 				TTLTemplate:     `1`,
-				ProxiedTemplate: `{{domain 12345}}`,
+				ProxiedTemplate: `{{inDomains(12345)}}`,
 			},
 			ok:       false,
 			expected: nil,
@@ -916,7 +916,8 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Could not execute the template %q: %v", "{{domain 12345}}", gomock.Any()), //nolint:lll
+					m.EXPECT().Errorf(pp.EmojiUserError, "Value %v is not a string", gomock.Any()),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Could not execute the template %q: %v", `{{inDomains(12345)}}`, gomock.Any()), //nolint:lll
 				)
 			},
 		},

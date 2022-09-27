@@ -23,7 +23,7 @@ A small and fast DDNS updater for Cloudflare.
 
 ### ⚡ Efficiency
 
-* 🤏 The Docker images are small (less than 4 MB).
+* 🤏 The Docker images are small (less than 4 MB after compression).
 * 🔁 The Go runtime will re-use existing HTTP connections.
 * 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
@@ -55,6 +55,8 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
     Parsing of Cron expressions.
   - [go-cache](https://github.com/patrickmn/go-cache):\
     Essentially `map[string]any` with expiration times.
+  - [jet](https://github.com/CloudyKit/jet):\
+    Fast and small template engines.
   - [mock](https://github.com/golang/mock) (for testing only):\
     A comprehensive, semi-official framework for mocking.
   - [testify](https://github.com/stretchr/testify) (for testing only):\
@@ -348,19 +350,19 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > <details>
 > <summary>🧪 Experimental support of Go templates:</summary>
 >
-> Both `PROXIED` and `TTL` can be [Go templates](https://pkg.go.dev/text/template) for per-domain settings. For example, `PROXIED={{not (suffix "example.org")}}` means all domains should be proxied except domains like `www.example.org` and `example.org`. The Go templates are executed with the following two custom functions:
-> - `domain(patterns ...string) bool`
+> Both `PROXIED` and `TTL` can be [Jet Templates](https://github.com/CloudyKit/jet/blob/master/docs/syntax.md) for per-domain settings. For example, `PROXIED={{!hasSuffix("example.org")}}` means all domains should be proxied except domains like `www.example.org` and `example.org`. The Go templates are executed with the following two custom functions:
+> - `inDomains(patterns ...string) bool`
 >
->   Returns `true` if and only if the target domain matches one of `patterns`. All domains are normalized before comparison; for example, internationalized domain names are converted to Punycode before comparing them.
-> - `suffix(patterns ...string) bool`
+>   Returns `true` if and only if the target domain matches one of `patterns`. All domains are normalized before comparison. For example, internationalized domain names are converted to Punycode before comparing them.
+> - `hasSuffix(patterns ...string) bool`
 >
 >   Returns `true` if and only if the target domain has one of `patterns` as itself or its parent (or ancestor). Note that labels in domains must fully match; for example, the suffix `b.org` will not match `www.bb.org` because `bb.org` and `b.org` are incomparable, while the suffix `bb.org` will match `www.bb.org`.
 >
 > Some examples:
-> - `TTL={{if suffix "b.c"}} 60 {{else if domain "d.e.f" "a.bb.c"}} 90 {{else}} 120 {{end}}`
+> - `TTL={{if hasSuffix("b.c")}} 60 {{else if inDomains("d.e.f","a.bb.c")}} 90 {{else}} 120 {{end}}`
 >
 >   For the domain `b.c` and its descendants, the TTL is 60, and for the domains `d.e.f` and `a.bb.c`, the TTL is 90, and then for all other domains, the TTL is 120.
-> - `PROXIED={{and (suffix "b.c") (not (domain "a.b.c"))}}`
+> - `PROXIED={{hasSuffix("b.c") && ! inDomains("a.b.c"))}}`
 >
 >   Proxy the domain `b.c` and its descendants except for the domain `a.b.c`.
 > </details>
