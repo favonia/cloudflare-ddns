@@ -348,7 +348,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
 > <details>
-> <summary>🧪 Experimental support of Go templates:</summary>
+> <summary>🧪 Experimental support of templates (subject to changes):</summary>
 >
 > Both `PROXIED` and `TTL` can be [Jet Templates](https://github.com/CloudyKit/jet/blob/master/docs/syntax.md) for per-domain settings. For example, `PROXIED={{!hasSuffix("example.org")}}` means all domains should be proxied except domains like `www.example.org` and `example.org`. The Go templates are executed with the following two custom functions:
 > - `inDomains(patterns ...string) bool`
