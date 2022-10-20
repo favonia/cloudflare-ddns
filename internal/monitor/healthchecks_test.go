@@ -23,7 +23,7 @@ func TestSetHealthChecksMaxRetries(t *testing.T) {
 
 	monitor.SetHealthChecksMaxRetries(42)(m)
 
-	require.Equal(t, m, &monitor.HealthChecks{MaxRetries: 42}) //nolint:exhaustruct
+	require.Equal(t, &monitor.HealthChecks{MaxRetries: 42}, m) //nolint:exhaustruct
 }
 
 func TestSetHealthChecksMaxRetriesPanic(t *testing.T) {
@@ -51,11 +51,11 @@ func TestNewHealthChecks(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := monitor.NewHealthChecks(mockPP, rawURL, monitor.SetHealthChecksMaxRetries(100))
-	require.Equal(t, m, &monitor.HealthChecks{
+	require.Equal(t, &monitor.HealthChecks{
 		BaseURL:    parsedURL,
 		Timeout:    monitor.HealthChecksDefaultTimeout,
 		MaxRetries: 100,
-	})
+	}, m)
 	require.True(t, ok)
 }
 
