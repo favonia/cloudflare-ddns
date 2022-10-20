@@ -46,13 +46,14 @@ func TestIncIndent(t *testing.T) {
 	inner.Errorf(pp.EmojiStar, "message4")
 	middle.Errorf(pp.EmojiStar, "message5")
 
-	require.Equal(t, buf.String(),
+	require.Equal(t,
 		`🌟 message1
    🌟 message2
 🌟 message3
       🌟 message4
    🌟 message5
-`)
+`,
+		buf.String())
 }
 
 func TestPrint(t *testing.T) {
