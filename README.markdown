@@ -55,8 +55,6 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
     Parsing of Cron expressions.
   - [go-cache](https://github.com/patrickmn/go-cache):\
     Essentially `map[string]any` with expiration times.
-  - [jet](https://github.com/CloudyKit/jet):\
-    Fast and small template engines.
   - [mock](https://github.com/golang/mock) (for testing only):\
     A comprehensive, semi-official framework for mocking.
   - [testify](https://github.com/stretchr/testify) (for testing only):\
