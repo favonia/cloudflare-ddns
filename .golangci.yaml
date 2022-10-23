@@ -19,18 +19,21 @@ issues:
 linters:
   enable-all: true
   disable:
+    - cyclop # It seems the linter never leads to code changes
+    - deadcode # deprecated
     - exhaustivestruct # deprecated; replaced by exhaustruct
+    - gocognit # It seems the linter never leads to code changes
     - golint # deprecated; replaced by revive
     - ifshort # deprecated
     - interfacer # deprecated
     - ireturn # ireturn works poorly for the style with private types and public interfaces
     - maintidx # It seems the linter never leads to code changes
-    - gocognit # It seems the linter never leads to code changes
-    - cyclop # It seems the linter never leads to code changes
     - maligned # deprecated, and I value readability over bytes saved by alignment
     - nlreturn # I don't agree with the style enforced by nlreturn
     - nonamedreturns # named returns are needed in the internal updator package
     - nosnakecase # revive's var-naming check seems to be better
     - scopelint # deprecated; replaced by exportloopref
+    - structcheck # deprecated
+    - varcheck # deprecated
     - varnamelen # varnamelen complains too much, in my opinion
     - wsl # I don't agree with the style enforced by wsl
