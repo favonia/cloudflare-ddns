@@ -388,6 +388,15 @@ func TestReadDomains(t *testing.T) {
 				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "*.xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
+		"illformed3": {
+			true, "hi.org,(",
+			ds{},
+			ds{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: invalid token %q in a list", "hi.org,(", "(") //nolint:lll
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
