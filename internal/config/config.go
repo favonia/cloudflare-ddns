@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -165,17 +164,6 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 		ipnet.IP6: ip6Provider,
 	}
 	return true
-}
-
-func ParseProxied(ppfmt pp.PP, dom domain.Domain, val string) (bool, bool) {
-	val = strings.TrimSpace(val)
-	res, err := strconv.ParseBool(val)
-	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Proxy setting of %s (%q) is not a boolean value: %v", dom.Describe(), val, err)
-		return false, false
-	}
-
-	return res, true
 }
 
 func describeDomains(domains []domain.Domain) string {
