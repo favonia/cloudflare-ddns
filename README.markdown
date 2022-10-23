@@ -278,9 +278,9 @@ kubectl create -f cloudflare-ddns.yaml
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `CF_ACCOUNT_ID` | Cloudflare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | `""` (unset) |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
-| `CF_API_TOKEN` | Cloudflare API tokens | The token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A |
+| `CF_ACCOUNT_ID` | Cloudflare Account IDs | The account ID used to distinguish multiple zone IDs with the same name | No | (unset)
+| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A
+| `CF_API_TOKEN` | Cloudflare API tokens | The token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A
 
 In most cases, `CF_ACCOUNT_ID` is not needed.
 </details>
@@ -290,9 +290,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | `""` (empty list)
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records | (See below) | `""` (empty list)
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records | (See below) | `""` (empty list)
+| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)
+| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records | (See below) | (empty list)
+| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records | (See below) | (empty list)
 | `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
 
@@ -303,7 +303,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > </details>
 
 > <details>
-> <summary>📜 Full list of available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code>:</summary>
+> <summary>📜 Available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code>:</summary>
 >
 > - `cloudflare.doh`\
 >  Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
@@ -319,10 +319,16 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
 > </details>
 
+> <details>
+> <summary>🃏 What are wildcard domains?</summary>
+>
+> Wildcard domains (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
+> </details>
+
 </details>
 
 <details>
-<summary>⏳ Schedules and timeouts</summary>
+<summary>⏳ Schedules, triggers, and timeouts</summary>
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -349,25 +355,25 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
 >
 > The `PROXIED` can be a boolean expression. Here are some examples:
-> - `PROXIED=is(example.org)`: enable proxy only for the domain `example.org`
-> - `PROXIED=is(example1.org) || sub(example2.org)`: enable proxy only for the domain `example1.org` and the subdomains of `example2.org`
-> - `PROXIED=!is(example.org)`: enable proxy _except for_ the domain `example.org`
-> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: enable proxy only for the domains `example1.org`, `example2.org`, and `example3.org`
+> - `PROXIED=is(example.org)`: proxy the domain `example.org`
+> - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
+> - `PROXIED=!is(example.org)`: proxy every managed domain _except for_ `example.org`
+> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: proxy only the domains `example1.org`, `example2.org`, and `example3.org`
 >
 > More formally, a boolean expression has one of the following forms:
 > - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true`.
 > - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to all subdomains of `a` (including `*.a`).
 > - `sub(d)` which matches subdomains of `d` (not including `d` itself).
-> - `! e` where `e` is a boolean expression, representing logical negation.
-> - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical or.
-> - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical and.
+> - `! e` where `e` is a boolean expression, representing logical negation of `e`.
+> - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical disjunction of `e1` and `e2`.
+> - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical conjunction of `e1` and `e2`.
 >
 > One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`.
 > For convenience, the engine also accepts these short forms:
-> - `is(d1, d2, ..., dn) = is(d1) || is(d2) || ... || is(dn)`
-> - `sub(d1, d2, ..., dn) = sub(d1) || sub(d2) || ... || sub(dn)`
+> - `is(d1, d2, ..., dn)` is `is(d1) || is(d2) || ... || is(dn)`
+> - `sub(d1, d2, ..., dn)` is `sub(d1) || sub(d2) || ... || sub(dn)`
 >
-> Using these short forms, `is(example1.org) || is(example2.org) || is(example3.org)` can be abbreviated as `is(example1.org,example2.org,example3.org)`.
+> Using these short forms, `is(example1.org) || is(example2.org) || is(example3.org)` can be abbreviated as `is(example1.org, example2.org, example3.org)`.
 > </details>
 
 </details>
@@ -389,7 +395,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging to the standard output | No | `false`
-| `HEALTHCHECKS` | [Healthchecks.io ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | `""` (unset)
+| `HEALTHCHECKS` | [Healthchecks.io ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No | (unset)
 
 For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol](https://healthchecks.io/docs/http_api/).
 </details>
