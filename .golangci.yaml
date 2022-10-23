@@ -8,6 +8,15 @@ linters-settings:
     suggest-new: true
   exhaustive:
     default-signifies-exhaustive: true
+  govet:
+    settings:
+      printf:
+        funcs:
+          - (github.com/favonia/cloudflare-ddns/internal/pp).Infof
+          - (github.com/favonia/cloudflare-ddns/internal/pp).Noticef
+          - (github.com/favonia/cloudflare-ddns/internal/pp).Warningf
+          - (github.com/favonia/cloudflare-ddns/internal/pp).Errorf
+          - (github.com/favonia/cloudflare-ddns/internal/pp).printf
 
 issues:
   exclude-rules:

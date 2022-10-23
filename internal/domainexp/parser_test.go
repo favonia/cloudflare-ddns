@@ -9,7 +9,51 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func TestParseList(t *testing.T) {
+	t.Parallel()
+	type f = domain.FQDN
+	type w = domain.Wildcard
+	type ds = []domain.Domain
+	for name, tc := range map[string]struct {
+		input         string
+		ok            bool
+		expected      ds
+		prepareMockPP func(m *mocks.MockPP)
+	}{
+		"1": {"a", true, ds{f("a")}, nil},
+		"2": {" a ,  b ", true, ds{f("a"), f("b")}, nil},
+		"3": {" a ,  b ,,,,,, c ", true, ds{f("a"), f("b"), f("c")}, nil},
+		"4": {
+			" a b c d ", true,
+			ds{f("a"), f("b"), f("c"), f("d")},
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, "b"),
+					m.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, "c"),
+					m.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, "d"),
+				)
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			list, ok := domainexp.ParseList(mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, list)
+		})
+	}
+}
 
 func TestParseExpression(t *testing.T) {
 	t.Parallel()

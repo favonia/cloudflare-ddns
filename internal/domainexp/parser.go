@@ -21,7 +21,7 @@ func scanList(ppfmt pp.PP, input string, tokens []string) ([]string, []string) {
 			return nil, nil
 		default:
 			if !readyForNext {
-				ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ","; got %q`, input, tokens[0])
+				ppfmt.Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, tokens[0])
 			}
 			list = append(list, tokens[0])
 			readyForNext = false

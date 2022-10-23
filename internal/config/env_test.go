@@ -349,7 +349,7 @@ func TestReadTTL(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment vars are global
+//nolint:paralleltest,funlen // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
 	type ds = []domain.Domain
@@ -394,7 +394,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: invalid token %q in a list", "hi.org,(", "(") //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: invalid token %q in a list", "hi.org,(", "(")
 			},
 		},
 	} {
