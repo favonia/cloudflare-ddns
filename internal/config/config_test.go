@@ -720,7 +720,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted boolean expression; got %q", `range`, `range`),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; got %q", `range`, `range`),
 				)
 			},
 		},
@@ -741,7 +741,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted boolean expression; got %q", "999", "999"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; got %q", "999", "999"),
 				)
 			},
 		},
@@ -762,7 +762,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ")"; got end-of-string`, `is(12345`),
+					m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; reached end of string`, `is(12345`, ")"),
 				)
 			},
 		},

@@ -394,7 +394,16 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: invalid token %q in a list", "hi.org,(", "(")
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", "hi.org,(", "(")
+			},
+		},
+		"illformed4": {
+			true, ")",
+			ds{},
+			ds{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", ")", ")")
 			},
 		},
 	} {

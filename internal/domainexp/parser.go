@@ -17,7 +17,7 @@ func scanList(ppfmt pp.PP, input string, tokens []string) ([]string, []string) {
 		case ")":
 			return list, tokens
 		case "(", "&&", "||", "!":
-			ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: invalid token %q in a list`, input, tokens[0])
+			ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, input, tokens[0])
 			return nil, nil
 		default:
 			if !readyForNext {
@@ -71,13 +71,13 @@ func scanConstants(_ppfmt pp.PP, _input string, tokens []string, wanted []string
 
 func scanMustConstant(ppfmt pp.PP, input string, tokens []string, wanted string) []string {
 	if len(tokens) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ")"; got end-of-string`, input)
+		ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; reached end of string`, input, wanted)
 		return nil
 	}
 	if wanted == tokens[0] {
 		return tokens[1:]
 	}
-	ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ")"; got %q`, input, tokens[0])
+	ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; got %q`, input, wanted, tokens[0])
 	return nil
 }
 
@@ -163,7 +163,6 @@ func scanFactor(ppfmt pp.PP, input string, tokens []string) (predicate, []string
 			}
 			newTokens = scanMustConstant(ppfmt, input, newTokens, ")")
 			if newTokens == nil {
-				ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ')'`, input)
 				return nil, nil
 			}
 			return pred, newTokens
@@ -171,9 +170,9 @@ func scanFactor(ppfmt pp.PP, input string, tokens []string) (predicate, []string
 	}
 
 	if len(tokens) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: wanted boolean expression; got end-of-string", input)
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; reached end of string", input)
 	} else {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: wanted boolean expression; got %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; got %q", input, tokens[0])
 	}
 	return nil, nil
 }
@@ -234,7 +233,8 @@ func ParseList(ppfmt pp.PP, input string) ([]domain.Domain, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", input, tokens[0])
+		return nil, false
 	}
 
 	return list, true
@@ -250,7 +250,8 @@ func ParseExpression(ppfmt pp.PP, input string) (predicate, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", input, tokens[0])
+		return nil, false
 	}
 
 	return pred, true

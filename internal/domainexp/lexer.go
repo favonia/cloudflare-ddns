@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	ErrSingleAnd = fmt.Errorf("got &, but only && is allowed")
-	ErrSingleOr  = fmt.Errorf("got |, but only || is allowed")
+	ErrSingleAnd = fmt.Errorf(`use "&&" instead of "&"`)
+	ErrSingleOr  = fmt.Errorf(`use "||" instead of "|"`)
 )
 
 //nolint:funlen
