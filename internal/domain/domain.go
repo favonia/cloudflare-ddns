@@ -39,6 +39,16 @@ func safelyToUnicode(ascii string) string {
 	return unicode
 }
 
+// StringToASCII normalizes a domain with best efforts, ignoring errors.
+func StringToASCII(domain string) string {
+	normalized, _ := profileDroppingLeadingDots.ToASCII(domain)
+
+	// Remove the final dot for consistency
+	normalized = strings.TrimRight(normalized, ".")
+
+	return normalized
+}
+
 // NewDomain normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,

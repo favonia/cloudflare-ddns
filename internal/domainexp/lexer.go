@@ -100,7 +100,7 @@ func tokenize(ppfmt pp.PP, input string) ([]string, bool) {
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	scanner.Split(splitter)
 
-	var tokens []string
+	tokens := []string{}
 
 	for scanner.Scan() {
 		tokens = append(tokens, scanner.Text())

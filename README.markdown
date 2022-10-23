@@ -292,9 +292,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | N/A
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records | (See below) | N/A
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records | (See below) | N/A
+| `DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | `""` (empty list)
+| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records | (See below) | `""` (empty list)
+| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records | (See below) | `""` (empty list)
 | `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv4 addresses. (See below) | No | `cloudflare.trace`
 | `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none` | How to detect IPv6 addresses. (See below) | No | `cloudflare.trace`
 

@@ -7,67 +7,53 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func scanDomain(ppfmt pp.PP, input string, tokens []string) (domain.Domain, []string) {
-	if len(tokens) == 0 {
-		return nil, nil
-	}
-	switch tokens[0] {
-	case "(", "&&", "||", "!", ",":
-		ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted a domain; got %q`, input, tokens[0])
-		return nil, nil
-	case ")":
-		return nil, tokens
-	default:
-		domain, err := domain.New(tokens[0])
-		if err != nil {
-			ppfmt.Warningf(pp.EmojiUserError,
-				"Parsing %q: domain %q was added but it is ill-formed: %v",
-				input, domain.Describe(), err)
+func scanList(ppfmt pp.PP, input string, tokens []string) ([]string, []string) {
+	var list []string
+	readyForNext := true
+	for len(tokens) > 0 {
+		switch tokens[0] {
+		case ",":
+			readyForNext = true
+		case ")":
+			return list, tokens
+		case "(", "&&", "||", "!":
+			ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: invalid token %q in a list`, input, tokens[0])
+			return nil, nil
+		default:
+			if !readyForNext {
+				ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ","; got %q`, input, tokens[0])
+			}
+			list = append(list, tokens[0])
+			readyForNext = false
 		}
-		return domain, tokens[1:]
+
+		tokens = tokens[1:]
 	}
+	return list, tokens
+}
+
+func scanASCIIDomainList(ppfmt pp.PP, input string, tokens []string) ([]string, []string) {
+	list, tokens := scanList(ppfmt, input, tokens)
+	domains := make([]string, 0, len(list))
+	for _, raw := range list {
+		domains = append(domains, domain.StringToASCII(raw))
+	}
+	return domains, tokens
 }
 
 func scanDomainList(ppfmt pp.PP, input string, tokens []string) ([]domain.Domain, []string) {
-	var list []domain.Domain
-	for {
-		var domain domain.Domain // to avoid := in the next line that would shadow token
-		domain, tokens = scanDomain(ppfmt, input, tokens)
-		if tokens == nil {
-			return nil, nil
+	list, tokens := scanList(ppfmt, input, tokens)
+	domains := make([]domain.Domain, 0, len(list))
+	for _, raw := range list {
+		domain, err := domain.New(raw)
+		if err != nil {
+			ppfmt.Warningf(pp.EmojiUserError,
+				"Domain %q was added but it is ill-formed: %v",
+				domain.Describe(), err)
 		}
-		if domain != nil {
-			list = append(list, domain)
-		}
-
-		if len(tokens) == 0 {
-			return list, tokens
-		}
-		switch tokens[0] {
-		case ",":
-			tokens = tokens[1:]
-			continue
-		case ")":
-			return list, tokens
-		default:
-			ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: wanted ","; got %q`, input, tokens[0])
-			return nil, nil
-		}
+		domains = append(domains, domain)
 	}
-}
-
-func scanDomainListInASCII(ppfmt pp.PP, input string, tokens []string) ([]string, []string) {
-	domains, tokens := scanDomainList(ppfmt, input, tokens)
-	if tokens == nil {
-		return nil, nil
-	}
-
-	ASCIIDomains := make([]string, 0, len(domains))
-	for _, domain := range domains {
-		ASCIIDomains = append(ASCIIDomains, domain.DNSNameASCII())
-	}
-
-	return ASCIIDomains, tokens
+	return domains, tokens
 }
 
 //nolint:unparam
@@ -126,7 +112,7 @@ func scanFactor(ppfmt pp.PP, input string, tokens []string) (predicate, []string
 			if newTokens == nil {
 				return nil, nil
 			}
-			ASCIIDomains, newTokens := scanDomainListInASCII(ppfmt, input, newTokens)
+			ASCIIDomains, newTokens := scanASCIIDomainList(ppfmt, input, newTokens)
 			if newTokens == nil {
 				return nil, nil
 			}
@@ -248,7 +234,7 @@ func ParseList(ppfmt pp.PP, input string) ([]domain.Domain, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected  %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected %q", input, tokens[0])
 	}
 
 	return list, true
@@ -264,7 +250,7 @@ func ParseExpression(ppfmt pp.PP, input string) (predicate, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected  %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, "Parsing %q: unexpected %q", input, tokens[0])
 	}
 
 	return pred, true
