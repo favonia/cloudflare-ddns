@@ -8,7 +8,7 @@
 ### BREAKING CHANGES
 
 * `TTL` no longer supports templates; only `PROXIED` supports them
-* existing templates that would work for 1.7.1 will stop working; see README.markdown for detailed documentation
+* existing templates that worked for 1.7.0 will stop working; see README.markdown for detailed documentation
 
 
 
