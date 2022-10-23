@@ -1,3 +1,17 @@
+## [1.7.1](https://github.com/favonia/cloudflare-ddns/compare/v1.7.0...v1.7.1) (2022-10-23)
+
+
+### Features
+
+* replace `text/template` with an in-house parser ([#222](https://github.com/favonia/cloudflare-ddns/issues/222) and [#233](https://github.com/favonia/cloudflare-ddns/issues/233)) ([21301de](https://github.com/favonia/cloudflare-ddns/commit/21301dec842f52db51c7af54ed8a48a5ad16082e) and [0b34720](https://github.com/favonia/cloudflare-ddns/commit/0b34720c1cddd537e1133b2d4f1f902e4c04821c))
+
+### BREAKING CHANGES
+
+* `TTL` no longer supports templates; only `PROXIED` supports them
+* existing templates that would work for 1.7.1 will stop working; see README.markdown for detailed documentation
+
+
+
 # [1.7.0](https://github.com/favonia/cloudflare-ddns/compare/v1.6.1...v1.7.0) (2022-09-06)
 
 
