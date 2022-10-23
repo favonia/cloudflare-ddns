@@ -83,8 +83,8 @@ func scanMustConstant(ppfmt pp.PP, input string, tokens []string, wanted string)
 
 type predicate = func(domain.Domain) bool
 
-func hasSuffix(s, suffix string) bool {
-	return len(suffix) == 0 || (strings.HasSuffix(s, suffix) && (len(s) == len(suffix) || s[len(s)-len(suffix)-1] == '.'))
+func hasStrictSuffix(s, suffix string) bool {
+	return strings.HasSuffix(s, suffix) && (len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.')
 }
 
 // scanAtomic mimics ParseBool, call scanFunction, and then check parenthesized expressions.
@@ -134,7 +134,7 @@ func scanFactor(ppfmt pp.PP, input string, tokens []string) (predicate, []string
 				"sub": func(d domain.Domain) bool {
 					asciiD := d.DNSNameASCII()
 					for _, pat := range ASCIIDomains {
-						if hasSuffix(asciiD, pat) {
+						if hasStrictSuffix(asciiD, pat) {
 							return true
 						}
 					}

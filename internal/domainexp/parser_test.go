@@ -140,13 +140,13 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, "is(&&", "&&")
 			},
 		},
-		"sub/1":     {"sub(example.com)", true, f("example.com"), true, nil},
+		"sub/1":     {"sub(example.com)", true, f("example.com"), false, nil},
 		"sub/2":     {"sub(example.com)", true, w("example.com"), true, nil},
 		"sub/3":     {"sub(example.com)", true, f("sub.example.com"), true, nil},
 		"sub/4":     {"sub(example.com)", true, f("subexample.com"), false, nil},
-		"sub/idn/1": {"sub(☕.de)", true, f("xn--53h.de"), true, nil},
-		"sub/idn/2": {"sub(Xn--53H.de)", true, f("xn--53h.de"), true, nil},
-		"sub/idn/3": {"sub(*.Xn--53H.de)", true, w("xn--53h.de"), true, nil},
+		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},
+		"sub/idn/2": {"sub(Xn--53H.de)", true, f("www.xn--53h.de"), true, nil},
+		"sub/idn/3": {"sub(Xn--53H.de)", true, w("xn--53h.de"), true, nil},
 		"not/1":     {"!0", true, nil, true, nil},
 		"not/2":     {"!!!!!!!!!!!0", true, nil, true, nil},
 		"not/3": {

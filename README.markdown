@@ -23,7 +23,7 @@ A small and fast DDNS updater for Cloudflare.
 
 ### ⚡ Efficiency
 
-* 🤏 The Docker images are small (less than 4 MB after compression).
+* 🤏 The Docker images are small (less than 3 MB after compression).
 * 🔁 The Go runtime will re-use existing HTTP connections.
 * 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
@@ -34,7 +34,7 @@ Simply list all the domain names and you are done!
 * 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. _(The updater smooths out [some rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
 * 🃏 Wildcard domain names (_e.g._, `*.example.org`) are also supported.
 * 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
-* 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying and change TTL on a per-domain basis.
+* 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
 
 ### 🕵️ Privacy
 
@@ -344,27 +344,32 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
-| `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether new DNS records should be proxied by Cloudflare | No | `false`
+| `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
 > <details>
-> <summary>🧪 Experimental support of templates (subject to changes):</summary>
+> <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
 >
-> Both `PROXIED` and `TTL` can be [Jet Templates](https://github.com/CloudyKit/jet/blob/master/docs/syntax.md) for per-domain settings. For example, `PROXIED={{!hasSuffix("example.org")}}` means all domains should be proxied except domains like `www.example.org` and `example.org`. The Go templates are executed with the following two custom functions:
-> - `inDomains(patterns ...string) bool`
+> The `PROXIED` can be a boolean expression. Here are some examples:
+> - `PROXIED=is(example.org)`: enable proxy only for the domain `example.org`
+> - `PROXIED=is(example1.org) || sub(example2.org)`: enable proxy only for the domain `example1.org` and the subdomains of `example2.org`
+> - `PROXIED=!is(example.org)`: enable proxy _except for_ the domain `example.org`
+> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: enable proxy only for the domains `example1.org`, `example2.org`, and `example3.org`
 >
->   Returns `true` if and only if the target domain matches one of `patterns`. All domains are normalized before comparison. For example, internationalized domain names are converted to Punycode before comparing them.
-> - `hasSuffix(patterns ...string) bool`
+> More formally, a boolean expression has one of the following forms:
+> - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true`.
+> - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to all subdomains of `a` (including `*.a`).
+> - `sub(d)` which matches subdomains of `d` (not including `d` itself).
+> - `! e` where `e` is a boolean expression, representing logical negation.
+> - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical or.
+> - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical and.
 >
->   Returns `true` if and only if the target domain has one of `patterns` as itself or its parent (or ancestor). Note that labels in domains must fully match; for example, the suffix `b.org` will not match `www.bb.org` because `bb.org` and `b.org` are incomparable, while the suffix `bb.org` will match `www.bb.org`.
+> One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`.
+> For convenience, the engine also accepts these short forms:
+> - `is(d1, d2, ..., dn) = is(d1) || is(d2) || ... || is(dn)`
+> - `sub(d1, d2, ..., dn) = sub(d1) || sub(d2) || ... || sub(dn)`
 >
-> Some examples:
-> - `TTL={{if hasSuffix("b.c")}} 60 {{else if inDomains("d.e.f","a.bb.c")}} 90 {{else}} 120 {{end}}`
->
->   For the domain `b.c` and its descendants, the TTL is 60, and for the domains `d.e.f` and `a.bb.c`, the TTL is 90, and then for all other domains, the TTL is 120.
-> - `PROXIED={{hasSuffix("b.c") && ! inDomains("a.b.c"))}}`
->
->   Proxy the domain `b.c` and its descendants except for the domain `a.b.c`.
+> Using these short forms, `is(example1.org) || is(example2.org) || is(example3.org)` can be abbreviated as `is(example1.org,example2.org,example3.org)`.
 > </details>
 
 </details>
