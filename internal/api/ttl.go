@@ -1,9 +1,6 @@
 package api
 
-import (
-	"sort"
-	"strconv"
-)
+import "strconv"
 
 type TTL int
 
@@ -22,8 +19,4 @@ func (t TTL) Describe() string {
 		return "1 (auto)"
 	}
 	return strconv.Itoa(t.Int())
-}
-
-func SortTTLs(s []TTL) {
-	sort.Slice(s, func(i, j int) bool { return int(s[i]) < int(s[j]) })
 }
