@@ -4,25 +4,12 @@ import (
 	"context"
 	"net/netip"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
-
-func getTTL(ppfmt pp.PP, c *config.Config, domain domain.Domain) api.TTL {
-	if ttl, ok := c.TTL[domain]; ok {
-		return ttl
-	}
-
-	ppfmt.Warningf(pp.EmojiImpossible,
-		"TTL[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
-		domain.Describe(),
-	)
-	return api.TTLAuto
-}
 
 func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	if proxied, ok := c.Proxied[domain]; ok {
@@ -43,8 +30,7 @@ func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, 
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		if !s.Set(ctx, ppfmt, domain, ipNet, ip,
-			getTTL(ppfmt, c, domain),
+		if !s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL,
 			getProxied(ppfmt, c, domain)) {
 			ok = false
 		}

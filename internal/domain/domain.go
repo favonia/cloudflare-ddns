@@ -39,16 +39,6 @@ func safelyToUnicode(ascii string) string {
 	return unicode
 }
 
-// toASCII normalizes a domain with best efforts, ignoring errors.
-func toASCII(domain string) string {
-	normalized, _ := profileDroppingLeadingDots.ToASCII(domain)
-
-	// Remove the final dot for consistency
-	normalized = strings.TrimRight(normalized, ".")
-
-	return normalized
-}
-
 // NewDomain normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,
@@ -63,7 +53,7 @@ func New(domain string) (Domain, error) {
 	case normalized == "*":
 		return Wildcard(""), nil
 	case strings.HasPrefix(normalized, "*."):
-		// redo the normalization after removing the offending "*"
+		// redo the normalization after removing the offending "*" to get the true error (if any)
 		normalized, err := profileKeepingLeadingDots.ToASCII(strings.TrimPrefix(normalized, "*."))
 		return Wildcard(normalized), err
 	default:

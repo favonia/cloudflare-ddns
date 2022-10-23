@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -94,11 +95,9 @@ func TestReadString(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -142,10 +141,8 @@ func TestReadQuiet(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -213,11 +210,9 @@ func TestReadBool(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -275,16 +270,79 @@ func TestReadNonnegInt(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
 			ok := config.ReadNonnegInt(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:funlen,paralleltest // environment vars are global
+func TestReadTTL(t *testing.T) {
+	key := keyPrefix + "TTL"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      api.TTL
+		newField      api.TTL
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"empty": {
+			true, "", api.TTLAuto, api.TTLAuto, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, api.TTLAuto)
+			},
+		},
+		"0": {
+			true, "0   ", api.TTLAuto, api.TTLAuto, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 0)
+			},
+		},
+		"-1": {
+			true, "   -1", api.TTLAuto, api.TTLAuto, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", -1)
+			},
+		},
+		"1": {true, "   1   ", api.TTLAuto, api.TTLAuto, true, nil},
+		"20": {
+			true, "   20   ", api.TTLAuto, api.TTLAuto, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 20)
+			},
+		},
+		"9999999": {
+			true, "   9999999   ", api.TTLAuto, api.TTLAuto, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 9999999)
+			},
+		},
+		"words": {
+			true, "   word   ", api.TTLAuto, api.TTLAuto, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%q) is not a number: %v", "word", gomock.Any())
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadTTL(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -333,15 +391,14 @@ func TestReadDomains(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+
 			ok := config.ReadDomains(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
@@ -499,12 +556,10 @@ func TestReadProvider(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
 			set(t, keyDeprecated, tc.setDeprecated, tc.valDeprecated)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -557,11 +612,9 @@ func TestReadNonnegDuration(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -617,11 +670,9 @@ func TestReadCron(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -707,11 +758,9 @@ func TestReadHealthChecksURL(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
-
 			set(t, key, tc.set, tc.val)
-
 			field := append([]mon{}, tc.oldField...)
+			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)

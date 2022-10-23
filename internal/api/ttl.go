@@ -7,7 +7,7 @@ import (
 
 type TTL int
 
-const TTLAuto = 1
+const TTLAuto TTL = 1
 
 func (t TTL) Int() int {
 	return int(t)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
@@ -88,6 +89,36 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	}
 
 	*field = i
+	return true
+}
+
+// ReadTTL reads a valid TTL value.
+//
+// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
+// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
+// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+//
+// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
+	val := Getenv(key)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		return true
+	}
+
+	res, err := strconv.Atoi(val)
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiUserError, "TTL (%q) is not a number: %v", val, err)
+		return false
+
+	case res != 1 && (res < 30 || res > 86400):
+		ppfmt.Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", res)
+		return false
+	}
+
+	*field = api.TTL(res)
 	return true
 }
 

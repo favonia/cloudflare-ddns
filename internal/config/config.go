@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
@@ -24,8 +25,7 @@ type Config struct {
 	UpdateOnStart    bool
 	DeleteOnStop     bool
 	CacheExpiration  time.Duration
-	TTLTemplate      string
-	TTL              map[domain.Domain]api.TTL
+	TTL              api.TTL
 	ProxiedTemplate  string
 	Proxied          map[domain.Domain]bool
 	DetectionTimeout time.Duration
@@ -49,8 +49,7 @@ func Default() *Config {
 		UpdateOnStart:    true,
 		DeleteOnStop:     false,
 		CacheExpiration:  time.Hour * 6, //nolint:gomnd
-		TTLTemplate:      "1",
-		TTL:              map[domain.Domain]api.TTL{},
+		TTL:              api.TTLAuto,
 		ProxiedTemplate:  "false",
 		Proxied:          map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
@@ -179,31 +178,6 @@ func ParseProxied(ppfmt pp.PP, dom domain.Domain, val string) (bool, bool) {
 	return res, true
 }
 
-// ParseTTL turns a template into a valid TTL value.
-//
-// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
-// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
-// We thus accept the union of both ranges---1 (auto) and [30, 86400].
-//
-// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
-// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
-func ParseTTL(ppfmt pp.PP, dom domain.Domain, val string) (api.TTL, bool) {
-	val = strings.TrimSpace(val)
-	res, err := strconv.Atoi(val)
-	switch {
-	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%q) is not a number: %v", dom.Describe(), val, err)
-		return 0, false
-
-	case res != 1 && (res < 30 || res > 86400):
-		ppfmt.Errorf(pp.EmojiUserError, "TTL of %s (%d) should be 1 (auto) or between 30 and 86400", dom.Describe(), res)
-		return 0, false
-
-	default:
-		return api.TTL(res), true
-	}
-}
-
 func describeDomains(domains []domain.Domain) string {
 	if len(domains) == 0 {
 		return "(none)"
@@ -265,20 +239,12 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)
 
-	if len(c.TTL) > 0 {
-		section("TTL of new records:")
-		vals, inverseMap := getInverseMap(c.TTL)
-		api.SortTTLs(vals)
-		for _, val := range vals {
-			item(fmt.Sprintf("TTL is %s:", val.Describe()), describeDomains(inverseMap[val]))
-		}
-	}
-
+	section("New DNS records:")
+	item("TTL:", "%s", c.TTL.Describe())
 	if len(c.Proxied) > 0 {
-		section("Proxy for new records:")
 		_, inverseMap := getInverseMap(c.Proxied)
-		item("Proxied:", "%s", describeDomains(inverseMap[true]))
-		item("Unproxied (DNS only):", "%s", describeDomains(inverseMap[false]))
+		item("Proxied domains:", "%s", describeDomains(inverseMap[true]))
+		item("Unproxied domains:", "%s", describeDomains(inverseMap[false]))
 	}
 
 	section("Timeouts:")
@@ -306,7 +272,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadString(ppfmt, "TTL", &c.TTLTemplate) ||
+		!ReadTTL(ppfmt, "TTL", &c.TTL) ||
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
@@ -317,24 +283,6 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-func assignMap[V any](ppfmt pp.PP,
-	m map[domain.Domain]V,
-	e func(domain.Domain) (string, bool),
-	p func(pp.PP, domain.Domain, string) (V, bool),
-	dom domain.Domain,
-) bool {
-	str, ok := e(dom)
-	if !ok {
-		return false
-	}
-	val, ok := p(ppfmt, dom, str)
-	if !ok {
-		return false
-	}
-	m[dom] = val
-	return true
-}
-
 // NormalizeDomains normalizes the fields Provider, TTL and Proxied.
 // When errors are reported, the original configuration remain unchanged.
 //
@@ -342,7 +290,6 @@ func assignMap[V any](ppfmt pp.PP,
 func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	// New maps
 	providerMap := map[ipnet.Type]provider.Provider{}
-	ttlMap := map[domain.Domain]api.TTL{}
 	proxiedMap := map[domain.Domain]bool{}
 	activeDomainSet := map[domain.Domain]bool{}
 
@@ -398,25 +345,16 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		}
 	}
 
-	// fill in ttlMap and proxyMap
-	ttlExec, ok := domain.ParseTemplate(ppfmt, c.TTLTemplate)
+	// fill in proxyMap
+	proxiedPred, ok := domainexp.ParseExpression(ppfmt, c.ProxiedTemplate)
 	if !ok {
 		return false
 	}
-	proxiedExec, ok := domain.ParseTemplate(ppfmt, c.ProxiedTemplate)
-	if !ok {
-		return false
-	}
-
 	for dom := range activeDomainSet {
-		if !assignMap(ppfmt, ttlMap, ttlExec, ParseTTL, dom) ||
-			!assignMap(ppfmt, proxiedMap, proxiedExec, ParseProxied, dom) {
-			return false
-		}
+		proxiedMap[dom] = proxiedPred(dom)
 	}
 
 	c.Provider = providerMap
-	c.TTL = ttlMap
 	c.Proxied = proxiedMap
 
 	return true
