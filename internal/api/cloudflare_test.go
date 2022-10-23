@@ -633,7 +633,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(
 		pp.EmojiImpossible,
-		"Could not parse the IP address in records of %q: %v",
+		"Failed to parse the IP address in records of %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)

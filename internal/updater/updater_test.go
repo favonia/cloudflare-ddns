@@ -42,15 +42,12 @@ func TestUpdateIPs(t *testing.T) {
 	provider4 := func(ppfmt pp.PP, m *mocks.MockProvider) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(ip4) }
 	provider6 := func(ppfmt pp.PP, m *mocks.MockProvider) { m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(ip6) }
 
-	type mockttl = map[domain.Domain]api.TTL
-	ttlAuto := mockttl{domain4: api.TTLAuto, domain6: api.TTLAuto}
-
 	type mockproxied = map[domain.Domain]bool
 	proxiedNone := mockproxied{domain4: false, domain6: false}
 	proxiedBoth := mockproxied{domain4: true, domain6: true}
 
 	for name, tc := range map[string]struct {
-		ttl                  mockttl
+		ttl                  api.TTL
 		proxied              mockproxied
 		ok                   bool
 		MessageShouldDisplay map[ipnet.Type]bool
@@ -59,10 +56,10 @@ func TestUpdateIPs(t *testing.T) {
 		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			ttlAuto, proxiedBoth, true, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
+			api.TTLAuto, proxiedBoth, true, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -73,7 +70,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip4only/setfail": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedBoth,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -84,7 +81,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip6only": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -95,7 +92,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip6only/setfail": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedBoth,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -106,7 +103,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"both": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -120,7 +117,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"both/setfail1": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedBoth,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -134,7 +131,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"both/setfail2": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -148,7 +145,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip4fails": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedBoth,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -170,7 +167,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip6fails": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -194,7 +191,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"ip6fails/again": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedBoth,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: false},
@@ -215,7 +212,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"bothfail": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -240,17 +237,13 @@ func TestUpdateIPs(t *testing.T) {
 			nil,
 		},
 		"ip4only-proxied-nil": {
-			mockttl{},
+			api.TTLAuto,
 			mockproxied{},
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Warningf(pp.EmojiImpossible,
-						"TTL[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
-						"ip4.hello",
-					),
 					m.EXPECT().Warningf(pp.EmojiImpossible,
 						"Proxied[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
 						"ip4.hello",
@@ -306,14 +299,11 @@ func TestClearIPs(t *testing.T) {
 
 	type mockproviders = map[ipnet.Type]bool
 
-	type mockttl = map[domain.Domain]api.TTL
-	ttlAuto := mockttl{domain4: api.TTLAuto, domain6: api.TTLAuto}
-
 	type mockproxied = map[domain.Domain]bool
 	proxiedNone := mockproxied{domain4: false, domain6: false}
 
 	for name, tc := range map[string]struct {
-		ttl                  mockttl
+		ttl                  api.TTL
 		proxied              mockproxied
 		ok                   bool
 		MessageShouldDisplay map[ipnet.Type]bool
@@ -322,7 +312,7 @@ func TestClearIPs(t *testing.T) {
 		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -331,7 +321,7 @@ func TestClearIPs(t *testing.T) {
 			nil,
 		},
 		"ip4only": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -342,7 +332,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip4only/setfail": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -353,7 +343,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip6only": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -364,7 +354,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip6only/setfail": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -375,7 +365,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			true,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -389,7 +379,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail1": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
@@ -403,7 +393,7 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail2": {
-			ttlAuto,
+			api.TTLAuto,
 			proxiedNone,
 			false,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},

@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -91,27 +93,43 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	return true
 }
 
-// ReadDomains reads an environment variable as a comma-separated list of domains.
-// Spaces are trimed.
-func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
-	rawList := strings.Split(Getenv(key), ",")
-
-	*field = make([]domain.Domain, 0, len(rawList))
-	for _, item := range rawList {
-		item = strings.TrimSpace(item)
-		if item == "" {
-			continue
-		}
-
-		item, err := domain.New(item)
-		if err != nil {
-			ppfmt.Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", item.Describe(), err)
-		}
-
-		*field = append(*field, item)
+// ReadTTL reads a valid TTL value.
+//
+// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
+// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
+// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+//
+// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
+	val := Getenv(key)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		return true
 	}
 
+	res, err := strconv.Atoi(val)
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiUserError, "TTL (%q) is not a number: %v", val, err)
+		return false
+
+	case res != 1 && (res < 30 || res > 86400):
+		ppfmt.Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", res)
+		return false
+	}
+
+	*field = api.TTL(res)
 	return true
+}
+
+// ReadDomains reads an environment variable as a comma-separated list of domains.
+func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
+	if list, ok := domainexp.ParseList(ppfmt, Getenv(key)); ok {
+		*field = list
+		return true
+	}
+	return false
 }
 
 // ReadProvider reads an environment variable and parses it as a provider.
