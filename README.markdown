@@ -346,7 +346,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 <details>
 <summary>🐣 Parameters of new DNS records</summary>
 
-⚠️ The updater will preserve existing proxy and TTL settings until it has to create DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. (If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to the IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.)
+⚠️ The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. (If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to the IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.)
 
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
@@ -362,10 +362,10 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `PROXIED=!is(example.org)`: proxy every managed domain _except for_ `example.org`
 > - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: proxy only the domains `example1.org`, `example2.org`, and `example3.org`
 >
-> More formally, a boolean expression has one of the following forms:
-> - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true`.
+> A boolean expression has one of the following forms (all whitespace is ignored):
+> - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true` or `FALSE` as `false`.
 > - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to all subdomains of `a` (including `*.a`).
-> - `sub(d)` which matches subdomains of `d` (not including `d` itself).
+> - `sub(d)` which matches subdomains of `d`, such as `a.d` and `b.d`. It does not match the domain `d` itself.
 > - `! e` where `e` is a boolean expression, representing logical negation of `e`.
 > - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical disjunction of `e1` and `e2`.
 > - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical conjunction of `e1` and `e2`.
@@ -375,7 +375,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `is(d1, d2, ..., dn)` is `is(d1) || is(d2) || ... || is(dn)`
 > - `sub(d1, d2, ..., dn)` is `sub(d1) || sub(d2) || ... || sub(dn)`
 >
-> Using these short forms, `is(example1.org) || is(example2.org) || is(example3.org)` can be abbreviated as `is(example1.org, example2.org, example3.org)`.
+> For example, these two settings will be the same:
+> - `PROXYD=is(example1.org) || is(example2.org) || is(example3.org)`
+> - `PROXIED=is(example1.org,example2.org,example3.org)`.
 > </details>
 
 </details>
