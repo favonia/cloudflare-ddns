@@ -346,6 +346,8 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 <details>
 <summary>🐣 Parameters of new DNS records</summary>
 
+⚠️ The updater will preserve existing proxy and TTL settings until it has to create DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. (If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to the IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.)
+
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare | No | `false`
