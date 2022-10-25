@@ -4,6 +4,7 @@
 - `config`: read configuration settings from environment variables
 - `cron`: parse Cron expressions
 - `domain`: handle domain names and split them into possible subdomains and zones
+- `domainexp`: handle domain lists and parse boolean expressions on domains (for `PROXIED`)
 - `file`: virtualize file system (to enable testing)
 - `ipnet`: define a type for labelling IPv4 and IPv6
 - `monitor`: ping the monitoring API, currently only supporting Healthchecks.io
