@@ -32,7 +32,7 @@ A small and fast DDNS updater for Cloudflare.
 Simply list all the domain names and you are done!
 
 * 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. _(The updater smooths out [some rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
-* 🃏 Wildcard domain names (_e.g._, `*.example.org`) are also supported.
+* 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 * 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
 * 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
 
