@@ -31,7 +31,7 @@ A small and fast DDNS updater for Cloudflare.
 
 Simply list all the domain names and you are done!
 
-* 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. _(The updater smooths out [some rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
+* 🌍 Internationalized domain names (_e.g._, `🐱.example.org`) are fully supported. _(The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
 * 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 * 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
 * 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
@@ -346,25 +346,25 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 <details>
 <summary>🐣 Parameters of new DNS records</summary>
 
-⚠️ The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. (If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to the IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.)
-
 | Name | Valid Values | Meaning | Required? | Default Value |
 | ---- | ------------ | ------- | --------- | ------------- |
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare | No | `false`
 | `TTL` | Time-to-live (TTL) values in seconds | The TTL values used to create new DNS records | No | `1` (This means “automatic” to Cloudflare)
 
+👉 The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the above settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.
+
 > <details>
 > <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
 >
 > The `PROXIED` can be a boolean expression. Here are some examples:
-> - `PROXIED=is(example.org)`: proxy the domain `example.org`
+> - `PROXIED=is(example.org)`: proxy only the domain `example.org`
 > - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
 > - `PROXIED=!is(example.org)`: proxy every managed domain _except for_ `example.org`
 > - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: proxy only the domains `example1.org`, `example2.org`, and `example3.org`
 >
 > A boolean expression has one of the following forms (all whitespace is ignored):
 > - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true` or `FALSE` as `false`.
-> - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to all subdomains of `a` (including `*.a`).
+> - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`).
 > - `sub(d)` which matches subdomains of `d`, such as `a.d` and `b.d`. It does not match the domain `d` itself.
 > - `! e` where `e` is a boolean expression, representing logical negation of `e`.
 > - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical disjunction of `e1` and `e2`.
@@ -375,9 +375,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `is(d1, d2, ..., dn)` is `is(d1) || is(d2) || ... || is(dn)`
 > - `sub(d1, d2, ..., dn)` is `sub(d1) || sub(d2) || ... || sub(dn)`
 >
-> For example, these two settings will be the same:
+> For example, these two settings are equivalent:
 > - `PROXYD=is(example1.org) || is(example2.org) || is(example3.org)`
-> - `PROXIED=is(example1.org,example2.org,example3.org)`.
+> - `PROXIED=is(example1.org,example2.org,example3.org)`
 > </details>
 
 </details>
