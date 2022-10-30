@@ -45,7 +45,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 * 🛑 The superuser privileges are immediately dropped after the updater starts.
 * 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
 * 📚 The updater uses only established open-source Go libraries.
-  <details><summary>🔌 Full list of external Go libraries:</summary>
+  <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
 
   - [cap](https://sites.google.com/site/fullycapable):\
     Manipulation of Linux capabilities.
@@ -62,6 +62,8 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
   </details>
 
 ## ⛷️ Quick Start
+
+_(Click to expand the following items.)_
 
 <details><summary>🐋 Directly run the provided Docker images.</summary>
 
@@ -112,6 +114,8 @@ services:
       - PROXIED=true
 ```
 
+_(Click to expand the following items.)_
+
 <details>
 <summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
 
@@ -158,6 +162,8 @@ Add these lines to your environment file (typically `.env`):
 CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
 DOMAINS=example.org,www.example.org,example.io
 ```
+
+_(Click to expand the following items.)_
 
 <details>
 <summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token.</summary>
@@ -225,6 +231,8 @@ spec:
               value: "example.org,www.example.org,example.io"
 ```
 
+_(Click to expand the following items.)_
+
 <details>
 <summary>🔁 Use <code>restartPolicy: Always</code> to automatically restart the updater on system reboot.</summary>
 
@@ -272,6 +280,8 @@ kubectl create -f cloudflare-ddns.yaml
 ## 🎛️ Further Customization
 
 ### ⚙️ All Settings
+
+_(Click to expand the following items.)_
 
 <details>
 <summary>🔑 Cloudflare accounts and API tokens</summary>
@@ -411,6 +421,8 @@ If you are using Docker Compose, run `docker-compose up --detach` after changing
 If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after changing the settings.
 
 ## 🚵 Migration Guides
+
+_(Click to expand the following items.)_
 
 <details>
 <summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns.</a></summary>
