@@ -9,7 +9,7 @@ WantedBy=multi-user.target
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/cloudflare-ddns/cloudflare.service.env
+EnvironmentFile=/etc/cloudflare-ddns/cloudflare-ddns.service.env
 Delegate=yes
 LimitNOFILE=infinity
 LimitNPROC=infinity

@@ -1,4 +1,3 @@
 # Authors
 
-- Favonia (for most parts)
-- Thomas (for `contrib/cloudflare.service*`)
+- Favonia (except for possible community contributions under `contrib/`)
