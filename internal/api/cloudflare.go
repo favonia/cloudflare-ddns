@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/patrickmn/go-cache"
+	"github.com/jellydator/ttlcache/v3"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -14,9 +14,20 @@ import (
 )
 
 type Cache = struct {
-	listRecords  map[ipnet.Type]*cache.Cache
-	activeZones  *cache.Cache
-	zoneOfDomain *cache.Cache
+	listRecords  map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]
+	activeZones  *ttlcache.Cache[string, []string]
+	zoneOfDomain *ttlcache.Cache[string, string]
+}
+
+func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
+	cache := ttlcache.New(
+		ttlcache.WithDisableTouchOnHit[K, V](),
+		ttlcache.WithTTL[K, V](cacheExpiration),
+	)
+
+	go cache.Start()
+
+	return cache
 }
 
 type CloudflareHandle struct {
@@ -24,10 +35,6 @@ type CloudflareHandle struct {
 	accountID string
 	cache     Cache
 }
-
-const (
-	CleanupIntervalFactor = 2
-)
 
 type CloudflareAuth struct {
 	Token     string
@@ -54,27 +61,26 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 		return nil, false
 	}
 
-	cleanupInterval := cacheExpiration * CleanupIntervalFactor
-
 	return &CloudflareHandle{
 		cf:        handle,
 		accountID: t.AccountID,
 		cache: Cache{
-			listRecords: map[ipnet.Type]*cache.Cache{
-				ipnet.IP4: cache.New(cacheExpiration, cleanupInterval),
-				ipnet.IP6: cache.New(cacheExpiration, cleanupInterval),
+			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
+				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
+				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
 			},
-			activeZones:  cache.New(cacheExpiration, cleanupInterval),
-			zoneOfDomain: cache.New(cacheExpiration, cleanupInterval),
+			activeZones:  newCache[string, []string](cacheExpiration),
+			zoneOfDomain: newCache[string, string](cacheExpiration),
 		},
 	}, true
 }
 
 func (h *CloudflareHandle) FlushCache() {
-	h.cache.listRecords[ipnet.IP4].Flush()
-	h.cache.listRecords[ipnet.IP6].Flush()
-	h.cache.activeZones.Flush()
-	h.cache.zoneOfDomain.Flush()
+	for _, cache := range h.cache.listRecords {
+		cache.DeleteAll()
+	}
+	h.cache.activeZones.DeleteAll()
+	h.cache.zoneOfDomain.DeleteAll()
 }
 
 // ActiveZones lists all active zones of the given name.
@@ -85,8 +91,8 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		return []string{}, true
 	}
 
-	if ids, found := h.cache.activeZones.Get(name); found {
-		return ids.([]string), true //nolint:forcetypeassert
+	if ids := h.cache.activeZones.Get(name); ids != nil {
+		return ids.Value(), true
 	}
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, ""))
@@ -120,14 +126,14 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		}
 	}
 
-	h.cache.activeZones.SetDefault(name, ids)
+	h.cache.activeZones.Set(name, ids, ttlcache.DefaultTTL)
 
 	return ids, true
 }
 
 func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (string, bool) {
-	if id, found := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); found {
-		return id.(string), true //nolint:forcetypeassert
+	if id := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); id != nil {
+		return id.Value(), true
 	}
 
 zoneSearch:
@@ -142,7 +148,7 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneOfDomain.SetDefault(domain.DNSNameASCII(), zones[0])
+			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
 			ppfmt.Warningf(pp.EmojiImpossible,
@@ -158,8 +164,8 @@ zoneSearch:
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type,
 ) (map[string]netip.Addr, bool) {
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		return rmap.(map[string]netip.Addr), true //nolint:forcetypeassert
+	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
+		return rmap.Value(), true
 	}
 
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
@@ -186,7 +192,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	h.cache.listRecords[ipNet].SetDefault(domain.DNSNameASCII(), rmap)
+	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), rmap, ttlcache.DefaultTTL)
 
 	return rmap, true
 }
@@ -208,8 +214,8 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		delete(rmap.(map[string]netip.Addr), id) //nolint:forcetypeassert
+	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
+		delete(rmap.Value(), id)
 	}
 
 	return true
@@ -239,8 +245,8 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]netip.Addr)[id] = ip //nolint:forcetypeassert
+	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
+		rmap.Value()[id] = ip
 	}
 
 	return true
@@ -273,8 +279,8 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	if rmap, found := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); found {
-		rmap.(map[string]netip.Addr)[res.Result.ID] = ip //nolint:forcetypeassert
+	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
+		rmap.Value()[res.Result.ID] = ip
 	}
 
 	return res.Result.ID, true
