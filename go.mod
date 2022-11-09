@@ -2,6 +2,8 @@ module github.com/favonia/cloudflare-ddns
 
 go 1.19
 
+retract [v0.0.0, v1.99.0]
+
 require (
 	github.com/cloudflare/cloudflare-go v0.53.0
 	github.com/golang/mock v1.6.0
