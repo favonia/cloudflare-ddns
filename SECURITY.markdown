@@ -11,4 +11,4 @@
 
 ## Reporting a Vulnerability
 
-Please report vulnerabilities by [emailing me.](mailto:favonia@gmail.com)
+Please report vulnerabilities at <https://github.com/favonia/cloudflare-ddns/security/advisories/new>
