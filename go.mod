@@ -10,7 +10,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.0.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/net v0.1.0
+	golang.org/x/net v0.2.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.66
 )
 
