@@ -19,10 +19,11 @@ import (
 // randUint16 generates a random uint16, possibly not cryptographically secure.
 //
 //nolint:gosec
-func randUint16() uint16 {
+func randUint16(ppfmt pp.PP) uint16 {
 	buf := make([]byte, binary.Size(uint16(0)))
 	if _, err := rand.Read(buf); err != nil {
-		// DoH + a weak PRNG should be secure enough
+		ppfmt.Warningf(pp.EmojiWarning, "Failed to access a cryptographically secure random number generator")
+		// We couldn't access the strong PRNG, but DoH + a weak PRNG should be secure enough
 		return uint16(mathrand.Uint32())
 	}
 
@@ -141,7 +142,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	var invalidIP netip.Addr
 
 	// message ID for the DNS payloads
-	id := randUint16()
+	id := randUint16(ppfmt)
 
 	q, ok := newDNSQuery(ppfmt, id, name, class)
 	if !ok {
