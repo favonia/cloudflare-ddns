@@ -16,7 +16,14 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
         with:
-          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            objects.githubusercontent.com:443
+            proxy.golang.org:443
+            raw.githubusercontent.com:443
+            sum.golang.org:443
 
       - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
         with:

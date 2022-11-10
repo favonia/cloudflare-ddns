@@ -8,7 +8,7 @@ on:
     types: [published]
 env:
   platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/riscv64,linux/s390x"
-permissions:  # added using https://github.com/step-security/secure-workflows
+permissions: # added using https://github.com/step-security/secure-workflows
   contents: read
 
 jobs:
@@ -21,7 +21,16 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
         with:
-          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            auth.docker.io:443
+            dl-cdn.alpinelinux.org:443
+            github.com:443
+            production.cloudflare.docker.com:443
+            proxy.golang.org:443
+            registry-1.docker.io:443
 
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         name: Check out the repository
