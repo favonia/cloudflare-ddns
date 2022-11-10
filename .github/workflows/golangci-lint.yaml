@@ -1,9 +1,9 @@
 name: golangci-lint
 on:
   push:
-    branches: main
+    branches: ["main"]
   pull_request:
-permissions:  # added using https://github.com/step-security/secure-workflows
+permissions: # added using https://github.com/step-security/secure-workflows
   contents: read
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - run: |
-          go install github.com/golang/mock/mockgen@latest
+          go install github.com/golang/mock/mockgen@v1.6.0
           go generate ./...
       - uses: golangci/golangci-lint-action@07db5389c99593f11ad7b44463c2d4233066a9b1
         with:

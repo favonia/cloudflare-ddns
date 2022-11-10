@@ -1,6 +1,6 @@
 # The Go compiler is run under linux/amd64 because GitHub Actions is using linux/amd64
 # and it is slow to run the compiler via QEMU.
-FROM --platform=linux/amd64 golang:1.19.3-alpine3.16 AS build
+FROM --platform=linux/amd64 golang:1.19.3-alpine3.16@sha256:8558ae624304387d18694b9ea065cc9813dd4f7f9bd5073edb237541f2d0561b AS build
 ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH

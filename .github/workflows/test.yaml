@@ -1,9 +1,9 @@
 name: Go
 on:
   push:
-    branches: main
+    branches: ["main"]
   pull_request:
-permissions:  # added using https://github.com/step-security/secure-workflows
+permissions: # added using https://github.com/step-security/secure-workflows
   contents: read
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
       - run: |
-          go install github.com/golang/mock/mockgen@latest
+          go install github.com/golang/mock/mockgen@v1.6.0
           go generate ./...
           go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
       - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70
