@@ -8,6 +8,9 @@ on:
     types: [published]
 env:
   platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/riscv64,linux/s390x"
+permissions:  # added using https://github.com/step-security/secure-workflows
+  contents: read
+
 jobs:
   build:
     name: Build
@@ -15,15 +18,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v3
+      - name: Harden Runner
+        uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         name: Check out the repository
         with:
           persist-credentials: false
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18
         name: Set up QEMU
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325
         name: Set up Docker Buildx
-      - uses: docker/login-action@v2
+      - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         name: Log in to Docker
         if: ${{ github.event_name != 'pull_request' }}
         with:
@@ -34,7 +42,7 @@ jobs:
       - run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         name: Run `git describe` and save its output
         id: git-describe
-      - uses: docker/metadata-action@v4
+      - uses: docker/metadata-action@57396166ad8aefe6098280995947635806a0e6ea
         name: Calculate metadata for minimal Docker images
         id: meta
         with:
@@ -42,7 +50,7 @@ jobs:
           tags: |
             type=edge
             type=semver,pattern={{version}}
-      - uses: docker/build-push-action@v3
+      - uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
         name: Build minimal Docker images
         with:
           target: "minimal"
