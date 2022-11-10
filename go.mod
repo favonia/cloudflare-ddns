@@ -2,7 +2,7 @@ module github.com/favonia/cloudflare-ddns
 
 go 1.19
 
-retract [v0.0.0, v1.99.0]
+retract [v0.0.0, v1.99.0] // Prevent publication in pkg.go.dev for now.
 
 require (
 	github.com/cloudflare/cloudflare-go v0.53.0
