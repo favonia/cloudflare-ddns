@@ -6,7 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 
-A small and fast DDNS updater for Cloudflare.
+A small and fast DDNS updater for Cloudflare. A DDNS updater detects your machine's public IP addresses and updates your domains' DNS records accordingly.
 
 ```
 🔇 Quiet mode enabled
