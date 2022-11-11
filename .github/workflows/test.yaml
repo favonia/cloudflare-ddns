@@ -13,7 +13,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Harden Runner
+      - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
         with:
           disable-sudo: true
@@ -26,23 +26,20 @@ jobs:
             sum.golang.org:443
             uploader.codecov.io:443
 
-      - uses: actions/cache@1c73980b09e7aea7201f325a7aa3ad00beddcdda
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
-        with:
-          go-version: 1.19
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         with:
           persist-credentials: false
-      - run: |
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
+        with:
+          go-version: 1.19
+          cache: true
+      - name: 🧪 Run `go test`
+        run: |
           go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
-      - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70
+      - name: ☂️ Report coverage rates to Codecov
+        uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70
         with:
           file: ./coverage.txt
           flags: unittests
@@ -50,22 +47,30 @@ jobs:
     name: Regenerate
     runs-on: ubuntu-latest
     steps:
-      - name: Harden Runner
+      - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
         with:
           disable-sudo: true
-          egress-policy: audit
-      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
-        with:
-          go-version: 1.19
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            proxy.golang.org:443
+            sum.golang.org:443
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         with:
           persist-credentials: false
-      - name: Install GoMock
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
+        with:
+          go-version: 1.19
+          cache: true
+      - name: 🎭 Install GoMock
         run: go install github.com/golang/mock/mockgen@v1.6.0
-      - name: Run 'go generate'
+      - name: 🧪 Run `go generate`
         run: go generate ./...
-      - name: git diff --quiet
+      - name: 🔍 Check if any files are changed
         run: |
           if ! git diff --quiet; then
             echo "Please run 'go gonerate ./...' to regenerate files"
