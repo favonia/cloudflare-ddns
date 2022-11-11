@@ -1,0 +1,43 @@
+name: ClusterFuzzLite PR fuzzing
+on: pull_request
+permissions: read-all
+jobs:
+  PR:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - address
+        # Override this with the sanitizers you want.
+        # - undefined
+        # - memory
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
+        with:
+          egress-policy: audit
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: go
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: ${{ matrix.sanitizer }}
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/favonia/cloudflare-ddns-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: "code-change"
+          sanitizer: ${{ matrix.sanitizer }}
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/favonia/cloudflare-ddns-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages

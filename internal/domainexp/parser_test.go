@@ -140,6 +140,12 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, "is(&&", "&&")
 			},
 		},
+		"is/error/3": {
+			"is", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; reached end of string`, "is", "(")
+			},
+		},
 		"sub/1":     {"sub(example.com)", true, f("example.com"), false, nil},
 		"sub/2":     {"sub(example.com)", true, w("example.com"), true, nil},
 		"sub/3":     {"sub(example.com)", true, f("sub.example.com"), true, nil},

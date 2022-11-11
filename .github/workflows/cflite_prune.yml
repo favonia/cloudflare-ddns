@@ -1,0 +1,24 @@
+name: ClusterFuzzLite cron tasks
+on:
+  schedule:
+    - cron: "44 10 * * 3"
+permissions: read-all
+jobs:
+  Pruning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: go
+      - name: Run Fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: "prune"
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/favonia/cloudflare-ddns-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages

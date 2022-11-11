@@ -233,7 +233,7 @@ func ParseList(ppfmt pp.PP, input string) ([]domain.Domain, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", input, tokens[0])
+		ppfmt.Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, input, tokens[0])
 		return nil, false
 	}
 
