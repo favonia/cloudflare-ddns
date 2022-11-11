@@ -1,9 +1,11 @@
 name: golangci-lint
+
 on:
   push:
     branches: ["main"]
   pull_request:
-permissions: # added using https://github.com/step-security/secure-workflows
+
+permissions:
   contents: read
 
 jobs:
@@ -31,11 +33,6 @@ jobs:
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         with:
           persist-credentials: false
-      - run: |
-          go install github.com/golang/mock/mockgen@v1.6.0
-          go generate ./...
       - uses: golangci/golangci-lint-action@07db5389c99593f11ad7b44463c2d4233066a9b1
         with:
           version: v1.50
-          skip-pkg-cache: true
-          skip-build-cache: true

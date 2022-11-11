@@ -1,9 +1,11 @@
 name: Go
+
 on:
   push:
     branches: ["main"]
   pull_request:
-permissions: # added using https://github.com/step-security/secure-workflows
+
+permissions:
   contents: read
 
 jobs:
@@ -39,10 +41,33 @@ jobs:
         with:
           persist-credentials: false
       - run: |
-          go install github.com/golang/mock/mockgen@v1.6.0
-          go generate ./...
           go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
       - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70
         with:
           file: ./coverage.txt
           flags: unittests
+  regenerate:
+    name: Regenerate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
+        with:
+          disable-sudo: true
+          egress-policy: audit
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
+        with:
+          go-version: 1.19
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+        with:
+          persist-credentials: false
+      - name: Install GoMock
+        run: go install github.com/golang/mock/mockgen@v1.6.0
+      - name: Run 'go generate'
+        run: go generate ./...
+      - name: git diff --quiet
+        run: |
+          if ! git diff --quiet; then
+            echo "Please run 'go gonerate ./...' to regenerate files"
+            exit 1
+          fi
