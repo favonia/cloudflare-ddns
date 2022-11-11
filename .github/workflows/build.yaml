@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Harden Runner
+      - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
         with:
           disable-sudo: true
@@ -35,35 +35,35 @@ jobs:
             proxy.golang.org:443
             registry-1.docker.io:443
 
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
-        name: Check out the repository
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
         with:
           persist-credentials: false
-      - uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18
-        name: Set up QEMU
-      - uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325
-        name: Set up Docker Buildx
-      - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
-        name: Log in to Docker
+      - name: 🤖 Set up QEMU
+        uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18
+      - name: 🏗️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325
+      - name: 🔑 Log in to Docker
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         if: ${{ github.event_name != 'pull_request' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - run: "git fetch --force --prune --unshallow --tags"
-        name: Fetch git tags for `git describe`
-      - run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
-        name: Run `git describe` and save its output
+      - name: 🏷️ Fetch git tags for `git describe`
+        run: "git fetch --force --prune --unshallow --tags"
+      - name: 📝 Run `git describe` and save its output
+        run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         id: git-describe
-      - uses: docker/metadata-action@57396166ad8aefe6098280995947635806a0e6ea
-        name: Calculate metadata for minimal Docker images
+      - name: 📝 Calculate metadata for minimal Docker images
+        uses: docker/metadata-action@57396166ad8aefe6098280995947635806a0e6ea
         id: meta
         with:
           images: ${{ github.repository }}
           tags: |
             type=edge
             type=semver,pattern={{version}}
-      - uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
-        name: Build minimal Docker images
+      - name: 🚀 Build and deploy minimal Docker images
+        uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
         with:
           target: "minimal"
           push: ${{ github.event_name != 'pull_request' }}
