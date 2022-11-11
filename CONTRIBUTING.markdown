@@ -1,6 +1,10 @@
 # ✨ Contributing to `cloudflare-ddns`
 
-First of all, thank you for your contribution! 🤗 Here are the answers to some of the questions you might have:
+First of all, thank you for your contribution! 🤗
+
+## 🕵️ Security Reports
+
+- See [Security Policy](./SECURITY.markdown)
 
 ## 📜 License
 
