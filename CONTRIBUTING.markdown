@@ -8,8 +8,7 @@ First of all, thank you for your contribution! 🤗
 
 ## 📜 License
 
-- Unless explicitly stated otherwise, you agree to license your contribution under [Apache 2.0](./LICENSE).
-- Unless explicitly stated otherwise, you assert that you have full power to license your contribution under [Apache 2.0](./LICENSE).
+- As detailed in the [Apache 2.0](./LICENSE) license, unless explicitly stated otherwise, you agree to license your contribution under [Apache 2.0](./LICENSE), and you assert that you have full power to license your contribution under [Apache 2.0](./LICENSE). Please refer to the license text for more details.
 
 ## ⌨️ Coding Style
 
