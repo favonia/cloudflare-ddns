@@ -7,7 +7,7 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 
-A small and fast DDNS updater for Cloudflare. A DDNS updater detects your machine's public IP addresses and updates your domains' DNS records accordingly.
+A small and fast DDNS updater for Cloudflare. A DDNS (dynamic DNS) updater detects your machine's public IP addresses and updates your domains' DNS records automatically.
 
 ```
 🔇 Quiet mode enabled
@@ -43,7 +43,8 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 ### 🛡️ Security
 
-- 🛑 The superuser privileges are immediately dropped after the updater starts.
+- 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
+- 🛡️ The updater uses only secure protocols ([DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS) and HTTPS) to detect public IP addresses. Attackers cannot tamper with the detected addresses.
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
   <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
