@@ -44,7 +44,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 ### 🛡️ Security
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
-- 🛡️ The updater uses only secure protocols ([DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS) and HTTPS) to detect public IP addresses. Attackers cannot tamper with the detected addresses.
+- 🛡️ The updater uses only secure protocols ([DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS) and HTTPS) to detect public IP addresses, which makes it harder to tamper with the detection process. _(Due to the nature of public IP address detection, it is impossible to defend the updater against a strong advisory that can modify the source IP address of the packages coming from your machine.)_
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
   <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
@@ -457,7 +457,7 @@ _(Click to expand the following items.)_
 <details>
 <summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns.</a></summary>
 
-⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on unverified DNS responses to obtain public IP addresses; a malicious hacker could potentially manipulate or forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare or ipify.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare or ipify, which makes the attack much more difficult.
 
 | Old Parameter                          |     | New Paramater                                                                      |
 | -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
