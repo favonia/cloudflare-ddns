@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"net/netip"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -17,26 +18,30 @@ func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	}
 
 	ppfmt.Warningf(pp.EmojiImpossible,
-		"Proxied[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+		"Proxied[%s] not initialized; this should not happen; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
 		domain.Describe(),
 	)
 	return false
 }
 
-func setIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr) bool {
+func setIP(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
+) (bool, string) {
 	ok := true
+	var msgs []string
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		if !s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL,
-			getProxied(ppfmt, c, domain)) {
-			ok = false
+		setOk, msg := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
+		ok = ok && setOk
+		if msg != "" {
+			msgs = append(msgs, msg)
 		}
 	}
 
-	return ok
+	return ok, strings.Join(msgs, "\n")
 }
 
 var MessageShouldDisplay = map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true} //nolint:gochecknoglobals
@@ -67,36 +72,43 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 	return ip
 }
 
-func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
+func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	ok := true
+	var msgs []string
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip := detectIP(ctx, ppfmt, c, ipNet)
 			if !ip.IsValid() {
+				// We can't detect the new IP address. It's probably better to leave existing IP addresses alone.
 				ok = false
 				continue
 			}
 
-			if !setIP(ctx, ppfmt, c, s, ipNet, ip) {
-				ok = false
+			setOk, msg := setIP(ctx, ppfmt, c, s, ipNet, ip)
+			ok = ok && setOk
+			if msg != "" {
+				msgs = append(msgs, msg)
 			}
 		}
 	}
 
-	return ok
+	return ok, strings.Join(msgs, "\n")
 }
 
-func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) bool {
+func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	ok := true
+	var msgs []string
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			if !setIP(ctx, ppfmt, c, s, ipNet, netip.Addr{}) {
-				ok = false
+			setOk, msg := setIP(ctx, ppfmt, c, s, ipNet, netip.Addr{})
+			ok = ok && setOk
+			if msg != "" {
+				msgs = append(msgs, msg)
 			}
 		}
 	}
 
-	return ok
+	return ok, strings.Join(msgs, "\n")
 }

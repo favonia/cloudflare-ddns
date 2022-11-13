@@ -282,15 +282,15 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	return true
 }
 
-// ReadHealthChecksURL reads the base URL of the healthcheck.io endpoint.
-func ReadHealthChecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+// ReadHealthchecksURL reads the base URL of the healthcheck.io endpoint.
+func ReadHealthchecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
 	val := Getenv(key)
 
 	if val == "" {
 		return true
 	}
 
-	h, ok := monitor.NewHealthChecks(ppfmt, val)
+	h, ok := monitor.NewHealthchecks(ppfmt, val)
 	if !ok {
 		return false
 	}

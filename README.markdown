@@ -45,7 +45,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
 - 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packets coming from your machine.)_
-- 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
+- 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
   <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
 
@@ -433,12 +433,12 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 <details>
 <summary>👁️ Monitoring the updater</summary>
 
-| Name           | Valid Values                                                                                                                                                         | Meaning                                                                         | Required? | Default Value |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------- | ------------- |
-| `QUIET`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                  | Whether the updater should reduce the logging to the standard output            | No        | `false`       |
-| `HEALTHCHECKS` | [Healthchecks.io ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No        | (unset)       |
+| Name           | Valid Values                                                                                                                                                      | Meaning                                                                         | Required? | Default Value |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------- | ------------- |
+| `QUIET`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging to the standard output            | No        | `false`       |
+| `HEALTHCHECKS` | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No        | (unset)       |
 
-For `HEALTHCHECKS`, the updater accepts any URL that follows the [same notification protocol](https://healthchecks.io/docs/http_api/).
+For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater is compatible with POST-only mode.
 
 </details>
 

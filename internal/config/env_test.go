@@ -720,7 +720,7 @@ func urlMustParse(t *testing.T, u string) *url.URL {
 }
 
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
-func TestReadHealthChecksURL(t *testing.T) {
+func TestReadHealthchecksURL(t *testing.T) {
 	key := keyPrefix + "HEALTHCHECKS"
 
 	type mon = monitor.Monitor
@@ -742,10 +742,10 @@ func TestReadHealthChecksURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			[]mon{},
-			[]mon{&monitor.HealthChecks{
+			[]mon{&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234"),
-				Timeout:    monitor.HealthChecksDefaultTimeout,
-				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+				Timeout:    monitor.HealthchecksDefaultTimeout,
+				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -753,10 +753,10 @@ func TestReadHealthChecksURL(t *testing.T) {
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			[]mon{},
-			[]mon{&monitor.HealthChecks{
+			[]mon{&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://me:pass@hi.org/1234"),
-				Timeout:    monitor.HealthChecksDefaultTimeout,
-				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+				Timeout:    monitor.HealthchecksDefaultTimeout,
+				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -764,10 +764,10 @@ func TestReadHealthChecksURL(t *testing.T) {
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			[]mon{},
-			[]mon{&monitor.HealthChecks{
+			[]mon{&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234#fragment"),
-				Timeout:    monitor.HealthChecksDefaultTimeout,
-				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+				Timeout:    monitor.HealthchecksDefaultTimeout,
+				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -775,10 +775,10 @@ func TestReadHealthChecksURL(t *testing.T) {
 		"query": {
 			true, "https://hi.org/1234?hello=123",
 			[]mon{},
-			[]mon{&monitor.HealthChecks{
+			[]mon{&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234?hello=123"),
-				Timeout:    monitor.HealthChecksDefaultTimeout,
-				MaxRetries: monitor.HealthChecksDefaultMaxRetries,
+				Timeout:    monitor.HealthchecksDefaultTimeout,
+				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
 			}},
 			true,
 			nil,
@@ -793,7 +793,7 @@ func TestReadHealthChecksURL(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadHealthChecksURL(mockPP, key, &field)
+			ok := config.ReadHealthchecksURL(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

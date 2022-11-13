@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -33,12 +34,11 @@ func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 
 var Version string //nolint:gochecknoglobals
 
-func welcome(ppfmt pp.PP) {
+func formatName() string {
 	if Version == "" {
-		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS")
-	} else {
-		ppfmt.Noticef(pp.EmojiStar, "Cloudflare DDNS (%s)", Version)
+		return "Cloudflare DDNS"
 	}
+	return fmt.Sprintf("Cloudflare DDNS (%s)", Version)
 }
 
 func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, setter.Setter) {
@@ -46,10 +46,10 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	bye := func() {
 		// Usually, this is called only after initConfig,
 		// but we are exiting early.
-		monitor.StartAll(ctx, ppfmt, c.Monitors)
+		monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1)
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "configuration errors")
 		os.Exit(1)
 	}
 
@@ -76,6 +76,17 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	return c, h, s
 }
 
+func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
+	if c.DeleteOnStop {
+		ppfmt.Noticef(pp.EmojiClearRecord, "Deleting all managed records . . .")
+		if ok, msg := updater.ClearIPs(ctx, ppfmt, c, s); ok {
+			monitor.LogAll(ctx, ppfmt, c.Monitors, msg)
+		} else {
+			monitor.FailureAll(ctx, ppfmt, c.Monitors, msg)
+		}
+	}
+}
+
 func main() { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
 	if !config.ReadQuiet("QUIET", &ppfmt) {
@@ -86,7 +97,7 @@ func main() { //nolint:funlen
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
-	welcome(ppfmt)
+	ppfmt.Noticef(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
 	dropPriviledges(ppfmt)
@@ -105,7 +116,7 @@ func main() { //nolint:funlen
 	c, h, s := initConfig(ctx, ppfmt)
 
 	// Start the tool now
-	monitor.StartAll(ctx, ppfmt, c.Monitors)
+	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 
 	first := true
 mainLoop:
@@ -116,30 +127,22 @@ mainLoop:
 
 		// Update the IP
 		if !first || c.UpdateOnStart {
-			if updater.UpdateIPs(ctx, ppfmt, c, s) {
-				monitor.SuccessAll(ctx, ppfmt, c.Monitors)
+			if ok, msg := updater.UpdateIPs(ctx, ppfmt, c, s); ok {
+				monitor.SuccessAll(ctx, ppfmt, c.Monitors, msg)
 			} else {
-				monitor.FailureAll(ctx, ppfmt, c.Monitors)
+				monitor.FailureAll(ctx, ppfmt, c.Monitors, msg)
 			}
 		} else {
-			monitor.SuccessAll(ctx, ppfmt, c.Monitors)
+			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "")
 		}
 		first = false
 
 		// Maybe there's nothing scheduled in near future?
 		if next.IsZero() {
-			if c.DeleteOnStop {
-				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future. Deleting all managed records . . .")
-				if !updater.ClearIPs(ctx, ppfmt, c, s) {
-					monitor.FailureAll(ctx, ppfmt, c.Monitors)
-				}
-				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
-			} else {
-				ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
-				ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			}
-
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0)
+			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
+			stopUpdating(ctx, ppfmt, c, s)
+			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Not scheduled updates")
 			break mainLoop
 		}
 
@@ -170,21 +173,14 @@ mainLoop:
 
 			ppfmt.Noticef(pp.EmojiRepeatOnce, "Restarting . . .")
 			c, h, s = initConfig(ctx, ppfmt)
+			monitor.LogAll(ctx, ppfmt, c.Monitors, "Restarted")
 			continue mainLoop
 
 		case syscall.SIGINT, syscall.SIGTERM:
-			if c.DeleteOnStop {
-				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v. Deleting all managed records . . .", sig)
-				if !updater.ClearIPs(ctx, ppfmt, c, s) {
-					monitor.FailureAll(ctx, ppfmt, c.Monitors)
-				}
-				ppfmt.Noticef(pp.EmojiBye, "Done now. Bye!")
-			} else {
-				ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
-				ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			}
-
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0)
+			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
+			stopUpdating(ctx, ppfmt, c, s)
+			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, fmt.Sprintf("Signal: %v", sig))
 			break mainLoop
 
 		default:

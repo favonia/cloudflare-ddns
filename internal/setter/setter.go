@@ -2,6 +2,7 @@ package setter
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"sort"
 
@@ -51,14 +52,16 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 // Set calls the DNS service API to update the API of one domain.
 //
 //nolint:funlen
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool) bool { //nolint:lll
+func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
+	domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool,
+) (bool, string) {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
 	rs, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
-		return false
+		return false, fmt.Sprintf("%s %s possibly inconsistent", recordType, domainDescription)
 	}
 
 	// The intention of these two lists is to find or create a good record and then delete everything else.
@@ -90,11 +93,14 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 	// If it's up to date and there are no other records, we are done!
 	if uptodate && len(duplicateMatchedIDs) == 0 && len(unmatchedIDsToUpdate) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
-		return true
+		return true, ""
 	}
 
 	// This counts the stale records that have not being deleted yet.
 	//
+	// Message for monitor (e.g. Healthchecks)
+	monitorMessage := ""
+
 	// We need a different counter (instead of using len(unmatchedIDsToUpdate) all the times)
 	// because when we fail to delete a record, we will give up and remove that record from
 	// unmatchedIDsToUpdate, but the stale record that could not be deleted should still be
@@ -117,6 +123,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 				// If the updating succeeds, we can move on to the next stage!
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
 					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+				monitorMessage = fmt.Sprintf("%s %s set to %s", recordType, domainDescription, ip.String())
 
 				// Now it's up to date! Note that matchedIDs must be empty; otherwise uptodate would have been true.
 				uptodate = true
@@ -127,7 +134,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 			} else {
 				// If the updating fails, we will delete it.
 				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-					ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)",
+					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)",
 						recordType, domainDescription, id)
 
 					// Only when the deletion succeeds, we decrease the counter of remaining stale records.
@@ -147,7 +154,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 	if !uptodate {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, ttl, proxied); ok {
-			ppfmt.Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
+			monitorMessage = fmt.Sprintf("%s %s set to %s", recordType, domainDescription, ip.String())
 
 			// Now it's up to date! matchedIDs and unmatchedIDsToUpdate must both be empty at this point
 			uptodate = true
@@ -157,16 +165,21 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unmatchedIDsToUpdate {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 			numUndeletedUnmatched--
 		}
+	}
+
+	// We meant to clear all records, and we did it!
+	if numUndeletedUnmatched == 0 && !ip.IsValid() {
+		monitorMessage = fmt.Sprintf("%s %s cleared", recordType, domainDescription)
 	}
 
 	// We should also delete all duplicate records even if they are up to date.
 	// This has lower priority than deleting the stale records.
 	for _, id := range duplicateMatchedIDs {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDelRecord, "Deleted a duplicate %s record of %q (ID: %s)",
+			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %s)",
 				recordType, domainDescription, id)
 		}
 	}
@@ -176,8 +189,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipn
 		ppfmt.Errorf(pp.EmojiError,
 			"Failed to complete updating of %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
-		return false
+		return false, fmt.Sprintf("%s %s possibly inconsistent", recordType, domainDescription)
 	}
 
-	return true
+	return true, monitorMessage
 }

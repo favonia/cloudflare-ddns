@@ -13,9 +13,10 @@ const (
 	EmojiMute         Emoji = "🔇" // quiet mode
 	EmojiExperimental Emoji = "🧪" // experimental features
 
-	EmojiAddRecord    Emoji = "🐣" // adding new DNS records
-	EmojiDelRecord    Emoji = "💀" // deleting DNS records
+	EmojiCreateRecord Emoji = "🐣" // adding new DNS records
+	EmojiDeleteRecord Emoji = "💀" // deleting DNS records
 	EmojiUpdateRecord Emoji = "📡" // updating DNS records
+	EmojiClearRecord  Emoji = "🧹" // clearing DNS records
 
 	EmojiNotification Emoji = "🔔" // sending out notifications, pinging, health checks
 	EmojiRepeatOnce   Emoji = "🔂" // repeating things once

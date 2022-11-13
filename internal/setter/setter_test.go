@@ -36,6 +36,7 @@ func TestSet(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ip                netip.Addr
 		ok                bool
+		msg               string
 		ttl               api.TTL
 		proxied           bool
 		prepareMockPP     func(m *mocks.MockPP)
@@ -44,6 +45,7 @@ func TestSet(t *testing.T) {
 		"0-nil/1-true": {
 			invalidIP,
 			true,
+			"",
 			1,
 			true,
 			func(m *mocks.MockPP) {
@@ -56,10 +58,11 @@ func TestSet(t *testing.T) {
 		"0/1-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			1,
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1)
+				m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -71,6 +74,7 @@ func TestSet(t *testing.T) {
 		"1unmatched/300-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -91,12 +95,13 @@ func TestSet(t *testing.T) {
 		"1unmatched-updatefail/300-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
-					m.EXPECT().Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -111,10 +116,11 @@ func TestSet(t *testing.T) {
 		"1unmatched-nil/300-false": {
 			invalidIP,
 			true,
+			`AAAA sub.test.org cleared`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1)
+				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1) //nolint:lll
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -126,6 +132,7 @@ func TestSet(t *testing.T) {
 		"1matched/300-false": {
 			ip1,
 			true,
+			``,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -138,11 +145,12 @@ func TestSet(t *testing.T) {
 		"2matched/300-false": {
 			ip1,
 			true,
+			``,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
-					pp.EmojiDelRecord,
+					pp.EmojiDeleteRecord,
 					"Deleted a duplicate %s record of %q (ID: %s)",
 					"AAAA",
 					"sub.test.org",
@@ -159,6 +167,7 @@ func TestSet(t *testing.T) {
 		"2matched-deletefail/300-false": {
 			ip1,
 			true,
+			``,
 			300,
 			false,
 			nil,
@@ -172,6 +181,7 @@ func TestSet(t *testing.T) {
 		"2unmatched/300-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -183,7 +193,7 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record1,
 					),
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -197,11 +207,12 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefail/300-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
 					m.EXPECT().Noticef(
 						pp.EmojiUpdateRecord,
 						"Updated a stale %s record of %q (ID: %s)",
@@ -223,13 +234,14 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefailtwice/300-false": {
 			ip1,
 			true,
+			`AAAA sub.test.org set to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
-					m.EXPECT().Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -247,12 +259,13 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefail-deletefail-updatefail/300-false": {
 			ip1,
 			false,
+			`AAAA sub.test.org possibly inconsistent`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
-					m.EXPECT().Noticef(pp.EmojiAddRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),                      //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),                          //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -271,12 +284,13 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefailtwice-createfail/300-false": {
 			ip1,
 			false,
+			`AAAA sub.test.org possibly inconsistent`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),                      //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),                      //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -294,6 +308,7 @@ func TestSet(t *testing.T) {
 		"listfail/300-false": {
 			ip1,
 			false,
+			`AAAA sub.test.org possibly inconsistent`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -306,12 +321,13 @@ func TestSet(t *testing.T) {
 		"impossible-invalidIP-records/300-false": {
 			invalidIP,
 			true,
+			`AAAA sub.test.org cleared`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),
-					m.EXPECT().Noticef(pp.EmojiDelRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -343,8 +359,9 @@ func TestSet(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			ok = s.Set(ctx, mockPP, domain, ipNetwork, tc.ip, tc.ttl, tc.proxied)
+			ok, msg := s.Set(ctx, mockPP, domain, ipNetwork, tc.ip, tc.ttl, tc.proxied)
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.msg, msg)
 		})
 	}
 }
