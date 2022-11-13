@@ -12,11 +12,14 @@ linters-settings:
     settings:
       printf:
         funcs:
-          - (github.com/favonia/cloudflare-ddns/internal/pp).Infof
-          - (github.com/favonia/cloudflare-ddns/internal/pp).Noticef
-          - (github.com/favonia/cloudflare-ddns/internal/pp).Warningf
-          - (github.com/favonia/cloudflare-ddns/internal/pp).Errorf
-          - (github.com/favonia/cloudflare-ddns/internal/pp).printf
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Infof
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Warningf
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Errorf
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Infof
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Warningf
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Errorf
 
 issues:
   exclude-rules:

@@ -556,7 +556,7 @@ func TestReadProvider(t *testing.T) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
 					`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
-					key, key,
+					key,
 				)
 			},
 		},

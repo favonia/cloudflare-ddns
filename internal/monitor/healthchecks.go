@@ -159,7 +159,7 @@ func (h *HealthChecks) Failure(ctx context.Context, ppfmt pp.PP) bool {
 
 func (h *HealthChecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int) bool {
 	if code < 0 || code > 255 {
-		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255", code)
+		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)
 		return false
 	}
 
