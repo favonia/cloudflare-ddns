@@ -241,7 +241,7 @@ func TestEndPoints(t *testing.T) {
 			nil,
 			false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiImpossible, "Exit code (%i) not within the range 0-255", -1)
+				m.EXPECT().Errorf(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", -1)
 			},
 		},
 	} {

@@ -211,7 +211,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			ppfmt.Errorf(
 				pp.EmojiUserError,
 				`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
-				key, key,
+				key,
 			)
 			return false
 		case "cloudflare.trace":
