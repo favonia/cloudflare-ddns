@@ -6,6 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
 
 A small and fast DDNS updater for Cloudflare. A DDNS (dynamic DNS) updater detects your machine's public IP addresses and updates your domains' DNS records automatically.
 
@@ -32,7 +33,7 @@ A small and fast DDNS updater for Cloudflare. A DDNS (dynamic DNS) updater detec
 
 Simply list all the domain names and you are done!
 
-- 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. _(The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).)_
+- 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).
 - 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
 - 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
@@ -44,10 +45,10 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 ### 🛡️ Security
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
-- 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packets coming from your machine.)_
-- ✅ You can verify Docker images using [Cosign](https://github.com/sigstore/cosign):
+- 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it more resistant to tampering. See the [design document](docs/DESIGN.markdown) for more information.
+- ✅ You can verify the Docker images using [Cosign](https://github.com/sigstore/cosign):
   ```sh
-  cosign verify --key https://cloudflare-ddns.favonia.org/cosign.pub favonia/cloudflare-ddns
+  cosign verify --key https://d.favonia.org/cosign.pub favonia/cloudflare-ddns
   ```
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
