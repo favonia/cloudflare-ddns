@@ -160,7 +160,6 @@ func TestReadProviderMap(t *testing.T) {
 		cloudflareTrace = provider.NewCloudflareTrace()
 		cloudflareDOH   = provider.NewCloudflareDOH()
 		local           = provider.NewLocal()
-		ipify           = provider.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
@@ -171,10 +170,10 @@ func TestReadProviderMap(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
-			"cloudflare.trace", "ipify",
+			"cloudflare.trace", "local",
 			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: cloudflareTrace,
-				ipnet.IP6: ipify,
+				ipnet.IP6: local,
 			},
 			true,
 			nil,

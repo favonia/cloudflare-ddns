@@ -39,12 +39,12 @@ Simply list all the domain names and you are done!
 
 ### 🕵️ Privacy
 
-By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways. You can also configure the updater to use [ipify](https://www.ipify.org), which claims not to log any visitor information. [Open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to propose a new method to detect public IP addresses.
+By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways.
 
 ### 🛡️ Security
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
-- 🛡️ The updater uses HTTPS (or [DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packages coming from your machine.)_
+- 🛡️ The updater uses HTTPS (or [DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packets coming from your machine.)_
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks.io](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
   <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
@@ -323,8 +323,8 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)       |
 | `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)       |
 | `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)       |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none`    | How to detect IPv4 addresses. (See below)                             | No          | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `ipify`, `local`, and `none`    | How to detect IPv6 addresses. (See below)                             | No          | `cloudflare.trace` |
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, and `none`             | How to detect IPv4 addresses. (See below)                             | No          | `cloudflare.trace` |
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, and `none`             | How to detect IPv6 addresses. (See below)                             | No          | `cloudflare.trace` |
 
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
@@ -340,8 +340,6 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 >   Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
 > - `cloudflare.trace`\
 >   Get the public IP address by parsing the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
-> - `ipify`\
->   Get the public IP address via [ipify’s public API](https://www.ipify.org/) and update DNS records accordingly.
 > - `local`\
 >   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
 > - `none`\
@@ -457,7 +455,7 @@ _(Click to expand the following items.)_
 <details>
 <summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns.</a></summary>
 
-⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare or ipify, which makes the attack much more difficult.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult.
 
 | Old Parameter                          |     | New Paramater                                                                      |
 | -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
@@ -470,7 +468,7 @@ _(Click to expand the following items.)_
 | `DELETE_ON_STOP=true`                  | ✔️  | Same                                                                               |
 | `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
 | `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | _There is not even a shell in the minimum Docker image_                            |
-| `DNS_SERVER=server`                    | ❌  | _Only the secure Cloudflare and ipify are supported_                               |
+| `DNS_SERVER=server`                    | ❌  | _Only Cloudflare is supported_                                                     |
 
 </details>
 
