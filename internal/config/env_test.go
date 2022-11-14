@@ -464,7 +464,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.doh or %s=cloudflare.trace`, //nolint:lll
+					`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, //nolint:lll
 					keyDeprecated, key, key,
 				)
 			},
@@ -521,10 +521,10 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s was deprecated; use %s=%s`,
+					`Parameter %s and provider "ipify" were deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
 					keyDeprecated,
 					key,
-					"ipify",
+					key,
 				)
 			},
 		},
@@ -555,8 +555,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`Parameter %s does not accept "cloudflare"; use "cloudflare.doh" or "cloudflare.trace"`,
-					key,
+					`Parameter %s does not accept "cloudflare"; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					key, key, key,
 				)
 			},
 		},
@@ -564,7 +564,17 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, cloudflareDOH, true, nil},
 		"none":             {true, "   none   ", false, "", cloudflareTrace, none, true, nil},
 		"local":            {true, "   local   ", false, "", cloudflareTrace, local, true, nil},
-		"ipify":            {true, "     ipify  ", false, "", cloudflareTrace, ipify, true, nil},
+		"ipify": {
+			true, "     ipify  ", false, "", cloudflareTrace, ipify, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(
+					pp.EmojiUserWarning,
+					`Provider "ipify" was deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					key,
+					key,
+				)
+			},
+		},
 		"others": {
 			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
