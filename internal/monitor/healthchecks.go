@@ -56,7 +56,8 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Moni
 		// HTTPS is good!
 
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, "The Healthchecks URL (redacted) does not use HTTP(S) and is not supported")
+		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL.`)
+		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`)
 		return nil, false
 	}
 

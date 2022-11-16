@@ -77,6 +77,19 @@ func TestNewHealthchecksFail2(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL.`),
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`), //nolint:lll
+	)
+	_, ok := monitor.NewHealthchecks(mockPP, "ftp://example.org")
+	require.False(t, ok)
+}
+
+func TestNewHealthchecksFail3(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
 	_, ok := monitor.NewHealthchecks(mockPP, "://#?")
 	require.False(t, ok)
