@@ -56,7 +56,7 @@ func TestFailureAll(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	message := "hello!"
+	message := "secret"
 
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
@@ -67,6 +67,25 @@ func TestFailureAll(t *testing.T) {
 	monitor.FailureAll(context.Background(), mockPP, ms, message)
 }
 
+func TestLogAll(t *testing.T) {
+	t.Parallel()
+
+	var ms []monitor.Monitor
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	message := "forest"
+
+	for i := 0; i < 5; i++ {
+		m := mocks.NewMockMonitor(mockCtrl)
+		m.EXPECT().Log(context.Background(), mockPP, message)
+		ms = append(ms, m)
+	}
+
+	monitor.LogAll(context.Background(), mockPP, ms, message)
+}
+
 func TestExitStatus(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +94,7 @@ func TestExitStatus(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	message := "hello!"
+	message := "bye!"
 
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
