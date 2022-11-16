@@ -58,7 +58,7 @@ func TestSet(t *testing.T) {
 		"0/1-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			1,
 			false,
 			func(m *mocks.MockPP) {
@@ -74,7 +74,7 @@ func TestSet(t *testing.T) {
 		"1unmatched/300-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -95,7 +95,7 @@ func TestSet(t *testing.T) {
 		"1unmatched-updatefail/300-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -116,7 +116,7 @@ func TestSet(t *testing.T) {
 		"1unmatched-nil/300-false": {
 			invalidIP,
 			true,
-			`AAAA sub.test.org cleared`,
+			`Cleared AAAA sub.test.org`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -126,6 +126,22 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
+				)
+			},
+		},
+		"1unmatched-nil/fail/300-false": {
+			invalidIP,
+			false,
+			`Failed to clear AAAA sub.test.org`,
+			300,
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(false),
 				)
 			},
 		},
@@ -181,7 +197,7 @@ func TestSet(t *testing.T) {
 		"2unmatched/300-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -207,7 +223,7 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefail/300-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -234,7 +250,7 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefailtwice/300-false": {
 			ip1,
 			true,
-			`AAAA sub.test.org set to ::1`,
+			`Set AAAA sub.test.org to ::1`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -259,7 +275,7 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefail-deletefail-updatefail/300-false": {
 			ip1,
 			false,
-			`AAAA sub.test.org possibly inconsistent`,
+			`Failed to set AAAA sub.test.org`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -284,7 +300,7 @@ func TestSet(t *testing.T) {
 		"2unmatched-updatefailtwice-createfail/300-false": {
 			ip1,
 			false,
-			`AAAA sub.test.org possibly inconsistent`,
+			`Failed to set AAAA sub.test.org`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -321,7 +337,7 @@ func TestSet(t *testing.T) {
 		"impossible-invalidIP-records/300-false": {
 			invalidIP,
 			true,
-			`AAAA sub.test.org cleared`,
+			`Cleared AAAA sub.test.org`,
 			300,
 			false,
 			func(m *mocks.MockPP) {

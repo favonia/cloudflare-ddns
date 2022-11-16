@@ -123,7 +123,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 				// If the updating succeeds, we can move on to the next stage!
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
 					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
-				monitorMessage = fmt.Sprintf("%s %s set to %s", recordType, domainDescription, ip.String())
+				monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
 
 				// Now it's up to date! Note that matchedIDs must be empty; otherwise uptodate would have been true.
 				uptodate = true
@@ -155,7 +155,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, ttl, proxied); ok {
 			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
-			monitorMessage = fmt.Sprintf("%s %s set to %s", recordType, domainDescription, ip.String())
+			monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
 
 			// Now it's up to date! matchedIDs and unmatchedIDsToUpdate must both be empty at this point
 			uptodate = true
@@ -172,7 +172,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	// We meant to clear all records, and we did it!
 	if numUndeletedUnmatched == 0 && !ip.IsValid() {
-		monitorMessage = fmt.Sprintf("%s %s cleared", recordType, domainDescription)
+		monitorMessage = fmt.Sprintf("Cleared %s %s", recordType, domainDescription)
 	}
 
 	// We should also delete all duplicate records even if they are up to date.
@@ -189,7 +189,12 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Errorf(pp.EmojiError,
 			"Failed to complete updating of %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
-		return false, fmt.Sprintf("%s %s possibly inconsistent", recordType, domainDescription)
+		if ip.IsValid() {
+			monitorMessage = fmt.Sprintf("Failed to set %s %s", recordType, domainDescription)
+		} else {
+			monitorMessage = fmt.Sprintf("Failed to clear %s %s", recordType, domainDescription)
+		}
+		return false, monitorMessage
 	}
 
 	return true, monitorMessage
