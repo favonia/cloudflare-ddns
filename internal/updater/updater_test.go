@@ -50,69 +50,75 @@ func TestUpdateIPs(t *testing.T) {
 		ttl                  api.TTL
 		proxied              mockproxied
 		ok                   bool
+		msg                  string
 		MessageShouldDisplay map[ipnet.Type]bool
 		prepareMockPP        func(m *mocks.MockPP)
 		prepareMockProvider  mockproviders
 		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			api.TTLAuto, proxiedBoth, true, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
+			api.TTLAuto, proxiedBoth, true, ``, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "")
 			},
 		},
 		"ip4only/setfail": {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
+			"error",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false, "error") //nolint:lll
 			},
 		},
 		"ip6only": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"ok",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true, "ok")
 			},
 		},
 		"ip6only/setfail": {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
+			"bad",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(false)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(false, "bad")
 			},
 		},
 		"both": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true, ""),
 				)
 			},
 		},
@@ -120,13 +126,14 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
+			"hey!",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false, "hey!"), //nolint:lll
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true, ""),
 				)
 			},
 		},
@@ -134,13 +141,14 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"wrong",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(false),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(false, "wrong"), //nolint:lll
 				)
 			},
 		},
@@ -148,6 +156,7 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
+			"looking good",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -163,13 +172,14 @@ func TestUpdateIPs(t *testing.T) {
 				ipnet.IP6: provider6,
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true, "looking good") //nolint:lll
 			},
 		},
 		"ip6fails": {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"good",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -187,13 +197,14 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "good") //nolint:lll
 			},
 		},
 		"ip6fails/again": {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: false},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -208,13 +219,14 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(true, "")
 			},
 		},
 		"bothfail": {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -240,19 +252,20 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			mockproxied{},
 			true,
+			"response",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
 					m.EXPECT().Warningf(pp.EmojiImpossible,
-						"Proxied[%s] not initialized; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new",
+						"Proxied[%s] not initialized; this should not happen; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
 						"ip4.hello",
 					),
 				)
 			},
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "response") //nolint:lll
 			},
 		},
 	} {
@@ -282,8 +295,9 @@ func TestUpdateIPs(t *testing.T) {
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			ok := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			ok, msg := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.msg, msg)
 		})
 	}
 }
@@ -306,6 +320,7 @@ func TestClearIPs(t *testing.T) {
 		ttl                  api.TTL
 		proxied              mockproxied
 		ok                   bool
+		msg                  string
 		MessageShouldDisplay map[ipnet.Type]bool
 		prepareMockPP        func(m *mocks.MockPP)
 		prepareMockProvider  mockproviders
@@ -315,6 +330,7 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			``,
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{},
@@ -324,57 +340,62 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"hello",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true, "hello")
 			},
 		},
 		"ip4only/setfail": {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"err",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(false)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(false, "err")
 			},
 		},
 		"ip6only": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true, "")
 			},
 		},
 		"ip6only/setfail": {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"test",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(false)
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(false, "test")
 			},
 		},
 		"both": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
+			"both\nneither",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true, "both"),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true, "neither"),
 				)
 			},
 		},
@@ -382,13 +403,14 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"999",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(false),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(false, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(true, "999"),
 				)
 			},
 		},
@@ -396,13 +418,14 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
+			"1\n2",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(false),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain4, ipnet.IP4, netip.Addr{}, api.TTL(1), false).Return(true, "1"),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain6, ipnet.IP6, netip.Addr{}, api.TTL(1), false).Return(false, "2"),
 				)
 			},
 		},
@@ -432,8 +455,9 @@ func TestClearIPs(t *testing.T) {
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			ok := updater.ClearIPs(ctx, mockPP, conf, mockSetter)
+			ok, msg := updater.ClearIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.msg, msg)
 		})
 	}
 }

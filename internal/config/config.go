@@ -264,7 +264,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadHealthChecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
+		!ReadHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
 		return false
 	}
 

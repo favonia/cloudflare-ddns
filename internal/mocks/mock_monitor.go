@@ -50,57 +50,71 @@ func (mr *MockMonitorMockRecorder) DescribeService() *gomock.Call {
 }
 
 // ExitStatus mocks base method.
-func (m *MockMonitor) ExitStatus(arg0 context.Context, arg1 pp.PP, arg2 int) bool {
+func (m *MockMonitor) ExitStatus(arg0 context.Context, arg1 pp.PP, arg2 int, arg3 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExitStatus", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ExitStatus", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // ExitStatus indicates an expected call of ExitStatus.
-func (mr *MockMonitorMockRecorder) ExitStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockMonitorMockRecorder) ExitStatus(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExitStatus", reflect.TypeOf((*MockMonitor)(nil).ExitStatus), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExitStatus", reflect.TypeOf((*MockMonitor)(nil).ExitStatus), arg0, arg1, arg2, arg3)
 }
 
 // Failure mocks base method.
-func (m *MockMonitor) Failure(arg0 context.Context, arg1 pp.PP) bool {
+func (m *MockMonitor) Failure(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Failure", arg0, arg1)
+	ret := m.ctrl.Call(m, "Failure", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Failure indicates an expected call of Failure.
-func (mr *MockMonitorMockRecorder) Failure(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMonitorMockRecorder) Failure(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Failure", reflect.TypeOf((*MockMonitor)(nil).Failure), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Failure", reflect.TypeOf((*MockMonitor)(nil).Failure), arg0, arg1, arg2)
+}
+
+// Log mocks base method.
+func (m *MockMonitor) Log(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Log", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Log indicates an expected call of Log.
+func (mr *MockMonitorMockRecorder) Log(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockMonitor)(nil).Log), arg0, arg1, arg2)
 }
 
 // Start mocks base method.
-func (m *MockMonitor) Start(arg0 context.Context, arg1 pp.PP) bool {
+func (m *MockMonitor) Start(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", arg0, arg1)
+	ret := m.ctrl.Call(m, "Start", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockMonitorMockRecorder) Start(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMonitorMockRecorder) Start(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockMonitor)(nil).Start), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockMonitor)(nil).Start), arg0, arg1, arg2)
 }
 
 // Success mocks base method.
-func (m *MockMonitor) Success(arg0 context.Context, arg1 pp.PP) bool {
+func (m *MockMonitor) Success(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Success", arg0, arg1)
+	ret := m.ctrl.Call(m, "Success", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Success indicates an expected call of Success.
-func (mr *MockMonitorMockRecorder) Success(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMonitorMockRecorder) Success(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Success", reflect.TypeOf((*MockMonitor)(nil).Success), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Success", reflect.TypeOf((*MockMonitor)(nil).Success), arg0, arg1, arg2)
 }

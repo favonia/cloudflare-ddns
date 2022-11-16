@@ -40,11 +40,12 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 }
 
 // Set mocks base method.
-func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) bool {
+func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) (bool, string) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].(bool)
-	return ret0
+	ret1, _ := ret[1].(string)
+	return ret0, ret1
 }
 
 // Set indicates an expected call of Set.

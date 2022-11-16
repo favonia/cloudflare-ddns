@@ -21,5 +21,5 @@ type Setter interface {
 		IP netip.Addr,
 		ttl api.TTL,
 		proxied bool,
-	) bool
+	) (bool, string)
 }

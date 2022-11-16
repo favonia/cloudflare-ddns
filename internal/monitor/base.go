@@ -10,8 +10,9 @@ import (
 
 type Monitor interface {
 	DescribeService() string
-	Success(context.Context, pp.PP) bool
-	Start(context.Context, pp.PP) bool
-	Failure(context.Context, pp.PP) bool
-	ExitStatus(context.Context, pp.PP, int) bool
+	Success(context.Context, pp.PP, string) bool
+	Start(context.Context, pp.PP, string) bool
+	Failure(context.Context, pp.PP, string) bool
+	Log(context.Context, pp.PP, string) bool
+	ExitStatus(context.Context, pp.PP, int, string) bool
 }

@@ -402,7 +402,7 @@ func TestPrintMaps(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "IP detection:", "5s"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Record updating:", "30s"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Healthchecks.io:", "(URL redacted)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Healthchecks:", "(URL redacted)"),
 	)
 
 	c := config.Default()
@@ -418,7 +418,7 @@ func TestPrintMaps(t *testing.T) {
 	c.Proxied[domain.FQDN("c")] = false
 	c.Proxied[domain.FQDN("d")] = false
 
-	m, ok := monitor.NewHealthChecks(mockPP, "http://user:pass@host/path")
+	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
 	c.Monitors = []monitor.Monitor{m}
 

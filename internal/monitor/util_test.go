@@ -18,13 +18,15 @@ func TestSuccessAll(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
+	message := "aloha"
+
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Success(context.Background(), mockPP)
+		m.EXPECT().Success(context.Background(), mockPP, message)
 		ms = append(ms, m)
 	}
 
-	monitor.SuccessAll(context.Background(), mockPP, ms)
+	monitor.SuccessAll(context.Background(), mockPP, ms, message)
 }
 
 func TestStartAll(t *testing.T) {
@@ -35,13 +37,15 @@ func TestStartAll(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
+	message := "你好"
+
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Start(context.Background(), mockPP)
+		m.EXPECT().Start(context.Background(), mockPP, message)
 		ms = append(ms, m)
 	}
 
-	monitor.StartAll(context.Background(), mockPP, ms)
+	monitor.StartAll(context.Background(), mockPP, ms, message)
 }
 
 func TestFailureAll(t *testing.T) {
@@ -52,13 +56,34 @@ func TestFailureAll(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
+	message := "secret"
+
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Failure(context.Background(), mockPP)
+		m.EXPECT().Failure(context.Background(), mockPP, message)
 		ms = append(ms, m)
 	}
 
-	monitor.FailureAll(context.Background(), mockPP, ms)
+	monitor.FailureAll(context.Background(), mockPP, ms, message)
+}
+
+func TestLogAll(t *testing.T) {
+	t.Parallel()
+
+	var ms []monitor.Monitor
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	message := "forest"
+
+	for i := 0; i < 5; i++ {
+		m := mocks.NewMockMonitor(mockCtrl)
+		m.EXPECT().Log(context.Background(), mockPP, message)
+		ms = append(ms, m)
+	}
+
+	monitor.LogAll(context.Background(), mockPP, ms, message)
 }
 
 func TestExitStatus(t *testing.T) {
@@ -69,11 +94,13 @@ func TestExitStatus(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
+	message := "bye!"
+
 	for i := 0; i < 5; i++ {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().ExitStatus(context.Background(), mockPP, 42)
+		m.EXPECT().ExitStatus(context.Background(), mockPP, 42, message)
 		ms = append(ms, m)
 	}
 
-	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42)
+	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
 }
