@@ -218,6 +218,24 @@ func TestEndPoints(t *testing.T) {
 				)
 			},
 		},
+		"log": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Log(context.Background(), ppfmt, "message")
+			},
+			"/log", "message",
+			[]action{ActionAbort, ActionAbort, ActionOk},
+			true, true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `"/log"`, gomock.Any()), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `"/log"`, gomock.Any()), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiRepeatOnce, "Trying again . . ."),
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks", `"/log"`), //nolint:lll
+				)
+			},
+		},
 		"exitstatus/0": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.ExitStatus(context.Background(), ppfmt, 0, "bye!")
