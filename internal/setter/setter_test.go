@@ -390,6 +390,16 @@ func TestClear(t *testing.T) {
 				)
 			},
 		},
+		"listfail": {
+			false,
+			`Failed to clear AAAA sub.test.org`,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org")
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false)
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {

@@ -52,25 +52,22 @@ func (t Type) Int() int {
 
 // NormalizeIP normalizes an IP into an IPv4 or IPv6 address.
 func (t Type) NormalizeIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
-	inputIP := ip
 	switch t {
 	case IP4:
+		if !ip.Is4() && !ip.Is4In6() {
+			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", ip, t.Describe())
+			return netip.Addr{}, false
+		}
 		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
-		ip = ip.Unmap()
-		if !ip.Is4() {
-			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
-			return netip.Addr{}, false
-		}
-		return ip, true
+		return ip.Unmap(), true
 	case IP6:
-		ip = netip.AddrFrom16(ip.As16())
-		if !ip.Is6() {
-			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
+		if !ip.IsValid() {
+			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", ip, t.Describe())
 			return netip.Addr{}, false
 		}
-		return ip, true
+		return netip.AddrFrom16(ip.As16()), true
 	default:
-		ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
+		ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", ip, t.Describe())
 		return netip.Addr{}, false
 	}
 }

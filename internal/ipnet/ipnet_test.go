@@ -90,6 +90,15 @@ func TestNormalizeIP(t *testing.T) {
 		"4-::ffff:0a0a:0a0a": {ipnet.IP4, mustIP("::ffff:0a0a:0a0a"), mustIP("10.10.10.10"), true, nil},
 		"6-1::2":             {ipnet.IP6, mustIP("1::2"), mustIP("1::2"), true, nil},
 		"6-10.10.10.10":      {ipnet.IP6, mustIP("10.10.10.10"), mustIP("::ffff:10.10.10.10"), true, nil},
+		"6-invalid": {
+			ipnet.IP6,
+			netip.Addr{},
+			netip.Addr{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiError, "%q is not a valid %s address", netip.Addr{}, "IPv6")
+			},
+		},
 		"100-10.10.10.10": {
 			100, mustIP("10.10.10.10"),
 			netip.Addr{},
