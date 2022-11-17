@@ -584,8 +584,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
+			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
 }

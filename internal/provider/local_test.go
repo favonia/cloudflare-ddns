@@ -25,6 +25,7 @@ func TestLocalName(t *testing.T) {
 	require.Equal(t, "very secret name", provider.Name(p))
 }
 
+//nolint:funlen
 func TestLocalGetIP(t *testing.T) {
 	t.Parallel()
 
@@ -82,8 +83,9 @@ func TestLocalGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
+			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
 }

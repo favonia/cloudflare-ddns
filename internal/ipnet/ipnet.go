@@ -4,6 +4,8 @@ package ipnet
 import (
 	"fmt"
 	"net/netip"
+
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 // Type is the type of IP networks.
@@ -48,21 +50,28 @@ func (t Type) Int() int {
 	}
 }
 
-func (t Type) NormalizeIP(ip netip.Addr) (netip.Addr, bool) {
-	if !ip.IsValid() {
-		return ip, false
-	}
-
+// NormalizeIP normalizes an IP into an IPv4 or IPv6 address.
+func (t Type) NormalizeIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
+	inputIP := ip
 	switch t {
 	case IP4:
 		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
 		ip = ip.Unmap()
-		return ip, ip.Is4()
+		if !ip.Is4() {
+			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
+			return netip.Addr{}, false
+		}
+		return ip, true
 	case IP6:
 		ip = netip.AddrFrom16(ip.As16())
-		return ip, ip.Is6()
-	default:
+		if !ip.Is6() {
+			ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
+			return netip.Addr{}, false
+		}
 		return ip, true
+	default:
+		ppfmt.Warningf(pp.EmojiError, "%q is not a valid %s address", inputIP, t.Describe())
+		return netip.Addr{}, false
 	}
 }
 

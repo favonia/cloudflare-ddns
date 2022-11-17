@@ -65,7 +65,7 @@ func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([
 
 func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 	name string, class dnsmessage.Class,
-) netip.Addr {
+) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 	var ipString string
 
@@ -82,7 +82,7 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 
 			if ipString != "" {
 				ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: more than one string in TXT records")
-				return invalidIP
+				return invalidIP, false
 			}
 
 			ipString = s
@@ -91,7 +91,7 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 
 	if ipString == "" {
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: no TXT records or all TXT records are empty")
-		return invalidIP
+		return invalidIP, false
 	}
 
 	ip, err := netip.ParseAddr(ipString)
@@ -101,36 +101,36 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 			`Invalid DNS response: failed to parse the IP address in the TXT record: %s`,
 			ipString,
 		)
-		return invalidIP
+		return invalidIP, false
 	}
-	return ip
+	return ip, true
 }
 
-func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsmessage.Class) netip.Addr {
+func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsmessage.Class) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	var msg dnsmessage.Message
 	if err := msg.Unpack(r); err != nil {
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: %v", err)
-		return invalidIP
+		return invalidIP, false
 	}
 
 	switch {
 	case msg.ID != id:
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: mismatched transaction ID")
-		return invalidIP
+		return invalidIP, false
 
 	case !msg.Response:
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: QR was not set")
-		return invalidIP
+		return invalidIP, false
 
 	case msg.Truncated:
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: TC was set")
-		return invalidIP
+		return invalidIP, false
 
 	case msg.RCode != dnsmessage.RCodeSuccess:
 		ppfmt.Warningf(pp.EmojiImpossible, "Invalid DNS response: response code is %v", msg.RCode)
-		return invalidIP
+		return invalidIP, false
 	}
 
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
@@ -138,7 +138,7 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 
 func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	url string, name string, class dnsmessage.Class,
-) netip.Addr {
+) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	// message ID for the DNS payloads
@@ -146,7 +146,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 
 	q, ok := newDNSQuery(ppfmt, id, name, class)
 	if !ok {
-		return invalidIP
+		return invalidIP, false
 	}
 
 	c := httpConn{
@@ -155,7 +155,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 		contentType: "application/dns-message",
 		accept:      "application/dns-message",
 		reader:      bytes.NewReader(q),
-		extract: func(ppfmt pp.PP, body []byte) netip.Addr {
+		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
 			return parseDNSResponse(ppfmt, body, id, name, class)
 		},
 	}
@@ -176,12 +176,17 @@ func (p *DNSOverHTTPS) Name() string {
 	return p.ProviderName
 }
 
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return netip.Addr{}
+		return netip.Addr{}, false
 	}
 
-	return NormalizeIP(ppfmt, ipNet, getIPFromDNS(ctx, ppfmt, param.URL, param.Name, param.Class))
+	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL, param.Name, param.Class)
+	if !ok {
+		return netip.Addr{}, false
+	}
+
+	return ipNet.NormalizeIP(ppfmt, ip)
 }

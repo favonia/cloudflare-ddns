@@ -12,7 +12,7 @@ import (
 
 type Provider interface {
 	Name() string
-	GetIP(context.Context, pp.PP, ipnet.Type) netip.Addr
+	GetIP(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool)
 }
 
 func Name(p Provider) string {
