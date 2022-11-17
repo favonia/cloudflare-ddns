@@ -39,6 +39,21 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 	return m.recorder
 }
 
+// Clear mocks base method.
+func (m *MockSetter) Clear(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) (bool, string) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Clear", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(string)
+	return ret0, ret1
+}
+
+// Clear indicates an expected call of Clear.
+func (mr *MockSetterMockRecorder) Clear(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockSetter)(nil).Clear), arg0, arg1, arg2, arg3)
+}
+
 // Set mocks base method.
 func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) (bool, string) {
 	m.ctrl.T.Helper()

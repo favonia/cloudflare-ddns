@@ -10,5 +10,5 @@
 - `monitor`: ping the monitoring API, currently only supporting Healthchecks
 - `pp`: pretty print messages with emojis
 - `provider`: find out the public IP
-- `setter`: set the IP of one domain using a DNS service API
+- `setter`: set the IP of one domain using a DNS service API; a setter cannot directly access the config struct
 - `updater`: detect and update the IP of all domains, using `provider` and `setter`

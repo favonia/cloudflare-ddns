@@ -10,29 +10,29 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromCloudflareTrace(ctx context.Context, ppfmt pp.PP, url string, field string) netip.Addr {
+func getIPFromCloudflareTrace(ctx context.Context, ppfmt pp.PP, url string, field string) (netip.Addr, bool) {
 	c := httpConn{
 		url:         url,
 		method:      http.MethodGet,
 		contentType: "",
 		accept:      "",
 		reader:      nil,
-		extract: func(ppfmt pp.PP, body []byte) netip.Addr {
+		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
 			var invalidIP netip.Addr
 
 			re := regexp.MustCompile(`(?m:^` + regexp.QuoteMeta(field) + `=(.*)$)`)
 			matched := re.FindSubmatch(body)
 			if matched == nil {
 				ppfmt.Warningf(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
-				return invalidIP
+				return invalidIP, false
 			}
 			ipString := string(matched[1])
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
 				ppfmt.Warningf(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
-				return invalidIP
+				return invalidIP, false
 			}
-			return ip
+			return ip, true
 		},
 	}
 
@@ -64,12 +64,17 @@ func (p *CloudflareTrace) Name() string {
 	return p.ProviderName
 }
 
-func (p *CloudflareTrace) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) netip.Addr {
+func (p *CloudflareTrace) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return netip.Addr{}
+		return netip.Addr{}, false
 	}
 
-	return NormalizeIP(ppfmt, ipNet, getIPFromCloudflareTrace(ctx, ppfmt, param.URL, param.Field))
+	ip, ok := getIPFromCloudflareTrace(ctx, ppfmt, param.URL, param.Field)
+	if !ok {
+		return netip.Addr{}, false
+	}
+
+	return ipNet.NormalizeIP(ppfmt, ip)
 }

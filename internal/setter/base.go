@@ -22,4 +22,10 @@ type Setter interface {
 		ttl api.TTL,
 		proxied bool,
 	) (bool, string)
+	Clear(
+		ctx context.Context,
+		ppfmt pp.PP,
+		Domain domain.Domain,
+		IPNetwork ipnet.Type,
+	) (bool, string)
 }

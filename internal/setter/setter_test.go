@@ -28,9 +28,8 @@ func TestSet(t *testing.T) {
 		record3   = "record3"
 	)
 	var (
-		ip1       = netip.MustParseAddr("::1")
-		ip2       = netip.MustParseAddr("::2")
-		invalidIP = netip.Addr{}
+		ip1 = netip.MustParseAddr("::1")
+		ip2 = netip.MustParseAddr("::2")
 	)
 
 	for name, tc := range map[string]struct {
@@ -42,19 +41,6 @@ func TestSet(t *testing.T) {
 		prepareMockPP     func(m *mocks.MockPP)
 		prepareMockHandle func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle)
 	}{
-		"0-nil/1-true": {
-			invalidIP,
-			true,
-			"",
-			1,
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
-			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true)
-			},
-		},
 		"0/1-false": {
 			ip1,
 			true,
@@ -110,38 +96,6 @@ func TestSet(t *testing.T) {
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
 					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, api.TTL(300), false).Return(record2, true),
-				)
-			},
-		},
-		"1unmatched-nil/300-false": {
-			invalidIP,
-			true,
-			`Cleared AAAA sub.test.org`,
-			300,
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1) //nolint:lll
-			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
-					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
-				)
-			},
-		},
-		"1unmatched-nil/fail/300-false": {
-			invalidIP,
-			false,
-			`Failed to clear AAAA sub.test.org`,
-			300,
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
-			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
-					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(false),
 				)
 			},
 		},
@@ -324,7 +278,7 @@ func TestSet(t *testing.T) {
 		"listfail/300-false": {
 			ip1,
 			false,
-			`AAAA sub.test.org possibly inconsistent`,
+			`Failed to set AAAA sub.test.org`,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -332,27 +286,6 @@ func TestSet(t *testing.T) {
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false)
-			},
-		},
-		"impossible-invalidIP-records/300-false": {
-			invalidIP,
-			true,
-			`Cleared AAAA sub.test.org`,
-			300,
-			false,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
-				)
-			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
-				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: invalidIP}, true), //nolint:lll
-
-					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
-					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
-				)
 			},
 		},
 	} {
@@ -376,6 +309,118 @@ func TestSet(t *testing.T) {
 			require.True(t, ok)
 
 			ok, msg := s.Set(ctx, mockPP, domain, ipNetwork, tc.ip, tc.ttl, tc.proxied)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.msg, msg)
+		})
+	}
+}
+
+//nolint:funlen
+func TestClear(t *testing.T) {
+	t.Parallel()
+
+	const (
+		domain    = domain.FQDN("sub.test.org")
+		ipNetwork = ipnet.IP6
+		record1   = "record1"
+		record2   = "record2"
+		record3   = "record3"
+	)
+	var (
+		ip1       = netip.MustParseAddr("::1")
+		invalidIP = netip.Addr{}
+	)
+
+	for name, tc := range map[string]struct {
+		ok                bool
+		msg               string
+		prepareMockPP     func(m *mocks.MockPP)
+		prepareMockHandle func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle)
+	}{
+		"0": {
+			true,
+			``,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true)
+			},
+		},
+		"1unmatched": {
+			true,
+			`Cleared AAAA sub.test.org`,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1) //nolint:lll
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
+				)
+			},
+		},
+		"1unmatched/fail": {
+			false,
+			`Failed to clear AAAA sub.test.org`,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(false),
+				)
+			},
+		},
+		"impossible-records": {
+			true,
+			`Cleared AAAA sub.test.org`,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
+				)
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: invalidIP}, true), //nolint:lll
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
+				)
+			},
+		},
+		"listfail": {
+			false,
+			`Failed to clear AAAA sub.test.org`,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org")
+			},
+			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false)
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+
+			ctx := context.Background()
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			mockHandle := mocks.NewMockHandle(mockCtrl)
+			if tc.prepareMockHandle != nil {
+				tc.prepareMockHandle(ctx, mockPP, mockHandle)
+			}
+
+			s, ok := setter.New(mockPP, mockHandle)
+			require.True(t, ok)
+
+			ok, msg := s.Clear(ctx, mockPP, domain, ipNetwork)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.msg, msg)
 		})
