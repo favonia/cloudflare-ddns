@@ -184,19 +184,26 @@ func (s *setter) Clear(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	unmatchedRecords, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
+	rmap, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return false, fmt.Sprintf("Failed to clear %s %s", recordType, domainDescription)
 	}
 
-	if len(unmatchedRecords) == 0 {
+	// Sorting is not needed for correctness, but it will make the function deterministic.
+	unmatchedIDs := make([]string, 0, len(rmap))
+	for id := range rmap {
+		unmatchedIDs = append(unmatchedIDs, id)
+	}
+	sort.Strings(unmatchedIDs)
+
+	if len(unmatchedIDs) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
 		return true, ""
 	}
 
 	allOk := true
-	for id := range unmatchedRecords {
+	for _, id := range unmatchedIDs {
 		if !s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			allOk = false
 			continue
