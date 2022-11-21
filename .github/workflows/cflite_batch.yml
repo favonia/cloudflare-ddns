@@ -1,0 +1,34 @@
+name: ClusterFuzzLite
+o:
+  schedule:
+    - cron: "32 1 * * *"
+permissions: read-all
+jobs:
+  Batch:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - address
+        # Override this with the sanitizers you want.
+        # - undefined
+        # - memory
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: go
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 1800
+          mode: "batch"
+          sanitizer: ${{ matrix.sanitizer }}
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/favonia/cloudflare-ddns-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages
