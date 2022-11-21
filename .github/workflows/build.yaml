@@ -66,6 +66,7 @@ jobs:
             type=edge
             type=semver,pattern={{version}}
           labels: |
+            io.artifacthub.package.license=Apache-2.0
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/${{ github.sha1 }}/README.markdown
       - name: 🚀 Build and deploy minimal Docker images
         uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
