@@ -7,14 +7,19 @@ jobs:
   Pruning:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
       - name: Build Fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: google/clusterfuzzlite/actions/build_fuzzers@1e163f06cba7820da5154ac9fe1a32d7fe6f73a3
         with:
           language: go
       - name: Run Fuzzers
         id: run
-        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        uses: google/clusterfuzzlite/actions/run_fuzzers@1e163f06cba7820da5154ac9fe1a32d7fe6f73a3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 600
@@ -25,15 +30,20 @@ jobs:
   Coverage:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
       - name: Build Fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: google/clusterfuzzlite/actions/build_fuzzers@1e163f06cba7820da5154ac9fe1a32d7fe6f73a3
         with:
           language: go
           sanitizer: coverage
       - name: Run Fuzzers
         id: run
-        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        uses: google/clusterfuzzlite/actions/run_fuzzers@1e163f06cba7820da5154ac9fe1a32d7fe6f73a3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 600
