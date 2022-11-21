@@ -15,6 +15,7 @@ First of all, thank you for your contribution! 🤗
 We rely on linters to enforce coding styles. Run `golangci-lint run` at the root of the repository to check whether you have followed the current style.
 
 - Your pull request must pass all CI (continuous integration) checks, possibly except the coverage check.
+- You should add tests for new features or bug fixes (to detect regression).
 - You should strive to maximize the coverage as much as possible and practical.
 
 ## 📑 Commit Messages and Pull Request Titles
