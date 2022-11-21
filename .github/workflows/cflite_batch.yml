@@ -2,6 +2,7 @@ name: ClusterFuzzLite
 on:
   schedule:
     - cron: "32 1 * * *"
+  workflow_dispatch:
 permissions: read-all
 jobs:
   Batch:
