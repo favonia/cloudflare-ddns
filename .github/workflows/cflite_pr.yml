@@ -1,4 +1,4 @@
-name: ClusterFuzzLite PR fuzzing
+name: ClusterFuzzLite
 on: pull_request
 permissions: read-all
 jobs:

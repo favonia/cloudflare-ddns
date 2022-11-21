@@ -1,10 +1,10 @@
-name: ClusterFuzzLite batch fuzzing
-on:
+name: ClusterFuzzLite
+o:
   schedule:
     - cron: "32 1 * * *"
 permissions: read-all
 jobs:
-  BatchFuzzing:
+  Batch:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
