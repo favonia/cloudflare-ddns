@@ -42,6 +42,7 @@ jobs:
             api.securityscorecards.dev:443
             bestpractices.coreinfrastructure.org:443
             fulcio.sigstore.dev:443
+            gcr.io:443
             github.com:443
             rekor.sigstore.dev:443
             sigstore-tuf-root.storage.googleapis.com:443
