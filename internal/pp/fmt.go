@@ -8,6 +8,7 @@ import (
 
 type formatter struct {
 	writer io.Writer
+	emoji  bool
 	indent int
 	level  Level
 }
@@ -15,17 +16,22 @@ type formatter struct {
 func New(writer io.Writer) PP {
 	return &formatter{
 		writer: writer,
+		emoji:  true,
 		indent: 0,
 		level:  DefaultLevel,
 	}
 }
 
+func (f *formatter) SetEmoji(emoji bool) PP {
+	fmt := *f
+	fmt.emoji = emoji
+	return &fmt
+}
+
 func (f *formatter) SetLevel(lvl Level) PP {
-	return &formatter{
-		writer: f.writer,
-		indent: f.indent,
-		level:  lvl,
-	}
+	fmt := *f
+	fmt.level = lvl
+	return &fmt
 }
 
 func (f *formatter) IsEnabledFor(lvl Level) bool {
@@ -33,11 +39,9 @@ func (f *formatter) IsEnabledFor(lvl Level) bool {
 }
 
 func (f *formatter) IncIndent() PP {
-	return &formatter{
-		writer: f.writer,
-		indent: f.indent + 1,
-		level:  f.level,
-	}
+	fmt := *f
+	fmt.indent++
+	return &fmt
 }
 
 func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
@@ -45,10 +49,17 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 		return
 	}
 
-	line := fmt.Sprintf("%s%s %s",
-		strings.Repeat(indentPrefix, f.indent),
-		string(emoji),
-		msg)
+	var line string
+	if f.emoji {
+		line = fmt.Sprintf("%s%s %s",
+			strings.Repeat(indentPrefix, f.indent),
+			string(emoji),
+			msg)
+	} else {
+		line = fmt.Sprintf("%s%s",
+			strings.Repeat(indentPrefix, f.indent),
+			msg)
+	}
 	line = strings.TrimSuffix(line, "\n")
 	fmt.Fprintln(f.writer, line)
 }

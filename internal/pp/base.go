@@ -3,6 +3,7 @@ package pp
 //go:generate mockgen -destination=../mocks/mock_pp.go -package=mocks . PP
 
 type PP interface {
+	SetEmoji(bool) PP
 	SetLevel(Level) PP
 	IsEnabledFor(Level) bool
 	IncIndent() PP

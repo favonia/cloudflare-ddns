@@ -60,20 +60,25 @@ func TestPrint(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
+		emoji    bool
 		level    pp.Level
 		expected string
 	}{
-		"info":     {pp.Info, "🌟 info\n🌟 notice\n🌟 warning\n🌟 error\n"},
-		"notice":   {pp.Notice, "🌟 notice\n🌟 warning\n🌟 error\n"},
-		"warning":  {pp.Warning, "🌟 warning\n🌟 error\n"},
-		"errorfmt": {pp.Error, "🌟 error\n"},
+		"info":              {true, pp.Info, "🌟 info\n🌟 notice\n🌟 warning\n🌟 error\n"},
+		"notice":            {true, pp.Notice, "🌟 notice\n🌟 warning\n🌟 error\n"},
+		"warning":           {true, pp.Warning, "🌟 warning\n🌟 error\n"},
+		"errorfmt":          {true, pp.Error, "🌟 error\n"},
+		"info/no-emoji":     {false, pp.Info, "info\nnotice\nwarning\nerror\n"},
+		"notice/no-emoji":   {false, pp.Notice, "notice\nwarning\nerror\n"},
+		"warning/no-emoji":  {false, pp.Warning, "warning\nerror\n"},
+		"errorfmt/no-emoji": {false, pp.Error, "error\n"},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			var buf strings.Builder
-			fmt := pp.New(&buf).SetLevel(tc.level)
+			fmt := pp.New(&buf).SetEmoji(tc.emoji).SetLevel(tc.level)
 
 			fmt.Infof(pp.EmojiStar, "info")
 			fmt.Noticef(pp.EmojiStar, "notice")

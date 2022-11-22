@@ -89,7 +89,7 @@ func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.S
 
 func main() { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
-	if !config.ReadQuiet("QUIET", &ppfmt) {
+	if !config.ReadEmoji("EMOJI", &ppfmt) || !config.ReadQuiet("QUIET", &ppfmt) {
 		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
 		return
 	}
