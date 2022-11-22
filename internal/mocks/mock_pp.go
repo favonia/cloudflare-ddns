@@ -113,6 +113,20 @@ func (mr *MockPPMockRecorder) Noticef(arg0, arg1 interface{}, arg2 ...interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Noticef", reflect.TypeOf((*MockPP)(nil).Noticef), varargs...)
 }
 
+// SetEmoji mocks base method.
+func (m *MockPP) SetEmoji(arg0 bool) pp.PP {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetEmoji", arg0)
+	ret0, _ := ret[0].(pp.PP)
+	return ret0
+}
+
+// SetEmoji indicates an expected call of SetEmoji.
+func (mr *MockPPMockRecorder) SetEmoji(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEmoji", reflect.TypeOf((*MockPP)(nil).SetEmoji), arg0)
+}
+
 // SetLevel mocks base method.
 func (m *MockPP) SetLevel(arg0 pp.Level) pp.PP {
 	m.ctrl.T.Helper()

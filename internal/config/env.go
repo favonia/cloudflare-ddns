@@ -31,6 +31,24 @@ func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	return true
 }
 
+// ReadEmoji reads an environment variable as emoji/no-emoji.
+func ReadEmoji(key string, ppfmt *pp.PP) bool {
+	val := Getenv(key)
+	if val == "" {
+		return true
+	}
+
+	emoji, err := strconv.ParseBool(val)
+	if err != nil {
+		(*ppfmt).Errorf(pp.EmojiUserError, "Failed to parse %q: %v", val, err)
+		return false
+	}
+
+	*ppfmt = (*ppfmt).SetEmoji(emoji)
+
+	return true
+}
+
 // ReadQuiet reads an environment variable as quiet/verbose.
 func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	val := Getenv(key)
