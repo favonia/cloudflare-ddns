@@ -5,7 +5,7 @@ go 1.19
 retract [v0.0.0, v1.99.0] // Prevent publication in pkg.go.dev for now.
 
 require (
-	github.com/cloudflare/cloudflare-go v0.54.0
+	github.com/cloudflare/cloudflare-go v0.55.0
 	github.com/golang/mock v1.6.0
 	github.com/jellydator/ttlcache/v3 v3.0.0
 	github.com/robfig/cron/v3 v3.0.1
