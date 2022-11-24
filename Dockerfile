@@ -14,7 +14,10 @@ COPY ["go.mod", "go.mod"]
 COPY ["go.sum", "go.sum"]
 COPY ["internal", "internal"]
 COPY ["cmd", "cmd"]
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} go build -tags timetzdata -o /bin/ddns -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" cmd/*.go
+RUN \
+  CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+  go build -tags timetzdata -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" \
+  -o /bin/ddns cmd/*.go
 
 # The minimal images contain only the program and the consolidated certificates.
 FROM scratch AS minimal
