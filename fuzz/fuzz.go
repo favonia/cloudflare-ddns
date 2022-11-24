@@ -1,4 +1,4 @@
-package fuzzer
+package fuzz
 
 import (
 	"log"
@@ -20,10 +20,12 @@ func (r Reporter) Fatalf(format string, args ...any) {
 	log.Panicf(format, args...)
 }
 
-func FuzzParseList(bytes []byte) {
+func ParseList(bytes []byte) {
 	input := string(bytes)
 
 	mockCtrl := gomock.NewController(Reporter{})
+	defer mockCtrl.Finish()
+
 	mockPP := mocks.NewMockPP(mockCtrl)
 
 	mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleAnd).AnyTimes()
@@ -33,14 +35,14 @@ func FuzzParseList(bytes []byte) {
 	mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
 
 	_, _ = domainexp.ParseList(mockPP, input)
-
-	mockCtrl.Finish()
 }
 
-func FuzzParseExpression(bytes []byte) {
+func ParseExpression(bytes []byte) {
 	input := string(bytes)
 
 	mockCtrl := gomock.NewController(Reporter{})
+	defer mockCtrl.Finish()
+
 	mockPP := mocks.NewMockPP(mockCtrl)
 
 	mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleAnd).AnyTimes()
@@ -54,6 +56,4 @@ func FuzzParseExpression(bytes []byte) {
 	mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
 
 	_, _ = domainexp.ParseExpression(mockPP, input)
-
-	mockCtrl.Finish()
 }

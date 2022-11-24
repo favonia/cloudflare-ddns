@@ -1,4 +1,4 @@
-name: ClusterFuzzLite
+name: ClusterFuzzLite (Cron)
 on:
   schedule:
     - cron: "44 10 * * 3"

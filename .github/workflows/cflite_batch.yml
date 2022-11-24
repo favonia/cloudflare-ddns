@@ -1,4 +1,4 @@
-name: ClusterFuzzLite
+name: ClusterFuzzLite (Batch)
 on:
   schedule:
     - cron: "32 1 * * *"

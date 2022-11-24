@@ -1,4 +1,4 @@
-name: ClusterFuzzLite
+name: ClusterFuzzLite (CI)
 on: pull_request
 permissions: read-all
 jobs:
