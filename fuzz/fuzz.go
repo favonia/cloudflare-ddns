@@ -13,14 +13,14 @@ import (
 type Reporter struct{}
 
 func (r Reporter) Errorf(format string, args ...any) {
-	log.Printf(format, args...)
+	log.Fatalf(format, args...)
 }
 
 func (r Reporter) Fatalf(format string, args ...any) {
 	log.Panicf(format, args...)
 }
 
-func ParseList(bytes []byte) {
+func ParseList(bytes []byte) int {
 	input := string(bytes)
 
 	mockCtrl := gomock.NewController(Reporter{})
@@ -35,9 +35,11 @@ func ParseList(bytes []byte) {
 	mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
 
 	_, _ = domainexp.ParseList(mockPP, input)
+
+	return 0
 }
 
-func ParseExpression(bytes []byte) {
+func ParseExpression(bytes []byte) int {
 	input := string(bytes)
 
 	mockCtrl := gomock.NewController(Reporter{})
@@ -56,4 +58,6 @@ func ParseExpression(bytes []byte) {
 	mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
 
 	_, _ = domainexp.ParseExpression(mockPP, input)
+
+	return 0
 }
