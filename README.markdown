@@ -48,8 +48,8 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 - ✅ You can use [Cosign](https://github.com/sigstore/cosign) to verify Docker images aginst this public key (also available as [cosign.pub](cosign.pub)):
   ```pem
   -----BEGIN PUBLIC KEY-----
-  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEkQnnfOBFbjdmwxJpHasfJn5+fkF
-  DWxGbnrv111pVooJBjPsKQhQr8qzw7EFtEj2EvT2TakqAbjt9YT0/bOBfg==
+  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFDfyVSWxP0DCF26poPQuL0plw/59
+  akB3n7H9xZ2YuE3P1P5X3Uo2PZgIBDozMnBH2t8w1zYEOBlPHYVDnnb2Fg==
   -----END PUBLIC KEY-----
   ```
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
