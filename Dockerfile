@@ -5,10 +5,6 @@ ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
-RUN \
-  apk update && \
-  apk add --no-cache git ca-certificates && \
-  update-ca-certificates
 WORKDIR "/src/"
 COPY ["go.mod", "go.mod"]
 COPY ["go.sum", "go.sum"]
