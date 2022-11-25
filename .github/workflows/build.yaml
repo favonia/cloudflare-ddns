@@ -32,6 +32,7 @@ jobs:
           allowed-endpoints: >
             api.github.com:443
             auth.docker.io:443
+            docker.io:443
             github.com:443
             index.docker.io:443
             production.cloudflare.docker.com:443
@@ -68,7 +69,7 @@ jobs:
             type=semver,pattern={{version}}
           labels: |
             io.artifacthub.package.license=Apache-2.0
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/SUMMARY.markdown
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
       - name: 🚀 Build and deploy minimal Docker images
         uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5

@@ -1,4 +1,4 @@
-package fuzz
+package fuzzer
 
 import (
 	"log"
@@ -17,7 +17,7 @@ func (r Reporter) Errorf(format string, args ...any) {
 }
 
 func (r Reporter) Fatalf(format string, args ...any) {
-	log.Panicf(format, args...)
+	log.Fatalf(format, args...)
 }
 
 func ParseList(bytes []byte) int {
