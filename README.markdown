@@ -45,12 +45,9 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
 - 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packets coming from your machine.)_
-- ✅ You can use [Cosign](https://github.com/sigstore/cosign) to verify Docker images aginst this public key (also available as [cosign.pub](cosign.pub)):
-  ```pem
-  -----BEGIN PUBLIC KEY-----
-  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFDfyVSWxP0DCF26poPQuL0plw/59
-  akB3n7H9xZ2YuE3P1P5X3Uo2PZgIBDozMnBH2t8w1zYEOBlPHYVDnnb2Fg==
-  -----END PUBLIC KEY-----
+- ✅ You can verify Docker images using [Cosign](https://github.com/sigstore/cosign):
+  ```sh
+  cosign verify --key https://cloudflare-ddns.favonia.org/cosign.pub favonia/cloudflare-ddns
   ```
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
@@ -96,10 +93,10 @@ You need the [Go tool](https://golang.org/doc/install) to run the updater from i
 CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
-  go run ./cmd/*.go
+  go run github.com/favonia/cloudflare-ddns/cmd/ddns
 ```
 
-👉 For non-Linux operating systems, please use Docker images instead.
+👉 For non-Linux operating systems, please use the Docker image instead.
 
 </details>
 
@@ -475,7 +472,7 @@ _(Click to expand the following items.)_
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
 | `DELETE_ON_STOP=true`                  | ✔️  | Same                                                                               |
 | `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | _There is not even a shell in the minimum Docker image_                            |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | _There are no shells in the minimum Docker image_                                  |
 | `DNS_SERVER=server`                    | ❌  | _Only Cloudflare is supported_                                                     |
 
 </details>
