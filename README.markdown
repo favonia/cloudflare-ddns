@@ -45,6 +45,13 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
 - 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it harder to tamper with the detection process. _(Due to the nature of address detection, it is impossible to protect the updater from an adversary who can modify the source IP address of the IP packets coming from your machine.)_
+- ✅ You can use [Cosign](https://github.com/sigstore/cosign) to verify Docker images aginst this public key (also available as [cosign.pub](cosign.pub)):
+  ```pem
+  -----BEGIN PUBLIC KEY-----
+  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEkQnnfOBFbjdmwxJpHasfJn5+fkF
+  DWxGbnrv111pVooJBjPsKQhQr8qzw7EFtEj2EvT2TakqAbjt9YT0/bOBfg==
+  -----END PUBLIC KEY-----
+  ```
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
   <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
