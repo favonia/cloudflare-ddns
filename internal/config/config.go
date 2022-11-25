@@ -287,7 +287,7 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 	}
 
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified")
+		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS")
 		return false
 	}
 
@@ -310,9 +310,10 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		}
 	}
 
-	// check if all policies are none
+	// check if all providers are nil
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled")
+		ppfmt.Errorf(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
+			provider.Name(nil))
 		return false
 	}
 

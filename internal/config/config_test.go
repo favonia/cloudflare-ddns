@@ -549,7 +549,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS"),
 				)
 			},
 		},
@@ -567,7 +567,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS"),
 				)
 			},
 		},
@@ -628,7 +628,9 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"IP%d_PROVIDER was changed to %q because no domains were set for %s",
 						6, "none", "IPv6"),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Both IPv4 and IPv6 are disabled"),
+					m.EXPECT().Errorf(pp.EmojiUserError,
+						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
+						"none"),
 				)
 			},
 		},
