@@ -38,6 +38,7 @@ jobs:
             production.cloudflare.docker.com:443
             proxy.golang.org:443
             registry-1.docker.io:443
+            storage.googleapis.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v2.5.0
@@ -80,7 +81,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: ✍️ Install Cosign
-        if: ${{ github.event_name != 'pull_request' }}
         uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # 2.8.1
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
