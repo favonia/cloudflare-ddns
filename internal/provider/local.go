@@ -9,15 +9,25 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+// Local detects the IP address by pretending to send out an UDP packet
+// and using the source IP address assigned by the system. In most cases
+// it will detect the IP address of the network interface toward the internet.
+// (No actual UDP packets will be sent out.)
 type Local struct {
-	ProviderName  string
+	// Name of the detection protocol.
+	ProviderName string
+
+	// The target IP address of the UDP packet to be sent.
 	RemoteUDPAddr map[ipnet.Type]string
 }
 
+// Name of the detection protocol.
 func (p *Local) Name() string {
 	return p.ProviderName
 }
 
+// GetIP detects the IP address by pretending to send an UDP packet.
+// (No actual UDP packets will be sent out.)
 func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
@@ -36,5 +46,5 @@ func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip
 
 	ip := conn.LocalAddr().(*net.UDPAddr).AddrPort().Addr() //nolint:forcetypeassert
 
-	return ipNet.NormalizeIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }

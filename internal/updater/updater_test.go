@@ -51,14 +51,14 @@ func TestUpdateIPs(t *testing.T) {
 	proxiedBoth := mockproxied{domain4: true, domain6: true}
 
 	for name, tc := range map[string]struct {
-		ttl                  api.TTL
-		proxied              mockproxied
-		ok                   bool
-		msg                  string
-		MessageShouldDisplay map[ipnet.Type]bool
-		prepareMockPP        func(m *mocks.MockPP)
-		prepareMockProvider  mockproviders
-		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
+		ttl                       api.TTL
+		proxied                   mockproxied
+		ok                        bool
+		msg                       string
+		ShouldDisplayHelpMessages map[ipnet.Type]bool
+		prepareMockPP             func(m *mocks.MockPP)
+		prepareMockProvider       mockproviders
+		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
 			api.TTLAuto, proxiedBoth, true, ``, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
@@ -286,7 +286,7 @@ func TestUpdateIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.MessageShouldDisplay[ipnet] = tc.MessageShouldDisplay[ipnet]
+				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
 				if tc.prepareMockProvider[ipnet] == nil {
 					conf.Provider[ipnet] = nil
 					continue
@@ -321,14 +321,14 @@ func TestClearIPs(t *testing.T) {
 	proxiedNone := mockproxied{domain4: false, domain6: false}
 
 	for name, tc := range map[string]struct {
-		ttl                  api.TTL
-		proxied              mockproxied
-		ok                   bool
-		msg                  string
-		MessageShouldDisplay map[ipnet.Type]bool
-		prepareMockPP        func(m *mocks.MockPP)
-		prepareMockProvider  mockproviders
-		prepareMockSetter    func(ppfmt pp.PP, m *mocks.MockSetter)
+		ttl                       api.TTL
+		proxied                   mockproxied
+		ok                        bool
+		msg                       string
+		ShouldDisplayHelpMessages map[ipnet.Type]bool
+		prepareMockPP             func(m *mocks.MockPP)
+		prepareMockProvider       mockproviders
+		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
 			api.TTLAuto,
@@ -447,7 +447,7 @@ func TestClearIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.MessageShouldDisplay[ipnet] = tc.MessageShouldDisplay[ipnet]
+				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
 				if !tc.prepareMockProvider[ipnet] {
 					conf.Provider[ipnet] = nil
 					continue

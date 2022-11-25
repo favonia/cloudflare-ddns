@@ -31,16 +31,18 @@ func New(spec string) (Schedule, error) {
 func MustNew(spec string) Schedule {
 	cron, err := New(spec)
 	if err != nil {
-		panic(fmt.Errorf(`🤯 schedule.MustNew failed: %w`, err))
+		panic(fmt.Errorf(`schedule.MustNew failed: %w`, err))
 	}
 
 	return cron
 }
 
+// Next tells the next scheduled time.
 func (s *cronSchedule) Next() time.Time {
 	return s.schedule.Next(time.Now())
 }
 
+// String gives back the original cron string.
 func (s *cronSchedule) String() string {
 	return s.spec
 }

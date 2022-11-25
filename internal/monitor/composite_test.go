@@ -10,7 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 )
 
-func TestSuccessAll(t *testing.T) {
+func TestMonitorsSuccess(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -26,10 +26,10 @@ func TestSuccessAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.SuccessAll(context.Background(), mockPP, ms, message)
+	monitor.Monitors(ms).Success(context.Background(), mockPP, message)
 }
 
-func TestStartAll(t *testing.T) {
+func TestMonitorsStart(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -45,10 +45,10 @@ func TestStartAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.StartAll(context.Background(), mockPP, ms, message)
+	monitor.Monitors(ms).Start(context.Background(), mockPP, message)
 }
 
-func TestFailureAll(t *testing.T) {
+func TestMonitorsFailure(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -64,10 +64,10 @@ func TestFailureAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.FailureAll(context.Background(), mockPP, ms, message)
+	monitor.Monitors(ms).Failure(context.Background(), mockPP, message)
 }
 
-func TestLogAll(t *testing.T) {
+func TestMonitorsLog(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -83,10 +83,10 @@ func TestLogAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.LogAll(context.Background(), mockPP, ms, message)
+	monitor.Monitors(ms).Log(context.Background(), mockPP, message)
 }
 
-func TestExitStatus(t *testing.T) {
+func TestMonitorsExitStatus(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -102,5 +102,5 @@ func TestExitStatus(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
+	monitor.Monitors(ms).ExitStatus(context.Background(), mockPP, 42, message)
 }

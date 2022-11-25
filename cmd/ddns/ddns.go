@@ -10,15 +10,14 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
 const (
-	IntervalUnit     = time.Second
-	IntervalLargeGap = time.Second * 10
+	intervalUnit     = time.Second
+	intervalLargeGap = time.Second * 10
 )
 
 // signalWait returns false if the alarm is triggered before other signals come.
@@ -32,6 +31,8 @@ func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 	}
 }
 
+// Version is the version of the updater that will be shown in the output.
+// This is to be overwritten by the linker argument -X main.Version=version.
 var Version string //nolint:gochecknoglobals
 
 func formatName() string {
@@ -46,10 +47,10 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	bye := func() {
 		// Usually, this is called only after initConfig,
 		// but we are exiting early.
-		monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
+		c.Monitor.Start(ctx, ppfmt, formatName())
 
 		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "configuration errors")
+		c.Monitor.ExitStatus(ctx, ppfmt, 1, "configuration errors")
 		os.Exit(1)
 	}
 
@@ -80,9 +81,9 @@ func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.S
 	if c.DeleteOnStop {
 		ppfmt.Noticef(pp.EmojiClearRecord, "Deleting all managed records . . .")
 		if ok, msg := updater.ClearIPs(ctx, ppfmt, c, s); ok {
-			monitor.LogAll(ctx, ppfmt, c.Monitors, msg)
+			c.Monitor.Log(ctx, ppfmt, msg)
 		} else {
-			monitor.FailureAll(ctx, ppfmt, c.Monitors, msg)
+			c.Monitor.Failure(ctx, ppfmt, msg)
 		}
 	}
 }
@@ -116,7 +117,7 @@ func main() { //nolint:funlen
 	c, h, s := initConfig(ctx, ppfmt)
 
 	// Start the tool now
-	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
+	c.Monitor.Start(ctx, ppfmt, formatName())
 
 	first := true
 mainLoop:
@@ -128,12 +129,12 @@ mainLoop:
 		// Update the IP
 		if !first || c.UpdateOnStart {
 			if ok, msg := updater.UpdateIPs(ctx, ppfmt, c, s); ok {
-				monitor.SuccessAll(ctx, ppfmt, c.Monitors, msg)
+				c.Monitor.Success(ctx, ppfmt, msg)
 			} else {
-				monitor.FailureAll(ctx, ppfmt, c.Monitors, msg)
+				c.Monitor.Failure(ctx, ppfmt, msg)
 			}
 		} else {
-			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "")
+			c.Monitor.Success(ctx, ppfmt, "")
 		}
 		first = false
 
@@ -142,22 +143,22 @@ mainLoop:
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
 			ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Not scheduled updates")
+			c.Monitor.ExitStatus(ctx, ppfmt, 0, "Not scheduled updates")
 			break mainLoop
 		}
 
 		// Display the remaining time interval
 		interval := time.Until(next)
 		switch {
-		case interval < -IntervalLargeGap:
+		case interval < -intervalLargeGap:
 			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now (running behind by %v) . . .",
-				-interval.Round(IntervalUnit))
-		case interval < IntervalUnit:
+				-interval.Round(intervalUnit))
+		case interval < intervalUnit:
 			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now . . .")
-		case interval < IntervalLargeGap:
-			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", IntervalLargeGap)
+		case interval < intervalLargeGap:
+			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", intervalLargeGap)
 		default:
-			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(IntervalUnit))
+			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(intervalUnit))
 		}
 
 		// Wait for the next signal or the alarm, whichever comes first
@@ -173,14 +174,14 @@ mainLoop:
 
 			ppfmt.Noticef(pp.EmojiRepeatOnce, "Restarting . . .")
 			c, h, s = initConfig(ctx, ppfmt)
-			monitor.LogAll(ctx, ppfmt, c.Monitors, "Restarted")
+			c.Monitor.Log(ctx, ppfmt, "Restarted")
 			continue mainLoop
 
 		case syscall.SIGINT, syscall.SIGTERM:
 			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
 			stopUpdating(ctx, ppfmt, c, s)
 			ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, fmt.Sprintf("Signal: %v", sig))
+			c.Monitor.ExitStatus(ctx, ppfmt, 0, fmt.Sprintf("Signal: %v", sig))
 			break mainLoop
 
 		default:

@@ -1,3 +1,4 @@
+// Package provider implements protocols to detect public IP addresses.
 package provider
 
 import (
@@ -10,11 +11,13 @@ import (
 
 //go:generate mockgen -destination=../mocks/mock_provider.go -package=mocks . Provider
 
+// Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {
-	Name() string
-	GetIP(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool)
+	Name() string                                                // name of the protocol
+	GetIP(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool) // get the IP
 }
 
+// Name gets the protocol name. It returns "none" for nil.
 func Name(p Provider) string {
 	if p == nil {
 		return "none"

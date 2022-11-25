@@ -775,58 +775,58 @@ func TestReadHealthchecksURL(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      []mon
-		newField      []mon
+		oldField      mon
+		newField      mon
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"unset": {
-			false, "", []mon{}, []mon{}, true, nil,
+			false, "", nil, nil, true, nil,
 		},
 		"empty": {
-			true, "", []mon{}, []mon{}, true, nil,
+			true, "", nil, nil, true, nil,
 		},
 		"example": {
 			true, "https://hi.org/1234",
-			[]mon{},
-			[]mon{&monitor.Healthchecks{
+			nil,
+			&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234"),
 				Timeout:    monitor.HealthchecksDefaultTimeout,
 				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
-			}},
+			},
 			true,
 			nil,
 		},
 		"password": {
 			true, "https://me:pass@hi.org/1234",
-			[]mon{},
-			[]mon{&monitor.Healthchecks{
+			nil,
+			&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://me:pass@hi.org/1234"),
 				Timeout:    monitor.HealthchecksDefaultTimeout,
 				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
-			}},
+			},
 			true,
 			nil,
 		},
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
-			[]mon{},
-			[]mon{&monitor.Healthchecks{
+			nil,
+			&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234#fragment"),
 				Timeout:    monitor.HealthchecksDefaultTimeout,
 				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
-			}},
+			},
 			true,
 			nil,
 		},
 		"query": {
 			true, "https://hi.org/1234?hello=123",
-			[]mon{},
-			[]mon{&monitor.Healthchecks{
+			nil,
+			&monitor.Healthchecks{
 				BaseURL:    urlMustParse(t, "https://hi.org/1234?hello=123"),
 				Timeout:    monitor.HealthchecksDefaultTimeout,
 				MaxRetries: monitor.HealthchecksDefaultMaxRetries,
-			}},
+			},
 			true,
 			nil,
 		},
@@ -834,7 +834,7 @@ func TestReadHealthchecksURL(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
-			field := append([]mon{}, tc.oldField...)
+			field := tc.oldField
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {

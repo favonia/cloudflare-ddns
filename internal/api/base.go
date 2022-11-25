@@ -1,3 +1,4 @@
+// Package api implements protocols to update DNS records.
 package api
 
 import (
@@ -14,21 +15,25 @@ import (
 
 // A Handle represents a generic API to update DNS records. Currently, the only implementation is Cloudflare.
 type Handle interface {
-	// List DNS records.
+	// ListRecords lists all matching DNS records.
 	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) (map[string]netip.Addr, bool)
-	// Delete one DNS record.
+
+	// DeleteRecord deletes one DNS record.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type, id string) bool
-	// Update one DNS record.
+
+	// UpdateRecord updates one DNS record.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr) bool
-	// Create one DNS record.
+
+	// CreateRecord creates one DNS record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type,
 		ip netip.Addr, ttl TTL, proxied bool) (string, bool)
-	// Flush the API cache.
+
+	// FlushCache flushes the API cache. Flushing should automatically happen when other operations encounter errors.
 	FlushCache()
 }
 
 // An Auth contains authentication information.
 type Auth interface {
-	// Use the authentication information to create a Handle.
+	// New uses the authentication information to create a Handle.
 	New(context.Context, pp.PP, time.Duration) (Handle, bool)
 }

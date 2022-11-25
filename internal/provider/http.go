@@ -78,15 +78,18 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bo
 	return c.getIP(ctx, ppfmt)
 }
 
+// HTTP represents a generic detection protocol to use an HTTP response directly.
 type HTTP struct {
-	ProviderName string
-	URL          map[ipnet.Type]string
+	ProviderName string                // name of the protocol
+	URL          map[ipnet.Type]string // URL of the detection page
 }
 
+// Name of the detection protocol.
 func (p *HTTP) Name() string {
 	return p.ProviderName
 }
 
+// GetIP detects the IP address by using the HTTP response directly.
 func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	url, found := p.URL[ipNet]
 	if !found {
@@ -99,5 +102,5 @@ func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.
 		return netip.Addr{}, false
 	}
 
-	return ipNet.NormalizeIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }

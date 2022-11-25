@@ -4,6 +4,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
+// NewLocal creates a specialized Local provider that uses Cloudflare as the remote server.
+// (No actual UDP packets will be sent out.)
 func NewLocal() Provider {
 	return &Local{
 		ProviderName: "local",

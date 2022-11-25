@@ -13,19 +13,31 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+// Healthchecks represents a Healthchecks access point.
+// See https://healthchecks.io/docs/http_api/ for more information.
 type Healthchecks struct {
-	BaseURL    *url.URL
-	Timeout    time.Duration
+	// The success endpoint that can be used to derive all other endpoints.
+	BaseURL *url.URL
+
+	// Timeout for each ping.
+	Timeout time.Duration
+
+	// MaxRetries before giving up a ping.
 	MaxRetries int
 }
 
 const (
-	HealthchecksDefaultTimeout    = 10 * time.Second
-	HealthchecksDefaultMaxRetries = 5
+	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
+	HealthchecksDefaultTimeout = 10 * time.Second
+
+	// HealthchecksDefaultMaxRetries is the maximum number of retries to ping Healthchecks.
+	HealthchecksDefaultMaxRetries int = 5
 )
 
+// HealthchecksOption is an option for [NewHealthchecks].
 type HealthchecksOption func(*Healthchecks)
 
+// SetHealthchecksMaxRetries sets the MaxRetries of a Healthchecks.
 func SetHealthchecksMaxRetries(maxRetries int) HealthchecksOption {
 	if maxRetries <= 0 {
 		panic("maxRetries <= 0")
@@ -35,6 +47,8 @@ func SetHealthchecksMaxRetries(maxRetries int) HealthchecksOption {
 	}
 }
 
+// NewHealthchecks creates a new Healthchecks monitor.
+// See https://healthchecks.io/docs/http_api/ for more information.
 func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Monitor, bool) {
 	url, err := url.Parse(rawURL)
 	if err != nil {
@@ -74,8 +88,9 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Moni
 	return h, true
 }
 
-func (h *Healthchecks) DescribeService() string {
-	return "Healthchecks"
+// Describe calles the callback with the service name "Healthchecks".
+func (h *Healthchecks) Describe(callback func(service, params string)) {
+	callback("Healthchecks", "(URL redacted)")
 }
 
 //nolint:funlen
@@ -158,22 +173,27 @@ func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, m
 	return false
 }
 
+// Success pings the root endpoint.
 func (h *Healthchecks) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "", message)
 }
 
+// Start pings the /start endpoint.
 func (h *Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/start", message)
 }
 
+// Failure pings the /fail endpoint.
 func (h *Healthchecks) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/fail", message)
 }
 
+// Log pings the /log endpoint.
 func (h *Healthchecks) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/log", message)
 }
 
+// ExitStatus pings the /number endpoint where number is the exit status.
 func (h *Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
 	if code < 0 || code > 255 {
 		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)

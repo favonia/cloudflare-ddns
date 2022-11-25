@@ -39,14 +39,16 @@ func getIPFromCloudflareTrace(ctx context.Context, ppfmt pp.PP, url string, fiel
 	return c.getIP(ctx, ppfmt)
 }
 
+// CloudflareTrace represents a generic detection protocol to parse an HTTP response.
 type CloudflareTrace struct {
-	ProviderName string
+	ProviderName string // name of the detection protocol
 	Param        map[ipnet.Type]struct {
-		URL   string
-		Field string
+		URL   string // URL of the detection page
+		Field string // name of the field holding the IP address
 	}
 }
 
+// NewCloudflareTrace creates a specialized CloudflareTrace provider that parses https://1.1.1.1/cdn-cgi/trace.
 func NewCloudflareTrace() Provider {
 	return &CloudflareTrace{
 		ProviderName: "cloudflare.trace",
@@ -60,10 +62,12 @@ func NewCloudflareTrace() Provider {
 	}
 }
 
+// Name of the detection protocol.
 func (p *CloudflareTrace) Name() string {
 	return p.ProviderName
 }
 
+// GetIP detects the IP address by parsing the HTTP response.
 func (p *CloudflareTrace) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
@@ -76,5 +80,5 @@ func (p *CloudflareTrace) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Ty
 		return netip.Addr{}, false
 	}
 
-	return ipNet.NormalizeIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }

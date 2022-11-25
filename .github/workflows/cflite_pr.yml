@@ -1,4 +1,4 @@
-name: ClusterFuzzLite (CI)
+name: ClusterFuzzLite (PR)
 on: pull_request
 permissions: read-all
 jobs:
@@ -35,7 +35,7 @@ jobs:
         uses: google/clusterfuzzlite/actions/run_fuzzers@1e163f06cba7820da5154ac9fe1a32d7fe6f73a3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: 600
+          fuzz-seconds: 200
           mode: "code-change"
           sanitizer: ${{ matrix.sanitizer }}
           storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/favonia/cloudflare-ddns-fuzzing-corpus.git

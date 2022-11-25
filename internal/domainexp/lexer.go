@@ -12,8 +12,11 @@ import (
 )
 
 var (
+	// ErrSingleAnd is triggered by single & (which should have been &&).
 	ErrSingleAnd = fmt.Errorf(`use "&&" instead of "&"`)
-	ErrSingleOr  = fmt.Errorf(`use "||" instead of "|"`)
+
+	// ErrSingleOr is triggered by single | (which should have been ||).
+	ErrSingleOr = fmt.Errorf(`use "||" instead of "|"`)
 )
 
 //nolint:funlen

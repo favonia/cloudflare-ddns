@@ -1,3 +1,4 @@
+// Package config reads and parses configurations.
 package config
 
 import (
@@ -16,6 +17,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
+// Config holds the configuration of the updater except for the timezone.
+// (The timezone is handled directly by the standard library reading the TZ environment variable.)
 type Config struct {
 	Auth             api.Auth
 	Provider         map[ipnet.Type]provider.Provider
@@ -29,10 +32,10 @@ type Config struct {
 	Proxied          map[domain.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
-	Monitors         []monitor.Monitor
+	Monitor          monitor.Monitor
 }
 
-// Default gives default values.
+// Default gives the default configuration.
 func Default() *Config {
 	return &Config{
 		Auth: nil,
@@ -53,7 +56,7 @@ func Default() *Config {
 		Proxied:          map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
-		Monitors:         nil,
+		Monitor:          monitor.Monitors{},
 	}
 }
 
@@ -93,6 +96,8 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	}
 }
 
+// ReadAuth reads environment variables CF_API_TOKEN, CF_API_TOKEN_FILE, and CF_ACCOUNT_ID
+// and creates an [api.CloudflareAuth].
 func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 	token, ok := readAuthToken(ppfmt)
 	if !ok {
@@ -130,6 +135,8 @@ func deduplicate(list []domain.Domain) []domain.Domain {
 	return list[:j+1]
 }
 
+// ReadDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
+// and consolidate the domains into a map.
 func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 	var domains, ip4Domains, ip6Domains []domain.Domain
 
@@ -150,6 +157,8 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 	return true
 }
 
+// ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
+// with support of deprecated environment variables IP4_POLICY and IP6_POLICY.
 func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool {
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
@@ -196,6 +205,7 @@ func getInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Dom
 
 const itemTitleWidth = 24
 
+// Print prints the Config on the screen.
 func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		return
@@ -239,14 +249,23 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("IP detection:", "%v", c.DetectionTimeout)
 	item("Record updating:", "%v", c.UpdateTimeout)
 
-	if len(c.Monitors) > 0 {
+	var monitors [][2]string
+	if c.Monitor != nil {
+		c.Monitor.Describe(func(service, params string) {
+			monitors = append(monitors, [2]string{service, params})
+		})
+	}
+	if len(monitors) > 0 {
 		section("Monitors:")
-		for _, m := range c.Monitors {
-			item(m.DescribeService()+":", "%s", "(URL redacted)")
+		for _, m := range monitors {
+			item(m[0]+":", "%s", m[1])
 		}
 	}
 }
 
+// ReadEnv calls the relevant readers to read all relevant environment variables except TZ
+// and update relevant fields. One should subsequently call [Config.NormalizeDomains] to maintain
+// invariants across different fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
@@ -264,14 +283,14 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) {
+		!ReadHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitor) {
 		return false
 	}
 
 	return true
 }
 
-// NormalizeDomains normalizes the fields Provider, TTL and Proxied.
+// NormalizeDomains updates and normalizes the fields [Config.Provider] and [Config.Proxied].
 // When errors are reported, the original configuration remain unchanged.
 //
 //nolint:funlen

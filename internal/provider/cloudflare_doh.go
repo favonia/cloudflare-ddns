@@ -6,6 +6,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
+// NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
 func NewCloudflareDOH() Provider {
 	return &DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",

@@ -13,6 +13,7 @@ type formatter struct {
 	level  Level
 }
 
+// New creates a new pretty printer.
 func New(writer io.Writer) PP {
 	return &formatter{
 		writer: writer,

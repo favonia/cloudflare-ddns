@@ -20,6 +20,7 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
+// ReadEmoji reads an environment variable as a plain string.
 func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
@@ -117,8 +118,8 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 // According to [DNS documentation], the valid range is "Auto" and [30, 86400].
 // We thus accept the union of both ranges---1 (auto) and [30, 86400].
 //
-// [API documentation] https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
-// [DNS documentation] https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
+// [API documentation]: https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [DNS documentation]: https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
 func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	val := Getenv(key)
 	if val == "" {
@@ -300,8 +301,8 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	return true
 }
 
-// ReadHealthchecksURL reads the base URL of the healthcheck.io endpoint.
-func ReadHealthchecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+// ReadHealthchecksURL reads the base URL of the Healthchecks endpoint.
+func ReadHealthchecksURL(ppfmt pp.PP, key string, field *monitor.Monitor) bool {
 	val := Getenv(key)
 
 	if val == "" {
@@ -313,6 +314,7 @@ func ReadHealthchecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool
 		return false
 	}
 
-	*field = append(*field, h)
+	// Append the new monitor to the existing list
+	*field = h
 	return true
 }

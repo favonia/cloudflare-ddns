@@ -40,8 +40,18 @@ func TestLocalGetIP(t *testing.T) {
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"4": {ipnet.IP4, "127.0.0.1:80", ipnet.IP4, ip4Loopback, nil},
-		"6": {ipnet.IP6, "[::1]:80", ipnet.IP6, ip6Loopback, nil},
+		"4": {
+			ipnet.IP4, "127.0.0.1:80", ipnet.IP4, ip4Loopback,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "Detected IP address %s does not look like a global unicast IP address. Please double-check.", "127.0.0.1") //nolint:lll
+			},
+		},
+		"6": {
+			ipnet.IP6, "[::1]:80", ipnet.IP6, ip6Loopback,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "Detected IP address %s does not look like a global unicast IP address. Please double-check.", "::1") //nolint:lll
+			},
+		},
 		"4-nil1": {
 			ipnet.IP4, "", ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {

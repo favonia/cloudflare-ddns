@@ -1,3 +1,5 @@
+// Package updater implements the logic to detect and update IP addresses,
+// combining the packages setter and provider.
 package updater
 
 import (
@@ -24,7 +26,7 @@ func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	return false
 }
 
-// setIP extracts relevant settings from the configuration and calls setter.Set with timeout.
+// setIP extracts relevant settings from the configuration and calls [setter.Setter.Set] with timeout.
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
@@ -46,8 +48,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	return allOk, strings.Join(msgs, "\n")
 }
 
-// clearIP extracts relevant settings from the config struct and calls setter.Clear with a deadline.
-// ip must be non-zero.
+// clearIP extracts relevant settings from the configuration and calls [setter.Setter.Clear] with a deadline.
 func clearIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) (bool, string) {
 	allOk := true
 	var msgs []string
@@ -66,7 +67,16 @@ func clearIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter
 	return allOk, strings.Join(msgs, "\n")
 }
 
-var MessageShouldDisplay = map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true} //nolint:gochecknoglobals
+// ShouldDisplayHelpMessages determines whether help messages should be displayed.
+// The help messages are to help beginners detect possible misconfiguration.
+// These messages should be displayed at most once, and thus the value of this map
+// will be changed to false after displaying the help messages.
+//
+//nolint:gochecknoglobals
+var ShouldDisplayHelpMessages = map[ipnet.Type]bool{
+	ipnet.IP4: true,
+	ipnet.IP6: true,
+}
 
 func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, bool) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
@@ -77,7 +87,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
 		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
-		if MessageShouldDisplay[ipNet] {
+		if ShouldDisplayHelpMessages[ipNet] {
 			switch ipNet {
 			case ipnet.IP6:
 				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
@@ -88,10 +98,11 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 			}
 		}
 	}
-	MessageShouldDisplay[ipNet] = false
+	ShouldDisplayHelpMessages[ipNet] = false
 	return ip, ok
 }
 
+// UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	allOk := true
 	var msgs []string
@@ -116,6 +127,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	return allOk, strings.Join(msgs, "\n")
 }
 
+// ClearIPs removes all DNS records of managed domains.
 func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	allOk := true
 	var msgs []string
