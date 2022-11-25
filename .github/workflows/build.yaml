@@ -33,6 +33,7 @@ jobs:
             api.github.com:443
             auth.docker.io:443
             dl-cdn.alpinelinux.org:443
+            docker.io:433
             github.com:443
             production.cloudflare.docker.com:443
             proxy.golang.org:443
