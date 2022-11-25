@@ -59,6 +59,8 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
     The official Go binding of Cloudflare API v4. It provides robust handling of pagination, rate limiting, and other tricky bits.
   - [cron](https://github.com/robfig/cron):\
     Parsing of Cron expressions.
+  - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
+    HTTP clients with automatic retries and exponential backoff.
   - [mock](https://github.com/golang/mock) (for testing only):\
     A comprehensive, semi-official framework for mocking.
   - [testify](https://github.com/stretchr/testify) (for testing only):\
