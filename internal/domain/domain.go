@@ -71,6 +71,7 @@ func New(domain string) (Domain, error) {
 	}
 }
 
+// SortDomains sorts a list of domains according to their ASCII representations.
 func SortDomains(s []Domain) {
 	sort.Slice(s, func(i, j int) bool { return s[i].DNSNameASCII() < s[j].DNSNameASCII() })
 }

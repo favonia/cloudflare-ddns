@@ -1,5 +1,6 @@
 package pp
 
+// Emoji is the type of emoji strings.
 type Emoji string
 
 const (
@@ -35,4 +36,5 @@ const (
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
 )
 
+// indentPrefix should be wider than an emoji to achieve visually pleasing results.
 const indentPrefix = "   "

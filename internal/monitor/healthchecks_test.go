@@ -95,14 +95,16 @@ func TestNewHealthchecksFail3(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestDescripbeService(t *testing.T) {
+func TestDescripbe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
-	require.Equal(t, "Healthchecks", m.DescribeService())
+	m.Describe(func(service, params string) {
+		require.Equal(t, "Healthchecks", service)
+	})
 }
 
 //nolint:funlen

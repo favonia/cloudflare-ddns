@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	minutesPerHour   = 60
-	secondsPerMinute = 60
+	minutesPerHour   = int(time.Hour / time.Minute)
+	secondsPerMinute = int(time.Minute / time.Second)
 )
 
 func describeOffset(offset int) string {

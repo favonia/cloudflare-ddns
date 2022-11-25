@@ -103,6 +103,7 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 		)
 		return invalidIP, false
 	}
+
 	return ip, true
 }
 
@@ -163,19 +164,22 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	return c.getIP(ctx, ppfmt)
 }
 
+// DNSOverHTTPS represents a generic detection protocol using DNS over HTTPS.
 type DNSOverHTTPS struct {
-	ProviderName string
+	ProviderName string // name of the protocol
 	Param        map[ipnet.Type]struct {
-		URL   string
-		Name  string
-		Class dnsmessage.Class
+		URL   string           // the DoH server
+		Name  string           // domain name to query
+		Class dnsmessage.Class // DNS class to query
 	}
 }
 
+// Name of the detection protocol.
 func (p *DNSOverHTTPS) Name() string {
 	return p.ProviderName
 }
 
+// GetIP detects the IP address by DNS over HTTPS.
 func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
@@ -188,5 +192,5 @@ func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 		return netip.Addr{}, false
 	}
 
-	return ipNet.NormalizeIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }

@@ -86,7 +86,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 	t.Parallel()
 
 	ip4 := netip.MustParseAddr("1.2.3.4")
-	ip6 := netip.MustParseAddr("::1:2:3:4")
+	ip6 := netip.MustParseAddr("2606:4700:4700::1234")
 	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
@@ -168,8 +168,8 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiError,
-					"%q is not a valid %s address",
-					ip6,
+					"Detected IP address %s is not a valid %s address",
+					ip6.String(),
 					"IPv4",
 				)
 			},

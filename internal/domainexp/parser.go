@@ -1,3 +1,4 @@
+// Package domainexp parses expressions containing domains.
 package domainexp
 
 import (
@@ -223,6 +224,7 @@ func scanExpression(ppfmt pp.PP, input string, tokens []string) (predicate, []st
 	return nil, nil
 }
 
+// ParseList parses a list of comma-separated domains. Internationalized domain names are fully supported.
 func ParseList(ppfmt pp.PP, input string) ([]domain.Domain, bool) {
 	tokens, ok := tokenize(ppfmt, input)
 	if !ok {
@@ -240,6 +242,20 @@ func ParseList(ppfmt pp.PP, input string) ([]domain.Domain, bool) {
 	return list, true
 }
 
+// ParseExpression parses a boolean expression containing domains. Internationalized domain names are fully supported.
+// A boolean expression must have one of the following forms:
+//
+//   - A boolean value accepted by [strconv.ParseBool], such as t as true or FALSE as false.
+//   - is(example.org), which matches the domain example.org. Note that is(*.example.org)
+//     only matches the wildcard domain *.example.org; use sub(example.org) to match
+//     all subdomains of example.org (including *.example.org).
+//   - sub(example.org), which matches subdomains of example.org, such as www.example.org and *.example.org.
+//     It does not match the domain example.org itself.
+//   - ! exp, where exp is a boolean expression, representing logical negation of exp.
+//   - exp1 || exp2, where exp1 and exp2 are boolean expressions, representing logical disjunction of exp1 and exp2.
+//   - exp1 && exp2, where exp1 and exp2 are boolean expressions, representing logical conjunction of exp1 and exp2.
+//
+// One can use parentheses to group expressions, such as !(is(hello.org) && (is(hello.io) || is(hello.me))).
 func ParseExpression(ppfmt pp.PP, input string) (predicate, bool) {
 	tokens, ok := tokenize(ppfmt, input)
 	if !ok {

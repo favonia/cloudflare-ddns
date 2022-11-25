@@ -10,20 +10,21 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-type Reporter struct{}
+type reporter struct{}
 
-func (r Reporter) Errorf(format string, args ...any) {
+func (r reporter) Errorf(format string, args ...any) {
 	log.Fatalf(format, args...)
 }
 
-func (r Reporter) Fatalf(format string, args ...any) {
+func (r reporter) Fatalf(format string, args ...any) {
 	log.Fatalf(format, args...)
 }
 
+// ParseList fuzz test [domainexp.ParseList].
 func ParseList(bytes []byte) int {
 	input := string(bytes)
 
-	mockCtrl := gomock.NewController(Reporter{})
+	mockCtrl := gomock.NewController(reporter{})
 	defer mockCtrl.Finish()
 
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -39,10 +40,11 @@ func ParseList(bytes []byte) int {
 	return 0
 }
 
+// ParseExpression fuzz test [domainexp.ParseExpression].
 func ParseExpression(bytes []byte) int {
 	input := string(bytes)
 
-	mockCtrl := gomock.NewController(Reporter{})
+	mockCtrl := gomock.NewController(reporter{})
 	defer mockCtrl.Finish()
 
 	mockPP := mocks.NewMockPP(mockCtrl)

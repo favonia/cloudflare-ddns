@@ -35,18 +35,16 @@ func (m *MockMonitor) EXPECT() *MockMonitorMockRecorder {
 	return m.recorder
 }
 
-// DescribeService mocks base method.
-func (m *MockMonitor) DescribeService() string {
+// Describe mocks base method.
+func (m *MockMonitor) Describe(arg0 func(string, string)) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DescribeService")
-	ret0, _ := ret[0].(string)
-	return ret0
+	m.ctrl.Call(m, "Describe", arg0)
 }
 
-// DescribeService indicates an expected call of DescribeService.
-func (mr *MockMonitorMockRecorder) DescribeService() *gomock.Call {
+// Describe indicates an expected call of Describe.
+func (mr *MockMonitorMockRecorder) Describe(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeService", reflect.TypeOf((*MockMonitor)(nil).DescribeService))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockMonitor)(nil).Describe), arg0)
 }
 
 // ExitStatus mocks base method.

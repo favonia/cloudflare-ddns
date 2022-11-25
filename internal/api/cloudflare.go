@@ -13,7 +13,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-type Cache = struct {
+// CloudflareCache holds the previous repsonses from the Cloudflare API.
+type CloudflareCache = struct {
 	listRecords  map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]
 	activeZones  *ttlcache.Cache[string, []string]
 	zoneOfDomain *ttlcache.Cache[string, string]
@@ -30,18 +31,21 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 	return cache
 }
 
+// A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
 type CloudflareHandle struct {
 	cf        *cloudflare.API
 	accountID string
-	cache     Cache
+	cache     CloudflareCache
 }
 
+// A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
 type CloudflareAuth struct {
 	Token     string
 	AccountID string
 	BaseURL   string
 }
 
+// New creates a [CloudflareHandle] from the authentication data.
 func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
@@ -57,14 +61,14 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 	// this is not needed, but is helpful for diagnosing the problem
 	if _, err := handle.VerifyAPIToken(ctx); err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", err)
-		ppfmt.Errorf(pp.EmojiUserError, "Please double-check CF_API_TOKEN or CF_API_TOKEN_FILE")
+		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
 		return nil, false
 	}
 
 	return &CloudflareHandle{
 		cf:        handle,
 		accountID: t.AccountID,
-		cache: Cache{
+		cache: CloudflareCache{
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
 				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
@@ -75,6 +79,7 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 	}, true
 }
 
+// FlushCache flushes the API cache.
 func (h *CloudflareHandle) FlushCache() {
 	for _, cache := range h.cache.listRecords {
 		cache.DeleteAll()
@@ -83,7 +88,7 @@ func (h *CloudflareHandle) FlushCache() {
 	h.cache.zoneOfDomain.DeleteAll()
 }
 
-// ActiveZones lists all active zones of the given name.
+// ActiveZones returns a list of zone IDs with the zone name.
 func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
@@ -131,6 +136,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	return ids, true
 }
 
+// ZoneOfDomain finds the active zone ID governing a particular domain.
 func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (string, bool) {
 	if id := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); id != nil {
 		return id.Value(), true
@@ -161,6 +167,7 @@ zoneSearch:
 	return "", false
 }
 
+// ListRecords lists all matching DNS records.
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type,
 ) (map[string]netip.Addr, bool) {
@@ -197,6 +204,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	return rmap, true
 }
 
+// DeleteRecord deletes one DNS record.
 func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type, id string,
 ) bool {
@@ -221,6 +229,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	return true
 }
 
+// UpdateRecord updates one DNS record.
 func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr,
 ) bool {
@@ -252,6 +261,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	return true
 }
 
+// CreateRecord creates one DNS record.
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
 ) (string, bool) {

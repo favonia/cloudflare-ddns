@@ -4,6 +4,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 )
 
+// NewIpify creates a specialized HTTP provider that uses the ipify service.
 func NewIpify() Provider {
 	return &HTTP{
 		ProviderName: "ipify",

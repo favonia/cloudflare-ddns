@@ -420,7 +420,7 @@ func TestPrintMaps(t *testing.T) {
 
 	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
-	c.Monitors = []monitor.Monitor{m}
+	c.Monitor = m
 
 	c.Print(mockPP)
 }

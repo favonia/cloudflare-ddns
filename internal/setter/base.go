@@ -1,3 +1,8 @@
+// Package setter implements the logic to update DNS records using [api.Handle].
+//
+// The idea is to reuse existing DNS records as much as possible, and only when
+// that fails, create new DNS records and remove stall ones. The complexity of
+// this package is due to the error handling of each API call.
 package setter
 
 import (
@@ -12,7 +17,9 @@ import (
 
 //go:generate mockgen -destination=../mocks/mock_setter.go -package=mocks . Setter
 
+// Setter uses [api.Handle] to update DNS records.
 type Setter interface {
+	// Set sets a particular domain to the given IP address.
 	Set(
 		ctx context.Context,
 		ppfmt pp.PP,
@@ -22,6 +29,8 @@ type Setter interface {
 		ttl api.TTL,
 		proxied bool,
 	) (bool, string)
+
+	// Clear removes DNS records of a particular domain.
 	Clear(
 		ctx context.Context,
 		ppfmt pp.PP,

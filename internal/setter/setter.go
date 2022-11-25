@@ -44,9 +44,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
-// Set calls the DNS service API to update the API of one domain.
-//
-// The ip must be non-zero.
+// Set updates the IP address of one domain to the given ip. The ip must be non-zero.
 //
 //nolint:funlen
 func (s *setter) Set(ctx context.Context, ppfmt pp.PP,

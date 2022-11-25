@@ -70,7 +70,8 @@ func TestInt(t *testing.T) {
 	}
 }
 
-func TestNormalizeIP(t *testing.T) {
+//nolint:funlen
+func TestNormalizeDetectedIP(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		ipNet         ipnet.Type
@@ -84,7 +85,7 @@ func TestNormalizeIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "%q is not a valid %s address", mustIP("1::2"), "IPv4")
+				m.EXPECT().Warningf(pp.EmojiError, "Detected IP address %s is not a valid %s address", "1::2", "IPv4")
 			},
 		},
 		"4-::ffff:0a0a:0a0a": {ipnet.IP4, mustIP("::ffff:0a0a:0a0a"), mustIP("10.10.10.10"), true, nil},
@@ -96,7 +97,7 @@ func TestNormalizeIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "%q is not a valid %s address", netip.Addr{}, "IPv6")
+				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address is not valid")
 			},
 		},
 		"100-10.10.10.10": {
@@ -104,7 +105,18 @@ func TestNormalizeIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "%q is not a valid %s address", mustIP("10.10.10.10"), "<unrecognized IP network>") //nolint:lll
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is not a valid %s address", "10.10.10.10", "<unrecognized IP network>"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"),               //nolint:lll
+				)
+			},
+		},
+		"4-0.0.0.0": {
+			ipnet.IP4, mustIP("0.0.0.0"),
+			netip.Addr{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspicifed %s address", "0.0.0.0", "IPv4") //nolint:lll
 			},
 		},
 	} {
@@ -116,7 +128,7 @@ func TestNormalizeIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := tc.ipNet.NormalizeIP(mockPP, tc.ip)
+			ip, ok := tc.ipNet.NormalizeDetectedIP(mockPP, tc.ip)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.ok, ok)
 		})

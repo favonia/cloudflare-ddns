@@ -63,8 +63,8 @@ func TestHTTPGetIP(t *testing.T) {
 				ipnet.IP4, ip6Server.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
-						pp.EmojiError, "%q is not a valid %s address",
-						ip6,
+						pp.EmojiError, "Detected IP address %s is not a valid %s address",
+						ip6.String(),
 						"IPv4",
 					)
 				},
