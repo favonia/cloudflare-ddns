@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/netip"
 
+	"github.com/hashicorp/go-retryablehttp"
+
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -22,7 +24,7 @@ type httpConn struct {
 func (d *httpConn) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
-	req, err := http.NewRequestWithContext(ctx, d.method, d.url, d.reader)
+	req, err := retryablehttp.NewRequestWithContext(ctx, d.method, d.url, d.reader)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", d.url, err)
 		return invalidIP, false
@@ -36,7 +38,10 @@ func (d *httpConn) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 		req.Header.Set("Accept", d.accept)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	c := retryablehttp.NewClient()
+	c.Logger = nil
+
+	resp, err := c.Do(req)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", d.url, err)
 		return invalidIP, false
