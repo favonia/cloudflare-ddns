@@ -4,21 +4,21 @@
 
 Be the 🌟 best DDNS tool 🌟 that [favonia](mailto:favonia+github@gmail.com) wants to use.
 
-1. Be secure as much as possible and practical.
+1. Support all features [favonia](mailto:favonia+github@gmail.com) wants, including emojis.
+
+2. Be secure as much as possible and practical.
 
    - Prefer open security over security through obscurity.
    - Use code analysis, unit testing, fuzzing, and other techniques to discover bugs.
    - Detect common misconfigurations.
 
-2. Support all features [favonia](mailto:favonia+github@gmail.com) wants, including lots of emojis.
-
-3. Be efficient in network usage, speed, and memory usage.
+3. Be efficient in network usage, CPU usage, memory usage, and whatnot.
 
 4. Support other useful features that are easily maintainable.
 
 ### Architecture
 
-The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout). The updater is factored into many internal packages, each in charged of a small part of the program logic. See the [Go Reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for a detailed documentation of the code structure.
+The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout), where `/cmd/` holds the command-line interface and `/internal/` holds the internal packages. The updater is factored into many internal packages, each in charged of a small part of the program logic. See the [Go Reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for a detailed documentation of the code structure.
 
 ### Roadmap
 
@@ -46,4 +46,4 @@ Public IP addresses, by their own definition, depend on how other machines (in o
 2. The adversary can access networks close to Cloudflare’s servers and intercept your IP packets. Note that the adversary does not need to break HTTPS---HTTPS does not protect the source and target IP addresses.
 3. The adversary can access the cable between your machine and the internet. (Although they can already redirect the traffic in this case, and thus whether the updater is secure or not is not really meaningful.)
 
-Services that hope to be immune to these attacks should buy static IP addresses instead of using this tool (or any DDNS updater).
+There is no way to securely detect the intended public IP address in these scenarios. If you wish to be immune to these attacks, it is recommended to buy static IP addresses instead of using this tool (or any DDNS updater).
