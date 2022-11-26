@@ -14,26 +14,15 @@ Be the 🌟 best DDNS tool 🌟 that [favonia](mailto:favonia+github@gmail.com) 
 
 3. Be efficient in network usage, speed, and memory usage.
 
-4. Support other useful features.
+4. Support other useful features that are easily maintainable.
+
+### Architecture
+
+The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout). The updater is factored into many internal packages, each in charged of a small part of the program logic. See the [Go Reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for a detailed documentation of the code structure.
 
 ### Roadmap
 
 See [Issues](https://github.com/favonia/cloudflare-ddns/issues) and [Milestones](https://github.com/favonia/cloudflare-ddns/milestones).
-
-## High-Level Architecture
-
-The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout):
-
-```
-.
-├── cmd
-│  └── ddns: the command-line interface
-├── internal: internal packages; see /internal/README.markdown for details
-└── test
-   └── fuzzer: fuzzing interface for ClusterFuzzLite
-```
-
-One can also check the generated Go doc at <https://pkg.go.dev/github.com/favonia/cloudflare-ddns>.
 
 ## Network Security Threat Model
 
