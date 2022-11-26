@@ -12,7 +12,7 @@ COPY ["internal", "internal"]
 COPY ["cmd", "cmd"]
 RUN \
   CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
-  go build -tags timetzdata -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" \
+  go build -tags timetzdata -trimpath -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" \
   -o /bin/ddns cmd/ddns/*
 
 # The minimal images contain only the program and the consolidated certificates.
