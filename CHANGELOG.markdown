@@ -1,3 +1,22 @@
+# [1.8.0](https://github.com/favonia/cloudflare-ddns/compare/v1.7.2...v1.8.0) (2022-11-25)
+
+### Bug Fixes
+
+- **provider:** deprecate possibly unmaintained ipify ([#270](https://github.com/favonia/cloudflare-ddns/issues/270)) ([69b5d70](https://github.com/favonia/cloudflare-ddns/commit/69b5d706cf0c1e6696685d1569934c67676242d1))
+- **monitor:** correct printf format string ([#265](https://github.com/favonia/cloudflare-ddns/issues/265)) ([0740d61](https://github.com/favonia/cloudflare-ddns/commit/0740d6186d870a9a77159c0e52454ba4f82fb08a))
+- **setter:** improve monitor messages ([#273](https://github.com/favonia/cloudflare-ddns/issues/273)) ([c0599f6](https://github.com/favonia/cloudflare-ddns/commit/c0599f6b45975a7cf6607211c878e348b5f110a0))
+
+### Features
+
+- **monitor:** improve Healthchecks integration ([#272](https://github.com/favonia/cloudflare-ddns/issues/272)) ([b24cce6](https://github.com/favonia/cloudflare-ddns/commit/b24cce669f4625a566320e102490402f18d49c58))
+- **pp:** add an option to disable emojis ([#280](https://github.com/favonia/cloudflare-ddns/issues/280)) ([95d0c67](https://github.com/favonia/cloudflare-ddns/commit/95d0c6723116b86870cf73427f109716d486e27e))
+- **provider:** auto retry IP detection ([#290](https://github.com/favonia/cloudflare-ddns/issues/290)) ([de4d730](https://github.com/favonia/cloudflare-ddns/commit/de4d73070c04ab8ead9e05457c2f8d8bec871b94))
+- **provider:** warn about the use of weak PRNGs ([#254](https://github.com/favonia/cloudflare-ddns/issues/254)) ([ae2c866](https://github.com/favonia/cloudflare-ddns/commit/ae2c8664dc7caaf06558f224a37c608495e4ac78))
+
+### BREAKING CHANGES
+
+- The `ipify` provider is deprecated.
+
 ## [1.7.2](https://github.com/favonia/cloudflare-ddns/compare/v1.7.1...v1.7.2) (2022-11-07)
 
 - This version was published to retract all prior versions on <https://pkg.go.dev>. There are no observable changes.
