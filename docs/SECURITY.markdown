@@ -2,12 +2,11 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| edge    | :white_check_mark: |
-| latest  | :white_check_mark: |
-| 1.7.x   | :white_check_mark: |
-| < 1.7   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| edge    | ✅        |
+| latest  | ✅        |
+| others  | ❌        |
 
 ## Reporting a Vulnerability
 

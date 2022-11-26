@@ -4,7 +4,7 @@ First of all, thank you for your contribution! 🤗
 
 ## 🕵️ Security Reports
 
-- See [Security Policy](./SECURITY.markdown)
+- See [Security Policy](https://github.com/favonia/cloudflare-ddns/security/policy)
 
 ## 📜 License
 
