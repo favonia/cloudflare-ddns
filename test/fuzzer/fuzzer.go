@@ -1,3 +1,4 @@
+// Package fuzzer implements the fuzzing interface for ClusterFuzzLite.
 package fuzzer
 
 import (

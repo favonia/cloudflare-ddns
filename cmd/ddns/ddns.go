@@ -1,3 +1,4 @@
+// Package main is the entry point of the Cloudflare DDNS updater.
 package main
 
 import (
