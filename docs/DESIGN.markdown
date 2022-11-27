@@ -44,6 +44,6 @@ Public IP addresses, by their own definition, depend on how other machines (in o
 
 1. Your machine is connected to the internet via unsafe Wi-Fi. This can include WPA2 Enterprise if your machine does not verify the identity of the RADIUS servers. In general, it is much more challenging to protect Wi-Fi connections.
 2. The adversary can access networks close to Cloudflare’s servers and intercept your IP packets. Note that the adversary does not need to break HTTPS---HTTPS does not protect the source and target IP addresses.
-3. The adversary can access the cable between your machine and the internet. (Although they can already redirect the traffic in this case, and thus whether the updater is secure or not is not really meaningful.)
+3. The adversary can access the cable between your machine and the internet, or that you are within a country-scale firewall. (Although they can already redirect the traffic in this case, and thus whether the updater is secure or not is no longer relevant.)
 
 There is no way to securely detect the intended public IP address in these scenarios. If you wish to be immune to these attacks, it is recommended to buy static IP addresses instead of using this tool (or any DDNS updater).
