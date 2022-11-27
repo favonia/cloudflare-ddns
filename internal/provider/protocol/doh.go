@@ -1,4 +1,4 @@
-package provider
+package protocol
 
 import (
 	"bytes"
@@ -150,7 +150,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 		return invalidIP, false
 	}
 
-	c := httpConn{
+	c := httpCore{
 		url:         url,
 		method:      http.MethodPost,
 		contentType: "application/dns-message",

@@ -1,4 +1,4 @@
-package provider_test
+package protocol_test
 
 import (
 	"context"
@@ -15,18 +15,18 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	p := &provider.DNSOverHTTPS{
+	p := &protocol.DNSOverHTTPS{
 		ProviderName: "very secret name",
 		Param:        nil,
 	}
 
-	require.Equal(t, "very secret name", provider.Name(p))
+	require.Equal(t, "very secret name", p.Name())
 }
 
 func setupServer(t *testing.T, name string, class dnsmessage.Class,
@@ -569,7 +569,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 
 			server := setupServer(t, tc.name, tc.class, tc.response, tc.header, tc.idShift, tc.answers)
 
-			provider := &provider.DNSOverHTTPS{
+			provider := &protocol.DNSOverHTTPS{
 				ProviderName: "",
 				Param: map[ipnet.Type]struct {
 					URL   string

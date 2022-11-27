@@ -1,4 +1,4 @@
-package provider_test
+package protocol_test
 
 import (
 	"context"
@@ -11,18 +11,18 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 func TestLocalName(t *testing.T) {
 	t.Parallel()
 
-	p := &provider.Local{
+	p := &protocol.Local{
 		ProviderName:  "very secret name",
 		RemoteUDPAddr: nil,
 	}
 
-	require.Equal(t, "very secret name", provider.Name(p))
+	require.Equal(t, "very secret name", p.Name())
 }
 
 //nolint:funlen
@@ -82,7 +82,7 @@ func TestLocalGetIP(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 
-			provider := &provider.Local{
+			provider := &protocol.Local{
 				ProviderName: "",
 				RemoteUDPAddr: map[ipnet.Type]string{
 					tc.addrKey: tc.addr,

@@ -4,11 +4,12 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 // NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
 func NewCloudflareDOH() Provider {
-	return &DNSOverHTTPS{
+	return &protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]struct {
 			URL   string
