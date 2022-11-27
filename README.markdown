@@ -1,9 +1,8 @@
 # 🌟 Cloudflare DDNS
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/favonia/cloudflare-ddns/Building%20and%20Pushing)](https://github.com/favonia/cloudflare-ddns/actions/workflows/build.yaml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/favonia/cloudflare-ddns/.svg)](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/)
 [![Codecov](https://img.shields.io/codecov/c/github/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
-[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/favonia/cloudflare-ddns)](https://golang.org/doc/install)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
@@ -204,105 +203,6 @@ docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-## ☸️ Deployment with Kubernetes
-
-Kubernetes offers great flexibility in assembling different objects together. The following shows a minimum setup.
-
-### 📝 Step 1: Creating a YAML File
-
-Save the following configuration as `cloudflare-ddns.yaml`.
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cloudflare-ddns
-  labels:
-    app: cloudflare-ddns
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app: cloudflare-ddns
-  template:
-    metadata:
-      name: cloudflare-ddns
-      labels:
-        app: cloudflare-ddns
-    spec:
-      restartPolicy: Always
-      containers:
-        - name: cloudflare-ddns
-          image: favonia/cloudflare-ddns:latest
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsUser: 1000
-            runAsGroup: 1000
-          env:
-            - name: "IP6_PROVIDER"
-              value: "none"
-            - name: "PROXIED"
-              value: "true"
-            - name: "CF_API_TOKEN"
-              value: "YOUR-CLOUDFLARE-API-TOKEN"
-            - name: "DOMAINS"
-              value: "example.org,www.example.org,example.io"
-```
-
-_(Click to expand the following items.)_
-
-<details>
-<summary>🔁 Use <code>restartPolicy: Always</code> to automatically restart the updater on system reboot.</summary>
-
-Kubernetes’s default restart policies should prevent excessive logging when there are configuration errors.
-
-</details>
-
-<details>
-<summary>🛡️ Use <code>runAsUser</code>, <code>runAsGroup</code>, and <code>allowPrivilegeEscalation: false</code> to protect yourself.</summary>
-
-Kubernetes comes with built-in support to drop superuser privileges. The updater itself will also attempt to drop all of them.
-
-</details>
-
-<details>
-<summary>📡 Use <code>IP6_PROVIDER: "none"</code> to disable IPv6 management.</summary>
-
-The support of IPv6 in Kubernetes has been improving, but a working setup still takes effort. Since Kubernetes 1.21+, the [IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/) is enabled by default, but a setup which allows IPv6 egress traffic (_e.g.,_ to reach Cloudflare servers to detect public IPv6 addresses) still requires deep understanding of Kubernetes and is beyond this simple guide. The popular tool [minicube](https://minikube.sigs.k8s.io/), which implements a simple local Kubernetes cluster, unfortunately [does not support IPv6 yet](https://minikube.sigs.k8s.io/docs/faq/#does-minikube-support-ipv6). Until there is an easy way to enable IPv6 in Kubernetes, the template here will have IPv6 disabled.
-
-If you manage to enable IPv6, congratulations. Feel free to remove `IP6_PROVIDER: "none"` to detect and update both `A` and `AAAA` records. There is almost no danger in enabling IPv6 even when the IPv6 setup is not working. In the worst case, the updater will remove all `AAAA` records associated with the domains in `DOMAINS` and `IP6_DOMAINS` because those records will appear to be “stale.” The deleted records will be recreated once the updater correctly detects the IPv6 addresses.
-
-</details>
-
-<details>
-<summary>🎭 Use <code>PROXIED: "true"</code> to hide your IP addresses.</summary>
-
-The setting `PROXIED: "true"` instructs Cloudflare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED: "true"`. (The default value of `PROXIED` is `false`.)
-
-</details>
-
-<details>
-<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token.</summary>
-
-The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
-
-</details>
-
-<details>
-<summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
-
-The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
-
-</details>
-
-### 🚀 Step 2: Creating the Deployment
-
-```sh
-kubectl create -f cloudflare-ddns.yaml
-```
-
 ## 🎛️ Further Customization
 
 ### ⚙️ All Settings
@@ -348,7 +248,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 > - `cloudflare.trace`\
 >   Get the public IP address by parsing the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
 > - `local`\
->   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose or `hostNetwork: true` in Kubernetes) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) or the [default namespaces in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) instead of those in the host network.
+>   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
@@ -453,8 +353,6 @@ For `HEALTHCHECKS`, the updater can work with any server following the [same not
 ### 🔂 Restarting the Container
 
 If you are using Docker Compose, run `docker-compose up --detach` after changing the settings.
-
-If you are using Kubernetes, run `kubectl replace -f cloudflare-ddns.yaml` after changing the settings.
 
 ## 🚵 Migration Guides
 
