@@ -69,7 +69,9 @@ jobs:
       - name: 🎭 Install GoMock
         run: go install github.com/golang/mock/mockgen@v1.6.0
       - name: 🧪 Run `go generate`
-        run: go generate ./...
+        run: |
+          rm ./internal/mocks -rf
+          go generate ./...
       - name: 🔍 Check if any files are changed
         run: |
           if ! git diff --quiet; then
