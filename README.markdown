@@ -46,8 +46,9 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
 - 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it more resistant to tampering. See the [design document](docs/DESIGN.markdown) for more information.
 - ✅ You can verify the Docker images using [Cosign](https://github.com/sigstore/cosign):
-  ```sh
-  cosign verify --key https://d.favonia.org/cosign.pub favonia/cloudflare-ddns
+  ```bash
+  COSIGN_REPOSITORY=favonia/cloudflare-ddns-sigs \
+    cosign verify --key https://d.favonia.org/cosign.pub favonia/cloudflare-ddns
   ```
 - 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
 - 📚 The updater uses only established open-source Go libraries.
