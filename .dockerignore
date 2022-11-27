@@ -1,0 +1,12 @@
+# ignore everything
+**
+
+# include what we need
+!go.mod
+!go.sum
+!cmd
+!internal
+
+# include files for fuzzing
+!test
+!.clusterfuzzlite
