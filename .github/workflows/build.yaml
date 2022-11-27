@@ -86,6 +86,7 @@ jobs:
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
+          COSIGN_REPOSITORY=favonia/cloudflare-ddns-sigs
           cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "${{ steps.meta.outputs.tags }}@${{ steps.build.outputs.digest }}"
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
