@@ -1,15 +1,15 @@
-# The Go compiler is run under linux/amd64 because GitHub Actions is using linux/amd64
-# and it is slow to run the compiler via QEMU.
+# We use cross-compilation because QEMU is slow. linux/amd64 is what GitHub uses.
 FROM --platform=linux/amd64 golang:1.19.3-alpine3.16@sha256:d171aa333fb386089206252503bc6ab545072670e0286e3d1bbc644362825c6e AS build
 ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
+
+# See .dockerignore for the list of files being copied.
 WORKDIR "/src/"
-COPY ["go.mod", "go.mod"]
-COPY ["go.sum", "go.sum"]
-COPY ["internal", "internal"]
-COPY ["cmd", "cmd"]
+COPY [".", "/src/"]
+
+# Compile the code.
 RUN \
   CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
   go build -tags timetzdata -trimpath -ldflags="-w -s -X main.Version=${GIT_DESCRIBE}" \
