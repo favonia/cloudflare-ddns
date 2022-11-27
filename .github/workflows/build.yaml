@@ -73,6 +73,7 @@ jobs:
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
       - name: 🚀 Build and deploy minimal Docker images
         uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
+        id: build
         with:
           target: "minimal"
           push: ${{ github.event_name != 'pull_request' }}
@@ -85,7 +86,7 @@ jobs:
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          cosign sign --key env://COSIGN_PRIVATE_KEY ${{ steps.meta.outputs.tags }}
+          cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "${{ steps.meta.outputs.tags }}@${{ steps.build.outputs.digest }}"
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
