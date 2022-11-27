@@ -2,12 +2,13 @@ package provider
 
 import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 // NewLocal creates a specialized Local provider that uses Cloudflare as the remote server.
 // (No actual UDP packets will be sent out.)
 func NewLocal() Provider {
-	return &Local{
+	return &protocol.Local{
 		ProviderName: "local",
 		RemoteUDPAddr: map[ipnet.Type]string{
 			ipnet.IP4: "1.1.1.1:443",
