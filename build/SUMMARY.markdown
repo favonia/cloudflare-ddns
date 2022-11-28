@@ -9,4 +9,4 @@
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
 
-A small and fast DDNS updater for Cloudflare. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)
+A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)

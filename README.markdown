@@ -7,7 +7,7 @@
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
 
-A small and fast DDNS updater for Cloudflare. A DDNS (dynamic DNS) updater detects your machine's public IP addresses and updates your domains' DNS records automatically.
+A feature-rich and robust Cloudflare DDNS updater with a small footprint. The program will detect your machine's public IP addresses and update DNS records using the Cloudflare API.
 
 ```
 🔇 Quiet mode enabled
@@ -28,7 +28,7 @@ A small and fast DDNS updater for Cloudflare. A DDNS (dynamic DNS) updater detec
 - 🔁 The Go runtime will re-use existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
-### 💯 Comprehensive Support of Domain Names
+### 💯 Complete Support of Domain Names
 
 Simply list all the domain names and you are done!
 
@@ -39,12 +39,12 @@ Simply list all the domain names and you are done!
 
 ### 🕵️ Privacy
 
-By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you could not update DNS records anyways.
+By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
 ### 🛡️ Security
 
 - 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
-- 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it more resistant to tampering. See the [design document](docs/DESIGN.markdown) for more information.
+- 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it more resistant to tampering. See the [design document](docs/DESIGN.markdown) for more information on security.
 - ✅ You can verify the Docker images using [Cosign](https://github.com/sigstore/cosign):
   ```bash
   COSIGN_REPOSITORY=favonia/cloudflare-ddns-sigs \
@@ -96,10 +96,10 @@ You need the [Go tool](https://golang.org/doc/install) to run the updater from i
 CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
-  go run github.com/favonia/cloudflare-ddns/cmd/ddns
+  go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
 
-👉 For non-Linux operating systems, please use the Docker image instead.
+👉 For non-Linux operating systems, please use the Docker method instead.
 
 </details>
 
@@ -131,10 +131,10 @@ _(Click to expand the following items.)_
 <details>
 <summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. If you wish to keep the updater isolated from the host network, check out the [official documentation on IPv6](https://docs.docker.com/config/daemon/ipv6/) and [this GitHub issue about IPv6](https://github.com/favonia/cloudflare-ddns/issues/119). If your host OS is Linux, here’s the tl;dr:
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, check out the [experimental `ip6tables` option](https://github.com/moby/moby/pull/41622). If your host OS is Linux, here’s the tl;dr:
 
 1. Use `network_mode: bridge` instead of `network_mode: host`.
-2. Edit or create `/etc/docker/daemon.json` with the following content:
+2. Edit or create `/etc/docker/daemon.json` with these settings:
    ```json
    {
      "ipv6": true,
@@ -144,7 +144,6 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
    }
    ```
 3. Restart the Docker daemon (if you are using systemd):
-
    ```sh
    systemctl restart docker.service
    ```
