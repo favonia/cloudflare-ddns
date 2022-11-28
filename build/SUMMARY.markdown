@@ -10,3 +10,10 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
 
 A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)
+
+## Supported Tags
+
+You can use a specific version tag (such as `v1.7.2`) or use one of the following tags:
+
+- `latest`: the latest released version
+- `edge`: the latest development version
