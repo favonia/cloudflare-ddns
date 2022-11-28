@@ -1,4 +1,5 @@
-package main
+// Package cap drops root privileges.
+package droproot
 
 import (
 	"syscall"
@@ -101,8 +102,8 @@ func dropCapabilities(ppfmt pp.PP) {
 	}
 }
 
-// dropPriviledges drops all privileges as much as possible.
-func dropPriviledges(ppfmt pp.PP) {
+// DropPriviledges drops all privileges as much as possible.
+func DropPriviledges(ppfmt pp.PP) {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiPriviledges, "Dropping privileges . . .")
 		ppfmt = ppfmt.IncIndent()
@@ -133,8 +134,8 @@ func printCapabilities(ppfmt pp.PP) {
 	}
 }
 
-// printPriviledges prints out all remaining privileges.
-func printPriviledges(ppfmt pp.PP) {
+// PrintPriviledges prints out all remaining privileges.
+func PrintPriviledges(ppfmt pp.PP) {
 	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining priviledges:")
 	inner := ppfmt.IncIndent()
 
