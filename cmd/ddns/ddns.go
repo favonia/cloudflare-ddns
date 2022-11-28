@@ -11,6 +11,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
@@ -102,10 +103,10 @@ func main() { //nolint:funlen
 	ppfmt.Noticef(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
-	dropPriviledges(ppfmt)
+	droproot.DropPriviledges(ppfmt)
 
 	// Print the current privileges
-	printPriviledges(ppfmt)
+	droproot.PrintPriviledges(ppfmt)
 
 	// Catch SIGINT and SIGTERM
 	chanSignal := make(chan os.Signal, 1)
