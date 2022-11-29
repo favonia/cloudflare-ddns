@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
+
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -21,35 +23,16 @@ type Healthchecks struct {
 
 	// Timeout for each ping.
 	Timeout time.Duration
-
-	// MaxRetries before giving up a ping.
-	MaxRetries int
 }
 
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
 	HealthchecksDefaultTimeout = 10 * time.Second
-
-	// HealthchecksDefaultMaxRetries is the maximum number of retries to ping Healthchecks.
-	HealthchecksDefaultMaxRetries int = 5
 )
-
-// HealthchecksOption is an option for [NewHealthchecks].
-type HealthchecksOption func(*Healthchecks)
-
-// SetHealthchecksMaxRetries sets the MaxRetries of a Healthchecks.
-func SetHealthchecksMaxRetries(maxRetries int) HealthchecksOption {
-	if maxRetries <= 0 {
-		panic("maxRetries <= 0")
-	}
-	return func(h *Healthchecks) {
-		h.MaxRetries = maxRetries
-	}
-}
 
 // NewHealthchecks creates a new Healthchecks monitor.
 // See https://healthchecks.io/docs/http_api/ for more information.
-func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Monitor, bool) {
+func NewHealthchecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
 	url, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
@@ -57,8 +40,8 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Moni
 	}
 
 	if !(url.IsAbs() && url.Opaque == "" && url.Host != "") {
-		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL.`)
-		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`)
+		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
+		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return nil, false
 	}
 
@@ -70,19 +53,14 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string, os ...HealthchecksOption) (Moni
 		// HTTPS is good!
 
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL.`)
-		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc".`)
+		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
+		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return nil, false
 	}
 
 	h := &Healthchecks{
-		BaseURL:    url,
-		Timeout:    HealthchecksDefaultTimeout,
-		MaxRetries: HealthchecksDefaultMaxRetries,
-	}
-
-	for _, o := range os {
-		o(h)
+		BaseURL: url,
+		Timeout: HealthchecksDefaultTimeout,
 	}
 
 	return h, true
@@ -93,7 +71,35 @@ func (h *Healthchecks) Describe(callback func(service, params string)) {
 	callback("Healthchecks", "(URL redacted)")
 }
 
-//nolint:funlen
+/*
+ping sends a POST request to a Healthchecks server.
+
+Code and body for UUID API:
+
+  - 200
+    OK
+  - 200
+    OK (not found)
+  - 200
+    OK (rate limited)
+  - 400
+    invalid url format
+
+Code and body for the slug API:
+
+  - 200
+    OK
+  - 400
+    invalid url format
+  - 404
+    not found
+  - 409
+    ambiguous slug
+  - 429
+    rate limit exceeded
+
+To support both APIs, we check both (1) whether the status code is 200 and (2) whether the body is "OK".
+*/
 func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, message string) bool {
 	url := h.BaseURL.JoinPath(endpoint)
 
@@ -102,75 +108,47 @@ func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, m
 		endpointDescription = strconv.Quote(endpoint)
 	}
 
-	for retries := 0; retries < h.MaxRetries; retries++ {
-		if retries > 0 {
-			time.Sleep(time.Second << (retries - 1))
-		}
+	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
+	defer cancel()
 
-		ctx, cancel := context.WithTimeout(ctx, h.Timeout)
-		defer cancel()
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), strings.NewReader(message))
-		if err != nil {
-			ppfmt.Warningf(pp.EmojiImpossible,
-				"Failed to prepare HTTP(S) request to the %s endpoint of Healthchecks: %v",
-				endpointDescription, err)
-			return false
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			ppfmt.Warningf(pp.EmojiError,
-				"Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v",
-				endpointDescription, err)
-			ppfmt.Infof(pp.EmojiRepeatOnce, "Trying again . . .")
-			continue
-		}
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			ppfmt.Warningf(pp.EmojiError,
-				"Failed to read HTTP(S) response from the %s endpoint of Healthchecks: %v",
-				endpointDescription, err)
-			ppfmt.Infof(pp.EmojiRepeatOnce, "Trying again . . .")
-			continue
-		}
-
-		/*
-			Code and body for uuid API:
-
-			200 OK
-			200 OK (not found)
-			200 OK (rate limited)
-			400 invalid url format
-
-			Code and body for the slug API:
-
-			200 OK
-			400 invalid url format
-			404 not found
-			409 ambiguous slug
-			429 rate limit exceeded
-		*/
-
-		bodyAsString := strings.TrimSpace(string(body))
-		if bodyAsString != "OK" {
-			ppfmt.Warningf(pp.EmojiError,
-				"Failed to ping the %s endpoint of Healthchecks; got response code: %d %s",
-				endpointDescription, resp.StatusCode, bodyAsString,
-			)
-			return false
-		}
-
-		ppfmt.Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks", endpointDescription)
-		return true
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, url.String(), strings.NewReader(message))
+	if err != nil {
+		ppfmt.Warningf(pp.EmojiImpossible,
+			"Failed to prepare HTTP(S) request to the %s endpoint of Healthchecks: %v",
+			endpointDescription, err)
+		return false
 	}
 
-	ppfmt.Warningf(
-		pp.EmojiError,
-		"Failed to send HTTP(S) request to the %s endpoint of Healthchecks in %d time(s)",
-		endpointDescription, h.MaxRetries)
-	return false
+	c := retryablehttp.NewClient()
+	c.Logger = nil
+
+	resp, err := c.Do(req)
+	if err != nil {
+		ppfmt.Warningf(pp.EmojiError,
+			"Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v",
+			endpointDescription, err)
+		return false
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		ppfmt.Warningf(pp.EmojiError,
+			"Failed to read HTTP(S) response from the %s endpoint of Healthchecks: %v",
+			endpointDescription, err)
+		return false
+	}
+
+	bodyAsString := strings.TrimSpace(string(body))
+	if resp.StatusCode != http.StatusOK || bodyAsString != "OK" {
+		ppfmt.Warningf(pp.EmojiError,
+			"Failed to ping the %s endpoint of Healthchecks; got response code: %d %s",
+			endpointDescription, resp.StatusCode, bodyAsString,
+		)
+		return false
+	}
+
+	ppfmt.Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks", endpointDescription)
+	return true
 }
 
 // Success pings the root endpoint.
