@@ -115,6 +115,9 @@ services:
     image: favonia/cloudflare-ddns:latest
     network_mode: host
     restart: always
+    cap_drop:
+      - all
+    read_only: true
     security_opt:
       - no-new-privileges:true
     environment:
@@ -157,9 +160,9 @@ Docker’s default restart policies should prevent excessive logging when there 
 </details>
 
 <details>
-<summary>🛡️ Use <code>no-new-privileges:true</code>, <code>PUID</code>, and <code>PGID</code> to protect yourself.</summary>
+<summary>🛡️ Use <code>cap_drop</code>, <code>read_only</code>, <code>no-new-privileges</code>, <code>PUID</code>, and <code>PGID</code> to protect yourself.</summary>
 
-Change `1000` to the user or group IDs you wish to use to run the updater. The setting `no-new-privileges:true` provides additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all those privileges as much as possible.
+Change `1000` to the user or group IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` provide additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all superuser privileges.
 
 </details>
 
