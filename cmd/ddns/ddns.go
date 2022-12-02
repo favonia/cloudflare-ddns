@@ -18,11 +18,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
-const (
-	intervalUnit     = time.Second
-	intervalLargeGap = time.Second * 10
-)
-
 // signalWait returns false if the alarm is triggered before other signals come.
 func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
 	chanAlarm := time.After(d)
