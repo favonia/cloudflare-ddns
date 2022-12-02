@@ -11,6 +11,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -151,17 +152,7 @@ mainLoop:
 
 		// Display the remaining time interval
 		interval := time.Until(next)
-		switch {
-		case interval < -intervalLargeGap:
-			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now (running behind by %v) . . .",
-				-interval.Round(intervalUnit))
-		case interval < intervalUnit:
-			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses now . . .")
-		case interval < intervalLargeGap:
-			ppfmt.Infof(pp.EmojiNow, "Checking the IP addresses in less than %v . . .", intervalLargeGap)
-		default:
-			ppfmt.Infof(pp.EmojiAlarm, "Checking the IP addresses in about %v . . .", interval.Round(intervalUnit))
-		}
+		cron.PrintCountdown(ppfmt, "Checking the IP addresses", interval)
 
 		// Wait for the next signal or the alarm, whichever comes first
 		sig, ok := signalWait(chanSignal, interval)
