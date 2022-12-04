@@ -32,7 +32,7 @@ See [Issues](https://github.com/favonia/cloudflare-ddns/issues) and [Milestones]
 2. The adversary can forge IP packets but cannot monitor, modify, or significantly delay existing IP packets.
 3. The adversary may know your machine’s exact hardware, software, and configurations (except authentication credentials).
 
-The goal is to stop the adversary from tricking the updater into updating managed domain with an incorrect IP address.
+The goal is to stop the adversary from tricking the updater into updating managed domains with an incorrect IP address.
 
 ### Protection
 
@@ -40,7 +40,7 @@ The connection to Cloudflare’s servers is always protected by HTTPS, making it
 
 ### Unsafe Scenarios
 
-Public IP addresses, by their own definition, depend on how other machines (in our case, Cloudflare’s servers) see the current machine over the internet. Therefore, if an adversary can control the network the updater can access, then it is impossible to secure it. This means one should avoid using this updater (or any DDNS updater) in the following scenarios:
+Public IP addresses, by their own definition, depend on how other machines (in our case, Cloudflare’s servers) see the current machine over the internet. Therefore, if the adversary can control the network the updater can access, then it is impossible to secure it. This means one should avoid using this updater (or any DDNS updater) in the following scenarios:
 
 1. Your machine is connected to the internet via unsafe Wi-Fi. This can include WPA2 Enterprise if your machine does not verify the identity of the RADIUS servers. In general, it is much more challenging to protect Wi-Fi connections.
 2. The adversary can access networks close to Cloudflare’s servers and intercept your IP packets. Note that the adversary does not need to break HTTPS---HTTPS does not protect the source and target IP addresses.
