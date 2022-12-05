@@ -5,29 +5,16 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
+	"github.com/favonia/cloudflare-ddns/internal/signal"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
-
-// signalWait returns false if the alarm is triggered before other signals come.
-func signalWait(signal chan os.Signal, d time.Duration) (os.Signal, bool) {
-	chanAlarm := time.After(d)
-	select {
-	case sig := <-signal:
-		return sig, true
-	case <-chanAlarm:
-		return nil, false
-	}
-}
 
 // Version is the version of the updater that will be shown in the output.
 // This is to be overwritten by the linker argument -X main.Version=version.
@@ -40,21 +27,12 @@ func formatName() string {
 	return fmt.Sprintf("Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, setter.Setter) {
+func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 	c := config.Default()
-	bye := func() {
-		// Usually, this is called only after initConfig,
-		// but we are exiting early.
-		c.Monitor.Start(ctx, ppfmt, formatName())
-
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
-		c.Monitor.ExitStatus(ctx, ppfmt, 1, "configuration errors")
-		os.Exit(1)
-	}
 
 	// Read the config
 	if !c.ReadEnv(ppfmt) || !c.NormalizeDomains(ppfmt) {
-		bye()
+		return c, nil, false
 	}
 
 	// Print the config
@@ -63,16 +41,16 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, api.Handle, s
 	// Get the handler
 	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
 	if !ok {
-		bye()
+		return c, nil, false
 	}
 
 	// Get the setter
 	s, ok := setter.New(ppfmt, h)
 	if !ok {
-		bye()
+		return c, nil, false
 	}
 
-	return c, h, s
+	return c, s, true
 }
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
@@ -86,53 +64,60 @@ func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.S
 	}
 }
 
-func main() { //nolint:funlen
+func main() {
+	os.Exit(realMain())
+}
+
+func realMain() int { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
 	if !config.ReadEmoji("EMOJI", &ppfmt) || !config.ReadQuiet("QUIET", &ppfmt) {
 		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
-		return
+		return 1
 	}
 	if !ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
+	// Show the name and the version of the updater
 	ppfmt.Noticef(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
 	droproot.DropPriviledges(ppfmt)
-
-	// Print the current privileges
 	droproot.PrintPriviledges(ppfmt)
 
-	// Catch SIGINT and SIGTERM
-	chanSignal := make(chan os.Signal, 1)
-	signal.Notify(chanSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	// Catch signals SIGINT and SIGTERM
+	sig := signal.Setup()
 
-	// Get the context
+	// Get the contexts
 	ctx := context.Background()
+	ctxWithSignals, _ := signal.NotifyContext(ctx)
 
 	// Read the config and get the handler and the setter
-	c, h, s := initConfig(ctx, ppfmt)
-
-	// Start the tool now
+	c, s, configOk := initConfig(ctx, ppfmt)
+	// Ping the monitor regardless of whether initConfig succeeded
 	c.Monitor.Start(ctx, ppfmt, formatName())
+	// Bail out now if initConfig failed
+	if !configOk {
+		c.Monitor.ExitStatus(ctx, ppfmt, 1, "Config errors")
+		ppfmt.Noticef(pp.EmojiBye, "Bye!")
+		return 1
+	}
 
 	first := true
-mainLoop:
 	for {
 		// The next time to run the updater.
 		// This is called before running the updater so that the timer would not be delayed by the updating.
 		next := c.UpdateCron.Next()
 
-		// Update the IP
-		if !first || c.UpdateOnStart {
-			if ok, msg := updater.UpdateIPs(ctx, ppfmt, c, s); ok {
+		// Update the IP addresses
+		if first && !c.UpdateOnStart {
+			c.Monitor.Success(ctx, ppfmt, "Started (no action)")
+		} else {
+			if ok, msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s); ok {
 				c.Monitor.Success(ctx, ppfmt, msg)
 			} else {
 				c.Monitor.Failure(ctx, ppfmt, msg)
 			}
-		} else {
-			c.Monitor.Success(ctx, ppfmt, "")
 		}
 		first = false
 
@@ -140,9 +125,9 @@ mainLoop:
 		if next.IsZero() {
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
+			c.Monitor.ExitStatus(ctx, ppfmt, 1, "No scheduled updates")
 			ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			c.Monitor.ExitStatus(ctx, ppfmt, 0, "Not scheduled updates")
-			break mainLoop
+			return 1
 		}
 
 		// Display the remaining time interval
@@ -150,31 +135,11 @@ mainLoop:
 		cron.PrintCountdown(ppfmt, "Checking the IP addresses", interval)
 
 		// Wait for the next signal or the alarm, whichever comes first
-		sig, ok := signalWait(chanSignal, interval)
-		if !ok {
-			// The alarm comes first
-			continue mainLoop
-		}
-		switch sig.(syscall.Signal) { //nolint:forcetypeassert
-		case syscall.SIGHUP:
-			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
-			h.FlushCache()
-
-			ppfmt.Noticef(pp.EmojiRepeatOnce, "Restarting . . .")
-			c, h, s = initConfig(ctx, ppfmt)
-			c.Monitor.Log(ctx, ppfmt, "Restarted")
-			continue mainLoop
-
-		case syscall.SIGINT, syscall.SIGTERM:
-			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
+		if !sig.Sleep(ppfmt, interval) {
 			stopUpdating(ctx, ppfmt, c, s)
+			c.Monitor.ExitStatus(ctx, ppfmt, 0, "Terminated")
 			ppfmt.Noticef(pp.EmojiBye, "Bye!")
-			c.Monitor.ExitStatus(ctx, ppfmt, 0, fmt.Sprintf("Signal: %v", sig))
-			break mainLoop
-
-		default:
-			ppfmt.Noticef(pp.EmojiSignal, "Caught and ignored unexpected signal: %v", sig)
-			continue mainLoop
+			return 0
 		}
-	}
+	} // mainLoop
 }

@@ -341,7 +341,7 @@ func TestClear(t *testing.T) {
 			true,
 			``,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
+				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already cleared", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true)
@@ -349,7 +349,7 @@ func TestClear(t *testing.T) {
 		},
 		"1unmatched": {
 			true,
-			`Cleared AAAA sub.test.org`,
+			`Deleted AAAA sub.test.org`,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1) //nolint:lll
 			},
@@ -364,7 +364,7 @@ func TestClear(t *testing.T) {
 			false,
 			`Failed to clear AAAA sub.test.org`,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete deleting of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -375,7 +375,7 @@ func TestClear(t *testing.T) {
 		},
 		"impossible-records": {
 			true,
-			`Cleared AAAA sub.test.org`,
+			`Deleted AAAA sub.test.org`,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll

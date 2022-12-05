@@ -196,7 +196,7 @@ func (s *setter) Clear(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 	sort.Strings(unmatchedIDs)
 
 	if len(unmatchedIDs) == 0 {
-		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
+		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already cleared", recordType, domainDescription)
 		return true, ""
 	}
 
@@ -211,10 +211,10 @@ func (s *setter) Clear(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 	}
 	if !allOk {
 		ppfmt.Errorf(pp.EmojiError,
-			"Failed to complete updating of %s records of %q; records might be inconsistent",
+			"Failed to complete deleting of %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
 		return false, fmt.Sprintf("Failed to clear %s %s", recordType, domainDescription)
 	}
 
-	return true, fmt.Sprintf("Cleared %s %s", recordType, domainDescription)
+	return true, fmt.Sprintf("Deleted %s %s", recordType, domainDescription)
 }
