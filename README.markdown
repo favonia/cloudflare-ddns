@@ -169,7 +169,7 @@ Change `1000` to the user or group IDs you wish to use to run the updater. The s
 <details>
 <summary>🎭 Use <code>PROXIED=true</code> to hide your IP addresses.</summary>
 
-The setting `PROXIED=true` instructs Cloudflare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. (The default value of `PROXIED` is `false`.)
+The setting `PROXIED=true` instructs Cloudflare to cache webpages on your machine and hide your actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you must turn off the proxying by removing `PROXIED=true`. (The default value of `PROXIED` is `false`.)
 
 </details>
 

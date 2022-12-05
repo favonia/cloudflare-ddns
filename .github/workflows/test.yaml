@@ -46,6 +46,9 @@ jobs:
   fuzz:
     name: Fuzz
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-fuzz-${{ github.ref }}
+      cancel-in-progress: true
     env:
       FUZZTIME: "60s"
     steps:

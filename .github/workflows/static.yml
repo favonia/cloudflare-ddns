@@ -17,7 +17,7 @@ permissions:
 
 # Allow one concurrent deployment
 concurrency:
-  group: "pages"
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:

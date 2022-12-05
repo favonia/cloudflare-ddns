@@ -1,3 +1,7 @@
+# [1.8.1](https://github.com/favonia/cloudflare-ddns/compare/v1.8.0...v1.8.1) (2022-12-05)
+
+A minor update with internal refactoring and insignificant UI adjustments.
+
 # [1.8.0](https://github.com/favonia/cloudflare-ddns/compare/v1.7.2...v1.8.0) (2022-11-25)
 
 ### Bug Fixes
