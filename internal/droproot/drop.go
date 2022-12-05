@@ -1,4 +1,4 @@
-// Package cap drops root privileges.
+// Package droproot drops root privileges.
 package droproot
 
 import (
