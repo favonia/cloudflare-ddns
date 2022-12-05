@@ -19,7 +19,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-build-${{ github.ref }}
       cancel-in-progress: true
     permissions:
       contents: read

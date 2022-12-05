@@ -117,8 +117,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
-			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", name, zone.Status)
-			ppfmt.Warningf(pp.EmojiWarning, "Some features might stop working")
+			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", name, zone.Status) //nolint:lll
 			ids = append(ids, zone.ID)
 		case
 			"deleted": // archived, pending/moved for too long

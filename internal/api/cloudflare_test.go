@@ -412,8 +412,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", "test.org", "pending"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiWarning, "Some features might stop working"),
+					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "pending"), //nolint:lll
 				)
 			},
 		},
@@ -423,8 +422,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete", "test.org", "initializing"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiWarning, "Some features might stop working"),
+					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "initializing"), //nolint:lll
 				)
 			},
 		},
