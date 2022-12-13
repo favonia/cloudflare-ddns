@@ -27,7 +27,7 @@ jobs:
             uploader.codecov.io:443
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -66,7 +66,7 @@ jobs:
             uploader.codecov.io:443
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -93,7 +93,7 @@ jobs:
             sum.golang.org:443
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
