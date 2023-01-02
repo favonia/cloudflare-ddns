@@ -1,8 +1,0 @@
-homepage: "https://github.com/favonia/cloudflare-ddns"
-language: go
-primary_contact: "favonia@gmail.com"
-main_repo: "https://github.com/favonia/cloudflare-ddns"
-fuzzing_engines:
-  - libfuzzer
-sanitizers:
-  - address
