@@ -6,7 +6,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.57.1
 	github.com/golang/mock v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
-	github.com/jellydator/ttlcache/v3 v3.0.0
+	github.com/jellydator/ttlcache/v3 v3.0.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.4.0
