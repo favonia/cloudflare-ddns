@@ -1,6 +1,6 @@
-# [1.8.2](https://github.com/favonia/cloudflare-ddns/compare/v1.8.1...1.8.2) (2023-01-02)
+# [1.8.2](https://github.com/favonia/cloudflare-ddns/compare/v1.8.1...v1.8.2) (2023-01-02)
 
-This release is shipped with the updated [golang.org/x/net/http2](https://pkg.go.dev/golang.org/x/net/http2) which fixes [CVE-2022-41717](https://pkg.go.dev/vuln/GO-2022-1144). The updater should not be affected by the CVE, but a vulnerability scanner might still mark the updater or the image as insecure. No new features are added in this release.
+This release is shipped with a newer [golang.org/x/net/http2](https://pkg.go.dev/golang.org/x/net/http2) that fixes [CVE-2022-41717](https://pkg.go.dev/vuln/GO-2022-1144). The updater should not be affected by the CVE, but a vulnerability scanner might still mark the updater or the image as insecure. This release should shut those scanners. No new features are added.
 
 # [1.8.1](https://github.com/favonia/cloudflare-ddns/compare/v1.8.0...v1.8.1) (2022-12-05)
 
