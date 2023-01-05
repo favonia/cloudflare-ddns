@@ -564,9 +564,10 @@ func TestListRecords(t *testing.T) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
-				"name": {"sub.test.org"},
-				"page": {"1"},
-				"type": {ipNet.RecordType()},
+				"name":     {"sub.test.org"},
+				"page":     {"1"},
+				"per_page": {"50"},
+				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
@@ -615,9 +616,10 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
-				"name": {"sub.test.org"},
-				"page": {"1"},
-				"type": {ipNet.RecordType()},
+				"name":     {"sub.test.org"},
+				"page":     {"1"},
+				"per_page": {"50"},
+				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
@@ -680,9 +682,10 @@ func TestListRecordsWildcard(t *testing.T) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
-				"name": {"*.test.org"},
-				"page": {"1"},
-				"type": {ipNet.RecordType()},
+				"name":     {"*.test.org"},
+				"page":     {"1"},
+				"per_page": {"50"},
+				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")

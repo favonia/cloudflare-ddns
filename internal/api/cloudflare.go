@@ -180,10 +180,12 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	}
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
-	rs, err := h.cf.DNSRecords(ctx, zone, cloudflare.DNSRecord{
-		Name: domain.DNSNameASCII(),
-		Type: ipNet.RecordType(),
-	})
+	rs, _, err := h.cf.ListDNSRecords(ctx,
+		cloudflare.ZoneIdentifier(zone),
+		cloudflare.ListDNSRecordsParams{
+			Name: domain.DNSNameASCII(),
+			Type: ipNet.RecordType(),
+		})
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
 		return nil, false
@@ -212,7 +214,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if err := h.cf.DeleteDNSRecord(ctx, zone, id); err != nil {
+	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), id); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
@@ -238,13 +240,14 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
-	payload := cloudflare.DNSRecord{
+	params := cloudflare.UpdateDNSRecordParams{
+		ID:      id,
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
 
-	if err := h.cf.UpdateDNSRecord(ctx, zone, id, payload); err != nil {
+	if err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
@@ -270,7 +273,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
-	payload := cloudflare.DNSRecord{
+	params := cloudflare.CreateDNSRecordParams{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
@@ -278,7 +281,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		Proxied: &proxied,
 	}
 
-	res, err := h.cf.CreateDNSRecord(ctx, zone, payload)
+	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
