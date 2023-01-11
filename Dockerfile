@@ -1,5 +1,5 @@
 # We use cross-compilation because QEMU is slow. linux/amd64 is what GitHub uses.
-FROM --platform=linux/amd64 golang:1.19.4-alpine3.16@sha256:4b4f7127b01b372115ed9054abc6de0a0b3fdea224561b354af7bb6e946acaa9 AS build
+FROM --platform=linux/amd64 golang:1.19.5-alpine3.16@sha256:65060885c8882f0119d77edcb42b414a0b96f6a8d466e9bbd782311ae51bf9f1 AS build
 ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH
