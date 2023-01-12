@@ -60,7 +60,7 @@ jobs:
         run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         id: git-describe
       - name: 📝 Calculate metadata for minimal Docker images
-        uses: docker/metadata-action@57396166ad8aefe6098280995947635806a0e6ea # v4.1.1
+        uses: docker/metadata-action@05d22bf31770de02e20c67c70365453e00227f61 # v4.2.0
         id: meta
         with:
           images: ${{ github.repository }}
