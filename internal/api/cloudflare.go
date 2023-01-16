@@ -279,6 +279,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 		TTL:     ttl.Int(),
 		Proxied: &proxied,
+		Comment: "Created by cloudflare-ddns",
 	}
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params)
