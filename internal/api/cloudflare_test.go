@@ -1023,6 +1023,7 @@ func TestCreateRecordValid(t *testing.T) {
 				require.Equal(t, "::1", record.Content)
 				require.Equal(t, 100, record.TTL)
 				require.Equal(t, false, *record.Proxied)
+				require.Equal(t, "Created by cloudflare-ddns", record.Comment)
 				record.ID = "record1"
 
 				w.Header().Set("content-type", "application/json")
