@@ -40,7 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Setup Pages
-        uses: actions/configure-pages@c5a3e1159e0cbdf0845eb8811bd39e39fc3099c2 # v2.1.3
+        uses: actions/configure-pages@5992ce8fd557229bb0e98f78a89136a149cc9758 # v3.0.0
       - name: Upload artifact
         uses: actions/upload-pages-artifact@253fd476ed429e83b7aae64a92a75b4ceb1a17cf # v1.0.7
         with:
