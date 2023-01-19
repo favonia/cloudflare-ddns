@@ -167,10 +167,15 @@ func mockZone(name string, i int, status string) *cloudflare.Zone {
 	}
 }
 
+const (
+	zonePageSize      = 50
+	dnsRecordPageSize = 100
+)
+
 func mockZonesResponse(zoneName string, zoneStatuses []string) *cloudflare.ZonesResponse {
 	numZones := len(zoneStatuses)
 
-	if numZones > 50 {
+	if numZones > zonePageSize {
 		panic("mockZonesResponse got too many zone names")
 	}
 
@@ -183,8 +188,8 @@ func mockZonesResponse(zoneName string, zoneStatuses []string) *cloudflare.Zones
 		Result: zones,
 		ResultInfo: cloudflare.ResultInfo{
 			Page:       1,
-			PerPage:    50,
-			TotalPages: (numZones + 49) / 50,
+			PerPage:    zonePageSize,
+			TotalPages: (numZones + zonePageSize - 1) / zonePageSize,
 			Count:      numZones,
 			Total:      numZones,
 			Cursor:     "",
@@ -206,7 +211,7 @@ func handleZones(t *testing.T, zoneName string, zoneStatuses []string, w http.Re
 	require.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
-		"per_page":   {"50"},
+		"per_page":   {fmt.Sprintf("%d", zonePageSize)},
 	}, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
@@ -566,7 +571,7 @@ func TestListRecords(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
-				"per_page": {"50"},
+				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
@@ -618,7 +623,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
-				"per_page": {"50"},
+				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
@@ -684,7 +689,7 @@ func TestListRecordsWildcard(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"*.test.org"},
 				"page":     {"1"},
-				"per_page": {"50"},
+				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
