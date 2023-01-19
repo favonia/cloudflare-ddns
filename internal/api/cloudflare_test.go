@@ -924,8 +924,6 @@ func TestUpdateRecordValid(t *testing.T) {
 			err := json.NewDecoder(r.Body).Decode(&record)
 			require.NoError(t, err)
 
-			require.Equal(t, "sub.test.org", record.Name)
-			require.Equal(t, ipnet.IP6.RecordType(), record.Type)
 			require.Equal(t, "::2", record.Content)
 
 			w.Header().Set("content-type", "application/json")

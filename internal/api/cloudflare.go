@@ -242,8 +242,6 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	//nolint:exhaustruct // Other fields are intentionally omitted
 	params := cloudflare.UpdateDNSRecordParams{
 		ID:      id,
-		Name:    domain.DNSNameASCII(),
-		Type:    ipNet.RecordType(),
 		Content: ip.String(),
 	}
 
