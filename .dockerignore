@@ -9,4 +9,3 @@
 
 # include files for fuzzing
 !test
-!.clusterfuzzlite
