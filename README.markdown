@@ -383,7 +383,7 @@ _(Click to expand the following items.)_
 | `cloudflare.authentication.api_token` | ✔️  | Use `CF_API_TOKEN=key`                                                                                                                                             |
 | `cloudflare.authentication.api_key`   | ❌  | _Use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)_                                                                          |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                |
-| `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs); for example, if your zone is `example.org` and your subdomain is `www`, use `DOMAINS=sub.example.org` |
+| `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs); for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature    |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                 |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                 |
