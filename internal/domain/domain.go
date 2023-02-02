@@ -59,16 +59,20 @@ func New(domain string) (Domain, error) {
 	// Remove the final dot for consistency
 	normalized = strings.TrimRight(normalized, ".")
 
-	switch {
-	case normalized == "*":
+	// Special case 1: "*"
+	if normalized == "*" {
 		return Wildcard(""), nil
-	case strings.HasPrefix(normalized, "*."):
+	}
+
+	// Special case 2: "*.something"
+	if normalized, ok := strings.CutPrefix(normalized, "*."); ok {
 		// redo the normalization after removing the offending "*" to get the true error (if any)
 		normalized, err := profileKeepingLeadingDots.ToASCII(strings.TrimPrefix(normalized, "*."))
 		return Wildcard(normalized), err
-	default:
-		return FQDN(normalized), err
 	}
+
+	// otherwise
+	return FQDN(normalized), err
 }
 
 // SortDomains sorts a list of domains according to their ASCII representations.
