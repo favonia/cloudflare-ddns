@@ -57,7 +57,6 @@ func scanDomainList(ppfmt pp.PP, input string, tokens []string) ([]domain.Domain
 	return domains, tokens
 }
 
-//nolint:unparam
 func scanConstants(_ppfmt pp.PP, _input string, tokens []string, wanted []string) (string, []string) {
 	if len(tokens) == 0 {
 		return "", nil
