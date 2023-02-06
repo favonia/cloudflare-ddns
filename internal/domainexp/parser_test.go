@@ -23,10 +23,11 @@ func TestParseList(t *testing.T) {
 		expected      ds
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"1": {"a", true, ds{f("a")}, nil},
-		"2": {" a ,  b ", true, ds{f("a"), f("b")}, nil},
-		"3": {" a ,  b ,,,,,, c ", true, ds{f("a"), f("b"), f("c")}, nil},
-		"4": {
+		"a":        {"a", true, ds{f("a")}, nil},
+		"ab":       {" a ,  b ", true, ds{f("a"), f("b")}, nil},
+		"abc":      {" a ,  b ,,,,,, c ", true, ds{f("a"), f("b"), f("c")}, nil},
+		"wildcard": {" a ,  b ,,,,,, *.c ", true, ds{f("a"), f("b"), w("c")}, nil},
+		"missing-comma": {
 			" a b c d ", true,
 			ds{f("a"), f("b"), f("c"), f("d")},
 			func(m *mocks.MockPP) {
