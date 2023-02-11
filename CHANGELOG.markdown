@@ -39,11 +39,11 @@ A minor update with internal refactoring and insignificant UI adjustments.
 
 - The `ipify` provider is deprecated.
 
-## [1.7.2](https://github.com/favonia/cloudflare-ddns/compare/v1.7.1...v1.7.2) (2022-11-07)
+# [1.7.2](https://github.com/favonia/cloudflare-ddns/compare/v1.7.1...v1.7.2) (2022-11-07)
 
 - This version was published to retract all prior versions on <https://pkg.go.dev>. There are no observable changes.
 
-## [1.7.1](https://github.com/favonia/cloudflare-ddns/compare/v1.7.0...v1.7.1) (2022-10-23)
+# [1.7.1](https://github.com/favonia/cloudflare-ddns/compare/v1.7.0...v1.7.1) (2022-10-23)
 
 ### Features
 
@@ -65,7 +65,7 @@ A minor update with internal refactoring and insignificant UI adjustments.
 
 - experimental `PROXIED_DOMAINS` and `NON_PROXIED_DOMAINS` introduced in 1.6.0 are no longer supported; they are replaced by the new experimental template system
 
-## [1.6.1](https://github.com/favonia/cloudflare-ddns/compare/v1.6.0...v1.6.1) (2022-08-13)
+# [1.6.1](https://github.com/favonia/cloudflare-ddns/compare/v1.6.0...v1.6.1) (2022-08-13)
 
 ### Bug Fixes
 
