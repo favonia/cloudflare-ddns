@@ -1,3 +1,17 @@
+# [1.8.3](https://github.com/favonia/cloudflare-ddns/compare/v1.8.2...v1.8.3) (2023-02-11)
+
+### Bug Fixes
+
+- **api:** optimize network traffic for UpdateRecord ([#358](https://github.com/favonia/cloudflare-ddns/issues/358)) ([64bd670](https://github.com/favonia/cloudflare-ddns/commit/64bd670602d031745bd168ee22e57e7ea7e525b3))
+
+### Features
+
+- **api:** annotate newly created DNS records ([#366](https://github.com/favonia/cloudflare-ddns/issues/366)) ([09bbaf4](https://github.com/favonia/cloudflare-ddns/commit/09bbaf4bcb8be0fd0865e7f5f998e53f6dcb0741)): this uses the newly available [DNS record comments](https://blog.cloudflare.com/dns-record-comments/)
+
+### Other Notes
+
+Upgraded Go to version 1.20.
+
 # [1.8.2](https://github.com/favonia/cloudflare-ddns/compare/v1.8.1...v1.8.2) (2023-01-02)
 
 This release is shipped with a newer [golang.org/x/net/http2](https://pkg.go.dev/golang.org/x/net/http2) that fixes [CVE-2022-41717](https://pkg.go.dev/vuln/GO-2022-1144). The updater should not be affected by the CVE, but a vulnerability scanner might still mark the updater or the image as insecure. This release should shut those scanners. No new features are added.
