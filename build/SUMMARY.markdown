@@ -12,7 +12,5 @@ A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full docume
 
 ## Supported Tags
 
-You can use a specific version tag (such as `v1.7.2`) or use one of the following tags:
-
 - `latest`: the latest released version
 - `edge`: the latest development version
