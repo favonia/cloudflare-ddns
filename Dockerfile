@@ -1,5 +1,5 @@
 # We use cross-compilation because QEMU is slow.
-FROM --platform=${BUILDPLATFORM} golang:1.20.0-alpine3.16@sha256:86eb22dea4141189e5656abd0616880387f0515a8d17ee1ef4b2ac79eb6e4ded AS build
+FROM --platform=${BUILDPLATFORM} golang:1.20.0-alpine3.16@sha256:846aec1428bbc484681625bc066c057f2fc5805eb9ea67bd47e4f86e4ca35d83 AS build
 ARG GIT_DESCRIBE
 ARG TARGETOS
 ARG TARGETARCH
