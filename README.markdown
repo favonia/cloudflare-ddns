@@ -29,11 +29,9 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### 💯 Complete Support of Domain Names
 
-Simply list all the domain names and you are done!
-
+- 😌 List domain names without worrying about DNS zones or zone IDs. This updater finds the DNS zones for you, and it can handle multiple DNS zones.
 - 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).
 - 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
-- 🔍 This updater automatically finds the DNS zones for you, and it can handle multiple DNS zones.
 - 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
 
 ### 🕵️ Privacy
@@ -359,35 +357,36 @@ _(Click to expand the following items.)_
 
 ⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult.
 
-| Old Parameter                          |     | New Paramater                                                                      |
+| Old Parameter                          |     | Note                                                                               |
 | -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
 | `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                             |
 | `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                       |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                             |
-| `PROXIED=true`                         | ✔️  | Same                                                                               |
+| `PROXIED=true`                         | ✔️  | Same; use `PROXIED=true`                                                           |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same                                                                               |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same; use `DELETE_ON_STOP=true`                                                    |
 | `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | _There are no shells in the minimum Docker image_                                  |
-| `DNS_SERVER=server`                    | ❌  | _Only Cloudflare is supported_                                                     |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimum Docker image                                    |
+| `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported                                                       |
 
 </details>
 
 <details>
 <summary>I am migrating from <a href="https://github.com/timothymiller/cloudflare-ddns">timothymiller/cloudflare-ddns.</a></summary>
 
-| Old JSON Key                          |     | New Paramater                                                                                                                                                      |
-| ------------------------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cloudflare.authentication.api_token` | ✔️  | Use `CF_API_TOKEN=key`                                                                                                                                             |
-| `cloudflare.authentication.api_key`   | ❌  | _Use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)_                                                                          |
-| `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                |
-| `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs); for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature    |
-| `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                 |
-| `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                 |
-| `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                              |
-| `purgeUnknownRecords`                 | ❌  | _The updater never deletes unmanaged DNS records_                                                                                                                  |
+| Old JSON Key                          |     | Note                                                                                                                                                                        |
+| ------------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cloudflare.authentication.api_token` | ✔️  | Use `CF_API_TOKEN=key`                                                                                                                                                      |
+| `cloudflare.authentication.api_key`   | ❌  | Please use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)                                                                              |
+| `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                         |
+| `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
+| `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature             |
+| `load_balancer`                       | ❌  | Not supported, but please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                            |
+| `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                          |
+| `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                          |
+| `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                       |
+| `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                             |
 
 </details>
 
