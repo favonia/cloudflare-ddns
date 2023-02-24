@@ -23,15 +23,15 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### ⚡ Efficiency
 
-- 🤏 The Docker images are small (less than 3 MB after compression).
-- 🔁 The Go runtime will re-use existing HTTP connections.
+- 🤏 The Docker image takes less than 3 MB (after compression).
+- 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
 ### 💯 Complete Support of Domain Names
 
-- 😌 List domain names without worrying about DNS zones or zone IDs. This updater finds the DNS zones for you, and it can handle multiple DNS zones.
+- 😌 You can list multiple domains without worrying about zones. The updater finds their zones for you, and it can handle multiple zones.
 - 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).
-- 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
+- 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
 
 ### 🕵️ Privacy
