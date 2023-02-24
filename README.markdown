@@ -362,12 +362,12 @@ _(Click to expand the following items.)_
 | `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                             |
 | `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                       |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                             |
-| `PROXIED=true`                         | ✔️  | Same; use `PROXIED=true`                                                           |
+| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                              |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same; use `DELETE_ON_STOP=true`                                                    |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                       |
 | `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimum Docker image                                    |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                    |
 | `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported                                                       |
 
 </details>
@@ -382,7 +382,7 @@ _(Click to expand the following items.)_
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                         |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature             |
-| `load_balancer`                       | ❌  | Not supported, but please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                            |
+| `load_balancer`                       | ❌  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                            |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                          |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                          |
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                       |
