@@ -23,15 +23,15 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### ⚡ Efficiency
 
-- 🤏 The Docker images are small (less than 3 MB after compression).
-- 🔁 The Go runtime will re-use existing HTTP connections.
+- 🤏 The Docker image takes less than 3 MB (after compression).
+- 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
 ### 💯 Complete Support of Domain Names
 
-- 😌 List domain names without worrying about DNS zones or zone IDs. This updater finds the DNS zones for you, and it can handle multiple DNS zones.
+- 😌 You can list multiple domains without worrying about zones. The updater finds their zones for you, and it can handle multiple zones.
 - 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).
-- 🃏 [Wildcard domain names](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
+- 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
 
 ### 🕵️ Privacy
@@ -362,12 +362,12 @@ _(Click to expand the following items.)_
 | `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                             |
 | `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                       |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                             |
-| `PROXIED=true`                         | ✔️  | Same; use `PROXIED=true`                                                           |
+| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                              |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same; use `DELETE_ON_STOP=true`                                                    |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                       |
 | `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimum Docker image                                    |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                    |
 | `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported                                                       |
 
 </details>
@@ -382,7 +382,7 @@ _(Click to expand the following items.)_
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                         |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with **fully qualified domain names** (FQDNs) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature             |
-| `load_balancer`                       | ❌  | Not supported, but please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                            |
+| `load_balancer`                       | ❌  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                            |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                          |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                          |
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                       |
