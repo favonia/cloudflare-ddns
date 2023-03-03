@@ -1,3 +1,7 @@
+# [1.8.4](https://github.com/favonia/cloudflare-ddns/compare/v1.8.3...v1.8.4) (2023-03-03)
+
+This release comes with no user-visible changes. It was compiled by version 1.20.1 of Go (instead of 1.20) and was shipped with version 0.62.0 of the [cloudflare-go library](https://github.com/cloudflare/cloudflare-go/) that [fixed a bug about proxy settings](https://github.com/cloudflare/cloudflare-go/pull/1222). I believe the bug does not affect the updater, but there's no reason not to use the fixed version. 😄
+
 # [1.8.3](https://github.com/favonia/cloudflare-ddns/compare/v1.8.2...v1.8.3) (2023-02-11)
 
 ### Bug Fixes
