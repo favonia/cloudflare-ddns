@@ -146,7 +146,7 @@ func describeGroups(gids []int) string {
 
 // PrintPriviledges prints out all remaining privileges.
 func PrintPriviledges(ppfmt pp.PP) {
-	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining priviledges:")
+	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining privileges:")
 	inner := ppfmt.IncIndent()
 
 	inner.Noticef(pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
