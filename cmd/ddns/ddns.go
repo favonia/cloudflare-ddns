@@ -31,7 +31,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 	c := config.Default()
 
 	// Read the config
-	if !c.ReadEnv(ppfmt) || !c.NormalizeDomains(ppfmt) {
+	if !c.ReadEnv(ppfmt) || !c.NormalizeConfig(ppfmt) {
 		return c, nil, false
 	}
 
@@ -107,7 +107,7 @@ func realMain() int { //nolint:funlen
 	for {
 		// The next time to run the updater.
 		// This is called before running the updater so that the timer would not be delayed by the updating.
-		next := c.UpdateCron.Next()
+		next := cron.Next(c.UpdateCron)
 
 		// Update the IP addresses
 		if first && !c.UpdateOnStart {
@@ -120,6 +120,12 @@ func realMain() int { //nolint:funlen
 			}
 		}
 		first = false
+
+		// Maybe the cron was disabled?
+		if c.UpdateCron == nil {
+			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			return 0
+		}
 
 		// Maybe there's nothing scheduled in near future?
 		if next.IsZero() {

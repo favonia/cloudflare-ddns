@@ -232,7 +232,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
-	item("Update frequency:", "%v", c.UpdateCron)
+	item("Update frequency:", "%v", cron.DescribeSchedule(c.UpdateCron))
 	item("Update on start?", "%t", c.UpdateOnStart)
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)
@@ -264,7 +264,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 }
 
 // ReadEnv calls the relevant readers to read all relevant environment variables except TZ
-// and update relevant fields. One should subsequently call [Config.NormalizeDomains] to maintain
+// and update relevant fields. One should subsequently call [Config.NormalizeConfig] to maintain
 // invariants across different fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
@@ -290,20 +290,29 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-// NormalizeDomains updates and normalizes the fields [Config.Provider] and [Config.Proxied].
-// When errors are reported, the original configuration remain unchanged.
+// NormalizeConfig checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
+// When any error is reported, the original configuration remain unchanged.
 //
 //nolint:funlen
-func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
-	// New maps
-	providerMap := map[ipnet.Type]provider.Provider{}
-	proxiedMap := map[domain.Domain]bool{}
-	activeDomainSet := map[domain.Domain]bool{}
-
+func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
+
+	// Part 1: check DELETE_ON_STOP
+	if c.UpdateCron == nil && c.DeleteOnStop {
+		ppfmt.Errorf(
+			pp.EmojiUserError,
+			"DELETE_ON_STOP=true will immediately delete all DNS records when UPDATE_CRON=@disabled")
+		return false
+	}
+
+	// Part 2: normalize domain maps
+	// New domain maps
+	providerMap := map[ipnet.Type]provider.Provider{}
+	proxiedMap := map[domain.Domain]bool{}
+	activeDomainSet := map[domain.Domain]bool{}
 
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS")
@@ -362,6 +371,7 @@ func (c *Config) NormalizeDomains(ppfmt pp.PP) bool {
 		proxiedMap[dom] = proxiedPred(dom)
 	}
 
+	// Part 3: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
 

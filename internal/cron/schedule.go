@@ -16,12 +16,16 @@ type cronSchedule struct {
 
 // New creates a new Schedule.
 func New(spec string) (Schedule, error) {
+	if spec == "@disabled" || spec == "@nevermore" {
+		return (Schedule)(nil), nil
+	}
+
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
 		return nil, fmt.Errorf("parsing %q: %w", spec, err)
 	}
 
-	return &cronSchedule{
+	return cronSchedule{
 		spec:     spec,
 		schedule: sche,
 	}, nil
@@ -38,11 +42,11 @@ func MustNew(spec string) Schedule {
 }
 
 // Next tells the next scheduled time.
-func (s *cronSchedule) Next() time.Time {
+func (s cronSchedule) Next() time.Time {
 	return s.schedule.Next(time.Now())
 }
 
-// String gives back the original cron string.
-func (s *cronSchedule) String() string {
+// Describe gives back the original cron string.
+func (s cronSchedule) Describe() string {
 	return s.spec
 }

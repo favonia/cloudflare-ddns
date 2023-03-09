@@ -19,7 +19,21 @@ func TestMustNewSuccessful(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc, cron.MustNew(tc).String())
+			require.Equal(t, tc, cron.DescribeSchedule(cron.MustNew(tc)))
+		})
+	}
+}
+
+func TestMustNewSuccessfulNil(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]string{
+		"@disabled",
+		"@nevermore",
+	} {
+		tc := tc // capture range variable
+		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
+			require.Nil(t, cron.MustNew(tc))
 		})
 	}
 }
@@ -41,18 +55,33 @@ func TestMustNewPanicking(t *testing.T) {
 
 func TestNext(t *testing.T) {
 	t.Parallel()
-	const delta = time.Second * 5
+	const delta = time.Second
 	for _, tc := range [...]struct {
 		spec     string
 		interval time.Duration
 	}{
-		{"@every 1h", time.Hour},
+		{"@every 1h1m", time.Hour + time.Minute},
 		{"@every 4h", time.Hour * 4},
 	} {
 		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-			require.WithinDuration(t, time.Now().Add(tc.interval), cron.MustNew(tc.spec).Next(), delta)
+			require.WithinDuration(t, time.Now().Add(tc.interval), cron.Next(cron.MustNew(tc.spec)), delta)
+		})
+	}
+}
+
+func TestNextNever(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]string{
+		"* * 30 2 *",
+		"@disabled",
+		"@nevermore",
+	} {
+		tc := tc // capture range variable
+		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
+			require.True(t, cron.Next(cron.MustNew(tc)).IsZero())
 		})
 	}
 }
