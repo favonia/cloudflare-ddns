@@ -17,10 +17,7 @@ type cronSchedule struct {
 // New creates a new Schedule.
 func New(spec string) (Schedule, error) {
 	if spec == "@disabled" || spec == "@nevermore" {
-		return &cronSchedule{
-			spec:     spec,
-			schedule: nil,
-		}, nil
+		return (Schedule)(nil), nil
 	}
 
 	sche, err := cron.ParseStandard(spec)
@@ -28,7 +25,7 @@ func New(spec string) (Schedule, error) {
 		return nil, fmt.Errorf("parsing %q: %w", spec, err)
 	}
 
-	return &cronSchedule{
+	return cronSchedule{
 		spec:     spec,
 		schedule: sche,
 	}, nil
@@ -44,21 +41,12 @@ func MustNew(spec string) Schedule {
 	return cron
 }
 
-// IsEnabled checks whether the scheduling is disabled.
-func (s *cronSchedule) IsEnabled() bool {
-	return s.schedule != nil
-}
-
 // Next tells the next scheduled time.
-func (s *cronSchedule) Next() time.Time {
-	if s.schedule == nil {
-		return time.Time{}
-	}
-
+func (s cronSchedule) Next() time.Time {
 	return s.schedule.Next(time.Now())
 }
 
-// String gives back the original cron string.
-func (s *cronSchedule) String() string {
+// Describe gives back the original cron string.
+func (s cronSchedule) Describe() string {
 	return s.spec
 }

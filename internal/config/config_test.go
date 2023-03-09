@@ -443,7 +443,7 @@ func TestPrintEmpty(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "IPv6 provider:", "none"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Timezone:", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")), //nolint:lll
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update frequency:", "<nil>"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update frequency:", "@disabled"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update on start?", "false"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Delete on stop?", "false"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Cache expiration:", "0s"),
@@ -529,7 +529,7 @@ func TestReadEnvEmpty(t *testing.T) {
 }
 
 //nolint:funlen
-func TestNormalize(t *testing.T) {
+func TestNormalizeConfig(t *testing.T) {
 	t.Parallel()
 
 	var empty config.Config
@@ -767,6 +767,56 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"delete-on-stop-without-cron": {
+			input: &config.Config{ //nolint:exhaustruct
+				DeleteOnStop: true,
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all DNS records when UPDATE_CRON=@disabled"), //nolint:lll
+				)
+			},
+		},
+		"delete-on-stop-with-cron": {
+			input: &config.Config{ //nolint:exhaustruct
+				DeleteOnStop: true,
+				UpdateCron:   cron.MustNew("@every 5m"),
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "false",
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				DeleteOnStop: true,
+				UpdateCron:   cron.MustNew("@every 5m"),
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "false",
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): false,
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+				)
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
@@ -778,7 +828,7 @@ func TestNormalize(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := cfg.NormalizeDomains(mockPP)
+			ok := cfg.NormalizeConfig(mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
 				require.Equal(t, tc.expected, cfg)

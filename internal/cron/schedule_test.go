@@ -15,13 +15,25 @@ func TestMustNewSuccessful(t *testing.T) {
 		"*/4 * * * *",
 		"@every 5h0s",
 		"@yearly",
+	} {
+		tc := tc // capture range variable
+		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc, cron.DescribeSchedule(cron.MustNew(tc)))
+		})
+	}
+}
+
+func TestMustNewSuccessfulNil(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]string{
 		"@disabled",
 		"@nevermore",
 	} {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc, cron.MustNew(tc).String())
+			require.Nil(t, cron.MustNew(tc))
 		})
 	}
 }
@@ -54,7 +66,7 @@ func TestNext(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-			require.WithinDuration(t, time.Now().Add(tc.interval), cron.MustNew(tc.spec).Next(), delta)
+			require.WithinDuration(t, time.Now().Add(tc.interval), cron.Next(cron.MustNew(tc.spec)), delta)
 		})
 	}
 }
@@ -69,25 +81,7 @@ func TestNextNever(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			require.True(t, cron.MustNew(tc).Next().IsZero())
-		})
-	}
-}
-
-func TestIsEnabled(t *testing.T) {
-	t.Parallel()
-	for _, tc := range [...]struct {
-		spec     string
-		expected bool
-	}{
-		{"* * 30 2 *", true},
-		{"@disabled", false},
-		{"@nevermore", false},
-	} {
-		tc := tc // capture range variable
-		t.Run(tc.spec, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tc.expected, cron.MustNew(tc.spec).IsEnabled())
+			require.True(t, cron.Next(cron.MustNew(tc)).IsZero())
 		})
 	}
 }
