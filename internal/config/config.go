@@ -220,7 +220,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
 
-	section("IP providers:")
+	section("IP providers and domains:")
 	item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	if c.Provider[ipnet.IP4] != nil {
 		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
