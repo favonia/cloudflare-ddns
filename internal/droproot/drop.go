@@ -49,7 +49,7 @@ func dropSuperuserGroup(ppfmt pp.PP) {
 	if !config.ReadNonnegInt(ppfmt, "PGID", &gid) {
 		gid = defaultGID
 	} else if gid == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "PGID cannot be 0. Using %d instead", defaultGID)
+		ppfmt.Errorf(pp.EmojiUserError, "PGID cannot be 0. Using PGID=%d instead", defaultGID)
 		gid = defaultGID
 	}
 
@@ -84,7 +84,7 @@ func dropSuperuser(ppfmt pp.PP) {
 	if !config.ReadNonnegInt(ppfmt, "PUID", &uid) {
 		uid = defaultUID
 	} else if uid == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "PUID cannot be 0. Using %d instead", defaultUID)
+		ppfmt.Errorf(pp.EmojiUserError, "PUID cannot be 0. Using PUID=%d instead", defaultUID)
 		uid = defaultUID
 	}
 
@@ -123,16 +123,12 @@ func DropPriviledges(ppfmt pp.PP) {
 
 // printCapabilities prints out all remaining capabilities.
 func printCapabilities(ppfmt pp.PP) {
-	now, err := cap.GetPID(0)
+	now := cap.GetProc()
+	diff, err := now.Cf(cap.NewSet())
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiImpossible, "Failed to get the current capabilities: %v", err)
-	} else {
-		diff, err := now.Cf(cap.NewSet())
-		if err != nil {
-			ppfmt.Errorf(pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
-		} else if diff != 0 {
-			ppfmt.Errorf(pp.EmojiError, "The program still retains some additional capabilities: %v", now)
-		}
+		ppfmt.Errorf(pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
+	} else if diff != 0 {
+		ppfmt.Errorf(pp.EmojiError, "The program still retains some additional capabilities: %v", now)
 	}
 }
 
