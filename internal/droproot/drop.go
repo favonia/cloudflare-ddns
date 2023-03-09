@@ -2,6 +2,8 @@
 package droproot
 
 import (
+	"strconv"
+	"strings"
 	"syscall"
 
 	"kernel.org/pub/linux/libs/security/libcap/cap"
@@ -134,6 +136,18 @@ func printCapabilities(ppfmt pp.PP) {
 	}
 }
 
+func describeGroups(gids []int) string {
+	if len(gids) == 0 {
+		return "(none)"
+	}
+
+	descriptions := make([]string, 0, len(gids))
+	for _, gid := range gids {
+		descriptions = append(descriptions, strconv.Itoa(gid))
+	}
+	return strings.Join(descriptions, " ")
+}
+
 // PrintPriviledges prints out all remaining privileges.
 func PrintPriviledges(ppfmt pp.PP) {
 	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining priviledges:")
@@ -142,13 +156,10 @@ func PrintPriviledges(ppfmt pp.PP) {
 	inner.Noticef(pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
 	inner.Noticef(pp.EmojiBullet, "Effective GID:      %d", syscall.Getegid())
 
-	switch groups, err := syscall.Getgroups(); {
-	case err != nil:
+	if groups, err := syscall.Getgroups(); err != nil {
 		inner.Errorf(pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
-	case len(groups) > 0:
-		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %d", groups)
-	default:
-		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: (none)")
+	} else {
+		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %s", describeGroups(groups))
 	}
 
 	printCapabilities(inner)
