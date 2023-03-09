@@ -767,7 +767,7 @@ func TestNormalizeConfig(t *testing.T) {
 				)
 			},
 		},
-		"delete-on-stop-without-cron": {
+		"delete-on-stop/without-cron": {
 			input: &config.Config{ //nolint:exhaustruct
 				DeleteOnStop: true,
 			},
@@ -782,7 +782,7 @@ func TestNormalizeConfig(t *testing.T) {
 				)
 			},
 		},
-		"delete-on-stop-with-cron": {
+		"delete-on-stop/with-cron": {
 			input: &config.Config{ //nolint:exhaustruct
 				DeleteOnStop: true,
 				UpdateCron:   cron.MustNew("@every 5m"),
