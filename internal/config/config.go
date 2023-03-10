@@ -220,19 +220,19 @@ func (c *Config) Print(ppfmt pp.PP) {
 		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
 
-	section("IP providers:")
-	item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
+	section("Domains and IP providers:")
 	if c.Provider[ipnet.IP4] != nil {
 		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
+		item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	}
-	item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	if c.Provider[ipnet.IP6] != nil {
 		item("IPv6 domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
+		item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	}
 
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
-	item("Update frequency:", "%v", cron.DescribeSchedule(c.UpdateCron))
+	item("Update frequency:", "%s", cron.DescribeSchedule(c.UpdateCron))
 	item("Update on start?", "%t", c.UpdateOnStart)
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)

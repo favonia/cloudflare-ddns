@@ -718,9 +718,9 @@ func TestReadCron(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(
 					pp.EmojiBullet,
-					"Use default %s=%v",
+					"Use default %s=%s",
 					key,
-					cron.MustNew("* * * * *"),
+					"* * * * *",
 				)
 			},
 		},
@@ -729,9 +729,9 @@ func TestReadCron(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(
 					pp.EmojiBullet,
-					"Use default %s=%v",
+					"Use default %s=%s",
 					key,
-					cron.MustNew("@every 3m"),
+					"@every 3m",
 				)
 			},
 		},

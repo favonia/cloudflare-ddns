@@ -2,22 +2,12 @@
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
 [![Go Reference](https://pkg.go.dev/badge/github.com/favonia/cloudflare-ddns/.svg)](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/)
+[![Codecov](https://img.shields.io/codecov/c/github/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns)
 
 A feature-rich and robust Cloudflare DDNS updater with a small footprint. The program will detect your machine's public IP addresses and update DNS records using the Cloudflare API.
-
-```
-🔇 Quiet mode enabled
-🌟 Cloudflare DDNS
-🥷 Remaining priviledges:
-   🔸 Effective UID:      1000
-   🔸 Effective GID:      1000
-   🔸 Supplementary GIDs: (none)
-🐣 Added a new A record of "……" (ID: ……)
-🐣 Added a new AAAA record of "……" (ID: ……)
-```
 
 ## 📜 Highlights
 
@@ -29,10 +19,10 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### 💯 Complete Support of Domain Names
 
-- 😌 You can list multiple domains without worrying about zones. The updater finds their zones for you, and it can handle multiple zones.
-- 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported. The updater smooths out [rough edges of the Cloudflare API](https://github.com/cloudflare/cloudflare-go/pull/690#issuecomment-911884832).
+- 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
+- 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
-- 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying on a per-domain basis.
+- 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying for each domain.
 
 ### 🕵️ Privacy
 
@@ -40,20 +30,15 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 ### 🛡️ Security
 
-- 🛑 The superuser privileges are immediately dropped after the updater starts. This minimizes the impact of undiscovered security bugs in the updater.
-- 🛡️ The updater uses HTTPS (or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)) to detect public IP addresses, making it more resistant to tampering. See the [design document](docs/DESIGN.markdown) for more information on security.
-- ✅ You can verify the Docker images using [Cosign](https://github.com/sigstore/cosign):
-  ```bash
-  cosign verify --key https://d.favonia.org/cosign.pub favonia/cloudflare-ddns
-  ```
-- 🖥️ Optionally, you can [monitor the updater via Healthchecks](https://healthchecks.io), which will notify you when the updating fails.
-- 📚 The updater uses only established open-source Go libraries.
-  <details><summary>🔌 Full list of external Go libraries <em>(click to expand)</em></summary>
+- 🛑 The superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
+- 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
+- 🩺 The updater supports [Healthchecks](https://healthchecks.io), which can notify you when the updating fails.
+- <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
   - [cap](https://sites.google.com/site/fullycapable):\
-    Manipulation of Linux capabilities.
+    The official Go binding of Linux capabilities.
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-    The official Go binding of Cloudflare API v4. It provides robust handling of pagination, rate limiting, and other tricky bits.
+    The official Go binding of Cloudflare API v4.
   - [cron](https://github.com/robfig/cron):\
     Parsing of Cron expressions.
   - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
@@ -111,26 +96,60 @@ services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
     network_mode: host
+    # This makes IPv6 easier; see below
     restart: always
+    # Restart the updater after reboot
+    cap_add:
+      - SETUID
+        # Capability to change UID
+      - SETGID
+        # Capability to change GID
     cap_drop:
       - all
+      # Drop all other capabilities
     read_only: true
+    # Make the container filesystem read-only
     security_opt:
       - no-new-privileges:true
+        # Another protection to restrict superuser privileges
     environment:
-      - PGID=1000
       - PUID=1000
+        # Run the updater with user ID 1000
+      - PGID=1000
+        # Run the updater with group ID 1000
       - CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+        # Your Cloudflare API token
       - DOMAINS=example.org,www.example.org,example.io
+        # Your domains (separated by commas)
       - PROXIED=true
+        # Tell Cloudflare to cache webpages and hide your IP
 ```
 
-⚠️ The setting `PROXIED=true` instructs Cloudflare to cache webpages on your machine and hide its actual IP addresses. If you wish to bypass that and expose your actual IP addresses, simply remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you must turn off the proxying by removing `PROXIED=true`. (The default value of `PROXIED` is `false`.)
-
-_(Click to expand the following items.)_
+_(Click to expand the following important tips.)_
 
 <details>
-<summary>📡 Use <code>network_mode: host</code> to enable IPv6 (or read more).</summary>
+<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token</summary>
+
+The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. (The less secure API key authentication is deliberately _not_ supported.)
+
+</details>
+
+<details>
+<summary>📍 <code>DOMAINS</code> is a list of domains you want to update</summary>
+
+The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
+
+</details>
+
+<details>
+<summary>🚨 Remove <code>PROXIED=true</code> if you are not running an HTTP(S) server</summary>
+
+The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
+
+</details>
+
+<details>
+<summary>📡 Read more about other ways to enable IPv6</summary>
 
 The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, check out the [experimental `ip6tables` option](https://github.com/moby/moby/pull/41622). If your host OS is Linux, here’s the tl;dr:
 
@@ -152,45 +171,13 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 </details>
 
 <details>
-<summary>🔁 Use <code>restart: always</code> to automatically restart the updater on system reboot.</summary>
-
-Docker’s default restart policies should prevent excessive logging when there are configuration errors.
-
-</details>
-
-<details>
-<summary>🛡️ Use <code>cap_drop</code>, <code>read_only</code>, <code>no-new-privileges</code>, <code>PUID</code>, and <code>PGID</code> to protect yourself.</summary>
+<summary>🛡️ Change <code>PUID=1000</code> and <code>PGID=1000</code> to the user and group IDs you want to use</summary>
 
 Change `1000` to the user or group IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` provide additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all superuser privileges.
 
 </details>
 
-### 🪧 Step 2: Updating the Environment File
-
-Add these lines to your environment file (typically `.env`):
-
-```bash
-CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
-DOMAINS=example.org,www.example.org,example.io
-```
-
-_(Click to expand the following items.)_
-
-<details>
-<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token.</summary>
-
-The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. ⚠️ The less secure API key authentication is deliberately _not_ supported.
-
-</details>
-
-<details>
-<summary>📍 <code>DOMAINS</code> contains the domains to update.</summary>
-
-The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
-
-</details>
-
-### 🚀 Step 3: Building the Container
+### 🚀 Step 2: Building the Container
 
 ```bash
 docker-compose pull cloudflare-ddns
@@ -212,7 +199,7 @@ _(Click to expand the following items.)_
 | `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API             | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
 | `CF_API_TOKEN`      | Cloudflare API tokens                           | The token to access the Cloudflare API                                  | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
 
-In most cases, `CF_ACCOUNT_ID` is not needed.
+> 🤷 In most cases, `CF_ACCOUNT_ID` is not needed.
 
 </details>
 
@@ -272,9 +259,9 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `UPDATE_ON_START`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                              | Whether to check IP addresses on start regardless of `UPDATE_CRON`             | No        | `true`                        |
 | `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                                | The timeout of each attempt to update DNS records, per domain, per record type | No        | `30s` (30 seconds)            |
 
-⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
+> ⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 
-🧪 Experimental mode to disable cron: `UPDATE_CRON` can be set to `@disabled` (or `@nevermore` as an alias); the updater will terminate immediately after updating the DNS records. This is useful when the scheduling is handled by other mechanisms (such as [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)).
+> 🧪 Experimental mode to disable cron: `UPDATE_CRON` can be set to `@disabled` (or `@nevermore` as an alias); the updater will terminate immediately after updating the DNS records. This is useful when you want to use other mechanisms to schedule the updating (_e.g._, [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)).
 
 </details>
 
@@ -286,7 +273,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare | No        | `false`                                    |
 | `TTL`     | Time-to-live (TTL) values in seconds                                                                                                                                                  | The TTL values used to create new DNS records           | No        | `1` (This means “automatic” to Cloudflare) |
 
-👉 The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the above settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.
+> 👉 The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the above settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.
 
 > <details>
 > <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
@@ -329,7 +316,7 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `PGID` | Non-zero POSIX group ID | The group ID the updater should assume | No        | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000` |
 | `PUID` | Non-zero POSIX user ID  | The user ID the updater should assume  | No        | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`   |
 
-👉 The updater will also try to drop supplementary group IDs.
+> 👉 The updater will also try to drop supplementary group IDs.
 
 </details>
 
@@ -342,22 +329,22 @@ In most cases, `CF_ACCOUNT_ID` is not needed.
 | `EMOJI`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                            | No        | `true`        |
 | `HEALTHCHECKS` | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses | No        | (unset)       |
 
-For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater is compatible with the POST-only mode.
+> 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater automatically supports the POST-only mode.
 
 </details>
 
 ### 🔂 Restarting the Container
 
-If you are using Docker Compose, run `docker-compose up --detach` after changing the settings.
+If you are using Docker Compose, run `docker-compose up --detach` to reload settings.
 
 ## 🚵 Migration Guides
 
 _(Click to expand the following items.)_
 
 <details>
-<summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns.</a></summary>
+<summary>I am migrating from <a href="https://hub.docker.com/r/oznu/cloudflare-ddns/">oznu/cloudflare-ddns</a></summary>
 
-⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult.
+⚠️ [oznu/cloudflare-ddns](https://hub.docker.com/r/oznu/cloudflare-ddns/) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
 | Old Parameter                          |     | Note                                                                               |
 | -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
@@ -375,7 +362,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>I am migrating from <a href="https://github.com/timothymiller/cloudflare-ddns">timothymiller/cloudflare-ddns.</a></summary>
+<summary>I am migrating from <a href="https://github.com/timothymiller/cloudflare-ddns">timothymiller/cloudflare-ddns</a></summary>
 
 | Old JSON Key                          |     | Note                                                                                                                                                                        |
 | ------------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
