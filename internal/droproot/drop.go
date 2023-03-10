@@ -34,6 +34,11 @@ func tryRaiseCap(val cap.Value) {
 }
 
 // dropSuperuserGroup tries to set the group ID to something non-zero.
+//
+// We do not call cap.SetGroups because of the following two reasons:
+//  1. cap.SetGroups will fail when the capability SETGID cannot be obtained,
+//     even if Setgid would have worked.
+//  2. We use Setresgid instead of Setgid to set all group IDs at once.
 func dropSuperuserGroup(ppfmt pp.PP) {
 	// Calculate the default group ID if PGID is not set
 	defaultGID := syscall.Getegid() // effective group ID
@@ -56,8 +61,7 @@ func dropSuperuserGroup(ppfmt pp.PP) {
 	// Try to raise cap.SETGID so that we can change our group ID
 	tryRaiseCap(cap.SETGID)
 
-	// First, erase all supplementary groups. We do this first because the primary group
-	// could have given us the ability to erase supplementary groups.
+	// First, erase all supplementary groups
 	if err := syscall.Setgroups([]int{}); err != nil {
 		ppfmt.Infof(pp.EmojiBullet, "Failed to erase supplementary GIDs (which might be fine): %v", err)
 	}
@@ -69,6 +73,11 @@ func dropSuperuserGroup(ppfmt pp.PP) {
 }
 
 // dropSuperuser sets the user ID to something non-zero.
+//
+// We do not call cap.SetUID because of the following two reasons:
+//  1. cap.SetUID will fail when the capability SETUID cannot be obtained,
+//     even if Setuid would have worked.
+//  2. We use Setresuid instead of Setuid to set all user IDs at once.
 func dropSuperuser(ppfmt pp.PP) {
 	// Calculate the default user ID if PUID is not set
 	defaultUID := syscall.Geteuid() // effective user ID
@@ -132,6 +141,7 @@ func printCapabilities(ppfmt pp.PP) {
 	}
 }
 
+// describeGroups turns a list of integers {1, 2, 3} into a string "1 2 3".
 func describeGroups(gids []int) string {
 	if len(gids) == 0 {
 		return "(none)"
