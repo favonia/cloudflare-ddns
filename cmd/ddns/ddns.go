@@ -55,7 +55,6 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
-		ppfmt.Noticef(pp.EmojiClearRecord, "Deleting all managed records . . .")
 		if ok, msg := updater.ClearIPs(ctx, ppfmt, c, s); ok {
 			c.Monitor.Log(ctx, ppfmt, msg)
 		} else {
