@@ -71,15 +71,12 @@ func main() {
 func realMain() int { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
 	if !config.ReadEmoji("EMOJI", &ppfmt) || !config.ReadQuiet("QUIET", &ppfmt) {
-		ppfmt.Noticef(pp.EmojiUserError, "Bye!")
+		ppfmt.Infof(pp.EmojiUserError, "Bye!")
 		return 1
-	}
-	if !ppfmt.IsEnabledFor(pp.Info) {
-		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
 	// Show the name and the version of the updater
-	ppfmt.Noticef(pp.EmojiStar, formatName())
+	ppfmt.Infof(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
 	droproot.DropPriviledges(ppfmt)
@@ -99,7 +96,7 @@ func realMain() int { //nolint:funlen
 	// Bail out now if initConfig failed
 	if !configOk {
 		c.Monitor.ExitStatus(ctx, ppfmt, 1, "Config errors")
-		ppfmt.Noticef(pp.EmojiBye, "Bye!")
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 
@@ -123,7 +120,7 @@ func realMain() int { //nolint:funlen
 
 		// Maybe the cron was disabled?
 		if c.UpdateCron == nil {
-			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}
 
@@ -132,7 +129,7 @@ func realMain() int { //nolint:funlen
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
 			c.Monitor.ExitStatus(ctx, ppfmt, 1, "No scheduled updates")
-			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
 
@@ -144,7 +141,7 @@ func realMain() int { //nolint:funlen
 		if !sig.Sleep(ppfmt, interval) {
 			stopUpdating(ctx, ppfmt, c, s)
 			c.Monitor.ExitStatus(ctx, ppfmt, 0, "Terminated")
-			ppfmt.Noticef(pp.EmojiBye, "Bye!")
+			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}
 	} // mainLoop
