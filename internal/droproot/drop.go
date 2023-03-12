@@ -2,13 +2,10 @@
 package droproot
 
 import (
-	"strconv"
-	"strings"
 	"syscall"
 
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -28,145 +25,73 @@ func tryRaiseCap(val cap.Value) {
 		return
 	}
 
-	if err := c.SetProc(); err != nil {
-		return
-	}
+	_ = c.SetProc()
 }
 
-// dropSuperuserGroup tries to set the group ID to something non-zero.
+// setGroups tries to set the group IDs.
 //
 // We do not call cap.SetGroups because of the following two reasons:
 //  1. cap.SetGroups will fail when the capability SETGID cannot be obtained,
 //     even if Setgid would have worked.
 //  2. We use Setresgid instead of Setgid to set all group IDs at once.
-func dropSuperuserGroup(ppfmt pp.PP) {
-	// Calculate the default group ID if PGID is not set
-	defaultGID := syscall.Getegid() // effective group ID
-	if defaultGID == 0 {
-		defaultGID = syscall.Getgid() // real group ID
-		if defaultGID == 0 {
-			defaultGID = 1000 // default, if everything is 0 (root)
-		}
-	}
-
-	// The target group ID, after taking PGID into consideration
-	gid := defaultGID
-	if !config.ReadNonnegInt(ppfmt, "PGID", &gid) {
-		gid = defaultGID
-	} else if gid == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "PGID cannot be 0. Using PGID=%d instead", defaultGID)
-		gid = defaultGID
-	}
-
+func setGroups(ppfmt pp.PP, gid int) bool {
 	// Try to raise cap.SETGID so that we can change our group ID
 	tryRaiseCap(cap.SETGID)
 
-	// First, erase all supplementary groups
-	if err := syscall.Setgroups([]int{}); err != nil {
-		ppfmt.Infof(pp.EmojiBullet, "Failed to erase supplementary GIDs (which might be fine): %v", err)
-	}
+	// Attempt to erase all supplementary groups and set the group ID
+	_ = syscall.Setgroups([]int{})
+	_ = syscall.Setresgid(gid, gid, gid)
 
-	// Now, set the group ID
-	if err := syscall.Setresgid(gid, gid, gid); err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to set GID to %d: %v", gid, err)
-	}
+	// Check whether the setting works
+	checkGroupIDs(ppfmt, gid)
+
+	return true
 }
 
-// dropSuperuser sets the user ID to something non-zero.
+// setUser sets the user ID to something non-zero.
 //
 // We do not call cap.SetUID because of the following two reasons:
 //  1. cap.SetUID will fail when the capability SETUID cannot be obtained,
 //     even if Setuid would have worked.
 //  2. We use Setresuid instead of Setuid to set all user IDs at once.
-func dropSuperuser(ppfmt pp.PP) {
-	// Calculate the default user ID if PUID is not set
-	defaultUID := syscall.Geteuid() // effective user ID
-	if defaultUID == 0 {
-		defaultUID = syscall.Getuid() // real user ID
-		if defaultUID == 0 {
-			defaultUID = 1000 // default, if everything is 0
-		}
-	}
-
-	// The target user ID, after taking PUID into consideration
-	uid := defaultUID
-	if !config.ReadNonnegInt(ppfmt, "PUID", &uid) {
-		uid = defaultUID
-	} else if uid == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "PUID cannot be 0. Using PUID=%d instead", defaultUID)
-		uid = defaultUID
-	}
-
+func setUser(ppfmt pp.PP, uid int) bool {
 	// Try to raise cap.SETUID so that we can change our user ID
 	tryRaiseCap(cap.SETUID)
 
 	// Now, set the user ID
-	if err := syscall.Setresuid(uid, uid, uid); err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to set UID to %d: %v", uid, err)
-	}
+	_ = syscall.Setresuid(uid, uid, uid)
+	checkUserID(ppfmt, uid)
+
+	return true
 }
 
 // dropCapabilities drop all capabilities as the last step.
-func dropCapabilities(ppfmt pp.PP) {
+func dropCapabilities(ppfmt pp.PP) bool {
 	if err := cap.NewSet().SetProc(); err != nil {
 		ppfmt.Errorf(pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
 	}
+	return true
 }
 
-// DropPriviledges drops all privileges as much as possible.
-func DropPriviledges(ppfmt pp.PP) {
+// DropPrivileges drops all privileges as much as possible.
+func DropPrivileges(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
-		ppfmt.Infof(pp.EmojiPriviledges, "Dropping privileges . . .")
+		ppfmt.Infof(pp.EmojiPrivileges, "Dropping privileges . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
-	// handle the group ID first, because the user ID could have given us the power
-	dropSuperuserGroup(ppfmt)
-
-	// handle the user ID
-	dropSuperuser(ppfmt)
-
-	// try to all remaining capabilities
-	dropCapabilities(ppfmt)
-}
-
-// printCapabilities prints out all remaining capabilities.
-func printCapabilities(ppfmt pp.PP) {
-	now := cap.GetProc()
-	diff, err := now.Cf(cap.NewSet())
-	if err != nil {
-		ppfmt.Errorf(pp.EmojiImpossible, "Failed to compare capabilities: %v", err)
-	} else if diff != 0 {
-		ppfmt.Errorf(pp.EmojiError, "The program still retains some additional capabilities: %v", now)
-	}
-}
-
-// describeGroups turns a list of integers {1, 2, 3} into a string "1 2 3".
-func describeGroups(gids []int) string {
-	if len(gids) == 0 {
-		return "(none)"
+	uid, ok := readPUID(ppfmt)
+	if !ok {
+		return false
 	}
 
-	descriptions := make([]string, 0, len(gids))
-	for _, gid := range gids {
-		descriptions = append(descriptions, strconv.Itoa(gid))
-	}
-	return strings.Join(descriptions, " ")
-}
-
-// PrintPriviledges prints out all remaining privileges.
-func PrintPriviledges(ppfmt pp.PP) {
-	ppfmt.Noticef(pp.EmojiPriviledges, "Remaining privileges:")
-	inner := ppfmt.IncIndent()
-
-	inner.Noticef(pp.EmojiBullet, "Effective UID:      %d", syscall.Geteuid())
-	inner.Noticef(pp.EmojiBullet, "Effective GID:      %d", syscall.Getegid())
-
-	if groups, err := syscall.Getgroups(); err != nil {
-		inner.Errorf(pp.EmojiImpossible, "Supplementary GIDs: (failed to get them)")
-	} else {
-		inner.Noticef(pp.EmojiBullet, "Supplementary GIDs: %s", describeGroups(groups))
+	gid, ok := readPGID(ppfmt)
+	if !ok {
+		return false
 	}
 
-	printCapabilities(inner)
+	// 1. Change the group ID first, because the user ID could have given us the power
+	// 2. Change the user ID
+	// 3. Drop all capabilities
+	return setGroups(ppfmt, gid) && setUser(ppfmt, uid) && dropCapabilities(ppfmt)
 }

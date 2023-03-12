@@ -10,7 +10,7 @@ const (
 	EmojiEnvVars      Emoji = "📖" // reading configuration
 	EmojiConfig       Emoji = "🔧" // showing configuration
 	EmojiInternet     Emoji = "🌐" // network address detection
-	EmojiPriviledges  Emoji = "🥷" // /privileges
+	EmojiPrivileges   Emoji = "🥷" // /privileges
 	EmojiMute         Emoji = "🔇" // quiet mode
 	EmojiExperimental Emoji = "🧪" // experimental features
 

@@ -78,8 +78,10 @@ func realMain() int { //nolint:funlen
 	ppfmt.Infof(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
-	droproot.DropPriviledges(ppfmt)
-	droproot.PrintPriviledges(ppfmt)
+	if !droproot.DropPrivileges(ppfmt) {
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
+		return 1
+	}
 
 	// Catch signals SIGINT and SIGTERM
 	sig := signal.Setup()
