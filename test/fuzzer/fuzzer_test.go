@@ -11,18 +11,20 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+const key string = "KEY"
+
 // FuzzParseList fuzz test [domainexp.ParseList].
 func FuzzParseList(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input string) {
 		mockCtrl := gomock.NewController(t)
 		mockPP := mocks.NewMockPP(mockCtrl)
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleAnd).AnyTimes()
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleOr).AnyTimes()
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, gomock.Any(), gomock.Any()).AnyTimes()        //nolint:lll
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, `Domain %q was added but it is ill-formed: %v`, gomock.Any(), gomock.Any()).AnyTimes() //nolint:lll
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleAnd).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleOr).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) contains an ill-formed domain %q: %v`, key, input, gomock.Any(), gomock.Any()).AnyTimes() //nolint:lll
+		mockPP.EXPECT().Warningf(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, gomock.Any()).AnyTimes()                 //nolint:lll
 
-		_, _ = domainexp.ParseList(mockPP, input)
+		_, _ = domainexp.ParseList(mockPP, key, input)
 	})
 }
 
@@ -31,16 +33,16 @@ func FuzzParseExpression(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input string) {
 		mockCtrl := gomock.NewController(t)
 		mockPP := mocks.NewMockPP(mockCtrl)
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleAnd).AnyTimes()
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: %v`, gomock.Any(), domainexp.ErrSingleOr).AnyTimes()
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: unexpected token %q`, gomock.Any(), gomock.Any()).AnyTimes()                  //nolint:lll
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; got %q`, gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()      //nolint:lll
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; reached end of string`, gomock.Any(), gomock.Any()).AnyTimes()     //nolint:lll
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted a boolean expression; got %q`, gomock.Any(), gomock.Any()).AnyTimes()  //nolint:lll
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted a boolean expression; reached end of string`, gomock.Any()).AnyTimes() //nolint:lll
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", gomock.Any(), gomock.Any()).AnyTimes()           //nolint:lll
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, `Please insert a comma "," before %q`, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleAnd).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleOr).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, gomock.Any()).AnyTimes()                                   //nolint:lll
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q when %q is expected`, key, input, gomock.Any(), gomock.Any()).AnyTimes() //nolint:lll
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is not a boolean expression: got unexpected token %q`, key, input, gomock.Any()).AnyTimes() //nolint:lll
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is not a boolean expression`, key, input).AnyTimes()
+		mockPP.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) contains an ill-formed domain %q: %v`, key, input, gomock.Any(), gomock.Any()).AnyTimes() //nolint:lll
+		mockPP.EXPECT().Warningf(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, gomock.Any()).AnyTimes()                 //nolint:lll
 
-		_, _ = domainexp.ParseExpression(mockPP, input)
+		_, _ = domainexp.ParseExpression(mockPP, key, input)
 	})
 }

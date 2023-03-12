@@ -37,7 +37,9 @@ func checkGroupIDs(ppfmt pp.PP, gid int) bool {
 				descriptions = append(descriptions, strconv.Itoa(g))
 			}
 		}
-		ppfmt.Warningf(pp.EmojiUserWarning, "Failed to reset group IDs to only %d; current ones: %s", gid, strings.Join(descriptions, ", "))
+		ppfmt.Warningf(pp.EmojiUserWarning,
+			"Failed to reset group IDs to only %d; current ones: %s",
+			gid, strings.Join(descriptions, ", "))
 	}
 
 	return ok

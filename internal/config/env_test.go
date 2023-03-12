@@ -418,21 +418,21 @@ func TestReadDomains(t *testing.T) {
 		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll
 		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil}, //nolint:lll
 		"illformed1": {
-			true, "xn--:D.org",
+			true, "xn--:D.org,a.org",
 			ds{f("random.org")},
-			ds{f("xn--:d.org")},
-			true,
+			ds{f("random.org")},
+			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
 		"illformed2": {
-			true, "*.xn--:D.org",
+			true, "*.xn--:D.org,a.org",
 			ds{f("random.org")},
-			ds{w("xn--:d.org")},
-			true,
+			ds{f("random.org")},
+			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "*.xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
 		"illformed3": {
@@ -441,7 +441,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", "hi.org,(", "(")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "hi.org,(", "(")
 			},
 		},
 		"illformed4": {
@@ -450,7 +450,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", ")", ")")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, ")", ")")
 			},
 		},
 	} {
@@ -511,7 +511,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, //nolint:lll
+					`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
 					keyDeprecated, key, key,
 				)
 			},

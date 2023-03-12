@@ -175,7 +175,7 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
 func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
-	if list, ok := domainexp.ParseList(ppfmt, Getenv(key)); ok {
+	if list, ok := domainexp.ParseList(ppfmt, key, Getenv(key)); ok {
 		*field = list
 		return true
 	}

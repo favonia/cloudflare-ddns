@@ -347,7 +347,7 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 	}
 
 	// fill in proxyMap
-	proxiedPred, ok := domainexp.ParseExpression(ppfmt, c.ProxiedTemplate)
+	proxiedPred, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedTemplate)
 	if !ok {
 		return false
 	}

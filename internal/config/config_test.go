@@ -530,6 +530,7 @@ func TestReadEnvEmpty(t *testing.T) {
 func TestNormalizeConfig(t *testing.T) {
 	t.Parallel()
 
+	keyProxied := "PROXIED"
 	var empty config.Config
 
 	for name, tc := range map[string]struct {
@@ -719,7 +720,7 @@ func TestNormalizeConfig(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; got %q", `range`, `range`),
+					m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `range`, `range`), //nolint:lll
 				)
 			},
 		},
@@ -740,7 +741,7 @@ func TestNormalizeConfig(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: wanted a boolean expression; got %q", "999", "999"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `999`, `999`), //nolint:lll
 				)
 			},
 		},
@@ -761,7 +762,7 @@ func TestNormalizeConfig(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse %q: wanted %q; reached end of string`, `is(12345`, ")"),
+					m.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is missing %q at the end`, keyProxied, `is(12345`, ")"),
 				)
 			},
 		},
