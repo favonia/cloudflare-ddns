@@ -101,9 +101,9 @@ services:
     # Restart the updater after reboot
     cap_add:
       - SETUID
-        # Capability to change UID
+        # Capability to change user ID
       - SETGID
-        # Capability to change GID
+        # Capability to change group ID
     cap_drop:
       - all
       # Drop all other capabilities

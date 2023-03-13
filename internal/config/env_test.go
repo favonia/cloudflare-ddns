@@ -135,7 +135,7 @@ func TestReadEmoji(t *testing.T) {
 		"illform": {
 			true, "weird", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {
@@ -182,7 +182,7 @@ func TestReadQuiet(t *testing.T) {
 		"illform": {
 			true, "weird", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {
@@ -199,6 +199,71 @@ func TestReadQuiet(t *testing.T) {
 
 			ok := config.ReadQuiet(key, &wrappedPP)
 			require.Equal(t, tc.ok, ok)
+		})
+	}
+}
+
+//nolint:paralleltest,funlen // environment vars are global
+func TestReadLinuxID(t *testing.T) {
+	key := keyPrefix + "ID"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      int
+		newField      int
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil": {
+			false, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"empty": {
+			true, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"zero": {
+			true, "0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) cannot be zero (the superuser)", key, 0)
+			},
+		},
+		"-1": {
+			true, "   -1", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) is negative", key, -1)
+			},
+		},
+		"1": {true, "   1   ", 100, 1, true, nil},
+		"1.0": {
+			true, "   1.0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
+			},
+		},
+		"words": {
+			true, "   word   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadLinuxID(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
 		})
 	}
 }
@@ -245,13 +310,13 @@ func TestReadBool(t *testing.T) {
 		"illform1": {
 			true, "weird\t  ", false, false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 		"illform2": {
 			true, " weird", true, true, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "weird", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {
@@ -298,20 +363,20 @@ func TestReadNonnegInt(t *testing.T) {
 		"-1": {
 			true, "   -1", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %d is negative", "-1", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) is negative", key, -1)
 			},
 		},
 		"1": {true, "   1   ", 100, 1, true, nil},
 		"1.0": {
 			true, "   1.0   ", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "1.0", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
 			},
 		},
 		"words": {
 			true, "   word   ", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "word", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
 			},
 		},
 	} {
@@ -351,32 +416,32 @@ func TestReadTTL(t *testing.T) {
 		"0": {
 			true, "0   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 0)
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 0)
 			},
 		},
 		"-1": {
 			true, "   -1", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", -1)
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, -1)
 			},
 		},
 		"1": {true, "   1   ", api.TTLAuto, api.TTLAuto, true, nil},
 		"20": {
 			true, "   20   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 20)
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 20)
 			},
 		},
 		"9999999": {
 			true, "   9999999   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%d) should be 1 (auto) or between 30 and 86400", 9999999)
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 9999999)
 			},
 		},
 		"words": {
 			true, "   word   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "TTL (%q) is not a number: %v", "word", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
 			},
 		},
 	} {
@@ -418,21 +483,21 @@ func TestReadDomains(t *testing.T) {
 		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll
 		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil}, //nolint:lll
 		"illformed1": {
-			true, "xn--:D.org",
+			true, "xn--:D.org,a.org",
 			ds{f("random.org")},
-			ds{f("xn--:d.org")},
-			true,
+			ds{f("random.org")},
+			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
 		"illformed2": {
-			true, "*.xn--:D.org",
+			true, "*.xn--:D.org,a.org",
 			ds{f("random.org")},
-			ds{w("xn--:d.org")},
-			true,
+			ds{f("random.org")},
+			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError, "Domain %q was added but it is ill-formed: %v", "*.xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any()) //nolint:lll
 			},
 		},
 		"illformed3": {
@@ -441,7 +506,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", "hi.org,(", "(")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "hi.org,(", "(")
 			},
 		},
 		"illformed4": {
@@ -450,7 +515,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: unexpected token %q", ")", ")")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, ")", ")")
 			},
 		},
 	} {
@@ -511,7 +576,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s and provider "cloudflare" were deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, //nolint:lll
+					`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
 					keyDeprecated, key, key,
 				)
 			},
@@ -521,7 +586,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s was deprecated; use %s=%s`,
+					`%s is deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.trace",
@@ -533,7 +598,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s was deprecated; use %s=%s`,
+					`%s is deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"cloudflare.doh",
@@ -545,7 +610,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s was deprecated; use %s=none`,
+					`%s is deprecated; use %s=none`,
 					keyDeprecated,
 					key,
 				)
@@ -556,7 +621,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s was deprecated; use %s=%s`,
+					`%s is deprecated; use %s=%s`,
 					keyDeprecated,
 					key,
 					"local",
@@ -568,7 +633,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Parameter %s and provider "ipify" were deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
 					keyDeprecated,
 					key,
 					key,
@@ -578,7 +643,7 @@ func TestReadProvider(t *testing.T) {
 		"deprecated/others": {
 			false, "", true, "   something-else ", ipify, ipify, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, "something-else")
 			},
 		},
 		"conflicts": {
@@ -602,7 +667,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
 					pp.EmojiUserError,
-					`Parameter %s does not accept "cloudflare"; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
 					key, key, key,
 				)
 			},
@@ -616,7 +681,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
-					`Provider "ipify" was deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
+					key,
 					key,
 					key,
 				)
@@ -625,7 +691,7 @@ func TestReadProvider(t *testing.T) {
 		"others": {
 			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: not a valid provider", "something-else")
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "something-else")
 			},
 		},
 	} {
@@ -674,13 +740,13 @@ func TestReadNonnegDuration(t *testing.T) {
 		"1": {
 			true, "  1  ", 123, 123, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "1", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a time duration: %v", key, "1", gomock.Any())
 			},
 		},
 		"-1s": {
 			true, "  -1s  ", 456, 456, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v is negative", "-1s", -time.Second)
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%v) is negative", key, -time.Second)
 			},
 		},
 		"0h": {true, "  0h  ", 123456, 0, true, nil},
@@ -739,7 +805,7 @@ func TestReadCron(t *testing.T) {
 		"illformed": {
 			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse %q: %v", "@ddddd", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, "@ddddd", gomock.Any())
 			},
 		},
 	} {

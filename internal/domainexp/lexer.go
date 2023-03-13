@@ -99,7 +99,7 @@ func splitter(data []byte, atEOF bool) (int, []byte, error) {
 	}
 }
 
-func tokenize(ppfmt pp.PP, input string) ([]string, bool) {
+func tokenize(ppfmt pp.PP, key string, input string) ([]string, bool) {
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	scanner.Split(splitter)
 
@@ -110,7 +110,7 @@ func tokenize(ppfmt pp.PP, input string) ([]string, bool) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse %q: %v", input, err)
+		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, input, err)
 		return nil, false
 	}
 	return tokens, true

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -114,25 +116,7 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 // returning true if elements are already distinct.
 func deduplicate(list []domain.Domain) []domain.Domain {
 	domain.SortDomains(list)
-
-	if len(list) == 0 {
-		return list
-	}
-
-	j := 0
-	for i := range list {
-		if i == 0 || list[j] == list[i] {
-			continue
-		}
-		j++
-		list[j] = list[i]
-	}
-
-	if len(list) == j+1 {
-		return list
-	}
-
-	return list[:j+1]
+	return slices.Compact(list)
 }
 
 // ReadDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
@@ -363,7 +347,7 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 	}
 
 	// fill in proxyMap
-	proxiedPred, ok := domainexp.ParseExpression(ppfmt, c.ProxiedTemplate)
+	proxiedPred, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedTemplate)
 	if !ok {
 		return false
 	}
