@@ -245,7 +245,7 @@ func TestReadProviderMap(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment vars are global
+//nolint:paralleltest,funlen // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	for name, tc := range map[string]struct {
 		domains       string
@@ -281,6 +281,14 @@ func TestReadDomainMap(t *testing.T) {
 			},
 			true,
 			nil,
+		},
+		"ill-formed": {
+			" ", "   ", "*.*", nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError,
+					"%s (%q) contains an ill-formed domain %q: %v",
+					"IP6_DOMAINS", "*.*", "*.*", gomock.Any())
+			},
 		},
 	} {
 		tc := tc
