@@ -203,6 +203,71 @@ func TestReadQuiet(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest,funlen // environment vars are global
+func TestReadLinuxID(t *testing.T) {
+	key := keyPrefix + "ID"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      int
+		newField      int
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil": {
+			false, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"empty": {
+			true, "", 100, 100, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+			},
+		},
+		"zero": {
+			true, "0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) cannot be zero (the superuser)", key, 0)
+			},
+		},
+		"-1": {
+			true, "   -1", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) is negative", key, -1)
+			},
+		},
+		"1": {true, "   1   ", 100, 1, true, nil},
+		"1.0": {
+			true, "   1.0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
+			},
+		},
+		"words": {
+			true, "   word   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadLinuxID(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
 //nolint:funlen,paralleltest // environment vars are global
 func TestReadBool(t *testing.T) {
 	key := keyPrefix + "BOOL"
