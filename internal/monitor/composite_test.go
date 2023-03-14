@@ -10,6 +10,22 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 )
 
+func TestMonitorsDescribe(t *testing.T) {
+	t.Parallel()
+
+	var ms []monitor.Monitor
+
+	mockCtrl := gomock.NewController(t)
+
+	for i := 0; i < 5; i++ {
+		m := mocks.NewMockMonitor(mockCtrl)
+		m.EXPECT().Describe(gomock.Any())
+		ms = append(ms, m)
+	}
+
+	monitor.Monitors(ms).Describe(func(service, params string) {})
+}
+
 func TestMonitorsSuccess(t *testing.T) {
 	t.Parallel()
 
