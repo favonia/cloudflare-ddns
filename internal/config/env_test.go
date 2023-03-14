@@ -892,6 +892,14 @@ func TestReadHealthchecksURL(t *testing.T) {
 			true,
 			nil,
 		},
+		"illformed/not-url": {
+			true, "\001",
+			nil,
+			nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse the Healthchecks URL (redacted)`)
+			},
+		},
 		"illformed/not-abs": {
 			true, "/1234?hello=123",
 			nil,
