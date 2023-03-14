@@ -17,6 +17,9 @@ var (
 
 	// ErrSingleOr is triggered by single | (which should have been ||).
 	ErrSingleOr = fmt.Errorf(`use "||" instead of "|"`)
+
+	// ErrUTF8 is triggered by invalid UTF-8 strings.
+	ErrUTF8 = fmt.Errorf(`invalid UTF-8 string`)
 )
 
 //nolint:funlen
@@ -42,10 +45,13 @@ func splitter(data []byte, atEOF bool) (int, []byte, error) {
 		if err != nil {
 			return startIndex, nil, fmt.Errorf("reader.ReadRune: %w", err)
 		}
-		if ch == utf8.RuneError && size == 1 && reader.Len() == 0 && !atEOF {
-			// special case: the UTF-8 decoding failed,
-			// but maybe more bytes will help
-			break
+		if ch == utf8.RuneError && size == 1 {
+			if reader.Len() == 0 && !atEOF {
+				// special case: the UTF-8 decoding failed,
+				// but reading more bytes might help
+				break
+			}
+			return startIndex, nil, fmt.Errorf("cannot parse %s: %w", data, ErrUTF8)
 		}
 
 		switch state {
