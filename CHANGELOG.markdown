@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/favonia/cloudflare-ddns/compare/v1.8.4...v1.9.0) (2023-03-15)
+
+### Features
+
+- **cron:** add the option `UPDATE_CRON=@disabled` to disable cron ([#411](https://github.com/favonia/cloudflare-ddns/issues/411)) ([a381c5a](https://github.com/favonia/cloudflare-ddns/commit/a381c5a5d6df12a1d10cafeb74fe63cce7f18558))
+
+### BREAKING CHANGES
+
+- the quiet mode will no longer print the version and the information about superuser privileges (unless there are errors) ([#415](https://github.com/favonia/cloudflare-ddns/issues/415)) ([92a4462](https://github.com/favonia/cloudflare-ddns/commit/92a44628ab459c5eb715ecbddb9cb84ea36c927e))
+
+### Other Notes
+
+The feature to disable cron is experimental. The intention is to use another mechanism to manage the update schedule and run the updater. The quiet mode was made quieter so that repeated execution of the updater will not lead to excessive logging with non-errors.
+
 # [1.8.4](https://github.com/favonia/cloudflare-ddns/compare/v1.8.3...v1.8.4) (2023-03-03)
 
 This release comes with no user-visible changes. It was compiled by version 1.20.1 of Go (instead of 1.20) and was shipped with version 0.62.0 of the [cloudflare-go library](https://github.com/cloudflare/cloudflare-go/) that [fixed a bug about proxy settings](https://github.com/cloudflare/cloudflare-go/pull/1222). I believe the bug does not affect the updater, but there's no reason not to use the fixed version. 😄
