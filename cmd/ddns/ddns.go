@@ -117,13 +117,18 @@ func realMain() int { //nolint:funlen
 				c.Monitor.Failure(ctx, ppfmt, msg)
 			}
 		}
-		first = false
 
-		// Maybe the cron was disabled?
+		// Check if cron was disabled
 		if c.UpdateCron == nil {
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
+		} else if first && !ppfmt.IsEnabledFor(pp.Verbose) {
+			// Currently, the quiet mode is too quiet, and some system (Raspberry Pi 4) is not happy
+			// with empty log. As a workaround, we will print a Notice here. See #426.
+			ppfmt.Noticef(pp.EmojiRepeat, "Enabled cron schedule for %s", formatName())
 		}
+
+		first = false
 
 		// Maybe there's nothing scheduled in near future?
 		if next.IsZero() {
