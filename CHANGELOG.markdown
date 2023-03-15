@@ -1,3 +1,11 @@
+# [1.9.1](https://github.com/favonia/cloudflare-ddns/compare/v1.9.0...v1.9.1) (2023-03-15)
+
+This version is a hotfix for running the updater in quiet mode in a system that expects _some_ output from the updater. Unfortunately, the new quiet mode introduced in 1.9.0 was _too_ quiet for those systems. This version will print out something to make them happy.
+
+### Bug Fixes
+
+- print out something in the quiet mode ([#427](https://github.com/favonia/cloudflare-ddns/issues/427)) ([a1f7d07](https://github.com/favonia/cloudflare-ddns/commit/a1f7d074fe6a485858a84ede54352475d59d358d))
+
 # [1.9.0](https://github.com/favonia/cloudflare-ddns/compare/v1.8.4...v1.9.0) (2023-03-15)
 
 ### Features
