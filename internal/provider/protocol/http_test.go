@@ -50,17 +50,28 @@ func TestHTTPGetIP(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		for name, tc := range map[string]struct {
+			nilCtx        bool
 			urlKey        ipnet.Type
 			url           string
 			ipNet         ipnet.Type
 			expected      netip.Addr
 			prepareMockPP func(*mocks.MockPP)
 		}{
-			"4":    {ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4, nil},
-			"6":    {ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6, nil},
-			"4to6": {ipnet.IP6, ip4Server.URL, ipnet.IP6, ip4As6, nil},
+			"4":    {false, ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4, nil},
+			"6":    {false, ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6, nil},
+			"4to6": {false, ipnet.IP6, ip4Server.URL, ipnet.IP6, ip4As6, nil},
+			"nilctx": {
+				true, ipnet.IP4, ip4Server.URL, ipnet.IP4, invalidIP,
+				func(m *mocks.MockPP) {
+					m.EXPECT().Warningf(
+						pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v",
+						ip4Server.URL,
+						gomock.Any(),
+					)
+				},
+			},
 			"6to4": {
-				ipnet.IP4, ip6Server.URL, ipnet.IP4, invalidIP,
+				false, ipnet.IP4, ip6Server.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError, "Detected IP address %s is not a valid %s address",
@@ -70,7 +81,7 @@ func TestHTTPGetIP(t *testing.T) {
 				},
 			},
 			"4-nil1": {
-				ipnet.IP4, dummy.URL, ipnet.IP4, invalidIP,
+				false, ipnet.IP4, dummy.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Errorf(
 						pp.EmojiImpossible,
@@ -80,7 +91,7 @@ func TestHTTPGetIP(t *testing.T) {
 				},
 			},
 			"6-nil1": {
-				ipnet.IP6, dummy.URL, ipnet.IP6, invalidIP,
+				false, ipnet.IP6, dummy.URL, ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Errorf(
 						pp.EmojiImpossible,
@@ -90,7 +101,7 @@ func TestHTTPGetIP(t *testing.T) {
 				},
 			},
 			"4-nil2": {
-				ipnet.IP4, "", ipnet.IP4, invalidIP,
+				false, ipnet.IP4, "", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
@@ -101,7 +112,7 @@ func TestHTTPGetIP(t *testing.T) {
 				},
 			},
 			"6-nil2": {
-				ipnet.IP6, "", ipnet.IP6, invalidIP,
+				false, ipnet.IP6, "", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
@@ -112,13 +123,13 @@ func TestHTTPGetIP(t *testing.T) {
 				},
 			},
 			"4-nil3": {
-				ipnet.IP4, ip4Server.URL, ipnet.IP6, invalidIP,
+				false, ipnet.IP4, ip4Server.URL, ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 				},
 			},
 			"6-nil3": {
-				ipnet.IP6, ip6Server.URL, ipnet.IP4, invalidIP,
+				false, ipnet.IP6, ip6Server.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 				},
@@ -135,12 +146,16 @@ func TestHTTPGetIP(t *testing.T) {
 						tc.urlKey: tc.url,
 					},
 				}
+				ctx := context.Background()
+				if tc.nilCtx {
+					ctx = nil
+				}
 
 				mockPP := mocks.NewMockPP(mockCtrl)
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet)
 				require.Equal(t, tc.expected, ip)
 				require.Equal(t, tc.expected.IsValid(), ok)
 			})
