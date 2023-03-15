@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"golang.org/x/exp/slices"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -43,4 +44,19 @@ func checkGroupIDs(ppfmt pp.PP, gid int) bool {
 	}
 
 	return ok
+}
+
+func checkCapabilities(ppfmt pp.PP) bool {
+	now := cap.GetProc()
+	diff, err := now.Cf(cap.NewSet())
+	switch {
+	case err != nil:
+		ppfmt.Errorf(pp.EmojiImpossible, "Failed to check Linux capabilities: %v", err)
+		return false
+	case diff != 0:
+		ppfmt.Noticef(pp.EmojiWarning, "Failed to drop all Linux capabilities; current ones: %v", now)
+		return false
+	default:
+		return true
+	}
 }

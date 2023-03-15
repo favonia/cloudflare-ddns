@@ -67,9 +67,9 @@ func setUser(ppfmt pp.PP, uid int) bool {
 
 // dropCapabilities drop all capabilities as the last step.
 func dropCapabilities(ppfmt pp.PP) bool {
-	if err := cap.NewSet().SetProc(); err != nil {
-		ppfmt.Errorf(pp.EmojiImpossible, "Failed to drop all capabilities: %v", err)
-	}
+	_ = cap.NewSet().SetProc()
+	checkCapabilities(ppfmt)
+
 	return true
 }
 
