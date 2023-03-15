@@ -1,6 +1,7 @@
 package domainexp_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -61,6 +62,19 @@ func TestParseList(t *testing.T) {
 			require.Equal(t, tc.expected, list)
 		})
 	}
+}
+
+type ErrorMatcher struct {
+	Error error
+}
+
+func (m ErrorMatcher) Matches(x any) bool {
+	err, ok := x.(error)
+	return ok && errors.Is(err, m.Error)
+}
+
+func (m ErrorMatcher) String() string {
+	return m.Error.Error()
 }
 
 //nolint:funlen
@@ -181,6 +195,12 @@ func TestParseExpression(t *testing.T) {
 			"0 1", false, nil, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "0 1", "1")
+			},
+		},
+		"utf8/invalid": {
+			"\200\300", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "\200\300", ErrorMatcher{domainexp.ErrUTF8}) //nolint:lll
 			},
 		},
 	} {

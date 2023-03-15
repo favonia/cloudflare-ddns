@@ -892,6 +892,25 @@ func TestReadHealthchecksURL(t *testing.T) {
 			true,
 			nil,
 		},
+		"illformed/not-url": {
+			true, "\001",
+			nil,
+			nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse the Healthchecks URL (redacted)`)
+			},
+		},
+		"illformed/not-abs": {
+			true, "/1234?hello=123",
+			nil,
+			nil, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
+					m.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+				)
+			},
+		},
 	} {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
