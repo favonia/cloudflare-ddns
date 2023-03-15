@@ -101,6 +101,15 @@ func realMain() int { //nolint:funlen
 		return 1
 	}
 
+	if c.UpdateCron != nil && !ppfmt.IsEnabledFor(pp.Verbose) {
+		// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
+		// is not happy with empty log. As a workaround, we will print a Notice here. See #426.
+		// We still want to keep the quiet mode for the single-run mode extremely quiet,
+		// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
+		// having the internal cron disabled.)
+		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
+	}
+
 	first := true
 	for {
 		// The next time to run the updater.
@@ -122,10 +131,6 @@ func realMain() int { //nolint:funlen
 		if c.UpdateCron == nil {
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
-		} else if first && !ppfmt.IsEnabledFor(pp.Verbose) {
-			// Currently, the quiet mode is too quiet, and some system (Raspberry Pi 4) is not happy
-			// with empty log. As a workaround, we will print a Notice here. See #426.
-			ppfmt.Noticef(pp.EmojiRepeat, "Enabled cron schedule for %s", formatName())
 		}
 
 		first = false
