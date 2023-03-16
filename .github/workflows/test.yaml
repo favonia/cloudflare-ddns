@@ -33,10 +33,9 @@ jobs:
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: stable
-          cache: true
       - name: 🧪 Run `go test`
         run: |
           go test -coverpkg=$(go list ./... | grep -v -e 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
@@ -74,10 +73,9 @@ jobs:
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: stable
-          cache: true
       - name: 🧪 Run `go test`
         run: |
           go test ./test/fuzzer -fuzztime ${{ env.FUZZTIME }} -fuzz FuzzParseList
@@ -103,10 +101,9 @@ jobs:
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: stable
-          cache: true
       - name: 🎭 Install GoMock
         run: go install github.com/golang/mock/mockgen@v1.6.0
       - name: 🧪 Run `go generate`
