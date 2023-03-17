@@ -47,4 +47,4 @@ jobs:
           path: "docs/gh-pages"
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@e690f03220f8a0e2d4da521d8b3a50e0b52650e0 # v1.2.6
+        uses: actions/deploy-pages@7fec4b245d2292f2713ef02d5488349a5da05175 # v1.2.7
