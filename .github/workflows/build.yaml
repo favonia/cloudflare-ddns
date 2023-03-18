@@ -28,16 +28,18 @@ jobs:
         uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776 # v2.2.1
         with:
           disable-sudo: true
-          egress-policy: block
+          egress-policy: audit
           allowed-endpoints: >
             api.github.com:443
             auth.docker.io:443
             docker.io:443
             github.com:443
             index.docker.io:443
+            oauth2.sigstore.dev:443
             production.cloudflare.docker.com:443
             proxy.golang.org:443
             registry-1.docker.io:443
+            sigstore-tuf-root.storage.googleapis.com:443
             storage.googleapis.com:443
 
       - name: 🚚 Check out the repository
@@ -82,11 +84,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: ✍️ Install Cosign
-        uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # 2.8.1
+        uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # 3.0.1
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          cosign sign --recursive "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
