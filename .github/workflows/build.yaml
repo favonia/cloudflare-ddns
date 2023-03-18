@@ -88,4 +88,4 @@ jobs:
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          cosign sign --recursive "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
+          cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
