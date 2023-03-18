@@ -20,17 +20,17 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 ### 💯 Complete Support of Domain Names
 
 - 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
-- 🌍 Internationalized domain names (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
+- 🌍 [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying for each domain.
 
 ### 🕵️ Privacy
 
-By default, public IP addresses are obtained using the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
+By default, public IP addresses are obtained via [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
 ### 🛡️ Security
 
-- 🛑 The superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
+- 🛑 Superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
 - 🩺 The updater supports [Healthchecks](https://healthchecks.io), which can notify you when the updating fails.
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
@@ -56,7 +56,7 @@ By default, public IP addresses are obtained using the [Cloudflare debugging pag
 
 _(Click to expand the following items.)_
 
-<details><summary>🐋 Directly run the provided Docker images.</summary>
+<details><summary>🐋 Directly run the Docker image.</summary>
 
 ```bash
 docker run \
@@ -101,9 +101,9 @@ services:
     # Restart the updater after reboot
     cap_add:
       - SETUID
-        # Capability to change user ID
+        # Capability to change user ID; needed for using PUID
       - SETGID
-        # Capability to change group ID
+        # Capability to change group ID; needed for using PGID
     cap_drop:
       - all
       # Drop all other capabilities
@@ -135,21 +135,21 @@ The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which
 </details>
 
 <details>
-<summary>📍 <code>DOMAINS</code> is a list of domains you want to update</summary>
+<summary>📍 <code>DOMAINS</code> is the list of domains to update</summary>
 
 The value of `DOMAINS` should be a list of fully qualified domain names separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
 
 </details>
 
 <details>
-<summary>🚨 Remove <code>PROXIED=true</code> if you are not running an HTTP(S) server</summary>
+<summary>🚨 Remove <code>PROXIED=true</code> if you are not running a web server</summary>
 
 The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
 
 </details>
 
 <details>
-<summary>📡 Read more about other ways to enable IPv6</summary>
+<summary>📡 Expand this if you want IPv6 without using `network_mode: host`</summary>
 
 The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, check out the [experimental `ip6tables` option](https://github.com/moby/moby/pull/41622). If your host OS is Linux, here’s the tl;dr:
 
