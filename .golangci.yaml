@@ -4,8 +4,6 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/favonia/cloudflare-ddns)
-  maligned:
-    suggest-new: true
   exhaustive:
     default-signifies-exhaustive: true
   govet:
@@ -20,6 +18,11 @@ linters-settings:
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Warningf
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Errorf
+  revive:
+    rules:
+      - name: unused-parameter
+        severity: warning
+        disabled: true
 
 issues:
   exclude-rules:
