@@ -106,19 +106,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		// Let's go through all stale records
 		for i, id := range unmatchedIDsToUpdate {
 			// Let's try to update it first.
-			if s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
-				// If the updating succeeds, we can move on to the next stage!
-				ppfmt.Noticef(pp.EmojiUpdateRecord,
-					"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
-				monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
-
-				// Now it's up to date! Note that matchedIDs must be empty; otherwise uptodate would have been true.
-				uptodate = true
-				numUndeletedUnmatched--
-				unhandledUnmatchedIDs = unmatchedIDsToUpdate[i+1:]
-
-				break
-			} else {
+			if ok := s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip); !ok {
 				// If the updating fails, we will delete it.
 				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)",
@@ -131,6 +119,18 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 				// No matter whether the deletion succeeds, move on.
 				continue
 			}
+
+			// If the updating succeeds, we can move on to the next stage!
+			ppfmt.Noticef(pp.EmojiUpdateRecord,
+				"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+			monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
+
+			// Now it's up to date! Note that matchedIDs must be empty; otherwise uptodate would have been true.
+			uptodate = true
+			numUndeletedUnmatched--
+			unhandledUnmatchedIDs = unmatchedIDsToUpdate[i+1:]
+
+			break
 		}
 
 		unmatchedIDsToUpdate = unhandledUnmatchedIDs

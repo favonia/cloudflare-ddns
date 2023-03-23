@@ -28,7 +28,7 @@ func (p *Local) Name() string {
 
 // GetIP detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p *Local) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
