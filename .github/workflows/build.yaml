@@ -22,6 +22,7 @@ jobs:
       group: ${{ github.workflow }}-build-${{ github.ref }}
       cancel-in-progress: true
     permissions:
+      id-token: write
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -83,3 +84,9 @@ jobs:
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: ✍️ Install Cosign
+        uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # 3.0.1
+      - name: ✍️ Sign the Docker images
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
