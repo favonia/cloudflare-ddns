@@ -245,7 +245,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 	}
 
-	if err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params); err != nil {
+	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
@@ -291,8 +291,8 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		rmap.Value()[res.Result.ID] = ip
+		rmap.Value()[res.ID] = ip
 	}
 
-	return res.Result.ID, true
+	return res.ID, true
 }
