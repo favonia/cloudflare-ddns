@@ -3,7 +3,7 @@ module github.com/favonia/cloudflare-ddns
 go 1.20
 
 require (
-	github.com/cloudflare/cloudflare-go v0.64.0
+	github.com/cloudflare/cloudflare-go v0.65.0
 	github.com/golang/mock v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/jellydator/ttlcache/v3 v3.0.1
