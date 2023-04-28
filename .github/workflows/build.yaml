@@ -85,7 +85,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: ✍️ Install Cosign
-        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # 3.0.2
+        uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343 # 3.0.3
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
