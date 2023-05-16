@@ -19,10 +19,12 @@ jobs:
           disable-sudo: true
           egress-policy: block
           allowed-endpoints: >
+            1dot1dot1dot1.cloudflare-ddns.com:443
             api.github.com:443
             codecov.io:443
             github.com:443
             objects.githubusercontent.com:443
+            one.one.one.one:443
             proxy.golang.org:443
             storage.googleapis.com:443
             sum.golang.org:443

@@ -95,9 +95,9 @@ func TestFieldGetIP(t *testing.T) {
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
-						"Failed to send HTTP(S) request to %q: %v",
+						"Failed to force resolve the host of %q as an %s address",
 						"",
-						gomock.Any(),
+						"IPv4",
 					)
 				},
 			},
@@ -106,9 +106,9 @@ func TestFieldGetIP(t *testing.T) {
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
-						"Failed to send HTTP(S) request to %q: %v",
+						"Failed to force resolve the host of %q as an %s address",
 						"",
-						gomock.Any(),
+						"IPv6",
 					)
 				},
 			},

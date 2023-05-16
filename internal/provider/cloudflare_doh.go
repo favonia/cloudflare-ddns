@@ -16,8 +16,8 @@ func NewCloudflareDOH() Provider {
 			Name  string
 			Class dnsmessage.Class
 		}{
-			ipnet.IP4: {"https://1.1.1.1/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
-			ipnet.IP6: {"https://[2606:4700:4700::1111]/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
+			ipnet.IP4: {"https://cloudflare-dns.com/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
+			ipnet.IP6: {"https://cloudflare-dns.com/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
 		},
 	}
 }

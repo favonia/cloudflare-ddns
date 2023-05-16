@@ -7,10 +7,12 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 type httpCore struct {
+	ipNet       ipnet.Type
 	url         string
 	method      string
 	contentType string
@@ -19,21 +21,28 @@ type httpCore struct {
 	extract     func(pp.PP, []byte) (netip.Addr, bool)
 }
 
-func (d *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
+func (h *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, d.method, d.url, d.reader)
+	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.reader)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 
-	if d.contentType != "" {
-		req.Header.Set("Content-Type", d.contentType)
+	if !ipnet.ForceResolveRetryableRequest(ctx, h.ipNet, req) {
+		ppfmt.Warningf(pp.EmojiError,
+			"Failed to force resolve the host of %q as an %s address",
+			h.url, h.ipNet.Describe())
+		return invalidIP, false
 	}
 
-	if d.accept != "" {
-		req.Header.Set("Accept", d.accept)
+	if h.contentType != "" {
+		req.Header.Set("Content-Type", h.contentType)
+	}
+
+	if h.accept != "" {
+		req.Header.Set("Accept", h.accept)
 	}
 
 	c := retryablehttp.NewClient()
@@ -41,16 +50,16 @@ func (d *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
 		return invalidIP, false
 	}
 
-	return d.extract(ppfmt, body)
+	return h.extract(ppfmt, body)
 }

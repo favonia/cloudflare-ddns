@@ -135,6 +135,26 @@ func TestNormalizeDetectedIP(t *testing.T) {
 	}
 }
 
+func TestCheckIPFormat(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		ip  netip.Addr
+		ok4 bool
+		ok6 bool
+	}{
+		"1::2":    {mustIP("1::2"), false, true},
+		"1.1.1.1": {mustIP("1.1.1.1"), true, false},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.ok4, ipnet.IP4.CheckIPFormat(tc.ip))
+			require.Equal(t, tc.ok6, ipnet.IP6.CheckIPFormat(tc.ip))
+		})
+	}
+}
+
 func TestUDPNetwork(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
@@ -149,6 +169,24 @@ func TestUDPNetwork(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.UDPNetwork())
+		})
+	}
+}
+
+func TestIPNetwork(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input    ipnet.Type
+		expected string
+	}{
+		"4":   {ipnet.IP4, "ip4"},
+		"6":   {ipnet.IP6, "ip6"},
+		"100": {ipnet.Type(100), ""},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.input.IPNetwork())
 		})
 	}
 }
