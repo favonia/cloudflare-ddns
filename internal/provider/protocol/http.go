@@ -9,8 +9,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bool) {
+func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string) (netip.Addr, bool) {
 	c := httpCore{
+		ipNet:       ipNet,
 		url:         url,
 		method:      http.MethodGet,
 		contentType: "",
@@ -49,7 +50,7 @@ func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromHTTP(ctx, ppfmt, url)
+	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url)
 	if !ok {
 		return netip.Addr{}, false
 	}

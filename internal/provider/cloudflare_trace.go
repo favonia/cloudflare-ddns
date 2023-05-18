@@ -13,8 +13,8 @@ func NewCloudflareTrace() Provider {
 			URL   string
 			Field string
 		}{
-			ipnet.IP4: {"https://1.1.1.1/cdn-cgi/trace", "ip"},
-			ipnet.IP6: {"https://[2606:4700:4700::1111]/cdn-cgi/trace", "ip"},
+			ipnet.IP4: {"https://cloudflare-dns.com/cdn-cgi/trace", "ip"},
+			ipnet.IP6: {"https://cloudflare-dns.com/cdn-cgi/trace", "ip"},
 		},
 	}
 }
