@@ -12,11 +12,10 @@ import (
 
 func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) (netip.Addr, bool) {
 	c := httpCore{
-		url:         url,
-		method:      http.MethodGet,
-		contentType: "",
-		accept:      "",
-		reader:      nil,
+		url:               url,
+		method:            http.MethodGet,
+		additionalHeaders: nil,
+		requestBody:       nil,
 		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
 			var invalidIP netip.Addr
 

@@ -11,11 +11,10 @@ import (
 
 func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bool) {
 	c := httpCore{
-		url:         url,
-		method:      http.MethodGet,
-		contentType: "",
-		accept:      "",
-		reader:      nil,
+		url:               url,
+		method:            http.MethodGet,
+		additionalHeaders: nil,
+		requestBody:       nil,
 		extract: func(_ pp.PP, body []byte) (netip.Addr, bool) {
 			ipString := string(body)
 			ip, err := netip.ParseAddr(ipString)
