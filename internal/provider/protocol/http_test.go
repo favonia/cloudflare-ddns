@@ -134,6 +134,17 @@ func TestHTTPGetIP(t *testing.T) {
 					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 				},
 			},
+			"localhost:0": {
+				false, ipnet.IP4, "https://127.0.0.1:0/", ipnet.IP4, invalidIP,
+				func(m *mocks.MockPP) {
+					m.EXPECT().Warningf(
+						pp.EmojiError,
+						"Failed to send HTTP(S) request to %q: %v",
+						"https://127.0.0.1:0/",
+						gomock.Any(),
+					)
+				},
+			},
 		} {
 			tc := tc
 			t.Run(name, func(t *testing.T) {
