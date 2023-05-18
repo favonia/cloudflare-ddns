@@ -105,9 +105,9 @@ func TestHTTPGetIP(t *testing.T) {
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
-						"Failed to force resolve the host of %q as an %s address",
+						"Failed to send HTTP(S) request to %q: %v",
 						"",
-						"IPv4",
+						gomock.Any(),
 					)
 				},
 			},
@@ -116,9 +116,9 @@ func TestHTTPGetIP(t *testing.T) {
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(
 						pp.EmojiError,
-						"Failed to force resolve the host of %q as an %s address",
+						"Failed to send HTTP(S) request to %q: %v",
 						"",
-						"IPv6",
+						gomock.Any(),
 					)
 				},
 			},
@@ -132,17 +132,6 @@ func TestHTTPGetIP(t *testing.T) {
 				false, ipnet.IP6, ip6Server.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
 					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
-				},
-			},
-			"localhost:0": {
-				false, ipnet.IP4, "https://127.0.0.1:0/", ipnet.IP4, invalidIP,
-				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(
-						pp.EmojiError,
-						"Failed to send HTTP(S) request to %q: %v",
-						"https://127.0.0.1:0/",
-						gomock.Any(),
-					)
 				},
 			},
 		} {
@@ -167,8 +156,8 @@ func TestHTTPGetIP(t *testing.T) {
 					tc.prepareMockPP(mockPP)
 				}
 				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet)
-				require.Equal(t, tc.expected.IsValid(), ok)
 				require.Equal(t, tc.expected, ip)
+				require.Equal(t, tc.expected.IsValid(), ok)
 			})
 		}
 	})

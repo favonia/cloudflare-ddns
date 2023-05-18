@@ -98,37 +98,13 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 	return ip, true
 }
 
-// Check IP address format.
-func (t Type) CheckIPFormat(ip netip.Addr) bool {
-	switch t {
-	case IP4:
-		return ip.Is4()
-	case IP6:
-		return ip.Is6()
-	default:
-		return false
-	}
-}
-
-// UDPNetwork gives the UDP name for net.Dial.
+// UDPNetwork gives the network name for net.Dial.
 func (t Type) UDPNetwork() string {
 	switch t {
 	case IP4:
 		return "udp4"
 	case IP6:
 		return "udp6"
-	default:
-		return ""
-	}
-}
-
-// IPNetwork gives IP network name for net.LookupNetIP.
-func (t Type) IPNetwork() string {
-	switch t {
-	case IP4:
-		return "ip4"
-	case IP6:
-		return "ip6"
 	default:
 		return ""
 	}
