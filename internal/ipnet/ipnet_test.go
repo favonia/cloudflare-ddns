@@ -151,6 +151,7 @@ func TestCheckIPFormat(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.ok4, ipnet.IP4.CheckIPFormat(tc.ip))
 			require.Equal(t, tc.ok6, ipnet.IP6.CheckIPFormat(tc.ip))
+			require.False(t, ipnet.Type(0).CheckIPFormat(tc.ip))
 		})
 	}
 }
