@@ -78,7 +78,7 @@ func TestPrintDefault(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "IP detection:", "5s"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Record updating:", "30s"),
 	)
-	config.Default().Print(mockPP)
+	config.Default(false).Print(mockPP)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -116,7 +116,7 @@ func TestPrintMaps(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Healthchecks:", "(URL redacted)"),
 	)
 
-	c := config.Default()
+	c := config.Default(false)
 
 	c.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
 	c.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}

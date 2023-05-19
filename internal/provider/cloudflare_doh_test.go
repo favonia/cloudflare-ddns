@@ -11,5 +11,6 @@ import (
 func TestCloudflareName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "cloudflare.doh", provider.Name(provider.NewCloudflareDOH()))
+	require.Equal(t, "cloudflare.doh", provider.Name(provider.NewCloudflareDOH(true)))
+	require.Equal(t, "cloudflare.doh", provider.Name(provider.NewCloudflareDOH(false)))
 }

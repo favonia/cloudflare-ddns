@@ -8,11 +8,8 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 // Getenv reads an environment variable and trim the space.
@@ -170,124 +167,6 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	default:
 		*field = api.TTL(res)
 		return true
-	}
-}
-
-// ReadDomains reads an environment variable as a comma-separated list of domains.
-func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
-	if list, ok := domainexp.ParseList(ppfmt, key, Getenv(key)); ok {
-		*field = list
-		return true
-	}
-	return false
-}
-
-// ReadProvider reads an environment variable and parses it as a provider.
-//
-// policyKey was the name of the deprecated parameters IP4/6_POLICY.
-//
-//nolint:funlen
-func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
-	if val := Getenv(key); val == "" {
-		// parsing of the deprecated parameter
-		switch valPolicy := Getenv(keyDeprecated); valPolicy {
-		case "":
-			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, provider.Name(*field))
-			return true
-		case "cloudflare":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				keyDeprecated, key, key,
-			)
-			*field = provider.NewCloudflareTrace()
-			return true
-		case "cloudflare.trace":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
-			)
-			*field = provider.NewCloudflareTrace()
-			return true
-		case "cloudflare.doh":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
-			)
-			*field = provider.NewCloudflareDOH()
-			return true
-		case "ipify":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				keyDeprecated, key, key,
-			)
-			*field = provider.NewIpify()
-			return true
-		case "local":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
-			)
-			*field = provider.NewLocal()
-			return true
-		case "unmanaged":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s is deprecated; use %s=none`,
-				keyDeprecated, key,
-			)
-			*field = nil
-			return true
-		default:
-			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, valPolicy)
-			return false
-		}
-	} else {
-		if Getenv(keyDeprecated) != "" {
-			ppfmt.Errorf(
-				pp.EmojiUserError,
-				`Cannot have both %s and %s set`,
-				key, keyDeprecated,
-			)
-			return false
-		}
-
-		switch val {
-		case "cloudflare":
-			ppfmt.Errorf(
-				pp.EmojiUserError,
-				`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				key, key, key,
-			)
-			return false
-		case "cloudflare.trace":
-			*field = provider.NewCloudflareTrace()
-			return true
-		case "cloudflare.doh":
-			*field = provider.NewCloudflareDOH()
-			return true
-		case "ipify":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				key, key, key,
-			)
-			*field = provider.NewIpify()
-			return true
-		case "local":
-			*field = provider.NewLocal()
-			return true
-		case "none":
-			*field = nil
-			return true
-		default:
-			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
-			return false
-		}
 	}
 }
 

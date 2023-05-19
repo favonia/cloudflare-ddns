@@ -4,9 +4,19 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+// ReadDomains reads an environment variable as a comma-separated list of domains.
+func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
+	if list, ok := domainexp.ParseList(ppfmt, key, Getenv(key)); ok {
+		*field = list
+		return true
+	}
+	return false
+}
 
 // deduplicate always sorts and deduplicates the input list,
 // returning true if elements are already distinct.

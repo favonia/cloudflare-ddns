@@ -31,12 +31,12 @@ type Config struct {
 }
 
 // Default gives the default configuration.
-func Default() *Config {
+func Default(useAlternativeIPs bool) *Config {
 	return &Config{
 		Auth: nil,
 		Provider: map[ipnet.Type]provider.Provider{
-			ipnet.IP4: provider.NewCloudflareTrace(),
-			ipnet.IP6: provider.NewCloudflareTrace(),
+			ipnet.IP4: provider.NewCloudflareTrace(useAlternativeIPs),
+			ipnet.IP6: provider.NewCloudflareTrace(useAlternativeIPs),
 		},
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,

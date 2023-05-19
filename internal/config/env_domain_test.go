@@ -14,6 +14,81 @@ import (
 )
 
 //nolint:paralleltest,funlen // environment vars are global
+func TestReadDomains(t *testing.T) {
+	key := keyPrefix + "DOMAINS"
+	type ds = []domain.Domain
+	type f = domain.FQDN
+	type w = domain.Wildcard
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      ds
+		newField      ds
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil":       {false, "", ds{f("test.org")}, ds{}, true, nil},
+		"empty":     {true, "", ds{f("test.org")}, ds{}, true, nil},
+		"star":      {true, "*", ds{}, ds{w("")}, true, nil},
+		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
+		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
+		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll
+		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil}, //nolint:lll
+		"illformed1": {
+			true, "xn--:D.org,a.org",
+			ds{f("random.org")},
+			ds{f("random.org")},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any()) //nolint:lll
+			},
+		},
+		"illformed2": {
+			true, "*.xn--:D.org,a.org",
+			ds{f("random.org")},
+			ds{f("random.org")},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any()) //nolint:lll
+			},
+		},
+		"illformed3": {
+			true, "hi.org,(",
+			ds{},
+			ds{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "hi.org,(", "(")
+			},
+		},
+		"illformed4": {
+			true, ")",
+			ds{},
+			ds{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, ")", ")")
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			ok := config.ReadDomains(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:paralleltest,funlen // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	for name, tc := range map[string]struct {
 		domains       string

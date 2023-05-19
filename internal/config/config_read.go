@@ -11,14 +11,14 @@ import (
 // ReadEnv calls the relevant readers to read all relevant environment variables except TZ
 // and update relevant fields. One should subsequently call [Config.NormalizeConfig] to maintain
 // invariants across different fields.
-func (c *Config) ReadEnv(ppfmt pp.PP) bool {
+func (c *Config) ReadEnv(ppfmt pp.PP, useAlternativeIPs bool) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadProviderMap(ppfmt, &c.Provider) ||
+		!ReadProviderMap(ppfmt, useAlternativeIPs, &c.Provider) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||

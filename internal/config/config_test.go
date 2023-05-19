@@ -11,5 +11,6 @@ import (
 func TestDefaultConfigNotNil(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, config.Default())
+	require.NotNil(t, config.Default(true))
+	require.NotNil(t, config.Default(false))
 }

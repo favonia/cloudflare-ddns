@@ -277,7 +277,7 @@ func TestUpdateIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
-			conf := config.Default()
+			conf := config.Default(false)
 			conf.Domains = domains
 			conf.TTL = tc.ttl
 			conf.Proxied = tc.proxied
@@ -438,7 +438,7 @@ func TestClearIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
-			conf := config.Default()
+			conf := config.Default(false)
 			conf.Domains = domains
 			conf.TTL = tc.ttl
 			conf.Proxied = tc.proxied
