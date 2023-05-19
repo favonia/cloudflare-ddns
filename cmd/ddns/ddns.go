@@ -11,6 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/signal"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
@@ -29,6 +30,9 @@ func formatName() string {
 
 func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 	c := config.Default()
+
+	// Probe whether 1.1.1.1 was intercepted
+	provider.ProbeCloudflareIPs(ctx)
 
 	// Read the config
 	if !c.ReadEnv(ppfmt) || !c.NormalizeConfig(ppfmt) {
