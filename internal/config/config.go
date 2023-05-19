@@ -30,13 +30,13 @@ type Config struct {
 	Monitor          monitor.Monitor
 }
 
-// Default gives the default configuration.
-func Default(useAlternativeIPs bool) *Config {
+// Default gives the default configuration. If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
+func Default(use1001 bool) *Config {
 	return &Config{
 		Auth: nil,
 		Provider: map[ipnet.Type]provider.Provider{
-			ipnet.IP4: provider.NewCloudflareTrace(useAlternativeIPs),
-			ipnet.IP6: provider.NewCloudflareTrace(useAlternativeIPs),
+			ipnet.IP4: provider.NewCloudflareTrace(use1001),
+			ipnet.IP6: provider.NewCloudflareTrace(use1001),
 		},
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,

@@ -20,8 +20,8 @@ import (
 
 //nolint:paralleltest // environment variables are global
 func TestReadEnvWithOnlyToken(t *testing.T) {
-	for _, useAlternativeIPs := range []bool{true, false} {
-		t.Run(fmt.Sprintf("useAlternativeIPs=%t", useAlternativeIPs), func(t *testing.T) {
+	for _, use1001 := range []bool{true, false} {
+		t.Run(fmt.Sprintf("use1001=%t", use1001), func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			unset(t,
@@ -50,7 +50,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
 				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
 			)
-			ok := cfg.ReadEnv(mockPP, useAlternativeIPs)
+			ok := cfg.ReadEnv(mockPP, use1001)
 			require.True(t, ok)
 		})
 	}
@@ -58,8 +58,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 
 //nolint:paralleltest // environment variables are global
 func TestReadEnvEmpty(t *testing.T) {
-	for _, useAlternativeIPs := range []bool{true, false} {
-		t.Run(fmt.Sprintf("useAlternativeIPs=%t", useAlternativeIPs), func(t *testing.T) {
+	for _, use1001 := range []bool{true, false} {
+		t.Run(fmt.Sprintf("use1001=%t", use1001), func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			unset(t,
@@ -78,7 +78,7 @@ func TestReadEnvEmpty(t *testing.T) {
 				mockPP.EXPECT().IncIndent().Return(innerMockPP),
 				innerMockPP.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
 			)
-			ok := cfg.ReadEnv(mockPP, useAlternativeIPs)
+			ok := cfg.ReadEnv(mockPP, use1001)
 			require.False(t, ok)
 		})
 	}

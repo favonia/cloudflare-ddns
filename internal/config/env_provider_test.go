@@ -27,15 +27,15 @@ func TestReadProvider(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		useAlternativeIPs bool
-		set               bool
-		val               string
-		setDeprecated     bool
-		valDeprecated     string
-		oldField          provider.Provider
-		newField          provider.Provider
-		ok                bool
-		prepareMockPP     func(*mocks.MockPP)
+		use1001       bool
+		set           bool
+		val           string
+		setDeprecated bool
+		valDeprecated string
+		oldField      provider.Provider
+		newField      provider.Provider
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
 			true,
@@ -197,7 +197,7 @@ func TestReadProvider(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProvider(mockPP, tc.useAlternativeIPs, key, keyDeprecated, &field)
+			ok := config.ReadProvider(mockPP, tc.use1001, key, keyDeprecated, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -214,12 +214,12 @@ func TestReadProviderMap(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		useAlternativeIPs bool
-		ip4Provider       string
-		ip6Provider       string
-		expected          map[ipnet.Type]provider.Provider
-		ok                bool
-		prepareMockPP     func(*mocks.MockPP)
+		use1001       bool
+		ip4Provider   string
+		ip6Provider   string
+		expected      map[ipnet.Type]provider.Provider
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full/true": {
 			true,
@@ -300,12 +300,12 @@ func TestReadProviderMap(t *testing.T) {
 			store(t, "IP4_PROVIDER", tc.ip4Provider)
 			store(t, "IP6_PROVIDER", tc.ip6Provider)
 
-			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local(tc.useAlternativeIPs)}
+			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local(tc.use1001)}
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProviderMap(mockPP, tc.useAlternativeIPs, &field)
+			ok := config.ReadProviderMap(mockPP, tc.use1001, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})

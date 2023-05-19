@@ -8,10 +8,10 @@ import (
 )
 
 // NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
-// If useAlternativeIPs is true, 1.0.0.1 is used instead of 1.1.1.1.
-func NewCloudflareDOH(useAlternativeIPs bool) Provider {
+// If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
+func NewCloudflareDOH(use1001 bool) Provider {
 	ip4URL := "https://1.1.1.1/dns-query"
-	if useAlternativeIPs {
+	if use1001 {
 		ip4URL = "https://1.0.0.1/dns-query"
 	}
 

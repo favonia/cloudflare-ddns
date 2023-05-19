@@ -28,11 +28,11 @@ func formatName() string {
 }
 
 func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
-	useAlternativeIPs := config.ProbeCloudflareIPs(ctx, ppfmt)
-	c := config.Default(useAlternativeIPs)
+	use1001 := config.ShouldWeUse1001(ctx, ppfmt)
+	c := config.Default(use1001)
 
 	// Read the config
-	if !c.ReadEnv(ppfmt, useAlternativeIPs) || !c.NormalizeConfig(ppfmt) {
+	if !c.ReadEnv(ppfmt, use1001) || !c.NormalizeConfig(ppfmt) {
 		return c, nil, false
 	}
 

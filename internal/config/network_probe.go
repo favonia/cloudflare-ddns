@@ -29,9 +29,8 @@ func ProbeURL(ctx context.Context, url string) bool {
 	return err == nil
 }
 
-// ProbeCloudflareIPs quickly checks 1.1.1.1 and 1.0.0.1
-// and return whether the alternative URL should be used.
-func ProbeCloudflareIPs(ctx context.Context, ppfmt pp.PP) bool {
+// ShouldWeUse1001 quickly checks 1.1.1.1 and 1.0.0.1 and return whether 1.0.0.1 should be used.
+func ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 	good1111 := ProbeURL(ctx, "https://1.1.1.1")
 	good1001 := ProbeURL(ctx, "https://1.0.0.1")
 
