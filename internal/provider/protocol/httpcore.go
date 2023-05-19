@@ -11,29 +11,24 @@ import (
 )
 
 type httpCore struct {
-	url         string
-	method      string
-	contentType string
-	accept      string
-	reader      io.Reader
-	extract     func(pp.PP, []byte) (netip.Addr, bool)
+	url               string
+	method            string
+	additionalHeaders map[string]string
+	requestBody       io.Reader
+	extract           func(pp.PP, []byte) (netip.Addr, bool)
 }
 
-func (d *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
+func (h *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, d.method, d.url, d.reader)
+	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 
-	if d.contentType != "" {
-		req.Header.Set("Content-Type", d.contentType)
-	}
-
-	if d.accept != "" {
-		req.Header.Set("Accept", d.accept)
+	for header, value := range h.additionalHeaders {
+		req.Header.Set(header, value)
 	}
 
 	c := retryablehttp.NewClient()
@@ -41,16 +36,16 @@ func (d *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", d.url, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
 		return invalidIP, false
 	}
 
-	return d.extract(ppfmt, body)
+	return h.extract(ppfmt, body)
 }

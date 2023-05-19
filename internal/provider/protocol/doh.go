@@ -151,11 +151,13 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	}
 
 	c := httpCore{
-		url:         url,
-		method:      http.MethodPost,
-		contentType: "application/dns-message",
-		accept:      "application/dns-message",
-		reader:      bytes.NewReader(q),
+		url:    url,
+		method: http.MethodPost,
+		additionalHeaders: map[string]string{
+			"Content-Type": "application/dns-message",
+			"Accept":       "application/dns-message",
+		},
+		requestBody: bytes.NewReader(q),
 		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
 			return parseDNSResponse(ppfmt, body, id, name, class)
 		},
