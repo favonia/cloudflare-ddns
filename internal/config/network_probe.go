@@ -31,12 +31,9 @@ func ProbeURL(ctx context.Context, url string) bool {
 
 // ShouldWeUse1001 quickly checks 1.1.1.1 and 1.0.0.1 and return whether 1.0.0.1 should be used.
 func ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
-	good1111 := ProbeURL(ctx, "https://1.1.1.1")
-	good1001 := ProbeURL(ctx, "https://1.0.0.1")
-
-	if !good1111 && good1001 {
-		ppfmt.Warningf(pp.EmojiError, "1.1.1.1 might have been blocked or intercepted by your ISP or your router")
-		ppfmt.Warningf(pp.EmojiError, "1.0.0.1 seems to work and will be used instead")
+	if !ProbeURL(ctx, "https://1.1.1.1") && ProbeURL(ctx, "https://1.0.0.1") {
+		ppfmt.Warningf(pp.EmojiError, "1.1.1.1 appears to be blocked or intercepted by your ISP or your router")
+		ppfmt.Warningf(pp.EmojiGood, "1.0.0.1 seems to work and will be used instead of 1.1.1.1 for IPv4 address detection")
 		return true
 	}
 
