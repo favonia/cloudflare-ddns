@@ -17,6 +17,9 @@ type Local struct {
 	// Name of the detection protocol.
 	ProviderName string
 
+	// Whether 1.1.1.1 is used for IPv4
+	Is1111UsedForIP4 bool
+
 	// The target IP address of the UDP packet to be sent.
 	RemoteUDPAddr map[ipnet.Type]Switch
 }
@@ -48,3 +51,6 @@ func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use10
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
+
+// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
+func (p *Local) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

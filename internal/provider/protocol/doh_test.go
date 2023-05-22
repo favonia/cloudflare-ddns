@@ -22,8 +22,9 @@ func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.DNSOverHTTPS{
-		ProviderName: "very secret name",
-		Param:        nil,
+		ProviderName:     "very secret name",
+		Is1111UsedForIP4: false,
+		Param:            nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -570,7 +571,8 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			server := setupServer(t, tc.name, tc.class, tc.response, tc.header, tc.idShift, tc.answers)
 
 			provider := &protocol.DNSOverHTTPS{
-				ProviderName: "",
+				ProviderName:     "",
+				Is1111UsedForIP4: false,
 				Param: map[ipnet.Type]struct {
 					URL   protocol.Switch
 					Name  string
@@ -589,4 +591,20 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
+}
+
+func TestDOHShouldWeCheck1111(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, (&protocol.DNSOverHTTPS{
+		ProviderName:     "",
+		Is1111UsedForIP4: true,
+		Param:            nil,
+	}).ShouldWeCheck1111())
+
+	require.False(t, (&protocol.DNSOverHTTPS{
+		ProviderName:     "",
+		Is1111UsedForIP4: false,
+		Param:            nil,
+	}).ShouldWeCheck1111())
 }

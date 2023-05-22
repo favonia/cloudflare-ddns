@@ -65,3 +65,17 @@ func (mr *MockProviderMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockProvider)(nil).Name))
 }
+
+// ShouldWeCheck1111 mocks base method.
+func (m *MockProvider) ShouldWeCheck1111() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShouldWeCheck1111")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ShouldWeCheck1111 indicates an expected call of ShouldWeCheck1111.
+func (mr *MockProviderMockRecorder) ShouldWeCheck1111() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldWeCheck1111", reflect.TypeOf((*MockProvider)(nil).ShouldWeCheck1111))
+}

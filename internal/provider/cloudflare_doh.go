@@ -11,7 +11,8 @@ import (
 // If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
 func NewCloudflareDOH() Provider {
 	return &protocol.DNSOverHTTPS{
-		ProviderName: "cloudflare.doh",
+		ProviderName:     "cloudflare.doh",
+		Is1111UsedForIP4: true,
 		Param: map[ipnet.Type]struct {
 			URL   protocol.Switch
 			Name  string
