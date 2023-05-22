@@ -21,8 +21,9 @@ func TestFieldName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.Field{
-		ProviderName: "very secret name",
-		Param:        nil,
+		ProviderName:     "very secret name",
+		Is1111UsedforIP4: false,
+		Param:            nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -149,7 +150,8 @@ func TestFieldGetIP(t *testing.T) {
 				mockCtrl := gomock.NewController(t)
 
 				provider := &protocol.Field{
-					ProviderName: "secret name",
+					ProviderName:     "secret name",
+					Is1111UsedforIP4: false,
 					Param: map[ipnet.Type]struct {
 						URL   protocol.Switch
 						Field string

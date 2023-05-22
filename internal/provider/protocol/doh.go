@@ -168,8 +168,9 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 
 // DNSOverHTTPS represents a generic detection protocol using DNS over HTTPS.
 type DNSOverHTTPS struct {
-	ProviderName string // name of the protocol
-	Param        map[ipnet.Type]struct {
+	ProviderName     string // name of the protocol
+	Is1111UsedForIP4 bool   // whether 1.1.1.1 is used
+	Param            map[ipnet.Type]struct {
 		URL   Switch           // the DoH server
 		Name  string           // domain name to query
 		Class dnsmessage.Class // DNS class to query
@@ -196,3 +197,6 @@ func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type,
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
+
+// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
+func (p *DNSOverHTTPS) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

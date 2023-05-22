@@ -6,7 +6,8 @@ import (
 )
 
 // NewLocal creates a specialized Local provider that uses Cloudflare as the remote server.
-// (No actual UDP packets will be sent out.)
+// (No actual UDP packets will be sent out due to this provider. However, packets might
+// have already been sent to 1.1.1.1 or 1.0.0.1 when detecting possible hijacking of 1.1.1.1.)
 func NewLocal() Provider {
 	return &protocol.Local{
 		ProviderName: "local",

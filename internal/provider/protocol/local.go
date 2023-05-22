@@ -48,3 +48,6 @@ func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use10
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
+
+// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
+func (p *Local) ShouldWeCheck1111() bool { return false }

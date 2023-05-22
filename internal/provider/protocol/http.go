@@ -31,8 +31,9 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bo
 
 // HTTP represents a generic detection protocol to use an HTTP response directly.
 type HTTP struct {
-	ProviderName string                // name of the protocol
-	URL          map[ipnet.Type]Switch // URL of the detection page
+	ProviderName     string                // name of the protocol
+	Is1111UsedForIP4 bool                  // whether 1.1.1.1 is used
+	URL              map[ipnet.Type]Switch // URL of the detection page
 }
 
 // Name of the detection protocol.
@@ -55,3 +56,6 @@ func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
+
+// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
+func (p *HTTP) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

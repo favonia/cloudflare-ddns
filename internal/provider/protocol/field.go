@@ -40,8 +40,9 @@ func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) 
 
 // Field represents a generic detection protocol to parse an HTTP response.
 type Field struct {
-	ProviderName string // name of the detection protocol
-	Param        map[ipnet.Type]struct {
+	ProviderName     string // name of the detection protocol
+	Is1111UsedforIP4 bool
+	Param            map[ipnet.Type]struct {
 		URL   Switch // URL of the detection page
 		Field string // name of the field holding the IP address
 	}
@@ -67,3 +68,6 @@ func (p *Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use100
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
+
+// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
+func (p *Field) ShouldWeCheck1111() bool { return p.Is1111UsedforIP4 }

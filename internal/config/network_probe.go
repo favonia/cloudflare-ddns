@@ -33,7 +33,7 @@ func ProbeURL(ctx context.Context, url string) bool {
 // ShouldWeUse1001 quickly checks 1.1.1.1 and 1.0.0.1 and notes whether 1.0.0.1 should be used.
 func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 	c.Use1001 = false
-	if c.Provider[ipnet.IP4] == nil {
+	if c.Provider[ipnet.IP4] == nil || !c.Provider[ipnet.IP4].ShouldWeCheck1111() {
 		return true
 	}
 	if ppfmt.IsEnabledFor(pp.Info) {

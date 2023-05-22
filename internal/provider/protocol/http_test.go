@@ -21,8 +21,9 @@ func TestHTTPName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.HTTP{
-		ProviderName: "very secret name",
-		URL:          nil,
+		ProviderName:     "very secret name",
+		Is1111UsedForIP4: false,
+		URL:              nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -141,7 +142,8 @@ func TestHTTPGetIP(t *testing.T) {
 				mockCtrl := gomock.NewController(t)
 
 				provider := &protocol.HTTP{
-					ProviderName: "secret name",
+					ProviderName:     "secret name",
+					Is1111UsedForIP4: false,
 					URL: map[ipnet.Type]protocol.Switch{
 						tc.urlKey: protocol.Constant(tc.url),
 					},
