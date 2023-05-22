@@ -84,7 +84,7 @@ func TestLocalGetIP(t *testing.T) {
 
 			provider := &protocol.Local{
 				ProviderName: "",
-				RemoteUDPAddr: map[ipnet.Type] protocol.Switch{
+				RemoteUDPAddr: map[ipnet.Type]protocol.Switch{
 					tc.addrKey: protocol.Constant(tc.addr),
 				},
 			}
