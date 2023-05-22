@@ -13,8 +13,8 @@ import (
 
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {
-	Name() string                                                // name of the protocol
-	GetIP(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool) // get the IP
+	Name() string                                                                              // name of the protocol
+	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) // get the IP
 }
 
 // Name gets the protocol name. It returns "none" for nil.

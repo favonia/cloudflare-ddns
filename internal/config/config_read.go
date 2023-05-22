@@ -9,16 +9,16 @@ import (
 )
 
 // ReadEnv calls the relevant readers to read all relevant environment variables except TZ
-// and update relevant fields. One should subsequently call [Config.NormalizeConfig] to maintain
-// invariants across different fields. If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
-func (c *Config) ReadEnv(ppfmt pp.PP, use1001 bool) bool {
+// and update relevant fields. One should subsequently call [Config.NormalizeConfig]
+// to maintain invariants across different fields.
+func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadProviderMap(ppfmt, use1001, &c.Provider) ||
+		!ReadProviderMap(ppfmt, &c.Provider) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||

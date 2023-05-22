@@ -572,11 +572,11 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			provider := &protocol.DNSOverHTTPS{
 				ProviderName: "",
 				Param: map[ipnet.Type]struct {
-					URL   string
+					URL   protocol.Switch
 					Name  string
 					Class dnsmessage.Class
 				}{
-					tc.urlKey: {server.URL, tc.name, tc.class},
+					tc.urlKey: {protocol.Constant(server.URL), tc.name, tc.class},
 				},
 			}
 
@@ -584,7 +584,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, true)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})

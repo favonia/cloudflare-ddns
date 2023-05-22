@@ -38,18 +38,18 @@ func (m *MockProvider) EXPECT() *MockProviderMockRecorder {
 }
 
 // GetIP mocks base method.
-func (m *MockProvider) GetIP(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type) (netip.Addr, bool) {
+func (m *MockProvider) GetIP(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 bool) (netip.Addr, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIP", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetIP", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(netip.Addr)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
 // GetIP indicates an expected call of GetIP.
-func (mr *MockProviderMockRecorder) GetIP(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockProviderMockRecorder) GetIP(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIP", reflect.TypeOf((*MockProvider)(nil).GetIP), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIP", reflect.TypeOf((*MockProvider)(nil).GetIP), arg0, arg1, arg2, arg3)
 }
 
 // Name mocks base method.

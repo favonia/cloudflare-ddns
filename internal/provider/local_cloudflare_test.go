@@ -11,6 +11,5 @@ import (
 func TestLocalCloudflareName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "local", provider.Name(provider.NewLocal(true)))
-	require.Equal(t, "local", provider.Name(provider.NewLocal(false)))
+	require.Equal(t, "local", provider.Name(provider.NewLocal()))
 }

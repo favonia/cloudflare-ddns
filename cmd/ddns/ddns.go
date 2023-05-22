@@ -28,11 +28,10 @@ func formatName() string {
 }
 
 func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
-	use1001 := config.ShouldWeUse1001(ctx, ppfmt)
-	c := config.Default(use1001)
+	c := config.Default()
 
 	// Read the config
-	if !c.ReadEnv(ppfmt, use1001) || !c.NormalizeConfig(ppfmt) {
+	if !c.ReadEnv(ppfmt) || !c.NormalizeConfig(ppfmt) || !c.ShouldWeUse1001(ctx, ppfmt) {
 		return c, nil, false
 	}
 

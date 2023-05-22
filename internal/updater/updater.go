@@ -78,11 +78,11 @@ var ShouldDisplayHelpMessages = map[ipnet.Type]bool{
 	ipnet.IP6: true,
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, bool) {
+func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
-	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
+	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
@@ -109,7 +109,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, ok := detectIP(ctx, ppfmt, c, ipNet)
+			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
 			if !ok {
 				// We can't detect the new IP address. It's probably better to leave existing IP addresses alone.
 				allOk = false

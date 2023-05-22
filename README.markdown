@@ -26,7 +26,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### 🕵️ Privacy
 
-By default, public IP addresses are obtained via [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
+By default, public IP addresses are obtained via [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
 ### 🛡️ Security
 
@@ -227,13 +227,15 @@ _(Click to expand the following items.)_
 > - `cloudflare.doh`\
 >   Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
 > - `cloudflare.trace`\
->   Get the public IP address by parsing the [Cloudflare debugging page](https://1.1.1.1/cdn-cgi/trace) and update DNS records accordingly.
+>   Get the public IP address by parsing the [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace) and update DNS records accordingly. This is the default provider.
 > - `local`\
 >   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
-> The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other.
+> The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
+>
+> Some technical details: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
 >
 > </details>
 

@@ -9,10 +9,9 @@ import (
 // ReadProvider reads an environment variable and parses it as a provider.
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
-// use1001 indicates whether 1.0.0.1 should be used instead of 1.1.1.1.
 //
 //nolint:funlen
-func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *provider.Provider) bool {
+func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
 	if val := Getenv(key); val == "" {
 		// parsing of the deprecated parameter
 		switch valPolicy := Getenv(keyDeprecated); valPolicy {
@@ -25,7 +24,7 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 				`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
 				keyDeprecated, key, key,
 			)
-			*field = provider.NewCloudflareTrace(use1001)
+			*field = provider.NewCloudflareTrace()
 			return true
 		case "cloudflare.trace":
 			ppfmt.Warningf(
@@ -33,7 +32,7 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 				`%s is deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
-			*field = provider.NewCloudflareTrace(use1001)
+			*field = provider.NewCloudflareTrace()
 			return true
 		case "cloudflare.doh":
 			ppfmt.Warningf(
@@ -41,7 +40,7 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 				`%s is deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
-			*field = provider.NewCloudflareDOH(use1001)
+			*field = provider.NewCloudflareDOH()
 			return true
 		case "ipify":
 			ppfmt.Warningf(
@@ -57,7 +56,7 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 				`%s is deprecated; use %s=%s`,
 				keyDeprecated, key, valPolicy,
 			)
-			*field = provider.NewLocal(use1001)
+			*field = provider.NewLocal()
 			return true
 		case "unmanaged":
 			ppfmt.Warningf(
@@ -90,10 +89,10 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 			)
 			return false
 		case "cloudflare.trace":
-			*field = provider.NewCloudflareTrace(use1001)
+			*field = provider.NewCloudflareTrace()
 			return true
 		case "cloudflare.doh":
-			*field = provider.NewCloudflareDOH(use1001)
+			*field = provider.NewCloudflareDOH()
 			return true
 		case "ipify":
 			ppfmt.Warningf(
@@ -104,7 +103,7 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 			*field = provider.NewIpify()
 			return true
 		case "local":
-			*field = provider.NewLocal(use1001)
+			*field = provider.NewLocal()
 			return true
 		case "none":
 			*field = nil
@@ -118,12 +117,12 @@ func ReadProvider(ppfmt pp.PP, use1001 bool, key, keyDeprecated string, field *p
 
 // ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
 // with support of deprecated environment variables IP4_POLICY and IP6_POLICY.
-func ReadProviderMap(ppfmt pp.PP, use1001 bool, field *map[ipnet.Type]provider.Provider) bool {
+func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool {
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
-	if !ReadProvider(ppfmt, use1001, "IP4_PROVIDER", "IP4_POLICY", &ip4Provider) ||
-		!ReadProvider(ppfmt, use1001, "IP6_PROVIDER", "IP6_POLICY", &ip6Provider) {
+	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", &ip4Provider) ||
+		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", &ip6Provider) {
 		return false
 	}
 

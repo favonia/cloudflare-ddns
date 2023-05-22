@@ -170,7 +170,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 type DNSOverHTTPS struct {
 	ProviderName string // name of the protocol
 	Param        map[ipnet.Type]struct {
-		URL   string           // the DoH server
+		URL   Switch           // the DoH server
 		Name  string           // domain name to query
 		Class dnsmessage.Class // DNS class to query
 	}
@@ -182,14 +182,14 @@ func (p *DNSOverHTTPS) Name() string {
 }
 
 // GetIP detects the IP address by DNS over HTTPS.
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL, param.Name, param.Class)
+	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL.Switch(use1001), param.Name, param.Class)
 	if !ok {
 		return netip.Addr{}, false
 	}

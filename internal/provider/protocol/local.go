@@ -18,7 +18,7 @@ type Local struct {
 	ProviderName string
 
 	// The target IP address of the UDP packet to be sent.
-	RemoteUDPAddr map[ipnet.Type]string
+	RemoteUDPAddr map[ipnet.Type]Switch
 }
 
 // Name of the detection protocol.
@@ -28,7 +28,7 @@ func (p *Local) Name() string {
 
 // GetIP detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
@@ -37,7 +37,7 @@ func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (neti
 		return invalidIP, false
 	}
 
-	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr)
+	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr.Switch(use1001))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
 		return invalidIP, false

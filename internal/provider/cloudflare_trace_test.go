@@ -11,6 +11,5 @@ import (
 func TestCloudflareTraceName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "cloudflare.trace", provider.Name(provider.NewCloudflareTrace(true)))
-	require.Equal(t, "cloudflare.trace", provider.Name(provider.NewCloudflareTrace(false)))
+	require.Equal(t, "cloudflare.trace", provider.Name(provider.NewCloudflareTrace()))
 }

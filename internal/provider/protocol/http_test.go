@@ -142,8 +142,8 @@ func TestHTTPGetIP(t *testing.T) {
 
 				provider := &protocol.HTTP{
 					ProviderName: "secret name",
-					URL: map[ipnet.Type]string{
-						tc.urlKey: tc.url,
+					URL: map[ipnet.Type]protocol.Switch{
+						tc.urlKey: protocol.Constant(tc.url),
 					},
 				}
 				ctx := context.Background()
@@ -155,7 +155,7 @@ func TestHTTPGetIP(t *testing.T) {
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet)
+				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet, true)
 				require.Equal(t, tc.expected, ip)
 				require.Equal(t, tc.expected.IsValid(), ok)
 			})
