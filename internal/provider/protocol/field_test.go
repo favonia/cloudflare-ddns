@@ -174,3 +174,19 @@ func TestFieldGetIP(t *testing.T) {
 		}
 	})
 }
+
+func TestFieldShouldWeCheck1111(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, (&protocol.Field{
+		ProviderName:     "",
+		Is1111UsedforIP4: true,
+		Param:            nil,
+	}).ShouldWeCheck1111())
+
+	require.False(t, (&protocol.Field{
+		ProviderName:     "",
+		Is1111UsedforIP4: false,
+		Param:            nil,
+	}).ShouldWeCheck1111())
+}

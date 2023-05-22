@@ -164,3 +164,19 @@ func TestHTTPGetIP(t *testing.T) {
 		}
 	})
 }
+
+func TestHTTPShouldWeCheck1111(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, (&protocol.HTTP{
+		ProviderName:     "",
+		Is1111UsedForIP4: true,
+		URL:              nil,
+	}).ShouldWeCheck1111())
+
+	require.False(t, (&protocol.HTTP{
+		ProviderName:     "",
+		Is1111UsedForIP4: false,
+		URL:              nil,
+	}).ShouldWeCheck1111())
+}

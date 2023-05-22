@@ -592,3 +592,19 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 		})
 	}
 }
+
+func TestDOHShouldWeCheck1111(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, (&protocol.DNSOverHTTPS{
+		ProviderName:     "",
+		Is1111UsedForIP4: true,
+		Param:            nil,
+	}).ShouldWeCheck1111())
+
+	require.False(t, (&protocol.DNSOverHTTPS{
+		ProviderName:     "",
+		Is1111UsedForIP4: false,
+		Param:            nil,
+	}).ShouldWeCheck1111())
+}
