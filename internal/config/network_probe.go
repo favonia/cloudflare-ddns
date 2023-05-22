@@ -36,6 +36,7 @@ func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 	if c.Provider[ipnet.IP4] == nil || !c.Provider[ipnet.IP4].ShouldWeCheck1111() {
 		return true
 	}
+
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking 1.1.1.1 . . .")
 		ppfmt = ppfmt.IncIndent()
