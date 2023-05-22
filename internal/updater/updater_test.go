@@ -40,10 +40,10 @@ func TestUpdateIPs(t *testing.T) {
 
 	type mockproviders = map[ipnet.Type]func(ppfmt pp.PP, m *mocks.MockProvider)
 	provider4 := func(ppfmt pp.PP, m *mocks.MockProvider) {
-		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(ip4, true)
+		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(ip4, true)
 	}
 	provider6 := func(ppfmt pp.PP, m *mocks.MockProvider) {
-		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(ip6, true)
+		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6, true).Return(ip6, true)
 	}
 
 	type mockproxied = map[domain.Domain]bool
@@ -171,7 +171,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			mockproviders{
 				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
-					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(netip.Addr{}, false)
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(netip.Addr{}, false)
 				},
 				ipnet.IP6: provider6,
 			},
@@ -197,7 +197,7 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{
 				ipnet.IP4: provider4,
 				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
-					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{}, false)
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6, true).Return(netip.Addr{}, false)
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -219,7 +219,7 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{
 				ipnet.IP4: provider4,
 				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
-					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{}, false)
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6, true).Return(netip.Addr{}, false)
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -244,10 +244,10 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			mockproviders{
 				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
-					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4).Return(netip.Addr{}, false)
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(netip.Addr{}, false)
 				},
 				ipnet.IP6: func(ppfmt pp.PP, m *mocks.MockProvider) {
-					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6).Return(netip.Addr{}, false)
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP6, true).Return(netip.Addr{}, false)
 				},
 			},
 			nil,
@@ -277,10 +277,11 @@ func TestUpdateIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
-			conf := config.Default(false)
+			conf := config.Default()
 			conf.Domains = domains
 			conf.TTL = tc.ttl
 			conf.Proxied = tc.proxied
+			conf.Use1001 = true
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -438,7 +439,7 @@ func TestClearIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
-			conf := config.Default(false)
+			conf := config.Default()
 			conf.Domains = domains
 			conf.TTL = tc.ttl
 			conf.Proxied = tc.proxied

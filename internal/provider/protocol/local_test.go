@@ -84,8 +84,8 @@ func TestLocalGetIP(t *testing.T) {
 
 			provider := &protocol.Local{
 				ProviderName: "",
-				RemoteUDPAddr: map[ipnet.Type]string{
-					tc.addrKey: tc.addr,
+				RemoteUDPAddr: map[ipnet.Type] protocol.Switch{
+					tc.addrKey: protocol.Constant(tc.addr),
 				},
 			}
 
@@ -93,7 +93,7 @@ func TestLocalGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, true)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})

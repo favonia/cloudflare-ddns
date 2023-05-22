@@ -42,7 +42,7 @@ func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) 
 type Field struct {
 	ProviderName string // name of the detection protocol
 	Param        map[ipnet.Type]struct {
-		URL   string // URL of the detection page
+		URL   Switch // URL of the detection page
 		Field string // name of the field holding the IP address
 	}
 }
@@ -53,14 +53,14 @@ func (p *Field) Name() string {
 }
 
 // GetIP detects the IP address by parsing the HTTP response.
-func (p *Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p *Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromField(ctx, ppfmt, param.URL, param.Field)
+	ip, ok := getIPFromField(ctx, ppfmt, param.URL.Switch(use1001), param.Field)
 	if !ok {
 		return netip.Addr{}, false
 	}

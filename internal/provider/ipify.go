@@ -9,9 +9,9 @@ import (
 func NewIpify() Provider {
 	return &protocol.HTTP{
 		ProviderName: "ipify",
-		URL: map[ipnet.Type]string{
-			ipnet.IP4: "https://api4.ipify.org",
-			ipnet.IP6: "https://api6.ipify.org",
+		URL: map[ipnet.Type]protocol.Switch{
+			ipnet.IP4: protocol.Constant("https://api4.ipify.org"),
+			ipnet.IP6: protocol.Constant("https://api6.ipify.org"),
 		},
 	}
 }

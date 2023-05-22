@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -20,68 +19,60 @@ import (
 
 //nolint:paralleltest // environment variables are global
 func TestReadEnvWithOnlyToken(t *testing.T) {
-	for _, use1001 := range []bool{true, false} {
-		t.Run(fmt.Sprintf("use1001=%t", use1001), func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
+	mockCtrl := gomock.NewController(t)
 
-			unset(t,
-				"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-				"IP4_PROVIDER", "IP6_PROVIDER",
-				"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
-				"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+	unset(t,
+		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
+		"IP4_PROVIDER", "IP6_PROVIDER",
+		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
+		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
 
-			store(t, "CF_API_TOKEN", "deadbeaf")
+	store(t, "CF_API_TOKEN", "deadbeaf")
 
-			var cfg config.Config
-			mockPP := mocks.NewMockPP(mockCtrl)
-			innerMockPP := mocks.NewMockPP(mockCtrl)
-			gomock.InOrder(
-				mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
-				mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
-				mockPP.EXPECT().IncIndent().Return(innerMockPP),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "UPDATE_CRON", "@disabled"),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", api.TTL(0)),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "PROXIED", ""),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
-				innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
-			)
-			ok := cfg.ReadEnv(mockPP, use1001)
-			require.True(t, ok)
-		})
-	}
+	var cfg config.Config
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "UPDATE_CRON", "@disabled"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", api.TTL(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "PROXIED", ""),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
+	)
+	ok := cfg.ReadEnv(mockPP)
+	require.True(t, ok)
 }
 
 //nolint:paralleltest // environment variables are global
 func TestReadEnvEmpty(t *testing.T) {
-	for _, use1001 := range []bool{true, false} {
-		t.Run(fmt.Sprintf("use1001=%t", use1001), func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
+	mockCtrl := gomock.NewController(t)
 
-			unset(t,
-				"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-				"IP4_PROVIDER", "IP6_PROVIDER",
-				"IP4_POLICY", "IP6_POLICY",
-				"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
-				"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+	unset(t,
+		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
+		"IP4_PROVIDER", "IP6_PROVIDER",
+		"IP4_POLICY", "IP6_POLICY",
+		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
+		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
 
-			var cfg config.Config
-			mockPP := mocks.NewMockPP(mockCtrl)
-			innerMockPP := mocks.NewMockPP(mockCtrl)
-			gomock.InOrder(
-				mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
-				mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
-				mockPP.EXPECT().IncIndent().Return(innerMockPP),
-				innerMockPP.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
-			)
-			ok := cfg.ReadEnv(mockPP, use1001)
-			require.False(t, ok)
-		})
-	}
+	var cfg config.Config
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		innerMockPP.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
+	)
+	ok := cfg.ReadEnv(mockPP)
+	require.False(t, ok)
 }
 
 //nolint:funlen
@@ -131,8 +122,8 @@ func TestNormalizeConfig(t *testing.T) {
 		"empty-ip6": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: provider.NewCloudflareTrace(true),
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP4: provider.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
@@ -143,7 +134,7 @@ func TestNormalizeConfig(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: provider.NewCloudflareTrace(true),
+					ipnet.IP4: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
@@ -168,7 +159,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"empty-ip6-none-ip4": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(true),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
@@ -194,7 +185,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"ignored-ip4-domains": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(true),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
@@ -205,7 +196,7 @@ func TestNormalizeConfig(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(true),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
@@ -231,7 +222,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"template": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
@@ -241,7 +232,7 @@ func TestNormalizeConfig(t *testing.T) {
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
@@ -264,7 +255,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"template/invalid/proxied": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(true),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
@@ -285,7 +276,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"template/error/proxied": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c")},
@@ -306,7 +297,7 @@ func TestNormalizeConfig(t *testing.T) {
 		"template/error/proxied/ill-formed": {
 			input: &config.Config{ //nolint:exhaustruct
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(true),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c")},
@@ -344,7 +335,7 @@ func TestNormalizeConfig(t *testing.T) {
 				DeleteOnStop: true,
 				UpdateCron:   cron.MustNew("@every 5m"),
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c")},
@@ -356,7 +347,7 @@ func TestNormalizeConfig(t *testing.T) {
 				DeleteOnStop: true,
 				UpdateCron:   cron.MustNew("@every 5m"),
 				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(false),
+					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c")},

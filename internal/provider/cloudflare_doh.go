@@ -9,21 +9,25 @@ import (
 
 // NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
 // If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
-func NewCloudflareDOH(use1001 bool) Provider {
-	ip4URL := "https://1.1.1.1/dns-query"
-	if use1001 {
-		ip4URL = "https://1.0.0.1/dns-query"
-	}
-
+func NewCloudflareDOH() Provider {
 	return &protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]struct {
-			URL   string
+			URL   protocol.Switch
 			Name  string
 			Class dnsmessage.Class
 		}{
-			ipnet.IP4: {ip4URL, "whoami.cloudflare.", dnsmessage.ClassCHAOS},
-			ipnet.IP6: {"https://[2606:4700:4700::1111]/dns-query", "whoami.cloudflare.", dnsmessage.ClassCHAOS},
+			ipnet.IP4: {
+				protocol.Switchable{
+					Use1111: "https://1.1.1.1/dns-query",
+					Use1001: "https://1.0.0.1/dns-query",
+				},
+				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
+			},
+			ipnet.IP6: {
+				protocol.Constant("https://[2606:4700:4700::1111]/dns-query"),
+				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
+			},
 		},
 	}
 }

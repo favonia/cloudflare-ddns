@@ -151,11 +151,11 @@ func TestFieldGetIP(t *testing.T) {
 				provider := &protocol.Field{
 					ProviderName: "secret name",
 					Param: map[ipnet.Type]struct {
-						URL   string
+						URL   protocol.Switch
 						Field string
 					}{
 						tc.urlKey: {
-							URL:   tc.url,
+							URL:   protocol.Constant(tc.url),
 							Field: tc.field,
 						},
 					},
@@ -165,7 +165,7 @@ func TestFieldGetIP(t *testing.T) {
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+				ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, true)
 				require.Equal(t, tc.expected, ip)
 				require.Equal(t, tc.expected.IsValid(), ok)
 			})

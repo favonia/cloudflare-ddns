@@ -11,6 +11,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestProbeURLTrue(t *testing.T) {
@@ -35,6 +36,15 @@ func TestProbeCloudflareIPs(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Checking 1.1.1.1 . . ."),
+		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		innerMockPP.EXPECT().Infof(pp.EmojiGood, "1.1.1.1 appears to be working"),
+	)
+	c := config.Default()
 	// config.ShouldWeUse1001 must return false on GitHub.
-	require.False(t, config.ShouldWeUse1001(context.Background(), mockPP))
+	require.True(t, c.ShouldWeUse1001(context.Background(), mockPP))
+	require.False(t, c.Use1001)
 }

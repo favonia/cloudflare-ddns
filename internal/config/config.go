@@ -17,6 +17,7 @@ import (
 type Config struct {
 	Auth             api.Auth
 	Provider         map[ipnet.Type]provider.Provider
+	Use1001          bool
 	Domains          map[ipnet.Type][]domain.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
@@ -30,14 +31,15 @@ type Config struct {
 	Monitor          monitor.Monitor
 }
 
-// Default gives the default configuration. If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
-func Default(use1001 bool) *Config {
+// Default gives the default configuration.
+func Default() *Config {
 	return &Config{
 		Auth: nil,
 		Provider: map[ipnet.Type]provider.Provider{
-			ipnet.IP4: provider.NewCloudflareTrace(use1001),
-			ipnet.IP6: provider.NewCloudflareTrace(use1001),
+			ipnet.IP4: provider.NewCloudflareTrace(),
+			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
+		Use1001: false,
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,

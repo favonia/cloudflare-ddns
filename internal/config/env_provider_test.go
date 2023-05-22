@@ -20,14 +20,13 @@ func TestReadProvider(t *testing.T) {
 
 	var (
 		none  provider.Provider
-		doh   = provider.NewCloudflareDOH
-		trace = provider.NewCloudflareTrace
-		local = provider.NewLocal
+		doh   = provider.NewCloudflareDOH()
+		trace = provider.NewCloudflareTrace()
+		local = provider.NewLocal()
 		ipify = provider.NewIpify()
 	)
 
 	for name, tc := range map[string]struct {
-		use1001       bool
 		set           bool
 		val           string
 		setDeprecated bool
@@ -38,22 +37,19 @@ func TestReadProvider(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
-			true,
 			false, "", false, "", none, none, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "none")
 			},
 		},
 		"deprecated/empty": {
-			false,
-			false, "", true, "", local(true), local(true), true,
+			false, "", true, "", local, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"deprecated/cloudflare": {
-			true,
-			false, "", true, "    cloudflare\t   ", none, trace(true), true,
+			false, "", true, "    cloudflare\t   ", none, trace, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -63,8 +59,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/cloudflare.trace": {
-			false,
-			false, "", true, " cloudflare.trace", none, trace(false), true,
+			false, "", true, " cloudflare.trace", none, trace, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -76,8 +71,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/cloudflare.doh": {
-			true,
-			false, "", true, "    \tcloudflare.doh   ", none, doh(true), true,
+			false, "", true, "    \tcloudflare.doh   ", none, doh, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -89,8 +83,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/unmanaged": {
-			false,
-			false, "", true, "   unmanaged   ", trace(false), none, true,
+			false, "", true, "   unmanaged   ", trace, none, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -101,8 +94,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/local": {
-			true,
-			false, "", true, "   local   ", trace(false), local(true), true,
+			false, "", true, "   local   ", trace, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -114,8 +106,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/ipify": {
-			false,
-			false, "", true, "     ipify  ", trace(false), ipify, true,
+			false, "", true, "     ipify  ", trace, ipify, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -127,14 +118,12 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"deprecated/others": {
-			true,
 			false, "", true, "   something-else ", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, "something-else")
 			},
 		},
 		"conflicts": {
-			false,
 			true, "cloudflare.doh", true, "cloudflare.doh", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
@@ -145,14 +134,12 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"empty": {
-			true,
-			false, "", false, "", local(false), local(false), true,
+			false, "", false, "", local, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"cloudflare": {
-			false,
 			true, "    cloudflare\t   ", false, "", none, none, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(
@@ -162,13 +149,12 @@ func TestReadProvider(t *testing.T) {
 				)
 			},
 		},
-		"cloudflare.trace": {true, true, " cloudflare.trace", false, "", none, trace(true), true, nil},
-		"cloudflare.doh":   {false, true, "    \tcloudflare.doh   ", false, "", none, doh(false), true, nil},
-		"none":             {true, true, "   none   ", false, "", trace(true), none, true, nil},
-		"local":            {false, true, "   local   ", false, "", trace(true), local(false), true, nil},
+		"cloudflare.trace": {true, " cloudflare.trace", false, "", none, trace, true, nil},
+		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
+		"none":             {true, "   none   ", false, "", trace, none, true, nil},
+		"local":            {true, "   local   ", false, "", trace, local, true, nil},
 		"ipify": {
-			true,
-			true, "     ipify  ", false, "", trace(false), ipify, true,
+			true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(
 					pp.EmojiUserWarning,
@@ -180,7 +166,6 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"others": {
-			false,
 			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "something-else")
@@ -197,7 +182,7 @@ func TestReadProvider(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProvider(mockPP, tc.use1001, key, keyDeprecated, &field)
+			ok := config.ReadProvider(mockPP, key, keyDeprecated, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -208,9 +193,9 @@ func TestReadProvider(t *testing.T) {
 func TestReadProviderMap(t *testing.T) {
 	var (
 		none  provider.Provider
-		trace = provider.NewCloudflareTrace
-		doh   = provider.NewCloudflareDOH
-		local = provider.NewLocal
+		trace = provider.NewCloudflareTrace()
+		doh   = provider.NewCloudflareDOH()
+		local = provider.NewLocal()
 	)
 
 	for name, tc := range map[string]struct {
@@ -225,8 +210,8 @@ func TestReadProviderMap(t *testing.T) {
 			true,
 			"cloudflare.trace", "local",
 			map[ipnet.Type]provider.Provider{
-				ipnet.IP4: trace(true),
-				ipnet.IP6: local(true),
+				ipnet.IP4: trace,
+				ipnet.IP6: local,
 			},
 			true,
 			nil,
@@ -235,8 +220,8 @@ func TestReadProviderMap(t *testing.T) {
 			false,
 			"cloudflare.trace", "local",
 			map[ipnet.Type]provider.Provider{
-				ipnet.IP4: trace(false),
-				ipnet.IP6: local(false),
+				ipnet.IP4: trace,
+				ipnet.IP6: local,
 			},
 			true,
 			nil,
@@ -245,8 +230,8 @@ func TestReadProviderMap(t *testing.T) {
 			true,
 			"local", "  ",
 			map[ipnet.Type]provider.Provider{
-				ipnet.IP4: local(true),
-				ipnet.IP6: local(true),
+				ipnet.IP4: local,
+				ipnet.IP6: local,
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -258,7 +243,7 @@ func TestReadProviderMap(t *testing.T) {
 			"    ", "cloudflare.doh",
 			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: none,
-				ipnet.IP6: doh(false),
+				ipnet.IP6: doh,
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -270,7 +255,7 @@ func TestReadProviderMap(t *testing.T) {
 			" ", "   ",
 			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: none,
-				ipnet.IP6: local(true),
+				ipnet.IP6: local,
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -285,7 +270,7 @@ func TestReadProviderMap(t *testing.T) {
 			" flare", "   ",
 			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: none,
-				ipnet.IP6: local(false),
+				ipnet.IP6: local,
 			},
 			false,
 			func(m *mocks.MockPP) {
@@ -300,12 +285,12 @@ func TestReadProviderMap(t *testing.T) {
 			store(t, "IP4_PROVIDER", tc.ip4Provider)
 			store(t, "IP6_PROVIDER", tc.ip6Provider)
 
-			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local(tc.use1001)}
+			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local}
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProviderMap(mockPP, tc.use1001, &field)
+			ok := config.ReadProviderMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})
