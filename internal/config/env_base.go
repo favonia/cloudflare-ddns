@@ -8,7 +8,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -208,23 +207,5 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	}
 
 	*field = c
-	return true
-}
-
-// ReadHealthchecksURL reads the base URL of the Healthchecks endpoint.
-func ReadHealthchecksURL(ppfmt pp.PP, key string, field *monitor.Monitor) bool {
-	val := Getenv(key)
-
-	if val == "" {
-		return true
-	}
-
-	h, ok := monitor.NewHealthchecks(ppfmt, val)
-	if !ok {
-		return false
-	}
-
-	// Append the new monitor to the existing list
-	*field = h
 	return true
 }

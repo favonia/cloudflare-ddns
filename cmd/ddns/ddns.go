@@ -10,6 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/signal"
@@ -56,9 +57,9 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
 		if ok, msg := updater.ClearIPs(ctx, ppfmt, c, s); ok {
-			c.Monitor.Log(ctx, ppfmt, msg)
+			monitor.LogAll(ctx, ppfmt, msg, c.Monitors)
 		} else {
-			c.Monitor.Failure(ctx, ppfmt, msg)
+			monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
 		}
 	}
 }
@@ -93,10 +94,10 @@ func realMain() int { //nolint:funlen
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
 	// Ping the monitor regardless of whether initConfig succeeded
-	c.Monitor.Start(ctx, ppfmt, formatName())
+	monitor.StartAll(ctx, ppfmt, formatName(), c.Monitors)
 	// Bail out now if initConfig failed
 	if !configOk {
-		c.Monitor.ExitStatus(ctx, ppfmt, 1, "Config errors")
+		monitor.ExitStatusAll(ctx, ppfmt, 1, "Config errors", c.Monitors)
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
@@ -118,12 +119,12 @@ func realMain() int { //nolint:funlen
 
 		// Update the IP addresses
 		if first && !c.UpdateOnStart {
-			c.Monitor.Success(ctx, ppfmt, "Started (no action)")
+			monitor.SuccessAll(ctx, ppfmt, "Started (no action)", c.Monitors)
 		} else {
 			if ok, msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s); ok {
-				c.Monitor.Success(ctx, ppfmt, msg)
+				monitor.SuccessAll(ctx, ppfmt, msg, c.Monitors)
 			} else {
-				c.Monitor.Failure(ctx, ppfmt, msg)
+				monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
 			}
 		}
 
@@ -139,7 +140,7 @@ func realMain() int { //nolint:funlen
 		if next.IsZero() {
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
-			c.Monitor.ExitStatus(ctx, ppfmt, 1, "No scheduled updates")
+			monitor.ExitStatusAll(ctx, ppfmt, 1, "No scheduled updates", c.Monitors)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -151,7 +152,7 @@ func realMain() int { //nolint:funlen
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.Sleep(ppfmt, interval) {
 			stopUpdating(ctx, ppfmt, c, s)
-			c.Monitor.ExitStatus(ctx, ppfmt, 0, "Terminated")
+			monitor.ExitStatusAll(ctx, ppfmt, 0, "Terminated", c.Monitors)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}

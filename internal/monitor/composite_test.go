@@ -10,7 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 )
 
-func TestMonitorsDescribe(t *testing.T) {
+func TestDescribeAll(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -23,10 +23,10 @@ func TestMonitorsDescribe(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).Describe(func(service, params string) {})
+	monitor.DescribeAll(func(service, params string) {}, ms)
 }
 
-func TestMonitorsSuccess(t *testing.T) {
+func TestSuccessAll(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -42,10 +42,10 @@ func TestMonitorsSuccess(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).Success(context.Background(), mockPP, message)
+	monitor.SuccessAll(context.Background(), mockPP, message, ms)
 }
 
-func TestMonitorsStart(t *testing.T) {
+func TestStartAll(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -61,10 +61,10 @@ func TestMonitorsStart(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).Start(context.Background(), mockPP, message)
+	monitor.StartAll(context.Background(), mockPP, message, ms)
 }
 
-func TestMonitorsFailure(t *testing.T) {
+func TestFailureAll(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -80,10 +80,10 @@ func TestMonitorsFailure(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).Failure(context.Background(), mockPP, message)
+	monitor.FailureAll(context.Background(), mockPP, message, ms)
 }
 
-func TestMonitorsLog(t *testing.T) {
+func TestLogAll(t *testing.T) {
 	t.Parallel()
 
 	var ms []monitor.Monitor
@@ -99,7 +99,7 @@ func TestMonitorsLog(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).Log(context.Background(), mockPP, message)
+	monitor.LogAll(context.Background(), mockPP, message, ms)
 }
 
 func TestMonitorsExitStatus(t *testing.T) {
@@ -118,5 +118,5 @@ func TestMonitorsExitStatus(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.Monitors(ms).ExitStatus(context.Background(), mockPP, 42, message)
+	monitor.ExitStatusAll(context.Background(), mockPP, 42, message, ms)
 }
