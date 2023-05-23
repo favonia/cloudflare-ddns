@@ -170,5 +170,8 @@ func (h *UptimeKuma) Log(ctx context.Context, ppfmt pp.PP, message string) bool 
 
 // ExitStatus does nothing.
 func (h *UptimeKuma) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
+	if code != 0 {
+		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: message, Ping: ""})
+	}
 	return true
 }

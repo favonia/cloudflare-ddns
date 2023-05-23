@@ -16,7 +16,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestNewHealthchecks(t *testing.T) {
+func TestHealthchecksNewHealthchecks(t *testing.T) {
 	t.Parallel()
 
 	rawURL := "https://user:pass@host/path"
@@ -33,7 +33,7 @@ func TestNewHealthchecks(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestNewHealthchecksFail1(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail1(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -46,7 +46,7 @@ func TestNewHealthchecksFail1(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestNewHealthchecksFail2(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail2(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -59,7 +59,7 @@ func TestNewHealthchecksFail2(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestNewHealthchecksFail3(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail3(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -69,7 +69,7 @@ func TestNewHealthchecksFail3(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestDescripbe(t *testing.T) {
+func TestHealthchecksDescripbe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -82,7 +82,7 @@ func TestDescripbe(t *testing.T) {
 }
 
 //nolint:funlen
-func TestEndPoints(t *testing.T) {
+func TestHealthchecksEndPoints(t *testing.T) {
 	t.Parallel()
 
 	type action int
