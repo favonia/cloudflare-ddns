@@ -16,6 +16,56 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+func TestNewUptimeKuma(t *testing.T) {
+	t.Parallel()
+
+	rawBaseURL := "https://user:pass@host/path"
+	parsedBaseURL, err := url.Parse(rawBaseURL)
+	require.NoError(t, err)
+
+	for name, tc := range map[string]struct {
+		input         string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"bare": {"https://user:pass@host/path", true, nil},
+		"full": {"https://user:pass@host/path?status=up&msg=Ok&ping=", true, nil},
+		"ill-formed-query": {
+			"https://user:pass@host/path?status=up;msg=Ok;ping=", false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "The Uptime Kuma URL (redacted) does not look like a valid URL")
+			},
+		},
+		"ftp": {
+			"ftp://user:pass@host/", false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "The Uptime Kuma URL (redacted) does not look like a valid URL")
+			},
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			m, ok := monitor.NewUptimeKuma(mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			if ok {
+				require.Equal(t, &monitor.UptimeKuma{
+					BaseURL: parsedBaseURL,
+					Timeout: monitor.UptimeKumaDefaultTimeout,
+				}, m)
+			} else {
+				require.Nil(t, m)
+			}
+		})
+	}
+}
+
 func TestUptimeKumaDescripbe(t *testing.T) {
 	t.Parallel()
 
@@ -36,6 +86,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	const (
 		ActionOk action = iota
 		ActionNotOk
+		ActionGarbage
 		ActionAbort
 		ActionFail
 	)
@@ -67,7 +118,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"success/notok": {
+		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt, "aloha")
 			},
@@ -79,6 +130,21 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to ping Uptime Kuma: %q", "bad"),
+				)
+			},
+		},
+		"success/garbage-response": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Success(context.Background(), ppfmt, "aloha")
+			},
+			"/", "up", "aloha", "",
+			[]action{ActionGarbage},
+			ActionAbort, false,
+			false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", gomock.Any()),
 				)
 			},
 		},
@@ -217,6 +283,9 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 					require.NoError(t, err)
 				case ActionNotOk:
 					_, err := io.WriteString(w, `{"ok":false,"msg":"bad"}`)
+					require.NoError(t, err)
+				case ActionGarbage:
+					_, err := io.WriteString(w, `This is [ { not a valid JSON`)
 					require.NoError(t, err)
 				case ActionAbort:
 					panic(http.ErrAbortHandler)

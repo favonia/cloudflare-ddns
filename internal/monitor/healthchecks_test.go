@@ -16,18 +16,18 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestHealthchecksNewHealthchecks(t *testing.T) {
+func TestNewHealthchecks(t *testing.T) {
 	t.Parallel()
 
-	rawURL := "https://user:pass@host/path"
-	parsedURL, err := url.Parse(rawURL)
+	rawBaseURL := "https://user:pass@host/path"
+	parsedBaseURL, err := url.Parse(rawBaseURL)
 	require.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := monitor.NewHealthchecks(mockPP, rawURL)
+	m, ok := monitor.NewHealthchecks(mockPP, rawBaseURL)
 	require.Equal(t, &monitor.Healthchecks{
-		BaseURL: parsedURL,
+		BaseURL: parsedBaseURL,
 		Timeout: monitor.HealthchecksDefaultTimeout,
 	}, m)
 	require.True(t, ok)
