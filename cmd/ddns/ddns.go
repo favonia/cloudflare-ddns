@@ -65,6 +65,7 @@ func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.S
 }
 
 func main() {
+	// This is to make os.Exit work with defer
 	os.Exit(realMain())
 }
 
@@ -136,7 +137,7 @@ func realMain() int { //nolint:funlen
 
 		first = false
 
-		// Maybe there's nothing scheduled in near future?
+		// If there's nothing scheduled in near future
 		if next.IsZero() {
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
