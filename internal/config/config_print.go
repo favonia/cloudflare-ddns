@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -87,16 +88,10 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("IP detection:", "%v", c.DetectionTimeout)
 	item("Record updating:", "%v", c.UpdateTimeout)
 
-	var monitors [][2]string
-	if c.Monitor != nil {
-		c.Monitor.Describe(func(service, params string) {
-			monitors = append(monitors, [2]string{service, params})
-		})
-	}
-	if len(monitors) > 0 {
+	if len(c.Monitors) > 0 {
 		section("Monitors:")
-		for _, m := range monitors {
-			item(m[0]+":", "%s", m[1])
-		}
+		monitor.DescribeAll(func(service, params string) {
+			item(service+":", "%s", params)
+		}, c.Monitors)
 	}
 }

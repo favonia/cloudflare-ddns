@@ -28,7 +28,7 @@ type Config struct {
 	Proxied          map[domain.Domain]bool
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
-	Monitor          monitor.Monitor
+	Monitors         []monitor.Monitor
 }
 
 // Default gives the default configuration.
@@ -53,6 +53,6 @@ func Default() *Config {
 		Proxied:          map[domain.Domain]bool{},
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
-		Monitor:          monitor.Monitors{},
+		Monitors:         nil,
 	}
 }

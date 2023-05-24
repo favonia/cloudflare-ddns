@@ -19,21 +19,21 @@ import (
 func TestNewHealthchecks(t *testing.T) {
 	t.Parallel()
 
-	rawURL := "https://user:pass@host/path"
-	parsedURL, err := url.Parse(rawURL)
+	rawBaseURL := "https://user:pass@host/path"
+	parsedBaseURL, err := url.Parse(rawBaseURL)
 	require.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := monitor.NewHealthchecks(mockPP, rawURL)
+	m, ok := monitor.NewHealthchecks(mockPP, rawBaseURL)
 	require.Equal(t, &monitor.Healthchecks{
-		BaseURL: parsedURL,
+		BaseURL: parsedBaseURL,
 		Timeout: monitor.HealthchecksDefaultTimeout,
 	}, m)
 	require.True(t, ok)
 }
 
-func TestNewHealthchecksFail1(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail1(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -46,7 +46,7 @@ func TestNewHealthchecksFail1(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestNewHealthchecksFail2(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail2(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -59,7 +59,7 @@ func TestNewHealthchecksFail2(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestNewHealthchecksFail3(t *testing.T) {
+func TestHealthchecksNewHealthchecksFail3(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -69,7 +69,7 @@ func TestNewHealthchecksFail3(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestDescripbe(t *testing.T) {
+func TestHealthchecksDescripbe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -82,7 +82,7 @@ func TestDescripbe(t *testing.T) {
 }
 
 //nolint:funlen
-func TestEndPoints(t *testing.T) {
+func TestHealthchecksEndPoints(t *testing.T) {
 	t.Parallel()
 
 	type action int

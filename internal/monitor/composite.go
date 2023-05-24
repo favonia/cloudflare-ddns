@@ -6,18 +6,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Monitors is the composite monitor that will notify a group of monitors simultaneously.
-type Monitors []Monitor
-
-// Describe calls [Monitor.Describe] for each monitor in the group with the callback.
-func (ms Monitors) Describe(callback func(service, params string)) {
+// DescribeAll calls [Monitor.Describe] for each monitor in the group with the callback.
+func DescribeAll(callback func(service, params string), ms []Monitor) {
 	for _, m := range ms {
 		m.Describe(callback)
 	}
 }
 
-// Success calls [Monitor.Success] for each monitor in the group.
-func (ms Monitors) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
+// SuccessAll calls [Monitor.Success] for each monitor in the group.
+func SuccessAll(ctx context.Context, ppfmt pp.PP, message string, ms []Monitor) bool {
 	ok := true
 	for _, m := range ms {
 		if !m.Success(ctx, ppfmt, message) {
@@ -27,8 +24,8 @@ func (ms Monitors) Success(ctx context.Context, ppfmt pp.PP, message string) boo
 	return ok
 }
 
-// Start calls [Monitor.Start] for each monitor in the group.
-func (ms Monitors) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
+// StartAll calls [Monitor.Start] for each monitor in ms.
+func StartAll(ctx context.Context, ppfmt pp.PP, message string, ms []Monitor) bool {
 	ok := true
 	for _, m := range ms {
 		if !m.Start(ctx, ppfmt, message) {
@@ -38,8 +35,8 @@ func (ms Monitors) Start(ctx context.Context, ppfmt pp.PP, message string) bool 
 	return ok
 }
 
-// Failure calls [Monitor.Failure] for each monitor in the group.
-func (ms Monitors) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
+// FailureAll calls [Monitor.Failure] for each monitor in ms.
+func FailureAll(ctx context.Context, ppfmt pp.PP, message string, ms []Monitor) bool {
 	ok := true
 	for _, m := range ms {
 		if !m.Failure(ctx, ppfmt, message) {
@@ -49,8 +46,8 @@ func (ms Monitors) Failure(ctx context.Context, ppfmt pp.PP, message string) boo
 	return ok
 }
 
-// Log calls [Monitor.Log] for each monitor in the group.
-func (ms Monitors) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
+// LogAll calls [Monitor.Log] for each monitor in ms.
+func LogAll(ctx context.Context, ppfmt pp.PP, message string, ms []Monitor) bool {
 	ok := true
 	for _, m := range ms {
 		if !m.Log(ctx, ppfmt, message) {
@@ -60,8 +57,8 @@ func (ms Monitors) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return ok
 }
 
-// ExitStatus calls [Monitor.ExitStatus] for each monitor in the group.
-func (ms Monitors) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
+// ExitStatusAll calls [Monitor.ExitStatus] for each monitor in ms.
+func ExitStatusAll(ctx context.Context, ppfmt pp.PP, code int, message string, ms []Monitor) bool {
 	ok := true
 	for _, m := range ms {
 		if !m.ExitStatus(ctx, ppfmt, code, message) {

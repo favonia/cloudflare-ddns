@@ -33,19 +33,19 @@ const (
 // NewHealthchecks creates a new Healthchecks monitor.
 // See https://healthchecks.io/docs/http_api/ for more information.
 func NewHealthchecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
-	url, err := url.Parse(rawURL)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
 		return nil, false
 	}
 
-	if !(url.IsAbs() && url.Opaque == "" && url.Host != "") {
+	if !(u.IsAbs() && u.Opaque == "" && u.Host != "" && u.RawQuery == "") {
 		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
 		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return nil, false
 	}
 
-	switch url.Scheme {
+	switch u.Scheme {
 	case "http":
 		ppfmt.Warningf(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS")
 
@@ -59,14 +59,14 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
 	}
 
 	h := &Healthchecks{
-		BaseURL: url,
+		BaseURL: u,
 		Timeout: HealthchecksDefaultTimeout,
 	}
 
 	return h, true
 }
 
-// Describe calles the callback with the service name "Healthchecks".
+// Describe calls the callback with the service name "Healthchecks".
 func (h *Healthchecks) Describe(callback func(service, params string)) {
 	callback("Healthchecks", "(URL redacted)")
 }
