@@ -70,10 +70,6 @@ jobs:
           tags: |
             type=edge
             type=semver,pattern={{version}}
-          labels: |
-            io.artifacthub.package.license=Apache-2.0
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
-            io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
       - name: 🚀 Build and deploy minimal Docker images
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v4.0.0
         id: build
@@ -84,6 +80,16 @@ jobs:
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: |
+            annotation.io.artifacthub.package.license=${{ steps.meta.outputs.labels['org.opencontainers.image.licenses'] }}
+            annotation.io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
+            annotation.io.artifacthub.package.maintainers=[{name:favonia\,email:favonia@email.com}]
+            annotation.org.opencontainers.image.created=${{ steps.meta.outputs.labels['org.opencontainers.image.created'] }}
+            annotation.org.opencontainers.image.description=${{ steps.meta.outputs.labels['org.opencontainers.image.description'] }}
+            annotation.org.opencontainers.image.source=${{ steps.meta.outputs.labels['org.opencontainers.image.source'] }}
+            annotation.org.opencontainers.image.title=${{ steps.meta.outputs.labels['org.opencontainers.image.title'] }}
+            annotation.org.opencontainers.image.url=${{ steps.meta.outputs.labels['org.opencontainers.image.url'] }}
+            annotation.org.opencontainers.image.version=${{ steps.meta.outputs.labels['org.opencontainers.image.version'] }}
       - name: ✍️ Install Cosign
         uses: sigstore/cosign-installer@dd6b2e2b610a11fd73dd187a43d57cc1394e35f9 # 3.0.5
       - name: ✍️ Sign the Docker images
