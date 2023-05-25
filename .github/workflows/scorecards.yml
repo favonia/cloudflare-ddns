@@ -44,6 +44,7 @@ jobs:
             fulcio.sigstore.dev:443
             gcr.io:443
             github.com:443
+            oss-fuzz-build-logs.storage.googleapis.com:443
             rekor.sigstore.dev:443
             sigstore-tuf-root.storage.googleapis.com:443
 
