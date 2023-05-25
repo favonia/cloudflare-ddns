@@ -48,7 +48,7 @@ func TestSet(t *testing.T) {
 			1,
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1)
+				m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -65,7 +65,7 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUpdateRecord,
-					"Updated a stale %s record of %q (ID: %s)",
+					"Updated a stale %s record of %q (ID: %q)",
 					"AAAA",
 					"sub.test.org",
 					record1,
@@ -86,8 +86,8 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -121,7 +121,7 @@ func TestSet(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiDeleteRecord,
-					"Deleted a duplicate %s record of %q (ID: %s)",
+					"Deleted a duplicate %s record of %q (ID: %q)",
 					"AAAA",
 					"sub.test.org",
 					record2,
@@ -158,12 +158,12 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(
 						pp.EmojiUpdateRecord,
-						"Updated a stale %s record of %q (ID: %s)",
+						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
 						record1,
 					),
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -182,10 +182,10 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					m.EXPECT().Noticef(
 						pp.EmojiUpdateRecord,
-						"Updated a stale %s record of %q (ID: %s)",
+						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
 						record2,
@@ -209,9 +209,9 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -234,8 +234,8 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),                      //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", "AAAA", "sub.test.org", record3),                          //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),                      //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),                          //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -259,8 +259,8 @@ func TestSet(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1),                      //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2),                      //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1),                      //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),                      //nolint:lll
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to complete updating of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -351,7 +351,7 @@ func TestClear(t *testing.T) {
 			true,
 			`Deleted AAAA sub.test.org`,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1) //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1) //nolint:lll
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -378,8 +378,8 @@ func TestClear(t *testing.T) {
 			`Deleted AAAA sub.test.org`,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {

@@ -109,7 +109,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 			if ok := s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip); !ok {
 				// If the updating fails, we will delete it.
 				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)",
+					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)",
 						recordType, domainDescription, id)
 
 					// Only when the deletion succeeds, we decrease the counter of remaining stale records.
@@ -122,7 +122,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 
 			// If the updating succeeds, we can move on to the next stage!
 			ppfmt.Noticef(pp.EmojiUpdateRecord,
-				"Updated a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+				"Updated a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 			monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
 
 			// Now it's up to date! Note that matchedIDs must be empty; otherwise uptodate would have been true.
@@ -141,7 +141,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	if !uptodate {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, ttl, proxied); ok {
-			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", recordType, domainDescription, id)
 			monitorMessage = fmt.Sprintf("Set %s %s to %s", recordType, domainDescription, ip.String())
 
 			// Now it's up to date! matchedIDs and unmatchedIDsToUpdate must both be empty at this point
@@ -152,7 +152,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unmatchedIDsToUpdate {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 			numUndeletedUnmatched--
 		}
 	}
@@ -161,7 +161,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// This has lower priority than deleting the stale records.
 	for _, id := range duplicateMatchedIDs {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %s)",
+			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
 		}
 	}
@@ -207,7 +207,7 @@ func (s *setter) Clear(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 			continue
 		}
 
-		ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+		ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 	}
 	if !allOk {
 		ppfmt.Errorf(pp.EmojiError,
