@@ -12,23 +12,15 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            1.0.0.1:443
-            1.1.1.1:443
-            api.github.com:443
-            codecov.io:443
-            github.com:443
-            objects.githubusercontent.com:443
-            proxy.golang.org:443
-            storage.googleapis.com:443
-            sum.golang.org:443
-            uploader.codecov.io:443
+          policy: test
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
@@ -49,6 +41,9 @@ jobs:
   fuzz:
     name: Fuzz
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     concurrency:
       group: ${{ github.workflow }}-fuzz-${{ github.ref }}
       cancel-in-progress: true
@@ -59,16 +54,7 @@ jobs:
         uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            api.github.com:443
-            codecov.io:443
-            github.com:443
-            objects.githubusercontent.com:443
-            proxy.golang.org:443
-            storage.googleapis.com:443
-            sum.golang.org:443
-            uploader.codecov.io:443
+          policy: test.fuzz
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
@@ -85,18 +71,15 @@ jobs:
   regenerate:
     name: Regenerate
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            proxy.golang.org:443
-            sum.golang.org:443
+          policy: test.regenerate
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
