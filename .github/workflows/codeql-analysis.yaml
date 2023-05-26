@@ -28,6 +28,7 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       actions: read
       contents: read
       security-events: write
@@ -44,14 +45,7 @@ jobs:
         uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            proxy.golang.org:443
-            sum.golang.org:443
-            uploads.github.com:443
+          policy: codeql-analysis
 
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
