@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/jellydator/ttlcache/v3 v3.0.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/net v0.10.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.69
