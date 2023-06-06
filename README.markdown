@@ -323,14 +323,13 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>👁️ Logging, Healthchecks, and Uptime Kuma</summary>
+<summary>👁️ Logging and Healthchecks</summary>
 
 | Name                           | Valid Values                                                                                                                                                      | Meaning                                                                            | Required? | Default Value |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------- | ------------- |
 | `QUIET`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging                                      | No        | `false`       |
 | `EMOJI`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                               | No        | `true`        |
 | `HEALTHCHECKS`                 | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses    | No        | (unset)       |
-| 🧪 `UPTIMEKUMA` (experimental) | 🧪 Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. One can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.                     | 🧪 If set, the updater will ping the URL when it successfully updates IP addresses | No        | (unset)       |
 
 > 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.
 
