@@ -1,4 +1,4 @@
-## [1.9.3](https://github.com/favonia/cloudflare-ddns/compare/v1.9.2...v1.9.3) (2023-06-05)
+# [1.9.3](https://github.com/favonia/cloudflare-ddns/compare/v1.9.2...v1.9.3) (2023-06-05)
 
 This version will automatically switch to 1.0.0.1 when 1.1.1.1 appears to be blocked or intercepted by your ISP or your router. The blockage and interception should not happen, but many ISPs and routers were misconfigured to use 1.1.1.1 as a private IP. The new updater tries to work around it by switching to 1.0.0.1. The long-term solution is to notify your ISP or upgrade your router.
 
