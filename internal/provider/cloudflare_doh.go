@@ -20,8 +20,8 @@ func NewCloudflareDOH() Provider {
 		}{
 			ipnet.IP4: {
 				protocol.Switchable{
-					Use1111: "https://1.1.1.1/dns-query",
-					Use1001: "https://1.0.0.1/dns-query",
+					ValueFor1111: "https://1.1.1.1/dns-query",
+					ValueFor1001: "https://1.0.0.1/dns-query",
 				},
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},

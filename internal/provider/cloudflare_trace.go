@@ -17,8 +17,8 @@ func NewCloudflareTrace() Provider {
 		}{
 			ipnet.IP4: {
 				protocol.Switchable{
-					Use1111: "https://1.1.1.1/cdn-cgi/trace",
-					Use1001: "https://1.0.0.1/cdn-cgi/trace",
+					ValueFor1111: "https://1.1.1.1/cdn-cgi/trace",
+					ValueFor1001: "https://1.0.0.1/cdn-cgi/trace",
 				},
 				"ip",
 			},
