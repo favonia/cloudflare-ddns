@@ -91,6 +91,9 @@ jobs:
           go-version: stable
       - name: 🎭 Install GoMock
         run: go install github.com/golang/mock/mockgen@v1.6.0
+      - name: 🧪 Run `go mod tidy`
+        run: |
+          go mod tidy
       - name: 🧪 Run `go generate`
         run: |
           rm ./internal/mocks -rf
