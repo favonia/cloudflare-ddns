@@ -63,7 +63,7 @@ jobs:
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@44ea916f6c540f9302d50c2b1e5a8dc071f15cdf # v4.1.0
+        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
         id: build
         with:
           target: "minimal"
