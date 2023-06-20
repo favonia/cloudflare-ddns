@@ -144,7 +144,7 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 // According to [DNS documentation], the valid range is "Auto" and [30, 86400].
 // We thus accept the union of both ranges---1 (auto) and [30, 86400].
 //
-// [API documentation]: https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+// [API documentation]: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
 // [DNS documentation]: https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
 func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	val := Getenv(key)
