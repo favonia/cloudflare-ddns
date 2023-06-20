@@ -381,10 +381,16 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"active", "active"}},
 			2, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(
-					pp.EmojiImpossible,
-					"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
-					"test.org",
+				gomock.InOrder(
+					m.EXPECT().Warningf(
+						pp.EmojiImpossible,
+						"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
+						"test.org",
+					),
+					m.EXPECT().Warningf(
+						pp.EmojiImpossible,
+						"Please consider reporting this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new",
+					),
 				)
 			},
 		},
@@ -393,10 +399,16 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"active", "active"}},
 			1, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(
-					pp.EmojiImpossible,
-					"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
-					"test.org",
+				gomock.InOrder(
+					m.EXPECT().Warningf(
+						pp.EmojiImpossible,
+						"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help",
+						"test.org",
+					),
+					m.EXPECT().Warningf(
+						pp.EmojiImpossible,
+						"Please consider reporting this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new",
+					),
 				)
 			},
 		},

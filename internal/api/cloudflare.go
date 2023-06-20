@@ -108,7 +108,8 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
-		// see https://api.cloudflare.com/#zone-list-zones for possible statuses
+		// The list of possible statuses was at https://api.cloudflare.com/#zone-list-zones
+		// but the documentation is missing now.
 		switch zone.Status {
 		case "active": // fully working
 			ids = append(ids, zone.ID)
@@ -156,8 +157,8 @@ zoneSearch:
 			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
-			ppfmt.Warningf(pp.EmojiImpossible,
-				"Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help", zoneName)
+			ppfmt.Warningf(pp.EmojiImpossible, "Found multiple active zones named %q. Specifying CF_ACCOUNT_ID might help", zoneName)                    //nolint:lll
+			ppfmt.Warningf(pp.EmojiImpossible, "Please consider reporting this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
 			return "", false
 		}
 	}
