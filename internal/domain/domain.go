@@ -1,9 +1,10 @@
 package domain
 
 import (
+	"cmp"
+	"slices"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"golang.org/x/net/idna"
 )
 
@@ -77,5 +78,5 @@ func New(domain string) (Domain, error) {
 
 // SortDomains sorts a list of domains according to their ASCII representations.
 func SortDomains(s []Domain) {
-	slices.SortFunc(s, func(d1, d2 Domain) bool { return d1.DNSNameASCII() < d2.DNSNameASCII() })
+	slices.SortFunc(s, func(d1, d2 Domain) int { return cmp.Compare(d1.DNSNameASCII(), d2.DNSNameASCII()) })
 }

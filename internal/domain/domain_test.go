@@ -1,11 +1,12 @@
 package domain_test
 
 import (
+	"cmp"
+	"slices"
 	"testing"
 	"testing/quick"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
@@ -131,8 +132,8 @@ func TestSortDomains(t *testing.T) {
 
 			require.ElementsMatch(t, copied, merged)
 			require.True(t, slices.IsSortedFunc(merged,
-				func(d1, d2 domain.Domain) bool {
-					return d1.DNSNameASCII() < d2.DNSNameASCII()
+				func(d1, d2 domain.Domain) int {
+					return cmp.Compare(d1.DNSNameASCII(), d2.DNSNameASCII())
 				}))
 
 			return true

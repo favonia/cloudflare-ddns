@@ -1,11 +1,11 @@
 package droproot
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"golang.org/x/exp/slices"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
