@@ -1,9 +1,11 @@
-github.com/cloudflare/cloudflare-go v0.74.0 h1:4grnoT7XiNpRSf/Sta2Gz9N6B6ljvGQyLnevIzo6U88=
-github.com/cloudflare/cloudflare-go v0.74.0/go.mod h1:5xOc5nIVnd+5ai+10r+5NdFHf92RPRx5AM+aekMIhco=
+github.com/cloudflare/cloudflare-go v0.75.0 h1:03a4EkwwsDo0yAHjQ/l+D36K9wTkvr0afDiI/uHQ0Xw=
+github.com/cloudflare/cloudflare-go v0.75.0/go.mod h1:5ocQT9qQ99QsT1Ii2751490Z5J+W/nv6jOj+lSAe4ug=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
+github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
+github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
 github.com/golang/mock v1.6.0 h1:ErTB+efbowRARo13NNdxyJji2egdxLGQhRaY+DUumQc=
 github.com/golang/mock v1.6.0/go.mod h1:p6yTPP+5HYm5mzsMV8JkE6ZKdX+/wYM6Hr+LicevLPs=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
