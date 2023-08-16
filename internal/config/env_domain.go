@@ -1,7 +1,7 @@
 package config
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
