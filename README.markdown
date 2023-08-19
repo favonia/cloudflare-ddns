@@ -232,6 +232,8 @@ _(Click to expand the following items.)_
 >   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers. ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
+> - `url:URL` (🧪 experimental)\
+>   Fetch the content at `URL` via the HTTP(S) protocol as the IP address. For example, `url:https://api4.ipify.org` can be used to fetch IPv4 addresses from [ipify](https://www.ipify.org/).
 >
 > The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
 >
