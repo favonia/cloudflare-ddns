@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -80,21 +82,21 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			return false
 		}
 
-		switch val {
-		case "cloudflare":
+		switch {
+		case val == "cloudflare":
 			ppfmt.Errorf(
 				pp.EmojiUserError,
 				`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
 				key, key, key,
 			)
 			return false
-		case "cloudflare.trace":
+		case val == "cloudflare.trace":
 			*field = provider.NewCloudflareTrace()
 			return true
-		case "cloudflare.doh":
+		case val == "cloudflare.doh":
 			*field = provider.NewCloudflareDOH()
 			return true
-		case "ipify":
+		case val == "ipify":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
 				`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
@@ -102,10 +104,14 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			)
 			*field = provider.NewIpify()
 			return true
-		case "local":
+		case val == "local":
 			*field = provider.NewLocal()
 			return true
-		case "none":
+		case strings.HasPrefix(val, "custom.url:"):
+			url := strings.TrimSpace(strings.TrimPrefix(val, "custom.url:"))
+			*field = provider.NewCustom(url)
+			return true
+		case val == "none":
 			*field = nil
 			return true
 		default:
