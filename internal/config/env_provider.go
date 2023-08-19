@@ -107,8 +107,8 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		case val == "local":
 			*field = provider.NewLocal()
 			return true
-		case strings.HasPrefix(val, "custom.url:"):
-			url := strings.TrimSpace(strings.TrimPrefix(val, "custom.url:"))
+		case strings.HasPrefix(val, "url:"):
+			url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
 			*field = provider.NewCustom(url)
 			return true
 		case val == "none":
