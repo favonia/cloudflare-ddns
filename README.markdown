@@ -233,7 +233,7 @@ _(Click to expand the following items.)_
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 > - `url:URL` (🧪 experimental)\
->   Fetch the content at `URL` via the HTTP(S) protocol as the IP address. For example, `url:https://api4.ipify.org` can be used to fetch IPv4 addresses from [ipify](https://www.ipify.org/).
+>   Fetch the content at a URL via the HTTP(S) protocol as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 addresses from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org). ⚠️ Currently, the updater does not force the HTTP(S) connections to use IPv4 or IPv6 when retrieving the content at the URL, and thus the service must restrict its access to the correct network (IPv4 or IPv6) or return the correct address even when the wrong network is used. Currently, there is no elegant way to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case.
 >
 > The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
 >
