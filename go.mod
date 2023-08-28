@@ -4,11 +4,11 @@ go 1.21
 
 require (
 	github.com/cloudflare/cloudflare-go v0.75.0
-	github.com/golang/mock v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.8.4
+	go.uber.org/mock v0.2.0
 	golang.org/x/net v0.14.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.69
 )

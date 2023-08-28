@@ -11,7 +11,7 @@ import (
 
 	ipnet "github.com/favonia/cloudflare-ddns/internal/ipnet"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockProvider is a mock of Provider interface.

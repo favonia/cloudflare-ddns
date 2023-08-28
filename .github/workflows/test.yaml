@@ -90,7 +90,7 @@ jobs:
         with:
           go-version: stable
       - name: 🎭 Install GoMock
-        run: go install github.com/golang/mock/mockgen@v1.6.0
+        run: go install go.uber.org/mock/mockgen@v0.2.0
       - name: 🧪 Run `go mod tidy`
         run: |
           go mod tidy
