@@ -1,23 +1,38 @@
 version: 2
-groups:
-  grouped:
-    update-types:
-      - "minor"
-      - "patch"
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      grouped:
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      grouped:
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      grouped:
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "docker"
     directory: "/.clusterfuzzlite/"
     schedule:
       interval: "daily"
+    groups:
+      grouped:
+        update-types:
+          - "minor"
+          - "patch"
