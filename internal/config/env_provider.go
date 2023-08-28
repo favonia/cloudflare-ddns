@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -109,6 +111,11 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			*field = nil
 			return true
 		default:
+			if strings.HasPrefix(val, "url:") {
+				url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
+				*field = provider.NewCustom(url)
+				return true
+			}
 			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
 			return false
 		}

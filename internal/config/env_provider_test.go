@@ -19,11 +19,12 @@ func TestReadProvider(t *testing.T) {
 	keyDeprecated := keyPrefix + "DEPRECATED"
 
 	var (
-		none  provider.Provider
-		doh   = provider.NewCloudflareDOH()
-		trace = provider.NewCloudflareTrace()
-		local = provider.NewLocal()
-		ipify = provider.NewIpify()
+		none   provider.Provider
+		doh    = provider.NewCloudflareDOH()
+		trace  = provider.NewCloudflareTrace()
+		local  = provider.NewLocal()
+		ipify  = provider.NewIpify()
+		custom = provider.NewCustom("https://url.io")
 	)
 
 	for name, tc := range map[string]struct {
@@ -153,6 +154,7 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
 		"none":             {true, "   none   ", false, "", trace, none, true, nil},
 		"local":            {true, "   local   ", false, "", trace, local, true, nil},
+		"custom":           {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
 		"ipify": {
 			true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
