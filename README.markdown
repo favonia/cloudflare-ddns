@@ -43,12 +43,12 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     Parsing of Cron expressions.
   - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
     HTTP clients with automatic retries and exponential backoff.
-  - [mock](https://github.com/golang/mock) (for testing only):\
+  - [ttlcache](https://github.com/jellydator/ttlcache):\
+    In-memory cache to hold Cloudflare API responses.
+  - [mock](https://go.uber.org/mock) (for testing only):\
     A comprehensive, semi-official framework for mocking.
   - [testify](https://github.com/stretchr/testify) (for testing only):\
     A comprehensive tool set for testing Go programs.
-  - [ttlcache](https://github.com/jellydator/ttlcache):\
-    In-memory cache to hold Cloudflare API responses.
 
   </details>
 

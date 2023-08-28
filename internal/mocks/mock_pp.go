@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockPP is a mock of PP interface.

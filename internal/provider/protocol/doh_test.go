@@ -8,8 +8,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/net/dns/dnsmessage"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
