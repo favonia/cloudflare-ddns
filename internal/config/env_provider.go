@@ -82,21 +82,21 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			return false
 		}
 
-		switch {
-		case val == "cloudflare":
+		switch val {
+		case "cloudflare":
 			ppfmt.Errorf(
 				pp.EmojiUserError,
 				`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
 				key, key, key,
 			)
 			return false
-		case val == "cloudflare.trace":
+		case "cloudflare.trace":
 			*field = provider.NewCloudflareTrace()
 			return true
-		case val == "cloudflare.doh":
+		case "cloudflare.doh":
 			*field = provider.NewCloudflareDOH()
 			return true
-		case val == "ipify":
+		case "ipify":
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
 				`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
@@ -104,17 +104,18 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			)
 			*field = provider.NewIpify()
 			return true
-		case val == "local":
+		case "local":
 			*field = provider.NewLocal()
 			return true
-		case strings.HasPrefix(val, "url:"):
-			url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
-			*field = provider.NewCustom(url)
-			return true
-		case val == "none":
+		case "none":
 			*field = nil
 			return true
 		default:
+			if strings.HasPrefix(val, "url:") {
+				url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
+				*field = provider.NewCustom(url)
+				return true
+			}
 			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
 			return false
 		}
