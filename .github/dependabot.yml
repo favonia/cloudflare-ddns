@@ -1,4 +1,9 @@
 version: 2
+groups:
+  grouped:
+    update-types:
+      - "minor"
+      - "patch"
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
