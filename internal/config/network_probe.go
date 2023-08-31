@@ -51,7 +51,7 @@ func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 			ppfmt.Warningf(pp.EmojiGood, "1.0.0.1 appears to be working and will be used instead of 1.1.1.1")
 			c.Use1001 = true
 		} else {
-			ppfmt.Warningf(pp.EmojiGood, "1.0.0.1 appears to be blocked or hijacked as well; sticking to 1.1.1.1")
+			ppfmt.Warningf(pp.EmojiError, "1.0.0.1 is not working either---perhaps the network is down; sticking to 1.1.1.1")
 		}
 	}
 	return true
