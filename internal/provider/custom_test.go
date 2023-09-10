@@ -70,3 +70,29 @@ func TestNewCustom(t *testing.T) {
 		})
 	}
 }
+
+func TestMustNewCustom(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		input string
+		ok    bool
+	}{
+		{"https://1.2.3.4", true},
+		{":::::", false},
+		{"http://1.2.3.4", true},
+		{"ftp://1.2.3.4", false},
+		{"", false},
+	} {
+		tc := tc
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+
+			if tc.ok {
+				require.NotPanics(t, func() { provider.MustNewCustom(tc.input) })
+			} else {
+				require.Panics(t, func() { provider.MustNewCustom(tc.input) })
+			}
+		})
+	}
+}
