@@ -14,9 +14,11 @@ import (
 //
 //nolint:funlen
 func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
-	if val := Getenv(key); val == "" {
+	val := Getenv(key)
+
+	if val == "" {
 		// parsing of the deprecated parameter
-		switch valPolicy := Getenv(keyDeprecated); valPolicy {
+		switch valDeprecated := Getenv(keyDeprecated); valDeprecated {
 		case "":
 			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, provider.Name(*field))
 			return true
@@ -32,7 +34,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
 				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
+				keyDeprecated, key, valDeprecated,
 			)
 			*field = provider.NewCloudflareTrace()
 			return true
@@ -40,7 +42,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
 				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
+				keyDeprecated, key, valDeprecated,
 			)
 			*field = provider.NewCloudflareDOH()
 			return true
@@ -56,7 +58,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			ppfmt.Warningf(
 				pp.EmojiUserWarning,
 				`%s is deprecated; use %s=%s`,
-				keyDeprecated, key, valPolicy,
+				keyDeprecated, key, valDeprecated,
 			)
 			*field = provider.NewLocal()
 			return true
@@ -69,57 +71,61 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			*field = nil
 			return true
 		default:
-			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, valPolicy)
-			return false
-		}
-	} else {
-		if Getenv(keyDeprecated) != "" {
-			ppfmt.Errorf(
-				pp.EmojiUserError,
-				`Cannot have both %s and %s set`,
-				key, keyDeprecated,
-			)
-			return false
-		}
-
-		switch val {
-		case "cloudflare":
-			ppfmt.Errorf(
-				pp.EmojiUserError,
-				`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				key, key, key,
-			)
-			return false
-		case "cloudflare.trace":
-			*field = provider.NewCloudflareTrace()
-			return true
-		case "cloudflare.doh":
-			*field = provider.NewCloudflareDOH()
-			return true
-		case "ipify":
-			ppfmt.Warningf(
-				pp.EmojiUserWarning,
-				`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-				key, key, key,
-			)
-			*field = provider.NewIpify()
-			return true
-		case "local":
-			*field = provider.NewLocal()
-			return true
-		case "none":
-			*field = nil
-			return true
-		default:
-			if strings.HasPrefix(val, "url:") {
-				url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
-				*field = provider.NewCustom(url)
-				return true
-			}
-			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
+			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, valDeprecated)
 			return false
 		}
 	}
+
+	if Getenv(keyDeprecated) != "" {
+		ppfmt.Errorf(
+			pp.EmojiUserError,
+			`Cannot have both %s and %s set`,
+			key, keyDeprecated,
+		)
+		return false
+	}
+
+	switch val {
+	case "cloudflare":
+		ppfmt.Errorf(
+			pp.EmojiUserError,
+			`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
+			key, key, key,
+		)
+		return false
+	case "cloudflare.trace":
+		*field = provider.NewCloudflareTrace()
+		return true
+	case "cloudflare.doh":
+		*field = provider.NewCloudflareDOH()
+		return true
+	case "ipify":
+		ppfmt.Warningf(
+			pp.EmojiUserWarning,
+			`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
+			key, key, key,
+		)
+		*field = provider.NewIpify()
+		return true
+	case "local":
+		*field = provider.NewLocal()
+		return true
+	case "none":
+		*field = nil
+		return true
+	}
+
+	if strings.HasPrefix(val, "url:") {
+		url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
+		p, ok := provider.NewCustom(ppfmt, url)
+		if ok {
+			*field = p
+		}
+		return ok
+	}
+
+	ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
+	return false
 }
 
 // ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,

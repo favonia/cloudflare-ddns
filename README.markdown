@@ -352,18 +352,18 @@ _(Click to expand the following items.)_
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
-| Old Parameter                          |     | Note                                                                               |
-| -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
-| `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                             |
-| `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                       |
-| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                             |
-| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                              |
-| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
-| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                       |
-| `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                    |
-| `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported                                                       |
+| Old Parameter                          |     | Note                                                                                 |
+| -------------------------------------- | --- | ------------------------------------------------------------------------------------ |
+| `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                               |
+| `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                         |
+| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                               |
+| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                |
+| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6   |
+| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4   |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                         |
+| `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces        |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                      |
+| `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported, except the experimental `url:URL` provider via HTTP(S) |
 
 </details>
 
