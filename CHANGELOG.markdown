@@ -1,3 +1,13 @@
+# [1.10.0](https://github.com/favonia/cloudflare-ddns/compare/v1.9.4...v1.10.0) (2023-09-10)
+
+### Features
+
+- **provider:** implement the new custom provider `url:URL` ([#560](https://github.com/favonia/cloudflare-ddns/issues/560)) ([6318512](https://github.com/favonia/cloudflare-ddns/commit/63185129ab33329cc77e2aac3a9e8a393db7b8cd)) and ([#576](https://github.com/favonia/cloudflare-ddns/issues/576)) ([d80784e](https://github.com/favonia/cloudflare-ddns/commit/d80784e50ff4b07a35aa00e98492db2ccb9678e5))
+
+### KNOWN BUGS
+
+- The current updater will erase existing [record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) when updating the IP address due to an unfortunate design in an upstream library. This bug seems to affect all updaters of version 1.8.3 or later (I didn’t really check them). I am attempting to address the bug by fixing the upstream library, but if that does not work, a hack to keep existing record comments will be added to the updater. The bug is tracked by [GitHub issue #559](https://github.com/favonia/cloudflare-ddns/issues/559).
+
 # [1.9.4](https://github.com/favonia/cloudflare-ddns/compare/v1.9.3...v1.9.4) (2023-06-07)
 
 This is a minor update that comes with a [nice bugfix from go-retryablehttp 0.7.4](https://github.com/hashicorp/go-retryablehttp/pull/194).
