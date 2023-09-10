@@ -24,7 +24,7 @@ func TestReadProvider(t *testing.T) {
 		trace  = provider.NewCloudflareTrace()
 		local  = provider.NewLocal()
 		ipify  = provider.NewIpify()
-		custom = provider.NewCustom("https://url.io")
+		custom = provider.MustNewCustom("https://url.io")
 	)
 
 	for name, tc := range map[string]struct {

@@ -206,13 +206,13 @@ _(Click to expand the following items.)_
 <details>
 <summary>📍 Domains and IP providers</summary>
 
-| Name           | Valid Values                                                                                                            | Meaning                                                               | Required?   | Default Value      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------------ |
-| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names                                                   | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)       |
-| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                                   | The domains the updater should manage for `A` records                 | (See below) | (empty list)       |
-| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                                   | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)       |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, and `none`. 🧪 See below for the experimental custom provider `url:URL`. | How to detect IPv4 addresses. (See below)                             | No          | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, and `none`. 🧪 See below for the experimental custom provider `url:URL`. | How to detect IPv6 addresses. (See below)                             | No          | `cloudflare.trace` |
+| Name           | Valid Values                                                          | Meaning                                                               | Required?   | Default Value      |
+| -------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------------ |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)       |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)       |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)       |
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv4 addresses. (See below)                             | No          | `cloudflare.trace` |
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv6 addresses. (See below)                             | No          | `cloudflare.trace` |
 
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
@@ -231,11 +231,11 @@ _(Click to expand the following items.)_
 > - `local`\
 >   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers.
 >   ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
+> - `url:URL`\
+>   Fetch the content at a URL via the HTTP(S) protocol as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 addresses from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org).
+>   ⚠️ Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at the URL, and thus the service must either restrict its access to the correct IP network or return the correct IP address regardless of what IP network is used. As an example, <https://api4.ipify.org> has restricted its access to IPv4. The reason is that there are no elegant ways to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case so that I might add some ugly hack to force it.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
-> - `url:URL` (🧪 experimental)\
->   Fetch the content at a URL via the HTTP(S) protocol as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 addresses from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org).
->   ⚠️ Currently, the updater does not force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at the URL, and thus the service must either restrict its access to the correct IP network or return the correct IP address regardless of what IP network is used. The reason is that there is no elegant way to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case so that I might explore the hack to force it.
 >
 > The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
 >
@@ -352,18 +352,18 @@ _(Click to expand the following items.)_
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
-| Old Parameter                          |     | Note                                                                               |
-| -------------------------------------- | --- | ---------------------------------------------------------------------------------- |
-| `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                             |
-| `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                       |
-| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                             |
-| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                              |
-| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6 |
-| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4 |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                       |
-| `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces      |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                    |
-| `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported                                                       |
+| Old Parameter                          |     | Note                                                                                 |
+| -------------------------------------- | --- | ------------------------------------------------------------------------------------ |
+| `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                               |
+| `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                         |
+| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                               |
+| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                |
+| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6   |
+| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4   |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                         |
+| `INTERFACE=iface`                      | ✔️  | Not required for `local` providers; we can handle multiple network interfaces        |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | There are no shells in the minimal Docker image                                      |
+| `DNS_SERVER=server`                    | ❌  | Only Cloudflare is supported, except the experimental `url:URL` provider via HTTP(S) |
 
 </details>
 
