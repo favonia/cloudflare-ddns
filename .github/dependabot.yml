@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      grouped:
+      github-actions-minor:
         update-types:
           - "minor"
           - "patch"
@@ -14,7 +14,7 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      grouped:
+      go-minor:
         update-types:
           - "minor"
           - "patch"
@@ -23,16 +23,7 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      grouped:
-        update-types:
-          - "minor"
-          - "patch"
-  - package-ecosystem: "docker"
-    directory: "/.clusterfuzzlite/"
-    schedule:
-      interval: "daily"
-    groups:
-      grouped:
+      docker-minor:
         update-types:
           - "minor"
           - "patch"
