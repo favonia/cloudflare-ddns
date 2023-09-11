@@ -63,7 +63,7 @@ jobs:
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
+        uses: docker/build-push-action@0a97817b6ade9f46837855d676c4cca3a2471fc9 # v4.2.1
         id: build
         with:
           target: "minimal"
@@ -72,6 +72,7 @@ jobs:
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: "mode=max"
       - name: ✍️ Install Cosign
         uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19 # 3.1.2
       - name: ✍️ Sign the Docker images
