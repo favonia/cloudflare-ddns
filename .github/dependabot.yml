@@ -3,27 +3,30 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     groups:
-      github-actions-minor:
+      github-actions:
         update-types:
+          - "major"
           - "minor"
           - "patch"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     groups:
-      go-minor:
+      go:
         update-types:
+          - "major"
           - "minor"
           - "patch"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     groups:
-      docker-minor:
+      docker:
         update-types:
+          - "major"
           - "minor"
           - "patch"
