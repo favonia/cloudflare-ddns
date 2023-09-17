@@ -1,3 +1,9 @@
+# [1.10.1](https://github.com/favonia/cloudflare-ddns/compare/v1.10.0...v1.10.1) (2023-09-17)
+
+### Bug Fixes
+
+- The updater will now keep existing [record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) when updating IP addresses. Previously, it would incorrectly erase them. This was a known bug in 1.10.0, and was fixed by [fixing the upstream library `cloudflare-go`.](https://github.com/cloudflare/cloudflare-go/pull/1393)
+
 # [1.10.0](https://github.com/favonia/cloudflare-ddns/compare/v1.9.4...v1.10.0) (2023-09-10)
 
 ### Features
