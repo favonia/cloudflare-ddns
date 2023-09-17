@@ -9,7 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -destination=../mocks/mock_provider.go -package=mocks . Provider
+//go:generate mockgen -typed -destination=../mocks/mock_provider.go -package=mocks . Provider
 
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {

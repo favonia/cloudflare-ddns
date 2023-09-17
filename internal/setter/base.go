@@ -15,7 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -destination=../mocks/mock_setter.go -package=mocks . Setter
+//go:generate mockgen -typed -destination=../mocks/mock_setter.go -package=mocks . Setter
 
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
