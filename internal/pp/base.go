@@ -1,7 +1,7 @@
 // Package pp handles pretty-printing.
 package pp
 
-//go:generate mockgen -destination=../mocks/mock_pp.go -package=mocks . PP
+//go:generate mockgen -typed -destination=../mocks/mock_pp.go -package=mocks . PP
 
 // PP is the abstraction of a pretty printer.
 type PP interface {

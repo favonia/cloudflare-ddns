@@ -11,7 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -destination=../mocks/mock_api.go -package=mocks . Handle
+//go:generate mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
 
 // A Handle represents a generic API to update DNS records. Currently, the only implementation is Cloudflare.
 type Handle interface {

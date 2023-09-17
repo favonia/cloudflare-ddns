@@ -7,7 +7,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -destination=../mocks/mock_monitor.go -package=mocks . Monitor
+//go:generate mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . Monitor
 
 // Monitor is a dead man's switch, meaning that the user will be notified when the updater fails to
 // detect and update the public IP address. No notifications for IP changes.
