@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      go:
+      go-dependencies:
         update-types:
           - "major"
           - "minor"
@@ -25,7 +25,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      docker:
+      docker-dependencies:
         update-types:
           - "major"
           - "minor"
