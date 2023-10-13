@@ -89,18 +89,24 @@ jobs:
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: stable
-      - name: 🎭 Install GoMock
-        run: go install go.uber.org/mock/mockgen@v0.3.0
       - name: 🧪 Run `go mod tidy`
         run: |
           go mod tidy
+      - name: 🔍 Check if any files are changed
+        run: |
+          if ! git diff --exit-code; then
+            echo "Please run 'go mod tidy'"
+            exit 1
+          fi
+      - name: 🎭 Install GoMock
+        run: go install go.uber.org/mock/mockgen@v0.3.0
       - name: 🧪 Run `go generate`
         run: |
           rm ./internal/mocks -rf
           go generate ./...
       - name: 🔍 Check if any files are changed
         run: |
-          if ! git diff --quiet; then
-            echo "Please run 'go gonerate ./...' to regenerate files"
+          if ! git diff --exit-code; then
+            echo "Please run 'go gonerate ./...'"
             exit 1
           fi
