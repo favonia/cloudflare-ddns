@@ -73,7 +73,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (Monitor, bool) {
 		for k, vs := range q {
 			switch {
 			case k == "status" && slices.Equal(vs, []string{"up"}): // status=up
-			case k == "msg" && slices.Equal(vs, []string{"Ok"}): // msg=Ok
+			case k == "msg" && slices.Equal(vs, []string{"OK"}): // msg=OK
 			case k == "ping" && slices.Equal(vs, []string{""}): // ping=
 
 			default: // problematic case
