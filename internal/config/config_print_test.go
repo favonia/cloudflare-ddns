@@ -152,7 +152,7 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Domains and IP providers:"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Timezone:", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")), //nolint:lll
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update frequency:", "@disabled"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update frequency:", "@once"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Update on start?", "false"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Delete on stop?", "false"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, "Cache expiration:", "0s"),
