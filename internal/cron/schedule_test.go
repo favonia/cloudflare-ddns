@@ -69,3 +69,8 @@ func TestNextNever(t *testing.T) {
 		})
 	}
 }
+
+func TestNextNil(t *testing.T) {
+	t.Parallel()
+	require.True(t, cron.Next(nil).IsZero())
+}
