@@ -97,12 +97,31 @@ func TestNormalizeConfig(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once"),
 				)
 			},
 		},
-		"empty": {
+		"empty/1": {
 			input: &config.Config{ //nolint:exhaustruct
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {},
+					ipnet.IP6: {},
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once"),
+				)
+			},
+		},
+		"empty/2": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {},
 					ipnet.IP6: {},
@@ -121,6 +140,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"empty-ip6": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -133,6 +153,7 @@ func TestNormalizeConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 				},
@@ -158,6 +179,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"empty-ip6-none-ip4": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -184,6 +206,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"ignored-ip4-domains": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -195,6 +218,7 @@ func TestNormalizeConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -221,6 +245,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"template": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -231,6 +256,7 @@ func TestNormalizeConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -254,6 +280,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"template/invalid/proxied": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -275,6 +302,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"template/error/proxied": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -296,6 +324,7 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"template/error/proxied/ill-formed": {
 			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -317,7 +346,8 @@ func TestNormalizeConfig(t *testing.T) {
 		},
 		"delete-on-stop/without-cron": {
 			input: &config.Config{ //nolint:exhaustruct
-				DeleteOnStop: true,
+				DeleteOnStop:  true,
+				UpdateOnStart: true,
 			},
 			ok:       false,
 			expected: nil,
@@ -326,7 +356,7 @@ func TestNormalizeConfig(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all DNS records when UPDATE_CRON=@disabled"), //nolint:lll
+					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all updated DNS records when UPDATE_CRON=@once"), //nolint:lll
 				)
 			},
 		},

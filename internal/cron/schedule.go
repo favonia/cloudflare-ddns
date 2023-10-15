@@ -16,10 +16,6 @@ type cronSchedule struct {
 
 // New creates a new Schedule.
 func New(spec string) (Schedule, error) {
-	if spec == "@disabled" || spec == "@nevermore" {
-		return (Schedule)(nil), nil
-	}
-
 	sche, err := cron.ParseStandard(spec)
 	if err != nil {
 		return nil, fmt.Errorf("parsing %q: %w", spec, err)

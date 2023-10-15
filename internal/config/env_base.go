@@ -16,7 +16,7 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-// ReadEmoji reads an environment variable as a plain string.
+// ReadString reads an environment variable as a plain string.
 func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
@@ -194,18 +194,27 @@ func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 
 // ReadCron reads an environment variable and parses it as a Cron expression.
 func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
-	val := Getenv(key)
-	if val == "" {
+	switch val := Getenv(key); val {
+	case "":
 		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, cron.DescribeSchedule(*field))
 		return true
-	}
 
-	c, err := cron.New(val)
-	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, val, err)
-		return false
-	}
+	case "@once":
+		*field = nil
+		return true
 
-	*field = c
-	return true
+	case "@disabled", "@nevermore":
+		ppfmt.Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=once", key, val, key)
+		*field = nil
+		return true
+
+	default:
+		c, err := cron.New(val)
+		if err != nil {
+			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, val, err)
+			return false
+		}
+		*field = c
+		return true
+	}
 }
