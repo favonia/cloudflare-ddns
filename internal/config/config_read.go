@@ -46,12 +46,20 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 		ppfmt = ppfmt.IncIndent()
 	}
 
-	// Part 1: check DELETE_ON_STOP
-	if c.UpdateCron == nil && c.DeleteOnStop {
-		ppfmt.Errorf(
-			pp.EmojiUserError,
-			"DELETE_ON_STOP=true will immediately delete all DNS records when UPDATE_CRON=@disabled")
-		return false
+	// Part 1: check DELETE_ON_STOP and UpdateOnStart
+	if c.UpdateCron == nil {
+		if !c.UpdateOnStart {
+			ppfmt.Errorf(
+				pp.EmojiUserError,
+				"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
+			return false
+		}
+		if c.DeleteOnStop {
+			ppfmt.Errorf(
+				pp.EmojiUserError,
+				"DELETE_ON_STOP=true will immediately delete all updated DNS records when UPDATE_CRON=@once")
+			return false
+		}
 	}
 
 	// Part 2: normalize domain maps

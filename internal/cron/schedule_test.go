@@ -24,20 +24,6 @@ func TestMustNewSuccessful(t *testing.T) {
 	}
 }
 
-func TestMustNewSuccessfulNil(t *testing.T) {
-	t.Parallel()
-	for _, tc := range [...]string{
-		"@disabled",
-		"@nevermore",
-	} {
-		tc := tc // capture range variable
-		t.Run(tc, func(t *testing.T) {
-			t.Parallel()
-			require.Nil(t, cron.MustNew(tc))
-		})
-	}
-}
-
 func TestMustNewPanicking(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]string{
@@ -75,8 +61,6 @@ func TestNextNever(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]string{
 		"* * 30 2 *",
-		"@disabled",
-		"@nevermore",
 	} {
 		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
@@ -84,4 +68,9 @@ func TestNextNever(t *testing.T) {
 			require.True(t, cron.Next(cron.MustNew(tc)).IsZero())
 		})
 	}
+}
+
+func TestNextNil(t *testing.T) {
+	t.Parallel()
+	require.True(t, cron.Next(nil).IsZero())
 }

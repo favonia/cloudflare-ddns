@@ -18,10 +18,10 @@ func Next(s Schedule) time.Time {
 	return s.Next()
 }
 
-// String gives back the original cron string.
+// DescribeSchedule gives back the original cron string.
 func DescribeSchedule(s Schedule) string {
 	if s == nil {
-		return "@disabled"
+		return "@once"
 	}
 
 	return s.Describe()
