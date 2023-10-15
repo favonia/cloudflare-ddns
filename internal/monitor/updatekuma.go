@@ -148,9 +148,11 @@ func (h *UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequ
 	return true
 }
 
-// Success pings the server with status=up.
-func (h *UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: message, Ping: ""})
+// Success pings the server with status=up. Messages are ignored and "OK" is used instead.
+// The reason is that Uptime Kuma seems to show only the first success message
+// and it could be misleading if an outdated message stays in the UI.
+func (h *UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, _message string) bool {
+	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
 }
 
 // Start does nothing.
@@ -168,10 +170,10 @@ func (h *UptimeKuma) Log(ctx context.Context, ppfmt pp.PP, message string) bool 
 	return true
 }
 
-// ExitStatus does nothing.
+// ExitStatus with non-zero triggers [Failure]. Otherwise, it does nothing.
 func (h *UptimeKuma) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
 	if code != 0 {
-		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: message, Ping: ""})
+		return h.Failure(ctx, ppfmt, message)
 	}
 	return true
 }

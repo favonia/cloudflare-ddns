@@ -29,7 +29,7 @@ func TestNewUptimeKuma(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"bare": {"https://user:pass@host/path", true, nil},
-		"full": {"https://user:pass@host/path?status=up&msg=Ok&ping=", true, nil},
+		"full": {"https://user:pass@host/path?status=up&msg=OK&ping=", true, nil},
 		"unexpected": {
 			"https://user:pass@host/path?random=", true,
 			func(m *mocks.MockPP) {
@@ -37,7 +37,7 @@ func TestNewUptimeKuma(t *testing.T) {
 			},
 		},
 		"ill-formed-query": {
-			"https://user:pass@host/path?status=up;msg=Ok;ping=", false,
+			"https://user:pass@host/path?status=up;msg=OK;ping=", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "The Uptime Kuma URL (redacted) does not look like a valid URL")
 			},
@@ -113,7 +113,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt, "hello")
 			},
-			"/", "up", "hello", "",
+			"/", "up", "OK", "",
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
@@ -128,7 +128,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt, "aloha")
 			},
-			"/", "up", "aloha", "",
+			"/", "up", "OK", "",
 			[]action{ActionNotOk},
 			ActionAbort, false,
 			false,
@@ -143,7 +143,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt, "aloha")
 			},
-			"/", "up", "aloha", "",
+			"/", "up", "OK", "",
 			[]action{ActionGarbage},
 			ActionAbort, false,
 			false,
@@ -158,7 +158,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Success(context.Background(), ppfmt, "stop now")
 			},
-			"/", "up", "stop now", "",
+			"/", "up", "OK", "",
 			nil, ActionAbort, false,
 			false,
 			func(m *mocks.MockPP) {
