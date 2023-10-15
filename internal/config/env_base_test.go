@@ -547,7 +547,20 @@ func TestReadCron(t *testing.T) {
 				)
 			},
 		},
-		"@": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
+		"@daily": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
+		"@disabled": {
+			true, " @disabled  ", cron.MustNew("@yearly"), nil, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@disabled", gomock.Any())
+			},
+		},
+		"@nevermore": {
+			true, " @nevermore\t", cron.MustNew("@yearly"), nil, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@nevermore", gomock.Any())
+			},
+		},
+		"@once": {true, "\t\t@once", cron.MustNew("@yearly"), nil, true, nil},
 		"illformed": {
 			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
 			func(m *mocks.MockPP) {

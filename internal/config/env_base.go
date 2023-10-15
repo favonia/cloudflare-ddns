@@ -204,7 +204,7 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 		return true
 
 	case "@disabled", "@nevermore":
-		ppfmt.Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=once", key, val, key)
+		ppfmt.Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, val, key)
 		*field = nil
 		return true
 
