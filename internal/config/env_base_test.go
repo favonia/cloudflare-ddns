@@ -513,7 +513,7 @@ func TestReadNonnegDuration(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment vars are global
+//nolint:paralleltest,funlen // environment vars are global
 func TestReadCron(t *testing.T) {
 	key := keyPrefix + "CRON"
 
