@@ -51,7 +51,7 @@ func TestSleep(t *testing.T) {
 				if tc.signalDelay > 0 {
 					time.Sleep(tc.signalDelay)
 					err := syscall.Kill(os.Getpid(), tc.signal)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				}
 				done <- struct{}{}
 			}
@@ -85,7 +85,7 @@ func TestNotifyContext(t *testing.T) {
 				if tc.signalDelay > 0 {
 					time.Sleep(tc.signalDelay)
 					err := syscall.Kill(os.Getpid(), tc.signal)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				} else {
 					cancel()
 				}

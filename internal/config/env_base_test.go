@@ -587,6 +587,6 @@ func TestReadCron(t *testing.T) {
 func urlMustParse(t *testing.T, u string) *url.URL {
 	t.Helper()
 	url, err := url.Parse(u)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return url
 }

@@ -16,16 +16,18 @@ func TestPrintCountdown(t *testing.T) {
 
 	activity := "Secretly dancing"
 
+	responseNow := string(pp.EmojiNow) + " Secretly dancing now . . .\n"
+
 	for _, tc := range [...]struct {
 		interval time.Duration
 		output   string
 	}{
 		{-20 * time.Second, string(pp.EmojiNow) + " Secretly dancing now (running behind by 20s) . . .\n"},
 		{-10 * time.Second, string(pp.EmojiNow) + " Secretly dancing now (running behind by 10s) . . .\n"},
-		{-time.Second, string(pp.EmojiNow) + " Secretly dancing now . . .\n"},
-		{-time.Nanosecond, string(pp.EmojiNow) + " Secretly dancing now . . .\n"},
-		{0, string(pp.EmojiNow) + " Secretly dancing now . . .\n"},
-		{time.Nanosecond, string(pp.EmojiNow) + " Secretly dancing now . . .\n"},
+		{-time.Second, responseNow},
+		{-time.Nanosecond, responseNow},
+		{0, responseNow},
+		{time.Nanosecond, responseNow},
 		{time.Second, string(pp.EmojiAlarm) + " Secretly dancing in less than 5s . . .\n"},
 		{10 * time.Second, string(pp.EmojiAlarm) + " Secretly dancing in about 10s . . .\n"},
 		{20 * time.Second, string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n"},

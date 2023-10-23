@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -211,7 +212,7 @@ func handleZones(t *testing.T, zoneName string, zoneStatuses []string, w http.Re
 	require.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
-		"per_page":   {fmt.Sprintf("%d", zonePageSize)},
+		"per_page":   {strconv.Itoa(zonePageSize)},
 	}, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
@@ -583,7 +584,7 @@ func TestListRecords(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
-				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
+				"per_page": {strconv.Itoa(dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
@@ -635,7 +636,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
-				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
+				"per_page": {strconv.Itoa(dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
@@ -701,7 +702,7 @@ func TestListRecordsWildcard(t *testing.T) {
 			require.Equal(t, url.Values{
 				"name":     {"*.test.org"},
 				"page":     {"1"},
-				"per_page": {fmt.Sprintf("%d", dnsRecordPageSize)},
+				"per_page": {strconv.Itoa(dnsRecordPageSize)},
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
@@ -1037,7 +1038,7 @@ func TestCreateRecordValid(t *testing.T) {
 				require.Equal(t, ipnet.IP6.RecordType(), record.Type)
 				require.Equal(t, "::1", record.Content)
 				require.Equal(t, 100, record.TTL)
-				require.Equal(t, false, *record.Proxied)
+				require.False(t, *record.Proxied)
 				require.Equal(t, "Created by cloudflare-ddns", record.Comment)
 				record.ID = "record1"
 

@@ -266,7 +266,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				require.Equal(t, tc.url, r.URL.EscapedPath())
 
 				q, err := url.ParseQuery(r.URL.RawQuery)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, url.Values{
 					"status": {tc.status},
 					"msg":    {tc.msg},
@@ -274,7 +274,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				}, q)
 
 				reqBody, err := io.ReadAll(r.Body)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Empty(t, string(reqBody))
 
 				visited++
