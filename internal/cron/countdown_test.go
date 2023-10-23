@@ -16,31 +16,47 @@ func TestPrintCountdown(t *testing.T) {
 
 	activity := "Secretly dancing"
 
-	responseNow := string(pp.EmojiNow) + " Secretly dancing now . . .\n"
-
 	for _, tc := range [...]struct {
-		interval time.Duration
+		interval []time.Duration
 		output   string
 	}{
-		{-20 * time.Second, string(pp.EmojiNow) + " Secretly dancing now (running behind by 20s) . . .\n"},
-		{-10 * time.Second, string(pp.EmojiNow) + " Secretly dancing now (running behind by 10s) . . .\n"},
-		{-time.Second, responseNow},
-		{-time.Nanosecond, responseNow},
-		{0, responseNow},
-		{time.Nanosecond, responseNow},
-		{time.Second, string(pp.EmojiAlarm) + " Secretly dancing in less than 5s . . .\n"},
-		{10 * time.Second, string(pp.EmojiAlarm) + " Secretly dancing in about 10s . . .\n"},
-		{20 * time.Second, string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n"},
+		{
+			[]time.Duration{-20 * time.Second},
+			string(pp.EmojiNow) + " Secretly dancing now (running behind by 20s) . . .\n",
+		},
+		{
+			[]time.Duration{-10 * time.Second},
+			string(pp.EmojiNow) + " Secretly dancing now (running behind by 10s) . . .\n",
+		},
+		{
+			[]time.Duration{-time.Second, -time.Nanosecond, 0, time.Nanosecond},
+			string(pp.EmojiNow) + " Secretly dancing now . . .\n",
+		},
+		{
+			[]time.Duration{time.Second},
+			string(pp.EmojiAlarm) + " Secretly dancing in less than 5s . . .\n",
+		},
+		{
+			[]time.Duration{10 * time.Second},
+			string(pp.EmojiAlarm) + " Secretly dancing in about 10s . . .\n",
+		},
+		{
+			[]time.Duration{20 * time.Second},
+			string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n",
+		},
 	} {
 		tc := tc
-		t.Run(tc.interval.String(), func(t *testing.T) {
-			t.Parallel()
-			var buf strings.Builder
-			pp := pp.New(&buf)
+		for _, interval := range tc.interval {
+			interval := interval
+			t.Run(interval.String(), func(t *testing.T) {
+				t.Parallel()
+				var buf strings.Builder
+				pp := pp.New(&buf)
 
-			cron.PrintCountdown(pp, activity, tc.interval)
+				cron.PrintCountdown(pp, activity, interval)
 
-			require.Equal(t, tc.output, buf.String())
-		})
+				require.Equal(t, tc.output, buf.String())
+			})
+		}
 	}
 }
