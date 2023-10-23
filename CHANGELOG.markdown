@@ -1,3 +1,16 @@
+# [1.11.0](https://github.com/favonia/cloudflare-ddns/compare/v1.10.1...v1.11.0) (2023-10-23)
+
+This release adds the experimental support of Uptime Kuma.
+
+### BREAKING CHANGES
+
+- `UPDATE_CRON=@disabled` is deprecated; use `UPDATE_CRON=@once` instead
+
+### Features
+
+- add support of Uptime Kuma ([#600](https://github.com/favonia/cloudflare-ddns/issues/600)) ([c68eeeb](https://github.com/favonia/cloudflare-ddns/commit/c68eeeb8472a8e6cc61e3ffb6dd5925d008ffa81)) ([#605](https://github.com/favonia/cloudflare-ddns/issues/605)) ([e65531a](https://github.com/favonia/cloudflare-ddns/commit/e65531ae09e08a1b0f25e0d4d8287eb136cacf52))
+- introduce `UPDATE_CRON=@once` ([#607](https://github.com/favonia/cloudflare-ddns/issues/607)) ([aa57602](https://github.com/favonia/cloudflare-ddns/commit/aa57602626c2f9b4bccbab330a61643d8fd0b2e8))
+
 # [1.10.1](https://github.com/favonia/cloudflare-ddns/compare/v1.10.0...v1.10.1) (2023-09-17)
 
 ### Bug Fixes
