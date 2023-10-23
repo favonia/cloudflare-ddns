@@ -254,7 +254,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				require.Equal(t, tc.url, r.URL.EscapedPath())
 
 				reqBody, err := io.ReadAll(r.Body)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, tc.message, string(reqBody))
 
 				visited++

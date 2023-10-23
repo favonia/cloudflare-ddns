@@ -35,5 +35,5 @@ type Handle interface {
 // An Auth contains authentication information.
 type Auth interface {
 	// New uses the authentication information to create a Handle.
-	New(context.Context, pp.PP, time.Duration) (Handle, bool)
+	New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool)
 }

@@ -6,26 +6,26 @@ package pp
 // PP is the abstraction of a pretty printer.
 type PP interface {
 	// SetEmoji sets whether emojis should be used.
-	SetEmoji(bool) PP
+	SetEmoji(emoji bool) PP
 
 	// SetLevel sets the level under which messages will be hidden.
-	SetLevel(Level) PP
+	SetLevel(level Level) PP
 
 	// IsEnabledFor checks whether a message of a certain level will be displayed.
-	IsEnabledFor(Level) bool
+	IsEnabledFor(level Level) bool
 
 	// IncIndent returns a new pretty-printer with more indentation.
 	IncIndent() PP
 
 	// Infof formats and prints a message at the info level.
-	Infof(Emoji, string, ...any)
+	Infof(emoji Emoji, format string, args ...any)
 
 	// Noticef formats and prints a message at the notice level.
-	Noticef(Emoji, string, ...any)
+	Noticef(emoji Emoji, format string, args ...any)
 
 	// Warningf formats and prints a message at the warning level.
-	Warningf(Emoji, string, ...any)
+	Warningf(emoji Emoji, format string, args ...any)
 
 	// Errorf formats and prints a message at the error level.
-	Errorf(Emoji, string, ...any)
+	Errorf(emoji Emoji, format string, args ...any)
 }

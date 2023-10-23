@@ -16,17 +16,17 @@ type Monitor interface {
 	Describe(callback func(service, params string))
 
 	// Success pings the monitor to prevent notifications.
-	Success(context.Context, pp.PP, string) bool
+	Success(ctx context.Context, ppfmt pp.PP, message string) bool
 
 	// Start pings the monitor with the start signal.
-	Start(context.Context, pp.PP, string) bool
+	Start(ctx context.Context, ppfmt pp.PP, message string) bool
 
 	// Failure immediately signals the monitor to notify the user.
-	Failure(context.Context, pp.PP, string) bool
+	Failure(ctx context.Context, ppfmt pp.PP, message string) bool
 
 	// Log provides additional inforamion without changing the state.
-	Log(context.Context, pp.PP, string) bool
+	Log(ctx context.Context, ppfmt pp.PP, message string) bool
 
 	// ExitStatus records the exit status (as an integer in the POSIX style).
-	ExitStatus(context.Context, pp.PP, int, string) bool
+	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
