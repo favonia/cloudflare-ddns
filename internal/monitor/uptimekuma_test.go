@@ -195,6 +195,21 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				)
 			},
 		},
+		"failure/empty": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Failure(context.Background(), ppfmt, "")
+			},
+			"/", "down", "Failing", "",
+			[]action{ActionOk},
+			ActionAbort, true,
+			true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
+				)
+			},
+		},
 		"log": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
 				return m.Log(context.Background(), ppfmt, "message")
