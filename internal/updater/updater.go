@@ -4,6 +4,7 @@ package updater
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"strings"
 
@@ -78,15 +79,19 @@ var ShouldDisplayHelpMessages = map[ipnet.Type]bool{
 	ipnet.IP6: true,
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func detectIP(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, ipNet ipnet.Type, use1001 bool,
+) (netip.Addr, bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
+	msg := ""
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
-		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		msg = fmt.Sprintf("Failed to detect the %s address", ipNet.Describe())
+		ppfmt.Errorf(pp.EmojiError, "%s", msg)
 		if ShouldDisplayHelpMessages[ipNet] {
 			switch ipNet {
 			case ipnet.IP6:
@@ -99,7 +104,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 		}
 	}
 	ShouldDisplayHelpMessages[ipNet] = false
-	return ip, ok
+	return ip, ok, msg
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
@@ -109,18 +114,21 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			ip, ok, msg := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			if msg != "" {
+				msgs = append(msgs, msg)
+			}
 			if !ok {
 				// We can't detect the new IP address. It's probably better to leave existing IP addresses alone.
 				allOk = false
 				continue
 			}
 
-			ok, msg := setIP(ctx, ppfmt, c, s, ipNet, ip)
-			allOk = allOk && ok
+			ok, msg = setIP(ctx, ppfmt, c, s, ipNet, ip)
 			if msg != "" {
 				msgs = append(msgs, msg)
 			}
+			allOk = allOk && ok
 		}
 	}
 
