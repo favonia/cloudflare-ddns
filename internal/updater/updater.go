@@ -110,13 +110,15 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	allOk := true
-	var msgs []string
+
+	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
+	msgs := map[bool][]string{}
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip, ok, msg := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
-			if msg != "" {
-				msgs = append(msgs, msg)
+			if len(msg) != 0 {
+				msgs[ok] = append(msgs[ok], msg)
 			}
 			if !ok {
 				// We can't detect the new IP address. It's probably better to leave existing IP addresses alone.
@@ -125,14 +127,20 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 			}
 
 			ok, msg = setIP(ctx, ppfmt, c, s, ipNet, ip)
-			if msg != "" {
-				msgs = append(msgs, msg)
+			if len(msg) != 0 {
+				msgs[ok] = append(msgs[ok], msg)
 			}
 			allOk = allOk && ok
 		}
 	}
 
-	return allOk, strings.Join(msgs, "\n")
+	var allMsg string
+	if len(msgs[false]) != 0 {
+		allMsg = strings.Join(msgs[false], "\n")
+	} else {
+		allMsg = strings.Join(msgs[true], "\n")
+	}
+	return allOk, allMsg
 }
 
 // ClearIPs removes all DNS records of managed domains.
