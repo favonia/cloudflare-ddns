@@ -144,7 +144,14 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 <details>
 <summary>🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server</summary>
 
-The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
+The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
+
+</details>
+
+<details>
+<summary>📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
+
+The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid all the detection errors), add the setting `IP6_PROVIDER=none`.
 
 </details>
 
@@ -206,13 +213,13 @@ _(Click to expand the following items.)_
 <details>
 <summary>📍 Domains and IP providers</summary>
 
-| Name           | Valid Values                                                          | Meaning                                                               | Required?   | Default Value      |
-| -------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------------ |
-| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)       |
-| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)       |
-| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)       |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv4 addresses. (See below)                             | No          | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv6 addresses. (See below)                             | No          | `cloudflare.trace` |
+| Name           | Valid Values                                                          | Meaning                                                                                                             | Required?   | Default Value      |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------ |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records                                               | (See below) | (empty list)       |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                                                               | (See below) | (empty list)       |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records                                                            | (See below) | (empty list)       |
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv4 addresses, or `none` to disable IPv4. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv6 addresses, or `none` to disable IPv6. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
 
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
