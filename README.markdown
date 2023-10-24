@@ -343,7 +343,7 @@ _(Click to expand the following items.)_
 
 > 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.
 
-> ⚠️ If using Healthchecks or Uptime Kuma, please note that a failure of IPv6 would result in Cloudflare DDNS reporting as down even if IPv4 is updated successfully. If you do not have IPv6 working on your Docker container, please add <code>IP6_PROVIDER=none</code>.
+> ⚠️ If using Healthchecks or Uptime Kuma, please note that a failure of IPv6 would be reported as _down_ even if IPv4 records are updated successfully (and similarly if IPv6 works but IPv4 fails). If your setup does not support IPv6, please add `IP6_PROVIDER=none` to disable IPv6 completely.
 
 </details>
 
