@@ -31,6 +31,9 @@ func ProbeURL(ctx context.Context, url string) bool {
 }
 
 // ShouldWeUse1001 quickly checks 1.1.1.1 and 1.0.0.1 and notes whether 1.0.0.1 should be used.
+//
+// Note that the return value is about whether the detection is successfully done, not that
+// whether we should use 1.0.0.1. The function will update the field [Config.Use1001] directly.
 func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 	c.Use1001 = false
 	if c.Provider[ipnet.IP4] == nil || !c.Provider[ipnet.IP4].ShouldWeCheck1111() {
