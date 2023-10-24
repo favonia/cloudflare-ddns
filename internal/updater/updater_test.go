@@ -160,7 +160,7 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedBoth,
 			false,
-			"Failed to detect the IPv4 address\nlooking good",
+			"Failed to detect the IPv4 address",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -183,7 +183,7 @@ func TestUpdateIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
-			"good\nFailed to detect the IPv6 address",
+			"Failed to detect the IPv6 address",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
