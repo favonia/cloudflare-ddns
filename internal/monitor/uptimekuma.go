@@ -163,8 +163,11 @@ func (h *UptimeKuma) Start(ctx context.Context, ppfmt pp.PP, _message string) bo
 // Failure pings the server with status=down.
 func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
 	if len(message) == 0 {
-		// Uptime Kuma seems to keep the previous message (even if it was for success) by default.
-		// We thus send an explicit message to overwrite it.
+		// If we do not send a non-empty message to Uptime Kuma, it seems to
+		// either keep the previous message (even if it was for success) or
+		// assume the message is "OK". Either is bad.
+		//
+		// We can send a non-empty message to overwrite it.
 		message = "Failing"
 	}
 	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: message, Ping: ""})
