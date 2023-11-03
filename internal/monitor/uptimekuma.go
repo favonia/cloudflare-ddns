@@ -156,7 +156,7 @@ func (h *UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, _message string) 
 }
 
 // Start does nothing.
-func (h *UptimeKuma) Start(ctx context.Context, ppfmt pp.PP, _message string) bool {
+func (h *UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
 	return true
 }
 
@@ -174,7 +174,7 @@ func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) b
 }
 
 // Log does nothing.
-func (h *UptimeKuma) Log(ctx context.Context, ppfmt pp.PP, _message string) bool {
+func (h *UptimeKuma) Log(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
 	return true
 }
 
