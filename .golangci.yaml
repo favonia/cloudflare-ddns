@@ -24,17 +24,10 @@ linters-settings:
         severity: warning
         disabled: true
 
-issues:
-  exclude-rules:
-    # False positive: https://github.com/kunwardeep/paralleltest/issues/8.
-    - linters:
-        - paralleltest
-      text: "does not use range value in test Run"
-
 linters:
   enable-all: true
   disable:
-    - cyclop # The linter can detect complicated code, but it never lead to actual code changes
+    - cyclop # The linter can detect complicated code, but it never leads to actual code changes
     - deadcode # deprecated
     - depguard # This is useless. I already carefully documented all non-Google libraries
     - exhaustivestruct # deprecated; replaced by exhaustruct
