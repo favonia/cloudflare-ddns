@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"time"
 
@@ -24,9 +23,7 @@ func ProbeURL(ctx context.Context, url string) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
-
-	_, err = io.ReadAll(resp.Body)
+	err = resp.Body.Close()
 	return err == nil
 }
 

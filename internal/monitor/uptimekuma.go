@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"slices"
@@ -135,7 +136,7 @@ func (h *UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequ
 	defer resp.Body.Close()
 
 	var parsedResp UptimeKumaResponse
-	if err = json.NewDecoder(resp.Body).Decode(&parsedResp); err != nil {
+	if err = json.NewDecoder(io.LimitReader(resp.Body, maxReadLength)).Decode(&parsedResp); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", err)
 		return false
 	}

@@ -10,6 +10,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+// maxReadLength is the maximum number of bytes read from an HTTP response.
+const maxReadLength int64 = 102400
+
 type httpCore struct {
 	url               string
 	method            string
@@ -41,7 +44,7 @@ func (h *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxReadLength))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
 		return invalidIP, false
