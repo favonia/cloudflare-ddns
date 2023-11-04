@@ -9,6 +9,9 @@ import (
 
 //go:generate mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . Monitor
 
+// maxReadLength is the maximum number of bytes read from an HTTP response.
+const maxReadLength int64 = 102400
+
 // Monitor is a dead man's switch, meaning that the user will be notified when the updater fails to
 // detect and update the public IP address. No notifications for IP changes.
 type Monitor interface {

@@ -130,7 +130,7 @@ func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, m
 		return false
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxReadLength))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError,
 			"Failed to read HTTP(S) response from the %s endpoint of Healthchecks: %v",
