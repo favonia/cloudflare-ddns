@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -16,6 +17,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
+
+//nolint:gochecknoglobals
+var allHints = map[string]bool{
+	"detect-ip4-fail": true,
+	"detect-ip6-fail": true,
+	"update-timeout":  true,
+}
 
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPs(t *testing.T) {
@@ -51,117 +59,108 @@ func TestUpdateIPs(t *testing.T) {
 	proxiedBoth := mockproxied{domain4: true, domain6: true}
 
 	for name, tc := range map[string]struct {
-		ttl                       api.TTL
-		proxied                   mockproxied
-		ok                        bool
-		msg                       string
-		ShouldDisplayHelpMessages map[ipnet.Type]bool
-		prepareMockPP             func(m *mocks.MockPP)
-		prepareMockProvider       mockproviders
-		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
+		proxied             mockproxied
+		ok                  bool
+		msg                 string
+		ShouldDisplayHints  map[string]bool
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			api.TTLAuto, proxiedBoth, true, ``, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
+			proxiedBoth, true, ``, allHints, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "")
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).Return(true, "")
 			},
 		},
 		"ip4only/setfail": {
-			api.TTLAuto,
 			proxiedBoth,
 			false,
 			"error",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false, "error") //nolint:lll
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).Return(false, "error") //nolint:lll
 			},
 		},
 		"ip6only": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"ok",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true, "ok")
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).Return(true, "ok")
 			},
 		},
 		"ip6only/setfail": {
-			api.TTLAuto,
 			proxiedBoth,
 			false,
 			"bad",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(false, "bad")
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).Return(false, "bad") //nolint:lll
 			},
 		},
 		"both": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, ""),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).Return(true, ""),
 				)
 			},
 		},
 		"both/setfail1": {
-			api.TTLAuto,
 			proxiedBoth,
 			false,
 			"hey!",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(false, "hey!"), //nolint:lll
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).Return(false, "hey!"), //nolint:lll
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).Return(true, ""),
 				)
 			},
 		},
 		"both/setfail2": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
 			"wrong",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, ""),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), false).Return(false, "wrong"), //nolint:lll
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).Return(true, ""),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).Return(false, "wrong"), //nolint:lll
 				)
 			},
 		},
 		"ip4fails": {
-			api.TTLAuto,
 			proxiedBoth,
 			false,
 			"Failed to detect the IPv4 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
@@ -176,15 +175,14 @@ func TestUpdateIPs(t *testing.T) {
 				ipnet.IP6: provider6,
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTL(1), true).Return(true, "looking good") //nolint:lll
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).Return(true, "looking good") //nolint:lll
 			},
 		},
 		"ip6fails": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
 			"Failed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -201,15 +199,14 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "good") //nolint:lll
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).Return(true, "good") //nolint:lll
 			},
 		},
 		"ip6fails/again": {
-			api.TTLAuto,
 			proxiedBoth,
 			false,
 			"Failed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: false},
+			map[string]bool{"detect-ip4-fail": true, "detect-ip6-fail": false, "update-timeout": true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -223,15 +220,14 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), true).Return(true, "")
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).Return(true, "")
 			},
 		},
 		"bothfail": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
 			"Failed to detect the IPv4 address\nFailed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
@@ -253,11 +249,10 @@ func TestUpdateIPs(t *testing.T) {
 			nil,
 		},
 		"ip4only-proxied-nil": {
-			api.TTLAuto,
 			mockproxied{},
 			true,
 			"response",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -269,7 +264,32 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTL(1), false).Return(true, "response") //nolint:lll
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).Return(true, "response") //nolint:lll
+			},
+		},
+		"slow-setting": {
+			proxiedNone,
+			false,
+			"response",
+			allHints,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
+					m.EXPECT().Infof(pp.EmojiConfig, "If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT"), //nolint:lll
+				)
+			},
+			mockproviders{
+				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(ip4, true)
+				},
+			},
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
+					DoAndReturn(
+						func(_ context.Context, _ pp.PP, _ domain.Domain, _ ipnet.Type, _ netip.Addr, _ api.TTL, _ bool) (bool, string) { //nolint:lll
+							time.Sleep(2 * time.Second)
+							return false, "response"
+						})
 			},
 		},
 	} {
@@ -279,15 +299,18 @@ func TestUpdateIPs(t *testing.T) {
 			ctx := context.Background()
 			conf := config.Default()
 			conf.Domains = domains
-			conf.TTL = tc.ttl
+			conf.TTL = api.TTLAuto
 			conf.Proxied = tc.proxied
 			conf.Use1001 = true
+			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = tc.ShouldDisplayHints[k]
+			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
 				if tc.prepareMockProvider[ipnet] == nil {
 					conf.Provider[ipnet] = nil
 					continue
@@ -322,31 +345,28 @@ func TestClearIPs(t *testing.T) {
 	proxiedNone := mockproxied{domain4: false, domain6: false}
 
 	for name, tc := range map[string]struct {
-		ttl                       api.TTL
-		proxied                   mockproxied
-		ok                        bool
-		msg                       string
-		ShouldDisplayHelpMessages map[ipnet.Type]bool
-		prepareMockPP             func(m *mocks.MockPP)
-		prepareMockProvider       mockproviders
-		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
+		proxied             mockproxied
+		ok                  bool
+		msg                 string
+		ShouldDisplayHints  map[string]bool
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			``,
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{},
 			nil,
 		},
 		"ip4only": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"hello",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -354,11 +374,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip4only/setfail": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
 			"err",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -366,11 +385,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip6only": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -378,11 +396,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"ip6only/setfail": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
 			"test",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -390,11 +407,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both": {
-			api.TTLAuto,
 			proxiedNone,
 			true,
 			"both\nneither",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -405,11 +421,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail1": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
-			"999",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			"",
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -420,11 +435,10 @@ func TestClearIPs(t *testing.T) {
 			},
 		},
 		"both/setfail2": {
-			api.TTLAuto,
 			proxiedNone,
 			false,
-			"1\n2",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			"2",
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -441,14 +455,16 @@ func TestClearIPs(t *testing.T) {
 			ctx := context.Background()
 			conf := config.Default()
 			conf.Domains = domains
-			conf.TTL = tc.ttl
+			conf.TTL = api.TTLAuto
 			conf.Proxied = tc.proxied
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = tc.ShouldDisplayHints[k]
+			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
 				if !tc.prepareMockProvider[ipnet] {
 					conf.Provider[ipnet] = nil
 					continue
