@@ -11,7 +11,7 @@ import (
 
 // ProbeURL quickly checks whether one can send a HEAD request to the url.
 func ProbeURL(ctx context.Context, url string) bool {
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second))
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
