@@ -2,6 +2,7 @@ package updater_test
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"testing"
 
@@ -16,6 +17,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
+
+func getHintIDForDetection(ipNet ipnet.Type) string {
+	return fmt.Sprintf("detection-ip%d", ipNet.Int())
+}
 
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPs(t *testing.T) {
@@ -287,7 +292,7 @@ func TestUpdateIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
+				updater.ShouldDisplayHints[getHintIDForDetection(ipnet)] = tc.ShouldDisplayHelpMessages[ipnet]
 				if tc.prepareMockProvider[ipnet] == nil {
 					conf.Provider[ipnet] = nil
 					continue
@@ -408,7 +413,7 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
-			"999",
+			"",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
@@ -423,7 +428,7 @@ func TestClearIPs(t *testing.T) {
 			api.TTLAuto,
 			proxiedNone,
 			false,
-			"1\n2",
+			"2",
 			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
@@ -448,7 +453,7 @@ func TestClearIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHelpMessages[ipnet] = tc.ShouldDisplayHelpMessages[ipnet]
+				updater.ShouldDisplayHints[getHintIDForDetection(ipnet)] = tc.ShouldDisplayHelpMessages[ipnet]
 				if !tc.prepareMockProvider[ipnet] {
 					conf.Provider[ipnet] = nil
 					continue
