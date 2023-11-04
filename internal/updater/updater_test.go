@@ -19,7 +19,14 @@ import (
 )
 
 func getHintIDForDetection(ipNet ipnet.Type) string {
-	return fmt.Sprintf("detection-ip%d", ipNet.Int())
+	return fmt.Sprintf("detect-ip%d-fail", ipNet.Int())
+}
+
+//nolint:gochecknoglobals
+var allHints = map[string]bool{
+	"detect-ip4-fail": true,
+	"detect-ip6-fail": true,
+	"update-timeout":  true,
 }
 
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
@@ -56,24 +63,24 @@ func TestUpdateIPs(t *testing.T) {
 	proxiedBoth := mockproxied{domain4: true, domain6: true}
 
 	for name, tc := range map[string]struct {
-		ttl                       api.TTL
-		proxied                   mockproxied
-		ok                        bool
-		msg                       string
-		ShouldDisplayHelpMessages map[ipnet.Type]bool
-		prepareMockPP             func(m *mocks.MockPP)
-		prepareMockProvider       mockproviders
-		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
+		ttl                 api.TTL
+		proxied             mockproxied
+		ok                  bool
+		msg                 string
+		ShouldDisplayHints  map[string]bool
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			api.TTLAuto, proxiedBoth, true, ``, map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true}, nil, mockproviders{}, nil,
+			api.TTLAuto, proxiedBoth, true, ``, allHints, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -85,7 +92,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedBoth,
 			false,
 			"error",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -97,7 +104,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedNone,
 			true,
 			"ok",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -109,7 +116,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedBoth,
 			false,
 			"bad",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -121,7 +128,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -136,7 +143,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedBoth,
 			false,
 			"hey!",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -151,7 +158,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"wrong",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -166,7 +173,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedBoth,
 			false,
 			"Failed to detect the IPv4 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
@@ -189,7 +196,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"Failed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -214,7 +221,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedBoth,
 			false,
 			"Failed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: false},
+			map[string]bool{"detect-ip4-fail": true, "detect-ip6-fail": false, "update-timeout": true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -236,7 +243,7 @@ func TestUpdateIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"Failed to detect the IPv4 address\nFailed to detect the IPv6 address",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
@@ -262,7 +269,7 @@ func TestUpdateIPs(t *testing.T) {
 			mockproxied{},
 			true,
 			"response",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
@@ -291,8 +298,10 @@ func TestUpdateIPs(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = tc.ShouldDisplayHints[k]
+			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHints[getHintIDForDetection(ipnet)] = tc.ShouldDisplayHelpMessages[ipnet]
 				if tc.prepareMockProvider[ipnet] == nil {
 					conf.Provider[ipnet] = nil
 					continue
@@ -327,21 +336,21 @@ func TestClearIPs(t *testing.T) {
 	proxiedNone := mockproxied{domain4: false, domain6: false}
 
 	for name, tc := range map[string]struct {
-		ttl                       api.TTL
-		proxied                   mockproxied
-		ok                        bool
-		msg                       string
-		ShouldDisplayHelpMessages map[ipnet.Type]bool
-		prepareMockPP             func(m *mocks.MockPP)
-		prepareMockProvider       mockproviders
-		prepareMockSetter         func(ppfmt pp.PP, m *mocks.MockSetter)
+		ttl                 api.TTL
+		proxied             mockproxied
+		ok                  bool
+		msg                 string
+		ShouldDisplayHints  map[string]bool
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
 			api.TTLAuto,
 			proxiedNone,
 			true,
 			``,
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{},
 			nil,
@@ -351,7 +360,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			true,
 			"hello",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -363,7 +372,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"err",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -375,7 +384,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			true,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -387,7 +396,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"test",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -399,7 +408,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			true,
 			"both\nneither",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -414,7 +423,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -429,7 +438,7 @@ func TestClearIPs(t *testing.T) {
 			proxiedNone,
 			false,
 			"2",
-			map[ipnet.Type]bool{ipnet.IP4: true, ipnet.IP6: true},
+			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -452,8 +461,10 @@ func TestClearIPs(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = tc.ShouldDisplayHints[k]
+			}
 			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				updater.ShouldDisplayHints[getHintIDForDetection(ipnet)] = tc.ShouldDisplayHelpMessages[ipnet]
 				if !tc.prepareMockProvider[ipnet] {
 					conf.Provider[ipnet] = nil
 					continue

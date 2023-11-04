@@ -23,15 +23,15 @@ import (
 //
 //nolint:gochecknoglobals
 var ShouldDisplayHints = map[string]bool{
-	"detection-ip4":  true,
-	"detection-ip6":  true,
-	"update-timeout": true,
+	"detect-ip4-fail": true,
+	"detect-ip6-fail": true,
+	"update-timeout":  true,
 }
 
 func getHintIDForDetection(ipNet ipnet.Type) string {
 	return map[ipnet.Type]string{
-		ipnet.IP4: "detection-ip4",
-		ipnet.IP6: "detection-ip6",
+		ipnet.IP4: "detect-ip4-fail",
+		ipnet.IP6: "detect-ip6-fail",
 	}[ipNet]
 }
 
