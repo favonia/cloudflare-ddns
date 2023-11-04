@@ -99,6 +99,13 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		ActionFail
 	)
 
+	successPP := func(m *mocks.MockPP) {
+		gomock.InOrder(
+			m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
+			m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
+		)
+	}
+
 	for name, tc := range map[string]struct {
 		endpoint      func(pp.PP, monitor.Monitor) bool
 		url           string
@@ -119,12 +126,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -190,12 +192,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"failure/empty": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -205,12 +202,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"log": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -244,12 +236,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"exitstatus/-1": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -259,12 +246,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 	} {
 		tc := tc
