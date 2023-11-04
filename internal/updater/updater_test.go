@@ -2,7 +2,6 @@ package updater_test
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 	"testing"
 
@@ -17,10 +16,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
-
-func getHintIDForDetection(ipNet ipnet.Type) string {
-	return fmt.Sprintf("detect-ip%d-fail", ipNet.Int())
-}
 
 //nolint:gochecknoglobals
 var allHints = map[string]bool{
