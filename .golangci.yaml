@@ -21,29 +21,33 @@ linters-settings:
   revive:
     rules:
       - name: unused-parameter
-        severity: warning
-        disabled: true
+        arguments:
+          - allowRegex: "^_"
 
 linters:
   enable-all: true
   disable:
-    - cyclop # The linter can detect complicated code, but it never leads to actual code changes
     - deadcode # deprecated
-    - depguard # This is useless. I already carefully documented all non-Google libraries
     - exhaustivestruct # deprecated; replaced by exhaustruct
-    - gocognit #  The linter can detect complicated code, but it never lead to actual code changes
     - golint # deprecated; replaced by revive
-    - gosmopolitan # The idea is interesting but is useless for this project
     - ifshort # deprecated
     - interfacer # deprecated
-    - ireturn # ireturn works poorly for the style with private types and public interfaces
-    - maintidx # The linter can detect complicated code, but it never lead to actual code changes
     - maligned # deprecated, and I value readability over bytes saved by alignment
-    - nlreturn # I don't agree with the style enforced by nlreturn
-    - nonamedreturns # named returns are needed in the internal updater package
-    - nosnakecase # revive's var-naming check seems to be better
+    - nosnakecase # deprecated; revive's var-naming check seems to be better
     - scopelint # deprecated; replaced by exportloopref
     - structcheck # deprecated
     - varcheck # deprecated
-    - varnamelen # varnamelen complains too much, in my opinion
+
+    - cyclop # can detect complicated code, but never leads to actual code changes
+    - gocognit # can detect complicated code, but never leads to actual code changes
+    - maintidx # can detect complicated code, but never leads to actual code changes
+
+    - depguard # useless; I do not introduce a dependency carelessly
+    - gosmopolitan # interesting for i18n checking, useless for this project
+
+    - nlreturn # I don't agree with the style enforced by nlreturn
+    - varnamelen # I don't agree with the style enforced by varnamelen
     - wsl # I don't agree with the style enforced by wsl
+
+    - ireturn # doesn't work for private struct types; see https://github.com/butuzov/ireturn/issues/31
+    - nonamedreturns # named returns are needed in the internal updater package

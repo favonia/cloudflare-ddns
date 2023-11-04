@@ -16,6 +16,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+const httpUnsafeMsg string = "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"
+
 func TestNewUptimeKuma(t *testing.T) {
 	t.Parallel()
 
@@ -97,6 +99,13 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		ActionFail
 	)
 
+	successPP := func(m *mocks.MockPP) {
+		gomock.InOrder(
+			m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
+			m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
+		)
+	}
+
 	for name, tc := range map[string]struct {
 		endpoint      func(pp.PP, monitor.Monitor) bool
 		url           string
@@ -117,12 +126,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -134,7 +138,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to ping Uptime Kuma: %q", "bad"),
 				)
 			},
@@ -149,7 +153,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", gomock.Any()),
 				)
 			},
@@ -163,7 +167,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
 					m.EXPECT().Warningf(pp.EmojiError, "Failed to send HTTP(S) request to Uptime Kuma: %v", gomock.Any()),
 				)
 			},
@@ -177,7 +181,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			ActionAbort, false,
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS")
+				m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg)
 			},
 		},
 		"failure": {
@@ -188,12 +192,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"failure/empty": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -203,12 +202,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"log": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -219,7 +213,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			ActionAbort, false,
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS")
+				m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg)
 			},
 		},
 		"exitstatus/0": {
@@ -231,7 +225,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			ActionAbort, false,
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS")
+				m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg)
 			},
 		},
 		"exitstatus/1": {
@@ -242,12 +236,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 		"exitstatus/-1": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
@@ -257,12 +246,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			[]action{ActionOk},
 			ActionAbort, true,
 			true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
-				)
-			},
+			successPP,
 		},
 	} {
 		tc := tc
