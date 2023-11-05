@@ -10,6 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -97,8 +98,8 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	if len(c.Notifiers) > 0 {
 		section("Notifiers (via shoutrrr):")
-		monitor.DescribeAll(func(service, params string) {
+		notifier.DescribeAll(func(service, params string) {
 			item(service+":", "%s", params)
-		}, c.Monitors)
+		}, c.Notifiers)
 	}
 }

@@ -76,9 +76,11 @@ func (c *NotifierDescribeCall) DoAndReturn(f func(func(string, string))) *Notifi
 }
 
 // Send mocks base method.
-func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 string) {
+func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Send", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Send", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	return ret0
 }
 
 // Send indicates an expected call of Send.
@@ -94,19 +96,19 @@ type NotifierSendCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *NotifierSendCall) Return() *NotifierSendCall {
-	c.Call = c.Call.Return()
+func (c *NotifierSendCall) Return(arg0 bool) *NotifierSendCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, string)) *NotifierSendCall {
+func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, string) bool) *NotifierSendCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, string)) *NotifierSendCall {
+func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *NotifierSendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

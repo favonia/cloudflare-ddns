@@ -45,12 +45,17 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (*Shoutrrr, bool) {
 	return &Shoutrrr{Router: r, ServiceNames: serviceNames}, true
 }
 
-func (s *Shoutrrr) Send(_ context.Context, _ pp.PP, msg string) {
-	s.Router.Send(msg, &types.Params{})
-}
-
 func (s *Shoutrrr) Describe(callback func(service, params string)) {
 	for _, n := range s.ServiceNames {
 		callback(n, "(URL redacted)")
 	}
+}
+
+func (s *Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
+	err := s.Router.Send(msg, &types.Params{})
+	if err != nil {
+		ppfmt.Errorf(pp.EmojiUserError, "Failed to send message: %v", err)
+		return false
+	}
+	return true
 }

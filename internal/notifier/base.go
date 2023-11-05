@@ -15,5 +15,5 @@ type Notifier interface {
 	Describe(callback func(service, params string))
 
 	// Send out a message.
-	Send(ctx context.Context, ppfmt pp.PP, msg string)
+	Send(ctx context.Context, ppfmt pp.PP, msg string) bool
 }
