@@ -60,6 +60,29 @@ func TestGetenv(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
+func TestGetenvs(t *testing.T) {
+	key := keyPrefix + "VAR"
+	for name, tc := range map[string]struct {
+		set      bool
+		val      string
+		expected []string
+	}{
+		"nil":         {false, "", []string{}},
+		"empty":       {true, "", []string{}},
+		"only-spaces": {true, "\n   \n  \n \t", []string{}},
+		"simple":      {true, "VAL", []string{"VAL"}},
+		"space1":      {true, "    VAL1 \nVAL2    ", []string{"VAL1", "VAL2"}},
+		"space2":      {true, "     VAL1 \n   VAL2 ", []string{"VAL1", "VAL2"}},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			require.Equal(t, tc.expected, config.Getenvs(key))
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadString(t *testing.T) {
 	key := keyPrefix + "STRING"
 	for name, tc := range map[string]struct {
