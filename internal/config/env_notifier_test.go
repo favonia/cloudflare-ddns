@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 //nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
@@ -51,6 +52,32 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				s, ok := m.(*notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"generic"}, s.ServiceNames)
+			},
+			true,
+			nil,
+		},
+		"ill-formed": {
+			true, "meow-meow-meow://cute",
+			nil,
+			func(t *testing.T, ns []not) {
+				t.Helper()
+				require.Nil(t, ns)
+			},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
+			},
+		},
+		"multiple": {
+			true, "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
+			nil,
+			func(t *testing.T, ns []not) {
+				t.Helper()
+				require.Len(t, ns, 1)
+				m := ns[0]
+				s, ok := m.(*notifier.Shoutrrr)
+				require.True(t, ok)
+				require.Equal(t, []string{"generic", "pushover"}, s.ServiceNames)
 			},
 			true,
 			nil,
