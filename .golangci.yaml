@@ -39,6 +39,7 @@ linters:
     - varcheck # deprecated
 
     - cyclop # can detect complicated code, but never leads to actual code changes
+    - funlen # can detect complicated code, but never leads to actual code changes
     - gocognit # can detect complicated code, but never leads to actual code changes
     - maintidx # can detect complicated code, but never leads to actual code changes
 
