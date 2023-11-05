@@ -17,16 +17,31 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-//nolint:paralleltest // environment variables are global
-func TestReadEnvWithOnlyToken(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
+func unsetAll(t *testing.T) {
+	t.Helper()
 	unset(t,
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
 		"IP4_PROVIDER", "IP6_PROVIDER",
 		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
-		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+		"UPDATE_CRON",
+		"UPDATE_ON_START",
+		"DELETE_ON_STOP",
+		"CACHE_EXPIRATION",
+		"TTL",
+		"PROXIED",
+		"DETECTION_TIMEOUT",
+		"UPDATE_TIMEOUT",
+		"HEALTHCHECKS",
+		"UPTIMEKUMA",
+		"SHOUTRRR",
+	)
+}
 
+//nolint:paralleltest // environment variables are global
+func TestReadEnvWithOnlyToken(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	unsetAll(t)
 	store(t, "CF_API_TOKEN", "deadbeaf")
 
 	var cfg config.Config
@@ -55,12 +70,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 func TestReadEnvEmpty(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	unset(t,
-		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-		"IP4_PROVIDER", "IP6_PROVIDER",
-		"IP4_POLICY", "IP6_POLICY",
-		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
-		"UPDATE_CRON", "UPDATE_ON_START", "DELETE_ON_STOP", "CACHE_EXPIRATION", "TTL", "PROXIED", "DETECTION_TIMEOUT")
+	unsetAll(t)
 
 	var cfg config.Config
 	mockPP := mocks.NewMockPP(mockCtrl)
