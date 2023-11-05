@@ -20,7 +20,7 @@ func Getenv(key string) string {
 func Getenvs(key string) []string {
 	rawVals := strings.Split(os.Getenv(key), "\n")
 	vals := make([]string, 0, len(rawVals))
-	for _, v := range vals {
+	for _, v := range rawVals {
 		v = strings.TrimSpace(v)
 		if len(v) > 0 {
 			vals = append(vals, v)
