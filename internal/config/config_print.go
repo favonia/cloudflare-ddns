@@ -94,4 +94,11 @@ func (c *Config) Print(ppfmt pp.PP) {
 			item(service+":", "%s", params)
 		}, c.Monitors)
 	}
+
+	if len(c.Notifiers) > 0 {
+		section("Notifiers (via shoutrrr):")
+		monitor.DescribeAll(func(service, params string) {
+			item(service+":", "%s", params)
+		}, c.Monitors)
+	}
 }

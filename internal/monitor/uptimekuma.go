@@ -29,13 +29,15 @@ type UptimeKuma struct {
 	Timeout time.Duration
 }
 
+var _ Monitor = (*UptimeKuma)(nil)
+
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
 	UptimeKumaDefaultTimeout = 10 * time.Second
 )
 
 // NewUptimeKuma creates a new UptimeKuma monitor.
-func NewUptimeKuma(ppfmt pp.PP, rawURL string) (Monitor, bool) {
+func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")

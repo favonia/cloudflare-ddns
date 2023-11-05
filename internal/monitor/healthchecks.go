@@ -25,6 +25,8 @@ type Healthchecks struct {
 	Timeout time.Duration
 }
 
+var _ Monitor = (*Healthchecks)(nil)
+
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
 	HealthchecksDefaultTimeout = 10 * time.Second
@@ -32,7 +34,7 @@ const (
 
 // NewHealthchecks creates a new Healthchecks monitor.
 // See https://healthchecks.io/docs/http_api/ for more information.
-func NewHealthchecks(ppfmt pp.PP, rawURL string) (Monitor, bool) {
+func NewHealthchecks(ppfmt pp.PP, rawURL string) (*Healthchecks, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")

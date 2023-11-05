@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
@@ -29,6 +30,7 @@ type Config struct {
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
+	Notifiers        []notifier.Notifier
 }
 
 // Default gives the default configuration.
@@ -54,5 +56,6 @@ func Default() *Config {
 		UpdateTimeout:    time.Second * 30, //nolint:gomnd
 		DetectionTimeout: time.Second * 5,  //nolint:gomnd
 		Monitors:         nil,
+		Notifiers:        nil,
 	}
 }
