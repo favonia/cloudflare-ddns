@@ -19,8 +19,8 @@ const (
 	EmojiUpdateRecord Emoji = "📡" // updating DNS records
 	EmojiClearRecord  Emoji = "🧹" // clearing DNS records
 
-	EmojiNotification Emoji = "🔔" // sending out notifications, pinging, health checks
-	EmojiRepeat       Emoji = "🔁" // repeating things
+	EmojiPing         Emoji = "🔔" // pinging and health checks
+	EmojiNotification Emoji = "📨" // notifications
 
 	EmojiSignal      Emoji = "🚨" // catching signals
 	EmojiAlreadyDone Emoji = "🤷" // DNS records were already up to date

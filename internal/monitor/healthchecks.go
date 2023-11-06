@@ -149,7 +149,7 @@ func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, m
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiNotification, "Successfully pinged the %s endpoint of Healthchecks", endpointDescription)
+	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", endpointDescription)
 	return true
 }
 

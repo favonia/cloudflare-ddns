@@ -12,6 +12,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func TestShoutrrrDescripbe(t *testing.T) {
@@ -30,17 +31,29 @@ func TestShoutrrrSend(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		url           string
+		path          string
+		service       func(serverURL string) string
 		message       string
 		pinged        bool
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
-			"/", "hello",
+			"/greeting",
+			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
+			"hello",
 			true, true,
 			func(m *mocks.MockPP) {
-				gomock.InOrder()
+				m.EXPECT().Infof(pp.EmojiNotification, "Sent shoutrrr message")
+			},
+		},
+		"ill-formed url": {
+			"",
+			func(_serverURL string) string { return "generic+https://0.0.0.0" },
+			"hello",
+			false, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to send some shoutrrr message: %v", gomock.Any())
 			},
 		},
 	} {
@@ -56,7 +69,7 @@ func TestShoutrrrSend(t *testing.T) {
 			pinged := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, tc.url, r.URL.EscapedPath())
+				require.Equal(t, tc.path, r.URL.EscapedPath())
 
 				reqBody, err := io.ReadAll(r.Body)
 				require.NoError(t, err)
@@ -65,7 +78,7 @@ func TestShoutrrrSend(t *testing.T) {
 				pinged = true
 			}))
 
-			s, ok := notifier.NewShoutrrr(mockPP, []string{"generic+" + server.URL + tc.url})
+			s, ok := notifier.NewShoutrrr(mockPP, []string{tc.service(server.URL)})
 			require.True(t, ok)
 			ok = s.Send(context.Background(), mockPP, tc.message)
 			require.Equal(t, tc.ok, ok)

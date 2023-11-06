@@ -147,7 +147,7 @@ func (h *UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequ
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma")
+	ppfmt.Infof(pp.EmojiPing, "Pinged Uptime Kuma")
 	return true
 }
 
