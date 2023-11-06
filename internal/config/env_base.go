@@ -16,6 +16,19 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
+// Getenvs reads an environment variable, split it by '\n', and trim the space.
+func Getenvs(key string) []string {
+	rawVals := strings.Split(os.Getenv(key), "\n")
+	vals := make([]string, 0, len(rawVals))
+	for _, v := range rawVals {
+		v = strings.TrimSpace(v)
+		if len(v) > 0 {
+			vals = append(vals, v)
+		}
+	}
+	return vals
+}
+
 // ReadString reads an environment variable as a plain string.
 func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	val := Getenv(key)

@@ -13,7 +13,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### ⚡ Efficiency
 
-- 🤏 The Docker image takes less than 3 MB (after compression).
+- 🤏 The Docker image takes less than 5 MB after compression.
 - 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 

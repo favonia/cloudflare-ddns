@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
@@ -12,6 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -117,7 +117,9 @@ func TestPrintMaps(t *testing.T) {
 		printItem(innerMockPP, "IP detection:", "5s"),
 		printItem(innerMockPP, "Record updating:", "30s"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Monitors:"),
-		printItem(innerMockPP, "Healthchecks:", "(URL redacted)"),
+		printItem(innerMockPP, "Meow:", "purrrr"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "Notifiers (via shoutrrr):"),
+		printItem(innerMockPP, "Snake:", "hissss"),
 	)
 
 	c := config.Default()
@@ -133,9 +135,19 @@ func TestPrintMaps(t *testing.T) {
 	c.Proxied[domain.FQDN("c")] = false
 	c.Proxied[domain.FQDN("d")] = false
 
-	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
-	require.True(t, ok)
+	m := mocks.NewMockMonitor(mockCtrl)
+	m.EXPECT().Describe(gomock.Any()).
+		DoAndReturn(func(f func(string, string)) {
+			f("Meow", "purrrr")
+		}).AnyTimes()
 	c.Monitors = []monitor.Monitor{m}
+
+	n := mocks.NewMockNotifier(mockCtrl)
+	n.EXPECT().Describe(gomock.Any()).
+		DoAndReturn(func(f func(string, string)) {
+			f("Snake", "hissss")
+		}).AnyTimes()
+	c.Notifiers = []notifier.Notifier{n}
 
 	c.Print(mockPP)
 }

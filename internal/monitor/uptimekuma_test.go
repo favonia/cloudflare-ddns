@@ -102,7 +102,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	successPP := func(m *mocks.MockPP) {
 		gomock.InOrder(
 			m.EXPECT().Warningf(pp.EmojiUserWarning, httpUnsafeMsg),
-			m.EXPECT().Infof(pp.EmojiNotification, "Successfully pinged Uptime Kuma"),
+			m.EXPECT().Infof(pp.EmojiPing, "Pinged Uptime Kuma"),
 		)
 	}
 
