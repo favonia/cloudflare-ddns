@@ -17,6 +17,7 @@ import (
 	domain "github.com/favonia/cloudflare-ddns/internal/domain"
 	ipnet "github.com/favonia/cloudflare-ddns/internal/ipnet"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
+	setter "github.com/favonia/cloudflare-ddns/internal/setter"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,52 +44,50 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 	return m.recorder
 }
 
-// Clear mocks base method.
-func (m *MockSetter) Clear(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) (bool, string) {
+// Delete mocks base method.
+func (m *MockSetter) Delete(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Clear", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(string)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(setter.ResponseCode)
+	return ret0
 }
 
-// Clear indicates an expected call of Clear.
-func (mr *MockSetterMockRecorder) Clear(arg0, arg1, arg2, arg3 any) *SetterClearCall {
+// Delete indicates an expected call of Delete.
+func (mr *MockSetterMockRecorder) Delete(arg0, arg1, arg2, arg3 any) *SetterDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockSetter)(nil).Clear), arg0, arg1, arg2, arg3)
-	return &SetterClearCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSetter)(nil).Delete), arg0, arg1, arg2, arg3)
+	return &SetterDeleteCall{Call: call}
 }
 
-// SetterClearCall wrap *gomock.Call
-type SetterClearCall struct {
+// SetterDeleteCall wrap *gomock.Call
+type SetterDeleteCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SetterClearCall) Return(arg0 bool, arg1 string) *SetterClearCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *SetterDeleteCall) Return(arg0 setter.ResponseCode) *SetterDeleteCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterClearCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (bool, string)) *SetterClearCall {
+func (c *SetterDeleteCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) setter.ResponseCode) *SetterDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterClearCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (bool, string)) *SetterClearCall {
+func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) setter.ResponseCode) *SetterDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Set mocks base method.
-func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) (bool, string) {
+func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(string)
-	return ret0, ret1
+	ret0, _ := ret[0].(setter.ResponseCode)
+	return ret0
 }
 
 // Set indicates an expected call of Set.
@@ -104,19 +103,19 @@ type SetterSetCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SetterSetCall) Return(arg0 bool, arg1 string) *SetterSetCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *SetterSetCall) Return(arg0 setter.ResponseCode) *SetterSetCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSetCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) (bool, string)) *SetterSetCall {
+func (c *SetterSetCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) (bool, string)) *SetterSetCall {
+func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

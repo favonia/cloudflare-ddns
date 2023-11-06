@@ -34,8 +34,7 @@ func TestSet(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		ip                netip.Addr
-		ok                bool
-		msg               string
+		resp              setter.ResponseCode
 		ttl               api.TTL
 		proxied           bool
 		prepareMockPP     func(m *mocks.MockPP)
@@ -43,8 +42,7 @@ func TestSet(t *testing.T) {
 	}{
 		"0/1-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			1,
 			false,
 			func(m *mocks.MockPP) {
@@ -59,8 +57,7 @@ func TestSet(t *testing.T) {
 		},
 		"1unmatched/300-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -80,8 +77,7 @@ func TestSet(t *testing.T) {
 		},
 		"1unmatched-updatefail/300-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -101,8 +97,7 @@ func TestSet(t *testing.T) {
 		},
 		"1matched/300-false": {
 			ip1,
-			true,
-			``,
+			setter.ResponseNoUpdatesNeeded,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -114,8 +109,7 @@ func TestSet(t *testing.T) {
 		},
 		"2matched/300-false": {
 			ip1,
-			true,
-			``,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -136,8 +130,7 @@ func TestSet(t *testing.T) {
 		},
 		"2matched-deletefail/300-false": {
 			ip1,
-			true,
-			``,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			nil,
@@ -150,8 +143,7 @@ func TestSet(t *testing.T) {
 		},
 		"2unmatched/300-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -163,7 +155,11 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record1,
 					),
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord,
+						"Deleted a stale %s record of %q (ID: %q)",
+						"AAAA",
+						"sub.test.org",
+						record2),
 				)
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
@@ -176,8 +172,7 @@ func TestSet(t *testing.T) {
 		},
 		"2unmatched-updatefail/300-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -203,8 +198,7 @@ func TestSet(t *testing.T) {
 		},
 		"2unmatched-updatefailtwice/300-false": {
 			ip1,
-			true,
-			`Set AAAA sub.test.org to ::1`,
+			setter.ResponseUpdatesApplied,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -228,8 +222,7 @@ func TestSet(t *testing.T) {
 		//nolint:dupl
 		"2unmatched-updatefail-deletefail-updatefail/300-false": {
 			ip1,
-			false,
-			`Failed to set AAAA sub.test.org`,
+			setter.ResponseUpdatesFailed,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -253,8 +246,7 @@ func TestSet(t *testing.T) {
 		//nolint:dupl
 		"2unmatched-updatefailtwice-createfail/300-false": {
 			ip1,
-			false,
-			`Failed to set AAAA sub.test.org`,
+			setter.ResponseUpdatesFailed,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -277,8 +269,7 @@ func TestSet(t *testing.T) {
 		},
 		"listfail/300-false": {
 			ip1,
-			false,
-			`Failed to set AAAA sub.test.org`,
+			setter.ResponseUpdatesFailed,
 			300,
 			false,
 			func(m *mocks.MockPP) {
@@ -308,15 +299,14 @@ func TestSet(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			ok, msg := s.Set(ctx, mockPP, domain, ipNetwork, tc.ip, tc.ttl, tc.proxied)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.msg, msg)
+			resp := s.Set(ctx, mockPP, domain, ipNetwork, tc.ip, tc.ttl, tc.proxied)
+			require.Equal(t, tc.resp, resp)
 		})
 	}
 }
 
 //nolint:funlen
-func TestClear(t *testing.T) {
+func TestDelete(t *testing.T) {
 	t.Parallel()
 
 	const (
@@ -332,24 +322,21 @@ func TestClear(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		ok                bool
-		msg               string
+		resp              setter.ResponseCode
 		prepareMockPP     func(m *mocks.MockPP)
 		prepareMockHandle func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle)
 	}{
 		"0": {
-			true,
-			``,
+			setter.ResponseNoUpdatesNeeded,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already cleared", "AAAA", "sub.test.org")
+				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true)
 			},
 		},
 		"1unmatched": {
-			true,
-			`Deleted AAAA sub.test.org`,
+			setter.ResponseUpdatesApplied,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1) //nolint:lll
 			},
@@ -361,8 +348,7 @@ func TestClear(t *testing.T) {
 			},
 		},
 		"1unmatched/fail": {
-			false,
-			`Failed to clear AAAA sub.test.org`,
+			setter.ResponseUpdatesFailed,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiError, "Failed to complete deleting of %s records of %q; records might be inconsistent", "AAAA", "sub.test.org") //nolint:lll
 			},
@@ -374,8 +360,7 @@ func TestClear(t *testing.T) {
 			},
 		},
 		"impossible-records": {
-			true,
-			`Deleted AAAA sub.test.org`,
+			setter.ResponseUpdatesApplied,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
@@ -391,8 +376,7 @@ func TestClear(t *testing.T) {
 			},
 		},
 		"listfail": {
-			false,
-			`Failed to clear AAAA sub.test.org`,
+			setter.ResponseUpdatesFailed,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org")
 			},
@@ -420,9 +404,8 @@ func TestClear(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			ok, msg := s.Clear(ctx, mockPP, domain, ipNetwork)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.msg, msg)
+			resp := s.Delete(ctx, mockPP, domain, ipNetwork)
+			require.Equal(t, tc.resp, resp)
 		})
 	}
 }
