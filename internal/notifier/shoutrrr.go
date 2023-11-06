@@ -52,10 +52,13 @@ func (s *Shoutrrr) Describe(callback func(service, params string)) {
 }
 
 func (s *Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
-	err := s.Router.Send(msg, &types.Params{})
-	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to send message: %v", err)
-		return false
+	errs := s.Router.Send(msg, &types.Params{})
+	allOk := true
+	for _, err := range errs {
+		if err != nil {
+			ppfmt.Errorf(pp.EmojiUserError, "Failed to send message: %v", err)
+			allOk = false
+		}
 	}
-	return true
+	return allOk
 }
