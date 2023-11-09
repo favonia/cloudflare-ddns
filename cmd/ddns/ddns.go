@@ -56,7 +56,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
-		if ok, msg := updater.ClearIPs(ctx, ppfmt, c, s); ok {
+		if ok, msg := updater.DeleteIPs(ctx, ppfmt, c, s); ok {
 			monitor.LogAll(ctx, ppfmt, msg, c.Monitors)
 		} else {
 			monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)

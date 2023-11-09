@@ -63,23 +63,28 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errSettingTimeout)
 		defer cancel()
 
-		ok, msg := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
-		allOk = allOk && ok
-		if msg != "" {
-			msgs[ok] = append(msgs[ok], msg)
-		}
-
-		if !ok && ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
-			ppfmt.Infof(pp.EmojiConfig, "If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT") //nolint:lll
-			ShouldDisplayHints["update-timeout"] = false
+		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
+		switch resp {
+		case setter.ResponseUpdatesApplied:
+			msgs[true] = append(msgs[true], fmt.Sprintf("Set %s %s to %s", domain.Describe(), ipNet.RecordType(), ip.String()))
+		case setter.ResponseUpdatesFailed:
+			allOk = false
+			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to set %s %s", domain.Describe(), ipNet.RecordType()))
+			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
+				ppfmt.Infof(pp.EmojiConfig,
+					"If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT",
+				)
+				ShouldDisplayHints["update-timeout"] = false
+			}
+		case setter.ResponseNoUpdatesNeeded:
 		}
 	}
 
 	return allOk, msgs[allOk]
 }
 
-// clearIP extracts relevant settings from the configuration and calls [setter.Setter.Clear] with a deadline.
-func clearIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) (bool, []string) {
+// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Clear] with a deadline.
+func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) (bool, []string) {
 	allOk := true
 
 	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
@@ -89,10 +94,14 @@ func clearIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
-		ok, msg := s.Clear(ctx, ppfmt, domain, ipNet)
-		allOk = allOk && ok
-		if msg != "" {
-			msgs[ok] = append(msgs[ok], msg)
+		resp := s.Delete(ctx, ppfmt, domain, ipNet)
+		switch resp {
+		case setter.ResponseUpdatesApplied:
+			msgs[true] = append(msgs[true], fmt.Sprintf("Deleted %s %s", domain.Describe(), ipNet.RecordType()))
+		case setter.ResponseUpdatesFailed:
+			allOk = false
+			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to delete %s %s", domain.Describe(), ipNet.RecordType()))
+		case setter.ResponseNoUpdatesNeeded:
 		}
 	}
 
@@ -160,8 +169,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	return allOk, allMsg
 }
 
-// ClearIPs removes all DNS records of managed domains.
-func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
+// DeleteIPs removes all DNS records of managed domains.
+func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
 	allOk := true
 
 	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
@@ -169,7 +178,7 @@ func ClearIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ok, msg := clearIP(ctx, ppfmt, c, s, ipNet)
+			ok, msg := deleteIP(ctx, ppfmt, c, s, ipNet)
 			allOk = allOk && ok
 			msgs[ok] = append(msgs[ok], msg...)
 		}
