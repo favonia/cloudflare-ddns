@@ -27,6 +27,8 @@ const (
 	ResponseUpdatesApplied
 	// Updates were needed and they did not fully complete. The records may be inconsistent.
 	ResponseUpdatesFailed
+	// IP detection itself failed
+	ResponseDetectionFailed
 )
 
 // Setter uses [api.Handle] to update DNS records.

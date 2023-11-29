@@ -164,7 +164,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Check whether we are done. It is okay to have duplicates, but it is not okay to have remaining stale records.
 	if !foundMatched || numUndeletedUnmatched > 0 {
 		ppfmt.Errorf(pp.EmojiError,
-			"Failed to complete updating of %s records of %q; records might be inconsistent",
+			"Possibly failed to update %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseUpdatesFailed
 	}
@@ -206,7 +206,7 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 	}
 	if !allOk {
 		ppfmt.Errorf(pp.EmojiError,
-			"Failed to complete deleting of %s records of %q; records might be inconsistent",
+			"Possibly failed to delete %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseUpdatesFailed
 	}

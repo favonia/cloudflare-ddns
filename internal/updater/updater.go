@@ -53,34 +53,28 @@ var errSettingTimeout = errors.New("setting timeout")
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) (bool, []string) {
+) (bool, Responses) {
 	allOk := true
-
-	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+	resps := Responses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errSettingTimeout)
 		defer cancel()
 
 		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
-		switch resp {
-		case setter.ResponseUpdatesApplied:
-			msgs[true] = append(msgs[true], fmt.Sprintf("Set %s %s to %s", domain.Describe(), ipNet.RecordType(), ip.String()))
-		case setter.ResponseUpdatesFailed:
+		resps.Register(resp, domain)
+		if resp == setter.ResponseUpdatesFailed {
 			allOk = false
-			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to set %s %s", domain.Describe(), ipNet.RecordType()))
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
 				ppfmt.Infof(pp.EmojiConfig,
 					"If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT",
 				)
 				ShouldDisplayHints["update-timeout"] = false
 			}
-		case setter.ResponseNoUpdatesNeeded:
 		}
 	}
 
-	return allOk, msgs[allOk]
+	return allOk, resps
 }
 
 // deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Clear] with a deadline.
