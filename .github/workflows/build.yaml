@@ -52,17 +52,19 @@ jobs:
         run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         id: git-describe
       - name: 📝 Calculate metadata for minimal Docker images
-        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        uses: docker/metadata-action@e6428a5c4e294a61438ed7f43155db912025b6b3 # v5.2.0
         id: meta
         with:
           images: ${{ github.repository }}
           tags: |
             type=edge
             type=semver,pattern={{version}}
-          labels: |
+          annotations: |
             io.artifacthub.package.license=Apache-2.0
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy minimal Docker images
         uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5.1.0
         id: build
@@ -73,6 +75,7 @@ jobs:
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.labels }}
           provenance: "mode=max"
       - name: ✍️ Install Cosign
         uses: sigstore/cosign-installer@1fc5bd396d372bee37d608f955b336615edf79c8 # 3.2.0
