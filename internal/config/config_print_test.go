@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"strings"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -14,39 +13,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
-
-type someMatcher struct {
-	matchers []gomock.Matcher
-}
-
-func (sm someMatcher) Matches(x any) bool {
-	for _, m := range sm.matchers {
-		if m.Matches(x) {
-			return true
-		}
-	}
-	return false
-}
-
-func (sm someMatcher) String() string {
-	ss := make([]string, 0, len(sm.matchers))
-	for _, matcher := range sm.matchers {
-		ss = append(ss, matcher.String())
-	}
-	return strings.Join(ss, " | ")
-}
-
-func Some(xs ...any) gomock.Matcher {
-	ms := make([]gomock.Matcher, 0, len(xs))
-	for _, x := range xs {
-		if m, ok := x.(gomock.Matcher); ok {
-			ms = append(ms, m)
-		} else {
-			ms = append(ms, gomock.Eq(x))
-		}
-	}
-	return someMatcher{ms}
-}
 
 func printItem(ppfmt *mocks.MockPP, key string, value any) *mocks.PPInfofCall {
 	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, key, value)
@@ -71,7 +37,7 @@ func TestPrintDefault(t *testing.T) {
 		printItem(innerMockPP, "IPv6 domains:", "(none)"),
 		printItem(innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		printItem(innerMockPP, "Timezone:", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		printItem(innerMockPP, "Timezone:", gomock.AnyOf("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		printItem(innerMockPP, "Update frequency:", "@every 5m"),
 		printItem(innerMockPP, "Update on start?", "true"),
 		printItem(innerMockPP, "Delete on stop?", "false"),
@@ -104,7 +70,7 @@ func TestPrintMaps(t *testing.T) {
 		printItem(innerMockPP, "IPv6 domains:", "test6.org, *.test6.org"),
 		printItem(innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		printItem(innerMockPP, "Timezone:", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		printItem(innerMockPP, "Timezone:", gomock.AnyOf("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		printItem(innerMockPP, "Update frequency:", "@every 5m"),
 		printItem(innerMockPP, "Update on start?", "true"),
 		printItem(innerMockPP, "Delete on stop?", "false"),
@@ -167,7 +133,7 @@ func TestPrintEmpty(t *testing.T) {
 		mockPP.EXPECT().IncIndent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Domains and IP providers:"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),
-		printItem(innerMockPP, "Timezone:", Some("UTC (UTC+00 now)", "Local (UTC+00 now)")),
+		printItem(innerMockPP, "Timezone:", gomock.AnyOf("UTC (UTC+00 now)", "Local (UTC+00 now)")),
 		printItem(innerMockPP, "Update frequency:", "@once"),
 		printItem(innerMockPP, "Update on start?", "false"),
 		printItem(innerMockPP, "Delete on stop?", "false"),
