@@ -17,7 +17,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@eb238b55efaa70779f274895e782ed17c84f2895 # v2.6.1
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
         with:
           egress-policy: audit
           disable-sudo: true
@@ -35,7 +35,7 @@ jobs:
         run: |
           go test -coverpkg=$(go list ./... | grep -v -e 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
       - name: ☂️ Report coverage rates to Codecov
-        uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # 3.1.4
+        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # 3.1.6
         with:
           file: ./coverage.txt
           flags: unittests
@@ -52,7 +52,7 @@ jobs:
       FUZZTIME: "60s"
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@eb238b55efaa70779f274895e782ed17c84f2895 # v2.6.1
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
         with:
           egress-policy: audit
           disable-sudo: true
@@ -78,7 +78,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@eb238b55efaa70779f274895e782ed17c84f2895 # v2.6.1
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
         with:
           egress-policy: audit
           disable-sudo: true
