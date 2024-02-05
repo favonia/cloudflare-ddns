@@ -54,7 +54,7 @@ jobs:
         run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         id: git-describe
       - name: 📝 Calculate metadata for minimal Docker images
-        uses: docker/metadata-action@dbef88086f6cef02e264edb7dbf63250c17cef6c # v5.5.0
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
         id: meta
         with:
           images: ${{ github.repository }}
@@ -80,7 +80,7 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           provenance: "mode=max"
       - name: ✍️ Install Cosign
-        uses: sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149 # 3.3.0
+        uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4 # 3.4.0
       - name: ✍️ Sign the Docker images
         if: ${{ github.event_name != 'pull_request' }}
         run: |
