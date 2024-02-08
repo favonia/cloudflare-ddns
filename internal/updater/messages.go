@@ -16,6 +16,12 @@ func (s Responses) Register(code setter.ResponseCode, d domain.Domain) {
 	s[code] = append(s[code], d.Describe())
 }
 
+func (s Responses) Merge(s2 Responses) {
+	for code, domains := range s2 {
+		s[code] = append(s[code], domains...)
+	}
+}
+
 func (s Responses) MonitorMessage() string {
 	switch {
 	case len(s[setter.ResponseUpdatesFailed]) > 0 && len(s[setter.ResponseUpdatesApplied]) > 0:
@@ -53,7 +59,7 @@ func (s Responses) NotifierMessage(ipNet ipnet.Type, ip netip.Addr) string {
 
 	case len(s[setter.ResponseUpdatesFailed]) > 0 && len(s[setter.ResponseUpdatesApplied]) > 0:
 		return fmt.Sprintf(
-			"Possibly failed to update %s records of %s to %s; records of %s were updated.",
+			"Failed to finish updating %s records of %s to %s; records of %s were updated.",
 			ipNet.RecordType(),
 			EnglishJoin(s[setter.ResponseUpdatesFailed]),
 			ip.String(),
@@ -62,7 +68,7 @@ func (s Responses) NotifierMessage(ipNet ipnet.Type, ip netip.Addr) string {
 
 	case len(s[setter.ResponseUpdatesFailed]) > 0:
 		return fmt.Sprintf(
-			"Possibly failed to update %s records of %s to %s.",
+			"Failed to finish updating %s records of %s to %s.",
 			ipNet.RecordType(),
 			EnglishJoin(s[setter.ResponseUpdatesFailed]),
 			ip.String(),

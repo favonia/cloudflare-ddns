@@ -22,12 +22,18 @@ type ResponseCode int
 
 const (
 	// No updates were needed. The records were already okay.
-	ResponseNoUpdatesNeeded = iota
-	// Updates were needed and they are done.
-	ResponseUpdatesApplied
-	// Updates were needed and they did not fully complete. The records may be inconsistent.
-	ResponseUpdatesFailed
-	// IP detection itself failed
+	ResponseAlreadyUpdated = iota
+	// Records were already deleted.
+	ResponseAlreadyDeleted
+	// Records should be updated and we updated them.
+	ResponseUpdated
+	// Records should be updated but we failed to update them.
+	ResponseDeleted
+	// Records should be deleted but we failed to delete them.
+	ResponseUpdateFailed
+	// Records should be deleted and we deleted them.
+	ResponseDeletionFailed
+	// IP detection itself failed.
 	ResponseDetectionFailed
 )
 

@@ -82,7 +82,7 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 	allOk := true
 
 	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+	resps := Responses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
@@ -148,7 +148,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 				continue
 			}
 
-			ok, msg = setIP(ctx, ppfmt, c, s, ipNet, ip)
+			ok, rs = setIP(ctx, ppfmt, c, s, ipNet, ip)
 			msgs[ok] = append(msgs[ok], msg...)
 			allOk = allOk && ok
 		}
