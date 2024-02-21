@@ -3,6 +3,7 @@ package domainexp
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
@@ -13,13 +14,13 @@ import (
 
 var (
 	// ErrSingleAnd is triggered by single & (which should have been &&).
-	ErrSingleAnd = fmt.Errorf(`use "&&" instead of "&"`)
+	ErrSingleAnd = errors.New(`use "&&" instead of "&"`)
 
 	// ErrSingleOr is triggered by single | (which should have been ||).
-	ErrSingleOr = fmt.Errorf(`use "||" instead of "|"`)
+	ErrSingleOr = errors.New(`use "||" instead of "|"`)
 
 	// ErrUTF8 is triggered by invalid UTF-8 strings.
-	ErrUTF8 = fmt.Errorf(`invalid UTF-8 string`)
+	ErrUTF8 = errors.New(`invalid UTF-8 string`)
 )
 
 //nolint:funlen

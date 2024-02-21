@@ -46,8 +46,9 @@ func mockIDs(seed string, suffixes ...int) []string {
 }
 
 const (
-	mockToken   = "token123"
-	mockAccount = "account456"
+	mockToken      = "token123"
+	mockAuthString = "Bearer " + mockToken
+	mockAccount    = "account456"
 )
 
 func newServerAuth(t *testing.T) (*http.ServeMux, *api.CloudflareAuth) {
@@ -70,7 +71,7 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
 	require.Equal(t, http.MethodGet, r.Method)
-	require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+	require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 	require.Empty(t, r.URL.Query())
 
 	w.Header().Set("content-type", "application/json")
@@ -136,7 +137,7 @@ func TestNewInvalid(t *testing.T) {
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+		require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 		require.Empty(t, r.URL.Query())
 
 		w.Header().Set("content-type", "application/json")
@@ -208,7 +209,7 @@ func handleZones(t *testing.T, zoneName string, zoneStatuses []string, w http.Re
 	t.Helper()
 
 	require.Equal(t, http.MethodGet, r.Method)
-	require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+	require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 	require.Equal(t, url.Values{
 		"account.id": {mockAccount},
 		"name":       {zoneName},
@@ -580,7 +581,7 @@ func TestListRecords(t *testing.T) {
 			accessCount--
 
 			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
@@ -632,7 +633,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 			accessCount--
 
 			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
 				"name":     {"sub.test.org"},
 				"page":     {"1"},
@@ -698,7 +699,7 @@ func TestListRecordsWildcard(t *testing.T) {
 			accessCount--
 
 			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Equal(t, url.Values{
 				"name":     {"*.test.org"},
 				"page":     {"1"},
@@ -816,7 +817,7 @@ func TestDeleteRecordValid(t *testing.T) {
 	)
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			if listAccessCount <= 0 {
 				return
 			}
@@ -836,7 +837,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			deleteAccessCount--
 
 			require.Equal(t, http.MethodDelete, r.Method)
-			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Empty(t, r.URL.Query())
 
 			w.Header().Set("content-type", "application/json")
@@ -930,7 +931,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			}
 			updateAccessCount--
 
-			require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Empty(t, r.URL.Query())
 
 			var record cloudflare.DNSRecord
@@ -1027,7 +1028,7 @@ func TestCreateRecordValid(t *testing.T) {
 				}
 				createAccessCount--
 
-				require.Equal(t, []string{fmt.Sprintf("Bearer %s", mockToken)}, r.Header["Authorization"])
+				require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 				require.Empty(t, r.URL.Query())
 
 				var record cloudflare.DNSRecord

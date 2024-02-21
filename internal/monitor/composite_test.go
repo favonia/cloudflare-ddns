@@ -23,7 +23,7 @@ func TestDescribeAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	callback := func(service, params string) { /* the callback content is not relevant here. */ }
+	callback := func(_service, _params string) { /* the callback content is not relevant here. */ }
 	monitor.DescribeAll(callback, ms)
 }
 
