@@ -36,15 +36,15 @@ func TestHTTPGetIP(t *testing.T) {
 	ip6 := netip.MustParseAddr("::1:2:3:4:5:6")
 	invalidIP := netip.Addr{}
 
-	ip4Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ip4Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, ip4.String())
 	}))
 	defer ip4Server.Close()
-	ip6Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ip6Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, ip6.String())
 	}))
 	defer ip6Server.Close()
-	dummy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	dummy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "not an ip")
 	}))
 	defer dummy.Close()

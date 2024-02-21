@@ -76,7 +76,7 @@ func TestHealthchecksDescripbe(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
-	m.Describe(func(service, params string) {
+	m.Describe(func(service, _params string) {
 		require.Equal(t, "Healthchecks", service)
 	})
 }

@@ -22,7 +22,7 @@ func TestShoutrrrDescripbe(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := notifier.NewShoutrrr(mockPP, []string{"generic://localhost/"})
 	require.True(t, ok)
-	m.Describe(func(service, params string) {
+	m.Describe(func(service, _params string) {
 		require.Equal(t, "generic", service)
 	})
 }
@@ -67,7 +67,7 @@ func TestShoutrrrSend(t *testing.T) {
 			}
 
 			pinged := false
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, tc.path, r.URL.EscapedPath())
 
