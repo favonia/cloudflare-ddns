@@ -1,5 +1,6 @@
 package droproot
 
+/*
 import (
 	"slices"
 	"strconv"
@@ -60,3 +61,4 @@ func checkCapabilities(ppfmt pp.PP) bool {
 		return true
 	}
 }
+*/

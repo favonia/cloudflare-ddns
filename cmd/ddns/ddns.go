@@ -9,7 +9,8 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/droproot"
+
+	// "github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -80,10 +81,10 @@ func realMain() int { //nolint:funlen
 	ppfmt.Infof(pp.EmojiStar, formatName())
 
 	// Drop the superuser privilege
-	if !droproot.DropPrivileges(ppfmt) {
-		ppfmt.Infof(pp.EmojiBye, "Bye!")
-		return 1
-	}
+	// if !droproot.DropPrivileges(ppfmt) {
+	// 	ppfmt.Infof(pp.EmojiBye, "Bye!")
+	// 	return 1
+	// }
 
 	// Catch signals SIGINT and SIGTERM
 	sig := signal.Setup()
