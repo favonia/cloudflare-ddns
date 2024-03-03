@@ -58,7 +58,10 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 		handle.BaseURL = t.BaseURL
 	}
 
-	// this is not needed, but is helpful for diagnosing the problem
+	// verify Cloudflare token
+	//
+	// ideally, we should also verify accountID here, but that is impossible without
+	// more permissions included in the API token.
 	if _, err := handle.VerifyAPIToken(ctx); err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", err)
 		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
@@ -163,7 +166,11 @@ zoneSearch:
 		}
 	}
 
-	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
+	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", domain.Describe())
+	if h.accountID != "" {
+		ppfmt.Warningf(pp.EmojiHint, "Also double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank")
+	}
+
 	return "", false
 }
 
