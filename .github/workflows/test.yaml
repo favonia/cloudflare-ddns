@@ -37,8 +37,10 @@ jobs:
       - name: ☂️ Report coverage rates to Codecov
         uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab # 4.1.0
         with:
+          fail_ci_if_error: true # default: false
           file: ./coverage.txt
           flags: unittests
+          token: ${{ secrets.CODECOV_TOKEN }}
   fuzz:
     name: Fuzz
     runs-on: ubuntu-latest
