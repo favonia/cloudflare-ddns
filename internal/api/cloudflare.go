@@ -166,9 +166,9 @@ zoneSearch:
 		}
 	}
 
-	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", domain.Describe())
+	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
 	if h.accountID != "" {
-		ppfmt.Warningf(pp.EmojiHint, "Also double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank")
+		ppfmt.Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank")
 	}
 
 	return "", false
