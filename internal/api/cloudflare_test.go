@@ -382,8 +382,8 @@ func TestZoneOfDomain(t *testing.T) {
 			3, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", "sub.test.org"),
-					m.EXPECT().Warningf(pp.EmojiHint, "Also double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org"),
+					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
 				)
 			},
 		},
@@ -393,8 +393,8 @@ func TestZoneOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", "*.test.org"),
-					m.EXPECT().Warningf(pp.EmojiHint, "Also double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org"),
+					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
 				)
 			},
 		},
@@ -441,8 +441,8 @@ func TestZoneOfDomain(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", "test.org", "deleted"),
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", "test.org"),
-					m.EXPECT().Warningf(pp.EmojiHint, "Also double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
+					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; in most cases, you can leave it blank"), //nolint:lll
 				)
 			},
 		},
@@ -453,7 +453,7 @@ func TestZoneOfDomain(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", "test.org", "deleted"),
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q; maybe check its spelling", "test.org"),
+					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
 				)
 			},
 		},
