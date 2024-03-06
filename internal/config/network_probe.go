@@ -38,20 +38,21 @@ func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 	}
 
 	if ppfmt.IsEnabledFor(pp.Info) {
-		ppfmt.Infof(pp.EmojiEnvVars, "Checking 1.1.1.1 . . .")
+		ppfmt.Infof(pp.EmojiEnvVars, "Probing 1.1.1.1 and 1.0.0.1 . . .")
 		ppfmt = ppfmt.IncIndent()
 	}
 
 	if ProbeURL(ctx, "https://1.1.1.1") {
-		ppfmt.Infof(pp.EmojiGood, "1.1.1.1 appears to be working")
+		ppfmt.Infof(pp.EmojiGood, "1.1.1.1 is working. Great!")
 	} else {
-		ppfmt.Warningf(pp.EmojiError, "1.1.1.1 appears to be blocked or hijacked by your ISP or your router")
-
 		if ProbeURL(ctx, "https://1.0.0.1") {
-			ppfmt.Warningf(pp.EmojiGood, "1.0.0.1 appears to be working and will be used instead of 1.1.1.1")
+			ppfmt.Warningf(pp.EmojiError, "1.1.1.1 is not working, but 1.0.0.1 is; using 1.0.0.1")
+			ppfmt.Infof(pp.EmojiHint, "1.1.1.1 is probably blocked or hijacked by your router or ISP")
 			c.Use1001 = true
 		} else {
-			ppfmt.Warningf(pp.EmojiError, "1.0.0.1 is not working either---perhaps the network is down; sticking to 1.1.1.1")
+			ppfmt.Warningf(pp.EmojiError, "Both 1.1.1.1 and 1.0.0.1 are not working; sticking to 1.1.1.1")
+			ppfmt.Infof(pp.EmojiHint, "The network might be temporarily down, or has not been set up yet")
+			ppfmt.Infof(pp.EmojiHint, "If you start this tool during booting, make sure the network is already up")
 		}
 	}
 	return true
