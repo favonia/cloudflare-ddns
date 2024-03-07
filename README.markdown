@@ -200,13 +200,11 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔑 Cloudflare accounts and API tokens</summary>
 
-| Name                | Valid Values                                    | Meaning                                                                 | Required?                                                           | Default Value |
-| ------------------- | ----------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
-| `CF_ACCOUNT_ID`     | Cloudflare Account IDs                          | The account ID used to distinguish multiple zone IDs with the same name | No                                                                  | (unset)       |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API             | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_API_TOKEN`      | Cloudflare API tokens                           | The token to access the Cloudflare API                                  | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-
-> 🤷 In most cases, `CF_ACCOUNT_ID` is not needed.
+| Name                | Valid Values                                                                                              | Meaning                                                                                                              | Required?                                                           | Default Value |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
+| `CF_ACCOUNT_ID`     | [Cloudflare Account IDs](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) | The Cloudflare account ID used to distinguish multiple DNS zones with the same name. It is _not_ your email address! | No (in most cases you can leave it blank)                           | (unset)       |
+| `CF_API_TOKEN`      | Cloudflare API tokens                                                                                     | The token to access the Cloudflare API                                                                               | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens                                                           | A file that contains the token to access the Cloudflare API                                                          | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
 
 </details>
 

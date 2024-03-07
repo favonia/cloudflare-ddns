@@ -34,6 +34,7 @@ const (
 	EmojiError       Emoji = "😞" // errors that are not (directly) caused by user errors
 	EmojiWarning     Emoji = "😐" // warnings about something unusual
 	EmojiImpossible  Emoji = "🤯" // the impossible happened
+	EmojiHint        Emoji = "💡" // Hints
 )
 
 // indentPrefix should be wider than an emoji to achieve visually pleasing results.

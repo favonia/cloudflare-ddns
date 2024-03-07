@@ -71,7 +71,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 			allOk = false
 			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to set %s %s", domain.Describe(), ipNet.RecordType()))
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
-				ppfmt.Infof(pp.EmojiConfig,
+				ppfmt.Infof(pp.EmojiHint,
 					"If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT",
 				)
 				ShouldDisplayHints["update-timeout"] = false
@@ -125,11 +125,11 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
-				ppfmt.Infof(pp.EmojiConfig, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns")      //nolint:lll
-				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none") //nolint:lll
+				ppfmt.Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
+				ppfmt.Infof(pp.EmojiHint, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns")      //nolint:lll
+				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none") //nolint:lll
 			case ipnet.IP4:
-				ppfmt.Infof(pp.EmojiConfig, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
+				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
 			}
 		}
 	}
