@@ -26,7 +26,6 @@ func TestDescribe(t *testing.T) {
 		"6":   {ipnet.IP6, "IPv6"},
 		"100": {ipnet.Type(100), "<unrecognized IP network>"},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.Describe())
@@ -44,7 +43,6 @@ func TestRecordType(t *testing.T) {
 		"6":   {ipnet.IP6, "AAAA"},
 		"100": {ipnet.Type(100), ""},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.RecordType())
@@ -62,7 +60,6 @@ func TestInt(t *testing.T) {
 		"6":   {ipnet.IP6, 6},
 		"100": {ipnet.Type(100), 0},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.Int())
@@ -120,7 +117,6 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
@@ -145,7 +141,6 @@ func TestUDPNetwork(t *testing.T) {
 		"6":   {ipnet.IP6, "udp6"},
 		"100": {ipnet.Type(100), ""},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.UDPNetwork())

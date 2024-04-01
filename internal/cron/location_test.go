@@ -33,7 +33,6 @@ func TestDescribeLocation(t *testing.T) {
 		{time.FixedZone("Dublin Mean Time", -1521), "Dublin Mean Time (UTC−00:25:21 now)"},
 		{time.FixedZone("Bangkok Mean Time", 24124), "Bangkok Mean Time (UTC+06:42:04 now)"},
 	} {
-		tc := tc
 		t.Run(tc.input.String(), func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.output, cron.DescribeLocation(tc.input))
