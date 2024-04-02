@@ -97,7 +97,6 @@ func TestNew(t *testing.T) {
 		{"*......", w(""), true, ""},
 		{"*｡｡｡｡｡｡", w(""), true, ""},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			normalized, err := domain.New(tc.input)

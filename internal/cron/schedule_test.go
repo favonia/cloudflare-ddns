@@ -16,7 +16,6 @@ func TestMustNewSuccessful(t *testing.T) {
 		"@every 5h0s",
 		"@yearly",
 	} {
-		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc, cron.DescribeSchedule(cron.MustNew(tc)))
@@ -31,7 +30,6 @@ func TestMustNewPanicking(t *testing.T) {
 		"@every 5ss",
 		"@cool",
 	} {
-		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			require.Panics(t, func() { cron.MustNew(tc) })
@@ -49,7 +47,6 @@ func TestNext(t *testing.T) {
 		{"@every 1h1m", time.Hour + time.Minute},
 		{"@every 4h", time.Hour * 4},
 	} {
-		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
 			require.WithinDuration(t, time.Now().Add(tc.interval), cron.Next(cron.MustNew(tc.spec)), delta)
@@ -62,7 +59,6 @@ func TestNextNever(t *testing.T) {
 	for _, tc := range [...]string{
 		"* * 30 2 *",
 	} {
-		tc := tc // capture range variable
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			require.True(t, cron.Next(cron.MustNew(tc)).IsZero())

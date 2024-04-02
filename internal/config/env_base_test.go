@@ -51,7 +51,6 @@ func TestGetenv(t *testing.T) {
 		"space1": {true, "    VAL     ", "VAL"},
 		"space2": {true, "     VAL    VAL2 ", "VAL    VAL2"},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			require.Equal(t, tc.expected, config.Getenv(key))
@@ -74,7 +73,6 @@ func TestGetenvs(t *testing.T) {
 		"space1":      {true, "    VAL1 \nVAL2    ", []string{"VAL1", "VAL2"}},
 		"space2":      {true, "     VAL1 \n   VAL2 ", []string{"VAL1", "VAL2"}},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			require.Equal(t, tc.expected, config.Getenvs(key))
@@ -113,7 +111,6 @@ func TestReadString(t *testing.T) {
 		},
 		"string": {true, "string ", "hey", "string", true, nil},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -159,7 +156,6 @@ func TestReadEmoji(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			mockCtrl := gomock.NewController(t)
@@ -206,7 +202,6 @@ func TestReadQuiet(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			mockCtrl := gomock.NewController(t)
@@ -272,7 +267,6 @@ func TestReadLinuxID(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -340,7 +334,6 @@ func TestReadBool(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -400,7 +393,6 @@ func TestReadNonnegInt(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -465,7 +457,6 @@ func TestReadTTL(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -520,7 +511,6 @@ func TestReadNonnegDuration(t *testing.T) {
 		},
 		"0h": {true, "  0h  ", 123456, 0, true, nil},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
@@ -591,7 +581,6 @@ func TestReadCron(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField
