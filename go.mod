@@ -3,7 +3,7 @@ module github.com/favonia/cloudflare-ddns
 go 1.22
 
 require (
-	github.com/cloudflare/cloudflare-go v0.90.0
+	github.com/cloudflare/cloudflare-go v0.92.0
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/google/go-querystring v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
