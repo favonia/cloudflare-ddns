@@ -51,7 +51,6 @@ func TestNewCustom(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -84,7 +83,6 @@ func TestMustNewCustom(t *testing.T) {
 		{"ftp://1.2.3.4", false},
 		{"", false},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 

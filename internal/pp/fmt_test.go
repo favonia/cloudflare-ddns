@@ -20,7 +20,6 @@ func TestIsEnabledFor(t *testing.T) {
 		"info-notice": {pp.Info, pp.Notice, true},
 		"erorr-info":  {pp.Error, pp.Info, false},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -73,7 +72,6 @@ func TestPrint(t *testing.T) {
 		"warning/no-emoji":  {false, pp.Warning, "warning\nerror\n"},
 		"errorfmt/no-emoji": {false, pp.Error, "error\n"},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

@@ -58,7 +58,6 @@ func TestFQDNDescribe(t *testing.T) {
 		{"a.com....", "a.com...."},
 		{"a.com", "a.com"},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, domain.FQDN(tc.input).Describe())
@@ -81,7 +80,6 @@ func TestFQDNSplitter(t *testing.T) {
 		{"..aaa.", []r{"..aaa.", ".aaa.", "aaa.", ""}},
 		{"...aaa", []r{"...aaa", "..aaa", ".aaa", "aaa", ""}},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
