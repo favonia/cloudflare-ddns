@@ -38,7 +38,6 @@ func TestSleep(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -78,7 +77,6 @@ func TestNotifyContext(t *testing.T) {
 		"sigint":    {time.Second / 10, syscall.SIGINT},
 		"sigterm":   {time.Second / 10, syscall.SIGTERM},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			done := make(chan struct{}, 1)
 			signalSelf := func(cancel func()) {

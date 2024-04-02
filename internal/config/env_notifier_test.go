@@ -83,7 +83,6 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			nil,
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			field := tc.oldField

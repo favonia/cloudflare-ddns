@@ -308,7 +308,6 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
@@ -465,7 +464,6 @@ func TestDeleteIPs(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()

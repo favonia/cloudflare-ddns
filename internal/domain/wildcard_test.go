@@ -62,7 +62,6 @@ func TestWildcardDescribe(t *testing.T) {
 		{"a.com....", "*.a.com...."},
 		{"a.com", "*.a.com"},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, domain.Wildcard(tc.input).Describe())
@@ -85,7 +84,6 @@ func TestWildcardSplitter(t *testing.T) {
 		{"..aaa.", []r{"..aaa.", ".aaa.", "aaa.", ""}},
 		{"...aaa", []r{"...aaa", "..aaa", ".aaa", "aaa", ""}},
 	} {
-		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
