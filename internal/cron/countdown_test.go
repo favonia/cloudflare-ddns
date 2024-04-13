@@ -45,9 +45,7 @@ func TestPrintCountdown(t *testing.T) {
 			string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n",
 		},
 	} {
-		tc := tc
 		for _, interval := range tc.interval {
-			interval := interval
 			t.Run(interval.String(), func(t *testing.T) {
 				t.Parallel()
 				var buf strings.Builder

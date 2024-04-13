@@ -174,7 +174,6 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
 			set(t, keyDeprecated, tc.setDeprecated, tc.valDeprecated)
@@ -280,7 +279,6 @@ func TestReadProviderMap(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 

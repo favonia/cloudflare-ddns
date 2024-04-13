@@ -13,11 +13,11 @@ import (
 func TestDescribeAll(t *testing.T) {
 	t.Parallel()
 
-	var ms []notifier.Notifier
+	ms := make([]notifier.Notifier, 0, 5)
 
 	mockCtrl := gomock.NewController(t)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		m := mocks.NewMockNotifier(mockCtrl)
 		m.EXPECT().Describe(gomock.Any())
 		ms = append(ms, m)
@@ -30,14 +30,14 @@ func TestDescribeAll(t *testing.T) {
 func TestSendAll(t *testing.T) {
 	t.Parallel()
 
-	var ms []notifier.Notifier
+	ms := make([]notifier.Notifier, 0, 5)
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
 	message := "aloha"
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		m := mocks.NewMockNotifier(mockCtrl)
 		m.EXPECT().Send(context.Background(), mockPP, message)
 		ms = append(ms, m)

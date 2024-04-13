@@ -51,7 +51,6 @@ func TestNewUptimeKuma(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -249,7 +248,6 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			successPP,
 		},
 	} {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
