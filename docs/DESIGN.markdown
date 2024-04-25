@@ -12,9 +12,14 @@ Be the 🌟 best DDNS tool 🌟 that [favonia](mailto:favonia+github@gmail.com) 
    - Use code analysis, unit testing, fuzzing, and other techniques to discover bugs.
    - Detect common misconfigurations.
 
-3. Be efficient in network usage, CPU usage, memory usage, and whatnot.
+3. Be resilient; in particular, automatically recover from temporary errors, such as:
 
-4. Support other useful features that are easily maintainable.
+   1. Network outage or still being set up.
+   2. Cloudflare servers being down.
+
+4. Be efficient in network usage, CPU usage, memory usage, and whatnot.
+
+5. Support other useful features that are easily maintainable.
 
 ### Architecture
 
