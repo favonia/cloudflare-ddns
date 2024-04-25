@@ -413,24 +413,9 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>🏁Adding init scripts for non-Linux systems</summary>
+<summary>🏁Adding init scripts for non-Docker setups</summary>
 
-### 🐡 OpenBSD
-
-To use:
-- Simply copy the rc.d script located in the repo at `rc.d/openbsd/cloudflare_ddns`
-- The rc.d script assumes a user called `_cloudflare_ddns` will be used. This is easily created by doing `useradd -s /sbin/nologin -d /var/empty _cloudflare_ddns`
-- Create a `/etc/login.conf` entry for the daemon specifying the environment variables you wish to use:
-
-```sh
-cloudflare_ddns:\
-        :setenv=CF_API_TOKEN=YOUR_TOKEN,DOMAINS=THE_DOMAINS_YOU_WISH_TO_USE,EMOJI=false:\
-        :tc=daemon:
-
-```
-
-An important note is not to quote any of the values, as those will be literally interpreted. In this example `EMOJI` is false as the emojis clutter up the logs you will find of the daemon at `/var/log/daemon`
-- Enable the daemon with `rcctl`, `rcctl enable cloudflare_ddns`
+See: [contrib](./contrib) for init scripts for systemd and OpenBSD
 
 </details>
 
