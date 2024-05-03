@@ -1,3 +1,5 @@
+//go:build !nocapdrop
+
 package droproot
 
 import (
