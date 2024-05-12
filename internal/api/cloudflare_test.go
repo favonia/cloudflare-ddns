@@ -78,7 +78,7 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 	require.Empty(t, r.URL.Query())
 
-	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w,
 		`{
 				"result": { "id": "%s", "status": "active" },
@@ -144,7 +144,7 @@ func TestNewInvalid(t *testing.T) {
 		require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 		require.Empty(t, r.URL.Query())
 
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintf(w,
 			`{
@@ -229,7 +229,7 @@ func handleZones(
 		}, r.URL.Query())
 	}
 
-	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, zoneStatuses))
 	require.NoError(t, err)
 }
@@ -620,7 +620,7 @@ func TestListRecords(t *testing.T) {
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "test.org", ips))
 			require.NoError(t, err)
 		})
@@ -672,7 +672,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
 				map[string]string{"record1": "::1", "record2": "NOT AN IP"},
 			))
@@ -738,7 +738,7 @@ func TestListRecordsWildcard(t *testing.T) {
 				"type":     {ipNet.RecordType()},
 			}, r.URL.Query())
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "*.test.org", ips))
 			require.NoError(t, err)
 		})
@@ -854,7 +854,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			}
 			listAccessCount--
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
 				map[string]netip.Addr{"record1": mustIP("::1")}))
 			require.NoError(t, err)
@@ -871,7 +871,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 			require.Empty(t, r.URL.Query())
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"))
 			require.NoError(t, err)
 		})
@@ -948,7 +948,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			}
 			listAccessCount--
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 				map[string]string{"record1": "::1"}))
 			require.NoError(t, err)
@@ -971,7 +971,7 @@ func TestUpdateRecordValid(t *testing.T) {
 
 			require.Equal(t, "::2", record.Content)
 
-			w.Header().Set("content-type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			err = json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
 			require.NoError(t, err)
 		})
@@ -1049,7 +1049,7 @@ func TestCreateRecordValid(t *testing.T) {
 				}
 				listAccessCount--
 
-				w.Header().Set("content-type", "application/json")
+				w.Header().Set("Content-Type", "application/json")
 				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
 					map[string]string{"record1": "::1"}))
 				require.NoError(t, err)
@@ -1074,7 +1074,7 @@ func TestCreateRecordValid(t *testing.T) {
 				require.Equal(t, "Created by cloudflare-ddns", record.Comment)
 				record.ID = "record1"
 
-				w.Header().Set("content-type", "application/json")
+				w.Header().Set("Content-Type", "application/json")
 				err = json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record))
 				require.NoError(t, err)
 			}
