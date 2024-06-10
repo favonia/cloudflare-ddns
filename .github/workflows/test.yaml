@@ -17,14 +17,14 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
         with:
           egress-policy: audit
           disable-sudo: true
           policy: test
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -35,7 +35,7 @@ jobs:
         run: |
           go test $(go list ./... | grep -v 'internal/mocks') -coverprofile=coverage.txt -race -v ./...
       - name: ☂️ Report coverage rates to Codecov
-        uses: codecov/codecov-action@5ecb98a3c6b747ed38dc09f787459979aebb39be # 4.3.1
+        uses: codecov/codecov-action@125fc84a9a348dbcf27191600683ec096ec9021c # 4.4.1
         with:
           fail_ci_if_error: true # default: false
           file: ./coverage.txt
@@ -54,14 +54,14 @@ jobs:
       FUZZTIME: "60s"
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
         with:
           egress-policy: audit
           disable-sudo: true
           policy: test.fuzz
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -80,14 +80,14 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
         with:
           egress-policy: audit
           disable-sudo: true
           policy: test.regenerate
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
