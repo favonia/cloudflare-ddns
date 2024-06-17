@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/net/dns/dnsmessage"
@@ -36,18 +37,23 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "application/dns-message", r.Header.Get("Content-Type"))
-		require.Equal(t, "application/dns-message", r.Header.Get("Accept"))
+		if !assert.Equal(t, http.MethodPost, r.Method) ||
+			!assert.Equal(t, "application/dns-message", r.Header.Get("Content-Type")) ||
+			!assert.Equal(t, "application/dns-message", r.Header.Get("Accept")) {
+			panic(http.ErrAbortHandler)
+		}
 
 		var msg dnsmessage.Message
 		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+		if !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
 
-		err = msg.Unpack(body)
-		require.NoError(t, err)
+		if err := msg.Unpack(body); !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
 
-		require.Equal(t,
+		if !assert.Equal(t,
 			[]dnsmessage.Question{
 				{
 					Name:  dnsmessage.MustNewName(name),
@@ -56,7 +62,9 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 				},
 			},
 			msg.Questions,
-		)
+		) {
+			panic(http.ErrAbortHandler)
+		}
 
 		if !response {
 			return
@@ -71,14 +79,18 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 			Authorities: []dnsmessage.Resource{},
 			Additionals: []dnsmessage.Resource{},
 		}).Pack()
-		require.NoError(t, err)
+		if !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
 
-		err = msg.Unpack(response)
-		require.NoError(t, err)
+		if err := msg.Unpack(response); !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
 
 		w.Header().Set("Content-Type", "application/dns-message")
-		_, err = w.Write(response)
-		require.NoError(t, err)
+		if _, err = w.Write(response); !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
 	}))
 }
 
