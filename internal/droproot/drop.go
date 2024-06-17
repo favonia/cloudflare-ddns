@@ -1,5 +1,3 @@
-//go:build !nocapdrop
-
 // Package droproot drops root privileges.
 package droproot
 
