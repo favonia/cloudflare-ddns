@@ -27,16 +27,8 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - deadcode # deprecated
-    - exhaustivestruct # deprecated; replaced by exhaustruct
-    - golint # deprecated; replaced by revive
-    - ifshort # deprecated
-    - interfacer # deprecated
-    - maligned # deprecated, and I value readability over bytes saved by alignment
-    - nosnakecase # deprecated; revive's var-naming check seems to be better
-    - scopelint # deprecated; replaced by exportloopref
-    - structcheck # deprecated
-    - varcheck # deprecated
+    - execinquery # deprecated
+    - gomnd # deprecated
 
     - cyclop # can detect complicated code, but never leads to actual code changes
     - funlen # can detect complicated code, but never leads to actual code changes

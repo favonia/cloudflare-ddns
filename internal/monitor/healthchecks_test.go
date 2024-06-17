@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -249,12 +250,15 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			visited := 0
 			pinged := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, tc.url, r.URL.EscapedPath())
+				if !assert.Equal(t, http.MethodPost, r.Method) ||
+					!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
+					panic(http.ErrAbortHandler)
+				}
 
-				reqBody, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				require.Equal(t, tc.message, string(reqBody))
+				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+					!assert.Equal(t, tc.message, string(reqBody)) {
+					panic(http.ErrAbortHandler)
+				}
 
 				visited++
 				action := tc.defaultAction
@@ -264,18 +268,22 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				switch action {
 				case ActionOk:
 					pinged = true
-					_, err := io.WriteString(w, "OK")
-					require.NoError(t, err)
+					if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
+						panic(http.ErrAbortHandler)
+					}
 				case ActionNotOk:
 					w.WriteHeader(http.StatusBadRequest)
-					_, err := io.WriteString(w, "invalid url format")
-					require.NoError(t, err)
+					if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
+						panic(http.ErrAbortHandler)
+					}
 				case ActionAbort:
 					panic(http.ErrAbortHandler)
 				case ActionFail:
-					require.FailNow(t, "failing the test")
+					assert.Fail(t, "failing the test")
+					panic(http.ErrAbortHandler)
 				default:
-					require.FailNow(t, "failing the test")
+					assert.Fail(t, "failing the test")
+					panic(http.ErrAbortHandler)
 				}
 			}))
 

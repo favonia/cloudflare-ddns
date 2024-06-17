@@ -49,12 +49,12 @@ func Default() *Config {
 		UpdateCron:       cron.MustNew("@every 5m"),
 		UpdateOnStart:    true,
 		DeleteOnStop:     false,
-		CacheExpiration:  time.Hour * 6, //nolint:gomnd
+		CacheExpiration:  time.Hour * 6, //nolint:mnd
 		TTL:              api.TTLAuto,
 		ProxiedTemplate:  "false",
 		Proxied:          map[domain.Domain]bool{},
-		UpdateTimeout:    time.Second * 30, //nolint:gomnd
-		DetectionTimeout: time.Second * 5,  //nolint:gomnd
+		UpdateTimeout:    time.Second * 30, //nolint:mnd
+		DetectionTimeout: time.Second * 5,  //nolint:mnd
 		Monitors:         nil,
 		Notifiers:        nil,
 	}
