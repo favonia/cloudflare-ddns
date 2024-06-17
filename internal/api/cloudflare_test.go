@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -140,9 +141,11 @@ func TestNewInvalid(t *testing.T) {
 	mux, auth := newServerAuth(t, false)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-		require.Empty(t, r.URL.Query())
+		if !assert.Equal(t, http.MethodGet, r.Method) ||
+			!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+			!assert.Empty(t, r.URL.Query()) {
+			panic(http.ErrAbortHandler)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -250,7 +253,7 @@ func newZonesHandler(t *testing.T, mux *http.ServeMux, emptyAccountID bool) *zon
 
 	mux.HandleFunc("/zones", func(w http.ResponseWriter, r *http.Request) {
 		if accessCount <= 0 {
-			return
+			panic(http.ErrAbortHandler)
 		}
 		accessCount--
 
@@ -607,22 +610,27 @@ func TestListRecords(t *testing.T) {
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
 			if accessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			accessCount--
 
-			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-			require.Equal(t, url.Values{
-				"name":     {"sub.test.org"},
-				"page":     {"1"},
-				"per_page": {strconv.Itoa(dnsRecordPageSize)},
-				"type":     {ipNet.RecordType()},
-			}, r.URL.Query())
+			if !assert.Equal(t, http.MethodGet, r.Method) ||
+				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+				!assert.Equal(t, url.Values{
+					"name":     {"sub.test.org"},
+					"page":     {"1"},
+					"per_page": {strconv.Itoa(dnsRecordPageSize)},
+					"type":     {ipNet.RecordType()},
+				}, r.URL.Query()) {
+				panic(http.ErrAbortHandler)
+			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "test.org", ips))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSListResponseFromAddr(ipNet, "test.org", ips),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
@@ -659,24 +667,27 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
 			if accessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			accessCount--
 
-			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-			require.Equal(t, url.Values{
-				"name":     {"sub.test.org"},
-				"page":     {"1"},
-				"per_page": {strconv.Itoa(dnsRecordPageSize)},
-				"type":     {ipNet.RecordType()},
-			}, r.URL.Query())
+			if !assert.Equal(t, http.MethodGet, r.Method) ||
+				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+				!assert.Equal(t, url.Values{
+					"name":     {"sub.test.org"},
+					"page":     {"1"},
+					"per_page": {strconv.Itoa(dnsRecordPageSize)},
+					"type":     {ipNet.RecordType()},
+				}, r.URL.Query()) {
+				panic(http.ErrAbortHandler)
+			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
+			if err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
 				map[string]string{"record1": "::1", "record2": "NOT AN IP"},
-			))
-			require.NoError(t, err)
+			)); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	ipNet, accessCount = ipnet.IP6, 1
@@ -725,22 +736,27 @@ func TestListRecordsWildcard(t *testing.T) {
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
 			if accessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			accessCount--
 
-			require.Equal(t, http.MethodGet, r.Method)
-			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-			require.Equal(t, url.Values{
-				"name":     {"*.test.org"},
-				"page":     {"1"},
-				"per_page": {strconv.Itoa(dnsRecordPageSize)},
-				"type":     {ipNet.RecordType()},
-			}, r.URL.Query())
+			if !assert.Equal(t, http.MethodGet, r.Method) ||
+				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+				!assert.Equal(t, url.Values{
+					"name":     {"*.test.org"},
+					"page":     {"1"},
+					"per_page": {strconv.Itoa(dnsRecordPageSize)},
+					"type":     {ipNet.RecordType()},
+				}, r.URL.Query()) {
+				panic(http.ErrAbortHandler)
+			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipNet, "*.test.org", ips))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSListResponseFromAddr(ipNet, "*.test.org", ips),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
@@ -850,30 +866,38 @@ func TestDeleteRecordValid(t *testing.T) {
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, _ *http.Request) {
 			if listAccessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			listAccessCount--
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
-				map[string]netip.Addr{"record1": mustIP("::1")}))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
+					map[string]netip.Addr{"record1": mustIP("::1")}),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
 			if deleteAccessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			deleteAccessCount--
 
-			require.Equal(t, http.MethodDelete, r.Method)
-			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-			require.Empty(t, r.URL.Query())
+			if !assert.Equal(t, http.MethodDelete, r.Method) ||
+				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+				!assert.Empty(t, r.URL.Query()) {
+				panic(http.ErrAbortHandler)
+			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	deleteAccessCount = 1
@@ -942,38 +966,53 @@ func TestUpdateRecordValid(t *testing.T) {
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, http.MethodGet, r.Method)
+			if !assert.Equal(t, http.MethodGet, r.Method) {
+				panic(http.ErrAbortHandler)
+			}
 			if listAccessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			listAccessCount--
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-				map[string]string{"record1": "::1"}))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSListResponse(ipnet.IP6, "test.org",
+					map[string]string{"record1": "::1"}),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, http.MethodPatch, r.Method)
+			if !assert.Equal(t, http.MethodPatch, r.Method) {
+				panic(http.ErrAbortHandler)
+			}
 			if updateAccessCount <= 0 {
-				return
+				panic(http.ErrAbortHandler)
 			}
 			updateAccessCount--
 
-			require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-			require.Empty(t, r.URL.Query())
+			if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+				!assert.Empty(t, r.URL.Query()) {
+				panic(http.ErrAbortHandler)
+			}
 
 			var record cloudflare.DNSRecord
-			err := json.NewDecoder(r.Body).Decode(&record)
-			require.NoError(t, err)
+			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 
-			require.Equal(t, "::2", record.Content)
+			if !assert.Equal(t, "::2", record.Content) {
+				panic(http.ErrAbortHandler)
+			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
-			require.NoError(t, err)
+			if err := json.NewEncoder(w).Encode(
+				mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"),
+			); !assert.NoError(t, err) {
+				panic(http.ErrAbortHandler)
+			}
 		})
 
 	updateAccessCount = 1
@@ -1045,38 +1084,49 @@ func TestCreateRecordValid(t *testing.T) {
 			switch r.Method {
 			case http.MethodGet:
 				if listAccessCount <= 0 {
-					return
+					panic(http.ErrAbortHandler)
 				}
 				listAccessCount--
 
 				w.Header().Set("Content-Type", "application/json")
-				err := json.NewEncoder(w).Encode(mockDNSListResponse(ipnet.IP6, "test.org",
-					map[string]string{"record1": "::1"}))
-				require.NoError(t, err)
+				if err := json.NewEncoder(w).Encode(
+					mockDNSListResponse(ipnet.IP6, "test.org",
+						map[string]string{"record1": "::1"}),
+				); !assert.NoError(t, err) {
+					panic(http.ErrAbortHandler)
+				}
 			case http.MethodPost:
 				if createAccessCount <= 0 {
-					return
+					panic(http.ErrAbortHandler)
 				}
 				createAccessCount--
 
-				require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
-				require.Empty(t, r.URL.Query())
+				if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+					!assert.Empty(t, r.URL.Query()) {
+					panic(http.ErrAbortHandler)
+				}
 
 				var record cloudflare.DNSRecord
-				err := json.NewDecoder(r.Body).Decode(&record)
-				require.NoError(t, err)
+				if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
+					panic(http.ErrAbortHandler)
+				}
 
-				require.Equal(t, "sub.test.org", record.Name)
-				require.Equal(t, ipnet.IP6.RecordType(), record.Type)
-				require.Equal(t, "::1", record.Content)
-				require.Equal(t, 100, record.TTL)
-				require.False(t, *record.Proxied)
-				require.Equal(t, "Created by cloudflare-ddns", record.Comment)
+				if !assert.Equal(t, "sub.test.org", record.Name) ||
+					!assert.Equal(t, ipnet.IP6.RecordType(), record.Type) ||
+					!assert.Equal(t, "::1", record.Content) ||
+					!assert.Equal(t, 100, record.TTL) ||
+					!assert.False(t, *record.Proxied) ||
+					!assert.Equal(t, "Created by cloudflare-ddns", record.Comment) {
+					panic(http.ErrAbortHandler)
+				}
 				record.ID = "record1"
 
 				w.Header().Set("Content-Type", "application/json")
-				err = json.NewEncoder(w).Encode(envelopDNSRecordResponse(&record))
-				require.NoError(t, err)
+				if err := json.NewEncoder(w).Encode(
+					envelopDNSRecordResponse(&record),
+				); !assert.NoError(t, err) {
+					panic(http.ErrAbortHandler)
+				}
 			}
 		})
 

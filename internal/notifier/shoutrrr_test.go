@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -67,12 +68,15 @@ func TestShoutrrrSend(t *testing.T) {
 
 			pinged := false
 			server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, tc.path, r.URL.EscapedPath())
+				if !assert.Equal(t, http.MethodPost, r.Method) ||
+					!assert.Equal(t, tc.path, r.URL.EscapedPath()) {
+					panic(http.ErrAbortHandler)
+				}
 
-				reqBody, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				require.Equal(t, tc.message, string(reqBody))
+				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+					!assert.Equal(t, tc.message, string(reqBody)) {
+					panic(http.ErrAbortHandler)
+				}
 
 				pinged = true
 			}))
