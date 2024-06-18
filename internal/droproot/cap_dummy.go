@@ -10,6 +10,6 @@ import (
 func tryRaiseCapabilitySETUID() {}
 func tryRaiseCapabilitySETGID() {}
 func dropCapabilities(ppfmt pp.PP) bool {
-	ppfmt.Infof(pp.EmojiDisabled, "Support of Linux capabilities was disabled in this build")
+	ppfmt.Infof(pp.EmojiDisabled, "Support of Linux capabilities was disabled")
 	return true
 }
