@@ -12,6 +12,7 @@ const (
 	EmojiInternet     Emoji = "🌐" // network address detection
 	EmojiPrivileges   Emoji = "🥷" // /privileges
 	EmojiMute         Emoji = "🔇" // quiet mode
+	EmojiDisabled     Emoji = "🚫" // feature is disabled
 	EmojiExperimental Emoji = "🧪" // experimental features
 
 	EmojiCreateRecord Emoji = "🐣" // adding new DNS records
