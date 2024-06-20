@@ -69,7 +69,7 @@ docker run \
 
 </details>
 
-<details><summary>🧬 Directly run the updater from its source on Linux.</summary>
+<details><summary>🧬 Directly run the updater from its source.</summary>
 
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
@@ -79,8 +79,6 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
-
-👉 For non-Linux operating systems, please use the Docker method instead.
 
 </details>
 
@@ -390,6 +388,10 @@ _(Click to expand the following items.)_
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
 </details>
+
+## 😟 Known Issues
+
+It is known that using the [cap](https://sites.google.com/site/fullycapable) library within Linux Containers (LXC) will crash the Go runtime system.
 
 ## 💖 Feedback
 
