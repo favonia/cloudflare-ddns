@@ -2,30 +2,47 @@
 package droproot
 
 import (
+	"slices"
+	"strconv"
+	"strings"
 	"syscall"
-
-	"kernel.org/pub/linux/libs/security/libcap/cap"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// tryRaiseCap attempts to raise the capability val.
-//
-// The newly gained capability (if any) will be dropped by dropCapabilities later.
-// We have this function because, in some strange cases, the user might have the
-// capability to raise certain capabilities to (ironically) drop more capabilities.
-// In any case, it doesn't hurt to try!
-func tryRaiseCap(val cap.Value) {
-	c, err := cap.GetPID(0)
+func checkUser(ppfmt pp.PP, uid int) {
+	euid := syscall.Geteuid()
+
+	// Check if uid is the effective user ID.
+	if euid != uid {
+		ppfmt.Noticef(pp.EmojiUserWarning, "Failed to reset user ID to %d; current one: %d", uid, euid)
+	}
+}
+
+func checkGroups(ppfmt pp.PP, gid int) bool {
+	egid := syscall.Getegid()
+	groups, err := syscall.Getgroups()
 	if err != nil {
-		return
+		ppfmt.Errorf(pp.EmojiImpossible, "Failed to get supplementary group IDs: %v", err)
+		return false
 	}
 
-	if err := c.SetFlag(cap.Effective, true, val); err != nil {
-		return
+	// Check if gid is the only effective group ID.
+	ok := egid == gid && !slices.ContainsFunc(groups, func(g int) bool { return g != gid })
+	if !ok {
+		descriptions := make([]string, 1, len(groups)+1)
+		descriptions[0] = strconv.Itoa(egid)
+		for _, g := range groups {
+			if g != egid {
+				descriptions = append(descriptions, strconv.Itoa(g))
+			}
+		}
+		ppfmt.Warningf(pp.EmojiUserWarning,
+			"Failed to reset group IDs to only %d; current ones: %s",
+			gid, strings.Join(descriptions, ", "))
 	}
 
-	_ = c.SetProc()
+	return ok
 }
 
 // setGroups tries to set the group IDs.
@@ -36,14 +53,14 @@ func tryRaiseCap(val cap.Value) {
 //  2. We use Setresgid instead of Setgid to set all group IDs at once.
 func setGroups(ppfmt pp.PP, gid int) bool {
 	// Try to raise cap.SETGID so that we can change our group ID
-	tryRaiseCap(cap.SETGID)
+	tryRaiseCapabilitySETGID()
 
 	// Attempt to erase all supplementary groups and set the group ID
 	_ = syscall.Setgroups([]int{})
 	_ = syscall.Setresgid(gid, gid, gid)
 
 	// Check whether the setting works
-	checkGroupIDs(ppfmt, gid)
+	checkGroups(ppfmt, gid)
 
 	return true
 }
@@ -56,19 +73,11 @@ func setGroups(ppfmt pp.PP, gid int) bool {
 //  2. We use Setresuid instead of Setuid to set all user IDs at once.
 func setUser(ppfmt pp.PP, uid int) bool {
 	// Try to raise cap.SETUID so that we can change our user ID
-	tryRaiseCap(cap.SETUID)
+	tryRaiseCapabilitySETUID()
 
 	// Now, set the user ID
 	_ = syscall.Setresuid(uid, uid, uid)
-	checkUserID(ppfmt, uid)
-
-	return true
-}
-
-// dropCapabilities drop all capabilities as the last step.
-func dropCapabilities(ppfmt pp.PP) bool {
-	_ = cap.NewSet().SetProc()
-	checkCapabilities(ppfmt)
+	checkUser(ppfmt, uid)
 
 	return true
 }
@@ -92,6 +101,6 @@ func DropPrivileges(ppfmt pp.PP) bool {
 
 	// 1. Change the group ID first, because the user ID could have given us the power
 	// 2. Change the user ID
-	// 3. Drop all capabilities
+	// 3. Drop all capabilities (if supported)
 	return setGroups(ppfmt, gid) && setUser(ppfmt, uid) && dropCapabilities(ppfmt)
 }
