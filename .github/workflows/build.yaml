@@ -16,10 +16,13 @@ permissions:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        nocapdrop: [false, true]
     name: Build
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-build-${{ github.ref }}
+      group: ${{ github.workflow }}-build-${{ github.ref }}-${{ matrix.nocapdrop }}
       cancel-in-progress: true
     permissions:
       id-token: write
@@ -59,8 +62,9 @@ jobs:
         with:
           images: ${{ github.repository }}
           tags: |
-            type=edge
-            type=semver,pattern={{version}}
+            type=edge,suffix=${{ matrix.nocapdrop && '-nocapdrop' || '' }}
+            type=semver,pattern={{version}},suffix=${{ matrix.nocapdrop && '-nocapdrop' || '' }}
+            type=semver,pattern={{major}},suffix=${{ matrix.nocapdrop && '-nocapdrop' || '' }}
           annotations: |
             io.artifacthub.package.license=Apache-2.0
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
@@ -73,7 +77,9 @@ jobs:
         with:
           target: "minimal"
           push: ${{ github.event_name != 'pull_request' }}
-          build-args: ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
+          build-args: |
+            ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
+            ${{ matrix.nocapdrop && 'EXTRA_BUILD_TAGS=nocapdrop' || '' }}
           platforms: ${{ env.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
