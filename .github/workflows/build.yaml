@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         nocapdrop: [false, true]
-    name: Build
+    name: ${{ matrix.nocapdrop && 'Build (nocapdrop)' || 'Build' }}
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-build-${{ github.ref }}-${{ matrix.nocapdrop }}
