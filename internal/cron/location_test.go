@@ -24,14 +24,14 @@ func TestDescribeLocation(t *testing.T) {
 		input  *time.Location
 		output string
 	}{
-		{time.UTC, "UTC (UTC+00 now)"},
-		{mustLoadLocation("Asia/Thimphu"), "Asia/Thimphu (UTC+06 now)"},
-		{mustLoadLocation("Asia/Seoul"), "Asia/Seoul (UTC+09 now)"},
-		{mustLoadLocation("Asia/Shanghai"), "Asia/Shanghai (UTC+08 now)"},
-		{mustLoadLocation("Asia/Kolkata"), "Asia/Kolkata (UTC+05:30 now)"},
-		{mustLoadLocation("America/Port_of_Spain"), "America/Port_of_Spain (UTC−04 now)"},
-		{time.FixedZone("Dublin Mean Time", -1521), "Dublin Mean Time (UTC−00:25:21 now)"},
-		{time.FixedZone("Bangkok Mean Time", 24124), "Bangkok Mean Time (UTC+06:42:04 now)"},
+		{time.UTC, "UTC (currently UTC+00)"},
+		{mustLoadLocation("Asia/Thimphu"), "Asia/Thimphu (currently UTC+06)"},
+		{mustLoadLocation("Asia/Seoul"), "Asia/Seoul (currently UTC+09)"},
+		{mustLoadLocation("Asia/Shanghai"), "Asia/Shanghai (currently UTC+08)"},
+		{mustLoadLocation("Asia/Kolkata"), "Asia/Kolkata (currently UTC+05:30)"},
+		{mustLoadLocation("America/Port_of_Spain"), "America/Port_of_Spain (currently UTC−04)"},
+		{time.FixedZone("Dublin Mean Time", -1521), "Dublin Mean Time (currently UTC−00:25:21)"},
+		{time.FixedZone("Bangkok Mean Time", 24124), "Bangkok Mean Time (currently UTC+06:42:04)"},
 	} {
 		t.Run(tc.input.String(), func(t *testing.T) {
 			t.Parallel()

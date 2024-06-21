@@ -38,5 +38,5 @@ func describeOffset(offset int) string {
 func DescribeLocation(loc *time.Location) string {
 	_, offset := time.Now().In(loc).Zone()
 
-	return fmt.Sprintf("%s (%s now)", loc.String(), describeOffset(offset))
+	return fmt.Sprintf("%s (currently %s)", loc.String(), describeOffset(offset))
 }
