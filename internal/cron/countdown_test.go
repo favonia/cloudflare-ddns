@@ -18,31 +18,49 @@ func TestPrintCountdown(t *testing.T) {
 
 	for _, tc := range [...]struct {
 		interval []time.Duration
-		output   string
+		output   func(string) string
 	}{
 		{
 			[]time.Duration{-20 * time.Second},
-			string(pp.EmojiNow) + " Secretly dancing now (running behind by 20s) . . .\n",
+			func(_ string) string {
+				return string(pp.EmojiNow) + " Secretly dancing now (running behind by 20s) . . .\n"
+			},
 		},
 		{
 			[]time.Duration{-10 * time.Second},
-			string(pp.EmojiNow) + " Secretly dancing now (running behind by 10s) . . .\n",
+			func(_ string) string {
+				return string(pp.EmojiNow) + " Secretly dancing now (running behind by 10s) . . .\n"
+			},
 		},
 		{
 			[]time.Duration{-time.Second, -time.Nanosecond, 0, time.Nanosecond},
-			string(pp.EmojiNow) + " Secretly dancing now . . .\n",
+			func(_ string) string {
+				return string(pp.EmojiNow) + " Secretly dancing now . . .\n"
+			},
 		},
 		{
-			[]time.Duration{time.Second},
-			string(pp.EmojiAlarm) + " Secretly dancing in less than 5s . . .\n",
+			[]time.Duration{2 * time.Second},
+			func(_ string) string {
+				return string(pp.EmojiAlarm) + " Secretly dancing in less than 5s . . .\n"
+			},
 		},
 		{
 			[]time.Duration{10 * time.Second},
-			string(pp.EmojiAlarm) + " Secretly dancing in about 10s . . .\n",
+			func(_ string) string {
+				return string(pp.EmojiAlarm) + " Secretly dancing in about 10s . . .\n"
+			},
 		},
 		{
 			[]time.Duration{20 * time.Second},
-			string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n",
+			func(_ string) string {
+				return string(pp.EmojiAlarm) + " Secretly dancing in about 20s . . .\n"
+			},
+		},
+		{
+			[]time.Duration{20 * time.Minute},
+			func(t string) string {
+				return string(pp.EmojiAlarm) + " Secretly dancing in about 20m0s (" + t + ") . . .\n"
+			},
 		},
 	} {
 		for _, interval := range tc.interval {
@@ -51,9 +69,9 @@ func TestPrintCountdown(t *testing.T) {
 				var buf strings.Builder
 				pp := pp.New(&buf)
 
-				cron.PrintCountdown(pp, activity, interval)
-
-				require.Equal(t, tc.output, buf.String())
+				target := time.Now().Add(interval)
+				cron.PrintCountdown(pp, activity, target)
+				require.Equal(t, tc.output(target.Format(time.Kitchen)), buf.String())
 			})
 		}
 	}
