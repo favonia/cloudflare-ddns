@@ -13,5 +13,16 @@ A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full docume
 
 ## Supported Tags
 
+### Standard Build
+
 - `latest`: the latest released version
 - `edge`: the latest development version
+- `X`: the latest released version with the major version being `X` (e.g. `1`)
+- `X.Y.Z` (where `X.Y.Z.` is a released version): a specific version
+
+### `nocapdrop` Build
+
+- `latest-nocapdrop`: the latest released version
+- `edge-nocapdrop`: the latest development version
+- `X-nocapdrop`: the latest released version with the major version being `X` (e.g. `1`)
+- `X.Y.Z-nocapdrop` (where `X.Y.Z.` is a released version): a specific version
