@@ -15,12 +15,12 @@ A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full docume
 
 - `latest`: the latest released version
 - `edge`: the latest development version
-- `X`: the latest released version with the major version being `X` (e.g. `1`)
-- `X.Y.Z` (where `X.Y.Z.` is a released version): a specific version
+- `X`: the latest released version where the major version is `X` (e.g. `1`)
+- `X.Y.Z` (where `X.Y.Z.` is a released version): a specific released version
 
-🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the following variants to disable the explicit dropping of capabilities:
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the following `-nocapdrop` variants to disable the explicit dropping of capabilities:
 
 > - `latest-nocapdrop`: the latest released version
 > - `edge-nocapdrop`: the latest development version
-> - `X-nocapdrop`: the latest released version with the major version being `X` (e.g. `1`)
-> - `X.Y.Z-nocapdrop` (where `X.Y.Z.` is a released version): a specific version
+> - `X-nocapdrop`: the latest released version where the major version is `X` (e.g. `1`)
+> - `X.Y.Z-nocapdrop` (where `X.Y.Z.` is a released version): a specific released version
