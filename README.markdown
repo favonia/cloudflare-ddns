@@ -64,7 +64,18 @@ docker run \
   -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   -e DOMAINS=example.org,www.example.org,example.io \
   -e PROXIED=true \
-  favonia/cloudflare-ddns
+  favonia/cloudflare-ddns:latest
+```
+
+🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt. If you encounter this problem, as a workaround, please use the Docker tag `latest-nocapdrop` to disable the explicit dropping of capabilities:
+
+```bash
+docker run \
+  --network host \
+  -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+  -e DOMAINS=example.org,www.example.org,example.io \
+  -e PROXIED=true \
+  favonia/cloudflare-ddns:latest-nocapdrop
 ```
 
 </details>
@@ -78,6 +89,15 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
+```
+
+🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt. If you encounter this problem, as a workaround, please pass the build tag `nocapdrop` to disable the explicit dropping of capabilities:
+
+```bash
+CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+  DOMAINS=example.org,www.example.org,example.io \
+  PROXIED=true \
+  go run -tags nocapdrop github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
 
 </details>
@@ -122,6 +142,8 @@ services:
       - PROXIED=true
         # Tell Cloudflare to cache webpages and hide your IP
 ```
+
+🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt. If you encounter this problem, as a workaround, please replace the above `latest` tag above with `latest-nocapdrop` to disable the explicit dropping of capabilities.
 
 _(Click to expand the following important tips.)_
 
