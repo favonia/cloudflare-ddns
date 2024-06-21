@@ -67,7 +67,7 @@ docker run \
   favonia/cloudflare-ddns:latest
 ```
 
-🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the Docker tag `latest-nocapdrop` to disable the explicit dropping of Linux capabilities:
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the Docker tag `latest-nocapdrop` to disable the explicit dropping of Linux capabilities:
 
 > ```bash
 > docker run \
@@ -91,7 +91,7 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
 
-🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please pass the build tag `nocapdrop` to disable the explicit dropping of capabilities:
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please pass the build tag `nocapdrop` to disable the explicit dropping of capabilities:
 
 > ```bash
 > CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
@@ -143,7 +143,7 @@ services:
         # Tell Cloudflare to cache webpages and hide your IP
 ```
 
-🚨 If you are using LXC (Linux Containers), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please replace the above `latest` tag above with `latest-nocapdrop` to disable the explicit dropping of capabilities:
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please replace the above `latest` tag above with `latest-nocapdrop` to disable the explicit dropping of capabilities:
 
 > ```yaml
 > image: favonia/cloudflare-ddns:latest-nocapdrop
@@ -414,10 +414,6 @@ _(Click to expand the following items.)_
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
 </details>
-
-## 😟 Known Issues
-
-It is known that using the [cap](https://sites.google.com/site/fullycapable) library within Linux Containers (LXC) will crash the Go runtime system.
 
 ## 💖 Feedback
 
