@@ -3,8 +3,10 @@ package monitor
 
 import (
 	"context"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 //go:generate mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . Monitor
@@ -32,4 +34,13 @@ type Monitor interface {
 
 	// ExitStatus records the exit status (as an integer in the POSIX style).
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
+}
+
+func Send(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response) bool {
+	msg := strings.Join(r.MonitorMessages, "\n")
+	if r.Ok {
+		return m.Log(ctx, ppfmt, msg)
+	} else {
+		return m.Failure(ctx, ppfmt, msg)
+	}
 }

@@ -55,11 +55,8 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
-		if ok, msg := updater.DeleteIPs(ctx, ppfmt, c, s); ok {
-			monitor.LogAll(ctx, ppfmt, msg, c.Monitors)
-		} else {
-			monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
-		}
+		resp := updater.DeleteIPs(ctx, ppfmt, c, s)
+		monitor.SendAll(ctx, ppfmt, c.Monitors, resp)
 	}
 }
 
@@ -94,10 +91,10 @@ func realMain() int { //nolint:funlen
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
 	// Ping the monitor regardless of whether initConfig succeeded
-	monitor.StartAll(ctx, ppfmt, formatName(), c.Monitors)
+	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
 	if !configOk {
-		monitor.ExitStatusAll(ctx, ppfmt, 1, "Config errors", c.Monitors)
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Config errors")
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
@@ -121,13 +118,10 @@ func realMain() int { //nolint:funlen
 
 		// Update the IP addresses
 		if first && !c.UpdateOnStart {
-			monitor.SuccessAll(ctx, ppfmt, "Started (no action)", c.Monitors)
+			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
-			if ok, msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s); ok {
-				monitor.SuccessAll(ctx, ppfmt, msg, c.Monitors)
-			} else {
-				monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
-			}
+			resp := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
+			monitor.SendAll(ctx, ppfmt, c.Monitors, resp)
 		}
 
 		// Check if cron was disabled
@@ -142,7 +136,7 @@ func realMain() int { //nolint:funlen
 		if next.IsZero() {
 			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, 1, "No scheduled updates", c.Monitors)
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "No scheduled updates")
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -153,7 +147,7 @@ func realMain() int { //nolint:funlen
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.SleepUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, 0, "Terminated", c.Monitors)
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Terminated")
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}

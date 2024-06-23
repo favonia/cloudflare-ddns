@@ -15,6 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/response"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
@@ -62,119 +63,128 @@ func TestUpdateIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		proxied             mockproxied
 		ok                  bool
-		msg                 string
+		monitorMessages     []string
+		notifierMessages    []string
 		ShouldDisplayHints  map[string]bool
 		prepareMockPP       func(m *mocks.MockPP)
 		prepareMockProvider mockproviders
 		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			proxiedBoth, true, ``, allHints, nil, mockproviders{}, nil,
+			proxiedBoth, true, []string{}, []string{}, allHints, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
 			proxiedNone,
 			true,
-			"",
+			[]string{},
+			[]string{},
 			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
-					Return(setter.ResponseNoUpdatesNeeded)
+					Return(setter.ResponseNoop)
 			},
 		},
 		"ip4only/setfail": {
 			proxiedBoth,
 			false,
-			"Failed to set ip4.hello A",
+			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
+			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
 			allHints,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).
-					Return(setter.ResponseUpdatesFailed)
+					Return(setter.ResponseFailed)
 			},
 		},
 		"ip6only": {
 			proxiedNone,
 			true,
-			"Set ip6.hello AAAA to ::1",
+			[]string{"Set AAAA (::1): ip6.hello"},
+			[]string{"Updated AAAA records of ip6.hello with ::1."},
 			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).
-					Return(setter.ResponseUpdatesApplied)
+					Return(setter.ResponseUpdated)
 			},
 		},
 		"ip6only/setfail": {
 			proxiedBoth,
 			false,
-			"Failed to set ip6.hello AAAA",
+			[]string{"Failed to set AAAA (::1): ip6.hello"},
+			[]string{"Failed to finish updating AAAA records of ip6.hello with ::1."},
 			allHints,
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).
-					Return(setter.ResponseUpdatesFailed)
+					Return(setter.ResponseFailed)
 			},
 		},
 		"both": {
 			proxiedNone,
 			true,
-			"",
+			[]string{},
+			[]string{},
 			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
-						Return(setter.ResponseNoUpdatesNeeded),
+						Return(setter.ResponseNoop),
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).
-						Return(setter.ResponseNoUpdatesNeeded),
+						Return(setter.ResponseNoop),
 				)
 			},
 		},
 		"both/setfail1": {
 			proxiedBoth,
 			false,
-			"Failed to set ip4.hello A",
+			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
+			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
 			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).
-						Return(setter.ResponseUpdatesFailed),
+						Return(setter.ResponseFailed),
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).
-						Return(setter.ResponseNoUpdatesNeeded),
+						Return(setter.ResponseNoop),
 				)
 			},
 		},
 		"both/setfail2": {
 			proxiedNone,
 			false,
-			"Failed to set ip6.hello AAAA",
+			[]string{"Failed to set AAAA (::1): ip6.hello"},
+			[]string{"Failed to finish updating AAAA records of ip6.hello with ::1."},
 			allHints,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
-						Return(setter.ResponseNoUpdatesNeeded),
+						Return(setter.ResponseNoop),
 					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false).
-						Return(setter.ResponseUpdatesFailed),
+						Return(setter.ResponseFailed),
 				)
 			},
 		},
 		"ip4fails": {
 			proxiedBoth,
 			false,
-			"Failed to detect the IPv4 address",
+			[]string{"Failed to detect IPv4 address"},
+			[]string{"Failed to detect the IPv4 address."},
 			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					m.EXPECT().Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv6", ip6),
 				)
@@ -187,18 +197,19 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, true).
-					Return(setter.ResponseNoUpdatesNeeded)
+					Return(setter.ResponseNoop)
 			},
 		},
 		"ip6fails": {
 			proxiedNone,
 			false,
-			"Failed to detect the IPv6 address",
+			[]string{"Failed to detect IPv6 address"},
+			[]string{"Failed to detect the IPv6 address."},
 			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv6 address"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					m.EXPECT().Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups"),     //nolint:lll
 					m.EXPECT().Infof(pp.EmojiHint, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns"),      //nolint:lll
 					m.EXPECT().Infof(pp.EmojiHint, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none"), //nolint:lll
@@ -212,18 +223,19 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
-					Return(setter.ResponseNoUpdatesNeeded)
+					Return(setter.ResponseNoop)
 			},
 		},
 		"ip6fails/again": {
 			proxiedBoth,
 			false,
-			"Failed to detect the IPv6 address",
+			[]string{"Failed to detect IPv6 address"},
+			[]string{"Failed to detect the IPv6 address."},
 			map[string]bool{"detect-ip4-fail": true, "detect-ip6-fail": false, "update-timeout": true},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv6 address"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 				)
 			},
 			mockproviders{
@@ -234,19 +246,20 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, true).
-					Return(setter.ResponseNoUpdatesNeeded)
+					Return(setter.ResponseNoop)
 			},
 		},
 		"bothfail": {
 			proxiedNone,
 			false,
-			"Failed to detect the IPv4 address\nFailed to detect the IPv6 address",
+			[]string{"Failed to detect IPv4 address", "Failed to detect IPv6 address"},
+			[]string{"Failed to detect the IPv4 address.", "Failed to detect the IPv6 address."},
 			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv4 address"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					m.EXPECT().Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
-					m.EXPECT().Errorf(pp.EmojiError, "%s", "Failed to detect the IPv6 address"),
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					m.EXPECT().Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups"),     //nolint:lll
 					m.EXPECT().Infof(pp.EmojiHint, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns"),      //nolint:lll
 					m.EXPECT().Infof(pp.EmojiHint, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none"), //nolint:lll
@@ -265,7 +278,8 @@ func TestUpdateIPs(t *testing.T) {
 		"ip4only-proxied-nil": {
 			mockproxied{},
 			true,
-			"Set ip4.hello A to 127.0.0.1",
+			[]string{"Set A (127.0.0.1): ip4.hello"},
+			[]string{"Updated A records of ip4.hello with 127.0.0.1."},
 			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -279,13 +293,14 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false).
-					Return(setter.ResponseUpdatesApplied)
+					Return(setter.ResponseUpdated)
 			},
 		},
 		"slow-setting": {
 			proxiedNone,
 			false,
-			"Failed to set ip4.hello A",
+			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
+			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
 			allHints,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -303,7 +318,7 @@ func TestUpdateIPs(t *testing.T) {
 					DoAndReturn(
 						func(_ context.Context, _ pp.PP, _ domain.Domain, _ ipnet.Type, _ netip.Addr, _ api.TTL, _ bool) setter.ResponseCode { //nolint:lll
 							time.Sleep(2 * time.Second)
-							return setter.ResponseUpdatesFailed
+							return setter.ResponseFailed
 						})
 			},
 		},
@@ -337,9 +352,12 @@ func TestUpdateIPs(t *testing.T) {
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			ok, msg := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.msg, msg)
+			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			require.Equal(t, response.Response{
+				Ok:               tc.ok,
+				NotifierMessages: tc.notifierMessages,
+				MonitorMessages:  tc.monitorMessages,
+			}, resp)
 		})
 	}
 }
@@ -361,7 +379,8 @@ func TestDeleteIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		proxied             mockproxied
 		ok                  bool
-		msg                 string
+		monitorMessages     []string
+		notifierMessages    []string
 		ShouldDisplayHints  map[string]bool
 		prepareMockPP       func(m *mocks.MockPP)
 		prepareMockProvider mockproviders
@@ -370,7 +389,8 @@ func TestDeleteIPs(t *testing.T) {
 		"none": {
 			proxiedNone,
 			true,
-			``,
+			[]string{},
+			[]string{},
 			allHints,
 			nil,
 			mockproviders{},
@@ -379,87 +399,94 @@ func TestDeleteIPs(t *testing.T) {
 		"ip4only": {
 			proxiedNone,
 			true,
-			"Deleted ip4.hello A",
+			[]string{"Deleted A: ip4.hello"},
+			[]string{"Deleted A records of ip4.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).
-					Return(setter.ResponseUpdatesApplied)
+					Return(setter.ResponseUpdated)
 			},
 		},
 		"ip4only/setfail": {
 			proxiedNone,
 			false,
-			"Failed to delete ip4.hello A",
+			[]string{"Failed to delete A: ip4.hello"},
+			[]string{"Failed to finish deleting A records of ip4.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseUpdatesFailed)
+				m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseFailed)
 			},
 		},
 		"ip6only": {
 			proxiedNone,
 			true,
-			"Deleted ip6.hello AAAA",
+			[]string{"Deleted AAAA: ip6.hello"},
+			[]string{"Deleted AAAA records of ip6.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdatesApplied)
+				m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdated)
 			},
 		},
 		"ip6only/setfail": {
 			proxiedNone,
 			false,
-			"Failed to delete ip6.hello AAAA",
+			[]string{"Failed to delete AAAA: ip6.hello"},
+			[]string{"Failed to finish deleting AAAA records of ip6.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdatesFailed)
+				m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseFailed)
 			},
 		},
 		"both": {
 			proxiedNone,
 			true,
-			"Deleted ip4.hello A\nDeleted ip6.hello AAAA",
+			[]string{"Deleted A: ip4.hello", "Deleted AAAA: ip6.hello"},
+			[]string{"Deleted A records of ip4.hello.", "Deleted AAAA records of ip6.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseUpdatesApplied),
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdatesApplied),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseUpdated),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdated),
 				)
 			},
 		},
 		"both/setfail1": {
 			proxiedNone,
 			false,
-			"Failed to delete ip4.hello A",
+			[]string{"Failed to delete A: ip4.hello"},
+			[]string{"Failed to finish deleting A records of ip4.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseUpdatesFailed),
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseNoUpdatesNeeded),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseFailed),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseNoop),
 				)
 			},
 		},
 		"both/setfail2": {
 			proxiedNone,
 			false,
-			"Failed to delete ip6.hello AAAA",
+			[]string{"Failed to delete AAAA: ip6.hello"},
+			[]string{"Failed to finish deleting AAAA records of ip6.hello."},
 			allHints,
 			nil,
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseNoUpdatesNeeded),
-					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseUpdatesFailed),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain4, ipnet.IP4).Return(setter.ResponseNoop),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain6, ipnet.IP6).Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -490,9 +517,13 @@ func TestDeleteIPs(t *testing.T) {
 			if tc.prepareMockSetter != nil {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
-			ok, msg := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.msg, msg)
+			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
+
+			require.Equal(t, response.Response{
+				Ok:               tc.ok,
+				NotifierMessages: tc.notifierMessages,
+				MonitorMessages:  tc.monitorMessages,
+			}, resp)
 		})
 	}
 }

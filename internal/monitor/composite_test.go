@@ -43,7 +43,7 @@ func TestSuccessAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.SuccessAll(context.Background(), mockPP, message, ms)
+	monitor.SuccessAll(context.Background(), mockPP, ms, message)
 }
 
 func TestStartAll(t *testing.T) {
@@ -62,7 +62,7 @@ func TestStartAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.StartAll(context.Background(), mockPP, message, ms)
+	monitor.StartAll(context.Background(), mockPP, ms, message)
 }
 
 func TestFailureAll(t *testing.T) {
@@ -81,7 +81,7 @@ func TestFailureAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.FailureAll(context.Background(), mockPP, message, ms)
+	monitor.FailureAll(context.Background(), mockPP, ms, message)
 }
 
 func TestLogAll(t *testing.T) {
@@ -100,7 +100,7 @@ func TestLogAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.LogAll(context.Background(), mockPP, message, ms)
+	monitor.LogAll(context.Background(), mockPP, ms, message)
 }
 
 func TestMonitorsExitStatus(t *testing.T) {
@@ -119,5 +119,5 @@ func TestMonitorsExitStatus(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	monitor.ExitStatusAll(context.Background(), mockPP, 42, message, ms)
+	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
 }
