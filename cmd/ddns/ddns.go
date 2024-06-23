@@ -104,8 +104,10 @@ func realMain() int { //nolint:funlen
 
 	if c.UpdateCron != nil && !ppfmt.IsEnabledFor(pp.Verbose) {
 		// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
-		// is not happy with empty log. As a workaround, we will print a Notice here. See #426.
-		// We still want to keep the quiet mode for the single-run mode extremely quiet,
+		// is not happy with completely empty log. As a workaround, we will print a Notice here.
+		// See GitHub issue #426.
+		//
+		// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
 		// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
 		// having the internal cron disabled.)
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
