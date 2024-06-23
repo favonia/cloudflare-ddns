@@ -42,7 +42,7 @@ type Setter interface {
 		proxied bool,
 	) ResponseCode
 
-	// Clear removes DNS records of a particular domain.
+	// Delete removes DNS records of a particular domain.
 	Delete(
 		ctx context.Context,
 		ppfmt pp.PP,
