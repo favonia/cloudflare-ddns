@@ -20,20 +20,123 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
-//nolint:gochecknoglobals
-var allHints = map[string]bool{
-	"detect-ip4-fail": true,
-	"detect-ip6-fail": true,
-	"update-timeout":  true,
+//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+func TestUpdateIPsMultiple(t *testing.T) {
+	domain4_1 := domain.FQDN("ip4.hello1")
+	domain4_2 := domain.FQDN("ip4.hello2")
+	domain4_3 := domain.FQDN("ip4.hello3")
+	domain4_4 := domain.FQDN("ip4.hello4")
+	domains := map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: {domain4_1, domain4_2, domain4_3, domain4_4},
+	}
+
+	ip4 := netip.MustParseAddr("127.0.0.1")
+
+	type mockproviders = map[ipnet.Type]func(ppfmt pp.PP, m *mocks.MockProvider)
+	provider4 := func(ppfmt pp.PP, m *mocks.MockProvider) {
+		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(ip4, true)
+	}
+
+	for name, tc := range map[string]struct {
+		ok                  bool
+		monitorMessages     []string
+		notifierMessages    []string
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
+	}{
+		"2yes1no": { //nolint:dupl
+			false,
+			[]string{"Failed to set A (127.0.0.1): ip4.hello2"},
+			[]string{"Failed to finish updating A records of ip4.hello2 with 127.0.0.1; those of ip4.hello1 and ip4.hello4 were updated."}, //nolint:lll
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4)
+			},
+			mockproviders{ipnet.IP4: provider4},
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				gomock.InOrder(
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseFailed),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseNoop),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseUpdated),
+				)
+			},
+		},
+		"3yes": { //nolint:dupl
+			true,
+			[]string{"Set A (127.0.0.1): ip4.hello1, ip4.hello3, ip4.hello4"},
+			[]string{"Updated A records of ip4.hello1, ip4.hello3, and ip4.hello4 with 127.0.0.1."},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4)
+			},
+			mockproviders{ipnet.IP4: provider4},
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				gomock.InOrder(
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseNoop),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false).
+						Return(setter.ResponseUpdated),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			ctx := context.Background()
+			conf := config.Default()
+			conf.Domains = domains
+			conf.TTL = api.TTLAuto
+			conf.Proxied = map[domain.Domain]bool{
+				domain4_1: false,
+				domain4_2: false,
+				domain4_3: false,
+				domain4_4: false,
+			}
+			conf.Use1001 = true
+			conf.UpdateTimeout = time.Second
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = true
+			}
+			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+				if tc.prepareMockProvider[ipnet] == nil {
+					conf.Provider[ipnet] = nil
+					continue
+				}
+				mockProvider := mocks.NewMockProvider(mockCtrl)
+				tc.prepareMockProvider[ipnet](mockPP, mockProvider)
+				conf.Provider[ipnet] = mockProvider
+			}
+			mockSetter := mocks.NewMockSetter(mockCtrl)
+			if tc.prepareMockSetter != nil {
+				tc.prepareMockSetter(mockPP, mockSetter)
+			}
+			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			require.Equal(t, response.Response{
+				Ok:               tc.ok,
+				NotifierMessages: tc.notifierMessages,
+				MonitorMessages:  tc.monitorMessages,
+			}, resp)
+		})
+	}
 }
 
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPsUninitializedProbied(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
-	domain6 := domain.FQDN("ip6.hello")
 	domains := map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain4},
-		ipnet.IP6: {domain6},
 	}
 
 	ip4 := netip.MustParseAddr("127.0.0.1")

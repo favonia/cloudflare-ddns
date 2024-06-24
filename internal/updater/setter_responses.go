@@ -56,11 +56,10 @@ func (s SetterResponses) ToResponse(op OperationCode, ipNet ipnet.Type, ip netip
 			return response.Response{
 				Ok: false,
 				MonitorMessages: []string{fmt.Sprintf(
-					"Failed to set %s (%s): %s; set: %s",
+					"Failed to set %s (%s): %s",
 					ipNet.RecordType(),
 					ip.String(),
 					ListJoin(s[setter.ResponseFailed]),
-					ListJoin(s[setter.ResponseUpdated]),
 				)},
 				NotifierMessages: []string{fmt.Sprintf(
 					"Failed to finish updating %s records of %s with %s; those of %s were updated.",
@@ -116,10 +115,9 @@ func (s SetterResponses) ToResponse(op OperationCode, ipNet ipnet.Type, ip netip
 			return response.Response{
 				Ok: false,
 				MonitorMessages: []string{fmt.Sprintf(
-					"Failed to delete %s: %s; deleted: %s",
+					"Failed to delete %s: %s",
 					ipNet.RecordType(),
 					ListJoin(s[setter.ResponseFailed]),
-					ListJoin(s[setter.ResponseUpdated]),
 				)},
 				NotifierMessages: []string{fmt.Sprintf(
 					"Failed to finish deleting %s records of %s; those of %s were deleted.",
