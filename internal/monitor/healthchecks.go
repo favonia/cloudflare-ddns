@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 // Healthchecks represents a Healthchecks access point.
@@ -182,13 +181,4 @@ func (h *Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, me
 	}
 
 	return h.ping(ctx, ppfmt, fmt.Sprintf("/%d", code), message)
-}
-
-func (h *Healthchecks) Send(ctx context.Context, ppfmt pp.PP, r response.Response) bool {
-	msg := strings.Join(r.MonitorMessages, "\n")
-	if r.Ok {
-		return h.Log(ctx, ppfmt, msg)
-	} else {
-		return h.Failure(ctx, ppfmt, msg)
-	}
 }

@@ -149,7 +149,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 		prepareMockPP     func(m *mocks.MockPP)
 		prepareMockSetter func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
-		"2yes1no": { //nolint:dupl
+		"2yes1no": {
 			false,
 			[]string{"Failed to delete A: ip4.hello2"},
 			[]string{"Failed to finish deleting A records of ip4.hello2; those of ip4.hello1 and ip4.hello4 were deleted."}, //nolint:lll
@@ -167,7 +167,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 				)
 			},
 		},
-		"3yes": { //nolint:dupl
+		"3yes": {
 			true,
 			[]string{"Deleted A: ip4.hello1, ip4.hello3, ip4.hello4"},
 			[]string{"Deleted A records of ip4.hello1, ip4.hello3, and ip4.hello4."},
