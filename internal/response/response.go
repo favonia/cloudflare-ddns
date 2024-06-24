@@ -6,6 +6,14 @@ type Response struct {
 	NotifierMessages []string
 }
 
+func NewEmpty() Response {
+	return Response{
+		Ok:               true,
+		MonitorMessages:  nil,
+		NotifierMessages: nil,
+	}
+}
+
 func Merge(rs ...Response) Response {
 	var (
 		allOk               = true

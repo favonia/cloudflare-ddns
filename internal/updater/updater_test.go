@@ -133,6 +133,98 @@ func TestUpdateIPsMultiple(t *testing.T) {
 }
 
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+func TestDeleteIPsMultiple(t *testing.T) {
+	domain4_1 := domain.FQDN("ip4.hello1")
+	domain4_2 := domain.FQDN("ip4.hello2")
+	domain4_3 := domain.FQDN("ip4.hello3")
+	domain4_4 := domain.FQDN("ip4.hello4")
+	domains := map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: {domain4_1, domain4_2, domain4_3, domain4_4},
+	}
+
+	for name, tc := range map[string]struct {
+		ok                bool
+		monitorMessages   []string
+		notifierMessages  []string
+		prepareMockPP     func(m *mocks.MockPP)
+		prepareMockSetter func(ppfmt pp.PP, m *mocks.MockSetter)
+	}{
+		"2yes1no": { //nolint:dupl
+			false,
+			[]string{"Failed to delete A: ip4.hello2"},
+			[]string{"Failed to finish deleting A records of ip4.hello2; those of ip4.hello1 and ip4.hello4 were deleted."}, //nolint:lll
+			nil,
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				gomock.InOrder(
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4).
+						Return(setter.ResponseFailed),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4).
+						Return(setter.ResponseNoop),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4).
+						Return(setter.ResponseUpdated),
+				)
+			},
+		},
+		"3yes": { //nolint:dupl
+			true,
+			[]string{"Deleted A: ip4.hello1, ip4.hello3, ip4.hello4"},
+			[]string{"Deleted A records of ip4.hello1, ip4.hello3, and ip4.hello4."},
+			nil,
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				gomock.InOrder(
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4).
+						Return(setter.ResponseNoop),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4).
+						Return(setter.ResponseUpdated),
+					m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4).
+						Return(setter.ResponseUpdated),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			ctx := context.Background()
+			conf := config.Default()
+			conf.Domains = domains
+			conf.TTL = api.TTLAuto
+			conf.Proxied = map[domain.Domain]bool{
+				domain4_1: false,
+				domain4_2: false,
+				domain4_3: false,
+				domain4_4: false,
+			}
+			conf.Use1001 = true
+			conf.UpdateTimeout = time.Second
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = true
+			}
+			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+				conf.Provider[ipnet] = mocks.NewMockProvider(mockCtrl)
+			}
+			mockSetter := mocks.NewMockSetter(mockCtrl)
+			if tc.prepareMockSetter != nil {
+				tc.prepareMockSetter(mockPP, mockSetter)
+			}
+			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
+			require.Equal(t, response.Response{
+				Ok:               tc.ok,
+				NotifierMessages: tc.notifierMessages,
+				MonitorMessages:  tc.monitorMessages,
+			}, resp)
+		})
+	}
+}
+
+//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPsUninitializedProbied(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domains := map[ipnet.Type][]domain.Domain{

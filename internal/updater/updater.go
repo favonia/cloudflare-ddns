@@ -52,7 +52,7 @@ var errSettingTimeout = errors.New("setting timeout")
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) SetterResponses {
+) response.Response {
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
@@ -71,11 +71,13 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	return resps
+	return GenerateUpdateResponse(ipNet, ip, resps)
 }
 
 // deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
-func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) SetterResponses {
+func deleteIP(
+	ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type,
+) response.Response {
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
@@ -86,7 +88,7 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 		resps.Register(resp, domain)
 	}
 
-	return resps
+	return GenerateDeleteResponse(ipNet, resps)
 }
 
 func detectIP(ctx context.Context, ppfmt pp.PP,
@@ -122,15 +124,13 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			resps = append(resps, GenerateDetectResponse(ipNet, ok))
+
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-
-			srs := SetterResponses{}
 			if ok {
-				srs = setIP(ctx, ppfmt, c, s, ipNet, ip)
+				resps = append(resps, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
-
-			resps = append(resps, srs.ToResponse(OperationUpdate, ipNet, ip))
 		}
 	}
 	return response.Merge(resps...)
@@ -142,8 +142,7 @@ func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			resp := deleteIP(ctx, ppfmt, c, s, ipNet)
-			resps = append(resps, resp.ToResponse(OperationDelete, ipNet, netip.Addr{}))
+			resps = append(resps, deleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}
 
