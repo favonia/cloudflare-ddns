@@ -598,7 +598,7 @@ func TestUpdateIPs(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Infof(pp.EmojiHint, "If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT"), //nolint:lll
 				)
 			},
 			mockproviders{

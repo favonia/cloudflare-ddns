@@ -36,7 +36,7 @@ type Monitor interface {
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
 
-func Send(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response) bool {
+func SendResponse(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response) bool {
 	msg := strings.Join(r.MonitorMessages, "\n")
 	if r.Ok {
 		return m.Log(ctx, ppfmt, msg)
