@@ -55,7 +55,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	rs, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
-		return ResponseUpdatesFailed
+		return ResponseFailed
 	}
 
 	// The intention of these two lists is to find or create a good record and then delete everything else.
@@ -77,7 +77,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// If it's up to date and there are no other records, we are done!
 	if foundMatched && len(unprocessedMatched) == 0 && len(unprocessedUnmatched) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
-		return ResponseNoUpdatesNeeded
+		return ResponseNoop
 	}
 
 	// This counts the stale records that have not being deleted yet.
@@ -164,12 +164,12 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Check whether we are done. It is okay to have duplicates, but it is not okay to have remaining stale records.
 	if !foundMatched || numUndeletedUnmatched > 0 {
 		ppfmt.Errorf(pp.EmojiError,
-			"Failed to complete updating of %s records of %q; records might be inconsistent",
+			"Failed to finish updating %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
-		return ResponseUpdatesFailed
+		return ResponseFailed
 	}
 
-	return ResponseUpdatesApplied
+	return ResponseUpdated
 }
 
 // Delete deletes all managed DNS records.
@@ -180,7 +180,7 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 	rmap, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
-		return ResponseUpdatesFailed
+		return ResponseFailed
 	}
 
 	// Sorting is not needed for correctness, but it will make the function deterministic.
@@ -192,7 +192,7 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 
 	if len(unmatchedIDs) == 0 {
 		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted", recordType, domainDescription)
-		return ResponseNoUpdatesNeeded
+		return ResponseNoop
 	}
 
 	allOk := true
@@ -206,10 +206,10 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 	}
 	if !allOk {
 		ppfmt.Errorf(pp.EmojiError,
-			"Failed to complete deleting of %s records of %q; records might be inconsistent",
+			"Failed to finish deleting %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
-		return ResponseUpdatesFailed
+		return ResponseFailed
 	}
 
-	return ResponseUpdatesApplied
+	return ResponseUpdated
 }

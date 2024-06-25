@@ -5,14 +5,13 @@ package updater
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/netip"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/response"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -53,75 +52,56 @@ var errSettingTimeout = errors.New("setting timeout")
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) (bool, []string) {
-	allOk := true
-
-	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+) response.Response {
+	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errSettingTimeout)
 		defer cancel()
 
 		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
-		switch resp {
-		case setter.ResponseUpdatesApplied:
-			msgs[true] = append(msgs[true], fmt.Sprintf("Set %s %s to %s", domain.Describe(), ipNet.RecordType(), ip.String()))
-		case setter.ResponseUpdatesFailed:
-			allOk = false
-			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to set %s %s", domain.Describe(), ipNet.RecordType()))
+		resps.Register(resp, domain)
+		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
 					"If your network is working but with high latency, consider increasing the value of UPDATE_TIMEOUT",
 				)
 				ShouldDisplayHints["update-timeout"] = false
 			}
-		case setter.ResponseNoUpdatesNeeded:
 		}
 	}
 
-	return allOk, msgs[allOk]
+	return GenerateUpdateResponse(ipNet, ip, resps)
 }
 
-// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Clear] with a deadline.
-func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) (bool, []string) {
-	allOk := true
-
-	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
+func deleteIP(
+	ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type,
+) response.Response {
+	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
 		defer cancel()
 
 		resp := s.Delete(ctx, ppfmt, domain, ipNet)
-		switch resp {
-		case setter.ResponseUpdatesApplied:
-			msgs[true] = append(msgs[true], fmt.Sprintf("Deleted %s %s", domain.Describe(), ipNet.RecordType()))
-		case setter.ResponseUpdatesFailed:
-			allOk = false
-			msgs[false] = append(msgs[false], fmt.Sprintf("Failed to delete %s %s", domain.Describe(), ipNet.RecordType()))
-		case setter.ResponseNoUpdatesNeeded:
-		}
+		resps.Register(resp, domain)
 	}
 
-	return allOk, msgs[allOk]
+	return GenerateDeleteResponse(ipNet, resps)
 }
 
 func detectIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, ipNet ipnet.Type, use1001 bool,
-) (netip.Addr, bool, []string) {
+) (netip.Addr, bool) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
-	var msgs []string
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
-		msg := fmt.Sprintf("Failed to detect the %s address", ipNet.Describe())
-		msgs = append(msgs, msg)
-		ppfmt.Errorf(pp.EmojiError, "%s", msg)
+		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
@@ -134,55 +114,37 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
-	return ip, ok, msgs
+	return ip, ok
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
-func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
-	allOk := true
-
-	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) response.Response {
+	var resps []response.Response
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, ok, msg := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
-			msgs[ok] = append(msgs[ok], msg...)
-			if !ok {
-				// We can't detect the new IP address. It's probably better to leave existing IP addresses alone.
-				allOk = false
-				continue
-			}
+			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			resps = append(resps, GenerateDetectResponse(ipNet, ok))
 
-			ok, msg = setIP(ctx, ppfmt, c, s, ipNet, ip)
-			msgs[ok] = append(msgs[ok], msg...)
-			allOk = allOk && ok
+			// Note: If we can't detect the new IP address,
+			// it's probably better to leave existing records alone.
+			if ok {
+				resps = append(resps, setIP(ctx, ppfmt, c, s, ipNet, ip))
+			}
 		}
 	}
-
-	var allMsg string
-	if len(msgs[false]) != 0 {
-		allMsg = strings.Join(msgs[false], "\n")
-	} else {
-		allMsg = strings.Join(msgs[true], "\n")
-	}
-	return allOk, allMsg
+	return response.Merge(resps...)
 }
 
 // DeleteIPs removes all DNS records of managed domains.
-func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) (bool, string) {
-	allOk := true
-
-	// [msgs[false]] collects all the error messages and [msgs[true]] collects all the success messages.
-	msgs := map[bool][]string{}
+func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) response.Response {
+	var resps []response.Response
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ok, msg := deleteIP(ctx, ppfmt, c, s, ipNet)
-			allOk = allOk && ok
-			msgs[ok] = append(msgs[ok], msg...)
+			resps = append(resps, deleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}
 
-	return allOk, strings.Join(msgs[allOk], "\n")
+	return response.Merge(resps...)
 }
