@@ -3,8 +3,10 @@ package notifier
 
 import (
 	"context"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 //go:generate mockgen -typed -destination=../mocks/mock_notifier.go -package=mocks . Notifier
@@ -16,4 +18,8 @@ type Notifier interface {
 
 	// Send out a message.
 	Send(ctx context.Context, ppfmt pp.PP, msg string) bool
+}
+
+func SendResponse(ctx context.Context, ppfmt pp.PP, n Notifier, r response.Response) bool {
+	return n.Send(ctx, ppfmt, strings.Join(r.NotifierMessages, " "))
 }

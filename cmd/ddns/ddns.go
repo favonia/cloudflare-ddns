@@ -10,6 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/signal"
@@ -56,7 +57,8 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
 		resp := updater.DeleteIPs(ctx, ppfmt, c, s)
-		monitor.SendAll(ctx, ppfmt, c.Monitors, resp)
+		monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp)
+		notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
 	}
 }
 
@@ -121,7 +123,8 @@ func realMain() int { //nolint:funlen
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
 			resp := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
-			monitor.SendAll(ctx, ppfmt, c.Monitors, resp)
+			monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp)
+			notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
 		}
 
 		// Check if cron was disabled

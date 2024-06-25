@@ -124,7 +124,7 @@ func TestExitStatusAll(t *testing.T) {
 	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
 }
 
-func TestSendAll(t *testing.T) {
+func TestSendResponseAll(t *testing.T) {
 	t.Parallel()
 
 	monitorMessages := []string{"forest", "grass"}
@@ -159,7 +159,7 @@ func TestSendAll(t *testing.T) {
 				MonitorMessages:  monitorMessages,
 				NotifierMessages: notifierMessages,
 			}
-			monitor.SendAll(context.Background(), mockPP, ms, resp)
+			monitor.SendResponseAll(context.Background(), mockPP, ms, resp)
 		})
 	}
 }

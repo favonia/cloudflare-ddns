@@ -43,5 +43,5 @@ func TestSendAll(t *testing.T) {
 		ms = append(ms, m)
 	}
 
-	notifier.SendAll(context.Background(), mockPP, message, ms)
+	notifier.SendAll(context.Background(), mockPP, ms, message)
 }
