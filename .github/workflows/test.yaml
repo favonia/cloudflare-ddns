@@ -33,7 +33,7 @@ jobs:
           go-version: stable
       - name: 🧪 Run `go test`
         run: |
-          go test $(go list ./... | grep -v 'internal/mocks') -coverprofile=coverage.txt -race -v ./...
+          go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
       - name: ☂️ Report coverage rates to Codecov
         uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673 # 4.5.0
         with:
