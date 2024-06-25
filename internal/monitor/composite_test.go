@@ -132,10 +132,13 @@ func TestSendResponseAll(t *testing.T) {
 	notifierMessages := []string{"ocean"}
 
 	for name, tc := range map[string]struct {
-		ok bool
+		ok   bool
+		ping bool
 	}{
-		"ok":    {true},
-		"notok": {false},
+		"success": {true, true},
+		"log":     {true, false},
+		"fail1":   {false, true},
+		"fail2":   {false, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -146,9 +149,12 @@ func TestSendResponseAll(t *testing.T) {
 
 			for range 5 {
 				m := mocks.NewMockMonitor(mockCtrl)
-				if tc.ok {
+				switch {
+				case tc.ok && tc.ping:
+					m.EXPECT().Success(context.Background(), mockPP, monitorMessage)
+				case tc.ok && !tc.ping:
 					m.EXPECT().Log(context.Background(), mockPP, monitorMessage)
-				} else {
+				default:
 					m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
 				}
 				ms = append(ms, m)
@@ -159,7 +165,7 @@ func TestSendResponseAll(t *testing.T) {
 				MonitorMessages:  monitorMessages,
 				NotifierMessages: notifierMessages,
 			}
-			monitor.SendResponseAll(context.Background(), mockPP, ms, resp)
+			monitor.SendResponseAll(context.Background(), mockPP, ms, resp, tc.ping)
 		})
 	}
 }

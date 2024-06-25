@@ -70,10 +70,10 @@ func ExitStatusAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, code int, mes
 }
 
 // SendResponseAll calls [SendResponse] for each monitor in ms.
-func SendResponseAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, resp response.Response) bool {
+func SendResponseAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, resp response.Response, ping bool) bool {
 	ok := true
 	for _, m := range ms {
-		if !SendResponse(ctx, ppfmt, m, resp) {
+		if !SendResponse(ctx, ppfmt, m, resp, ping) {
 			ok = false
 		}
 	}
