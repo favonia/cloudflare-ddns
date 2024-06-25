@@ -2,12 +2,14 @@ package monitor_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 func TestDescribeAll(t *testing.T) {
@@ -103,7 +105,7 @@ func TestLogAll(t *testing.T) {
 	monitor.LogAll(context.Background(), mockPP, ms, message)
 }
 
-func TestMonitorsExitStatus(t *testing.T) {
+func TestExitStatusAll(t *testing.T) {
 	t.Parallel()
 
 	ms := make([]monitor.Monitor, 0, 5)
@@ -120,4 +122,44 @@ func TestMonitorsExitStatus(t *testing.T) {
 	}
 
 	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
+}
+
+func TestSendAll(t *testing.T) {
+	t.Parallel()
+
+	monitorMessages := []string{"forest", "grass"}
+	monitorMessage := strings.Join(monitorMessages, "\n")
+	notifierMessages := []string{"ocean"}
+
+	for name, tc := range map[string]struct {
+		ok bool
+	}{
+		"ok":    {true},
+		"notok": {false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ms := make([]monitor.Monitor, 0, 5)
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+
+			for range 5 {
+				m := mocks.NewMockMonitor(mockCtrl)
+				if tc.ok {
+					m.EXPECT().Log(context.Background(), mockPP, monitorMessage)
+				} else {
+					m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
+				}
+				ms = append(ms, m)
+			}
+
+			resp := response.Response{
+				Ok:               tc.ok,
+				MonitorMessages:  monitorMessages,
+				NotifierMessages: notifierMessages,
+			}
+			monitor.SendAll(context.Background(), mockPP, ms, resp)
+		})
+	}
 }
