@@ -36,11 +36,14 @@ type Monitor interface {
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
 
-func SendResponse(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response) bool {
+func SendResponse(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response, ping bool) bool {
 	msg := strings.Join(r.MonitorMessages, "\n")
-	if r.Ok {
+	switch {
+	case r.Ok && ping:
+		return m.Success(ctx, ppfmt, msg)
+	case r.Ok && !ping:
 		return m.Log(ctx, ppfmt, msg)
-	} else {
+	default:
 		return m.Failure(ctx, ppfmt, msg)
 	}
 }
