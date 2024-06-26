@@ -93,7 +93,7 @@ func deleteIP(
 
 func detectIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, ipNet ipnet.Type, use1001 bool,
-) (netip.Addr, bool) {
+) (netip.Addr, response.Response) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
@@ -114,7 +114,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
-	return ip, ok
+	return ip, GenerateDetectResponse(ipNet, ok)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
@@ -123,12 +123,12 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
-			resps = append(resps, GenerateDetectResponse(ipNet, ok))
+			ip, resp := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			resps = append(resps, resp)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if ok {
+			if resp.Ok {
 				resps = append(resps, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
 		}
