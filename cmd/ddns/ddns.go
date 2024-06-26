@@ -92,7 +92,7 @@ func realMain() int { //nolint:funlen
 
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
-	// Ping monitors and notifiers regardless of whether initConfig succeeded
+	// Ping monitors regardless of whether initConfig succeeded
 	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
 	if !configOk {
@@ -102,7 +102,7 @@ func realMain() int { //nolint:funlen
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
-	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification.
+	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if c.UpdateCron != nil {
 		notifier.SendAll(ctx, ppfmt, c.Notifiers, fmt.Sprintf("Started running %s.", formatName()))
 	}
@@ -143,9 +143,19 @@ func realMain() int { //nolint:funlen
 
 		// If there's nothing scheduled in near future
 		if next.IsZero() {
-			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
+			ppfmt.Errorf(pp.EmojiUserError,
+				"No scheduled updates in near future; consider changing the setting UPDATE_CRON=%s",
+				cron.DescribeSchedule(c.UpdateCron),
+			)
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "No scheduled updates")
+			notifier.SendAll(ctx, ppfmt, c.Notifiers,
+				fmt.Sprintf(
+					"%s was terminated because there are no scheduled updates in near future. "+
+						"Consider changing the setting UPDATE_CRON=%s.",
+					formatName(), cron.DescribeSchedule(c.UpdateCron),
+				),
+			)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
