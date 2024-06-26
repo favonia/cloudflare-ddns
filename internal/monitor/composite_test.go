@@ -2,6 +2,7 @@ package monitor_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -127,45 +128,55 @@ func TestExitStatusAll(t *testing.T) {
 func TestSendResponseAll(t *testing.T) {
 	t.Parallel()
 
-	monitorMessages := []string{"forest", "grass"}
-	monitorMessage := strings.Join(monitorMessages, "\n")
-	notifierMessages := []string{"ocean"}
+	notifierMessages := []string{"ocean", "moon"}
 
-	for name, tc := range map[string]struct {
-		ok   bool
-		ping bool
+	for name1, tc1 := range map[string]struct {
+		monitorMessages []string
 	}{
-		"success": {true, true},
-		"log":     {true, false},
-		"fail1":   {false, true},
-		"fail2":   {false, false},
+		"nil":   {nil},
+		"empty": {[]string{}},
+		"one":   {[]string{"hi"}},
+		"two":   {[]string{"hi", "hey"}},
 	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+		monitorMessage := strings.Join(tc1.monitorMessages, "\n")
 
-			ms := make([]monitor.Monitor, 0, 5)
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
+		for name2, tc2 := range map[string]struct {
+			ok   bool
+			ping bool
+		}{
+			"success": {true, true},
+			"log":     {true, false},
+			"fail1":   {false, true},
+			"fail2":   {false, false},
+		} {
+			t.Run(fmt.Sprintf("%s/%s", name1, name2), func(t *testing.T) {
+				t.Parallel()
 
-			for range 5 {
-				m := mocks.NewMockMonitor(mockCtrl)
-				switch {
-				case tc.ok && tc.ping:
-					m.EXPECT().Success(context.Background(), mockPP, monitorMessage)
-				case tc.ok && !tc.ping:
-					m.EXPECT().Log(context.Background(), mockPP, monitorMessage)
-				default:
-					m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
+				ms := make([]monitor.Monitor, 0, 5)
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
+
+				for range 5 {
+					m := mocks.NewMockMonitor(mockCtrl)
+					switch {
+					case tc2.ok && tc2.ping:
+						m.EXPECT().Success(context.Background(), mockPP, monitorMessage)
+					case tc2.ok && len(monitorMessage) > 0:
+						m.EXPECT().Log(context.Background(), mockPP, monitorMessage)
+					case tc2.ok:
+					default: // !tc.ok
+						m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
+					}
+					ms = append(ms, m)
 				}
-				ms = append(ms, m)
-			}
 
-			resp := response.Response{
-				Ok:               tc.ok,
-				MonitorMessages:  monitorMessages,
-				NotifierMessages: notifierMessages,
-			}
-			monitor.SendResponseAll(context.Background(), mockPP, ms, resp, tc.ping)
-		})
+				resp := response.Response{
+					Ok:               tc2.ok,
+					MonitorMessages:  tc1.monitorMessages,
+					NotifierMessages: notifierMessages,
+				}
+				monitor.SendResponseAll(context.Background(), mockPP, ms, resp, tc2.ping)
+			})
+		}
 	}
 }

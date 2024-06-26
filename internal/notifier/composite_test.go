@@ -2,6 +2,7 @@ package notifier_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -52,34 +53,45 @@ func TestSendResponseAll(t *testing.T) {
 	t.Parallel()
 
 	monitorMessages := []string{"forest", "grass"}
-	notifierMessages := []string{"ocean", "moon"}
-	notifierMessage := strings.Join(notifierMessages, " ")
 
-	for name, tc := range map[string]struct {
-		ok bool
+	for name1, tc1 := range map[string]struct {
+		notifierMessages []string
 	}{
-		"ok":    {true},
-		"notok": {false},
+		"nil":   {nil},
+		"empty": {[]string{}},
+		"one":   {[]string{"hi"}},
+		"two":   {[]string{"hi", "hey"}},
 	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+		notifierMessage := strings.Join(tc1.notifierMessages, " ")
 
-			ns := make([]notifier.Notifier, 0, 5)
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
+		for name2, tc2 := range map[string]struct {
+			ok bool
+		}{
+			"ok":    {true},
+			"notok": {false},
+		} {
+			t.Run(fmt.Sprintf("%s/%s", name1, name2), func(t *testing.T) {
+				t.Parallel()
 
-			for range 5 {
-				n := mocks.NewMockNotifier(mockCtrl)
-				n.EXPECT().Send(context.Background(), mockPP, notifierMessage)
-				ns = append(ns, n)
-			}
+				ns := make([]notifier.Notifier, 0, 5)
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
 
-			resp := response.Response{
-				Ok:               tc.ok,
-				MonitorMessages:  monitorMessages,
-				NotifierMessages: notifierMessages,
-			}
-			notifier.SendResponseAll(context.Background(), mockPP, ns, resp)
-		})
+				for range 5 {
+					n := mocks.NewMockNotifier(mockCtrl)
+					if len(tc1.notifierMessages) > 0 {
+						n.EXPECT().Send(context.Background(), mockPP, notifierMessage)
+					}
+					ns = append(ns, n)
+				}
+
+				resp := response.Response{
+					Ok:               tc2.ok,
+					MonitorMessages:  monitorMessages,
+					NotifierMessages: tc1.notifierMessages,
+				}
+				notifier.SendResponseAll(context.Background(), mockPP, ns, resp)
+			})
+		}
 	}
 }

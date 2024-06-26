@@ -39,11 +39,13 @@ type Monitor interface {
 func SendResponse(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response, ping bool) bool {
 	msg := strings.Join(r.MonitorMessages, "\n")
 	switch {
-	case r.Ok && ping:
+	case !r.Ok:
+		return m.Failure(ctx, ppfmt, msg)
+	case ping:
 		return m.Success(ctx, ppfmt, msg)
-	case r.Ok && !ping:
+	case len(r.MonitorMessages) > 0:
 		return m.Log(ctx, ppfmt, msg)
 	default:
-		return m.Failure(ctx, ppfmt, msg)
+		return true
 	}
 }
