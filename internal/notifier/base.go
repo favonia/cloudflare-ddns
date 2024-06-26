@@ -21,5 +21,8 @@ type Notifier interface {
 }
 
 func SendResponse(ctx context.Context, ppfmt pp.PP, n Notifier, r response.Response) bool {
+	if len(r.NotifierMessages) == 0 {
+		return true
+	}
 	return n.Send(ctx, ppfmt, strings.Join(r.NotifierMessages, " "))
 }
