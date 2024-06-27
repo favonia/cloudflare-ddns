@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	mathrand "math/rand"
+	mathrand "math/rand/v2"
 	"net/http"
 	"net/netip"
 	"strings"
