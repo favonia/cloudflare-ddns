@@ -47,6 +47,10 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     Parsing of Cron expressions.
   - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
     HTTP clients with automatic retries and exponential backoff.
+  - [go-querystring](https://github.com/google/go-querystring):\
+    A library to construct URL query parameters.
+  - [shoutrrr](https://github.com/containrrr/shoutrrr):\
+    A notification library for sending general updates.
   - [ttlcache](https://github.com/jellydator/ttlcache):\
     In-memory cache to hold Cloudflare API responses.
   - [mock](https://go.uber.org/mock) (for testing only):\
