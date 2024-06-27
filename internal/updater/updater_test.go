@@ -13,9 +13,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
@@ -123,7 +123,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
@@ -215,7 +215,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
@@ -296,7 +296,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
@@ -383,7 +383,7 @@ func TestUpdateIPsHints(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
@@ -646,7 +646,7 @@ func TestUpdateIPs(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
@@ -791,7 +791,7 @@ func TestDeleteIPs(t *testing.T) {
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
 
-			require.Equal(t, response.Response{
+			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,

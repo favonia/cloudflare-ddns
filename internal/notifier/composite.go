@@ -3,8 +3,8 @@ package notifier
 import (
 	"context"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 // DescribeAll calls [Notifier.Describe] for each monitor in the group with the callback.
@@ -25,11 +25,11 @@ func SendAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, message string) bo
 	return ok
 }
 
-// SendResponseAll calls [SendResponse] for each monitor in the group.
-func SendResponseAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, r response.Response) bool {
+// SendMessageAll calls [SendMessage] for each monitor in the group.
+func SendMessageAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, msg message.Message) bool {
 	ok := true
 	for _, n := range ns {
-		if !SendResponse(ctx, ppfmt, n, r) {
+		if !SendMessage(ctx, ppfmt, n, msg) {
 			ok = false
 		}
 	}

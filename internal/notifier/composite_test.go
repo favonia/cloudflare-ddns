@@ -8,9 +8,9 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 func TestDescribeAll(t *testing.T) {
@@ -49,7 +49,7 @@ func TestSendAll(t *testing.T) {
 	notifier.SendAll(context.Background(), mockPP, ms, message)
 }
 
-func TestSendResponseAll(t *testing.T) {
+func TestSendMessageAll(t *testing.T) {
 	t.Parallel()
 
 	monitorMessages := []string{"forest", "grass"}
@@ -85,12 +85,12 @@ func TestSendResponseAll(t *testing.T) {
 					ns = append(ns, n)
 				}
 
-				resp := response.Response{
+				msg := message.Message{
 					Ok:               tc2.ok,
 					MonitorMessages:  monitorMessages,
 					NotifierMessages: tc1.notifierMessages,
 				}
-				notifier.SendResponseAll(context.Background(), mockPP, ns, resp)
+				notifier.SendMessageAll(context.Background(), mockPP, ns, msg)
 			})
 		}
 	}

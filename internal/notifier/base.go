@@ -5,8 +5,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 //go:generate mockgen -typed -destination=../mocks/mock_notifier.go -package=mocks . Notifier
@@ -20,9 +20,9 @@ type Notifier interface {
 	Send(ctx context.Context, ppfmt pp.PP, msg string) bool
 }
 
-func SendResponse(ctx context.Context, ppfmt pp.PP, n Notifier, r response.Response) bool {
-	if len(r.NotifierMessages) == 0 {
+func SendMessage(ctx context.Context, ppfmt pp.PP, n Notifier, msg message.Message) bool {
+	if len(msg.NotifierMessages) == 0 {
 		return true
 	}
-	return n.Send(ctx, ppfmt, strings.Join(r.NotifierMessages, " "))
+	return n.Send(ctx, ppfmt, strings.Join(msg.NotifierMessages, " "))
 }

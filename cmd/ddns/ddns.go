@@ -57,8 +57,8 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
 		resp := updater.DeleteIPs(ctx, ppfmt, c, s)
-		monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp, false)
-		notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
+		monitor.SendMessageAll(ctx, ppfmt, c.Monitors, resp, false)
+		notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, resp)
 	}
 }
 
@@ -129,8 +129,8 @@ func realMain() int { //nolint:funlen
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
 			resp := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
-			monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp, true)
-			notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
+			monitor.SendMessageAll(ctx, ppfmt, c.Monitors, resp, true)
+			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, resp)
 		}
 
 		// Check if cron was disabled
