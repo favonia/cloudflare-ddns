@@ -157,12 +157,13 @@ func (c *HandleFlushCacheCall) DoAndReturn(f func()) *HandleFlushCacheCall {
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) (map[string]netip.Addr, bool) {
+func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) (map[string]netip.Addr, bool, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(map[string]netip.Addr)
 	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret2, _ := ret[2].(bool)
+	return ret0, ret1, ret2
 }
 
 // ListRecords indicates an expected call of ListRecords.
@@ -178,19 +179,19 @@ type HandleListRecordsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleListRecordsCall) Return(arg0 map[string]netip.Addr, arg1 bool) *HandleListRecordsCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *HandleListRecordsCall) Return(arg0 map[string]netip.Addr, arg1, arg2 bool) *HandleListRecordsCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

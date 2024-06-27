@@ -57,7 +57,8 @@ func TestSleep(t *testing.T) {
 
 			sig := signal.Setup()
 			go signalSelf()
-			res := sig.Sleep(mockPP, tc.alarmDelay)
+			target := time.Now().Add(tc.alarmDelay)
+			res := sig.SleepUntil(mockPP, target)
 			<-done
 			sig.TearDown()
 

@@ -17,18 +17,6 @@ import (
 
 //go:generate mockgen -typed -destination=../mocks/mock_setter.go -package=mocks . Setter
 
-// ResponseCode encodes the minimum information to generate messages for monitors and notifiers.
-type ResponseCode int
-
-const (
-	// No updates were needed. The records were already okay.
-	ResponseNoUpdatesNeeded = iota
-	// Updates were needed and they are done.
-	ResponseUpdatesApplied
-	// Updates were needed and they did not fully complete. The records may be inconsistent.
-	ResponseUpdatesFailed
-)
-
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
 	// Set sets a particular domain to the given IP address.
@@ -42,7 +30,7 @@ type Setter interface {
 		proxied bool,
 	) ResponseCode
 
-	// Clear removes DNS records of a particular domain.
+	// Delete removes DNS records of a particular domain.
 	Delete(
 		ctx context.Context,
 		ppfmt pp.PP,

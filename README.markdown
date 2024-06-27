@@ -28,11 +28,15 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 By default, public IP addresses are obtained via [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
+### 👁️ Notification
+
+- 🩺 The updater can notify you via [Healthchecks](https://healthchecks.io) and [Uptime Kuma](https://uptime.kuma.pet) when it fails.
+- 📣 The updater can also send you general updates via [shoutrrr](https://containrrr.dev/shoutrrr/).
+
 ### 🛡️ Security
 
 - 🛑 Superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
-- 🩺 The updater can notify you via [Healthchecks](https://healthchecks.io) and [Uptime Kuma](https://uptime.kuma.pet) when the updating fails.
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
   - [cap](https://sites.google.com/site/fullycapable):\
@@ -43,6 +47,10 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     Parsing of Cron expressions.
   - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
     HTTP clients with automatic retries and exponential backoff.
+  - [go-querystring](https://github.com/google/go-querystring):\
+    A library to construct URL query parameters.
+  - [shoutrrr](https://github.com/containrrr/shoutrrr):\
+    A notification library for sending general updates.
   - [ttlcache](https://github.com/jellydator/ttlcache):\
     In-memory cache to hold Cloudflare API responses.
   - [mock](https://go.uber.org/mock) (for testing only):\
@@ -64,8 +72,19 @@ docker run \
   -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   -e DOMAINS=example.org,www.example.org,example.io \
   -e PROXIED=true \
-  favonia/cloudflare-ddns
+  favonia/cloudflare-ddns:latest
 ```
+
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the Docker tag `latest-nocapdrop` to disable the explicit dropping of Linux capabilities:
+
+> ```bash
+> docker run \
+>   --network host \
+>   -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+>   -e DOMAINS=example.org,www.example.org,example.io \
+>   -e PROXIED=true \
+>   favonia/cloudflare-ddns:latest-nocapdrop
+> ```
 
 </details>
 
@@ -79,6 +98,15 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
+
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please pass the build tag `nocapdrop` to disable the explicit dropping of capabilities:
+
+> ```bash
+> CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+>   DOMAINS=example.org,www.example.org,example.io \
+>   PROXIED=true \
+>   go run -tags nocapdrop github.com/favonia/cloudflare-ddns/cmd/ddns@latest
+> ```
 
 </details>
 
@@ -122,6 +150,12 @@ services:
       - PROXIED=true
         # Tell Cloudflare to cache webpages and hide your IP
 ```
+
+🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please replace the above `latest` tag above with `latest-nocapdrop` to disable the explicit dropping of capabilities:
+
+> ```yaml
+> image: favonia/cloudflare-ddns:latest-nocapdrop
+> ```
 
 _(Click to expand the following important tips.)_
 
@@ -258,15 +292,15 @@ _(Click to expand the following items.)_
 <details>
 <summary>⏳ Schedules, triggers, and timeouts</summary>
 
-| Name                | Valid Values                                                                                                                                                                     | Meaning                                                                                                                                                                                                        | Required? | Default Value                 |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
-| `CACHE_EXPIRATION`  | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                                | The expiration of cached Cloudflare API responses                                                                                                                                                              | No        | `6h0m0s` (6 hours)            |
-| `DELETE_ON_STOP`    | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                              | Whether managed DNS records should be deleted on exit                                                                                                                                                          | No        | `false`                       |
-| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                                | The timeout of each attempt to detect IP addresses                                                                                                                                                             | No        | `5s` (5 seconds)              |
-| `TZ`                | Recognized timezones, such as `UTC`                                                                                                                                              | The timezone used for logging and parsing `UPDATE_CRON`                                                                                                                                                        | No        | `UTC`                         |
-| `UPDATE_CRON`       | Cron expressions _and_ the special value `@once`. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for cron expressions. | The schedule to re-check IP addresses and update DNS records (if necessary). If the special value `@once` is used, cron is disabled and the updater will terminate immediately after updating the DNS records. | No        | `@every 5m` (every 5 minutes) |
-| `UPDATE_ON_START`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                              | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                                             | No        | `true`                        |
-| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                                | The timeout of each attempt to update DNS records, per domain, per record type                                                                                                                                 | No        | `30s` (30 seconds)            |
+| Name                | Valid Values                                                                                                                                                                  | Meaning                                                                                                                                                                             | Required? | Default Value                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
+| `CACHE_EXPIRATION`  | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The expiration of cached Cloudflare API responses                                                                                                                                   | No        | `6h0m0s` (6 hours)            |
+| `DELETE_ON_STOP`    | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether managed DNS records should be deleted on exit                                                                                                                               | No        | `false`                       |
+| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The timeout of each attempt to detect IP addresses                                                                                                                                  | No        | `5s` (5 seconds)              |
+| `TZ`                | Recognized timezones, such as `UTC`                                                                                                                                           | The timezone used for logging and parsing `UPDATE_CRON`                                                                                                                             | No        | `UTC`                         |
+| `UPDATE_CRON`       | Cron expressions or the special value `@once`. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for cron expressions. | The schedule to re-check IP addresses and update DNS records (if necessary). The special value `@once` means the updater will terminate immediately after updating the DNS records. | No        | `@every 5m` (every 5 minutes) |
+| `UPDATE_ON_START`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                  | No        | `true`                        |
+| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The timeout of each attempt to update DNS records, per domain, per record type                                                                                                      | No        | `30s` (30 seconds)            |
 
 > ⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 
@@ -330,12 +364,13 @@ _(Click to expand the following items.)_
 <details>
 <summary>👁️ Logging, Healthchecks, and Uptime Kuma</summary>
 
-| Name                           | Valid Values                                                                                                                                                      | Meaning                                                                                                                                                                                            | Required? | Default Value |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| `QUIET`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging                                                                                                                                                      | No        | `false`       |
-| `EMOJI`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                                                                                                                                               | No        | `true`        |
-| `HEALTHCHECKS`                 | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                    | No        | (unset)       |
-| 🧪 `UPTIMEKUMA` (experimental) | 🧪 Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.    | 🧪 If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
+| Name                           | Valid Values                                                                                                                                                               | Meaning                                                                                                                                                                                            | Required? | Default Value |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
+| `QUIET`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                        | Whether the updater should reduce the logging                                                                                                                                                      | No        | `false`       |
+| `EMOJI`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                        | Whether the updater should use emojis in the logging                                                                                                                                               | No        | `true`        |
+| `HEALTHCHECKS`                 | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below)          | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                    | No        | (unset)       |
+| `SHOUTRRR`                     | Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/), such as `discord://<token>@<id>`. If set, the updater will send messages when it updates IP addresses | No                                                                                                                                                                                                 | (unset)   |
+| 🧪 `UPTIMEKUMA` (experimental) | 🧪 Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.             | 🧪 If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
 
 > 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.
 
@@ -359,7 +394,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 _(Click to expand the following items.)_
 
 <details>
-<summary>I am migrating from <a href="https://github.com/oznu/docker-cloudflare-ddns">oznu/cloudflare-ddns</a> (now archived)</summary>
+<summary>I am migrating from oznu/cloudflare-ddns (now archived)</summary>
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
@@ -379,7 +414,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>I am migrating from <a href="https://github.com/timothymiller/cloudflare-ddns">timothymiller/cloudflare-ddns</a></summary>
+<summary>I am migrating from timothymiller/cloudflare-ddns</summary>
 
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -394,11 +429,9 @@ _(Click to expand the following items.)_
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
+> This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python code always purged unmanaged DNS records back then and it was not configurable via environment variables. There were feature requests to address these issues but they seemed to be neglected by its author [timothymiller](https://github.com/timothymiller/); I thus made my clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments. [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) eventually provided an option `purgeUnknownRecords` to disable the unwanted purging, but this updater already went on its way. I believe my Go clone is now much improved and enhanced, but my opinions are biased and you should check the technical details by yourself.
+
 </details>
-
-## 😟 Known Issues
-
-It is known that using the [cap](https://sites.google.com/site/fullycapable) library within Linux Containers (LXC) will crash the Go runtime system.
 
 ## 💖 Feedback
 

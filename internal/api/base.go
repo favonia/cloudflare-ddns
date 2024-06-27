@@ -16,7 +16,7 @@ import (
 // A Handle represents a generic API to update DNS records. Currently, the only implementation is Cloudflare.
 type Handle interface {
 	// ListRecords lists all matching DNS records.
-	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) (map[string]netip.Addr, bool)
+	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) (map[string]netip.Addr, bool, bool) //nolint:lll
 
 	// DeleteRecord deletes one DNS record.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type, id string) bool

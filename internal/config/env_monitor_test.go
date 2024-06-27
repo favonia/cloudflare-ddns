@@ -169,7 +169,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiUserError,
-					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will not be used`,
+					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
 					"hello")
 			},
 		},
