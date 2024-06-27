@@ -69,11 +69,22 @@ func ExitStatusAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, code int, mes
 	return ok
 }
 
-// SendMessageAll calls [SendMessage] for each monitor in ms.
-func SendMessageAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, msg message.Message, ping bool) bool {
+// PingMessageAll calls [SendMessage] for each monitor in ms.
+func PingMessageAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, msg message.Message) bool {
 	ok := true
 	for _, m := range ms {
-		if !SendMessage(ctx, ppfmt, m, msg, ping) {
+		if !PingMessage(ctx, ppfmt, m, msg) {
+			ok = false
+		}
+	}
+	return ok
+}
+
+// LogMessageAll calls [SendMessage] for each monitor in ms.
+func LogMessageAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, msg message.Message) bool {
+	ok := true
+	for _, m := range ms {
+		if !LogMessage(ctx, ppfmt, m, msg) {
 			ok = false
 		}
 	}

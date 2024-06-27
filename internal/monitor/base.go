@@ -36,13 +36,20 @@ type Monitor interface {
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
 
-func SendMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message, ping bool) bool {
+func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
+	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+	if msg.Ok {
+		return m.Success(ctx, ppfmt, monitorMsg)
+	} else {
+		return m.Failure(ctx, ppfmt, monitorMsg)
+	}
+}
+
+func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
 	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
 	switch {
 	case !msg.Ok:
 		return m.Failure(ctx, ppfmt, monitorMsg)
-	case ping:
-		return m.Success(ctx, ppfmt, monitorMsg)
 	case len(msg.MonitorMessages) > 0:
 		return m.Log(ctx, ppfmt, monitorMsg)
 	default:
