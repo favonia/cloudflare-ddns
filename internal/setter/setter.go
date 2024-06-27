@@ -77,7 +77,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// If it's up to date and there are no other records, we are done!
 	if foundMatched && len(unprocessedMatched) == 0 && len(unprocessedUnmatched) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date (cached)", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date (cached)", recordType, domainDescription) //nolint:lll
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
 		}

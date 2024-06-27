@@ -117,7 +117,7 @@ func newHandle(t *testing.T, emptyAccountID bool) (*http.ServeMux, api.Handle) {
 func TestNewValid(t *testing.T) {
 	t.Parallel()
 
-	_, _ = newHandle(t, false)
+	newHandle(t, false)
 }
 
 func TestNewEmpty(t *testing.T) {
@@ -917,7 +917,7 @@ func TestDeleteRecordValid(t *testing.T) {
 
 	listAccessCount, deleteAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
@@ -1033,7 +1033,7 @@ func TestUpdateRecordValid(t *testing.T) {
 
 	listAccessCount, updateAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
@@ -1150,8 +1150,8 @@ func TestCreateRecordValid(t *testing.T) {
 
 	listAccessCount, createAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	_, _ = h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
+	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)

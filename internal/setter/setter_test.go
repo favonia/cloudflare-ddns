@@ -101,7 +101,8 @@ func TestSet(t *testing.T) {
 			300,
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date (cached)", "AAAA", "sub.test.org")
+				m.EXPECT().Infof(pp.EmojiAlreadyDone,
+					"The %s records of %q are already up to date (cached)", "AAAA", "sub.test.org")
 			},
 			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true, true)
