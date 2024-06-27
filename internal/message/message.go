@@ -1,5 +1,10 @@
+// package message defines the structure holding messages to
+// monitors and notifiers.
 package message
 
+// Message holds the messages and success/failure status.
+// To monitors, the status is far more important than the message,
+// and to notifiers, all messages are important.
 type Message struct {
 	Ok               bool
 	MonitorMessages  []string
@@ -16,9 +21,9 @@ func NewEmpty() Message {
 
 func Merge(msgs ...Message) Message {
 	var (
-		allOk               = true
-		allMonitorMessages  = map[bool][]string{true: {}, false: {}}
-		allNotifierMessages = []string{}
+		allOk                        = true
+		allMonitorMessages           = map[bool][]string{}
+		allNotifierMessages []string = nil
 	)
 
 	for _, msg := range msgs {

@@ -430,12 +430,12 @@ func TestUpdateIPs(t *testing.T) {
 		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"none": {
-			true, []string{}, []string{}, nil, mockproviders{}, nil,
+			true, nil, nil, nil, mockproviders{}, nil,
 		},
 		"ip4only": {
 			true,
-			[]string{},
-			[]string{},
+			nil,
+			nil,
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -478,8 +478,8 @@ func TestUpdateIPs(t *testing.T) {
 		},
 		"both": {
 			true,
-			[]string{},
-			[]string{},
+			nil,
+			nil,
 			ppBoth,
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -676,8 +676,8 @@ func TestDeleteIPs(t *testing.T) {
 	}{
 		"none": {
 			true,
-			[]string{},
-			[]string{},
+			nil,
+			nil,
 			nil,
 			mockproviders{},
 			nil,
