@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -81,7 +82,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 
 			default: // problematic case
 				ppfmt.Warningf(pp.EmojiUserError,
-					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will not be used`,
+					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
 					k)
 			}
 		}
@@ -165,7 +166,8 @@ func (h *UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) 
 
 // Failure pings the server with status=down.
 func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
-	if len(message) == 0 {
+	message = strings.TrimSpace(message)
+	if message == "" {
 		// If we do not send a non-empty message to Uptime Kuma, it seems to
 		// either keep the previous message (even if it was for success) or
 		// assume the message is "OK". Either is bad.
