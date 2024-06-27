@@ -636,15 +636,17 @@ func TestListRecords(t *testing.T) {
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
 	mockPP := mocks.NewMockPP(mockCtrl)
-	ips, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.False(t, cached)
 	require.Equal(t, expected, ips)
 	require.Equal(t, 0, accessCount)
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	ips, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.True(t, cached)
 	require.Equal(t, expected, ips)
 }
 
@@ -698,8 +700,9 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 	require.Equal(t, 0, accessCount)
 
@@ -711,8 +714,9 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 	require.Equal(t, 0, accessCount)
 }
@@ -762,15 +766,17 @@ func TestListRecordsWildcard(t *testing.T) {
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
 	mockPP := mocks.NewMockPP(mockCtrl)
-	ips, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.False(t, cached)
 	require.Equal(t, expected, ips)
 	require.Equal(t, 0, accessCount)
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	ips, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.True(t, cached)
 	require.Equal(t, expected, ips)
 }
 
@@ -785,14 +791,16 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
-	ips, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
-	ips, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 }
 
@@ -809,8 +817,9 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
@@ -820,8 +829,9 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
+	require.False(t, cached)
 	require.Nil(t, ips)
 }
 
@@ -907,10 +917,11 @@ func TestDeleteRecordValid(t *testing.T) {
 
 	listAccessCount, deleteAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
-	rs, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.True(t, cached)
 	require.Empty(t, rs)
 }
 
@@ -1022,10 +1033,11 @@ func TestUpdateRecordValid(t *testing.T) {
 
 	listAccessCount, updateAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
-	rs, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.True(t, cached)
 	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::2")}, rs)
 }
 
@@ -1138,10 +1150,11 @@ func TestCreateRecordValid(t *testing.T) {
 
 	listAccessCount, createAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
-	_, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	_, _, _ = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_, _ = h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
-	rs, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
+	require.True(t, cached)
 	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::1")}, rs)
 }
 

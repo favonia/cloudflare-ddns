@@ -52,7 +52,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return ResponseFailed
@@ -76,7 +76,11 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	// If it's up to date and there are no other records, we are done!
 	if foundMatched && len(unprocessedMatched) == 0 && len(unprocessedUnmatched) == 0 {
-		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
+		if cached {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date (cached)", recordType, domainDescription)
+		} else {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
+		}
 		return ResponseNoop
 	}
 
@@ -177,7 +181,7 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rmap, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
+	rmap, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return ResponseFailed
@@ -191,7 +195,11 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 	sort.Strings(unmatchedIDs)
 
 	if len(unmatchedIDs) == 0 {
-		ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted", recordType, domainDescription)
+		if cached {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted (cached)", recordType, domainDescription)
+		} else {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted", recordType, domainDescription)
+		}
 		return ResponseNoop
 	}
 
