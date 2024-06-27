@@ -174,17 +174,18 @@ zoneSearch:
 	return "", false
 }
 
-// ListRecords lists all matching DNS records.
+// ListRecords lists all matching DNS records. The second return value indicates whether
+// the lists are from cached responses.
 func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type,
-) (map[string]netip.Addr, bool) {
+) (map[string]netip.Addr, bool, bool) {
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		return rmap.Value(), true
+		return rmap.Value(), true, true
 	}
 
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
@@ -196,7 +197,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		})
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
-		return nil, false
+		return nil, false, false
 	}
 
 	rmap := map[string]netip.Addr{}
@@ -204,13 +205,13 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiImpossible, "Failed to parse the IP address in records of %q: %v", domain.Describe(), err)
-			return nil, false
+			return nil, false, false
 		}
 	}
 
 	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), rmap, ttlcache.DefaultTTL)
 
-	return rmap, true
+	return rmap, false, true
 }
 
 // DeleteRecord deletes one DNS record.
