@@ -168,7 +168,7 @@ func realMain() int { //nolint:funlen
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
 			if c.UpdateCron != nil {
-				notifier.SendAll(ctx, ppfmt, c.Notifiers, "Cloudflare DDNS stopped.")
+				notifier.SendAll(ctx, ppfmt, c.Notifiers, "Stopped running Cloudflare DDNS.")
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
