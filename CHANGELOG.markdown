@@ -1,8 +1,9 @@
 # [1.12.0](https://github.com/favonia/cloudflare-ddns/compare/v1.11.0...v1.12.0) (2024-06-27)
 
 This is a major release with two significant improvements:
-1. Now the code support non-Linux Unix-like platforms.
-2. It now embeds [shoutrrr](https://containrrr.dev/shoutrrr) to send general updates.
+
+1. The new version supports non-Linux Unix-like platforms: support of Linux capabilities will be disabled on non-Linux platforms.
+2. The new version embeds [shoutrrr](https://containrrr.dev/shoutrrr) to send general updates.
 
 The notification system was rewritten to work with [shoutrrr](https://containrrr.dev/shoutrrr).
 
