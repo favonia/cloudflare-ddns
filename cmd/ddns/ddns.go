@@ -96,15 +96,15 @@ func realMain() int { //nolint:funlen
 	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
 	if !configOk {
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Config errors")
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Configuration errors")
 		notifier.SendAll(ctx, ppfmt, c.Notifiers,
-			"The configuration has errors. Please check the logging for more details.")
+			"Cloudflare DDNS was misconfigured. Please check the logging for more details.")
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if c.UpdateCron != nil {
-		notifier.SendAll(ctx, ppfmt, c.Notifiers, fmt.Sprintf("Started running %s.", formatName()))
+		notifier.SendAll(ctx, ppfmt, c.Notifiers, "Started running Cloudflare DDNS.")
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -144,16 +144,16 @@ func realMain() int { //nolint:funlen
 		// If there's nothing scheduled in near future
 		if next.IsZero() {
 			ppfmt.Errorf(pp.EmojiUserError,
-				"No scheduled updates in near future; consider changing the setting UPDATE_CRON=%s",
+				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
 				cron.DescribeSchedule(c.UpdateCron),
 			)
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "No scheduled updates")
 			notifier.SendAll(ctx, ppfmt, c.Notifiers,
 				fmt.Sprintf(
-					"%s was terminated because there are no scheduled updates in near future. "+
-						"Consider changing the setting UPDATE_CRON=%s.",
-					formatName(), cron.DescribeSchedule(c.UpdateCron),
+					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
+						"Consider changing the value of UPDATE_CRON (%s).",
+					cron.DescribeSchedule(c.UpdateCron),
 				),
 			)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
@@ -166,8 +166,10 @@ func realMain() int { //nolint:funlen
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.SleepUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Terminated")
-			notifier.SendAll(ctx, ppfmt, c.Notifiers, formatName()+" was terminated.")
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
+			if c.UpdateCron != nil {
+				notifier.SendAll(ctx, ppfmt, c.Notifiers, "Cloudflare DDNS stopped.")
+			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}
