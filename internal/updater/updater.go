@@ -10,8 +10,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -52,7 +52,7 @@ var errSettingTimeout = errors.New("setting timeout")
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) response.Response {
+) message.Message {
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
@@ -71,13 +71,13 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	return GenerateUpdateResponse(ipNet, ip, resps)
+	return GenerateUpdateMessage(ipNet, ip, resps)
 }
 
 // deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
 func deleteIP(
 	ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type,
-) response.Response {
+) message.Message {
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
@@ -88,12 +88,12 @@ func deleteIP(
 		resps.Register(resp, domain)
 	}
 
-	return GenerateDeleteResponse(ipNet, resps)
+	return GenerateDeleteMessage(ipNet, resps)
 }
 
 func detectIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, ipNet ipnet.Type, use1001 bool,
-) (netip.Addr, bool) {
+) (netip.Addr, message.Message) {
 	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
 	defer cancel()
 
@@ -114,37 +114,37 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
-	return ip, ok
+	return ip, GenerateDetectMessage(ipNet, ok)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
-func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) response.Response {
-	var resps []response.Response
+func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
+	var msgs []message.Message
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, ok := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
-			resps = append(resps, GenerateDetectResponse(ipNet, ok))
+			ip, msg := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if ok {
-				resps = append(resps, setIP(ctx, ppfmt, c, s, ipNet, ip))
+			if msg.Ok {
+				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
 		}
 	}
-	return response.Merge(resps...)
+	return message.Merge(msgs...)
 }
 
 // DeleteIPs removes all DNS records of managed domains.
-func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) response.Response {
-	var resps []response.Response
+func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
+	var msgs []message.Message
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			resps = append(resps, deleteIP(ctx, ppfmt, c, s, ipNet))
+			msgs = append(msgs, deleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}
 
-	return response.Merge(resps...)
+	return message.Merge(msgs...)
 }

@@ -5,8 +5,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 //go:generate mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . Monitor
@@ -36,15 +36,22 @@ type Monitor interface {
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
 
-func SendResponse(ctx context.Context, ppfmt pp.PP, m Monitor, r response.Response, ping bool) bool {
-	msg := strings.Join(r.MonitorMessages, "\n")
+func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
+	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+	if msg.Ok {
+		return m.Success(ctx, ppfmt, monitorMsg)
+	} else {
+		return m.Failure(ctx, ppfmt, monitorMsg)
+	}
+}
+
+func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
+	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
 	switch {
-	case !r.Ok:
-		return m.Failure(ctx, ppfmt, msg)
-	case ping:
-		return m.Success(ctx, ppfmt, msg)
-	case len(r.MonitorMessages) > 0:
-		return m.Log(ctx, ppfmt, msg)
+	case !msg.Ok:
+		return m.Failure(ctx, ppfmt, monitorMsg)
+	case len(msg.MonitorMessages) > 0:
+		return m.Log(ctx, ppfmt, monitorMsg)
 	default:
 		return true
 	}

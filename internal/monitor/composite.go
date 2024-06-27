@@ -3,8 +3,8 @@ package monitor
 import (
 	"context"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/response"
 )
 
 // DescribeAll calls [Monitor.Describe] for each monitor in the group with the callback.
@@ -69,11 +69,22 @@ func ExitStatusAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, code int, mes
 	return ok
 }
 
-// SendResponseAll calls [SendResponse] for each monitor in ms.
-func SendResponseAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, resp response.Response, ping bool) bool {
+// PingMessageAll calls [SendMessage] for each monitor in ms.
+func PingMessageAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, msg message.Message) bool {
 	ok := true
 	for _, m := range ms {
-		if !SendResponse(ctx, ppfmt, m, resp, ping) {
+		if !PingMessage(ctx, ppfmt, m, msg) {
+			ok = false
+		}
+	}
+	return ok
+}
+
+// LogMessageAll calls [SendMessage] for each monitor in ms.
+func LogMessageAll(ctx context.Context, ppfmt pp.PP, ms []Monitor, msg message.Message) bool {
+	ok := true
+	for _, m := range ms {
+		if !LogMessage(ctx, ppfmt, m, msg) {
 			ok = false
 		}
 	}

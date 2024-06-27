@@ -7,7 +7,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/response"
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -31,23 +31,23 @@ func ListEnglishJoin(items []string) string {
 	}
 }
 
-func GenerateDetectResponse(ipNet ipnet.Type, ok bool) response.Response {
+func GenerateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
 	if ok {
-		return response.NewEmpty()
+		return message.NewEmpty()
 	}
 
-	return response.Response{
+	return message.Message{
 		Ok:               false,
 		MonitorMessages:  []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
 		NotifierMessages: []string{fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe())},
 	}
 }
 
-func GenerateUpdateResponse(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) response.Response {
+func GenerateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) message.Message {
 	switch {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to set %s (%s): %s",
@@ -65,7 +65,7 @@ func GenerateUpdateResponse(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) 
 		}
 
 	case len(s[setter.ResponseFailed]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to set %s (%s): %s",
@@ -82,7 +82,7 @@ func GenerateUpdateResponse(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) 
 		}
 
 	case len(s[setter.ResponseUpdated]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: true,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Set %s (%s): %s",
@@ -99,15 +99,15 @@ func GenerateUpdateResponse(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) 
 		}
 
 	default:
-		return response.Response{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }
 
-func GenerateDeleteResponse(ipNet ipnet.Type, s SetterResponses) response.Response {
+func GenerateDeleteMessage(ipNet ipnet.Type, s SetterResponses) message.Message {
 	switch {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
@@ -123,7 +123,7 @@ func GenerateDeleteResponse(ipNet ipnet.Type, s SetterResponses) response.Respon
 		}
 
 	case len(s[setter.ResponseFailed]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
@@ -138,7 +138,7 @@ func GenerateDeleteResponse(ipNet ipnet.Type, s SetterResponses) response.Respon
 		}
 
 	case len(s[setter.ResponseUpdated]) > 0:
-		return response.Response{
+		return message.Message{
 			Ok: true,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Deleted %s: %s",
@@ -153,6 +153,6 @@ func GenerateDeleteResponse(ipNet ipnet.Type, s SetterResponses) response.Respon
 		}
 
 	default:
-		return response.Response{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }

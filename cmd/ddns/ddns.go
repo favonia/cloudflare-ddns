@@ -57,8 +57,8 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
 		resp := updater.DeleteIPs(ctx, ppfmt, c, s)
-		monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp, false)
-		notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
+		monitor.LogMessageAll(ctx, ppfmt, c.Monitors, resp)
+		notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, resp)
 	}
 }
 
@@ -92,23 +92,29 @@ func realMain() int { //nolint:funlen
 
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
-	// Ping the monitor regardless of whether initConfig succeeded
+	// Ping monitors regardless of whether initConfig succeeded
 	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
 	if !configOk {
-		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Config errors")
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Configuration errors")
+		notifier.SendAll(ctx, ppfmt, c.Notifiers,
+			"Cloudflare DDNS was misconfigured. Please check the logging for more details.")
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
+	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
+	if c.UpdateCron != nil {
+		notifier.SendAll(ctx, ppfmt, c.Notifiers, "Started running Cloudflare DDNS.")
+	}
 
+	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
+	// is not happy with completely empty log. As a workaround, we will print a Notice here.
+	// See GitHub issue #426.
+	//
+	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
+	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
+	// having the internal cron disabled.)
 	if c.UpdateCron != nil && !ppfmt.IsEnabledFor(pp.Verbose) {
-		// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
-		// is not happy with completely empty log. As a workaround, we will print a Notice here.
-		// See GitHub issue #426.
-		//
-		// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
-		// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
-		// having the internal cron disabled.)
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -123,8 +129,8 @@ func realMain() int { //nolint:funlen
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
 			resp := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
-			monitor.SendResponseAll(ctx, ppfmt, c.Monitors, resp, true)
-			notifier.SendResponseAll(ctx, ppfmt, c.Notifiers, resp)
+			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, resp)
+			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, resp)
 		}
 
 		// Check if cron was disabled
@@ -137,9 +143,19 @@ func realMain() int { //nolint:funlen
 
 		// If there's nothing scheduled in near future
 		if next.IsZero() {
-			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
+			ppfmt.Errorf(pp.EmojiUserError,
+				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
+				cron.DescribeSchedule(c.UpdateCron),
+			)
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "No scheduled updates")
+			notifier.SendAll(ctx, ppfmt, c.Notifiers,
+				fmt.Sprintf(
+					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
+						"Consider changing the value of UPDATE_CRON (%s).",
+					cron.DescribeSchedule(c.UpdateCron),
+				),
+			)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -150,7 +166,10 @@ func realMain() int { //nolint:funlen
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.SleepUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Terminated")
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
+			if c.UpdateCron != nil {
+				notifier.SendAll(ctx, ppfmt, c.Notifiers, "Cloudflare DDNS stopped.")
+			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}
