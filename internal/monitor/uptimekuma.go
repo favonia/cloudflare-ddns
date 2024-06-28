@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -166,7 +165,6 @@ func (h *UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) 
 
 // Failure pings the server with status=down.
 func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
-	message = strings.TrimSpace(message)
 	if message == "" {
 		// If we do not send a non-empty message to Uptime Kuma, it seems to
 		// either keep the previous message (even if it was for success) or

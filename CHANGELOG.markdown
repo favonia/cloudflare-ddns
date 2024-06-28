@@ -1,3 +1,33 @@
+# [1.12.0](https://github.com/favonia/cloudflare-ddns/compare/v1.11.0...v1.12.0) (2024-06-27)
+
+This is a major release with two significant improvements:
+
+1. The new version now embeds [shoutrrr](https://containrrr.dev/shoutrrr) to send general updates.
+2. The new version now supports non-Linux Unix-like platforms: support of Linux capabilities will be disabled on non-Linux platforms, but all other features should run as expected.
+
+There are also two notable improvements to the stock Docker images. Starting from this version:
+
+1. Annotations are properly added to the Docker images, thanks to the updates to the upstream Docker tools.
+2. A new Docker tag, `1`, is introduced to track the latest version with the major version `1`. I plan to develop `2.0.0` that may contain larger breaking changes. Sticking to `1` instead of `latest` now can avoid unexpected breakage in the future.
+
+Note that the notification system was revamped to integrate [shoutrrr](https://containrrr.dev/shoutrrr). As a result, messages have been reworded.
+
+### Bug Fixes
+
+- add annotations to Docker images ([#652](https://github.com/favonia/cloudflare-ddns/issues/652)) ([fe2ed00](https://github.com/favonia/cloudflare-ddns/commit/fe2ed0037ebba39bb7f2a4c594f58d462439a76f)) ([#653](https://github.com/favonia/cloudflare-ddns/issues/653)) ([56748eb](https://github.com/favonia/cloudflare-ddns/commit/56748eb00753abaac2b725ffafb80bfd4cb59fd8)) ([#659](https://github.com/favonia/cloudflare-ddns/issues/659)) ([687ccaa](https://github.com/favonia/cloudflare-ddns/commit/687ccaa7a8606f06d4d9e203603791b51f9bee98)), closes [#652](https://github.com/favonia/cloudflare-ddns/issues/652)
+- limit the number of bytes read from an HTTP response ([#629](https://github.com/favonia/cloudflare-ddns/issues/629)) ([d64e8d4](https://github.com/favonia/cloudflare-ddns/commit/d64e8d4da44fb1d497cc871385061fb009e5ead8))
+- **monitor:** force non-empty error messages for Uptime Kuma ([#624](https://github.com/favonia/cloudflare-ddns/issues/624)) ([a9bce5c](https://github.com/favonia/cloudflare-ddns/commit/a9bce5c56df6dbabe9ca4ae973a92cadfef6735b)) ([#774](https://github.com/favonia/cloudflare-ddns/issues/774)) ([df565b9](https://github.com/favonia/cloudflare-ddns/commit/df565b94199ad97642438dd4eb5f9168193c981f))
+- **provider:** trim the response of `url:URL` (generic provider) before parsing it ([#709](https://github.com/favonia/cloudflare-ddns/issues/709)) ([48edb15](https://github.com/favonia/cloudflare-ddns/commit/48edb15b4be0b3c9e74cfe712fc9f1e01c4ef537))
+
+### Features
+
+- **cron:** show the far start time during countdown ([#761](https://github.com/favonia/cloudflare-ddns/issues/761)) ([39c659a](https://github.com/favonia/cloudflare-ddns/commit/39c659a29ff358dee7927148c13c45f2eea90265))
+- **droproot:** support non-Linux platforms ([#733](https://github.com/favonia/cloudflare-ddns/issues/733)) ([a93b6ab](https://github.com/favonia/cloudflare-ddns/commit/a93b6abca56ab0809dc56a84e64e665d1fdede12))
+- **monitor:** prioritize error messages ([#622](https://github.com/favonia/cloudflare-ddns/issues/622)) ([2f653ca](https://github.com/favonia/cloudflare-ddns/commit/2f653caddbb9d948110e79988bfb8523fe7cfccc))
+- **monitor:** send `Failed to detect the IPv4/6 address` to monitors ([#620](https://github.com/favonia/cloudflare-ddns/issues/620)) ([f1793ad](https://github.com/favonia/cloudflare-ddns/commit/f1793addc44f28f060732c2bd9add08d7d23018e))
+- **notifier:** embed shoutrrr ([#633](https://github.com/favonia/cloudflare-ddns/issues/633)) ([61f42a0](https://github.com/favonia/cloudflare-ddns/commit/61f42a04b665ffb710b3cc9fb326dbe6ada53125)) ([#640](https://github.com/favonia/cloudflare-ddns/issues/640)) ([817125e](https://github.com/favonia/cloudflare-ddns/commit/817125ef46511d24372f54afb67a90b7547bb532)) ([#762](https://github.com/favonia/cloudflare-ddns/issues/762)) ([c09e2b2](https://github.com/favonia/cloudflare-ddns/commit/c09e2b2ed965b9028a37d21d6a318fca48f539ca)) ([#768](https://github.com/favonia/cloudflare-ddns/issues/768)) ([9cdfec3](https://github.com/favonia/cloudflare-ddns/commit/9cdfec393a3ef24803fc7a1280515c1fda72102e)) ([#772](https://github.com/favonia/cloudflare-ddns/issues/772)) ([b8d4604](https://github.com/favonia/cloudflare-ddns/commit/b8d4604109ae6521266032cd5fc81fd05578fc7a)), closes [#532](https://github.com/favonia/cloudflare-ddns/issues/532)
+- **setter:** print `(cached)` for results based on cached API responses ([#776](https://github.com/favonia/cloudflare-ddns/issues/776)) ([1bcbbf0](https://github.com/favonia/cloudflare-ddns/commit/1bcbbf058741594e13ce6ec382edc908b383f112))
+
 # [1.11.0](https://github.com/favonia/cloudflare-ddns/compare/v1.10.1...v1.11.0) (2023-10-23)
 
 This release adds the experimental support of Uptime Kuma.
