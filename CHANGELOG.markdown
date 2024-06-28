@@ -1,16 +1,16 @@
-# [1.12.0](https://github.com/favonia/cloudflare-ddns/compare/v1.11.0...v1.12.0) (2024-06-27)
+# [1.12.0](https://github.com/favonia/cloudflare-ddns/compare/v1.11.0...v1.12.0) (2024-06-28)
 
 This is a major release with two significant improvements:
 
-1. The new version now embeds [shoutrrr](https://containrrr.dev/shoutrrr) to send general updates.
-2. The new version now supports non-Linux Unix-like platforms: support of Linux capabilities will be disabled on non-Linux platforms, but all other features should run as expected.
+1. The updater can send general updates via [shoutrrr](https://containrrr.dev/shoutrrr) now.
+2. The updater supports non-Linux platforms now: support of Linux capabilities is disabled on non-Linux platforms, but all other features should run as expected at least on Unix-like platforms.
 
 There are also two notable improvements to the stock Docker images. Starting from this version:
 
-1. Annotations are properly added to the Docker images, thanks to the updates to the upstream Docker tools.
+1. Annotations are properly added to the Docker images, thanks to the updates to the upstream Docker toolchain.
 2. A new Docker tag, `1`, is introduced to track the latest version with the major version `1`. I plan to develop `2.0.0` that may contain larger breaking changes. Sticking to `1` instead of `latest` now can avoid unexpected breakage in the future.
 
-Note that the notification system was revamped to integrate [shoutrrr](https://containrrr.dev/shoutrrr). As a result, messages have been reworded.
+Note that the notification system was revamped to integrate [shoutrrr](https://containrrr.dev/shoutrrr). As a result, messages may have been reworded.
 
 ### Bug Fixes
 
