@@ -2,8 +2,8 @@
 
 This is a major release with two significant improvements:
 
-1. The updater can send general updates via [shoutrrr](https://containrrr.dev/shoutrrr) now.
-2. The updater supports non-Linux platforms now. Linux capabilities are not supported on other platforms, but all other features should run as expected at least in Unix-like systems.
+1. The updater can **send general updates via [shoutrrr](https://containrrr.dev/shoutrrr) now.**
+2. The updater **supports non-Linux platforms now.** Linux capabilities are not supported on other platforms, but all other features should run as expected at least on Unix-like platforms.
 
 There are also two notable improvements to the stock Docker images. Starting from this version:
 
