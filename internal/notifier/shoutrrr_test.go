@@ -54,7 +54,7 @@ func TestShoutrrrSend(t *testing.T) {
 			"hello",
 			false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiError, "Failed to send some shoutrrr message: %v", gomock.Any())
+				m.EXPECT().Errorf(pp.EmojiError, "Failed to send shoutrrr message: %v", gomock.Any())
 			},
 		},
 	} {

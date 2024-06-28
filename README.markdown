@@ -28,11 +28,15 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 By default, public IP addresses are obtained via [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
+### 👁️ Notification
+
+- 🩺 The updater can notify you via [Healthchecks](https://healthchecks.io) and [Uptime Kuma](https://uptime.kuma.pet) when it fails.
+- 📣 The updater can also send you general updates via [shoutrrr](https://containrrr.dev/shoutrrr/).
+
 ### 🛡️ Security
 
 - 🛑 Superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
-- 🩺 The updater can notify you via [Healthchecks](https://healthchecks.io) and [Uptime Kuma](https://uptime.kuma.pet) when the updating fails.
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
   - [cap](https://sites.google.com/site/fullycapable):\
@@ -43,6 +47,10 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     Parsing of Cron expressions.
   - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
     HTTP clients with automatic retries and exponential backoff.
+  - [go-querystring](https://github.com/google/go-querystring):\
+    A library to construct URL query parameters.
+  - [shoutrrr](https://github.com/containrrr/shoutrrr):\
+    A notification library for sending general updates.
   - [ttlcache](https://github.com/jellydator/ttlcache):\
     In-memory cache to hold Cloudflare API responses.
   - [mock](https://go.uber.org/mock) (for testing only):\
@@ -301,12 +309,12 @@ _(Click to expand the following items.)_
 <details>
 <summary>🐣 Parameters of new DNS records</summary>
 
+> 👉 The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the above settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.
+
 | Name      | Valid Values                                                                                                                                                                             | Meaning                                                 | Required? | Default Value                              |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------- | ------------------------------------------ |
 | `PROXIED` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). 🧪 See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare | No        | `false`                                    |
 | `TTL`     | Time-to-live (TTL) values in seconds                                                                                                                                                     | The TTL values used to create new DNS records           | No        | `1` (This means “automatic” to Cloudflare) |
-
-> 👉 The updater will preserve existing proxy and TTL settings until it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the above settings will apply. To change existing proxy and TTL settings now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing proxy and TTL settings in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). It is not hard to implement optional overwriting.
 
 > <details>
 > <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
@@ -354,14 +362,15 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>👁️ Logging, Healthchecks, and Uptime Kuma</summary>
+<summary>👁️ Logging, Healthchecks, Uptime Kuma, and shoutrrr</summary>
 
-| Name                           | Valid Values                                                                                                                                                      | Meaning                                                                                                                                                                                            | Required? | Default Value |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| `QUIET`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging                                                                                                                                                      | No        | `false`       |
-| `EMOJI`                        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                                                                                                                                               | No        | `true`        |
-| `HEALTHCHECKS`                 | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                    | No        | (unset)       |
-| 🧪 `UPTIMEKUMA` (experimental) | 🧪 Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.    | 🧪 If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
+| Name           | Valid Values                                                                                                                                                      | Meaning                                                                                                                                                                                         | Required? | Default Value |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
+| `EMOJI`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                                                                                                                                            | No        | `true`        |
+| `HEALTHCHECKS` | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                 | No        | (unset)       |
+| `QUIET`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging                                                                                                                                                   | No        | `false`       |
+| `UPTIMEKUMA`   | Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.       | If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
+| 🧪 `SHOUTRRR`  | 🧪 Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/) such as `discord://<token>@<id>`                                                           | 🧪 If set, the updater will send messages when it updates IP addresses                                                                                                                          | No        | (unset)       |
 
 > 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.
 
@@ -413,7 +422,7 @@ _(Click to expand the following items.)_
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
-> This updater was originally written as a Go clone of [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because it always purged unmanaged DNS records back then and it was not configurable via environment variables. There were feature requests to address these issues but they seemed to be neglected by its author [timothymiller](https://github.com/timothymiller/); I thus made my clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments. [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) eventually provided an option `purgeUnknownRecords` to disable the unwanted purging, but this updater already went on its way. I believe my Go clone was now much improved and enhanced, but my opinions are biased and you should check the technical details by yourself.
+> This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python code always purged unmanaged DNS records back then and it was not configurable via environment variables. There were feature requests to address these issues but they seemed to be neglected by its author [timothymiller](https://github.com/timothymiller/); I thus made my clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments. [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) eventually provided an option `purgeUnknownRecords` to disable the unwanted purging, but this updater already went on its way. I believe my Go clone is now much improved and enhanced, but my opinions are biased and you should check the technical details by yourself.
 
 </details>
 

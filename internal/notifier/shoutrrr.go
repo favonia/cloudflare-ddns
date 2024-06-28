@@ -56,7 +56,7 @@ func (s *Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 	allOk := true
 	for _, err := range errs {
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiError, "Failed to send some shoutrrr message: %v", err)
+			ppfmt.Errorf(pp.EmojiError, "Failed to send shoutrrr message: %v", err)
 			allOk = false
 		}
 	}

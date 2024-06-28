@@ -10,6 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/signal"
@@ -55,11 +56,9 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
-		if ok, msg := updater.DeleteIPs(ctx, ppfmt, c, s); ok {
-			monitor.LogAll(ctx, ppfmt, msg, c.Monitors)
-		} else {
-			monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
-		}
+		msg := updater.DeleteIPs(ctx, ppfmt, c, s)
+		monitor.LogMessageAll(ctx, ppfmt, c.Monitors, msg)
+		notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)
 	}
 }
 
@@ -93,23 +92,29 @@ func realMain() int { //nolint:funlen
 
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
-	// Ping the monitor regardless of whether initConfig succeeded
-	monitor.StartAll(ctx, ppfmt, formatName(), c.Monitors)
+	// Ping monitors regardless of whether initConfig succeeded
+	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
 	if !configOk {
-		monitor.ExitStatusAll(ctx, ppfmt, 1, "Config errors", c.Monitors)
+		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Configuration errors")
+		notifier.SendAll(ctx, ppfmt, c.Notifiers,
+			"Cloudflare DDNS was misconfigured. Please check the logging for more details.")
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
+	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
+	if c.UpdateCron != nil {
+		notifier.SendAll(ctx, ppfmt, c.Notifiers, "Started running Cloudflare DDNS.")
+	}
 
+	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
+	// is not happy with completely empty log. As a workaround, we will print a Notice here.
+	// See GitHub issue #426.
+	//
+	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
+	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
+	// having the internal cron disabled.)
 	if c.UpdateCron != nil && !ppfmt.IsEnabledFor(pp.Verbose) {
-		// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
-		// is not happy with completely empty log. As a workaround, we will print a Notice here.
-		// See GitHub issue #426.
-		//
-		// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
-		// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
-		// having the internal cron disabled.)
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -121,13 +126,11 @@ func realMain() int { //nolint:funlen
 
 		// Update the IP addresses
 		if first && !c.UpdateOnStart {
-			monitor.SuccessAll(ctx, ppfmt, "Started (no action)", c.Monitors)
+			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
-			if ok, msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s); ok {
-				monitor.SuccessAll(ctx, ppfmt, msg, c.Monitors)
-			} else {
-				monitor.FailureAll(ctx, ppfmt, msg, c.Monitors)
-			}
+			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
+			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg)
+			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)
 		}
 
 		// Check if cron was disabled
@@ -140,9 +143,19 @@ func realMain() int { //nolint:funlen
 
 		// If there's nothing scheduled in near future
 		if next.IsZero() {
-			ppfmt.Errorf(pp.EmojiUserError, "No scheduled updates in near future")
+			ppfmt.Errorf(pp.EmojiUserError,
+				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
+				cron.DescribeSchedule(c.UpdateCron),
+			)
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, 1, "No scheduled updates", c.Monitors)
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "No scheduled updates")
+			notifier.SendAll(ctx, ppfmt, c.Notifiers,
+				fmt.Sprintf(
+					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
+						"Consider changing the value of UPDATE_CRON (%s).",
+					cron.DescribeSchedule(c.UpdateCron),
+				),
+			)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -153,7 +166,10 @@ func realMain() int { //nolint:funlen
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.SleepUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
-			monitor.ExitStatusAll(ctx, ppfmt, 0, "Terminated", c.Monitors)
+			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
+			if c.UpdateCron != nil {
+				notifier.SendAll(ctx, ppfmt, c.Notifiers, "Stopped running Cloudflare DDNS.")
+			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}

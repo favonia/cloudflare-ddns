@@ -3,7 +3,9 @@ package monitor
 
 import (
 	"context"
+	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -32,4 +34,25 @@ type Monitor interface {
 
 	// ExitStatus records the exit status (as an integer in the POSIX style).
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
+}
+
+func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
+	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+	if msg.Ok {
+		return m.Success(ctx, ppfmt, monitorMsg)
+	} else {
+		return m.Failure(ctx, ppfmt, monitorMsg)
+	}
+}
+
+func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
+	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+	switch {
+	case !msg.Ok:
+		return m.Failure(ctx, ppfmt, monitorMsg)
+	case len(msg.MonitorMessages) > 0:
+		return m.Log(ctx, ppfmt, monitorMsg)
+	default:
+		return true
+	}
 }

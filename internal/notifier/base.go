@@ -3,7 +3,9 @@ package notifier
 
 import (
 	"context"
+	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -16,4 +18,11 @@ type Notifier interface {
 
 	// Send out a message.
 	Send(ctx context.Context, ppfmt pp.PP, msg string) bool
+}
+
+func SendMessage(ctx context.Context, ppfmt pp.PP, n Notifier, msg message.Message) bool {
+	if len(msg.NotifierMessages) == 0 {
+		return true
+	}
+	return n.Send(ctx, ppfmt, strings.Join(msg.NotifierMessages, " "))
 }
