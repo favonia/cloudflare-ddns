@@ -45,7 +45,7 @@ func TestShoutrrrSend(t *testing.T) {
 			"hello",
 			true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotification, "Sent shoutrrr message")
+				m.EXPECT().Infof(pp.EmojiMessage, "Sent shoutrrr message")
 			},
 		},
 		"ill-formed url": {

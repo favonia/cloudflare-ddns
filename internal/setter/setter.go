@@ -104,14 +104,17 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		// Let's go through all stale records
 		for i, id := range unprocessedUnmatched {
 			// Let's try to update it first.
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip); !ok {
+			if !s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
 				// If the updating fails, we will delete it.
-				if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); ok {
+				if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)",
 						recordType, domainDescription, id)
 
 					// Only when the deletion succeeds, we decrease the counter of remaining stale records.
 					numUndeletedUnmatched--
+				} else if ctx.Err() != nil {
+					ppfmt.Noticef(pp.EmojiBailingOut, "Operation timed out or canceled; bailing out . . .")
+					return ResponseFailed
 				}
 
 				// No matter whether the deletion succeeds, move on.
@@ -145,6 +148,9 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 
 			// Now it's up to date! unprocessedMatched and unprocessedUnmatched must both be empty at this point
 			foundMatched = true
+		} else if ctx.Err() != nil {
+			ppfmt.Noticef(pp.EmojiBailingOut, "Operation timed out or canceled; bailing out . . .")
+			return ResponseFailed
 		}
 	}
 
@@ -153,6 +159,9 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 			numUndeletedUnmatched--
+		} else if ctx.Err() != nil {
+			ppfmt.Noticef(pp.EmojiBailingOut, "Operation timed out or canceled; bailing out . . .")
+			return ResponseFailed
 		}
 	}
 
@@ -162,6 +171,9 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
+		} else if ctx.Err() != nil {
+			ppfmt.Noticef(pp.EmojiBailingOut, "Operation timed out or canceled; bailing out . . .")
+			return ResponseFailed
 		}
 	}
 
@@ -205,8 +217,13 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 
 	allOk := true
 	for _, id := range unmatchedIDs {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); !ok {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			allOk = false
+
+			if ctx.Err() != nil {
+				ppfmt.Noticef(pp.EmojiBailingOut, "Operation timed out or canceled; bailing out . . .")
+				return ResponseFailed
+			}
 			continue
 		}
 
