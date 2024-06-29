@@ -36,7 +36,7 @@ func TestSet(t *testing.T) {
 		ip                netip.Addr
 		resp              setter.ResponseCode
 		prepareMockPP     func(m *mocks.MockPP)
-		prepareMockHandle func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle)
+		prepareMockHandle func(ctx context.Context, canceler func(), ppfmt pp.PP, m *mocks.MockHandle)
 	}{
 		"0": {
 			ip1,
@@ -44,7 +44,7 @@ func TestSet(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{}, true, true),
 					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record1, true),
@@ -62,7 +62,7 @@ func TestSet(t *testing.T) {
 					record1,
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(true),
@@ -78,7 +78,25 @@ func TestSet(t *testing.T) {
 					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
+					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
+					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record2, true),
+				)
+			},
+		},
+		"1unmatched-updatetimeout": {
+			ip1,
+			setter.ResponseUpdated,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
+				)
+			},
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
@@ -94,7 +112,7 @@ func TestSet(t *testing.T) {
 				m.EXPECT().Infof(pp.EmojiAlreadyDone,
 					"The %s records of %q are already up to date (cached)", "AAAA", "sub.test.org")
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true, true)
 			},
 		},
@@ -104,7 +122,7 @@ func TestSet(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org")
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, false, true)
 			},
 		},
@@ -120,7 +138,7 @@ func TestSet(t *testing.T) {
 					record2,
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true), //nolint:lll
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
@@ -131,7 +149,7 @@ func TestSet(t *testing.T) {
 			ip1,
 			setter.ResponseUpdated,
 			nil,
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true), //nolint:lll
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(false),
@@ -157,7 +175,7 @@ func TestSet(t *testing.T) {
 						record2),
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(true),
@@ -180,7 +198,7 @@ func TestSet(t *testing.T) {
 					),
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
@@ -199,7 +217,7 @@ func TestSet(t *testing.T) {
 					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
@@ -221,7 +239,7 @@ func TestSet(t *testing.T) {
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
@@ -243,7 +261,7 @@ func TestSet(t *testing.T) {
 					m.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
@@ -260,7 +278,7 @@ func TestSet(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org")
 			},
-			func(ctx context.Context, ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(nil, false, false)
 			},
 		},
@@ -269,7 +287,8 @@ func TestSet(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 
-			ctx := context.Background()
+			ctx, canceler := context.WithCancel(context.Background())
+			defer canceler()
 
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -277,7 +296,7 @@ func TestSet(t *testing.T) {
 			}
 			mockHandle := mocks.NewMockHandle(mockCtrl)
 			if tc.prepareMockHandle != nil {
-				tc.prepareMockHandle(ctx, mockPP, mockHandle)
+				tc.prepareMockHandle(ctx, canceler, mockPP, mockHandle)
 			}
 
 			s, ok := setter.New(mockPP, mockHandle)
