@@ -20,6 +20,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
+const RecordComment string = "hello"
+
 //nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
 func TestUpdateIPsMultiple(t *testing.T) {
 	domain4_1 := domain.FQDN("ip4.hello1")
@@ -55,13 +57,13 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseUpdated),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseFailed),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseUpdated),
 				)
 			},
@@ -76,13 +78,13 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello1"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseUpdated),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello2"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello3"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseUpdated),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello4"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseUpdated),
 				)
 			},
@@ -100,7 +102,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				domain4_3: false,
 				domain4_4: false,
 			}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			conf.Use1001 = true
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -199,7 +201,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 				domain4_3: false,
 				domain4_4: false,
 			}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			conf.Use1001 = true
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -263,7 +265,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 			},
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseUpdated)
 			},
 		},
@@ -275,7 +277,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 			conf.Domains = domains
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			conf.Use1001 = true
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -351,7 +353,7 @@ func TestUpdateIPsHints(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseNoop)
 			},
 		},
@@ -363,7 +365,7 @@ func TestUpdateIPsHints(t *testing.T) {
 			conf.Domains = domains
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			conf.Use1001 = true
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -443,7 +445,7 @@ func TestUpdateIPs(t *testing.T) {
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseNoop)
 			},
 		},
@@ -454,7 +456,7 @@ func TestUpdateIPs(t *testing.T) {
 			pp4only,
 			mockproviders{ipnet.IP4: provider4},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseFailed)
 			},
 		},
@@ -465,7 +467,7 @@ func TestUpdateIPs(t *testing.T) {
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseUpdated)
 			},
 		},
@@ -476,7 +478,7 @@ func TestUpdateIPs(t *testing.T) {
 			pp6only,
 			mockproviders{ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseFailed)
 			},
 		},
@@ -488,9 +490,9 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
 				)
 			},
@@ -503,9 +505,9 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseFailed),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
 				)
 			},
@@ -518,9 +520,9 @@ func TestUpdateIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: provider4, ipnet.IP6: provider6},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				gomock.InOrder(
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseNoop),
-					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+					m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 						Return(setter.ResponseFailed),
 				)
 			},
@@ -543,7 +545,7 @@ func TestUpdateIPs(t *testing.T) {
 				ipnet.IP6: provider6,
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip6.hello"), ipnet.IP6, ip6, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseNoop)
 			},
 		},
@@ -567,7 +569,7 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					Return(setter.ResponseNoop)
 			},
 		},
@@ -611,7 +613,7 @@ func TestUpdateIPs(t *testing.T) {
 				},
 			},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
-				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, "hello").
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					DoAndReturn(
 						func(_ context.Context, _ pp.PP, _ domain.Domain, _ ipnet.Type, _ netip.Addr, _ api.TTL, _ bool, _ string) setter.ResponseCode { //nolint:lll
 							time.Sleep(2 * time.Second)
@@ -627,7 +629,7 @@ func TestUpdateIPs(t *testing.T) {
 			conf.Domains = domains
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			conf.Use1001 = true
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -775,7 +777,7 @@ func TestDeleteIPs(t *testing.T) {
 			conf.Domains = domains
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
-			conf.RecordComment = "hello"
+			conf.RecordComment = RecordComment
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
