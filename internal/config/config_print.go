@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,13 @@ import (
 )
 
 const itemTitleWidth = 24
+
+func describeComment(c string) string {
+	if c == "" {
+		return "(empty)"
+	}
+	return strconv.Quote(c)
+}
 
 func describeDomains(domains []domain.Domain) string {
 	if len(domains) == 0 {
@@ -79,11 +87,12 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section("New DNS records:")
 	item("TTL:", "%s", c.TTL.Describe())
-	if len(c.Proxied) > 0 {
+	{
 		_, inverseMap := getInverseMap(c.Proxied)
 		item("Proxied domains:", "%s", describeDomains(inverseMap[true]))
 		item("Unproxied domains:", "%s", describeDomains(inverseMap[false]))
 	}
+	item("Record comment:", "%s", describeComment(c.RecordComment))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", c.DetectionTimeout)

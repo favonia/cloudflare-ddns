@@ -26,6 +26,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
 		!ReadTTL(ppfmt, "TTL", &c.TTL) ||
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
+		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
 		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||

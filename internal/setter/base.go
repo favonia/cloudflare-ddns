@@ -28,6 +28,7 @@ type Setter interface {
 		IP netip.Addr,
 		ttl api.TTL,
 		proxied bool,
+                recordComment string,
 	) ResponseCode
 
 	// Delete removes DNS records of a particular domain.
