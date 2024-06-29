@@ -55,7 +55,7 @@ func TestPrintDefault(t *testing.T) {
 }
 
 //nolint:paralleltest // changing the environment variable TZ
-func TestPrintMaps(t *testing.T) {
+func TestPrintValues(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
@@ -82,7 +82,7 @@ func TestPrintMaps(t *testing.T) {
 		printItem(innerMockPP, "TTL:", "30000"),
 		printItem(innerMockPP, "Proxied domains:", "a, b"),
 		printItem(innerMockPP, "Unproxied domains:", "c, d"),
-		printItem(innerMockPP, "Record comment:", "(empty)"),
+		printItem(innerMockPP, "Record comment:", "\"Created by Cloudflare DDNS\""),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		printItem(innerMockPP, "IP detection:", "5s"),
 		printItem(innerMockPP, "Record updating:", "30s"),
@@ -104,6 +104,8 @@ func TestPrintMaps(t *testing.T) {
 	c.Proxied[domain.FQDN("b")] = true
 	c.Proxied[domain.FQDN("c")] = false
 	c.Proxied[domain.FQDN("d")] = false
+
+	c.RecordComment = "Created by Cloudflare DDNS"
 
 	m := mocks.NewMockMonitor(mockCtrl)
 	m.EXPECT().Describe(gomock.Any()).
