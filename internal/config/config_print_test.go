@@ -44,6 +44,9 @@ func TestPrintDefault(t *testing.T) {
 		printItem(innerMockPP, "Cache expiration:", "6h0m0s"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		printItem(innerMockPP, "TTL:", "1 (auto)"),
+		printItem(innerMockPP, "Proxied domains:", "(none)"),
+		printItem(innerMockPP, "Unproxied domains:", "(none)"),
+		printItem(innerMockPP, "Record comment:", "(empty)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		printItem(innerMockPP, "IP detection:", "5s"),
 		printItem(innerMockPP, "Record updating:", "30s"),
@@ -52,7 +55,7 @@ func TestPrintDefault(t *testing.T) {
 }
 
 //nolint:paralleltest // changing the environment variable TZ
-func TestPrintMaps(t *testing.T) {
+func TestPrintValues(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	store(t, "TZ", "UTC")
@@ -79,6 +82,7 @@ func TestPrintMaps(t *testing.T) {
 		printItem(innerMockPP, "TTL:", "30000"),
 		printItem(innerMockPP, "Proxied domains:", "a, b"),
 		printItem(innerMockPP, "Unproxied domains:", "c, d"),
+		printItem(innerMockPP, "Record comment:", "\"Created by Cloudflare DDNS\""),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		printItem(innerMockPP, "IP detection:", "5s"),
 		printItem(innerMockPP, "Record updating:", "30s"),
@@ -100,6 +104,8 @@ func TestPrintMaps(t *testing.T) {
 	c.Proxied[domain.FQDN("b")] = true
 	c.Proxied[domain.FQDN("c")] = false
 	c.Proxied[domain.FQDN("d")] = false
+
+	c.RecordComment = "Created by Cloudflare DDNS"
 
 	m := mocks.NewMockMonitor(mockCtrl)
 	m.EXPECT().Describe(gomock.Any()).
@@ -140,6 +146,9 @@ func TestPrintEmpty(t *testing.T) {
 		printItem(innerMockPP, "Cache expiration:", "0s"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "New DNS records:"),
 		printItem(innerMockPP, "TTL:", "0"),
+		printItem(innerMockPP, "Proxied domains:", "(none)"),
+		printItem(innerMockPP, "Unproxied domains:", "(none)"),
+		printItem(innerMockPP, "Record comment:", "(empty)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Timeouts:"),
 		printItem(innerMockPP, "IP detection:", "0s"),
 		printItem(innerMockPP, "Record updating:", "0s"),

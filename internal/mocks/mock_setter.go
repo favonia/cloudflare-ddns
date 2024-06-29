@@ -83,17 +83,17 @@ func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, domain.Dom
 }
 
 // Set mocks base method.
-func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool) setter.ResponseCode {
+func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "Set", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockSetterMockRecorder) Set(arg0, arg1, arg2, arg3, arg4, arg5, arg6 any) *SetterSetCall {
+func (mr *MockSetterMockRecorder) Set(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 any) *SetterSetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSetter)(nil).Set), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSetter)(nil).Set), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	return &SetterSetCall{Call: call}
 }
 
@@ -109,13 +109,13 @@ func (c *SetterSetCall) Return(arg0 setter.ResponseCode) *SetterSetCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSetCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) setter.ResponseCode) *SetterSetCall {
+func (c *SetterSetCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool) setter.ResponseCode) *SetterSetCall {
+func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -27,6 +27,7 @@ type Config struct {
 	TTL              api.TTL
 	ProxiedTemplate  string
 	Proxied          map[domain.Domain]bool
+	RecordComment    string
 	DetectionTimeout time.Duration
 	UpdateTimeout    time.Duration
 	Monitors         []monitor.Monitor
@@ -53,6 +54,7 @@ func Default() *Config {
 		TTL:              api.TTLAuto,
 		ProxiedTemplate:  "false",
 		Proxied:          map[domain.Domain]bool{},
+		RecordComment:    "",
 		UpdateTimeout:    time.Second * 30, //nolint:mnd
 		DetectionTimeout: time.Second * 5,  //nolint:mnd
 		Monitors:         nil,
