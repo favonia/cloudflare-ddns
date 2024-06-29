@@ -59,7 +59,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errSettingTimeout)
 		defer cancel()
 
-		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain))
+		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
 		resps.Register(resp, domain)
 		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {

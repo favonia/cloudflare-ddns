@@ -26,7 +26,7 @@ type Handle interface {
 
 	// CreateRecord creates one DNS record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type,
-		ip netip.Addr, ttl TTL, proxied bool) (string, bool)
+		ip netip.Addr, ttl TTL, proxied bool, recordComment string) (string, bool)
 
 	// FlushCache flushes the API cache. Flushing should automatically happen when other operations encounter errors.
 	FlushCache()

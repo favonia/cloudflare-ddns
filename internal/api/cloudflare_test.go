@@ -1128,7 +1128,7 @@ func TestCreateRecordValid(t *testing.T) {
 					!assert.Equal(t, "::1", record.Content) ||
 					!assert.Equal(t, 100, record.TTL) ||
 					!assert.False(t, *record.Proxied) ||
-					!assert.Equal(t, "Created by cloudflare-ddns", record.Comment) {
+					!assert.Equal(t, "hello", record.Comment) {
 					panic(http.ErrAbortHandler)
 				}
 				record.ID = "record1"
@@ -1144,14 +1144,14 @@ func TestCreateRecordValid(t *testing.T) {
 
 	createAccessCount = 1
 	mockPP := mocks.NewMockPP(mockCtrl)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.True(t, ok)
 	require.Equal(t, "record1", actualID)
 
 	listAccessCount, createAccessCount = 1, 1
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
+	h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
@@ -1173,7 +1173,7 @@ func TestCreateRecordInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
 }
@@ -1189,7 +1189,7 @@ func TestCreateRecordInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false) //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.False(t, ok)
 	require.Equal(t, "", actualID)
 }

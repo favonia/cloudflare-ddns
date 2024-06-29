@@ -47,7 +47,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 //
 //nolint:funlen
 func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool,
+	domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
@@ -140,7 +140,7 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	// any one of them. This leaves us no choices---we have to create a new record with the correct IP.
 	if !foundMatched {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
-			domain, ipnet, ip, ttl, proxied); ok {
+			domain, ipnet, ip, ttl, proxied, recordComment); ok {
 			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", recordType, domainDescription, id)
 
 			// Now it's up to date! unprocessedMatched and unprocessedUnmatched must both be empty at this point

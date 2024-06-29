@@ -272,7 +272,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 // CreateRecord creates one DNS record.
 func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool,
+	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool, recordComment string,
 ) (string, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -286,7 +286,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 		TTL:     ttl.Int(),
 		Proxied: &proxied,
-		Comment: "Created by cloudflare-ddns",
+		Comment: recordComment,
 	}
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params)
