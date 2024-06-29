@@ -1,0 +1,10 @@
+#!/bin/ksh
+daemon="/usr/local/bin/cloudflare_ddns"
+daemon_logger="daemon.info"
+daemon_user="_cloudflare_ddns"
+
+. /etc/rc.d/rc.subr
+rc_bg=YES
+rc_reload=NO
+
+rc_cmd $1

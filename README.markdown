@@ -379,6 +379,13 @@ _(Click to expand the following items.)_
 
 </details>
 
+<details>
+<summary>🏁Adding init scripts for non-Docker setups</summary>
+
+See: [contrib](./contrib) for init scripts for systemd and OpenBSD
+
+</details>
+
 ### 🔂 Restarting the Container
 
 If you are using Docker Compose, run `docker-compose up --detach` to reload settings.
