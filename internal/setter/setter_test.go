@@ -16,6 +16,27 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+func wrapCancelAsCreate(cancel func()) func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) (string, bool) { //nolint:lll,unused
+	return func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) (string, bool) {
+		cancel()
+		return "", false
+	}
+}
+
+func wrapCancelAsUpdate(cancel func()) func(context.Context, pp.PP, domain.Domain, ipnet.Type, string, netip.Addr) bool { //nolint:lll
+	return func(context.Context, pp.PP, domain.Domain, ipnet.Type, string, netip.Addr) bool {
+		cancel()
+		return false
+	}
+}
+
+func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, domain.Domain, ipnet.Type, string) bool {
+	return func(context.Context, pp.PP, domain.Domain, ipnet.Type, string) bool {
+		cancel()
+		return false
+	}
+}
+
 //nolint:funlen
 func TestSet(t *testing.T) {
 	t.Parallel()
@@ -36,7 +57,7 @@ func TestSet(t *testing.T) {
 		ip                netip.Addr
 		resp              setter.ResponseCode
 		prepareMockPP     func(m *mocks.MockPP)
-		prepareMockHandle func(ctx context.Context, canceler func(), ppfmt pp.PP, m *mocks.MockHandle)
+		prepareMockHandle func(ctx context.Context, cancel func(), ppfmt pp.PP, m *mocks.MockHandle)
 	}{
 		"0": {
 			ip1,
@@ -89,19 +110,37 @@ func TestSet(t *testing.T) {
 		},
 		"1unmatched-updatetimeout": {
 			ip1,
-			setter.ResponseUpdated,
+			setter.ResponseFailed,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
-					m.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
+					m.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any()),
 				)
 			},
-			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
+			func(ctx context.Context, cancel func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
-					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).Return(false),
-					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).Return(true),
-					m.EXPECT().CreateRecord(ctx, ppfmt, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record2, true),
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).
+						Return(map[string]netip.Addr{record1: ip2}, true, true),
+					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).
+						Do(wrapCancelAsUpdate(cancel)).Return(false),
+				)
+			},
+		},
+		"1unmatched-deletetimeout": {
+			ip1,
+			setter.ResponseFailed,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any()),
+				)
+			},
+			func(ctx context.Context, cancel func(), ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).
+						Return(map[string]netip.Addr{record1: ip2}, true, true),
+					m.EXPECT().UpdateRecord(ctx, ppfmt, domain, ipNetwork, record1, ip1).
+						Return(false),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record1).
+						Do(wrapCancelAsDelete(cancel)).Return(false),
 				)
 			},
 		},
@@ -287,8 +326,8 @@ func TestSet(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 
-			ctx, canceler := context.WithCancel(context.Background())
-			defer canceler()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -296,7 +335,7 @@ func TestSet(t *testing.T) {
 			}
 			mockHandle := mocks.NewMockHandle(mockCtrl)
 			if tc.prepareMockHandle != nil {
-				tc.prepareMockHandle(ctx, canceler, mockPP, mockHandle)
+				tc.prepareMockHandle(ctx, cancel, mockPP, mockHandle)
 			}
 
 			s, ok := setter.New(mockPP, mockHandle)
