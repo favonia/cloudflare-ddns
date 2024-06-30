@@ -16,7 +16,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func wrapCancelAsCreate(cancel func()) func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) (string, bool) { //nolint:lll,unused
+func wrapCancelAsCreate(cancel func()) func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) (string, bool) { //nolint:lll
 	return func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) (string, bool) {
 		cancel()
 		return "", false
@@ -90,7 +90,7 @@ func TestSet(t *testing.T) {
 				)
 			},
 		},
-		"1unmatched-updatefail": {
+		"1unmatched/updatefail": {
 			ip1,
 			setter.ResponseUpdated,
 			func(m *mocks.MockPP) {
@@ -108,7 +108,7 @@ func TestSet(t *testing.T) {
 				)
 			},
 		},
-		"1unmatched-updatetimeout": {
+		"1unmatched/update-timeout": {
 			ip1,
 			setter.ResponseFailed,
 			func(m *mocks.MockPP) {
@@ -125,13 +125,11 @@ func TestSet(t *testing.T) {
 				)
 			},
 		},
-		"1unmatched-deletetimeout": {
+		"1unmatched/delete-timeout": {
 			ip1,
 			setter.ResponseFailed,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any()),
-				)
+				m.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any())
 			},
 			func(ctx context.Context, cancel func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -179,19 +177,36 @@ func TestSet(t *testing.T) {
 			},
 			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true), //nolint:lll
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).
+						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(true),
 				)
 			},
 		},
-		"2matched-deletefail": {
+		"2matched/delete-fail": {
 			ip1,
 			setter.ResponseUpdated,
 			nil,
 			func(ctx context.Context, _ func(), ppfmt pp.PP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true), //nolint:lll
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).
+						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).Return(false),
+				)
+			},
+		},
+		"2matched/delete-timeout": {
+			ip1,
+			setter.ResponseUpdated,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any())
+			},
+			func(ctx context.Context, cancel func(), ppfmt pp.PP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ListRecords(ctx, ppfmt, domain, ipNetwork).
+						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
+					m.EXPECT().DeleteRecord(ctx, ppfmt, domain, ipNetwork, record2).
+						Do(wrapCancelAsDelete(cancel)).Return(false),
 				)
 			},
 		},
