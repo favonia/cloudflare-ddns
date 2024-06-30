@@ -82,11 +82,19 @@ func deleteIP(
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
-		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
+		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 		defer cancel()
 
 		resp := s.Delete(ctx, ppfmt, domain, ipNet)
 		resps.Register(resp, domain)
+		if resp == setter.ResponseFailed {
+			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+				ppfmt.Infof(pp.EmojiHint,
+					"If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT",
+				)
+				ShouldDisplayHints["update-timeout"] = false
+			}
+		}
 	}
 
 	return GenerateDeleteMessage(ipNet, resps)
