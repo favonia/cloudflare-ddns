@@ -22,7 +22,7 @@ import (
 
 const RecordComment string = "hello"
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPsMultiple(t *testing.T) {
 	domain4_1 := domain.FQDN("ip4.hello1")
 	domain4_2 := domain.FQDN("ip4.hello2")
@@ -135,7 +135,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestDeleteIPsMultiple(t *testing.T) {
 	domain4_1 := domain.FQDN("ip4.hello1")
 	domain4_2 := domain.FQDN("ip4.hello2")
@@ -228,8 +228,88 @@ func TestDeleteIPsMultiple(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
-func TestUpdateIPsUninitializedProbied(t *testing.T) {
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
+func TestUpdateIPsTimeout(t *testing.T) {
+	domain4 := domain.FQDN("ip4.hello")
+	domains := map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: {domain4},
+	}
+
+	ip4 := netip.MustParseAddr("127.0.0.1")
+
+	type mockproviders = map[ipnet.Type]func(ppfmt pp.PP, m *mocks.MockProvider)
+	provider4 := func(ppfmt pp.PP, m *mocks.MockProvider) {
+		m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).Return(ip4, true)
+	}
+
+	for name, tc := range map[string]struct {
+		ok                  bool
+		monitorMessages     []string
+		notifierMessages    []string
+		prepareMockPP       func(m *mocks.MockPP)
+		prepareMockProvider mockproviders
+		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
+	}{
+		"ip4only": {
+			false,
+			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
+			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
+					m.EXPECT().Infof(pp.EmojiHint,
+						"If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT"),
+				)
+			},
+			mockproviders{ipnet.IP4: provider4},
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
+					Return(setter.ResponseFailed)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			ctx := context.Background()
+			conf := config.Default()
+			conf.Domains = domains
+			conf.TTL = api.TTLAuto
+			conf.Proxied = map[domain.Domain]bool{domain4: false}
+			conf.RecordComment = RecordComment
+			conf.Use1001 = true
+			conf.UpdateTimeout = 0 // no time!
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			for k := range updater.ShouldDisplayHints {
+				updater.ShouldDisplayHints[k] = true
+			}
+			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+				if tc.prepareMockProvider[ipnet] == nil {
+					conf.Provider[ipnet] = nil
+					continue
+				}
+				mockProvider := mocks.NewMockProvider(mockCtrl)
+				tc.prepareMockProvider[ipnet](mockPP, mockProvider)
+				conf.Provider[ipnet] = mockProvider
+			}
+			mockSetter := mocks.NewMockSetter(mockCtrl)
+			if tc.prepareMockSetter != nil {
+				tc.prepareMockSetter(mockPP, mockSetter)
+			}
+			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			require.Equal(t, message.Message{
+				Ok:               tc.ok,
+				NotifierMessages: tc.notifierMessages,
+				MonitorMessages:  tc.monitorMessages,
+			}, resp)
+		})
+	}
+}
+
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
+func TestUpdateIPsUninitializedProxied(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domains := map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain4},
@@ -310,7 +390,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPsHints(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
@@ -398,7 +478,7 @@ func TestUpdateIPsHints(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPs(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
@@ -662,7 +742,7 @@ func TestUpdateIPs(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestDeleteIPs(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
