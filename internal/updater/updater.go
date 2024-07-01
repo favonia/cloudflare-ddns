@@ -24,6 +24,7 @@ import (
 var ShouldDisplayHints = map[string]bool{
 	"detect-ip4-fail": true,
 	"detect-ip6-fail": true,
+	"detect-timeout":  true,
 	"update-timeout":  true,
 }
 
@@ -46,7 +47,7 @@ func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	return false
 }
 
-var errSettingTimeout = errors.New("setting timeout")
+var errTimeout = errors.New("timeout")
 
 // setIP extracts relevant settings from the configuration and calls [setter.Setter.Set] with timeout.
 // ip must be non-zero.
@@ -56,15 +57,16 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
-		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errSettingTimeout)
+		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 		defer cancel()
 
 		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
 		resps.Register(resp, domain)
 		if resp == setter.ResponseFailed {
-			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errSettingTimeout) {
+			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
-					"If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT",
+					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
+					c.UpdateTimeout,
 				)
 				ShouldDisplayHints["update-timeout"] = false
 			}
@@ -81,11 +83,20 @@ func deleteIP(
 	resps := SetterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
-		ctx, cancel := context.WithTimeout(ctx, c.UpdateTimeout)
+		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 		defer cancel()
 
 		resp := s.Delete(ctx, ppfmt, domain, ipNet)
 		resps.Register(resp, domain)
+		if resp == setter.ResponseFailed {
+			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+				ppfmt.Infof(pp.EmojiHint,
+					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
+					c.UpdateTimeout,
+				)
+				ShouldDisplayHints["update-timeout"] = false
+			}
+		}
 	}
 
 	return GenerateDeleteMessage(ipNet, resps)
@@ -94,7 +105,7 @@ func deleteIP(
 func detectIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, ipNet ipnet.Type, use1001 bool,
 ) (netip.Addr, message.Message) {
-	ctx, cancel := context.WithTimeout(ctx, c.DetectionTimeout)
+	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
@@ -102,7 +113,14 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
 		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
-		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
+
+		if ShouldDisplayHints["detect-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Infof(pp.EmojiHint,
+				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
+				c.DetectionTimeout,
+			)
+			ShouldDisplayHints["detect-timeout"] = false
+		} else if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
 				ppfmt.Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll

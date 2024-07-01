@@ -104,33 +104,37 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		// Let's go through all stale records
 		for i, id := range unprocessedUnmatched {
 			// Let's try to update it first.
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip); !ok {
-				// If the updating fails, we will delete it.
-				if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); ok {
-					ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)",
-						recordType, domainDescription, id)
+			if s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, id, ip) {
+				// If the updating succeeds, we can move on to the next stage!
+				//
+				// Note that there can still be stale records at this point.
+				ppfmt.Noticef(pp.EmojiUpdateRecord,
+					"Updated a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 
-					// Only when the deletion succeeds, we decrease the counter of remaining stale records.
-					numUndeletedUnmatched--
-				}
+				// Now it's up to date! Note that unprocessedMatched must be empty
+				// otherwise foundMatched would have been true.
+				foundMatched = true
+				numUndeletedUnmatched--
+				newUnprocessedUnmatched = unprocessedUnmatched[i+1:]
 
-				// No matter whether the deletion succeeds, move on.
-				continue
+				break
+			}
+			if ctx.Err() != nil {
+				goto timeout
 			}
 
-			// If the updating succeeds, we can move on to the next stage!
-			//
-			// Note that there can still be stale records at this point.
-			ppfmt.Noticef(pp.EmojiUpdateRecord,
-				"Updated a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
+			// If the updating fails, we will delete it.
+			if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
+				ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)",
+					recordType, domainDescription, id)
 
-			// Now it's up to date! Note that unprocessedMatched must be empty
-			// otherwise foundMatched would have been true.
-			foundMatched = true
-			numUndeletedUnmatched--
-			newUnprocessedUnmatched = unprocessedUnmatched[i+1:]
-
-			break
+				// Only when the deletion succeeds, we decrease the counter of remaining stale records.
+				numUndeletedUnmatched--
+				continue
+			}
+			if ctx.Err() != nil {
+				goto timeout
+			}
 		}
 
 		unprocessedUnmatched = newUnprocessedUnmatched
@@ -145,6 +149,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 
 			// Now it's up to date! unprocessedMatched and unprocessedUnmatched must both be empty at this point
 			foundMatched = true
+		} else if ctx.Err() != nil {
+			goto timeout
 		}
 	}
 
@@ -153,6 +159,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 			numUndeletedUnmatched--
+		} else if ctx.Err() != nil {
+			goto timeout
 		}
 	}
 
@@ -162,6 +170,8 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
+		} else if ctx.Err() != nil {
+			goto timeout
 		}
 	}
 
@@ -174,6 +184,10 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	}
 
 	return ResponseUpdated
+
+timeout:
+	ppfmt.Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", ctx.Err())
+	return ResponseFailed
 }
 
 // Delete deletes all managed DNS records.
@@ -205,8 +219,13 @@ func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, 
 
 	allOk := true
 	for _, id := range unmatchedIDs {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); !ok {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
 			allOk = false
+
+			if ctx.Err() != nil {
+				ppfmt.Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", ctx.Err())
+				return ResponseFailed
+			}
 			continue
 		}
 

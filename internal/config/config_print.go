@@ -80,7 +80,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
-	item("Update frequency:", "%s", cron.DescribeSchedule(c.UpdateCron))
+	item("Update schedule:", "%s", cron.DescribeSchedule(c.UpdateCron))
 	item("Update on start?", "%t", c.UpdateOnStart)
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)

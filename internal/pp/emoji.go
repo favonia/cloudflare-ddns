@@ -19,9 +19,10 @@ const (
 	EmojiDeleteRecord Emoji = "💀" // deleting DNS records
 	EmojiUpdateRecord Emoji = "📡" // updating DNS records
 	EmojiClearRecord  Emoji = "🧹" // clearing DNS records when exiting
+	EmojiBailingOut   Emoji = "💨" // bailing out
 
-	EmojiPing         Emoji = "🔔" // pinging and health checks
-	EmojiNotification Emoji = "📨" // notifications
+	EmojiPing    Emoji = "🔔" // pinging and health checks
+	EmojiMessage Emoji = "📨" // notifications
 
 	EmojiSignal      Emoji = "🚨" // catching signals
 	EmojiAlreadyDone Emoji = "🤷" // DNS records were already up to date

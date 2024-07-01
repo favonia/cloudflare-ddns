@@ -22,7 +22,7 @@ import (
 
 const RecordComment string = "hello"
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPsMultiple(t *testing.T) {
 	domain4_1 := domain.FQDN("ip4.hello1")
 	domain4_2 := domain.FQDN("ip4.hello2")
@@ -104,6 +104,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -135,7 +136,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestDeleteIPsMultiple(t *testing.T) {
 	domain4_1 := domain.FQDN("ip4.hello1")
 	domain4_2 := domain.FQDN("ip4.hello2")
@@ -203,6 +204,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -228,8 +230,8 @@ func TestDeleteIPsMultiple(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
-func TestUpdateIPsUninitializedProbied(t *testing.T) {
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
+func TestUpdateIPsUninitializedProxied(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domains := map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain4},
@@ -279,6 +281,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -310,7 +313,7 @@ func TestUpdateIPsUninitializedProbied(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPsHints(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
@@ -367,6 +370,7 @@ func TestUpdateIPsHints(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -398,7 +402,7 @@ func TestUpdateIPsHints(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestUpdateIPs(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
@@ -597,14 +601,37 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			nil,
 		},
-		"slow-setting": {
+		"detect-timeout": {
+			false,
+			[]string{"Failed to detect IPv4 address"},
+			[]string{"Failed to detect the IPv4 address."},
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
+				)
+			},
+			mockproviders{
+				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).
+						DoAndReturn(
+							func(context.Context, pp.PP, ipnet.Type, bool) (netip.Addr, bool) {
+								time.Sleep(2 * time.Second)
+								return netip.Addr{}, false
+							},
+						)
+				},
+			},
+			nil,
+		},
+		"set-timeout": {
 			false,
 			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
 			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
 				)
 			},
 			mockproviders{
@@ -615,7 +642,7 @@ func TestUpdateIPs(t *testing.T) {
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
 				m.EXPECT().Set(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4, ip4, api.TTLAuto, false, RecordComment).
 					DoAndReturn(
-						func(_ context.Context, _ pp.PP, _ domain.Domain, _ ipnet.Type, _ netip.Addr, _ api.TTL, _ bool, _ string) setter.ResponseCode { //nolint:lll
+						func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) setter.ResponseCode { //nolint:lll
 							time.Sleep(2 * time.Second)
 							return setter.ResponseFailed
 						})
@@ -631,6 +658,7 @@ func TestUpdateIPs(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -662,7 +690,7 @@ func TestUpdateIPs(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // updater.IPv6MessageDisplayed is a global variable
+//nolint:funlen,paralleltest // updater.ShouldDisplayHints is a global variable
 func TestDeleteIPs(t *testing.T) {
 	domain4 := domain.FQDN("ip4.hello")
 	domain6 := domain.FQDN("ip6.hello")
@@ -769,6 +797,23 @@ func TestDeleteIPs(t *testing.T) {
 				)
 			},
 		},
+		"timeout": {
+			false,
+			[]string{"Failed to delete A: ip4.hello"},
+			[]string{"Failed to finish deleting A records of ip4.hello."},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second) //nolint:lll
+			},
+			mockproviders{ipnet.IP4: true},
+			func(ppfmt pp.PP, m *mocks.MockSetter) {
+				m.EXPECT().Delete(gomock.Any(), ppfmt, domain.FQDN("ip4.hello"), ipnet.IP4).
+					DoAndReturn(
+						func(context.Context, pp.PP, domain.Domain, ipnet.Type) setter.ResponseCode {
+							time.Sleep(2 * time.Second)
+							return setter.ResponseFailed
+						})
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
@@ -778,6 +823,9 @@ func TestDeleteIPs(t *testing.T) {
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
+			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
+			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -798,7 +846,6 @@ func TestDeleteIPs(t *testing.T) {
 				tc.prepareMockSetter(mockPP, mockSetter)
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
-
 			require.Equal(t, message.Message{
 				Ok:               tc.ok,
 				NotifierMessages: tc.notifierMessages,

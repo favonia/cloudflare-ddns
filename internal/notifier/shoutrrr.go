@@ -61,7 +61,7 @@ func (s *Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 		}
 	}
 	if allOk {
-		ppfmt.Infof(pp.EmojiNotification, "Sent shoutrrr message")
+		ppfmt.Infof(pp.EmojiMessage, "Sent shoutrrr message")
 	}
 	return allOk
 }
