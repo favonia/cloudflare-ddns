@@ -9,7 +9,7 @@ const (
 	Notice                    // an action (e.g., changing the IP) has happened and it is not an error
 	Warning                   // non-fatal errors where the updater should continue updating IP addresses
 	Error                     // fatal errors where the updater should stop
-	DefaultLevel = Info
-	Verbose      = Info
-	Quiet        = Notice
+	DefaultLevel Level = Info
+	Verbose      Level = Info
+	Quiet        Level = Notice
 )
