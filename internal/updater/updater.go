@@ -65,7 +65,8 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
-					"If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT",
+					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
+					c.UpdateTimeout,
 				)
 				ShouldDisplayHints["update-timeout"] = false
 			}
@@ -90,7 +91,8 @@ func deleteIP(
 		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
-					"If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT",
+					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
+					c.UpdateTimeout,
 				)
 				ShouldDisplayHints["update-timeout"] = false
 			}
@@ -114,7 +116,8 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 
 		if ShouldDisplayHints["detect-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
 			ppfmt.Infof(pp.EmojiHint,
-				"If your network is experiencing high latency, consider increasing the value of DETECTION_TIMEOUT",
+				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
+				c.DetectionTimeout,
 			)
 			ShouldDisplayHints["detect-timeout"] = false
 		} else if ShouldDisplayHints[getHintIDForDetection(ipNet)] {

@@ -104,6 +104,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -203,6 +204,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -279,6 +281,7 @@ func TestUpdateIPsUninitializedProxied(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -367,6 +370,7 @@ func TestUpdateIPsHints(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -597,14 +601,37 @@ func TestUpdateIPs(t *testing.T) {
 			},
 			nil,
 		},
-		"timeout": {
+		"detect-timeout": {
+			false,
+			[]string{"Failed to detect IPv4 address"},
+			[]string{"Failed to detect the IPv4 address."},
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Errorf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
+				)
+			},
+			mockproviders{
+				ipnet.IP4: func(ppfmt pp.PP, m *mocks.MockProvider) {
+					m.EXPECT().GetIP(gomock.Any(), ppfmt, ipnet.IP4, true).
+						DoAndReturn(
+							func(context.Context, pp.PP, ipnet.Type, bool) (netip.Addr, bool) {
+								time.Sleep(2 * time.Second)
+								return netip.Addr{}, false
+							},
+						)
+				},
+			},
+			nil,
+		},
+		"set-timeout": {
 			false,
 			[]string{"Failed to set A (127.0.0.1): ip4.hello"},
 			[]string{"Failed to finish updating A records of ip4.hello with 127.0.0.1."},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
-					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
 				)
 			},
 			mockproviders{
@@ -631,6 +658,7 @@ func TestUpdateIPs(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
@@ -774,7 +802,7 @@ func TestDeleteIPs(t *testing.T) {
 			[]string{"Failed to delete A: ip4.hello"},
 			[]string{"Failed to finish deleting A records of ip4.hello."},
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing the value of UPDATE_TIMEOUT") //nolint:lll
+				m.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second) //nolint:lll
 			},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt pp.PP, m *mocks.MockSetter) {
@@ -796,6 +824,7 @@ func TestDeleteIPs(t *testing.T) {
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
 			conf.Use1001 = true
+			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
