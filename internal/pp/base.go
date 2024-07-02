@@ -8,11 +8,11 @@ type PP interface {
 	// SetEmoji sets whether emojis should be used.
 	SetEmoji(emoji bool) PP
 
-	// SetLevel sets the level under which messages will be hidden.
-	SetLevel(level Level) PP
+	// SetVerbosityLevel sets the level under which messages will be hidden.
+	SetVerbosity(v VerbosityLevel) PP
 
 	// IsEnabledFor checks whether a message of a certain level will be displayed.
-	IsEnabledFor(level Level) bool
+	IsEnabledFor(v VerbosityLevel) bool
 
 	// IncIndent returns a new pretty-printer with more indentation.
 	IncIndent() PP
