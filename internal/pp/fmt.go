@@ -7,19 +7,19 @@ import (
 )
 
 type formatter struct {
-	writer io.Writer
-	emoji  bool
-	indent int
-	level  Level
+	writer    io.Writer
+	emoji     bool
+	indent    int
+	verbosity VerbosityLevel
 }
 
 // New creates a new pretty printer.
 func New(writer io.Writer) PP {
 	return &formatter{
-		writer: writer,
-		emoji:  true,
-		indent: 0,
-		level:  DefaultLevel,
+		writer:    writer,
+		emoji:     true,
+		indent:    0,
+		verbosity: DefaultVerbosity,
 	}
 }
 
@@ -29,14 +29,14 @@ func (f *formatter) SetEmoji(emoji bool) PP {
 	return &fmt
 }
 
-func (f *formatter) SetLevel(lvl Level) PP {
+func (f *formatter) SetVerbosity(v VerbosityLevel) PP {
 	fmt := *f
-	fmt.level = lvl
+	fmt.verbosity = v
 	return &fmt
 }
 
-func (f *formatter) IsEnabledFor(lvl Level) bool {
-	return lvl >= f.level
+func (f *formatter) IsEnabledFor(v VerbosityLevel) bool {
+	return v >= f.verbosity
 }
 
 func (f *formatter) IncIndent() PP {
@@ -45,8 +45,8 @@ func (f *formatter) IncIndent() PP {
 	return &fmt
 }
 
-func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
-	if lvl < f.level {
+func (f *formatter) output(v VerbosityLevel, emoji Emoji, msg string) {
+	if v < f.verbosity {
 		return
 	}
 
@@ -65,7 +65,7 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 	fmt.Fprintln(f.writer, line)
 }
 
-func (f *formatter) printf(lvl Level, emoji Emoji, format string, args ...any) {
+func (f *formatter) printf(lvl VerbosityLevel, emoji Emoji, format string, args ...any) {
 	f.output(lvl, emoji, fmt.Sprintf(format, args...))
 }
 

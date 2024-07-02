@@ -73,9 +73,9 @@ func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	}
 
 	if quiet {
-		*ppfmt = (*ppfmt).SetLevel(pp.Quiet)
+		*ppfmt = (*ppfmt).SetVerbosity(pp.Quiet)
 	} else {
-		*ppfmt = (*ppfmt).SetLevel(pp.Verbose)
+		*ppfmt = (*ppfmt).SetVerbosity(pp.Verbose)
 	}
 
 	return true
