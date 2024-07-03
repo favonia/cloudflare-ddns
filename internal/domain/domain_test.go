@@ -22,6 +22,7 @@ func TestNew(t *testing.T) {
 		ok        bool
 		errString string
 	}{
+		{"tHe.CaPiTaL.cAsE", f("the.capital.case"), true, ""},
 		// The following examples were adapted from https://unicode.org/cldr/utility/idna.jsp
 		{"fass.de", f("fass.de"), true, ""},
 		{"faß.de", f("xn--fa-hia.de"), true, ""},
