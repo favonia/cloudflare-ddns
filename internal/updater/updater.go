@@ -141,7 +141,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
-			ip, msg := detectIP(ctx, ppfmt, c, ipNet, c.Use1001)
+			use1001 := c.ShouldWeUse1001Now(ctx, ppfmt)
+			ip, msg := detectIP(ctx, ppfmt, c, ipNet, use1001)
 			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,

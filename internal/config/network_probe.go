@@ -27,14 +27,15 @@ func ProbeURL(ctx context.Context, url string) bool {
 	return err == nil
 }
 
-// ShouldWeUse1001 quickly checks 1.1.1.1 and 1.0.0.1 and notes whether 1.0.0.1 should be used.
+// ShouldWeUse1001Now quickly checks 1.1.1.1 and 1.0.0.1 and notes whether 1.0.0.1 should be used.
 //
-// Note that the return value is about whether the detection is successfully done, not that
-// whether we should use 1.0.0.1. The function will update the field [Config.Use1001] directly.
-func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
-	c.Use1001 = false
+// [Config.ShouldWeUse1001] remembers the results.
+func (c *Config) ShouldWeUse1001Now(ctx context.Context, ppfmt pp.PP) bool {
+	if c.ShouldWeUse1001 != nil {
+		return *c.ShouldWeUse1001
+	}
 	if c.Provider[ipnet.IP4] == nil || !c.Provider[ipnet.IP4].ShouldWeCheck1111() {
-		return true
+		return false // any answer would work
 	}
 
 	if ppfmt.IsEnabledFor(pp.Info) {
@@ -44,16 +45,22 @@ func (c *Config) ShouldWeUse1001(ctx context.Context, ppfmt pp.PP) bool {
 
 	if ProbeURL(ctx, "https://1.1.1.1") {
 		ppfmt.Infof(pp.EmojiGood, "1.1.1.1 is working. Great!")
+
+		res := false
+		c.ShouldWeUse1001 = &res
+		return false
 	} else {
 		if ProbeURL(ctx, "https://1.0.0.1") {
 			ppfmt.Warningf(pp.EmojiError, "1.1.1.1 is not working, but 1.0.0.1 is; using 1.0.0.1")
 			ppfmt.Infof(pp.EmojiHint, "1.1.1.1 is probably blocked or hijacked by your router or ISP")
-			c.Use1001 = true
+
+			res := true
+			c.ShouldWeUse1001 = &res
+			return true
 		} else {
-			ppfmt.Warningf(pp.EmojiError, "Both 1.1.1.1 and 1.0.0.1 are not working; sticking to 1.1.1.1")
-			ppfmt.Infof(pp.EmojiHint, "The network might be temporarily down, or has not been set up yet")
-			ppfmt.Infof(pp.EmojiHint, "If you start this tool during booting, make sure the network is already up")
+			ppfmt.Warningf(pp.EmojiError, "Both 1.1.1.1 and 1.0.0.1 are not working; sticking to 1.1.1.1 now")
+			ppfmt.Infof(pp.EmojiHint, "The network might be temporarily down; will redo probing later")
+			return false
 		}
 	}
-	return true
 }

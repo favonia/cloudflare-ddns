@@ -48,8 +48,9 @@ func TestProbeCloudflareIPs(t *testing.T) {
 	)
 	c := config.Default()
 	// config.ShouldWeUse1001 must return false on GitHub.
-	require.True(t, c.ShouldWeUse1001(context.Background(), mockPP))
-	require.False(t, c.Use1001)
+	require.False(t, c.ShouldWeUse1001Now(context.Background(), mockPP))
+	require.NotNil(t, c.ShouldWeUse1001)
+	require.False(t, *c.ShouldWeUse1001)
 }
 
 func TestProbeCloudflareIPsNoIP4(t *testing.T) {
@@ -58,6 +59,6 @@ func TestProbeCloudflareIPsNoIP4(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	c := config.Default()
 	c.Provider[ipnet.IP4] = nil
-	require.True(t, c.ShouldWeUse1001(context.Background(), mockPP))
-	require.False(t, c.Use1001)
+	require.False(t, c.ShouldWeUse1001Now(context.Background(), mockPP))
+	require.Nil(t, c.ShouldWeUse1001)
 }

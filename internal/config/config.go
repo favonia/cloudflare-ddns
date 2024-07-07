@@ -18,7 +18,7 @@ import (
 type Config struct {
 	Auth             api.Auth
 	Provider         map[ipnet.Type]provider.Provider
-	Use1001          bool
+	ShouldWeUse1001  *bool
 	Domains          map[ipnet.Type][]domain.Domain
 	UpdateCron       cron.Schedule
 	UpdateOnStart    bool
@@ -42,7 +42,7 @@ func Default() *Config {
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
-		Use1001: false,
+		ShouldWeUse1001: nil,
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,

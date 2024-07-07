@@ -103,7 +103,8 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				domain4_4: false,
 			}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -203,7 +204,8 @@ func TestDeleteIPsMultiple(t *testing.T) {
 				domain4_4: false,
 			}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -280,7 +282,8 @@ func TestUpdateIPsUninitializedProxied(t *testing.T) {
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -369,7 +372,8 @@ func TestUpdateIPsHints(t *testing.T) {
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -657,7 +661,8 @@ func TestUpdateIPs(t *testing.T) {
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -823,7 +828,8 @@ func TestDeleteIPs(t *testing.T) {
 			conf.TTL = api.TTLAuto
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.RecordComment = RecordComment
-			conf.Use1001 = true
+			use1001 := true
+			conf.ShouldWeUse1001 = &use1001
 			conf.DetectionTimeout = time.Second
 			conf.UpdateTimeout = time.Second
 			mockPP := mocks.NewMockPP(mockCtrl)
