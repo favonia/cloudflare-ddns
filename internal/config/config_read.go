@@ -8,6 +8,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
+func InitializePP(ppfmt *pp.PP) bool {
+	return ReadEmoji("EMOJI", ppfmt) && ReadQuiet("QUIET", ppfmt) && ReadRedaction("LOG_REDACTION", ppfmt)
+}
+
 // ReadEnv calls the relevant readers to read all relevant environment variables except TZ
 // and update relevant fields. One should subsequently call [Config.NormalizeConfig]
 // to maintain invariants across different fields.
@@ -112,9 +116,11 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 				continue
 			}
 
-			ppfmt.Warningf(pp.EmojiUserWarning,
-				"Domain %q is ignored because it is only for %s but %s is disabled",
-				domain.Describe(), ipNet.Describe(), ipNet.Describe())
+			if !ppfmt.ShouldRedact(pp.Domains) {
+				ppfmt.Warningf(pp.EmojiUserWarning,
+					"Domain %q is ignored because it is only for %s but %s is disabled",
+					domain.Describe(), ipNet.Describe(), ipNet.Describe())
+			}
 		}
 	}
 
@@ -123,8 +129,16 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 	if !ok {
 		return false
 	}
+	allProxied := true
 	for dom := range activeDomainSet {
-		proxiedMap[dom] = proxiedPred(dom)
+		proxied := proxiedPred(dom)
+		allProxied = allProxied && proxied
+		proxiedMap[dom] = proxied
+	}
+	// Warn about LOG_REDACTION=ip and PROXIED=false
+	if ppfmt.ShouldRedact(pp.IPs) && !allProxied {
+		ppfmt.Warningf(pp.EmojiUserWarning,
+			"Some domains are not proxied by Cloudflare; their DNS records can leak IP addresses")
 	}
 
 	// Part 3: override the old values

@@ -81,6 +81,29 @@ func ReadQuiet(key string, ppfmt *pp.PP) bool {
 	return true
 }
 
+// ReadRedaction reads an environment variable as the redaction mask.
+func ReadRedaction(key string, ppfmt *pp.PP) bool {
+	valRedaction := Getenv(key)
+	if valRedaction == "" {
+		return true
+	}
+
+	switch valRedaction {
+	case "min":
+		*ppfmt = (*ppfmt).SetRedactMask(pp.RedactNone)
+		return true
+	case "token":
+		*ppfmt = (*ppfmt).SetRedactMask(pp.RedactTokens)
+		return true
+	case "max":
+		*ppfmt = (*ppfmt).SetRedactMask(pp.RedactMaximum)
+		return true
+	default:
+		(*ppfmt).Errorf(pp.EmojiUserError, "%s (%q) is not a supported redaction mode", key, valRedaction)
+		return false
+	}
+}
+
 // ReadBool reads an environment variable as a boolean value.
 func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 	val := Getenv(key)
