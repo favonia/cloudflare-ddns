@@ -342,7 +342,11 @@ func TestUpdateIPsHints(t *testing.T) {
 		prepareMockSetter   func(ppfmt pp.PP, m *mocks.MockSetter)
 	}{
 		"ip6fails/again": {
-			map[string]bool{"detect-ip4-fail": true, "detect-ip6-fail": false, "update-timeout": true},
+			map[string]bool{
+				updater.HintIP4DetectionFails: true,
+				updater.HintIP6DetectionFails: false,
+				updater.HintUpdateTimeouts:    true,
+			},
 			false,
 			[]string{"Failed to detect IPv6 address"},
 			[]string{"Failed to detect the IPv6 address."},

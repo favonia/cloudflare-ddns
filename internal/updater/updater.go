@@ -15,6 +15,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+const (
+	HintIP4DetectionFails string = "detect-ip4-fail"
+	HintIP6DetectionFails string = "detect-ip6-fail"
+	HintDetectionTimeouts string = "detect-timeout"
+	HintUpdateTimeouts    string = "update-timeout"
+)
+
 // ShouldDisplayHints determines whether help messages should be displayed.
 // The help messages are to help beginners detect possible misconfiguration.
 // These messages should be displayed at most once, and thus the value of this map
@@ -22,16 +29,16 @@ import (
 //
 //nolint:gochecknoglobals
 var ShouldDisplayHints = map[string]bool{
-	"detect-ip4-fail": true,
-	"detect-ip6-fail": true,
-	"detect-timeout":  true,
-	"update-timeout":  true,
+	HintIP4DetectionFails: true,
+	HintIP6DetectionFails: true,
+	HintDetectionTimeouts: true,
+	HintUpdateTimeouts:    true,
 }
 
 func getHintIDForDetection(ipNet ipnet.Type) string {
 	return map[ipnet.Type]string{
-		ipnet.IP4: "detect-ip4-fail",
-		ipnet.IP6: "detect-ip6-fail",
+		ipnet.IP4: HintIP4DetectionFails,
+		ipnet.IP6: HintIP6DetectionFails,
 	}[ipNet]
 }
 
@@ -63,12 +70,12 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
 		resps.Register(resp, domain)
 		if resp == setter.ResponseFailed {
-			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
 					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
 					c.UpdateTimeout,
 				)
-				ShouldDisplayHints["update-timeout"] = false
+				ShouldDisplayHints[HintUpdateTimeouts] = false
 			}
 		}
 	}
@@ -89,12 +96,12 @@ func deleteIP(
 		resp := s.Delete(ctx, ppfmt, domain, ipNet)
 		resps.Register(resp, domain)
 		if resp == setter.ResponseFailed {
-			if ShouldDisplayHints["update-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
 					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
 					c.UpdateTimeout,
 				)
-				ShouldDisplayHints["update-timeout"] = false
+				ShouldDisplayHints[HintUpdateTimeouts] = false
 			}
 		}
 	}
@@ -114,12 +121,12 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	} else {
 		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
-		if ShouldDisplayHints["detect-timeout"] && errors.Is(context.Cause(ctx), errTimeout) {
+		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 			ppfmt.Infof(pp.EmojiHint,
 				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
 				c.DetectionTimeout,
 			)
-			ShouldDisplayHints["detect-timeout"] = false
+			ShouldDisplayHints[HintDetectionTimeouts] = false
 		} else if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
