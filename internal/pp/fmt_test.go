@@ -13,8 +13,8 @@ func TestIsEnabledFor(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		set      pp.Level
-		test     pp.Level
+		set      pp.Verbosity
+		test     pp.Verbosity
 		expected bool
 	}{
 		"info-notice": {pp.Info, pp.Notice, true},
@@ -24,7 +24,7 @@ func TestIsEnabledFor(t *testing.T) {
 			t.Parallel()
 
 			var buf strings.Builder
-			fmt := pp.New(&buf).SetLevel(tc.set)
+			fmt := pp.New(&buf).SetVerbosity(tc.set)
 
 			require.Equal(t, tc.expected, fmt.IsEnabledFor(tc.test))
 		})
@@ -59,9 +59,9 @@ func TestPrint(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		emoji    bool
-		level    pp.Level
-		expected string
+		emoji     bool
+		verbosity pp.Verbosity
+		expected  string
 	}{
 		"info":              {true, pp.Info, "🌟 info\n🌟 notice\n🌟 warning\n🌟 error\n"},
 		"notice":            {true, pp.Notice, "🌟 notice\n🌟 warning\n🌟 error\n"},
@@ -76,7 +76,7 @@ func TestPrint(t *testing.T) {
 			t.Parallel()
 
 			var buf strings.Builder
-			fmt := pp.New(&buf).SetEmoji(tc.emoji).SetLevel(tc.level)
+			fmt := pp.New(&buf).SetEmoji(tc.emoji).SetVerbosity(tc.verbosity)
 
 			fmt.Infof(pp.EmojiStar, "info")
 			fmt.Noticef(pp.EmojiStar, "notice")

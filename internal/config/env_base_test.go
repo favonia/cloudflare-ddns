@@ -186,13 +186,13 @@ func TestReadQuiet(t *testing.T) {
 		"true": {
 			true, " true", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().SetLevel(pp.Notice)
+				m.EXPECT().SetVerbosity(pp.Notice)
 			},
 		},
 		"false": {
 			true, "    false ", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().SetLevel(pp.Info)
+				m.EXPECT().SetVerbosity(pp.Info)
 			},
 		},
 		"illform": {

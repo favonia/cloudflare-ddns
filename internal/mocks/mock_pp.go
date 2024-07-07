@@ -159,7 +159,7 @@ func (c *PPInfofCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPInfofCall
 }
 
 // IsEnabledFor mocks base method.
-func (m *MockPP) IsEnabledFor(arg0 pp.Level) bool {
+func (m *MockPP) IsEnabledFor(arg0 pp.Verbosity) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsEnabledFor", arg0)
 	ret0, _ := ret[0].(bool)
@@ -185,13 +185,13 @@ func (c *PPIsEnabledForCall) Return(arg0 bool) *PPIsEnabledForCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PPIsEnabledForCall) Do(f func(pp.Level) bool) *PPIsEnabledForCall {
+func (c *PPIsEnabledForCall) Do(f func(pp.Verbosity) bool) *PPIsEnabledForCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPIsEnabledForCall) DoAndReturn(f func(pp.Level) bool) *PPIsEnabledForCall {
+func (c *PPIsEnabledForCall) DoAndReturn(f func(pp.Verbosity) bool) *PPIsEnabledForCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -275,40 +275,40 @@ func (c *PPSetEmojiCall) DoAndReturn(f func(bool) pp.PP) *PPSetEmojiCall {
 	return c
 }
 
-// SetLevel mocks base method.
-func (m *MockPP) SetLevel(arg0 pp.Level) pp.PP {
+// SetVerbosity mocks base method.
+func (m *MockPP) SetVerbosity(arg0 pp.Verbosity) pp.PP {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLevel", arg0)
+	ret := m.ctrl.Call(m, "SetVerbosity", arg0)
 	ret0, _ := ret[0].(pp.PP)
 	return ret0
 }
 
-// SetLevel indicates an expected call of SetLevel.
-func (mr *MockPPMockRecorder) SetLevel(arg0 any) *PPSetLevelCall {
+// SetVerbosity indicates an expected call of SetVerbosity.
+func (mr *MockPPMockRecorder) SetVerbosity(arg0 any) *PPSetVerbosityCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLevel", reflect.TypeOf((*MockPP)(nil).SetLevel), arg0)
-	return &PPSetLevelCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVerbosity", reflect.TypeOf((*MockPP)(nil).SetVerbosity), arg0)
+	return &PPSetVerbosityCall{Call: call}
 }
 
-// PPSetLevelCall wrap *gomock.Call
-type PPSetLevelCall struct {
+// PPSetVerbosityCall wrap *gomock.Call
+type PPSetVerbosityCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *PPSetLevelCall) Return(arg0 pp.PP) *PPSetLevelCall {
+func (c *PPSetVerbosityCall) Return(arg0 pp.PP) *PPSetVerbosityCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PPSetLevelCall) Do(f func(pp.Level) pp.PP) *PPSetLevelCall {
+func (c *PPSetVerbosityCall) Do(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSetLevelCall) DoAndReturn(f func(pp.Level) pp.PP) *PPSetLevelCall {
+func (c *PPSetVerbosityCall) DoAndReturn(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
