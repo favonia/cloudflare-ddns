@@ -7,46 +7,43 @@ import (
 )
 
 type formatter struct {
-	writer io.Writer
-	emoji  bool
-	indent int
-	level  Level
+	writer    io.Writer
+	emoji     bool
+	indent    int
+	verbosity Verbosity
 }
 
 // New creates a new pretty printer.
 func New(writer io.Writer) PP {
-	return &formatter{
-		writer: writer,
-		emoji:  true,
-		indent: 0,
-		level:  DefaultLevel,
+	return formatter{
+		writer:    writer,
+		emoji:     true,
+		indent:    0,
+		verbosity: DefaultVerbosity,
 	}
 }
 
-func (f *formatter) SetEmoji(emoji bool) PP {
-	fmt := *f
-	fmt.emoji = emoji
-	return &fmt
+func (f formatter) SetEmoji(emoji bool) PP {
+	f.emoji = emoji
+	return f
 }
 
-func (f *formatter) SetLevel(lvl Level) PP {
-	fmt := *f
-	fmt.level = lvl
-	return &fmt
+func (f formatter) SetVerbosity(v Verbosity) PP {
+	f.verbosity = v
+	return f
 }
 
-func (f *formatter) IsEnabledFor(lvl Level) bool {
-	return lvl >= f.level
+func (f formatter) IsEnabledFor(v Verbosity) bool {
+	return v >= f.verbosity
 }
 
-func (f *formatter) IncIndent() PP {
-	fmt := *f
-	fmt.indent++
-	return &fmt
+func (f formatter) IncIndent() PP {
+	f.indent++
+	return f
 }
 
-func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
-	if lvl < f.level {
+func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
+	if v < f.verbosity {
 		return
 	}
 
@@ -65,22 +62,22 @@ func (f *formatter) output(lvl Level, emoji Emoji, msg string) {
 	fmt.Fprintln(f.writer, line)
 }
 
-func (f *formatter) printf(lvl Level, emoji Emoji, format string, args ...any) {
-	f.output(lvl, emoji, fmt.Sprintf(format, args...))
+func (f formatter) printf(v Verbosity, emoji Emoji, format string, args ...any) {
+	f.output(v, emoji, fmt.Sprintf(format, args...))
 }
 
-func (f *formatter) Infof(emoji Emoji, format string, args ...any) {
+func (f formatter) Infof(emoji Emoji, format string, args ...any) {
 	f.printf(Info, emoji, format, args...)
 }
 
-func (f *formatter) Noticef(emoji Emoji, format string, args ...any) {
+func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
 }
 
-func (f *formatter) Warningf(emoji Emoji, format string, args ...any) {
+func (f formatter) Warningf(emoji Emoji, format string, args ...any) {
 	f.printf(Warning, emoji, format, args...)
 }
 
-func (f *formatter) Errorf(emoji Emoji, format string, args ...any) {
+func (f formatter) Errorf(emoji Emoji, format string, args ...any) {
 	f.printf(Error, emoji, format, args...)
 }

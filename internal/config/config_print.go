@@ -85,7 +85,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)
 
-	section("New DNS records:")
+	section("Parameters of new DNS records:")
 	item("TTL:", "%s", c.TTL.Describe())
 	{
 		_, inverseMap := getInverseMap(c.Proxied)
@@ -106,7 +106,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 
 	if len(c.Notifiers) > 0 {
-		section("Notifiers (via shoutrrr):")
+		section("Notification services (via shoutrrr):")
 		notifier.DescribeAll(func(service, params string) {
 			item(service+":", "%s", params)
 		}, c.Notifiers)
