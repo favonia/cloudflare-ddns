@@ -12,6 +12,19 @@ const (
 	intervalHugeGap  time.Duration = time.Minute * 10
 )
 
+func DescribeIntuitively(target time.Time) string {
+	now := time.Now()
+
+	switch {
+	case now.Year() != target.Year():
+		return target.In(time.Local).Format("02 Jan 15:04 2006")
+	case now.YearDay() != target.YearDay():
+		return target.In(time.Local).Format("02 Jan 15:04")
+	default:
+		return target.In(time.Local).Format("15:04")
+	}
+}
+
 func PrintCountdown(ppfmt pp.PP, activity string, target time.Time) {
 	interval := time.Until(target)
 
@@ -28,7 +41,7 @@ func PrintCountdown(ppfmt pp.PP, activity string, target time.Time) {
 		ppfmt.Infof(pp.EmojiAlarm, "%s in about %v (%v) . . .",
 			activity,
 			interval.Round(intervalUnit),
-			target.In(time.Local).Format(time.Kitchen),
+			DescribeIntuitively(target),
 		)
 	}
 }
