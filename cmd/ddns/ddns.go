@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
@@ -161,7 +162,7 @@ func realMain() int { //nolint:funlen
 		}
 
 		// Display the remaining time interval
-		cron.PrintCountdown(ppfmt, "Checking the IP addresses", next)
+		cron.PrintCountdown(ppfmt, "Checking the IP addresses", time.Now(), next)
 
 		// Wait for the next signal or the alarm, whichever comes first
 		if !sig.SleepUntil(ppfmt, next) {
