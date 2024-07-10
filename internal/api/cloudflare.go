@@ -128,7 +128,8 @@ func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, 
 	}
 
 	if !res.ExpiresOn.IsZero() {
-		ppfmt.Warningf(pp.EmojiAlarm, "The token will expire at %v", res.ExpiresOn.In(time.Local).Format(time.Stamp))
+		ppfmt.Warningf(pp.EmojiAlarm, "The token will expire at %s",
+			res.ExpiresOn.UTC().Format(time.RFC3339))
 	}
 
 permanently:
