@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"time"
 
@@ -33,9 +34,10 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 
 // A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
 type CloudflareHandle struct {
-	cf        *cloudflare.API
-	accountID string
-	cache     CloudflareCache
+	cf            *cloudflare.API
+	sanityChecked *bool
+	accountID     string
+	cache         CloudflareCache
 }
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
@@ -58,19 +60,10 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 		handle.BaseURL = t.BaseURL
 	}
 
-	// verify Cloudflare token
-	//
-	// ideally, we should also verify accountID here, but that is impossible without
-	// more permissions included in the API token.
-	if _, err := handle.VerifyAPIToken(ctx); err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", err)
-		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
-		return nil, false
-	}
-
-	return &CloudflareHandle{
-		cf:        handle,
-		accountID: t.AccountID,
+	h := &CloudflareHandle{
+		cf:            handle,
+		sanityChecked: nil,
+		accountID:     t.AccountID,
 		cache: CloudflareCache{
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
@@ -79,7 +72,14 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 			activeZones:  newCache[string, []string](cacheExpiration),
 			zoneOfDomain: newCache[string, string](cacheExpiration),
 		},
-	}, true
+	}
+
+	if ok, perm := h.SanityCheck(ctx, ppfmt); !ok && perm {
+		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
+		return nil, false
+	}
+
+	return h, true
 }
 
 // FlushCache flushes the API cache.
@@ -89,6 +89,51 @@ func (h *CloudflareHandle) FlushCache() {
 	}
 	h.cache.activeZones.DeleteAll()
 	h.cache.zoneOfDomain.DeleteAll()
+}
+
+// SanityCheck verifies Cloudflare tokens.
+//
+// Ideally, we should also verify accountID here, but that is impossible without
+// more permissions included in the API token.
+func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
+	if h.sanityChecked != nil {
+		return *h.sanityChecked, true
+	}
+
+	ok := true
+	res, err := h.cf.VerifyAPIToken(ctx)
+	if err != nil {
+		// if the token is permanently wrong...
+		var aerr *cloudflare.AuthorizationError
+		var rerr *cloudflare.RequestError
+		if errors.As(err, &aerr) || errors.As(err, &rerr) {
+			ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", err)
+			ok = false
+			goto permanently
+		}
+		ppfmt.Errorf(pp.EmojiError, "The Cloudflare API token could not be verified: %v", err)
+		return false, false
+	}
+	switch res.Status {
+	case "active":
+	case "disabled", "expired":
+		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", res.Status)
+		ok = false
+		goto permanently
+	default:
+		ppfmt.Errorf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", res.Status)
+		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+		ok = false
+		goto permanently
+	}
+
+	if !res.ExpiresOn.IsZero() {
+		ppfmt.Warningf(pp.EmojiAlarm, "The token will expire at %v", res.ExpiresOn.In(time.Local).Format(time.Stamp))
+	}
+
+permanently:
+	h.sanityChecked = &ok
+	return ok, true
 }
 
 // ActiveZones returns a list of zone IDs with the zone name.

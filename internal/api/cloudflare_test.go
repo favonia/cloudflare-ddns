@@ -72,7 +72,7 @@ func newServerAuth(t *testing.T, emptyAccountID bool) (*http.ServeMux, *api.Clou
 	return mux, &auth
 }
 
-func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
+func handleSanityCheck(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
 	require.Equal(t, http.MethodGet, r.Method)
@@ -82,17 +82,17 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w,
 		`{
-				"result": { "id": "%s", "status": "active" },
-				"success": true,
-				"errors": [],
-				"messages": [
-					{
-						"code": 10000,
-						"message": "This API Token is valid and active",
-						"type": null
-					}
-				]
-			}`,
+			"result": { "id": "%s", "status": "active" },
+			"success": true,
+			"errors": [],
+			"messages": [
+				{
+					"code": 10000,
+					"message": "This API Token is valid and active",
+					"type": null
+				}
+			]
+		}`,
 		mockID("result", 0))
 }
 
@@ -103,7 +103,7 @@ func newHandle(t *testing.T, emptyAccountID bool) (*http.ServeMux, api.Handle) {
 	mux, auth := newServerAuth(t, emptyAccountID)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		handleTokensVerify(t, w, r)
+		handleSanityCheck(t, w, r)
 	})
 
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -136,36 +136,76 @@ func TestNewEmpty(t *testing.T) {
 
 func TestNewInvalid(t *testing.T) {
 	t.Parallel()
+
+	for name, resp := range map[string]string{
+		"invalid-token": `{
+  "success": false,
+  "errors": [{ "code": 1000, "message": "Invalid API Token" }],
+  "messages": [],
+  "result": null
+}`,
+		"invalid-format": `{
+  "success": false,
+  "errors": [
+    {
+      "code": 6003,
+      "message": "Invalid request headers",
+      "error_chain": [
+        { "code": 6111, "message": "Invalid format for Authorization header" }
+      ]
+    }
+  ],
+  "messages": [],
+  "result": null
+}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mux, auth := newServerAuth(t, false)
+			mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+				if !assert.Equal(t, http.MethodGet, r.Method) ||
+					!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+					!assert.Empty(t, r.URL.Query()) {
+					panic(http.ErrAbortHandler)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprint(w, resp)
+			})
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			gomock.InOrder(
+				mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", gomock.Any()),
+				mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+			)
+			h, ok := auth.New(context.Background(), mockPP, time.Second)
+			require.False(t, ok)
+			require.Nil(t, h)
+		})
+	}
+}
+
+func TestNewTimeout(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
-
 	mux, auth := newServerAuth(t, false)
+	mux.HandleFunc("/user/tokens/verify", func(_ http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
+		assert.Empty(t, r.URL.Query())
 
-	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		if !assert.Equal(t, http.MethodGet, r.Method) ||
-			!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-			!assert.Empty(t, r.URL.Query()) {
-			panic(http.ErrAbortHandler)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintf(w,
-			`{
-				"success": false,
-				"errors": [{ "code": 1000, "message": "Invalid API Token" }],
-				"messages": [],
-				"result": null
-			}`)
+		panic(http.ErrAbortHandler)
 	})
 
 	mockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder(
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", gomock.Any()),
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-	)
+	mockPP.EXPECT().Errorf(pp.EmojiError, "The Cloudflare API token could not be verified: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
-	require.False(t, ok)
-	require.Nil(t, h)
+	require.True(t, ok)
+	require.NotNil(t, h)
 }
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {

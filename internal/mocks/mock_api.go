@@ -196,6 +196,45 @@ func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domai
 	return c
 }
 
+// SanityCheck mocks base method.
+func (m *MockHandle) SanityCheck(arg0 context.Context, arg1 pp.PP) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SanityCheck", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// SanityCheck indicates an expected call of SanityCheck.
+func (mr *MockHandleMockRecorder) SanityCheck(arg0, arg1 any) *HandleSanityCheckCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SanityCheck", reflect.TypeOf((*MockHandle)(nil).SanityCheck), arg0, arg1)
+	return &HandleSanityCheckCall{Call: call}
+}
+
+// HandleSanityCheckCall wrap *gomock.Call
+type HandleSanityCheckCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *HandleSanityCheckCall) Return(arg0, arg1 bool) *HandleSanityCheckCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *HandleSanityCheckCall) Do(f func(context.Context, pp.PP) (bool, bool)) *HandleSanityCheckCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *HandleSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) (bool, bool)) *HandleSanityCheckCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UpdateRecord mocks base method.
 func (m *MockHandle) UpdateRecord(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 string, arg5 netip.Addr) bool {
 	m.ctrl.T.Helper()

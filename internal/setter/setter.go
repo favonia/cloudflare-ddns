@@ -52,6 +52,10 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
+	if ok, _ := s.Handle.SanityCheck(ctx, ppfmt); !ok {
+		return ResponseSanityFailed
+	}
+
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
 		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
