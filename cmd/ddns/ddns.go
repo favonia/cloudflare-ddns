@@ -98,7 +98,7 @@ func realMain() int { //nolint:funlen
 	if !configOk {
 		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Configuration errors")
 		notifier.SendAll(ctx, ppfmt, c.Notifiers,
-			"Cloudflare DDNS was misconfigured. Please check the logging for more details.")
+			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details.")
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}

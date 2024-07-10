@@ -390,7 +390,7 @@ func TestDelete(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{}, true, true),
-					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted (cached)", "AAAA", "sub.test.org"),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted (cached)", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -437,7 +437,7 @@ func TestDelete(t *testing.T) {
 		},
 		"impossible-records": {
 			setter.ResponseUpdated,
-			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
+			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: invalidIP}, true, true), //nolint:lll
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
