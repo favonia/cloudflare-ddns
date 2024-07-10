@@ -11,6 +11,40 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+func TestDescribeIntuitively(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().In(time.Local)
+	nextYear := now.AddDate(1, 0, 0)
+	diffDay := now.AddDate(0, 0, 1)
+	if diffDay.Year() != now.Year() {
+		diffDay = now.AddDate(0, 0, -1)
+	}
+
+	for name, tc := range map[string]struct {
+		time   time.Time
+		output string
+	}{
+		"now": {
+			now,
+			now.Format("15:04"),
+		},
+		"1day": {
+			diffDay,
+			diffDay.Format("02 Jan 15:04"),
+		},
+		"1year": {
+			nextYear,
+			nextYear.Format("02 Jan 15:04 2006"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.output, cron.DescribeIntuitively(now, tc.time))
+		})
+	}
+}
+
 func TestPrintCountdown(t *testing.T) {
 	t.Parallel()
 
@@ -69,9 +103,10 @@ func TestPrintCountdown(t *testing.T) {
 				var buf strings.Builder
 				pp := pp.New(&buf)
 
-				target := time.Now().Add(interval)
-				cron.PrintCountdown(pp, activity, target)
-				require.Equal(t, tc.output(target.Format(time.Kitchen)), buf.String())
+				now := time.Now()
+				target := now.Add(interval)
+				cron.PrintCountdown(pp, activity, now, target)
+				require.Equal(t, tc.output(cron.DescribeIntuitively(now, target)), buf.String())
 			})
 		}
 	}
