@@ -43,6 +43,10 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
+func (s *setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+	return s.Handle.SanityCheck(ctx, ppfmt)
+}
+
 // Set updates the IP address of one domain to the given ip. The ip must be non-zero.
 //
 //nolint:funlen

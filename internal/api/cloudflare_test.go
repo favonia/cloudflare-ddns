@@ -72,7 +72,7 @@ func newServerAuth(t *testing.T, emptyAccountID bool) (*http.ServeMux, *api.Clou
 	return mux, &auth
 }
 
-func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
+func handleSanityCheck(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
 	require.Equal(t, http.MethodGet, r.Method)
@@ -82,31 +82,29 @@ func handleTokensVerify(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w,
 		`{
-				"result": { "id": "%s", "status": "active" },
-				"success": true,
-				"errors": [],
-				"messages": [
-					{
-						"code": 10000,
-						"message": "This API Token is valid and active",
-						"type": null
-					}
-				]
-			}`,
+			"result": { "id": "%s", "status": "active" },
+			"success": true,
+			"errors": [],
+			"messages": [
+				{
+					"code": 10000,
+					"message": "This API Token is valid and active",
+					"type": null
+				}
+			]
+		}`,
 		mockID("result", 0))
 }
 
-func newHandle(t *testing.T, emptyAccountID bool) (*http.ServeMux, api.Handle) {
+func newHandle(t *testing.T, emptyAccountID bool, mockPP *mocks.MockPP) (*http.ServeMux, api.Handle) {
 	t.Helper()
-	mockCtrl := gomock.NewController(t)
 
 	mux, auth := newServerAuth(t, emptyAccountID)
 
 	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		handleTokensVerify(t, w, r)
+		handleSanityCheck(t, w, r)
 	})
 
-	mockPP := mocks.NewMockPP(mockCtrl)
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
@@ -116,56 +114,217 @@ func newHandle(t *testing.T, emptyAccountID bool) (*http.ServeMux, api.Handle) {
 
 func TestNewValid(t *testing.T) {
 	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	newHandle(t, false)
+	_, h := newHandle(t, false, mockPP)
+
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
+
+	// Test again to test the caching
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
 }
 
 func TestNewEmpty(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
 	_, auth := newServerAuth(t, false)
 
 	auth.Token = ""
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.False(t, ok)
 	require.Nil(t, h)
 }
 
+func TestSanityCheckExpiring(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		resp          string
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"expiring": {
+			`{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "11111111111111111111111111111111",
+    "status": "active",
+    "expires_on": "3000-01-01T00:00:00Z"
+  }
+}`,
+			true,
+			func(p *mocks.MockPP) {
+				deadline, err := time.Parse(time.RFC3339, "3000-01-01T00:00:00Z")
+				require.NoError(t, err)
+				p.EXPECT().Warningf(pp.EmojiAlarm, "The token will expire at %s",
+					deadline.In(time.Local).Format(time.RFC1123Z))
+			},
+		},
+		"expired": {
+			`{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "11111111111111111111111111111111",
+    "status": "expired"
+  }
+}`,
+			false,
+			func(p *mocks.MockPP) {
+				gomock.InOrder(
+					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "expired"),
+					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+				)
+			},
+		},
+		"funny": {
+			`{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "11111111111111111111111111111111",
+    "status": "funny"
+  }
+}`,
+			false,
+			func(p *mocks.MockPP) {
+				gomock.InOrder(
+					p.EXPECT().Errorf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", "funny"),
+					p.EXPECT().Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
+					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+				)
+			},
+		},
+		"disabled": {
+			`{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "11111111111111111111111111111111",
+    "status": "disabled"
+  }
+}`,
+			false,
+			func(p *mocks.MockPP) {
+				gomock.InOrder(
+					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "disabled"),
+					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mux, auth := newServerAuth(t, false)
+			mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+				if !assert.Equal(t, http.MethodGet, r.Method) ||
+					!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+					!assert.Empty(t, r.URL.Query()) {
+					panic(http.ErrAbortHandler)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, tc.resp)
+			})
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			h, ok := auth.New(context.Background(), mockPP, time.Second)
+			require.True(t, ok)
+			require.NotNil(t, h)
+			require.Equal(t, tc.ok, h.SanityCheck(context.Background(), mockPP))
+		})
+	}
+}
+
 func TestNewInvalid(t *testing.T) {
 	t.Parallel()
+
+	for name, resp := range map[string]string{
+		"invalid-token": `{
+  "success": false,
+  "errors": [{ "code": 1000, "message": "Invalid API Token" }],
+  "messages": [],
+  "result": null
+}`,
+		"invalid-format": `{
+  "success": false,
+  "errors": [
+    {
+      "code": 6003,
+      "message": "Invalid request headers",
+      "error_chain": [
+        { "code": 6111, "message": "Invalid format for Authorization header" }
+      ]
+    }
+  ],
+  "messages": [],
+  "result": null
+}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mux, auth := newServerAuth(t, false)
+			mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+				if !assert.Equal(t, http.MethodGet, r.Method) ||
+					!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
+					!assert.Empty(t, r.URL.Query()) {
+					panic(http.ErrAbortHandler)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprint(w, resp)
+			})
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			gomock.InOrder(
+				mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", gomock.Any()),
+				mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+			)
+			h, ok := auth.New(context.Background(), mockPP, time.Second)
+			require.True(t, ok)
+			require.NotNil(t, h)
+			require.False(t, h.SanityCheck(context.Background(), mockPP))
+		})
+	}
+}
+
+func TestSanityCheckTimeout(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
 	mux, auth := newServerAuth(t, false)
+	mux.HandleFunc("/user/tokens/verify", func(_ http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
+		assert.Empty(t, r.URL.Query())
 
-	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
-		if !assert.Equal(t, http.MethodGet, r.Method) ||
-			!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-			!assert.Empty(t, r.URL.Query()) {
-			panic(http.ErrAbortHandler)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintf(w,
-			`{
-				"success": false,
-				"errors": [{ "code": 1000, "message": "Invalid API Token" }],
-				"messages": [],
-				"result": null
-			}`)
+		panic(http.ErrAbortHandler)
 	})
 
-	mockPP := mocks.NewMockPP(mockCtrl)
-	gomock.InOrder(
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token could not be verified: %v", gomock.Any()),
-		mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-	)
+	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
-	require.False(t, ok)
-	require.Nil(t, h)
+	require.True(t, ok)
+	require.NotNil(t, h)
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
 }
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {
@@ -279,10 +438,10 @@ func (h *zonesHandler) isExhausted() bool {
 func TestActiveZonesRoot(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "")
 	require.True(t, ok)
 	require.Empty(t, zones)
@@ -291,13 +450,13 @@ func TestActiveZonesRoot(t *testing.T) {
 func TestActiveZonesTwo(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{"test.org": {"active", "active"}}, 1)
-	mockPP := mocks.NewMockPP(mockCtrl)
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
@@ -328,13 +487,13 @@ func TestActiveZonesTwo(t *testing.T) {
 func TestActiveZonesEmpty(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{}, 1)
-	mockPP := mocks.NewMockPP(mockCtrl)
 	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
@@ -495,12 +654,13 @@ func TestZoneOfDomain(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
-			mux, h := newHandle(t, tc.emptyAccountID)
+			mockPP := mocks.NewMockPP(mockCtrl)
+
+			mux, h := newHandle(t, tc.emptyAccountID, mockPP)
 
 			zh := newZonesHandler(t, mux, tc.emptyAccountID)
 
 			zh.set(tc.zoneStatuses, tc.accessCount)
-			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
@@ -524,10 +684,10 @@ func TestZoneOfDomain(t *testing.T) {
 func TestZoneOfDomainInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	mockPP.EXPECT().Warningf(
 		pp.EmojiError,
 		"Failed to check the existence of a zone named %q: %v",
@@ -595,8 +755,9 @@ func mockDNSListResponseFromAddr(ipNet ipnet.Type, name string, ips map[string]n
 func TestListRecords(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
@@ -635,7 +796,6 @@ func TestListRecords(t *testing.T) {
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
@@ -654,8 +814,9 @@ func TestListRecords(t *testing.T) {
 func TestListRecordsInvalidIPAddress(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
@@ -693,7 +854,6 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		})
 
 	ipNet, accessCount = ipnet.IP6, 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(
 		pp.EmojiImpossible,
 		"Failed to parse the IP address in records of %q: %v",
@@ -725,8 +885,9 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 func TestListRecordsWildcard(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 1)
@@ -765,7 +926,6 @@ func TestListRecordsWildcard(t *testing.T) {
 
 	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 	ipNet, ips, accessCount = ipnet.IP6, expected, 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
@@ -783,13 +943,13 @@ func TestListRecordsWildcard(t *testing.T) {
 func TestListRecordsInvalidDomain(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
@@ -807,10 +967,10 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 func TestListRecordsInvalidZone(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	mockPP.EXPECT().Warningf(
 		pp.EmojiError,
 		"Failed to check the existence of a zone named %q: %v",
@@ -862,8 +1022,9 @@ func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip string) 
 func TestDeleteRecordValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
@@ -911,7 +1072,6 @@ func TestDeleteRecordValid(t *testing.T) {
 		})
 
 	deleteAccessCount = 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	ok := h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
 	require.True(t, ok)
 
@@ -928,13 +1088,13 @@ func TestDeleteRecordValid(t *testing.T) {
 func TestDeleteRecordInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
@@ -948,10 +1108,10 @@ func TestDeleteRecordInvalid(t *testing.T) {
 func TestDeleteRecordZoneInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
@@ -964,8 +1124,9 @@ func TestDeleteRecordZoneInvalid(t *testing.T) {
 func TestUpdateRecordValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
@@ -1027,7 +1188,6 @@ func TestUpdateRecordValid(t *testing.T) {
 		})
 
 	updateAccessCount = 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	ok := h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	require.True(t, ok)
 
@@ -1044,13 +1204,13 @@ func TestUpdateRecordValid(t *testing.T) {
 func TestUpdateRecordInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
@@ -1064,10 +1224,10 @@ func TestUpdateRecordInvalid(t *testing.T) {
 func TestUpdateRecordInvalidZone(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
@@ -1080,8 +1240,9 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 func TestCreateRecordValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
@@ -1143,7 +1304,6 @@ func TestCreateRecordValid(t *testing.T) {
 		})
 
 	createAccessCount = 1
-	mockPP := mocks.NewMockPP(mockCtrl)
 	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.True(t, ok)
 	require.Equal(t, "record1", actualID)
@@ -1161,13 +1321,13 @@ func TestCreateRecordValid(t *testing.T) {
 func TestCreateRecordInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false)
+	mux, h := newHandle(t, false, mockPP)
 
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 		"AAAA",
 		"sub.test.org",
@@ -1181,10 +1341,10 @@ func TestCreateRecordInvalid(t *testing.T) {
 func TestCreateRecordInvalidZone(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
-
-	_, h := newHandle(t, false)
-
 	mockPP := mocks.NewMockPP(mockCtrl)
+
+	_, h := newHandle(t, false, mockPP)
+
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
