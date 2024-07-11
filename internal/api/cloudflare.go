@@ -16,9 +16,10 @@ import (
 
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
-	listRecords  map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]
-	activeZones  *ttlcache.Cache[string, []string]
-	zoneOfDomain *ttlcache.Cache[string, string]
+	tokenValid   *ttlcache.Cache[struct{}, bool]                               // whether token is valid
+	listRecords  map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr] // domain names to IPs
+	activeZones  *ttlcache.Cache[string, []string]                             // zone names to zone IDs
+	zoneOfDomain *ttlcache.Cache[string, string]                               // domain names to zone names
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -34,11 +35,9 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 
 // A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
 type CloudflareHandle struct {
-	cf                *cloudflare.API
-	sanityPermChecked bool
-	sanityPermPassed  bool
-	accountID         string
-	cache             CloudflareCache
+	cf        *cloudflare.API
+	accountID string
+	cache     CloudflareCache
 }
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
@@ -62,11 +61,10 @@ func (t *CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration tim
 	}
 
 	h := &CloudflareHandle{
-		cf:                handle,
-		sanityPermChecked: false,
-		sanityPermPassed:  false,
-		accountID:         t.AccountID,
+		cf:        handle,
+		accountID: t.AccountID,
 		cache: CloudflareCache{
+			tokenValid: newCache[struct{}, bool](cacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
 				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
@@ -93,8 +91,8 @@ func (h *CloudflareHandle) FlushCache() {
 // Ideally, we should also verify accountID here, but that is impossible without
 // more permissions included in the API token.
 func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
-	if h.sanityPermChecked {
-		return h.sanityPermPassed
+	if valid := h.cache.tokenValid.Get(struct{}{}); valid != nil {
+		return valid.Value()
 	}
 
 	quickCtx, cancel := context.WithTimeout(ctx, time.Second)
@@ -136,8 +134,7 @@ permanently:
 	if !ok {
 		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
 	}
-	h.sanityPermChecked = true
-	h.sanityPermPassed = ok
+	h.cache.tokenValid.Set(struct{}{}, ok, ttlcache.DefaultTTL)
 	return ok
 }
 
@@ -159,13 +156,8 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		return nil, false
 	}
 
-	// No need to perform any sanity checking in future. ;-)
-	//
-	// This is the best place to force pass the sanity check
-	// because ListZonesContext will be the first real
-	// API call.
-	h.sanityPermChecked = true
-	h.sanityPermPassed = true
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
@@ -211,6 +203,9 @@ zoneSearch:
 			return "", false
 		}
 
+		// The operation went through. No need to perform any sanity checking in near future!
+		h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+
 		switch len(zones) {
 		case 0: // len(zones) == 0
 			continue zoneSearch
@@ -246,6 +241,9 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false
 	}
 
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+
 	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(zone),
@@ -257,6 +255,9 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
 		return nil, false, false
 	}
+
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
 
 	rmap := map[string]netip.Addr{}
 	for i := range rs {
@@ -290,6 +291,9 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		delete(rmap.Value(), id)
 	}
@@ -320,6 +324,9 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 		return false
 	}
+
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[id] = ip
@@ -356,6 +363,9 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 		return "", false
 	}
+
+	// The operation went through. No need to perform any sanity checking in near future!
+	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[res.ID] = ip
