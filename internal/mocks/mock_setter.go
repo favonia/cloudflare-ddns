@@ -82,6 +82,44 @@ func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, domain.Dom
 	return c
 }
 
+// SanityCheck mocks base method.
+func (m *MockSetter) SanityCheck(arg0 context.Context, arg1 pp.PP) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SanityCheck", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SanityCheck indicates an expected call of SanityCheck.
+func (mr *MockSetterMockRecorder) SanityCheck(arg0, arg1 any) *SetterSanityCheckCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SanityCheck", reflect.TypeOf((*MockSetter)(nil).SanityCheck), arg0, arg1)
+	return &SetterSanityCheckCall{Call: call}
+}
+
+// SetterSanityCheckCall wrap *gomock.Call
+type SetterSanityCheckCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *SetterSanityCheckCall) Return(arg0 bool) *SetterSanityCheckCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *SetterSanityCheckCall) Do(f func(context.Context, pp.PP) bool) *SetterSanityCheckCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *SetterSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) bool) *SetterSanityCheckCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Set mocks base method.
 func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) setter.ResponseCode {
 	m.ctrl.T.Helper()

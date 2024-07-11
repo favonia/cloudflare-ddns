@@ -197,12 +197,11 @@ func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domai
 }
 
 // SanityCheck mocks base method.
-func (m *MockHandle) SanityCheck(arg0 context.Context, arg1 pp.PP) (bool, bool) {
+func (m *MockHandle) SanityCheck(arg0 context.Context, arg1 pp.PP) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SanityCheck", arg0, arg1)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	return ret0
 }
 
 // SanityCheck indicates an expected call of SanityCheck.
@@ -218,19 +217,19 @@ type HandleSanityCheckCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleSanityCheckCall) Return(arg0, arg1 bool) *HandleSanityCheckCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *HandleSanityCheckCall) Return(arg0 bool) *HandleSanityCheckCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleSanityCheckCall) Do(f func(context.Context, pp.PP) (bool, bool)) *HandleSanityCheckCall {
+func (c *HandleSanityCheckCall) Do(f func(context.Context, pp.PP) bool) *HandleSanityCheckCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) (bool, bool)) *HandleSanityCheckCall {
+func (c *HandleSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) bool) *HandleSanityCheckCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

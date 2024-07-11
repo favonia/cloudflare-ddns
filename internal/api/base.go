@@ -15,9 +15,9 @@ import (
 
 // A Handle represents a generic API to update DNS records. Currently, the only implementation is Cloudflare.
 type Handle interface {
-	// The first return value means whether the sanity check is passed.
-	// The second return value means whether the result will not change.
-	SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool)
+	// Perform basic checking. It returns false when we should give up
+	// all future operations.
+	SanityCheck(ctx context.Context, ppfmt pp.PP) bool
 
 	// ListRecords lists all matching DNS records.
 	//

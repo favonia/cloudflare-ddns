@@ -63,7 +63,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{}, true, true),
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record1, true),
 					p.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1),
@@ -75,7 +74,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
 					p.EXPECT().Noticef(pp.EmojiUpdateRecord,
@@ -92,7 +90,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
@@ -107,7 +104,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).
@@ -121,7 +117,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).
@@ -137,7 +132,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone,
 						"The %s records of %q are already up to date (cached)", "AAAA", "sub.test.org"),
@@ -149,7 +143,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, false, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", "AAAA", "sub.test.org"),
 				)
@@ -160,7 +153,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
@@ -179,7 +171,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(false),
@@ -191,7 +182,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).
@@ -205,7 +195,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
@@ -230,7 +219,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
@@ -252,7 +240,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
@@ -279,7 +266,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
@@ -298,7 +284,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(false),
@@ -316,7 +301,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
@@ -334,7 +318,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
@@ -354,7 +337,6 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().SanityCheck(ctx, p).Return(true, true),
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(nil, false, false),
 					p.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org"),
 				)

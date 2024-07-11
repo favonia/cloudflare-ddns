@@ -119,9 +119,8 @@ func TestNewValid(t *testing.T) {
 
 	_, h := newHandle(t, false, mockPP)
 
-	ok, perm := h.SanityCheck(context.Background(), mockPP)
+	ok := h.SanityCheck(context.Background(), mockPP)
 	require.True(t, ok)
-	require.True(t, perm)
 }
 
 func TestNewEmpty(t *testing.T) {
@@ -138,7 +137,7 @@ func TestNewEmpty(t *testing.T) {
 	require.Nil(t, h)
 }
 
-func TestNewExpiring(t *testing.T) {
+func TestSanityCheckExpiring(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -162,7 +161,7 @@ func TestNewExpiring(t *testing.T) {
 				deadline, err := time.Parse(time.RFC3339, "3000-01-01T00:00:00Z")
 				require.NoError(t, err)
 				p.EXPECT().Warningf(pp.EmojiAlarm, "The token will expire at %s",
-					deadline.Format(time.RFC3339))
+					deadline.In(time.Local).Format(time.RFC1123Z))
 			},
 		},
 		"expired": {
@@ -242,6 +241,9 @@ func TestNewExpiring(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			h, ok := auth.New(context.Background(), mockPP, time.Second)
+			require.True(t, ok)
+			require.NotNil(t, h)
+			ok = h.SanityCheck(context.Background(), mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
 				require.NotNil(t, h)
@@ -298,13 +300,15 @@ func TestNewInvalid(t *testing.T) {
 				mockPP.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
 			)
 			h, ok := auth.New(context.Background(), mockPP, time.Second)
+			require.True(t, ok)
+			require.NotNil(t, h)
+			ok = h.SanityCheck(context.Background(), mockPP)
 			require.False(t, ok)
-			require.Nil(t, h)
 		})
 	}
 }
 
-func TestNewTimeout(t *testing.T) {
+func TestSanityCheckTimeout(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -319,10 +323,12 @@ func TestNewTimeout(t *testing.T) {
 		panic(http.ErrAbortHandler)
 	})
 
-	mockPP.EXPECT().Errorf(pp.EmojiError, "The Cloudflare API token could not be verified: %v", gomock.Any())
+	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
+	ok = h.SanityCheck(context.Background(), mockPP)
+	require.True(t, ok)
 }
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {

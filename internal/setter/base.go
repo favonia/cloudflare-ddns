@@ -19,6 +19,12 @@ import (
 
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
+	// SanityCheck determines whether one should continue trying
+	SanityCheck(
+		ctx context.Context,
+		ppfmt pp.PP,
+	) bool
+
 	// Set sets a particular domain to the given IP address.
 	Set(
 		ctx context.Context,

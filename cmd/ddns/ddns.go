@@ -129,6 +129,15 @@ func realMain() int { //nolint:funlen
 		if first && !c.UpdateOnStart {
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
+			if c.UpdateCron != nil && !s.SanityCheck(ctx, ppfmt) {
+				monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token")
+				notifier.SendAll(ctx, ppfmt, c.Notifiers,
+					"The Cloudflare API token is invalid. "+
+						"Please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE.",
+				)
+				return 1
+			}
+
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
 			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg)
 			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)

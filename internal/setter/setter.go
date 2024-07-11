@@ -43,6 +43,10 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
+func (s *setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+	return s.Handle.SanityCheck(ctx, ppfmt)
+}
+
 // Set updates the IP address of one domain to the given ip. The ip must be non-zero.
 //
 //nolint:funlen
@@ -51,10 +55,6 @@ func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
-
-	if ok, _ := s.Handle.SanityCheck(ctx, ppfmt); !ok {
-		return ResponseSanityFailed
-	}
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {

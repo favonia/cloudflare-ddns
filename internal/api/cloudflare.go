@@ -34,10 +34,11 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 
 // A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
 type CloudflareHandle struct {
-	cf            *cloudflare.API
-	sanityChecked *bool
-	accountID     string
-	cache         CloudflareCache
+	cf                *cloudflare.API
+	sanityPermChecked bool
+	sanityPermPassed  bool
+	accountID         string
+	cache             CloudflareCache
 }
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
@@ -48,7 +49,7 @@ type CloudflareAuth struct {
 }
 
 // New creates a [CloudflareHandle] from the authentication data.
-func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
+func (t *CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
@@ -61,9 +62,10 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 	}
 
 	h := &CloudflareHandle{
-		cf:            handle,
-		sanityChecked: nil,
-		accountID:     t.AccountID,
+		cf:                handle,
+		sanityPermChecked: false,
+		sanityPermPassed:  false,
+		accountID:         t.AccountID,
 		cache: CloudflareCache{
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
@@ -72,11 +74,6 @@ func (t *CloudflareAuth) New(ctx context.Context, ppfmt pp.PP, cacheExpiration t
 			activeZones:  newCache[string, []string](cacheExpiration),
 			zoneOfDomain: newCache[string, string](cacheExpiration),
 		},
-	}
-
-	if ok, perm := h.SanityCheck(ctx, ppfmt); !ok && perm {
-		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
-		return nil, false
 	}
 
 	return h, true
@@ -95,15 +92,18 @@ func (h *CloudflareHandle) FlushCache() {
 //
 // Ideally, we should also verify accountID here, but that is impossible without
 // more permissions included in the API token.
-func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
-	if h.sanityChecked != nil {
-		return *h.sanityChecked, true
+func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+	if h.sanityPermChecked {
+		return h.sanityPermPassed
 	}
 
+	quickCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
 	ok := true
-	res, err := h.cf.VerifyAPIToken(ctx)
+	res, err := h.cf.VerifyAPIToken(quickCtx)
 	if err != nil {
-		// if the token is permanently wrong...
+		// Check if the token is permanently invalid...
 		var aerr *cloudflare.AuthorizationError
 		var rerr *cloudflare.RequestError
 		if errors.As(err, &aerr) || errors.As(err, &rerr) {
@@ -111,8 +111,8 @@ func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, 
 			ok = false
 			goto permanently
 		}
-		ppfmt.Errorf(pp.EmojiError, "The Cloudflare API token could not be verified: %v", err)
-		return false, false
+		ppfmt.Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", err)
+		return true // It could be that the network times out.
 	}
 	switch res.Status {
 	case "active":
@@ -129,12 +129,16 @@ func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, 
 
 	if !res.ExpiresOn.IsZero() {
 		ppfmt.Warningf(pp.EmojiAlarm, "The token will expire at %s",
-			res.ExpiresOn.UTC().Format(time.RFC3339))
+			res.ExpiresOn.In(time.Local).Format(time.RFC1123Z))
 	}
 
 permanently:
-	h.sanityChecked = &ok
-	return ok, true
+	if !ok {
+		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
+	}
+	h.sanityPermChecked = true
+	h.sanityPermPassed = ok
+	return ok
 }
 
 // ActiveZones returns a list of zone IDs with the zone name.
@@ -154,6 +158,14 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
+
+	// No need to perform any sanity checking in future. ;-)
+	//
+	// This is the best place to force pass the sanity check
+	// because ListZonesContext will be the first real
+	// API call.
+	h.sanityPermChecked = true
+	h.sanityPermPassed = true
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
