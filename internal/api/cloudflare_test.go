@@ -119,8 +119,10 @@ func TestNewValid(t *testing.T) {
 
 	_, h := newHandle(t, false, mockPP)
 
-	ok := h.SanityCheck(context.Background(), mockPP)
-	require.True(t, ok)
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
+
+	// Test again to test the caching
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
 }
 
 func TestNewEmpty(t *testing.T) {
@@ -243,11 +245,7 @@ func TestSanityCheckExpiring(t *testing.T) {
 			h, ok := auth.New(context.Background(), mockPP, time.Second)
 			require.True(t, ok)
 			require.NotNil(t, h)
-			ok = h.SanityCheck(context.Background(), mockPP)
-			require.Equal(t, tc.ok, ok)
-			if tc.ok {
-				require.NotNil(t, h)
-			}
+			require.Equal(t, tc.ok, h.SanityCheck(context.Background(), mockPP))
 		})
 	}
 }
@@ -302,8 +300,7 @@ func TestNewInvalid(t *testing.T) {
 			h, ok := auth.New(context.Background(), mockPP, time.Second)
 			require.True(t, ok)
 			require.NotNil(t, h)
-			ok = h.SanityCheck(context.Background(), mockPP)
-			require.False(t, ok)
+			require.False(t, h.SanityCheck(context.Background(), mockPP))
 		})
 	}
 }
@@ -327,8 +324,7 @@ func TestSanityCheckTimeout(t *testing.T) {
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
-	ok = h.SanityCheck(context.Background(), mockPP)
-	require.True(t, ok)
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
 }
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {
