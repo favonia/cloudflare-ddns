@@ -38,6 +38,35 @@ func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, domain.Domai
 }
 
 //nolint:funlen
+func TestSanityCheck(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		answer bool
+	}{
+		"true":  {true},
+		"false": {false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			mockHandle := mocks.NewMockHandle(mockCtrl)
+
+			s, ok := setter.New(mockPP, mockHandle)
+			require.True(t, ok)
+
+			mockHandle.EXPECT().SanityCheck(ctx, mockPP).Return(tc.answer)
+			require.Equal(t, tc.answer, s.SanityCheck(ctx, mockPP))
+		})
+	}
+}
+
+//nolint:funlen
 func TestSet(t *testing.T) {
 	t.Parallel()
 
