@@ -252,7 +252,11 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 			Type: ipNet.RecordType(),
 		})
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %s",
+			pp.Redact(ppfmt, pp.Domains, domain.Describe(), "(redacted)"),
+			// Redact error messages out of fear
+			pp.Redact(ppfmt, pp.Domains|pp.IPs|pp.DNSResourceIDs, err.Error(), "(error message redacted)"),
+		)
 		return nil, false, false
 	}
 
@@ -263,7 +267,12 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	for i := range rs {
 		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
 		if err != nil {
-			ppfmt.Warningf(pp.EmojiImpossible, "Failed to parse the IP address in records of %q: %v", domain.Describe(), err)
+			ppfmt.Warningf(pp.EmojiImpossible,
+				"Failed to parse the IP address in records of %q: %s",
+				pp.Redact(ppfmt, pp.Domains, domain.Describe(), "(redacted)"),
+				// Redact error messages out of fear
+				pp.Redact(ppfmt, pp.Domains|pp.IPs|pp.DNSResourceIDs, err.Error(), "(error message redacted)"),
+			)
 			return nil, false, false
 		}
 	}
@@ -283,8 +292,13 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), id); err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
-			ipNet.RecordType(), domain.Describe(), id, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %s",
+			ipNet.RecordType(),
+			pp.Redact(ppfmt, pp.Domains, domain.Describe(), "(redacted)"),
+			pp.Redact(ppfmt, pp.DNSResourceIDs, id, "redacted"),
+			// Redact error messages out of fear
+			pp.Redact(ppfmt, pp.Domains|pp.IPs|pp.DNSResourceIDs, err.Error(), "(error message redacted)"),
+		)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
@@ -317,8 +331,13 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params); err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
-			ipNet.RecordType(), domain.Describe(), id, err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %s",
+			ipNet.RecordType(),
+			pp.Redact(ppfmt, pp.Domains, domain.Describe(), "(redacted)"),
+			pp.Redact(ppfmt, pp.DNSResourceIDs, id, "redacted"),
+			// Redact error messages out of fear
+			pp.Redact(ppfmt, pp.Domains|pp.IPs|pp.DNSResourceIDs, err.Error(), "(error message redacted)"),
+		)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
@@ -356,8 +375,12 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
-			ipNet.RecordType(), domain.Describe(), err)
+		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %s",
+			ipNet.RecordType(),
+			pp.Redact(ppfmt, pp.Domains, domain.Describe(), "(redacted)"),
+			// Redact error messages out of fear
+			pp.Redact(ppfmt, pp.Domains|pp.IPs|pp.DNSResourceIDs, err.Error(), "(error message redacted)"),
+		)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 

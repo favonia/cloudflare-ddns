@@ -275,6 +275,44 @@ func (c *PPSetEmojiCall) DoAndReturn(f func(bool) pp.PP) *PPSetEmojiCall {
 	return c
 }
 
+// SetRedactMask mocks base method.
+func (m *MockPP) SetRedactMask(arg0 pp.RedactMask) pp.PP {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRedactMask", arg0)
+	ret0, _ := ret[0].(pp.PP)
+	return ret0
+}
+
+// SetRedactMask indicates an expected call of SetRedactMask.
+func (mr *MockPPMockRecorder) SetRedactMask(arg0 any) *PPSetRedactMaskCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRedactMask", reflect.TypeOf((*MockPP)(nil).SetRedactMask), arg0)
+	return &PPSetRedactMaskCall{Call: call}
+}
+
+// PPSetRedactMaskCall wrap *gomock.Call
+type PPSetRedactMaskCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPSetRedactMaskCall) Return(arg0 pp.PP) *PPSetRedactMaskCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPSetRedactMaskCall) Do(f func(pp.RedactMask) pp.PP) *PPSetRedactMaskCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPSetRedactMaskCall) DoAndReturn(f func(pp.RedactMask) pp.PP) *PPSetRedactMaskCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // SetVerbosity mocks base method.
 func (m *MockPP) SetVerbosity(arg0 pp.Verbosity) pp.PP {
 	m.ctrl.T.Helper()
@@ -309,6 +347,44 @@ func (c *PPSetVerbosityCall) Do(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall 
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *PPSetVerbosityCall) DoAndReturn(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ShouldRedact mocks base method.
+func (m *MockPP) ShouldRedact(arg0 pp.PrivateDataType) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShouldRedact", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ShouldRedact indicates an expected call of ShouldRedact.
+func (mr *MockPPMockRecorder) ShouldRedact(arg0 any) *PPShouldRedactCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldRedact", reflect.TypeOf((*MockPP)(nil).ShouldRedact), arg0)
+	return &PPShouldRedactCall{Call: call}
+}
+
+// PPShouldRedactCall wrap *gomock.Call
+type PPShouldRedactCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPShouldRedactCall) Return(arg0 bool) *PPShouldRedactCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPShouldRedactCall) Do(f func(pp.PrivateDataType) bool) *PPShouldRedactCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPShouldRedactCall) DoAndReturn(f func(pp.PrivateDataType) bool) *PPShouldRedactCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

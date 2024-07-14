@@ -14,6 +14,12 @@ type PP interface {
 	// IsEnabledFor checks whether a message of a certain level will be displayed.
 	IsEnabledFor(v Verbosity) bool
 
+	// SetRedactMask sets the mask to determine the redaction.
+	SetRedactMask(m RedactMask) PP
+
+	// ShouldRedact(t) returns whether data of type t should be redacted.
+	ShouldRedact(t PrivateDataType) bool
+
 	// IncIndent returns a new pretty-printer with more indentation.
 	IncIndent() PP
 
@@ -28,4 +34,12 @@ type PP interface {
 
 	// Errorf formats and prints a message at the error level.
 	Errorf(emoji Emoji, format string, args ...any)
+}
+
+func Redact(pp PP, t PrivateDataType, orig string, redacted string) string {
+	if pp.ShouldRedact(t) {
+		return redacted
+	} else {
+		return orig
+	}
 }

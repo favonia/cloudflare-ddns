@@ -7,19 +7,21 @@ import (
 )
 
 type formatter struct {
-	writer    io.Writer
-	emoji     bool
-	indent    int
-	verbosity Verbosity
+	writer        io.Writer
+	emoji         bool
+	indent        int
+	verbosity     Verbosity
+	redactionMask RedactMask
 }
 
 // New creates a new pretty printer.
 func New(writer io.Writer) PP {
 	return formatter{
-		writer:    writer,
-		emoji:     true,
-		indent:    0,
-		verbosity: DefaultVerbosity,
+		writer:        writer,
+		emoji:         true,
+		indent:        0,
+		verbosity:     DefaultVerbosity,
+		redactionMask: DefaultRedactMask,
 	}
 }
 
@@ -35,6 +37,15 @@ func (f formatter) SetVerbosity(v Verbosity) PP {
 
 func (f formatter) IsEnabledFor(v Verbosity) bool {
 	return v >= f.verbosity
+}
+
+func (f formatter) SetRedactMask(m RedactMask) PP {
+	f.redactionMask = m
+	return f
+}
+
+func (f formatter) ShouldRedact(t PrivateDataType) bool {
+	return f.redactionMask&RedactMask(t) > 0
 }
 
 func (f formatter) IncIndent() PP {

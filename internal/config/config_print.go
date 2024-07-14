@@ -70,11 +70,13 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section("Domains and IP providers:")
 	if c.Provider[ipnet.IP4] != nil {
-		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
+		item("IPv4 domains:", "%s",
+			pp.Redact(ppfmt, pp.Domains, describeDomains(c.Domains[ipnet.IP4]), "(redacted)"))
 		item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	}
 	if c.Provider[ipnet.IP6] != nil {
-		item("IPv6 domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
+		item("IPv6 domains:", "%s",
+			pp.Redact(ppfmt, pp.Domains, describeDomains(c.Domains[ipnet.IP6]), "(redacted)"))
 		item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	}
 
@@ -89,8 +91,10 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("TTL:", "%s", c.TTL.Describe())
 	{
 		_, inverseMap := getInverseMap(c.Proxied)
-		item("Proxied domains:", "%s", describeDomains(inverseMap[true]))
-		item("Unproxied domains:", "%s", describeDomains(inverseMap[false]))
+		item("Proxied domains:", "%s",
+			pp.Redact(ppfmt, pp.Domains, describeDomains(inverseMap[true]), "(redacted)"))
+		item("Unproxied domains:", "%s",
+			pp.Redact(ppfmt, pp.Domains, describeDomains(inverseMap[false]), "(redacted)"))
 	}
 	item("Record comment:", "%s", describeComment(c.RecordComment))
 

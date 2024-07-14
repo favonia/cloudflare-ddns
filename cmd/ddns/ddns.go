@@ -70,7 +70,7 @@ func main() {
 
 func realMain() int { //nolint:funlen
 	ppfmt := pp.New(os.Stdout)
-	if !config.ReadEmoji("EMOJI", &ppfmt) || !config.ReadQuiet("QUIET", &ppfmt) {
+	if !config.InitializePP(&ppfmt) {
 		ppfmt.Infof(pp.EmojiUserError, "Bye!")
 		return 1
 	}
