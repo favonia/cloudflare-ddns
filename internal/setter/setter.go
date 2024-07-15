@@ -38,19 +38,19 @@ func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs
 
 // New creates a new Setter.
 func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
-	return &setter{
+	return setter{
 		Handle: handle,
 	}, true
 }
 
-func (s *setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 	return s.Handle.SanityCheck(ctx, ppfmt)
 }
 
 // Set updates the IP address of one domain to the given ip. The ip must be non-zero.
 //
 //nolint:funlen
-func (s *setter) Set(ctx context.Context, ppfmt pp.PP,
+func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
@@ -195,7 +195,7 @@ timeout:
 }
 
 // Delete deletes all managed DNS records.
-func (s *setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type) ResponseCode {
+func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
