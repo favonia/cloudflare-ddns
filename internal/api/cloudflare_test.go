@@ -194,12 +194,11 @@ func TestSanityCheckExpiring(t *testing.T) {
     "status": "funny"
   }
 }`,
-			false,
+			true,
 			func(p *mocks.MockPP) {
 				gomock.InOrder(
-					p.EXPECT().Errorf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", "funny"),
-					p.EXPECT().Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
-					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
+					p.EXPECT().Warningf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", "funny"),
+					p.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
 				)
 			},
 		},
