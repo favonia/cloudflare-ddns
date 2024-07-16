@@ -12,7 +12,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/net v0.27.0
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
 require (
@@ -28,5 +27,4 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )

@@ -35,12 +35,9 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
 
 ### 🛡️ Security
 
-- 🛑 Superuser privileges are immediately dropped, minimizing the impact of undiscovered bugs.
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
-  - [cap](https://sites.google.com/site/fullycapable):\
-    The official Go binding of Linux capabilities.
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of Cloudflare API v4.
   - [cron](https://github.com/robfig/cron):\
@@ -75,17 +72,6 @@ docker run \
   favonia/cloudflare-ddns:latest
 ```
 
-🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please use the Docker tag `latest-nocapdrop` to disable the explicit dropping of Linux capabilities:
-
-> ```bash
-> docker run \
->   --network host \
->   -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
->   -e DOMAINS=example.org,www.example.org,example.io \
->   -e PROXIED=true \
->   favonia/cloudflare-ddns:latest-nocapdrop
-> ```
-
 </details>
 
 <details><summary>🧬 Directly run the updater from its source.</summary>
@@ -99,22 +85,13 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
 
-🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please pass the build tag `nocapdrop` to disable the explicit dropping of capabilities:
-
-> ```bash
-> CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
->   DOMAINS=example.org,www.example.org,example.io \
->   PROXIED=true \
->   go run -tags nocapdrop github.com/favonia/cloudflare-ddns/cmd/ddns@latest
-> ```
-
 </details>
 
 ## 🐋 Deployment with Docker Compose
 
 ### 📦 Step 1: Updating the Compose File
 
-Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`).
+Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template may look a bit scary because it includes various recommended flags for additional security protection.
 
 ```yaml
 version: "3"
@@ -122,40 +99,25 @@ services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
     network_mode: host
-    # This makes IPv6 easier; see below
+    # This makes IPv6 easier (optional; see below)
     restart: always
     # Restart the updater after reboot
-    cap_add:
-      - SETUID
-        # Capability to change user ID; needed for using PUID
-      - SETGID
-        # Capability to change group ID; needed for using PGID
     cap_drop:
       - all
-      # Drop all other capabilities
+      # Drop all other capabilities (optional but recommended)
     read_only: true
-    # Make the container filesystem read-only
+    # Make the container filesystem read-only (optional but recommended)
     security_opt:
       - no-new-privileges:true
-        # Another protection to restrict superuser privileges
+        # Another protection to restrict superuser privileges (optional but recommended)
     environment:
-      - PUID=1000
-        # Run the updater with user ID 1000
-      - PGID=1000
-        # Run the updater with group ID 1000
       - CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
         # Your Cloudflare API token
       - DOMAINS=example.org,www.example.org,example.io
         # Your domains (separated by commas)
       - PROXIED=true
-        # Tell Cloudflare to cache webpages and hide your IP
+        # Tell Cloudflare to cache webpages and hide your IP (optional)
 ```
-
-🚨 If you are using [LXC (Linux Containers)](https://linuxcontainers.org/), it is known that the standard build may hang or halt (see [issue #707](https://github.com/favonia/cloudflare-ddns/issues/707)). If you encounter this problem, as a workaround, please replace the above `latest` tag above with `latest-nocapdrop` to disable the explicit dropping of capabilities:
-
-> ```yaml
-> image: favonia/cloudflare-ddns:latest-nocapdrop
-> ```
 
 _(Click to expand the following important tips.)_
 
@@ -210,9 +172,9 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 </details>
 
 <details>
-<summary>🛡️ Change <code>PUID=1000</code> and <code>PGID=1000</code> to the user and group IDs you want to use</summary>
+<summary>🛡️ Change <code>1000:1000</code> to <code>USER:GROUP</code> the user ID (as <code>USER</code>) and group ID (as <code>GROUP</code>) you want to use</summary>
 
-Change `1000` to the user or group IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` provide additional protection, especially when you run the container as a non-superuser. The updater itself will read <code>PUID</code> and <code>PGID</code> and attempt to drop all superuser privileges.
+Change `1000` to the user or group ID you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
 
 </details>
 
@@ -347,18 +309,6 @@ _(Click to expand the following items.)_
 > - `PROXYD=is(example1.org) || is(example2.org) || is(example3.org)`
 > - `PROXIED=is(example1.org,example2.org,example3.org)`
 > </details>
-
-</details>
-
-<details>
-<summary>🛡️ Dropping superuser privileges</summary>
-
-| Name   | Valid Values            | Meaning                                | Required? | Default Value                                                                               |
-| ------ | ----------------------- | -------------------------------------- | --------- | ------------------------------------------------------------------------------------------- |
-| `PGID` | Non-zero POSIX group ID | The group ID the updater should assume | No        | Effective group ID; if it is zero, then the real group ID; if it is still zero, then `1000` |
-| `PUID` | Non-zero POSIX user ID  | The user ID the updater should assume  | No        | Effective user ID; if it is zero, then the real user ID; if it is still zero, then `1000`   |
-
-> 👉 The updater will also try to drop supplementary group IDs.
 
 </details>
 

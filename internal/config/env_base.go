@@ -99,34 +99,6 @@ func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 	return true
 }
 
-// ReadLinuxID reads an environment variable as a user or group ID.
-func ReadLinuxID(ppfmt pp.PP, key string, field *int) bool {
-	val := Getenv(key)
-	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
-		return true
-	}
-
-	i, err := strconv.Atoi(val)
-	switch {
-	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
-		return false
-
-	case i < 0:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%d) is negative", key, i)
-		return false
-
-	case i == 0:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%d) cannot be zero (the superuser)", key, i)
-		return false
-
-	default:
-		*field = i
-		return true
-	}
-}
-
 // ReadNonnegInt reads an environment variable as a non-negative integer.
 func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	val := Getenv(key)
