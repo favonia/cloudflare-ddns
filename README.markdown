@@ -94,7 +94,6 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template may look a bit scary because it includes various recommended flags for additional security protection.
 
 ```yaml
-version: "3"
 services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
