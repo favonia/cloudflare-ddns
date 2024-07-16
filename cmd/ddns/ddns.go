@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/droproot"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -78,18 +78,17 @@ func realMain() int { //nolint:funlen
 	// Show the name and the version of the updater
 	ppfmt.Infof(pp.EmojiStar, formatName())
 
-	// Drop the superuser privilege
-	if !droproot.DropPrivileges(ppfmt) {
-		ppfmt.Infof(pp.EmojiBye, "Bye!")
-		return 1
-	}
-
 	// Catch signals SIGINT and SIGTERM
 	sig := signal.Setup()
 
 	// Get the contexts
 	ctx := context.Background()
 	ctxWithSignals, _ := signal.NotifyContext(ctx)
+
+	// Check root privileges
+	if syscall.Geteuid() == 0 {
+		ppfmt.Warningf(pp.EmojiUserWarning, "It is not recommended to run this tool as root")
+	}
 
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)
