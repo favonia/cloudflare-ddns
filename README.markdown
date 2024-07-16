@@ -91,7 +91,7 @@ CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 ### 📦 Step 1: Updating the Compose File
 
-Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template may look a bit scary because it includes various recommended flags for additional security protection.
+Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template may look a bit scary, but only because it includes various optional flags for extra security protection.
 
 ```yaml
 services:
@@ -101,14 +101,16 @@ services:
     # This makes IPv6 easier (optional; see below)
     restart: always
     # Restart the updater after reboot
-    cap_drop:
-      - all
-      # Drop all other capabilities (optional but recommended)
+    user: "1000:1000"
+    # Run the updater with a specific user ID and group ID (in that order).
+    # You should change the two numbers based on your setup.
+    # This is optional but highly recommended; otherwise you run the updater as root!
     read_only: true
     # Make the container filesystem read-only (optional but recommended)
-    security_opt:
-      - no-new-privileges:true
-        # Another protection to restrict superuser privileges (optional but recommended)
+    cap_drop: [all]
+    # Drop all capabilities (optional but recommended)
+    security_opt: [no-new-privileges:true]
+    # Another protection to restrict superuser privileges (optional but recommended)
     environment:
       - CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
         # Your Cloudflare API token
@@ -171,7 +173,7 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 </details>
 
 <details>
-<summary>🛡️ Change <code>1000:1000</code> to <code>USER:GROUP</code> the user ID (as <code>USER</code>) and group ID (as <code>GROUP</code>) you want to use</summary>
+<summary>🛡️ Change <code>1000:1000</code> to <code>USER:GROUP</code> for the user and group IDs you want to use</summary>
 
 Change `1000` to the user or group ID you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
 
