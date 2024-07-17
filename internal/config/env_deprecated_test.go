@@ -29,7 +29,7 @@ func TestCheckIgnoredLinuxID(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is ignored; use Docker's built-in mechanism to set %s ID", key, "0", "kitty"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),        //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),             //nolint:lll
 				)
 			},
 		},
@@ -38,7 +38,7 @@ func TestCheckIgnoredLinuxID(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is ignored; use Docker's built-in mechanism to set %s ID", key, "1", "kitty"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),           //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),             //nolint:lll
 				)
 			},
 		},
