@@ -1,4 +1,4 @@
-// package message defines the structure holding messages to
+// Package message defines the structure holding messages to
 // monitors and notifiers.
 package message
 
@@ -11,6 +11,7 @@ type Message struct {
 	NotifierMessages []string
 }
 
+// NewEmpty creates a new empty Message.
 func NewEmpty() Message {
 	return Message{
 		Ok:               true,
@@ -19,6 +20,9 @@ func NewEmpty() Message {
 	}
 }
 
+// Merge merges a list of messages in the following way:
+// - For monitors, we collect only the messages of higher severity.
+// - For notifiers, we collect all the messages.
 func Merge(msgs ...Message) Message {
 	var (
 		allOk                        = true

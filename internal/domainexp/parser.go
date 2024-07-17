@@ -88,7 +88,7 @@ func hasStrictSuffix(s, suffix string) bool {
 	return strings.HasSuffix(s, suffix) && (len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.')
 }
 
-// scanAtomic mimics ParseBool, call scanFunction, and then check parenthesized expressions.
+// scanFactor mimics ParseBool, call scanFunction, and then check parenthesized expressions.
 //
 // <factor> --> true | false | <fun> | ! <factor> | ( <expression> )
 //

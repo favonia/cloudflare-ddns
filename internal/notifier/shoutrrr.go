@@ -11,6 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+// Shoutrrr wraps a handler of a shoutrrr router.
 type Shoutrrr struct {
 	// The router
 	Router *router.ServiceRouter
@@ -19,7 +20,7 @@ type Shoutrrr struct {
 	ServiceNames []string
 }
 
-var _ Notifier = (*Shoutrrr)(nil)
+var _ Notifier = Shoutrrr{} //nolint:exhaustruct
 
 const (
 	// ShoutrrrDefaultTimeout is the default timeout for a UptimeKuma ping.
@@ -27,11 +28,11 @@ const (
 )
 
 // NewShoutrrr creates a new shoutrrr notifier.
-func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (*Shoutrrr, bool) {
+func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 	r, err := shoutrrr.CreateSender(rawURLs...)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Could not create shoutrrr client: %v", err)
-		return nil, false
+		return Shoutrrr{}, false //nolint:exhaustruct
 	}
 
 	r.Timeout = ShoutrrrDefaultTimeout
@@ -42,16 +43,18 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (*Shoutrrr, bool) {
 		serviceNames = append(serviceNames, s)
 	}
 
-	return &Shoutrrr{Router: r, ServiceNames: serviceNames}, true
+	return Shoutrrr{Router: r, ServiceNames: serviceNames}, true
 }
 
-func (s *Shoutrrr) Describe(callback func(service, params string)) {
+// Describe calls callback on each registered notification service.
+func (s Shoutrrr) Describe(callback func(service, params string)) {
 	for _, n := range s.ServiceNames {
 		callback(n, "(URL redacted)")
 	}
 }
 
-func (s *Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
+// Send sents the message msg.
+func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 	errs := s.Router.Send(msg, &types.Params{})
 	allOk := true
 	for _, err := range errs {

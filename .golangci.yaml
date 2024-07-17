@@ -20,9 +20,21 @@ linters-settings:
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Errorf
   revive:
     rules:
+      - name: exported
+        arguments:
+          - checkPrivateReceivers
       - name: unused-parameter
         arguments:
           - allowRegex: "^_"
+
+issues:
+  include:
+    - EXC0002
+    - EXC0011
+    - EXC0012
+    - EXC0013
+    - EXC0014
+    - EXC0015
 
 linters:
   enable-all: true

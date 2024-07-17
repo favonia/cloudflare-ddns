@@ -3,6 +3,7 @@ package pp
 // Emoji is the type of emoji strings.
 type Emoji string
 
+// Various constants defining emojis used in the tool.
 const (
 	EmojiStar   Emoji = "🌟" // stars attached to the tool name
 	EmojiBullet Emoji = "🔸" // generic bullet points

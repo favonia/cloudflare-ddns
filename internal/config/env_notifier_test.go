@@ -49,7 +49,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				t.Helper()
 				require.Len(t, ns, 1)
 				m := ns[0]
-				s, ok := m.(*notifier.Shoutrrr)
+				s, ok := m.(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"generic"}, s.ServiceNames)
 			},
@@ -75,7 +75,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				t.Helper()
 				require.Len(t, ns, 1)
 				m := ns[0]
-				s, ok := m.(*notifier.Shoutrrr)
+				s, ok := m.(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"generic", "pushover"}, s.ServiceNames)
 			},

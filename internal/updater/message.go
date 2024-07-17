@@ -11,13 +11,21 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-type SetterResponses map[setter.ResponseCode][]string
+type setterResponses map[setter.ResponseCode][]string
 
-func (s SetterResponses) Register(code setter.ResponseCode, d domain.Domain) {
+func (s setterResponses) register(code setter.ResponseCode, d domain.Domain) {
 	s[code] = append(s[code], d.Describe())
 }
 
+// ListJoin joins words with commas.
 func ListJoin(items []string) string { return strings.Join(items, ", ") }
+
+// ListEnglishJoin joins words as in English:
+// - (none)
+// - A
+// - A and B
+// - A, B, and C
+// Note that we use Oxford commas.
 func ListEnglishJoin(items []string) string {
 	switch l := len(items); l {
 	case 0:
@@ -31,7 +39,7 @@ func ListEnglishJoin(items []string) string {
 	}
 }
 
-func GenerateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
+func generateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
 	if ok {
 		return message.NewEmpty()
 	}
@@ -43,7 +51,7 @@ func GenerateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
 	}
 }
 
-func GenerateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) message.Message {
+func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) message.Message {
 	switch {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
@@ -103,7 +111,7 @@ func GenerateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s SetterResponses) m
 	}
 }
 
-func GenerateDeleteMessage(ipNet ipnet.Type, s SetterResponses) message.Message {
+func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message {
 	switch {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
