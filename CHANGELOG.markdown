@@ -1,3 +1,32 @@
+# [1.13.0](https://github.com/favonia/cloudflare-ddns/compare/v1.12.0...v1.13.0) (2024-07-16)
+
+This is a major release that no longer drops superuser privileges. Please review the instructions in [README](./README.markdown) for the new recommended setup.
+
+### BREAKING CHANGES
+
+- **The updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old, hacky Docker Compose template will grant the new updater unneeded privileges, which is less secure and not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, add `user:` as
+
+  ```yaml
+  user: "1000:1000"
+  # Run the updater with a specific user ID and group ID (in that order).
+  # You should change the two numbers based on your setup.
+  ```
+
+  and remove `cap_add` completely.
+
+- In case you are using the `*-nocapdrop` Docker tags, they will no longer be maintained. The updater will no longer drop superuser privileges, and thus the `nocapdrop` builds are identical to the regular ones. Just use the regular Docker tags such as `latest`.
+
+- The older versions used to add the comment “Created by cloudflare-ddns” to all newly created DNS records. Since this version, the comment has become configurable, but by default it is empty. To restore the old behavior, add the configuration `RECORD_COMMENT=Created by cloudflare-ddns` (or any comment you want to use).
+
+### Features
+
+- **api:** make record comment of new DNS records configurable using `RECORD_COMMENT` ([#783](https://github.com/favonia/cloudflare-ddns/issues/783)) ([b10c9a3](https://github.com/favonia/cloudflare-ddns/commit/b10c9a3653d01f16ebbdbce0bdee881b15329e71))
+- **api:** recheck tokens if the network was temporarily down ([#790](https://github.com/favonia/cloudflare-ddns/issues/790)) ([15d1a5a](https://github.com/favonia/cloudflare-ddns/commit/15d1a5af7f5a95ee90d8c8eb9589cc23e9ba1c4b))
+- **api:** smarter sanity checking ([#796](https://github.com/favonia/cloudflare-ddns/issues/796)) ([80dc7f4](https://github.com/favonia/cloudflare-ddns/commit/80dc7f4b7a28431aebe81630cdb2b7ace6f08d88))
+- **cron:** show dates when needed ([#795](https://github.com/favonia/cloudflare-ddns/issues/795)) ([d1850b1](https://github.com/favonia/cloudflare-ddns/commit/d1850b17e797f1d9b9a06de5f28b4fbe25b32f33))
+- reprobe 1.1.1.1 and 1.0.0.1 when probing fails ([#788](https://github.com/favonia/cloudflare-ddns/issues/788)) ([0983b06](https://github.com/favonia/cloudflare-ddns/commit/0983b06b4b308be5e0bfd16f2b101114d9008d56))
+- **updater:** bail out when it times out ([#784](https://github.com/favonia/cloudflare-ddns/issues/784)) ([3b42131](https://github.com/favonia/cloudflare-ddns/commit/3b42131ab5afc8ba021677ba9325b05fde7c5243))
+
 # [1.12.0](https://github.com/favonia/cloudflare-ddns/compare/v1.11.0...v1.12.0) (2024-06-28)
 
 This is a major release with two significant improvements:
