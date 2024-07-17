@@ -87,7 +87,7 @@ func realMain() int { //nolint:funlen
 
 	// Check root privileges
 	if syscall.Geteuid() == 0 {
-		ppfmt.Warningf(pp.EmojiUserWarning, "It is not recommended to run this tool as root")
+		ppfmt.Warningf(pp.EmojiUserWarning, "You are running this tool as root, which is usually a bad idea")
 	}
 
 	// Read the config and get the handler and the setter
