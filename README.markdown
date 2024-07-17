@@ -82,7 +82,7 @@ You need the [Go tool](https://golang.org/doc/install) to run the updater from i
 CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
-  go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
+  go run github.com/favonia/cloudflare-ddns/cmd/ddns
 ```
 
 </details>
