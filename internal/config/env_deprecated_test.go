@@ -11,7 +11,7 @@ import (
 )
 
 //nolint:paralleltest,funlen // environment vars are global
-func TestCheckDeprecatedLinuxID(t *testing.T) {
+func TestCheckIgnoredLinuxID(t *testing.T) {
 	key := keyPrefix + "ID"
 	for name, tc := range map[string]struct {
 		set           bool
@@ -28,8 +28,8 @@ func TestCheckDeprecatedLinuxID(t *testing.T) {
 			true, "0   ",
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is deprecated; use Docker's built-in mechanism to set %s ID", key, "0", "kitty"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new recommended template"),           //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is ignored; use Docker's built-in mechanism to set %s ID", key, "0", "kitty"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),             //nolint:lll
 				)
 			},
 		},
@@ -37,8 +37,8 @@ func TestCheckDeprecatedLinuxID(t *testing.T) {
 			true, "   1   ",
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is deprecated; use Docker's built-in mechanism to set %s ID", key, "1", "kitty"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new recommended template"),           //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiUserError, "%s=%s is ignored; use Docker's built-in mechanism to set %s ID", key, "1", "kitty"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),             //nolint:lll
 				)
 			},
 		},
@@ -50,7 +50,7 @@ func TestCheckDeprecatedLinuxID(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			config.CheckDeprecatedLinuxID(mockPP, key, "kitty")
+			config.CheckIgnoredLinuxID(mockPP, key, "kitty")
 		})
 	}
 }

@@ -35,8 +35,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		return false
 	}
 
-	CheckDeprecatedLinuxID(ppfmt, "PUID", "user")
-	CheckDeprecatedLinuxID(ppfmt, "PGID", "group")
+	CheckIgnoredLinuxID(ppfmt, "PUID", "user")
+	CheckIgnoredLinuxID(ppfmt, "PGID", "group")
 
 	return true
 }

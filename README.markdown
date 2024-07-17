@@ -108,7 +108,7 @@ services:
     read_only: true
     # Make the container filesystem read-only (optional but recommended)
     cap_drop: [all]
-    # Drop all capabilities (optional but recommended)
+    # Drop all Linux capabilities (optional but recommended)
     security_opt: [no-new-privileges:true]
     # Another protection to restrict superuser privileges (optional but recommended)
     environment:
