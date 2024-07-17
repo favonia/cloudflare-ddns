@@ -97,6 +97,7 @@ func TestNew(t *testing.T) {
 		{"*...｡..a.com", w(".....a.com"), true, ""},
 		{"*......", w(""), true, ""},
 		{"*｡｡｡｡｡｡", w(""), true, ""},
+		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()

@@ -68,7 +68,7 @@ func New(domain string) (Domain, error) {
 	// Special case 2: "*.something"
 	if normalized, ok := strings.CutPrefix(normalized, "*."); ok {
 		// redo the normalization after removing the offending "*" to get the true error (if any)
-		normalized, err := profileKeepingLeadingDots.ToASCII(strings.TrimPrefix(normalized, "*."))
+		normalized, err := profileKeepingLeadingDots.ToASCII(normalized)
 		return Wildcard(normalized), err
 	}
 
