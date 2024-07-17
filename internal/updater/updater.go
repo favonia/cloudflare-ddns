@@ -15,6 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+// Constants for names of various hints.
 const (
 	HintIP4DetectionFails string = "detect-ip4-fail"
 	HintIP6DetectionFails string = "detect-ip6-fail"
@@ -61,14 +62,14 @@ var errTimeout = errors.New("timeout")
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
 ) message.Message {
-	resps := SetterResponses{}
+	resps := setterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 		defer cancel()
 
 		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
-		resps.Register(resp, domain)
+		resps.register(resp, domain)
 		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
@@ -80,21 +81,21 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	return GenerateUpdateMessage(ipNet, ip, resps)
+	return generateUpdateMessage(ipNet, ip, resps)
 }
 
 // deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
 func deleteIP(
 	ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type,
 ) message.Message {
-	resps := SetterResponses{}
+	resps := setterResponses{}
 
 	for _, domain := range c.Domains[ipNet] {
 		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 		defer cancel()
 
 		resp := s.Delete(ctx, ppfmt, domain, ipNet)
-		resps.Register(resp, domain)
+		resps.register(resp, domain)
 		if resp == setter.ResponseFailed {
 			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 				ppfmt.Infof(pp.EmojiHint,
@@ -106,7 +107,7 @@ func deleteIP(
 		}
 	}
 
-	return GenerateDeleteMessage(ipNet, resps)
+	return generateDeleteMessage(ipNet, resps)
 }
 
 func detectIP(ctx context.Context, ppfmt pp.PP,
@@ -139,7 +140,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
-	return ip, GenerateDetectMessage(ipNet, ok)
+	return ip, generateDetectMessage(ipNet, ok)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.

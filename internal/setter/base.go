@@ -19,7 +19,7 @@ import (
 
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
-	// SanityCheck determines whether one should continue trying
+	// SanityCheck determines whether one should continue trying.
 	SanityCheck(
 		ctx context.Context,
 		ppfmt pp.PP,

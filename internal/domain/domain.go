@@ -50,7 +50,7 @@ func StringToASCII(domain string) string {
 	return normalized
 }
 
-// NewDomain normalizes a domain to its ASCII form and then stores
+// New normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,
 // the ASCII form (possibly using Punycode) is stored to avoid ambiguity.

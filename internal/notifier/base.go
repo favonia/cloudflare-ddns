@@ -20,6 +20,7 @@ type Notifier interface {
 	Send(ctx context.Context, ppfmt pp.PP, msg string) bool
 }
 
+// SendMessage formats and sends a [message.Message].
 func SendMessage(ctx context.Context, ppfmt pp.PP, n Notifier, msg message.Message) bool {
 	if len(msg.NotifierMessages) == 0 {
 		return true

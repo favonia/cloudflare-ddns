@@ -36,6 +36,7 @@ type Monitor interface {
 	ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool
 }
 
+// PingMessage formats and pings with a [message.Message].
 func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
 	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
 	if msg.Ok {
@@ -45,6 +46,7 @@ func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Messag
 	}
 }
 
+// LogMessage formats and logs a [message.Message].
 func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
 	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
 	switch {

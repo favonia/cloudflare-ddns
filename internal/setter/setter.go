@@ -43,6 +43,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
+// SanityCheck calls [api.Handle.SanityCheck] on the handle.
 func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 	return s.Handle.SanityCheck(ctx, ppfmt)
 }
