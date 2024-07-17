@@ -98,7 +98,7 @@ services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
     network_mode: host
-    # This makes IPv6 easier (optional; see below)
+    # This bypasses network isolation and makes IPv6 easier (optional; see below)
     restart: always
     # Restart the updater after reboot
     user: "1000:1000"
@@ -152,31 +152,16 @@ The updater, by default, will attempt to update DNS records for both IPv4 and IP
 </details>
 
 <details>
-<summary>📡 Expand this if you want IPv6 without using <code>network_mode: host</code></summary>
+<summary>📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, check out the [experimental `ip6tables` option](https://github.com/moby/moby/pull/41622). If your host OS is Linux, here’s the tl;dr:
-
-1. Use `network_mode: bridge` instead of `network_mode: host`.
-2. Edit or create `/etc/docker/daemon.json` with these settings:
-   ```json
-   {
-     "ipv6": true,
-     "fixed-cidr-v6": "fd00::/8",
-     "experimental": true,
-     "ip6tables": true
-   }
-   ```
-3. Restart the Docker daemon (if you are using systemd):
-   ```sh
-   systemctl restart docker.service
-   ```
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Use newer versions of Docker that come with (much) better IPv6 support.
 
 </details>
 
 <details>
-<summary>🛡️ Change <code>1000:1000</code> to <code>USER:GROUP</code> for the user and group IDs you want to use</summary>
+<summary>🛡️ Change <code>user: "1000:1000"</code> to the user and group IDs you want to use</summary>
 
-Change `1000` to the user or group ID you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
+Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
 
 </details>
 
@@ -273,7 +258,7 @@ _(Click to expand the following items.)_
 <details>
 <summary>🐣 Parameters of new DNS records</summary>
 
-> 👉 The updater will preserve existing proxy and TTL settings and other record parameters unless it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing record parameters now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing record parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
+> 👉 The updater will preserve existing record parameters (TTL, proxy states, comments, etc.) unless it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing record parameters now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing record parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
 
 | Name             | Valid Values                                                                                                                                                                             | Meaning                                                                                                                                    | Required? | Default Value                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------ |
