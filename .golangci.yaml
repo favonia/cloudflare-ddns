@@ -45,6 +45,7 @@ linters:
     - cyclop # can detect complicated code, but never leads to actual code changes
     - funlen # can detect complicated code, but never leads to actual code changes
     - gocognit # can detect complicated code, but never leads to actual code changes
+    - gocyclo # can detect complicated code, but never leads to actual code changes
     - maintidx # can detect complicated code, but never leads to actual code changes
 
     - depguard # useless; I do not introduce a dependency carelessly
