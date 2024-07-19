@@ -90,6 +90,9 @@ func (h *CloudflareHandle) FlushCache() {
 	}
 }
 
+// errTimeout for checking if it's timeout.
+var errTimeout = errors.New("timeout")
+
 // SanityCheck verifies Cloudflare tokens.
 //
 // Ideally, we should also verify accountID here, but that is impossible without
@@ -99,7 +102,7 @@ func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 		return valid.Value()
 	}
 
-	quickCtx, cancel := context.WithTimeout(ctx, time.Second)
+	quickCtx, cancel := context.WithTimeoutCause(ctx, time.Second, errTimeout)
 	defer cancel()
 
 	ok := true
@@ -113,8 +116,10 @@ func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 			ok = false
 			goto permanently
 		}
-		ppfmt.Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", err)
-		return true // It could be that the network times out.
+		if !errors.Is(context.Cause(quickCtx), errTimeout) {
+			ppfmt.Warningf(pp.EmojiWarning, "Failed to verify the Cloudflare API token; will retry later: %v", err)
+		}
+		return true // It could be that the network is temporarily down.
 	}
 	switch res.Status {
 	case "active":

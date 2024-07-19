@@ -304,6 +304,29 @@ func TestNewInvalid(t *testing.T) {
 	}
 }
 
+func TestSanityCheckInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	mux, auth := newServerAuth(t, false)
+	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
+		assert.Empty(t, r.URL.Query())
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "{")
+	})
+
+	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Failed to verify the Cloudflare API token; will retry later: %v", gomock.Any()) //nolint:lll
+	h, ok := auth.New(context.Background(), mockPP, time.Second)
+	require.True(t, ok)
+	require.NotNil(t, h)
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
+}
+
 func TestSanityCheckTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -316,10 +339,10 @@ func TestSanityCheckTimeout(t *testing.T) {
 		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 		assert.Empty(t, r.URL.Query())
 
+		time.Sleep(2 * time.Second)
 		panic(http.ErrAbortHandler)
 	})
 
-	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
