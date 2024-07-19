@@ -32,11 +32,11 @@ func TestCheckRootWithOldConfigs(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	var calls []any
 	if syscall.Geteuid() == 0 {
-		calls = append(calls, mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "You are running this tool as root, which is usually a bad idea"))
+		calls = append(calls, mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "You are running this tool as root, which is usually a bad idea")) //nolint:lll
 	}
 	calls = append(calls,
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, "PUID=%s is ignored; use Docker's built-in mechanism to set user ID", "1000"),
-		mockPP.EXPECT().Warningf(pp.EmojiUserError, "PGID=%s is ignored; use Docker's built-in mechanism to set group ID", "1000"),
+		mockPP.EXPECT().Warningf(pp.EmojiUserError, "PUID=%s is ignored; use Docker's built-in mechanism to set user ID", "1000"),  //nolint:lll
+		mockPP.EXPECT().Warningf(pp.EmojiUserError, "PGID=%s is ignored; use Docker's built-in mechanism to set group ID", "1000"), //nolint:lll
 		mockPP.EXPECT().Warningf(pp.EmojiHint, "See https://github.com/favonia/cloudflare-ddns for the new Docker template"),
 	)
 	gomock.InOrder(calls...)

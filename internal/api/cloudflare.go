@@ -141,7 +141,7 @@ permanently:
 	return ok
 }
 
-func (h *CloudflareHandle) ForcePassSanityCheck() {
+func (h *CloudflareHandle) forcePassSanityCheck() {
 	h.cache.sanityCheck.Set(struct{}{}, true, ttlcache.DefaultTTL)
 }
 
@@ -164,7 +164,7 @@ func (h *CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name stri
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.ForcePassSanityCheck()
+	h.forcePassSanityCheck()
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
@@ -211,7 +211,7 @@ zoneSearch:
 		}
 
 		// The operation went through. No need to perform any sanity checking in near future!
-		h.ForcePassSanityCheck()
+		h.forcePassSanityCheck()
 
 		switch len(zones) {
 		case 0: // len(zones) == 0
@@ -249,7 +249,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.ForcePassSanityCheck()
+	h.forcePassSanityCheck()
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, _, err := h.cf.ListDNSRecords(ctx,
@@ -296,7 +296,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.ForcePassSanityCheck()
+	h.forcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		delete(rmap.Value(), id)
@@ -330,7 +330,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.ForcePassSanityCheck()
+	h.forcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[id] = ip
@@ -369,7 +369,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.ForcePassSanityCheck()
+	h.forcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[res.ID] = ip
