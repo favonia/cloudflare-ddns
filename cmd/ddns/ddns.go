@@ -32,7 +32,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 	c := config.Default()
 
 	// Read the config
-	if !c.ReadEnv(ppfmt) || !c.NormalizeConfig(ppfmt) {
+	if !c.ReadEnv(ppfmt) || !c.Normalize(ppfmt) {
 		return c, nil, false
 	}
 

@@ -22,7 +22,7 @@ type FQDNSplitter struct {
 
 // Split constructs a [FQDNSplitter] for the FQDN.
 func (f FQDN) Split() Splitter {
-	return &FQDNSplitter{
+	return FQDNSplitter{
 		domain:    string(f),
 		cursor:    0,
 		exhausted: false,
@@ -30,22 +30,24 @@ func (f FQDN) Split() Splitter {
 }
 
 // IsValid checks whether the cursor is still valid.
-func (s *FQDNSplitter) IsValid() bool { return !s.exhausted }
+func (s FQDNSplitter) IsValid() bool { return !s.exhausted }
 
 // ZoneNameASCII gives the ASCII form of the current zone suffix.
-func (s *FQDNSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
+func (s FQDNSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
 
 // Next moves the cursor to the next spltting point.
 // Call [IsValid] to check whether the resulting cursor is valid.
-func (s *FQDNSplitter) Next() {
+func (s FQDNSplitter) Next() Splitter {
+	next := s
 	if s.cursor == len(s.domain) {
-		s.exhausted = true
+		next.exhausted = true
 	} else {
 		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
 		if shift == -1 {
-			s.cursor = len(s.domain)
+			next.cursor = len(s.domain)
 		} else {
-			s.cursor += shift + 1
+			next.cursor += shift + 1
 		}
 	}
+	return next
 }

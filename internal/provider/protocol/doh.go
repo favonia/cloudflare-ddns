@@ -178,12 +178,12 @@ type DNSOverHTTPS struct {
 }
 
 // Name of the detection protocol.
-func (p *DNSOverHTTPS) Name() string {
+func (p DNSOverHTTPS) Name() string {
 	return p.ProviderName
 }
 
 // GetIP detects the IP address by DNS over HTTPS.
-func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
@@ -199,4 +199,4 @@ func (p *DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type,
 }
 
 // ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p *DNSOverHTTPS) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }
+func (p DNSOverHTTPS) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

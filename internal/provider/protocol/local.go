@@ -25,13 +25,13 @@ type Local struct {
 }
 
 // Name of the detection protocol.
-func (p *Local) Name() string {
+func (p Local) Name() string {
 	return p.ProviderName
 }
 
 // GetIP detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
@@ -53,4 +53,4 @@ func (p *Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use10
 }
 
 // ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p *Local) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }
+func (p Local) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

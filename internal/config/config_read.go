@@ -12,7 +12,7 @@ import (
 // - timezone (TZ)
 // - privileges-related ones (PGID and PUID)
 // - output-related ones (QUIET and EMOJI)
-// One should subsequently call [Config.NormalizeConfig] to restore invariants across fields.
+// One should subsequently call [Config.Normalize] to restore invariants across fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
@@ -40,11 +40,11 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-// NormalizeConfig checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
+// Normalize checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
 // When any error is reported, the original configuration remain unchanged.
 //
 //nolint:funlen
-func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
+func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.IncIndent()

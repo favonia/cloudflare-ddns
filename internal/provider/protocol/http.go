@@ -38,12 +38,12 @@ type HTTP struct {
 }
 
 // Name of the detection protocol.
-func (p *HTTP) Name() string {
+func (p HTTP) Name() string {
 	return p.ProviderName
 }
 
 // GetIP detects the IP address by using the HTTP response directly.
-func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	url, found := p.URL[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
@@ -59,4 +59,4 @@ func (p *HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001
 }
 
 // ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p *HTTP) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }
+func (p HTTP) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

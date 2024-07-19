@@ -87,7 +87,7 @@ func TestWildcardSplitter(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			var rs []r
-			for s := domain.Wildcard(tc.input).Split(); s.IsValid(); s.Next() {
+			for s := domain.Wildcard(tc.input).Split(); s.IsValid(); s = s.Next() {
 				rs = append(rs, s.ZoneNameASCII())
 			}
 			require.Equal(t, tc.expected, rs)

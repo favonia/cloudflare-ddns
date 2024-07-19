@@ -33,7 +33,7 @@ type WildcardSplitter struct {
 
 // Split constructs a [Splitter] for a wildcard domain.
 func (w Wildcard) Split() Splitter {
-	return &WildcardSplitter{
+	return WildcardSplitter{
 		domain:    string(w),
 		cursor:    0,
 		exhausted: false,
@@ -41,22 +41,24 @@ func (w Wildcard) Split() Splitter {
 }
 
 // IsValid checks whether the cursor is still valid.
-func (s *WildcardSplitter) IsValid() bool { return !s.exhausted }
+func (s WildcardSplitter) IsValid() bool { return !s.exhausted }
 
 // ZoneNameASCII gives the ASCII form of the current zone suffix.
-func (s *WildcardSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
+func (s WildcardSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
 
 // Next moves the cursor to the next spltting point.
 // Call [WildcardSplitter.IsValid] to check whether the resulting cursor is valid.
-func (s *WildcardSplitter) Next() {
+func (s WildcardSplitter) Next() Splitter {
+	next := s
 	if s.cursor == len(s.domain) {
-		s.exhausted = true
+		next.exhausted = true
 	} else {
 		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
 		if shift == -1 {
-			s.cursor = len(s.domain)
+			next.cursor = len(s.domain)
 		} else {
-			s.cursor += shift + 1
+			next.cursor += shift + 1
 		}
 	}
+	return next
 }

@@ -86,7 +86,7 @@ func TestReadEnvEmpty(t *testing.T) {
 }
 
 //nolint:funlen
-func TestNormalizeConfig(t *testing.T) {
+func TestNormalize(t *testing.T) {
 	t.Parallel()
 
 	keyProxied := "PROXIED"
@@ -415,7 +415,7 @@ func TestNormalizeConfig(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := cfg.NormalizeConfig(mockPP)
+			ok := cfg.Normalize(mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
 				require.Equal(t, tc.expected, cfg)

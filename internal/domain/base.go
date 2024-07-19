@@ -11,7 +11,7 @@ type Splitter interface {
 	ZoneNameASCII() string
 
 	// Next moves the cursor to the next possible splitting point, which might end up being invalid.
-	Next()
+	Next() Splitter
 }
 
 // A Domain represents a domain name to update.

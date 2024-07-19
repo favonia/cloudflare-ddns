@@ -27,7 +27,7 @@ func TestNewHealthchecks(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := monitor.NewHealthchecks(mockPP, rawBaseURL)
-	require.Equal(t, &monitor.Healthchecks{
+	require.Equal(t, monitor.Healthchecks{
 		BaseURL: parsedBaseURL,
 		Timeout: monitor.HealthchecksDefaultTimeout,
 	}, m)
