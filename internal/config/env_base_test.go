@@ -66,23 +66,24 @@ func TestGetenv(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
-func TestGetenvs(t *testing.T) {
+func TestGetenvAsList(t *testing.T) {
 	key := keyPrefix + "VAR"
 	for name, tc := range map[string]struct {
 		set      bool
 		val      string
+		sep      string
 		expected []string
 	}{
-		"nil":         {false, "", []string{}},
-		"empty":       {true, "", []string{}},
-		"only-spaces": {true, "\n   \n  \n \t", []string{}},
-		"simple":      {true, "VAL", []string{"VAL"}},
-		"space1":      {true, "    VAL1 \nVAL2    ", []string{"VAL1", "VAL2"}},
-		"space2":      {true, "     VAL1 \n   VAL2 ", []string{"VAL1", "VAL2"}},
+		"nil":         {false, "", "\n", []string{}},
+		"empty":       {true, "", "\n", []string{}},
+		"only-spaces": {true, "\n   \n  \n \t", "\n", []string{}},
+		"simple":      {true, "VAL", "\n", []string{"VAL"}},
+		"space1":      {true, "    VAL1 \nVAL2    ", "\n", []string{"VAL1", "VAL2"}},
+		"space2":      {true, "     VAL1 \n   VAL2 ", "\n", []string{"VAL1", "VAL2"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
-			require.Equal(t, tc.expected, config.Getenvs(key))
+			require.Equal(t, tc.expected, config.GetenvAsList(key, tc.sep))
 		})
 	}
 }

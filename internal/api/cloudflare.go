@@ -16,10 +16,13 @@ import (
 
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
-	tokenValid   *ttlcache.Cache[struct{}, bool]                               // whether token is valid
-	listRecords  map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr] // domain names to IPs
-	activeZones  *ttlcache.Cache[string, []string]                             // zone names to zone IDs
-	zoneOfDomain *ttlcache.Cache[string, string]                               // domain names to zone names
+	// sanity check
+	sanityCheck *ttlcache.Cache[struct{}, bool] // whether token is valid
+	// domains to zones
+	listZones    *ttlcache.Cache[string, []string] // zone names to zone IDs
+	zoneOfDomain *ttlcache.Cache[string, string]   // domain names to the zone ID
+	// records of domains
+	listRecords map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr] // domain names to IPs
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -64,13 +67,13 @@ func (t *CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration tim
 		cf:        handle,
 		accountID: t.AccountID,
 		cache: CloudflareCache{
-			tokenValid: newCache[struct{}, bool](cacheExpiration),
+			sanityCheck:  newCache[struct{}, bool](cacheExpiration),
+			listZones:    newCache[string, []string](cacheExpiration),
+			zoneOfDomain: newCache[string, string](cacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
 				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
 			},
-			activeZones:  newCache[string, []string](cacheExpiration),
-			zoneOfDomain: newCache[string, string](cacheExpiration),
 		},
 	}
 
@@ -79,11 +82,12 @@ func (t *CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration tim
 
 // FlushCache flushes the API cache.
 func (h *CloudflareHandle) FlushCache() {
+	h.cache.sanityCheck.DeleteAll()
+	h.cache.listZones.DeleteAll()
+	h.cache.zoneOfDomain.DeleteAll()
 	for _, cache := range h.cache.listRecords {
 		cache.DeleteAll()
 	}
-	h.cache.activeZones.DeleteAll()
-	h.cache.zoneOfDomain.DeleteAll()
 }
 
 // SanityCheck verifies Cloudflare tokens.
@@ -91,7 +95,7 @@ func (h *CloudflareHandle) FlushCache() {
 // Ideally, we should also verify accountID here, but that is impossible without
 // more permissions included in the API token.
 func (h *CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
-	if valid := h.cache.tokenValid.Get(struct{}{}); valid != nil {
+	if valid := h.cache.sanityCheck.Get(struct{}{}); valid != nil {
 		return valid.Value()
 	}
 
@@ -133,19 +137,23 @@ permanently:
 	if !ok {
 		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
 	}
-	h.cache.tokenValid.Set(struct{}{}, ok, ttlcache.DefaultTTL)
+	h.cache.sanityCheck.Set(struct{}{}, ok, ttlcache.DefaultTTL)
 	return ok
 }
 
-// ActiveZones returns a list of zone IDs with the zone name.
-func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
+func (h *CloudflareHandle) ForcePassSanityCheck() {
+	h.cache.sanityCheck.Set(struct{}{}, true, ttlcache.DefaultTTL)
+}
+
+// ListZones returns a list of zone IDs with the zone name.
+func (h *CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
 	if name == "" {
 		return []string{}, true
 	}
 
-	if ids := h.cache.activeZones.Get(name); ids != nil {
+	if ids := h.cache.listZones.Get(name); ids != nil {
 		return ids.Value(), true
 	}
 
@@ -156,7 +164,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+	h.ForcePassSanityCheck()
 
 	ids := make([]string, 0, len(res.Result))
 	for _, zone := range res.Result {
@@ -183,7 +191,7 @@ func (h *CloudflareHandle) ActiveZones(ctx context.Context, ppfmt pp.PP, name st
 		}
 	}
 
-	h.cache.activeZones.Set(name, ids, ttlcache.DefaultTTL)
+	h.cache.listZones.Set(name, ids, ttlcache.DefaultTTL)
 
 	return ids, true
 }
@@ -197,13 +205,13 @@ func (h *CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain
 zoneSearch:
 	for s := domain.Split(); s.IsValid(); s.Next() {
 		zoneName := s.ZoneNameASCII()
-		zones, ok := h.ActiveZones(ctx, ppfmt, zoneName)
+		zones, ok := h.ListZones(ctx, ppfmt, zoneName)
 		if !ok {
 			return "", false
 		}
 
 		// The operation went through. No need to perform any sanity checking in near future!
-		h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+		h.ForcePassSanityCheck()
 
 		switch len(zones) {
 		case 0: // len(zones) == 0
@@ -241,7 +249,7 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+	h.ForcePassSanityCheck()
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
 	rs, _, err := h.cf.ListDNSRecords(ctx,
@@ -254,9 +262,6 @@ func (h *CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
 		return nil, false, false
 	}
-
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
 
 	rmap := map[string]netip.Addr{}
 	for i := range rs {
@@ -291,7 +296,7 @@ func (h *CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+	h.ForcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		delete(rmap.Value(), id)
@@ -325,7 +330,7 @@ func (h *CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+	h.ForcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[id] = ip
@@ -364,7 +369,7 @@ func (h *CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// The operation went through. No need to perform any sanity checking in near future!
-	h.cache.tokenValid.Set(struct{}{}, true, ttlcache.DefaultTTL)
+	h.ForcePassSanityCheck()
 
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		rmap.Value()[res.ID] = ip

@@ -16,13 +16,13 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-// Getenvs reads an environment variable, split it by '\n', and trim the space.
-func Getenvs(key string) []string {
-	rawVals := strings.Split(os.Getenv(key), "\n")
+// GetenvAsList reads an environment variable, split it by sep, and trim the space.
+func GetenvAsList(key string, sep string) []string {
+	rawVals := strings.Split(os.Getenv(key), sep)
 	vals := make([]string, 0, len(rawVals))
 	for _, v := range rawVals {
 		v = strings.TrimSpace(v)
-		if len(v) > 0 {
+		if v != "" {
 			vals = append(vals, v)
 		}
 	}
@@ -33,7 +33,9 @@ func Getenvs(key string) []string {
 func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		if *field != "" {
+			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+		}
 		return true
 	}
 

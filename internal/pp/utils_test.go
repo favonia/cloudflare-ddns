@@ -1,32 +1,32 @@
-package updater_test
+package pp_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/favonia/cloudflare-ddns/internal/updater"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestListJoin(t *testing.T) {
+func TestJoin(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		input  []string
 		output string
 	}{
-		"none":  {nil, ""},
+		"none":  {nil, "(none)"},
 		"one":   {[]string{"hello"}, "hello"},
 		"two":   {[]string{"hello", "hey"}, "hello, hey"},
 		"three": {[]string{"hello", "hey", "hi"}, "hello, hey, hi"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.output, updater.ListJoin(tc.input))
+			require.Equal(t, tc.output, pp.Join(tc.input))
 		})
 	}
 }
 
-func TestListEnglishJoin(t *testing.T) {
+func TestEnglishJoin(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		input  []string
@@ -39,7 +39,7 @@ func TestListEnglishJoin(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.output, updater.ListEnglishJoin(tc.input))
+			require.Equal(t, tc.output, pp.EnglishJoin(tc.input))
 		})
 	}
 }

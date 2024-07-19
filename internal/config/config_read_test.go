@@ -59,8 +59,6 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", api.TTL(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "PROXIED", ""),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "RECORD_COMMENT", ""),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
 	)

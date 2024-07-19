@@ -96,7 +96,7 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 		}
 	}
 
-	// check if all providers are nil
+	// check if all providers were turned off
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
