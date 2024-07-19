@@ -63,12 +63,12 @@ func TestNewUptimeKuma(t *testing.T) {
 			m, ok := monitor.NewUptimeKuma(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			if ok {
-				require.Equal(t, &monitor.UptimeKuma{
+				require.Equal(t, monitor.UptimeKuma{
 					BaseURL: parsedBaseURL,
 					Timeout: monitor.UptimeKumaDefaultTimeout,
 				}, m)
 			} else {
-				require.Nil(t, m)
+				require.Zero(t, m)
 			}
 		})
 	}

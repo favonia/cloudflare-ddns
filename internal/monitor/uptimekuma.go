@@ -29,7 +29,7 @@ type UptimeKuma struct {
 	Timeout time.Duration
 }
 
-var _ Monitor = (*UptimeKuma)(nil)
+var _ Monitor = UptimeKuma{} //nolint:exhaustruct
 
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
@@ -37,16 +37,16 @@ const (
 )
 
 // NewUptimeKuma creates a new UptimeKuma monitor.
-func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
+func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
-		return nil, false
+		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
 	if !(u.IsAbs() && u.Opaque == "" && u.Host != "") {
 		ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
-		return nil, false
+		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
 	switch u.Scheme {
@@ -58,7 +58,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 
 	default:
 		ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
-		return nil, false
+		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
 	// By default, the URL provided by Uptime Kuma has this:
@@ -70,7 +70,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 		q, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
 			ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
-			return nil, false
+			return UptimeKuma{}, false //nolint:exhaustruct
 		}
 
 		for k, vs := range q {
@@ -90,7 +90,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 		u.RawQuery = ""
 	}
 
-	h := &UptimeKuma{
+	h := UptimeKuma{
 		BaseURL: u,
 		Timeout: UptimeKumaDefaultTimeout,
 	}
@@ -99,7 +99,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (*UptimeKuma, bool) {
 }
 
 // Describe calls the callback with the service name "Uptime Kuma".
-func (h *UptimeKuma) Describe(callback func(service, params string)) {
+func (h UptimeKuma) Describe(callback func(service, params string)) {
 	callback("Uptime Kuma", "(URL redacted)")
 }
 
@@ -116,7 +116,7 @@ type UptimeKumaRequest struct {
 	Ping   string `url:"ping"`
 }
 
-func (h *UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequest) bool {
+func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequest) bool {
 	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 	defer cancel()
 
@@ -154,17 +154,17 @@ func (h *UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequ
 // Success pings the server with status=up. Messages are ignored and "OK" is used instead.
 // The reason is that Uptime Kuma seems to show only the first success message
 // and it could be misleading if an outdated message stays in the UI.
-func (h *UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, _message string) bool {
+func (h UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, _message string) bool {
 	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
 }
 
 // Start does nothing.
-func (h *UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
+func (h UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
 	return true
 }
 
 // Failure pings the server with status=down.
-func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
+func (h UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
 	if message == "" {
 		// If we do not send a non-empty message to Uptime Kuma, it seems to
 		// either keep the previous message (even if it was for success) or
@@ -177,12 +177,12 @@ func (h *UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) b
 }
 
 // Log does nothing.
-func (h *UptimeKuma) Log(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
+func (h UptimeKuma) Log(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
 	return true
 }
 
 // ExitStatus with non-zero triggers [Failure]. Otherwise, it does nothing.
-func (h *UptimeKuma) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
+func (h UptimeKuma) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
 	if code != 0 {
 		return h.Failure(ctx, ppfmt, message)
 	}

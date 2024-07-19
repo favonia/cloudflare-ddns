@@ -21,7 +21,7 @@ type httpCore struct {
 	extract           func(pp.PP, []byte) (netip.Addr, bool)
 }
 
-func (h *httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
+func (h httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)

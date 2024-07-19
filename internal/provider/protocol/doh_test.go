@@ -22,7 +22,7 @@ import (
 func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	p := &protocol.DNSOverHTTPS{
+	p := protocol.DNSOverHTTPS{
 		ProviderName:     "very secret name",
 		Is1111UsedForIP4: false,
 		Param:            nil,

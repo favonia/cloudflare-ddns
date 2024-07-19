@@ -25,7 +25,7 @@ type Healthchecks struct {
 	Timeout time.Duration
 }
 
-var _ Monitor = (*Healthchecks)(nil)
+var _ Monitor = Healthchecks{} //nolint:exhaustruct
 
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
@@ -34,17 +34,17 @@ const (
 
 // NewHealthchecks creates a new Healthchecks monitor.
 // See https://healthchecks.io/docs/http_api/ for more information.
-func NewHealthchecks(ppfmt pp.PP, rawURL string) (*Healthchecks, bool) {
+func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
-		return nil, false
+		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
 	if !(u.IsAbs() && u.Opaque == "" && u.Host != "" && u.RawQuery == "") {
 		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
 		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return nil, false
+		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
 	switch u.Scheme {
@@ -57,10 +57,10 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (*Healthchecks, bool) {
 	default:
 		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
 		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return nil, false
+		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
-	h := &Healthchecks{
+	h := Healthchecks{
 		BaseURL: u,
 		Timeout: HealthchecksDefaultTimeout,
 	}
@@ -69,7 +69,7 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (*Healthchecks, bool) {
 }
 
 // Describe calls the callback with the service name "Healthchecks".
-func (h *Healthchecks) Describe(callback func(service, params string)) {
+func (h Healthchecks) Describe(callback func(service, params string)) {
 	callback("Healthchecks", "(URL redacted)")
 }
 
@@ -102,7 +102,7 @@ Code and body for the slug API:
 
 To support both APIs, we check both (1) whether the status code is 200 and (2) whether the body is "OK".
 */
-func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, message string) bool {
+func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, message string) bool {
 	url := h.BaseURL.JoinPath(endpoint)
 
 	endpointDescription := "default (root)"
@@ -154,27 +154,27 @@ func (h *Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, m
 }
 
 // Success pings the root endpoint.
-func (h *Healthchecks) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
+func (h Healthchecks) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "", message)
 }
 
 // Start pings the /start endpoint.
-func (h *Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
+func (h Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/start", message)
 }
 
 // Failure pings the /fail endpoint.
-func (h *Healthchecks) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
+func (h Healthchecks) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/fail", message)
 }
 
 // Log pings the /log endpoint.
-func (h *Healthchecks) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
+func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
 	return h.ping(ctx, ppfmt, "/log", message)
 }
 
 // ExitStatus pings the /number endpoint where number is the exit status.
-func (h *Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
+func (h Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
 	if code < 0 || code > 255 {
 		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)
 		return false

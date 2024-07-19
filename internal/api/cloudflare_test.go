@@ -424,7 +424,7 @@ type zonesHandler struct {
 	accessCount  *int
 }
 
-func newZonesHandler(t *testing.T, mux *http.ServeMux, emptyAccountID bool) *zonesHandler {
+func newZonesHandler(t *testing.T, mux *http.ServeMux, emptyAccountID bool) zonesHandler {
 	t.Helper()
 
 	var (
@@ -442,18 +442,18 @@ func newZonesHandler(t *testing.T, mux *http.ServeMux, emptyAccountID bool) *zon
 		handleZones(t, zoneName, zoneStatuses[zoneName], emptyAccountID, w, r)
 	})
 
-	return &zonesHandler{
+	return zonesHandler{
 		mux:          mux,
 		zoneStatuses: &zoneStatuses,
 		accessCount:  &accessCount,
 	}
 }
 
-func (h *zonesHandler) set(zoneStatuses map[string][]string, accessCount int) {
+func (h zonesHandler) set(zoneStatuses map[string][]string, accessCount int) {
 	*(h.zoneStatuses), *(h.accessCount) = zoneStatuses, accessCount
 }
 
-func (h *zonesHandler) isExhausted() bool {
+func (h zonesHandler) isExhausted() bool {
 	return *h.accessCount == 0
 }
 
@@ -464,7 +464,7 @@ func TestListZonesRoot(t *testing.T) {
 
 	_, h := newHandle(t, false, mockPP)
 
-	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "")
+	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "")
 	require.True(t, ok)
 	require.Empty(t, zones)
 }
@@ -479,14 +479,14 @@ func TestListZonesTwo(t *testing.T) {
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{"test.org": {"active", "active"}}, 1)
-	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
 
 	zh.set(nil, 0)
 	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
@@ -500,7 +500,7 @@ func TestListZonesTwo(t *testing.T) {
 		"test.org",
 		gomock.Any(),
 	)
-	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())
@@ -516,14 +516,14 @@ func TestListZonesEmpty(t *testing.T) {
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{}, 1)
-	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
 
 	zh.set(nil, 0) // this should not affect the result due to the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
@@ -537,7 +537,7 @@ func TestListZonesEmpty(t *testing.T) {
 		"test.org",
 		gomock.Any(),
 	)
-	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())
@@ -686,7 +686,7 @@ func TestZoneOfDomain(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
+			zoneID, ok := h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, zoneID)
 			require.True(t, zh.isExhausted())
@@ -694,7 +694,7 @@ func TestZoneOfDomain(t *testing.T) {
 			if tc.ok {
 				zh.set(nil, 0)
 				mockPP = mocks.NewMockPP(mockCtrl) // there shouldn't be any messages
-				zoneID, ok = h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
+				zoneID, ok = h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
 				require.True(t, zh.isExhausted())
@@ -716,7 +716,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	zoneID, ok := h.(*api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	zoneID, ok := h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Equal(t, "", zoneID)
 }

@@ -35,7 +35,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			nil,
-			[]mon{&monitor.Healthchecks{
+			[]mon{monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
 			}},
@@ -45,7 +45,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			[]mon{&monitor.Healthchecks{
+			[]mon{monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
 			}},
@@ -55,7 +55,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			[]mon{&monitor.Healthchecks{
+			[]mon{monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
 			}},
@@ -132,7 +132,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			nil,
-			[]mon{&monitor.UptimeKuma{
+			[]mon{monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
 			}},
@@ -142,7 +142,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			[]mon{&monitor.UptimeKuma{
+			[]mon{monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
 			}},
@@ -152,7 +152,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			[]mon{&monitor.UptimeKuma{
+			[]mon{monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
 			}},
@@ -162,7 +162,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"query": {
 			true, "https://hi.org/1234?hello=123",
 			nil,
-			[]mon{&monitor.UptimeKuma{
+			[]mon{monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
 			}},

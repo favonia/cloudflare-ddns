@@ -49,12 +49,12 @@ type Field struct {
 }
 
 // Name of the detection protocol.
-func (p *Field) Name() string {
+func (p Field) Name() string {
 	return p.ProviderName
 }
 
 // GetIP detects the IP address by parsing the HTTP response.
-func (p *Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
@@ -70,4 +70,4 @@ func (p *Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use100
 }
 
 // ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p *Field) ShouldWeCheck1111() bool { return p.Is1111UsedforIP4 }
+func (p Field) ShouldWeCheck1111() bool { return p.Is1111UsedforIP4 }
