@@ -1,3 +1,11 @@
+# [1.13.1](https://github.com/favonia/cloudflare-ddns/compare/v1.13.0...v1.13.1) (2024-07-19)
+
+This is a very minor release that improves the error messages produced by the new API token verifier (introduced in 1.13.0). See [#813](https://github.com/favonia/cloudflare-ddns/issues/813).
+
+### Bug Fixes
+
+- **domain:** fix incorrect parsing of `*.*.foo.bar` ([#809](https://github.com/favonia/cloudflare-ddns/issues/809)) ([9ccf9df](https://github.com/favonia/cloudflare-ddns/commit/9ccf9dfbf3d3ce0211c5af8c5345e809b1d7d266))
+
 # [1.13.0](https://github.com/favonia/cloudflare-ddns/compare/v1.12.0...v1.13.0) (2024-07-16)
 
 This is a major release that no longer drops superuser privileges. Please review the instructions in [README](./README.markdown) for the new recommended setup.
