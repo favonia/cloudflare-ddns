@@ -65,11 +65,11 @@ func (c *Config) Print(ppfmt pp.PP) {
 
 	section("Domains and IP providers:")
 	if c.Provider[ipnet.IP4] != nil {
-		item("IPv4 domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
+		item("IPv4-enabled domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
 		item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
 	}
 	if c.Provider[ipnet.IP6] != nil {
-		item("IPv6 domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
+		item("IPv6-enabled domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
 		item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	}
 
