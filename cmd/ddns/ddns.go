@@ -74,7 +74,7 @@ func realMain() int { //nolint:funlen
 	ctxWithSignals, _ := signal.NotifyContext(ctx)
 
 	// Set up pretty printer
-	ppfmt, ok := config.SetupPP()
+	ppfmt, ok := config.SetupPP(os.Stdout)
 	if !ok {
 		ppfmt.Infof(pp.EmojiUserError, "Bye!")
 		return 1
