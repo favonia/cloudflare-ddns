@@ -15,6 +15,18 @@ type setter struct {
 	Handle api.Handle
 }
 
+// New creates a new Setter.
+func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
+	return setter{
+		Handle: handle,
+	}, true
+}
+
+// SanityCheck calls [api.Handle.SanityCheck] on the handle.
+func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+	return s.Handle.SanityCheck(ctx, ppfmt)
+}
+
 // partitionRecords partitions record maps into matched and unmatched ones.
 //
 // The target ip must be non-zero.
@@ -27,25 +39,13 @@ func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs
 		}
 	}
 
-	// This is to make Set deterministic so that this package is easier to test.
-	// Otherwise, sorting is not needed. The performance penalty is small because in most cases
-	// the total number of (matched and unmatched) records would be zero or one.
+	// This is to make Set very deterministic so that this package is easier to test.
+	// Otherwise, sorting is not needed. The performance penalty is negligible because
+	// in most cases the total number of (matched and unmatched) records would be zero or one.
 	sort.Strings(matchedIDs)
 	sort.Strings(unmatchedIDs)
 
 	return matchedIDs, unmatchedIDs
-}
-
-// New creates a new Setter.
-func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
-	return setter{
-		Handle: handle,
-	}, true
-}
-
-// SanityCheck calls [api.Handle.SanityCheck] on the handle.
-func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
-	return s.Handle.SanityCheck(ctx, ppfmt)
 }
 
 // Set updates the IP address of one domain to the given ip. The ip must be non-zero.

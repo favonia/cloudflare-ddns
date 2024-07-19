@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
@@ -69,8 +68,14 @@ func main() {
 }
 
 func realMain() int { //nolint:funlen
-	ppfmt := pp.New(os.Stdout)
-	if !config.ReadEmoji("EMOJI", &ppfmt) || !config.ReadQuiet("QUIET", &ppfmt) {
+	// Get the contexts and start catching SIGINT and SIGTERM
+	ctx := context.Background()
+	sig := signal.Setup()
+	ctxWithSignals, _ := signal.NotifyContext(ctx)
+
+	// Set up pretty printer
+	ppfmt, ok := config.SetupPP(os.Stdout)
+	if !ok {
 		ppfmt.Infof(pp.EmojiUserError, "Bye!")
 		return 1
 	}
@@ -78,17 +83,8 @@ func realMain() int { //nolint:funlen
 	// Show the name and the version of the updater
 	ppfmt.Infof(pp.EmojiStar, formatName())
 
-	// Catch signals SIGINT and SIGTERM
-	sig := signal.Setup()
-
-	// Get the contexts
-	ctx := context.Background()
-	ctxWithSignals, _ := signal.NotifyContext(ctx)
-
-	// Check root privileges
-	if syscall.Geteuid() == 0 {
-		ppfmt.Warningf(pp.EmojiUserWarning, "You are running this tool as root, which is usually a bad idea")
-	}
+	// Warn about root privileges
+	config.CheckRoot(ppfmt)
 
 	// Read the config and get the handler and the setter
 	c, s, configOk := initConfig(ctx, ppfmt)

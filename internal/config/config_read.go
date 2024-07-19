@@ -8,9 +8,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-// ReadEnv calls the relevant readers to read all relevant environment variables except TZ
-// and update relevant fields. One should subsequently call [Config.NormalizeConfig]
-// to maintain invariants across different fields.
+// ReadEnv calls the relevant readers to read all relevant environment variables except
+// - timezone (TZ)
+// - privileges-related ones (PGID and PUID)
+// - output-related ones (QUIET and EMOJI)
+// One should subsequently call [Config.NormalizeConfig] to restore invariants across fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
@@ -34,9 +36,6 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadAndAppendShoutrrrURL(ppfmt, "SHOUTRRR", &c.Notifiers) {
 		return false
 	}
-
-	CheckIgnoredLinuxID(ppfmt, "PUID", "user")
-	CheckIgnoredLinuxID(ppfmt, "PGID", "group")
 
 	return true
 }
@@ -97,7 +96,7 @@ func (c *Config) NormalizeConfig(ppfmt pp.PP) bool {
 		}
 	}
 
-	// check if all providers are nil
+	// check if all providers were turned off
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))

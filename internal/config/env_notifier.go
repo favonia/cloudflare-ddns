@@ -7,8 +7,7 @@ import (
 
 // ReadAndAppendShoutrrrURL reads the URLs separated by the newline.
 func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *[]notifier.Notifier) bool {
-	vals := Getenvs(key)
-
+	vals := GetenvAsList(key, "\n")
 	if len(vals) == 0 {
 		return true
 	}

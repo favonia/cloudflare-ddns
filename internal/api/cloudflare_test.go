@@ -304,6 +304,29 @@ func TestNewInvalid(t *testing.T) {
 	}
 }
 
+func TestSanityCheckInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	mux, auth := newServerAuth(t, false)
+	mux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
+		assert.Empty(t, r.URL.Query())
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "{")
+	})
+
+	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Failed to verify the Cloudflare API token; will retry later: %v", gomock.Any()) //nolint:lll
+	h, ok := auth.New(context.Background(), mockPP, time.Second)
+	require.True(t, ok)
+	require.NotNil(t, h)
+	require.True(t, h.SanityCheck(context.Background(), mockPP))
+}
+
 func TestSanityCheckTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -316,10 +339,10 @@ func TestSanityCheckTimeout(t *testing.T) {
 		assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 		assert.Empty(t, r.URL.Query())
 
+		time.Sleep(2 * time.Second)
 		panic(http.ErrAbortHandler)
 	})
 
-	mockPP.EXPECT().Warningf(pp.EmojiWarning, "Could not verify the Cloudflare API token: %v", gomock.Any())
 	h, ok := auth.New(context.Background(), mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
@@ -434,19 +457,19 @@ func (h *zonesHandler) isExhausted() bool {
 	return *h.accessCount == 0
 }
 
-func TestActiveZonesRoot(t *testing.T) {
+func TestListZonesRoot(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
 	_, h := newHandle(t, false, mockPP)
 
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "")
+	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "")
 	require.True(t, ok)
 	require.Empty(t, zones)
 }
 
-func TestActiveZonesTwo(t *testing.T) {
+func TestListZonesTwo(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -456,14 +479,14 @@ func TestActiveZonesTwo(t *testing.T) {
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{"test.org": {"active", "active"}}, 1)
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
 
 	zh.set(nil, 0)
 	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Equal(t, mockIDs("test.org", 0, 1), zones)
 	require.True(t, zh.isExhausted())
@@ -477,13 +500,13 @@ func TestActiveZonesTwo(t *testing.T) {
 		"test.org",
 		gomock.Any(),
 	)
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())
 }
 
-func TestActiveZonesEmpty(t *testing.T) {
+func TestListZonesEmpty(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -493,14 +516,14 @@ func TestActiveZonesEmpty(t *testing.T) {
 	zh := newZonesHandler(t, mux, false)
 
 	zh.set(map[string][]string{}, 1)
-	zones, ok := h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok := h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
 
 	zh.set(nil, 0) // this should not affect the result due to the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.True(t, ok)
 	require.Empty(t, zones)
 	require.True(t, zh.isExhausted())
@@ -514,7 +537,7 @@ func TestActiveZonesEmpty(t *testing.T) {
 		"test.org",
 		gomock.Any(),
 	)
-	zones, ok = h.(*api.CloudflareHandle).ActiveZones(context.Background(), mockPP, "test.org")
+	zones, ok = h.(*api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
 	require.False(t, ok)
 	require.Nil(t, zones)
 	require.True(t, zh.isExhausted())

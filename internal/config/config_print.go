@@ -4,7 +4,6 @@ package config
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/cron"
@@ -26,18 +25,14 @@ func describeComment(c string) string {
 }
 
 func describeDomains(domains []domain.Domain) string {
-	if len(domains) == 0 {
-		return "(none)"
-	}
-
 	descriptions := make([]string, 0, len(domains))
 	for _, domain := range domains {
 		descriptions = append(descriptions, domain.Describe())
 	}
-	return strings.Join(descriptions, ", ")
+	return pp.Join(descriptions)
 }
 
-func getInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
+func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
 	inverse := map[V][]domain.Domain{}
 
 	for dom, val := range m {
@@ -88,7 +83,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	section("Parameters of new DNS records:")
 	item("TTL:", "%s", c.TTL.Describe())
 	{
-		_, inverseMap := getInverseMap(c.Proxied)
+		_, inverseMap := computeInverseMap(c.Proxied)
 		item("Proxied domains:", "%s", describeDomains(inverseMap[true]))
 		item("Unproxied domains:", "%s", describeDomains(inverseMap[false]))
 	}

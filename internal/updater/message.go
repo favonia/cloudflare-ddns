@@ -3,11 +3,11 @@ package updater
 import (
 	"fmt"
 	"net/netip"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/message"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -15,28 +15,6 @@ type setterResponses map[setter.ResponseCode][]string
 
 func (s setterResponses) register(code setter.ResponseCode, d domain.Domain) {
 	s[code] = append(s[code], d.Describe())
-}
-
-// ListJoin joins words with commas.
-func ListJoin(items []string) string { return strings.Join(items, ", ") }
-
-// ListEnglishJoin joins words as in English:
-// - (none)
-// - A
-// - A and B
-// - A, B, and C
-// Note that we use Oxford commas.
-func ListEnglishJoin(items []string) string {
-	switch l := len(items); l {
-	case 0:
-		return "(none)"
-	case 1:
-		return items[0]
-	case 2: //nolint:mnd
-		return fmt.Sprintf("%s and %s", items[0], items[1])
-	default:
-		return fmt.Sprintf("%s, and %s", strings.Join(items[:l-1], ", "), items[l-1])
-	}
 }
 
 func generateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
@@ -61,14 +39,14 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 				"Failed to set %s (%s): %s",
 				ipNet.RecordType(),
 				ip.String(),
-				ListJoin(s[setter.ResponseFailed]),
+				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to finish updating %s records of %s with %s; those of %s were updated.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
 				ip.String(),
-				ListEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 
@@ -79,12 +57,12 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 				"Failed to set %s (%s): %s",
 				ipNet.RecordType(),
 				ip.String(),
-				ListJoin(s[setter.ResponseFailed]),
+				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to finish updating %s records of %s with %s.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
 				ip.String(),
 			)},
 		}
@@ -96,12 +74,12 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 				"Set %s (%s): %s",
 				ipNet.RecordType(),
 				ip.String(),
-				ListJoin(s[setter.ResponseUpdated]),
+				pp.Join(s[setter.ResponseUpdated]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Updated %s records of %s with %s.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 				ip.String(),
 			)},
 		}
@@ -120,13 +98,13 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
 				ipNet.RecordType(),
-				ListJoin(s[setter.ResponseFailed]),
+				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to finish deleting %s records of %s; those of %s were deleted.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseFailed]),
-				ListEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 
@@ -136,12 +114,12 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
 				ipNet.RecordType(),
-				ListJoin(s[setter.ResponseFailed]),
+				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to finish deleting %s records of %s.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
 			)},
 		}
 
@@ -151,12 +129,12 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 			MonitorMessages: []string{fmt.Sprintf(
 				"Deleted %s: %s",
 				ipNet.RecordType(),
-				ListJoin(s[setter.ResponseUpdated]),
+				pp.Join(s[setter.ResponseUpdated]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Deleted %s records of %s.",
 				ipNet.RecordType(),
-				ListEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 

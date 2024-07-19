@@ -21,7 +21,7 @@ type Handle interface {
 
 	// ListRecords lists all matching DNS records.
 	//
-	// The second return value means whether the list is cached.
+	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) (map[string]netip.Addr, bool, bool) //nolint:lll
 
 	// DeleteRecord deletes one DNS record.
