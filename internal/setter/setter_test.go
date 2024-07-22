@@ -94,7 +94,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{}, true, true),
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record1, true),
-					p.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1),
 				)
 			},
 		},
@@ -105,7 +105,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiUpdateRecord,
+					p.EXPECT().Noticef(pp.EmojiUpdate,
 						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
@@ -122,9 +122,9 @@ func TestSet(t *testing.T) {
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record2, true),
-					p.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2),
 				)
 			},
 		},
@@ -186,7 +186,7 @@ func TestSet(t *testing.T) {
 						Return(map[string]netip.Addr{record1: ip1, record2: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
 					p.EXPECT().Noticef(
-						pp.EmojiDeleteRecord,
+						pp.EmojiDeletion,
 						"Deleted a duplicate %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
@@ -228,14 +228,14 @@ func TestSet(t *testing.T) {
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
 					p.EXPECT().Noticef(
-						pp.EmojiUpdateRecord,
+						pp.EmojiUpdate,
 						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
 						record1,
 					),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord,
+					p.EXPECT().Noticef(pp.EmojiDeletion,
 						"Deleted a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
@@ -252,7 +252,7 @@ func TestSet(t *testing.T) {
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(true),
 					p.EXPECT().Noticef(
-						pp.EmojiUpdateRecord,
+						pp.EmojiUpdate,
 						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
@@ -274,14 +274,14 @@ func TestSet(t *testing.T) {
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
 					p.EXPECT().Noticef(
-						pp.EmojiDeleteRecord,
+						pp.EmojiDeletion,
 						"Deleted a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
 						record1),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record2, ip1).Return(true),
 					p.EXPECT().Noticef(
-						pp.EmojiUpdateRecord,
+						pp.EmojiUpdate,
 						"Updated a stale %s record of %q (ID: %q)",
 						"AAAA",
 						"sub.test.org",
@@ -299,12 +299,12 @@ func TestSet(t *testing.T) {
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record2, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record3, true),
-					p.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),
 				)
 			},
 		},
@@ -318,9 +318,9 @@ func TestSet(t *testing.T) {
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(false),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record2, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record3, true),
-					p.EXPECT().Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),                     //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),                         //nolint:lll
 					p.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -333,10 +333,10 @@ func TestSet(t *testing.T) {
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record2, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record3, false),
 					p.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
@@ -351,10 +351,10 @@ func TestSet(t *testing.T) {
 						Return(map[string]netip.Addr{record1: ip2, record2: ip2}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record1, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					h.EXPECT().UpdateRecord(ctx, p, domain, ipNetwork, record2, ip1).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").
 						Do(wrapCancelAsCreate(cancel)).Return(record3, false),
 					p.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any()),
@@ -435,7 +435,7 @@ func TestDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 				)
 			},
 		},
@@ -467,9 +467,9 @@ func TestDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1, record2: invalidIP}, true, true), //nolint:lll
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record1), //nolint:lll
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
 		},

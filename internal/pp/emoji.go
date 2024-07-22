@@ -15,17 +15,17 @@ const (
 	EmojiDisabled     Emoji = "🚫" // feature is disabled
 	EmojiExperimental Emoji = "🧪" // experimental features
 
-	EmojiCreateRecord Emoji = "🐣" // adding new DNS records
-	EmojiDeleteRecord Emoji = "💀" // deleting DNS records
-	EmojiUpdateRecord Emoji = "📡" // updating DNS records
-	EmojiClearRecord  Emoji = "🧹" // clearing DNS records when exiting
-	EmojiBailingOut   Emoji = "💨" // bailing out
+	EmojiCreation Emoji = "🐣" // adding new DNS records
+	EmojiDeletion Emoji = "💀" // deleting DNS records
+	EmojiUpdate   Emoji = "📡" // updating DNS records
+	EmojiClear    Emoji = "🧹" // clearing DNS records when exiting
 
 	EmojiPing    Emoji = "🔔" // pinging and health checks
 	EmojiMessage Emoji = "📨" // notifications
 
 	EmojiSignal      Emoji = "🚨" // catching signals
 	EmojiAlreadyDone Emoji = "🤷" // DNS records were already up to date
+	EmojiBailingOut  Emoji = "💨" // bailing out
 	EmojiNow         Emoji = "🏃" // an event that is happening now or immediately
 	EmojiAlarm       Emoji = "⏰" // an event that is scheduled to happen, but not immediately
 	EmojiBye         Emoji = "👋" // bye!
