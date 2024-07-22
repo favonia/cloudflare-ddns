@@ -171,6 +171,32 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"nilprovider": {
+			input: &config.Config{ //nolint:exhaustruct
+				Auth:          fakeAuth{},
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP4: nil,
+					ipnet.IP6: nil,
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "false",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError,
+						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
+						"none"),
+				)
+			},
+		},
 		"dns6empty": {
 			input: &config.Config{ //nolint:exhaustruct
 				Auth:          fakeAuth{},
