@@ -116,7 +116,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 				// If the updating succeeds, we can move on to the next stage!
 				//
 				// Note that there can still be stale records at this point.
-				ppfmt.Noticef(pp.EmojiUpdateRecord,
+				ppfmt.Noticef(pp.EmojiUpdate,
 					"Updated a stale %s record of %q (ID: %q)",
 					recordType, domainDescription, id)
 
@@ -134,7 +134,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 			// If the updating fails, we will delete it.
 			if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-				ppfmt.Noticef(pp.EmojiDeleteRecord,
+				ppfmt.Noticef(pp.EmojiDeletion,
 					"Deleted a stale %s record of %q (ID: %q)",
 					recordType, domainDescription, id)
 
@@ -155,7 +155,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	if !foundMatched {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, ttl, proxied, recordComment); ok {
-			ppfmt.Noticef(pp.EmojiCreateRecord,
+			ppfmt.Noticef(pp.EmojiCreation,
 				"Added a new %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
 
@@ -170,7 +170,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord,
+			ppfmt.Noticef(pp.EmojiDeletion,
 				"Deleted a stale %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
 			numUndeletedUnmatched--
@@ -183,7 +183,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// This has lower priority than deleting the stale records.
 	for _, id := range unprocessedMatched {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord,
+			ppfmt.Noticef(pp.EmojiDeletion,
 				"Deleted a duplicate %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
 		} else if ctx.Err() != nil {
@@ -244,7 +244,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 			continue
 		}
 
-		ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
 	}
 	if !allOk {
 		ppfmt.Errorf(pp.EmojiError,
