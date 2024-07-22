@@ -339,10 +339,7 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"some-undocumented-status"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q", "test.org", "some-undocumented-status"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"),  //nolint:lll
-				)
+				m.EXPECT().Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at https://github.com/favonia/cloudflare-ddns/issues/new", "test.org", "some-undocumented-status") //nolint:lll
 			},
 		},
 	} {
@@ -551,8 +548,10 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	ipNet, accessCount = ipnet.IP6, 1
 	mockPP.EXPECT().Warningf(
 		pp.EmojiImpossible,
-		"Failed to parse the IP address in records of %q: %v",
+		"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
+		"AAAA",
 		"sub.test.org",
+		"record2",
 		gomock.Any(),
 	)
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
@@ -565,7 +564,8 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(
 		pp.EmojiError,
-		"Failed to retrieve records of %q: %v",
+		"Failed to retrieve %s records of %q: %v",
+		"AAAA",
 		"sub.test.org",
 		gomock.Any(),
 	)
@@ -645,14 +645,14 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	zh := newZonesHandler(t, mux, false)
 	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Nil(t, ips)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", "sub.test.org", gomock.Any())
+	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "AAAA", "sub.test.org", gomock.Any()) //nolint:lll
 	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
 	require.False(t, cached)

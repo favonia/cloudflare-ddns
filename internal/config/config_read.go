@@ -50,7 +50,19 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		ppfmt = ppfmt.IncIndent()
 	}
 
-	// Part 1: check DELETE_ON_STOP and UpdateOnStart
+	// Step 1: is there something to do, and do wo have an auth?
+	if c.Auth == nil {
+		// if c.Auth == nil, the user should have been warned.
+		ppfmt.Errorf(pp.EmojiImpossible, "Authorization info is missing, but this should be impossible")
+		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+		return false
+	}
+	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
+		ppfmt.Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS")
+		return false
+	}
+
+	// Part 2: check DELETE_ON_STOP and UpdateOnStart
 	if c.UpdateCron == nil {
 		if !c.UpdateOnStart {
 			ppfmt.Errorf(
@@ -61,30 +73,26 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		if c.DeleteOnStop {
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true will immediately delete all updated DNS records when UPDATE_CRON=@once")
+				"DELETE_ON_STOP=true will immediately delete all domains when UPDATE_CRON=@once")
 			return false
 		}
 	}
 
-	// Part 2: normalize domain maps
-	// New domain maps
+	// Step 3: normalize domains and providers
+	//
+	// Step 3.1: fill in providerMap and activeDomainSet
 	providerMap := map[ipnet.Type]provider.Provider{}
-	proxiedMap := map[domain.Domain]bool{}
 	activeDomainSet := map[domain.Domain]bool{}
-
-	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "No domains were specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS")
-		return false
-	}
-
-	// fill in providerMap and activeDomainSet
-	for ipNet, domains := range c.Domains {
+	for ipNet := range c.Provider {
 		if c.Provider[ipNet] == nil {
 			continue
 		}
 
+		domains := c.Domains[ipNet]
+
 		if len(domains) == 0 {
-			ppfmt.Warningf(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains were set for %s",
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"IP%d_PROVIDER was changed to %q because no domains use %s",
 				ipNet.Int(), provider.Name(nil), ipNet.Describe())
 
 			continue
@@ -96,14 +104,14 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// check if all providers were turned off
+	// Step 3.2: check if all providers were turned off
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
 		return false
 	}
 
-	// check if some domains are unused
+	// Step 3.3: check if some domains are unused
 	for ipNet, domains := range c.Domains {
 		if providerMap[ipNet] != nil {
 			continue
@@ -120,16 +128,19 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// fill in proxyMap
-	proxiedPred, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedTemplate)
-	if !ok {
-		return false
-	}
-	for dom := range activeDomainSet {
-		proxiedMap[dom] = proxiedPred(dom)
+	// Step 4: fill in proxiedMap
+	proxiedMap := map[domain.Domain]bool{}
+	if len(activeDomainSet) > 0 {
+		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedTemplate)
+		if !ok {
+			return false
+		}
+		for dom := range activeDomainSet {
+			proxiedMap[dom] = proxiedPredicate(dom)
+		}
 	}
 
-	// Part 3: override the old values
+	// Part 5: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
 

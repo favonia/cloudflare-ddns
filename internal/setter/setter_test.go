@@ -365,10 +365,7 @@ func TestSet(t *testing.T) {
 			ip1,
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(nil, false, false),
-					p.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org"),
-				)
+				h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(nil, false, false)
 			},
 		},
 	} {
@@ -479,10 +476,7 @@ func TestDelete(t *testing.T) {
 		"listfail": {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(nil, false, false),
-					p.EXPECT().Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", "AAAA", "sub.test.org"),
-				)
+				h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(nil, false, false)
 			},
 		},
 	} {

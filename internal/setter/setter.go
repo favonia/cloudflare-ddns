@@ -59,7 +59,6 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
-		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return ResponseFailed
 	}
 
@@ -82,9 +81,13 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// If it's up to date and there are no other records, we are done!
 	if foundMatched && len(unprocessedMatched) == 0 && len(unprocessedUnmatched) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date (cached)", recordType, domainDescription) //nolint:lll
+			ppfmt.Infof(pp.EmojiAlreadyDone,
+				"The %s records of %q are already up to date (cached)",
+				recordType, domainDescription)
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q are already up to date", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone,
+				"The %s records of %q are already up to date",
+				recordType, domainDescription)
 		}
 		return ResponseNoop
 	}
@@ -114,7 +117,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 				//
 				// Note that there can still be stale records at this point.
 				ppfmt.Noticef(pp.EmojiUpdateRecord,
-					"Updated a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
+					"Updated a stale %s record of %q (ID: %q)",
+					recordType, domainDescription, id)
 
 				// Now it's up to date! Note that unprocessedMatched must be empty
 				// otherwise foundMatched would have been true.
@@ -130,7 +134,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 			// If the updating fails, we will delete it.
 			if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-				ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)",
+				ppfmt.Noticef(pp.EmojiDeleteRecord,
+					"Deleted a stale %s record of %q (ID: %q)",
 					recordType, domainDescription, id)
 
 				// Only when the deletion succeeds, we decrease the counter of remaining stale records.
@@ -150,9 +155,12 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	if !foundMatched {
 		if id, ok := s.Handle.CreateRecord(ctx, ppfmt,
 			domain, ipnet, ip, ttl, proxied, recordComment); ok {
-			ppfmt.Noticef(pp.EmojiCreateRecord, "Added a new %s record of %q (ID: %q)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiCreateRecord,
+				"Added a new %s record of %q (ID: %q)",
+				recordType, domainDescription, id)
 
-			// Now it's up to date! unprocessedMatched and unprocessedUnmatched must both be empty at this point
+			// Now it's up to date! unprocessedMatched and unprocessedUnmatched
+			// must both be empty at this point
 			foundMatched = true
 		} else if ctx.Err() != nil {
 			goto timeout
@@ -162,7 +170,9 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a stale %s record of %q (ID: %q)", recordType, domainDescription, id)
+			ppfmt.Noticef(pp.EmojiDeleteRecord,
+				"Deleted a stale %s record of %q (ID: %q)",
+				recordType, domainDescription, id)
 			numUndeletedUnmatched--
 		} else if ctx.Err() != nil {
 			goto timeout
@@ -173,7 +183,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// This has lower priority than deleting the stale records.
 	for _, id := range unprocessedMatched {
 		if s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			ppfmt.Noticef(pp.EmojiDeleteRecord, "Deleted a duplicate %s record of %q (ID: %q)",
+			ppfmt.Noticef(pp.EmojiDeleteRecord,
+				"Deleted a duplicate %s record of %q (ID: %q)",
 				recordType, domainDescription, id)
 		} else if ctx.Err() != nil {
 			goto timeout
@@ -202,7 +213,6 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 
 	rmap, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
 	if !ok {
-		ppfmt.Errorf(pp.EmojiError, "Failed to retrieve the current %s records of %q", recordType, domainDescription)
 		return ResponseFailed
 	}
 
