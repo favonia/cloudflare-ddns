@@ -103,9 +103,7 @@ services:
     # Restart the updater after reboot
     user: "1000:1000"
     # Run the updater with a specific user ID and group ID (in that order).
-    # You should change the two numbers based on your need. Reusing the same
-    # user ID or group ID across multiple containers could grant one container
-    # unexpected access to files in another container.
+    # You can change the two numbers based on your need.
     read_only: true
     # Make the container filesystem read-only (optional but recommended)
     cap_drop: [all]
