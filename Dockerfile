@@ -19,4 +19,5 @@ RUN \
 FROM scratch AS minimal
 COPY --from=build /bin/ddns /bin/
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+USER 1000:1000
 ENTRYPOINT ["/bin/ddns"]
