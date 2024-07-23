@@ -103,9 +103,7 @@ services:
     # Restart the updater after reboot
     user: "1000:1000"
     # Run the updater with a specific user ID and group ID (in that order).
-    # You should change the two numbers based on your setup.
-    # This is optional but highly recommended; otherwise, you will probably
-    # run the updater as a superuser (root), which is usually a bad idea.
+    # You can change the two numbers based on your need.
     read_only: true
     # Make the container filesystem read-only (optional but recommended)
     cap_drop: [all]
@@ -171,6 +169,29 @@ Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to us
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
+
+## ❓ Frequently Asked Questions
+
+<details>
+<summary>😠 I simulated an IP address change by editing the DNS records, but the updater never picks it up!</summary>
+
+Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ in the event of a real IP change.** Here is the detailed explanation. There are two causes of an IP mismatch:
+
+1. A change of your actual IP address (a real change), or
+2. A change of the IP address in the DNS records (a simulated change).
+
+The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot pick up your simulated changes. However, when your IP address actually changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records when `CACHE_EXPIRATION` (six hours by default) has passed.
+
+If you really wish to test the updater with simulated IP changes in the DNS records, you can set `CACHE_EXPIRATION=1ns` (all cache expiring in one nanosecond), which effectively disables the caching. However, it is recommended to keep the default value (six hours) to reduce your network traffic.
+
+</details>
+
+<details>
+<summary>😠 Why did the updater detect a public IP address different from the WAN address on my router?</summary>
+
+Is your “public” IP on your router between 100.64.0.0 and 100.127.255.255? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public address, nor does it allow you to forward packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnels](https://www.cloudflare.com/products/tunnel/) that can work around CGNAT.
+
+</details>
 
 ## 🎛️ Further Customization
 

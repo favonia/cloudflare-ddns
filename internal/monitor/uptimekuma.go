@@ -16,11 +16,11 @@ import (
 
 // UptimeKuma provides basic support of Uptime Kuma.
 //
-//   - ExitStatus, Start, and Log will be no-op.
+//   - ExitStatus with 0, Start, and Log will be no-op.
 //   - Success/Fail will be translated to status=up/down
-//   - Messages will be sent along with Success/Fail,
-//     but it seems Uptime Kuma will only display the first one.
-//   - ping will always be empty
+//   - The parameter message will be replaced by a fix string
+//     to work around the quirks of Uptime Kuma
+//   - The parameter ping will always be empty
 type UptimeKuma struct {
 	// The endpoint
 	BaseURL *url.URL

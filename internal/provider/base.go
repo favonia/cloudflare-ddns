@@ -14,7 +14,7 @@ import (
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {
 	Name() string
-	// Name gives the name of the protocol
+	// Name gives the name of the protocol.
 
 	ShouldWeCheck1111() bool
 	// ShouldWeCheck1111() says whether the provider will connect to 1.1.1.1.
@@ -22,7 +22,7 @@ type Provider interface {
 	// the hijacking detection of 1.1.1.1 will be performed.
 
 	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool)
-	// Actually get the IP
+	// GetIP actually gets the IP.
 }
 
 // Name gets the protocol name. It returns "none" for nil.
