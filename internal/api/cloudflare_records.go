@@ -52,8 +52,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
 			// skip these
 		default:
-			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q", name, zone.Status)
-			ppfmt.Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at https://github.com/favonia/cloudflare-ddns/issues/new", name, zone.Status) //nolint:lll
 			ids = append(ids, zone.ID)
 		}
 	}
@@ -125,7 +124,9 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 			Type: ipNet.RecordType(),
 		})
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve records of %q: %v", domain.Describe(), err)
+		ppfmt.Warningf(pp.EmojiError,
+			"Failed to retrieve %s records of %q: %v",
+			ipNet.RecordType(), domain.Describe(), err)
 		return nil, false, false
 	}
 
@@ -133,7 +134,9 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	for i := range rs {
 		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
 		if err != nil {
-			ppfmt.Warningf(pp.EmojiImpossible, "Failed to parse the IP address in records of %q: %v", domain.Describe(), err)
+			ppfmt.Warningf(pp.EmojiImpossible,
+				"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
+				ipNet.RecordType(), domain.Describe(), rs[i].ID, err)
 			return nil, false, false
 		}
 	}
