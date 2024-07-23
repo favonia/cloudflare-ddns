@@ -1,3 +1,7 @@
+# [1.13.2](https://github.com/favonia/cloudflare-ddns/compare/v1.13.1...v1.13.2) (2024-07-23)
+
+This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](./README.markdown)) that explicitly sets the user/group IDs, this release does not affect you.
+
 # [1.13.1](https://github.com/favonia/cloudflare-ddns/compare/v1.13.0...v1.13.1) (2024-07-19)
 
 This is a very minor release that improves the error messages produced by the new API token verifier (introduced in 1.13.0). See [#813](https://github.com/favonia/cloudflare-ddns/issues/813).

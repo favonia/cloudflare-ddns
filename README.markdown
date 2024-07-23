@@ -102,7 +102,7 @@ services:
     restart: always
     # Restart the updater after reboot
     user: "1000:1000"
-    # Run the updater with a specific user ID and group ID (in that order).
+    # Run the updater with specific user and group IDs (in that order).
     # You can change the two numbers based on your need.
     read_only: true
     # Make the container filesystem read-only (optional but recommended)
