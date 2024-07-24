@@ -175,14 +175,14 @@ docker-compose up --detach --build cloudflare-ddns
 <details>
 <summary>😠 I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
 
-Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ in the event of a real IP change.** Here is the detailed explanation. There are two causes of an IP mismatch:
+Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
 1. A change of your actual IP address (a real change), or
 2. A change of the IP address in the DNS records (a simulated change).
 
-The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot detect your simulated changes. However, when your IP address actually changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records when `CACHE_EXPIRATION` (six hours by default) has passed.
+The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot detect your simulated changes. However, when your actual IP address changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records and detect simulated changes after `CACHE_EXPIRATION` (six hours by default) has passed.
 
-If you really wish to test the updater with simulated IP changes in the DNS records, you can set `CACHE_EXPIRATION=1ns` (all cache expiring in one nanosecond), which effectively disables the caching. However, it is recommended to keep the default value (six hours) to reduce your network traffic.
+If you really wish to test the updater with simulated IP changes in the DNS records, you can set `CACHE_EXPIRATION=1ns` (all cache expiring in one nanosecond), effectively disabling the caching. However, it is recommended to keep the default value (six hours) to reduce your network traffic.
 
 </details>
 

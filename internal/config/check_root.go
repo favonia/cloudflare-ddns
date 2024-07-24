@@ -9,7 +9,7 @@ import (
 // CheckRoot checks whether the effective user ID is 0 and whether PUID or PGID is set.
 func CheckRoot(ppfmt pp.PP) {
 	if syscall.Geteuid() == 0 {
-		ppfmt.Warningf(pp.EmojiUserWarning, "You are running this tool as root, which is usually a bad idea")
+		ppfmt.Warningf(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
 	}
 
 	useDeprecated := false
