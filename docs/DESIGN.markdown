@@ -2,7 +2,7 @@
 
 ## Principles and Priorities
 
-Be the 🌟 best DDNS tool 🌟 that [favonia](mailto:favonia+github@gmail.com) wants to use.
+Be the 🌟 best DDNS updater 🌟 that [favonia](mailto:favonia+github@gmail.com) wants to use.
 
 1. Support all features [favonia](mailto:favonia+github@gmail.com) wants, including emojis.
 
@@ -41,7 +41,7 @@ The goal is to stop the adversary from tricking the updater into updating manage
 
 ### Protection
 
-The connection to Cloudflare’s servers is always protected by HTTPS, making it more resistant to forged IP packets. Many other DDNS tools use simple DNS lookups to detect public IP addresses, which is less secure because of [DNS spoofing](https://en.wikipedia.org/wiki/DNS_spoofing).
+The connection to Cloudflare’s servers is always protected by HTTPS, making it more resistant to forged IP packets. Many other DDNS updaters use simple DNS lookups to detect public IP addresses, which is less secure because of [DNS spoofing](https://en.wikipedia.org/wiki/DNS_spoofing).
 
 ### Unsafe Scenarios
 
@@ -51,4 +51,4 @@ Public IP addresses, by their own definition, depend on how other machines (in o
 2. The adversary can access networks close to Cloudflare’s servers and intercept your IP packets. Note that the adversary does not need to break HTTPS---HTTPS does not protect the source and target IP addresses.
 3. The adversary can access the cable between your machine and the internet, or that you are within a country-scale firewall. (Although they can already redirect the traffic in this case, and thus whether the updater is secure or not is no longer relevant.)
 
-There is no way to securely detect the intended public IP address in these scenarios. If you wish to be immune to these attacks, it is recommended to buy static IP addresses instead of using this tool (or any DDNS updater).
+There is no way to securely detect the intended public IP address in these scenarios. If you wish to be immune to these attacks, it is recommended to buy static IP addresses instead of using this updater (or any DDNS updater).
