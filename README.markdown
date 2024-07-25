@@ -97,6 +97,11 @@ Incorporate the following fragment into the compose file (typically `docker-comp
 services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
+    # Choose the appropriate tag based on your need:
+    # - "latest" for the latest stable version (which could become 2.x.y
+    #   in the future and break things)
+    # - "1" for the latest stable version whose major version is 1
+    # - "1.x.y" to pin the specific version 1.x.y
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier (optional; see below)
     restart: always
