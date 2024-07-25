@@ -1,6 +1,6 @@
 # [1.13.2](https://github.com/favonia/cloudflare-ddns/compare/v1.13.1...v1.13.2) (2024-07-23)
 
-This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](./README.markdown)) that explicitly sets the user/group IDs, this release does not affect you.
+This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](./README.markdown)) with `user: ...` (not `PUID` or `PGID`) to explicitly set the user and group IDs, this release does not affect you.
 
 # [1.13.1](https://github.com/favonia/cloudflare-ddns/compare/v1.13.0...v1.13.1) (2024-07-19)
 
@@ -16,15 +16,13 @@ This is a major release that no longer drops superuser privileges. Please review
 
 ### BREAKING CHANGES
 
-- **The updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old, hacky Docker Compose template will grant the new updater unneeded privileges, which is less secure and not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, add `user:` as
+- **The updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old, hacky Docker Compose template will grant the new updater unneeded privileges, which is less secure and not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove `cap_add` completely and add `user: ...`** as
 
   ```yaml
   user: "1000:1000"
   # Run the updater with a specific user ID and group ID (in that order).
   # You should change the two numbers based on your setup.
   ```
-
-  and remove `cap_add` completely.
 
 - In case you are using the `*-nocapdrop` Docker tags, they will no longer be maintained. The updater will no longer drop superuser privileges, and thus the `nocapdrop` builds are identical to the regular ones. Just use the regular Docker tags such as `latest`.
 
