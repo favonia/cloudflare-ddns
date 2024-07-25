@@ -24,6 +24,8 @@ This is a major release that no longer drops superuser privileges. Please review
   # You should change the two numbers based on your setup.
   ```
 
+  If you have not, please add `cap_drop: [all]` to drop all Linux capabilities. You should probably remove `PUID` and `PGID` as well because they are now useless.
+
 - In case you are using the `*-nocapdrop` Docker tags, they will no longer be maintained. The updater will no longer drop superuser privileges, and thus the `nocapdrop` builds are identical to the regular ones. Just use the regular Docker tags such as `latest`.
 
 - The older versions used to add the comment “Created by cloudflare-ddns” to all newly created DNS records. Since this version, the comment has become configurable, but by default it is empty. To restore the old behavior, add the configuration `RECORD_COMMENT=Created by cloudflare-ddns` (or any comment you want to use).
