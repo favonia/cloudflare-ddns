@@ -36,6 +36,16 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
 ### 🛡️ Security
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
+- <details><summary>✍️ You can verify the source of the Docker images using cosign <em>(click to expand)</em></summary>
+
+  ```bash
+  cosign verify favonia/cloudflare-ddns:latest \
+    --certificate-identity-regexp https://github.com/favonia/cloudflare-ddns/ \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  ```
+
+  Note: this only proves that a Docker image is from this repository. It cannot prevent malicious code if someone hacks into GitHub or this repository.
+
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
@@ -176,6 +186,8 @@ docker-compose up --detach --build cloudflare-ddns
 ```
 
 ## ❓ Frequently Asked Questions
+
+_(Click to expand the following items.)_
 
 <details>
 <summary>😠 I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
