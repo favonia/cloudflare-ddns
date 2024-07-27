@@ -43,73 +43,6 @@ func getHintIDForDetection(ipNet ipnet.Type) string {
 	}[ipNet]
 }
 
-func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
-	if proxied, ok := c.Proxied[domain]; ok {
-		return proxied
-	}
-
-	ppfmt.Warningf(pp.EmojiImpossible,
-		"Proxied[%s] not initialized; this should not happen; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
-		domain.Describe(),
-	)
-	return false
-}
-
-var errTimeout = errors.New("timeout")
-
-// setIP extracts relevant settings from the configuration and calls [setter.Setter.Set] with timeout.
-// ip must be non-zero.
-func setIP(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) message.Message {
-	resps := setterResponses{}
-
-	for _, domain := range c.Domains[ipNet] {
-		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
-		defer cancel()
-
-		resp := s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
-		resps.register(resp, domain)
-		if resp == setter.ResponseFailed {
-			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-				ppfmt.Infof(pp.EmojiHint,
-					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
-					c.UpdateTimeout,
-				)
-				ShouldDisplayHints[HintUpdateTimeouts] = false
-			}
-		}
-	}
-
-	return generateUpdateMessage(ipNet, ip, resps)
-}
-
-// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
-func deleteIP(
-	ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type,
-) message.Message {
-	resps := setterResponses{}
-
-	for _, domain := range c.Domains[ipNet] {
-		ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
-		defer cancel()
-
-		resp := s.Delete(ctx, ppfmt, domain, ipNet)
-		resps.register(resp, domain)
-		if resp == setter.ResponseFailed {
-			if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-				ppfmt.Infof(pp.EmojiHint,
-					"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
-					c.UpdateTimeout,
-				)
-				ShouldDisplayHints[HintUpdateTimeouts] = false
-			}
-		}
-	}
-
-	return generateDeleteMessage(ipNet, resps)
-}
-
 func detectIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, ipNet ipnet.Type,
 ) (netip.Addr, message.Message) {
@@ -143,6 +76,72 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
 	return ip, generateDetectMessage(ipNet, ok)
+}
+
+func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
+	if proxied, ok := c.Proxied[domain]; ok {
+		return proxied
+	}
+
+	ppfmt.Warningf(pp.EmojiImpossible,
+		"Proxied[%s] not initialized; this should not happen; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
+		domain.Describe(),
+	)
+	return false
+}
+
+var errTimeout = errors.New("timeout")
+
+func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
+	f func(context.Context) setter.ResponseCode,
+) setter.ResponseCode {
+	ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
+	defer cancel()
+
+	resp := f(ctx)
+	if resp == setter.ResponseFailed {
+		if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Infof(pp.EmojiHint,
+				"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
+				c.UpdateTimeout,
+			)
+			ShouldDisplayHints[HintUpdateTimeouts] = false
+		}
+	}
+	return resp
+}
+
+// setIP extracts relevant settings from the configuration and calls [setter.Setter.Set] with timeout.
+// ip must be non-zero.
+func setIP(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
+) message.Message {
+	resps := emptySetterResponses()
+
+	for _, domain := range c.Domains[ipNet] {
+		resps.register(domain,
+			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+				return s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
+			}),
+		)
+	}
+
+	return generateUpdateMessage(ipNet, ip, resps)
+}
+
+// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
+func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) message.Message {
+	resps := emptySetterResponses()
+
+	for _, domain := range c.Domains[ipNet] {
+		resps.register(domain,
+			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+				return s.Delete(ctx, ppfmt, domain, ipNet)
+			}),
+		)
+	}
+
+	return generateDeleteMessage(ipNet, resps)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
