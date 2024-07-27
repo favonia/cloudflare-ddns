@@ -96,7 +96,7 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
 
 	ip, err := netip.ParseAddr(ipString)
 	if err != nil {
-		ppfmt.Errorf(
+		ppfmt.Warningf(
 			pp.EmojiImpossible,
 			`Invalid DNS response: failed to parse the IP address in the TXT record: %s`,
 			ipString,

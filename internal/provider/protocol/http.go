@@ -20,7 +20,7 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bo
 			ipString := strings.TrimSpace(string(body))
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Errorf(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Warningf(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
 				return netip.Addr{}, false
 			}
 			return ip, true

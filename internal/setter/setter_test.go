@@ -320,8 +320,8 @@ func TestSet(t *testing.T) {
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record3, true),
-					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),                         //nolint:lll
-					p.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added a new %s record of %q (ID: %q)", "AAAA", "sub.test.org", record3),                           //nolint:lll
+					p.EXPECT().Warningf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -338,7 +338,7 @@ func TestSet(t *testing.T) {
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record2).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %q)", "AAAA", "sub.test.org", record2), //nolint:lll
 					h.EXPECT().CreateRecord(ctx, p, domain, ipNetwork, ip1, api.TTLAuto, false, "hello").Return(record3, false),
-					p.EXPECT().Errorf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Warningf(pp.EmojiError, "Failed to finish updating %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -445,7 +445,7 @@ func TestDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, domain, ipNetwork).Return(map[string]netip.Addr{record1: ip1}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).Return(false),
-					p.EXPECT().Errorf(pp.EmojiError, "Failed to finish deleting %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Warningf(pp.EmojiError, "Failed to finish deleting %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},

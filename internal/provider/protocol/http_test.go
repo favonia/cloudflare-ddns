@@ -84,7 +84,7 @@ func TestHTTPGetIP(t *testing.T) {
 			"4-nil1": {
 				false, ipnet.IP4, dummy.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(
+					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,
@@ -94,7 +94,7 @@ func TestHTTPGetIP(t *testing.T) {
 			"6-nil1": {
 				false, ipnet.IP6, dummy.URL, ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Errorf(
+					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,

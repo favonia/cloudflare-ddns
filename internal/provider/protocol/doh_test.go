@@ -458,7 +458,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(
+				m.EXPECT().Warningf(
 					pp.EmojiImpossible,
 					`Invalid DNS response: failed to parse the IP address in the TXT record: %s`,
 					"I am definitely not an IP address",
