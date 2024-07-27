@@ -55,7 +55,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 	} else {
-		ppfmt.Errorf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
 		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 			ppfmt.Infof(pp.EmojiHint,
