@@ -84,23 +84,21 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	providerMap := map[ipnet.Type]provider.Provider{}
 	activeDomainSet := map[domain.Domain]bool{}
 	for ipNet := range c.Provider {
-		if c.Provider[ipNet] == nil {
-			continue
-		}
+		if c.Provider[ipNet] != nil {
+			domains := c.Domains[ipNet]
 
-		domains := c.Domains[ipNet]
+			if len(domains) == 0 {
+				ppfmt.Warningf(pp.EmojiUserWarning,
+					"IP%d_PROVIDER was changed to %q because no domains use %s",
+					ipNet.Int(), provider.Name(nil), ipNet.Describe())
 
-		if len(domains) == 0 {
-			ppfmt.Warningf(pp.EmojiUserWarning,
-				"IP%d_PROVIDER was changed to %q because no domains use %s",
-				ipNet.Int(), provider.Name(nil), ipNet.Describe())
+				continue
+			}
 
-			continue
-		}
-
-		providerMap[ipNet] = c.Provider[ipNet]
-		for _, domain := range domains {
-			activeDomainSet[domain] = true
+			providerMap[ipNet] = c.Provider[ipNet]
+			for _, domain := range domains {
+				activeDomainSet[domain] = true
+			}
 		}
 	}
 
@@ -113,18 +111,16 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 
 	// Step 3.3: check if some domains are unused
 	for ipNet, domains := range c.Domains {
-		if providerMap[ipNet] != nil {
-			continue
-		}
+		if providerMap[ipNet] == nil {
+			for _, domain := range domains {
+				if activeDomainSet[domain] {
+					continue
+				}
 
-		for _, domain := range domains {
-			if activeDomainSet[domain] {
-				continue
+				ppfmt.Warningf(pp.EmojiUserWarning,
+					"Domain %q is ignored because it is only for %s but %s is disabled",
+					domain.Describe(), ipNet.Describe(), ipNet.Describe())
 			}
-
-			ppfmt.Warningf(pp.EmojiUserWarning,
-				"Domain %q is ignored because it is only for %s but %s is disabled",
-				domain.Describe(), ipNet.Describe(), ipNet.Describe())
 		}
 	}
 
@@ -135,6 +131,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		if !ok {
 			return false
 		}
+
 		for dom := range activeDomainSet {
 			proxiedMap[dom] = proxiedPredicate(dom)
 		}
