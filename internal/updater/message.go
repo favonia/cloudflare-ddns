@@ -13,7 +13,11 @@ import (
 
 type setterResponses map[setter.ResponseCode][]string
 
-func (s setterResponses) register(code setter.ResponseCode, d domain.Domain) {
+func emptySetterResponses() setterResponses {
+	return setterResponses{}
+}
+
+func (s setterResponses) register(d domain.Domain, code setter.ResponseCode) {
 	s[code] = append(s[code], d.Describe())
 }
 
