@@ -42,7 +42,7 @@ func mockZonesResponse(zoneName string, zoneStatuses []string) *cloudflare.Zones
 		panic("mockZonesResponse got too many zone names")
 	}
 
-	zones := make([]cloudflare.Zone, len(zoneStatuses))
+	zones := make([]cloudflare.Zone, numZones)
 	for i, status := range zoneStatuses {
 		zones[i] = *mockZone(zoneName, i, status)
 	}
@@ -71,19 +71,25 @@ func handleZones(
 ) {
 	t.Helper()
 
-	require.Equal(t, http.MethodGet, r.Method)
-	require.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
+	if !assert.Equal(t, http.MethodGet, r.Method) ||
+		!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) {
+		panic(http.ErrAbortHandler)
+	}
 	if emptyAccountID {
-		require.Equal(t, url.Values{
+		if !assert.Equal(t, url.Values{
 			"name":     {zoneName},
 			"per_page": {strconv.Itoa(zonePageSize)},
-		}, r.URL.Query())
+		}, r.URL.Query()) {
+			panic(http.ErrAbortHandler)
+		}
 	} else {
-		require.Equal(t, url.Values{
+		if !assert.Equal(t, url.Values{
 			"account.id": {mockAccount},
 			"name":       {zoneName},
 			"per_page":   {strconv.Itoa(zonePageSize)},
-		}, r.URL.Query())
+		}, r.URL.Query()) {
+			panic(http.ErrAbortHandler)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
