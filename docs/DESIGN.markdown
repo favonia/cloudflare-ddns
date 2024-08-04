@@ -29,6 +29,10 @@ The source code follows the [standard Go project layout](https://github.com/gola
 
 See [Issues](https://github.com/favonia/cloudflare-ddns/issues) and [Milestones](https://github.com/favonia/cloudflare-ddns/milestones).
 
+### Logging Message Convention
+
+1. Cloudflare IDs (zone IDs, DNS record IDs, etc.) are already designed to use only “very safe” characters and should not be quoted. The formatter `%s` should be used instead of `%q`.
+
 ## Network Security Threat Model
 
 ### Assumptions
