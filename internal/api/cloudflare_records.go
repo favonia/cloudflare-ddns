@@ -57,6 +57,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 		}
 	}
 
+	h.cache.listZones.DeleteExpired()
 	h.cache.listZones.Set(name, ids, ttlcache.DefaultTTL)
 
 	return ids, true
@@ -83,6 +84,7 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
+			h.cache.zoneOfDomain.DeleteExpired()
 			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
@@ -141,6 +143,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
+	h.cache.listRecords[ipNet].DeleteExpired()
 	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), rmap, ttlcache.DefaultTTL)
 
 	return rmap, false, true
