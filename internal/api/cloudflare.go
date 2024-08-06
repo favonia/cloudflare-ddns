@@ -22,6 +22,9 @@ type CloudflareCache = struct {
 	zoneOfDomain *ttlcache.Cache[string, string]   // domain names to the zone ID
 	// records of domains
 	listRecords map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr] // domain names to IPs
+	// lists
+	listLists     *ttlcache.Cache[struct{}, map[string][]string] // list names to list IDs
+	listListItems *ttlcache.Cache[string, []WAFListItem]         // list IDs to list items
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -73,10 +76,22 @@ func (t CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration time
 				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
 				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
 			},
+			listLists:     newCache[struct{}, map[string][]string](cacheExpiration),
+			listListItems: newCache[string, []WAFListItem](cacheExpiration),
 		},
 	}
 
 	return h, true
+}
+
+// SupportsRecords checks whether it's good for DNS records.
+func (t CloudflareAuth) SupportsRecords() bool {
+	return t.Token != ""
+}
+
+// SupportsWAFLists checks whether it's good for DNS records.
+func (t CloudflareAuth) SupportsWAFLists() bool {
+	return t.Token != "" && t.AccountID != ""
 }
 
 // FlushCache flushes the API cache.
@@ -87,6 +102,8 @@ func (h CloudflareHandle) FlushCache() {
 	for _, cache := range h.cache.listRecords {
 		cache.DeleteAll()
 	}
+	h.cache.listLists.DeleteAll()
+	h.cache.listListItems.DeleteAll()
 }
 
 // errTimeout for checking if it's timeout.

@@ -501,3 +501,302 @@ func TestDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestSetWAFList(t *testing.T) {
+	t.Parallel()
+
+	const listName = "list"
+	const listDescription = "My List"
+
+	var (
+		ip4           = netip.MustParseAddr("10.0.0.1")
+		ip6           = netip.MustParseAddr("2001:db8::1111")
+		prefix4       = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.1/32"), ID: "pre4"}
+		prefix6       = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:0db8::/64"), ID: "pre6"}
+		prefix4range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/16"), ID: "ip4-16"}
+		prefix4range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/20"), ID: "ip4-20"}
+		prefix4range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/24"), ID: "ip4-24"}
+		prefix4wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/16"), ID: "ip4-16"}
+		prefix4wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/20"), ID: "ip4-20"}
+		prefix4wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/24"), ID: "ip4-24"}
+		prefix6range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/32"), ID: "ip6-32"}
+		prefix6range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/40"), ID: "ip6-40"}
+		prefix6range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/48"), ID: "ip6-48"}
+		prefix6wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/32"), ID: "ip6-32"}
+		prefix6wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/40"), ID: "ip6-40"}
+		prefix6wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/48"), ID: "ip6-48"}
+	)
+
+	type items = []api.WAFListItem
+	type ipmap = map[ipnet.Type]netip.Addr
+
+	for name, tc := range map[string]struct {
+		detected     ipmap
+		resp         setter.ResponseCode
+		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+	}{
+		"ensurefail": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(false, false)
+			},
+		},
+		"created": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseUpdated,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(false, true),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list named %q", listName),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(items{}, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p,
+						listName, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					p.EXPECT().Noticef(pp.EmojiCreation,
+						"Added %s to the list %q", "10.0.0.1", listName),
+					p.EXPECT().Noticef(pp.EmojiCreation,
+						"Added %s to the list %q", "2001:db8::/64", listName),
+					m.EXPECT().DeleteWAFListItems(ctx, p, listName, []string{}).Return(true),
+				)
+			},
+		},
+		"listfail": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(nil, false, false),
+				)
+			},
+		},
+		"noop": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseNoop,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(items{prefix4, prefix6}, false, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %q is already up to date", listName),
+				)
+			},
+		},
+		"noop/cached": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseNoop,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(items{prefix4, prefix6}, true, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %q is already up to date (cached)", listName),
+				)
+			},
+		},
+		"test1": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseUpdated,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).
+						Return(items{
+							prefix6range1,
+							prefix4wrong2,
+							prefix6range2,
+							prefix6range3,
+							prefix4range2,
+							prefix4range3,
+							prefix6wrong2,
+							prefix6wrong3,
+							prefix4wrong3,
+							prefix4range1,
+							prefix4wrong1,
+							prefix6wrong1,
+						}, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, listName,
+						nil, "").Return(true),
+					m.EXPECT().DeleteWAFListItems(ctx, p, listName,
+						gomock.InAnyOrder([]string{
+							prefix4wrong2.ID,
+							prefix6wrong2.ID,
+							prefix6wrong3.ID,
+							prefix4wrong3.ID,
+							prefix4wrong1.ID,
+							prefix6wrong1.ID,
+						})).Return(true),
+				)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/20", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/40", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/48", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/24", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/16", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/32", listName)
+			},
+		},
+		"test2": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseUpdated,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).
+						Return(items{
+							prefix4wrong2,
+							prefix6wrong2,
+							prefix6wrong3,
+							prefix4wrong3,
+							prefix4wrong1,
+							prefix6wrong1,
+						}, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, listName,
+						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					p.EXPECT().Noticef(pp.EmojiCreation,
+						"Added %s to the list %q", "10.0.0.1", listName),
+					p.EXPECT().Noticef(pp.EmojiCreation,
+						"Added %s to the list %q", "2001:db8::/64", listName),
+					m.EXPECT().DeleteWAFListItems(ctx, p, listName,
+						gomock.InAnyOrder([]string{
+							prefix4wrong2.ID,
+							prefix6wrong2.ID,
+							prefix6wrong3.ID,
+							prefix4wrong3.ID,
+							prefix4wrong1.ID,
+							prefix6wrong1.ID,
+						})).Return(true),
+				)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/20", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/40", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/48", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/24", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "20.0.0.0/16", listName)
+				p.EXPECT().Noticef(pp.EmojiDeletion,
+					"Deleted %s from the list %q", "4001:db8::/32", listName)
+			},
+		},
+		"create-fail": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(items{}, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, listName,
+						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
+				)
+			},
+		},
+		"delete-fail": {
+			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).
+						Return(items{
+							prefix6range1,
+							prefix4wrong2,
+							prefix6range2,
+							prefix6range3,
+							prefix4range2,
+							prefix4range3,
+							prefix6wrong2,
+							prefix6wrong3,
+							prefix4wrong3,
+							prefix4range1,
+							prefix4wrong1,
+							prefix6wrong1,
+						}, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, listName,
+						nil, "").Return(true),
+					m.EXPECT().DeleteWAFListItems(ctx, p, listName,
+						gomock.InAnyOrder([]string{
+							prefix4wrong2.ID,
+							prefix6wrong2.ID,
+							prefix6wrong3.ID,
+							prefix4wrong3.ID,
+							prefix4wrong1.ID,
+							prefix6wrong1.ID,
+						})).Return(false),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			mockHandle := mocks.NewMockHandle(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(ctx, cancel, mockPP, mockHandle)
+			}
+
+			s, ok := setter.New(mockPP, mockHandle)
+			require.True(t, ok)
+
+			resp := s.SetWAFList(ctx, mockPP, listName, listDescription, tc.detected, "")
+			require.Equal(t, tc.resp, resp)
+		})
+	}
+}
+
+func TestDeleteWAFList(t *testing.T) {
+	t.Parallel()
+
+	const listName = "list"
+
+	for name, tc := range map[string]struct {
+		resp         setter.ResponseCode
+		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+	}{
+		"fail": {
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				m.EXPECT().DeleteWAFList(ctx, p, listName).Return(false)
+			},
+		},
+		"deleted": {
+			setter.ResponseUpdated,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().DeleteWAFList(ctx, p, listName).Return(true),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "The list %q was deleted", listName),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			mockPP := mocks.NewMockPP(mockCtrl)
+			mockHandle := mocks.NewMockHandle(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(ctx, cancel, mockPP, mockHandle)
+			}
+
+			s, ok := setter.New(mockPP, mockHandle)
+			require.True(t, ok)
+
+			resp := s.DeleteWAFList(ctx, mockPP, listName)
+			require.Equal(t, tc.resp, resp)
+		})
+	}
+}

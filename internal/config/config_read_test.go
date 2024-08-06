@@ -22,7 +22,7 @@ func unsetAll(t *testing.T) {
 	unset(t,
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
 		"IP4_PROVIDER", "IP6_PROVIDER",
-		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS",
+		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS", "WAF_LISTS",
 		"UPDATE_CRON",
 		"UPDATE_ON_START",
 		"DELETE_ON_STOP",
@@ -30,6 +30,7 @@ func unsetAll(t *testing.T) {
 		"TTL",
 		"PROXIED",
 		"RECORD_COMMENT",
+		"WAF_LIST_DESCRIPTION",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
 		"HEALTHCHECKS",
@@ -85,11 +86,16 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-type fakeAuth struct{}
+type fakeAuth struct {
+	supportsRecords  bool
+	supportsWAFLists bool
+}
 
 func (a fakeAuth) New(context.Context, pp.PP, time.Duration) (api.Handle, bool) {
 	return nil, false
 }
+func (a fakeAuth) SupportsRecords() bool  { return a.supportsRecords }
+func (a fakeAuth) SupportsWAFLists() bool { return a.supportsWAFLists }
 
 //nolint:funlen
 func TestNormalize(t *testing.T) {
@@ -119,7 +125,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"nothing-to-do": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{},
+				Auth: fakeAuth{true, true},
 			},
 			ok:       false,
 			expected: nil,
@@ -128,13 +134,48 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS"),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS"),
+				)
+			},
+		},
+		"auth-dns-unsupported": {
+			input: &config.Config{ //nolint:exhaustruct
+				Auth: fakeAuth{false, true},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP4: {domain.FQDN("a.b.c")},
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but the updater should have stopped earlier"),
+					m.EXPECT().Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
+				)
+			},
+		},
+		"auth-waf-unsupported": {
+			input: &config.Config{ //nolint:exhaustruct
+				Auth:     fakeAuth{true, false},
+				WAFLists: []string{"list"},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiUserError, "Please give CF_ACCOUNT_ID to specify the WAF lists to update"),
 				)
 			},
 		},
 		"once/update-on-start": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{},
+				Auth: fakeAuth{true, true},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 				},
@@ -153,7 +194,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"once/delete-on-stop": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{},
+				Auth: fakeAuth{true, true},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 				},
@@ -167,13 +208,13 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains when UPDATE_CRON=@once"), //nolint:lll
+					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"), //nolint:lll
 				)
 			},
 		},
 		"nilprovider": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
@@ -199,7 +240,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"dns6empty": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
@@ -212,7 +253,7 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
@@ -231,14 +272,14 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
-						"IP%d_PROVIDER was changed to %q because no domains use %s",
+						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 						6, "none", "IPv6"),
 				)
 			},
 		},
 		"dns6empty-ip4none": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -255,7 +296,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().IncIndent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
-						"IP%d_PROVIDER was changed to %q because no domains use %s",
+						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 						6, "none", "IPv6"),
 					m.EXPECT().Errorf(pp.EmojiUserError,
 						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
@@ -265,7 +306,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"ip4none": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -278,7 +319,7 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -304,9 +345,96 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
+		"ignored/dns": {
+			input: &config.Config{ //nolint:exhaustruct
+				Auth:          fakeAuth{true, true},
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains:         map[ipnet.Type][]domain.Domain{},
+				WAFLists:        []string{"list"},
+				TTL:             10000,
+				ProxiedTemplate: "true",
+				RecordComment:   "hello",
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				Auth:          fakeAuth{true, true},
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains:         map[ipnet.Type][]domain.Domain{},
+				WAFLists:        []string{"list"},
+				TTL:             10000,
+				ProxiedTemplate: "true",
+				Proxied:         map[domain.Domain]bool{},
+				RecordComment:   "hello",
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Warningf(pp.EmojiUserWarning,
+						"TTL=%v is ignored because no domains will be updated",
+						api.TTL(10000)),
+					m.EXPECT().Warningf(pp.EmojiUserWarning,
+						"PROXIED=%s is ignored because no domains will be updated",
+						"true"),
+					m.EXPECT().Warningf(pp.EmojiUserWarning,
+						"RECORD_COMMENT=%s is ignored because no domains will be updated",
+						"hello"),
+				)
+			},
+		},
+		"ignored/waf": {
+			input: &config.Config{ //nolint:exhaustruct
+				Auth:          fakeAuth{true, true},
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "true",
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
+				},
+				WAFListDescription: "My list",
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				Auth:          fakeAuth{true, true},
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "true",
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): true,
+				},
+				WAFListDescription: "My list",
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Warningf(pp.EmojiUserWarning,
+						"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated",
+						"My list"),
+				)
+			},
+		},
 		"proxied": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -318,7 +446,7 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -343,7 +471,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/1": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -366,7 +494,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/2": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -389,7 +517,7 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/3": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{},
+				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -425,6 +553,7 @@ func TestNormalize(t *testing.T) {
 			if tc.ok {
 				require.Equal(t, tc.expected, cfg)
 			} else {
+				require.Nil(t, tc.expected) // check the test case itself is okay
 				require.Equal(t, tc.input, cfg)
 			}
 		})

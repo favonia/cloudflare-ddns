@@ -113,7 +113,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspicifed %s address", "0.0.0.0", "IPv4") //nolint:lll
+				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspecified %s address", "0.0.0.0", "IPv4") //nolint:lll
 			},
 		},
 	} {
