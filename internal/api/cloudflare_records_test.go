@@ -136,90 +136,76 @@ func (h zonesHandler) isExhausted() bool {
 	return *h.accessCount == 0
 }
 
-func TestListZonesRoot(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	_, h := newHandle(t, false, mockPP)
-
-	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "")
-	require.True(t, ok)
-	require.Empty(t, zones)
-}
-
 func TestListZonesTwo(t *testing.T) {
 	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h := newHandle(t, false, mockPP)
+	for name, tc := range map[string]struct {
+		zones       map[string][]string
+		numAccesses int
+		input       string
+		ok          bool
+		output      []string
+	}{
+		"root": {
+			nil,
+			0,
+			"",
+			true,
+			[]string{},
+		},
+		"two": {
+			map[string][]string{"test.org": {"active", "active"}},
+			1,
+			"test.org",
+			true,
+			mockIDs("test.org", 0, 1),
+		},
+		"empty": {
+			map[string][]string{},
+			1,
+			"test.org",
+			true,
+			[]string{},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			mux, h := newHandle(t, false, mockPP)
+			zh := newZonesHandler(t, mux, false)
 
-	zh := newZonesHandler(t, mux, false)
+			zh.set(tc.zones, tc.numAccesses)
+			mockPP = mocks.NewMockPP(mockCtrl)
+			output, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.output, output)
+			require.True(t, zh.isExhausted())
 
-	zh.set(map[string][]string{"test.org": {"active", "active"}}, 1)
-	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.True(t, ok)
-	require.Equal(t, mockIDs("test.org", 0, 1), zones)
-	require.True(t, zh.isExhausted())
+			zh.set(nil, 0)
+			mockPP = mocks.NewMockPP(mockCtrl)
+			output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.output, output)
+			require.True(t, zh.isExhausted())
 
-	zh.set(nil, 0)
-	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.True(t, ok)
-	require.Equal(t, mockIDs("test.org", 0, 1), zones)
-	require.True(t, zh.isExhausted())
+			if tc.numAccesses > 0 {
+				h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
-	h.FlushCache()
-
-	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(
-		pp.EmojiError,
-		"Failed to check the existence of a zone named %q: %v",
-		"test.org",
-		gomock.Any(),
-	)
-	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.False(t, ok)
-	require.Nil(t, zones)
-	require.True(t, zh.isExhausted())
-}
-
-func TestListZonesEmpty(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	mux, h := newHandle(t, false, mockPP)
-
-	zh := newZonesHandler(t, mux, false)
-
-	zh.set(map[string][]string{}, 1)
-	zones, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.True(t, ok)
-	require.Empty(t, zones)
-	require.True(t, zh.isExhausted())
-
-	zh.set(nil, 0) // this should not affect the result due to the caching
-	mockPP = mocks.NewMockPP(mockCtrl)
-	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.True(t, ok)
-	require.Empty(t, zones)
-	require.True(t, zh.isExhausted())
-
-	h.FlushCache()
-
-	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(
-		pp.EmojiError,
-		"Failed to check the existence of a zone named %q: %v",
-		"test.org",
-		gomock.Any(),
-	)
-	zones, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, "test.org")
-	require.False(t, ok)
-	require.Nil(t, zones)
-	require.True(t, zh.isExhausted())
+				mockPP = mocks.NewMockPP(mockCtrl)
+				mockPP.EXPECT().Warningf(
+					pp.EmojiError,
+					"Failed to check the existence of a zone named %q: %v",
+					"test.org",
+					gomock.Any(),
+				)
+				output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+				require.False(t, ok)
+				require.Nil(t, output)
+				require.True(t, zh.isExhausted())
+			}
+		})
+	}
 }
 
 //nolint:funlen
@@ -353,12 +339,11 @@ func TestZoneOfDomain(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
-
 			mux, h := newHandle(t, tc.emptyAccountID, mockPP)
-
 			zh := newZonesHandler(t, mux, tc.emptyAccountID)
 
 			zh.set(tc.zoneStatuses, tc.accessCount)
+			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
@@ -369,7 +354,7 @@ func TestZoneOfDomain(t *testing.T) {
 
 			if tc.ok {
 				zh.set(nil, 0)
-				mockPP = mocks.NewMockPP(mockCtrl) // there shouldn't be any messages
+				mockPP = mocks.NewMockPP(mockCtrl) // there should be no messages
 				zoneID, ok = h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
@@ -1023,12 +1008,11 @@ func TestCreateRecordInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-
 	mux, h := newHandle(t, false, mockPP)
-
 	zh := newZonesHandler(t, mux, false)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
 
+	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 		"AAAA",
 		"sub.test.org",
