@@ -44,4 +44,22 @@ type Setter interface {
 		Domain domain.Domain,
 		IPNetwork ipnet.Type,
 	) ResponseCode
+
+	// SetWAFList keeps only IP ranges overlapping with detected IPs
+	// and makes sure there will be ranges overlapping with detected ones.
+	SetWAFList(
+		ctx context.Context,
+		ppfmt pp.PP,
+		listName string,
+		listDescription string,
+		detected map[ipnet.Type]netip.Addr,
+		itemComment string,
+	) ResponseCode
+
+	// DeleteWAFList deletes a list.
+	DeleteWAFList(
+		ctx context.Context,
+		ppfmt pp.PP,
+		listName string,
+	) ResponseCode
 }
