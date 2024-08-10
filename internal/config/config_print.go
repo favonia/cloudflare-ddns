@@ -63,7 +63,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
 
-	section("Domains and IP providers:")
+	section("Domains, IP providers, and WAF lists:")
 	if c.Provider[ipnet.IP4] != nil {
 		item("IPv4-enabled domains:", "%s", describeDomains(c.Domains[ipnet.IP4]))
 		item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
@@ -72,6 +72,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 		item("IPv6-enabled domains:", "%s", describeDomains(c.Domains[ipnet.IP6]))
 		item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
 	}
+	item("WAF lists:", "%s", pp.Join(c.WAFLists))
 
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
@@ -80,18 +81,19 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Delete on stop?", "%t", c.DeleteOnStop)
 	item("Cache expiration:", "%v", c.CacheExpiration)
 
-	section("Parameters of new DNS records:")
+	section("Parameters of new DNS records and WAF lists:")
 	item("TTL:", "%s", c.TTL.Describe())
 	{
 		_, inverseMap := computeInverseMap(c.Proxied)
 		item("Proxied domains:", "%s", describeDomains(inverseMap[true]))
 		item("Unproxied domains:", "%s", describeDomains(inverseMap[false]))
 	}
-	item("Record comment:", "%s", describeComment(c.RecordComment))
+	item("DNS record comment:", "%s", describeComment(c.RecordComment))
+	item("WAF list description:", "%s", describeComment(c.WAFListDescription))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", c.DetectionTimeout)
-	item("Record updating:", "%v", c.UpdateTimeout)
+	item("Record/list updating:", "%v", c.UpdateTimeout)
 
 	if len(c.Monitors) > 0 {
 		section("Monitors:")

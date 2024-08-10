@@ -29,7 +29,7 @@ func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 
 // partitionRecords partitions record maps into matched and unmatched ones.
 //
-// The target ip must be non-zero.
+// The target IP is assumed to be non-zero.
 func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
 	for id, ip := range rmap {
 		if ip == target {
@@ -48,7 +48,7 @@ func partitionRecords(rmap map[string]netip.Addr, target netip.Addr) (matchedIDs
 	return matchedIDs, unmatchedIDs
 }
 
-// Set updates the IP address of one domain to the given ip. The ip must be non-zero.
+// Set updates the IP address of one domain to the given ip. The IP address must be non-zero.
 //
 //nolint:funlen
 func (s setter) Set(ctx context.Context, ppfmt pp.PP,
@@ -253,5 +253,87 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 		return ResponseFailed
 	}
 
+	return ResponseUpdated
+}
+
+// SetWAFList updates a WAF list.
+//
+// If detectedIPs contains a zero (invalid) IP, it means the detection is attempted but failed
+// and all matching IP addresses should be preserved.
+func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
+	listName, listDescription string, detectedIPs map[ipnet.Type]netip.Addr, itemComment string,
+) ResponseCode {
+	alreadyExisting, ok := s.Handle.EnsureWAFList(ctx, ppfmt, listName, listDescription)
+	if !ok {
+		return ResponseFailed
+	}
+	if !alreadyExisting {
+		ppfmt.Noticef(pp.EmojiCreation, "Created a new list named %q", listName)
+	}
+
+	items, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, listName)
+	if !ok {
+		return ResponseFailed
+	}
+
+	var itemsToDelete []api.WAFListItem
+	var itemsToCreate []netip.Prefix
+	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		detectedIP, managed := detectedIPs[ipNet]
+		covered := false
+		for _, item := range items {
+			if ipNet.Matches(item.Prefix.Addr()) {
+				switch {
+				case item.Prefix.Contains(detectedIP):
+					covered = true
+				case managed && !detectedIP.IsValid():
+					// detection was attempted but failed; do nothing
+				default:
+					itemsToDelete = append(itemsToDelete, item)
+				}
+			}
+		}
+		if !covered && detectedIP.IsValid() {
+			itemsToCreate = append(itemsToCreate,
+				netip.PrefixFrom(detectedIP, api.WAFListMaxBitLen[ipNet]).Masked())
+		}
+	}
+
+	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
+		if cached {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q is already up to date (cached)", listName)
+		} else {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q is already up to date", listName)
+		}
+		return ResponseNoop
+	}
+
+	if !s.Handle.CreateWAFListItems(ctx, ppfmt, listName, itemsToCreate, itemComment) {
+		return ResponseFailed
+	}
+	for _, item := range itemsToCreate {
+		ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %q", ipnet.DescribePrefixOrIP(item), listName)
+	}
+
+	idsToDelete := make([]string, 0, len(itemsToDelete))
+	for _, item := range itemsToDelete {
+		idsToDelete = append(idsToDelete, item.ID)
+	}
+	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, listName, idsToDelete) {
+		return ResponseFailed
+	}
+	for _, item := range itemsToDelete {
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %q", ipnet.DescribePrefixOrIP(item.Prefix), listName)
+	}
+
+	return ResponseUpdated
+}
+
+// DeleteWAFList deletes a WAF list.
+func (s setter) DeleteWAFList(ctx context.Context, ppfmt pp.PP, listName string) ResponseCode {
+	if !s.Handle.DeleteWAFList(ctx, ppfmt, listName) {
+		return ResponseFailed
+	}
+	ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", listName)
 	return ResponseUpdated
 }

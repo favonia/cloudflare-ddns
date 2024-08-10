@@ -2,6 +2,7 @@ package pp
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -30,4 +31,14 @@ func EnglishJoin(items []string) string {
 	default:
 		return fmt.Sprintf("%s, and %s", strings.Join(items[:l-1], ", "), items[l-1])
 	}
+}
+
+// QuotedEnglishJoin is similar to EnglishJoin except that every item is quoted.
+func QuotedEnglishJoin(items []string) string {
+	quoted := make([]string, 0, len(items))
+	for _, item := range items {
+		quoted = append(quoted, strconv.Quote(item))
+	}
+
+	return EnglishJoin(quoted)
 }

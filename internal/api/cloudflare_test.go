@@ -67,6 +67,21 @@ const (
 	mockAccountID  = "account456"
 )
 
+func TestSupportsRecords(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, api.CloudflareAuth{}.SupportsRecords())                //nolint:exhaustruct
+	require.True(t, api.CloudflareAuth{Token: mockToken}.SupportsRecords()) //nolint:exhaustruct
+}
+
+func TestSupportsWAFLists(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, api.CloudflareAuth{}.SupportsWAFLists())                                         //nolint:exhaustruct
+	require.False(t, api.CloudflareAuth{Token: mockToken}.SupportsWAFLists())                         //nolint:exhaustruct
+	require.True(t, api.CloudflareAuth{Token: mockToken, AccountID: mockAccountID}.SupportsRecords()) //nolint:exhaustruct
+}
+
 func newServerAuth(t *testing.T, accountID string) (*http.ServeMux, api.CloudflareAuth) {
 	t.Helper()
 
