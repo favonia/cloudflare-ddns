@@ -556,6 +556,7 @@ func TestUpdateIPs(t *testing.T) {
 							},
 						),
 					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					p.EXPECT().Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),                    //nolint:lll
 					p.EXPECT().Infof(pp.EmojiHint, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
 				)
 			},
