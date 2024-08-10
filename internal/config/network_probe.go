@@ -40,7 +40,7 @@ func (c *Config) ShouldWeUse1001Now(ctx context.Context, ppfmt pp.PP) bool {
 
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Probing 1.1.1.1 and 1.0.0.1 . . .")
-		ppfmt = ppfmt.IncIndent()
+		ppfmt = ppfmt.Indent()
 	}
 
 	if ProbeURL(ctx, "https://1.1.1.1") {

@@ -265,8 +265,9 @@ func TestSanityCheckExpiring(t *testing.T) {
 			true,
 			func(p *mocks.MockPP) {
 				gomock.InOrder(
-					p.EXPECT().Warningf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", "funny"),
-					p.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
+					p.EXPECT().Warningf(pp.EmojiImpossible,
+						"The Cloudflare API token is in an undocumented state %q; please report this at %s",
+						"funny", pp.IssueReportingURL),
 				)
 			},
 		},

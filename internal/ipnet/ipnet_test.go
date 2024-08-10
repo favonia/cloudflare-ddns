@@ -24,7 +24,7 @@ func TestDescribe(t *testing.T) {
 	}{
 		"4":   {ipnet.IP4, "IPv4"},
 		"6":   {ipnet.IP6, "IPv6"},
-		"100": {ipnet.Type(100), "<unrecognized IP network>"},
+		"100": {ipnet.Type(100), "<unrecognized IP version 100>"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -82,7 +82,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Detected IP address %s is not a valid %s address", "1::2", "IPv4")
+				m.EXPECT().Warningf(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::2")
 			},
 		},
 		"4-::ffff:0a0a:0a0a": {ipnet.IP4, mustIP("::ffff:0a0a:0a0a"), mustIP("10.10.10.10"), true, nil},
@@ -102,10 +102,8 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is not a valid %s address", "10.10.10.10", "<unrecognized IP network>"), //nolint:lll
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"),               //nolint:lll
-				)
+				m.EXPECT().Warningf(pp.EmojiImpossible,
+					"Unrecognized IP version %d was used; please report this at %s", 100, pp.IssueReportingURL)
 			},
 		},
 		"4-0.0.0.0": {
@@ -113,7 +111,8 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspecified %s address", "0.0.0.0", "IPv4") //nolint:lll
+				m.EXPECT().Warningf(pp.EmojiImpossible,
+					"Detected IP address %s is an unspecified %s address", "0.0.0.0", "IPv4")
 			},
 		},
 	} {

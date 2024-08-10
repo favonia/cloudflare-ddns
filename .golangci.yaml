@@ -14,10 +14,12 @@ linters-settings:
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Warningf
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Errorf
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Hintf
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Infof
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Warningf
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Errorf
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Hintf
   revive:
     rules:
       - name: exported

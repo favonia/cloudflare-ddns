@@ -10,6 +10,7 @@ type formatter struct {
 	writer    io.Writer
 	emoji     bool
 	indent    int
+	hintShown map[Hint]bool
 	verbosity Verbosity
 }
 
@@ -19,6 +20,7 @@ func New(writer io.Writer) PP {
 		writer:    writer,
 		emoji:     true,
 		indent:    0,
+		hintShown: map[Hint]bool{},
 		verbosity: DefaultVerbosity,
 	}
 }
@@ -40,8 +42,8 @@ func (f formatter) IsEnabledFor(v Verbosity) bool {
 	return v >= f.verbosity
 }
 
-// IncIndent returns a new printer that indents the messages more than the input printer.
-func (f formatter) IncIndent() PP {
+// Indent returns a new printer that indents the messages more than the input printer.
+func (f formatter) Indent() PP {
 	f.indent++
 	return f
 }
@@ -88,4 +90,17 @@ func (f formatter) Warningf(emoji Emoji, format string, args ...any) {
 // Errorf formats and sends a message at the level [Error].
 func (f formatter) Errorf(emoji Emoji, format string, args ...any) {
 	f.printf(Error, emoji, format, args...)
+}
+
+// SuppressHint sets the hint in the internal map to be "shown".
+func (f formatter) SuppressHint(hint Hint) {
+	f.hintShown[hint] = true
+}
+
+// Hintf called [Infof] with the emoji [EmojiHint].
+func (f formatter) Hintf(hint Hint, format string, args ...any) {
+	if !f.hintShown[hint] {
+		f.Infof(EmojiHint, format, args...)
+		f.hintShown[hint] = true
+	}
 }

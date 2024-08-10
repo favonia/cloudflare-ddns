@@ -143,8 +143,9 @@ func (h CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
 		ok = false
 		goto permanently
 	default:
-		ppfmt.Warningf(pp.EmojiImpossible, "The Cloudflare API token is in an undocumented state: %s", res.Status)
-		ppfmt.Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+		ppfmt.Warningf(pp.EmojiImpossible,
+			"The Cloudflare API token is in an undocumented state %q; please report this at %s",
+			res.Status, pp.IssueReportingURL)
 		goto permanently
 	}
 

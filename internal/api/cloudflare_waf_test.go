@@ -104,8 +104,8 @@ func TestListWAFLists(t *testing.T) {
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
-					"Found multiple lists named %q (IDs: %s and %s); please report this at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
-					"list", mockID("list", 0), mockID("list", 2),
+					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
+					"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 				)
 			},
 		},
@@ -228,8 +228,8 @@ func TestFindWAFList(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
-						"Found multiple lists named %q (IDs: %s and %s); please report this at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
-						"list", mockID("list", 0), mockID("list", 2),
+						"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
+						"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 					),
 					ppfmt.EXPECT().Warningf(pp.EmojiError,
 						"Failed to find the list %q",

@@ -45,7 +45,8 @@ func TestLocalGetIP(t *testing.T) {
 		"4": {
 			ipnet.IP4, "127.0.0.1:80", ipnet.IP4, gomock.Eq(ip4Loopback), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "Detected IP address %s does not look like a global unicast IP address. Please double-check.", "127.0.0.1") //nolint:lll
+				m.EXPECT().Warningf(pp.EmojiUserWarning,
+					"Detected IP address %s does not look like a global unicast IP address.", "127.0.0.1")
 			},
 		},
 		"6": {
@@ -62,7 +63,7 @@ func TestLocalGetIP(t *testing.T) {
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Warningf(pp.EmojiUserWarning,
-					"Detected IP address %s does not look like a global unicast IP address. Please double-check.",
+					"Detected IP address %s does not look like a global unicast IP address.",
 					gomock.AnyOf(
 						"::1",
 						gomock.Cond(func(x any) bool {

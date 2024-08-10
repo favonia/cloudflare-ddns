@@ -30,8 +30,8 @@ func TestPrintDefault(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
-		mockPP.EXPECT().IncIndent().Return(mockPP),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Indent().Return(mockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "IPv4-enabled domains:", "(none)"),
 		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
@@ -68,8 +68,8 @@ func TestPrintValues(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
-		mockPP.EXPECT().IncIndent().Return(mockPP),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Indent().Return(mockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "IPv4-enabled domains:", "test4.org, *.test4.org"),
 		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
@@ -140,8 +140,8 @@ func TestPrintEmpty(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
-		mockPP.EXPECT().IncIndent().Return(mockPP),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Indent().Return(mockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "Scheduling:"),

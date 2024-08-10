@@ -25,7 +25,7 @@ func (t Type) Describe() string {
 	case IP4, IP6:
 		return fmt.Sprintf("IPv%d", t)
 	default:
-		return "<unrecognized IP network>"
+		return fmt.Sprintf("<unrecognized IP version %d>", t)
 	}
 }
 
@@ -73,24 +73,26 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 
 	switch t {
 	case IP4:
-		if !ip.Is4() && !ip.Is4In6() {
-			ppfmt.Warningf(pp.EmojiError, "Detected IP address %s is not a valid %s address", ip.String(), t.Describe())
-			return netip.Addr{}, false
-		}
 		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
 		ip = ip.Unmap()
+
+		if !ip.Is4() {
+			ppfmt.Warningf(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip.String())
+			return netip.Addr{}, false
+		}
 	case IP6:
+		// If the address is an IPv4 address, map it back to an IPv6 address.
 		ip = netip.AddrFrom16(ip.As16())
 	default:
-		ppfmt.Warningf(pp.EmojiImpossible, "Detected IP address %s is not a valid %s address", ip.String(), t.Describe())
-		ppfmt.Warningf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+		ppfmt.Warningf(pp.EmojiImpossible,
+			"Unrecognized IP version %d was used; please report this at %s", int(t), pp.IssueReportingURL)
 		return netip.Addr{}, false
 	}
 
 	if !ip.IsGlobalUnicast() {
 		ppfmt.Warningf(
 			pp.EmojiUserWarning,
-			`Detected IP address %s does not look like a global unicast IP address. Please double-check.`,
+			`Detected IP address %s does not look like a global unicast IP address.`,
 			ip.String(),
 		)
 	}

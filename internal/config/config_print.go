@@ -55,8 +55,8 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 
 	ppfmt.Infof(pp.EmojiEnvVars, "Current settings:")
-	ppfmt = ppfmt.IncIndent()
-	inner := ppfmt.IncIndent()
+	ppfmt = ppfmt.Indent()
+	inner := ppfmt.Indent()
 
 	section := func(title string) { ppfmt.Infof(pp.EmojiConfig, title) }
 	item := func(title string, format string, values ...any) {
