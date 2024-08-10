@@ -13,7 +13,13 @@ import (
 
 //go:generate mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
 
-// WAFListItem bundles a network prefix and a comment.
+// Record bundles an ID and an IP address, representing a DNS record.
+type Record struct {
+	ID string
+	IP netip.Addr
+}
+
+// WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
 type WAFListItem struct {
 	ID     string
 	Prefix netip.Prefix
@@ -29,7 +35,7 @@ type Handle interface {
 	// ListRecords lists all matching DNS records.
 	//
 	// The second return value indicates whether the list was cached.
-	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) (map[string]netip.Addr, bool, bool) //nolint:lll
+	ListRecords(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type) ([]Record, bool, bool)
 
 	// DeleteRecord deletes one DNS record.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type, id string) bool
@@ -37,13 +43,14 @@ type Handle interface {
 	// UpdateRecord updates one DNS record.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr) bool
 
-	// CreateRecord creates one DNS record.
+	// CreateRecord creates one DNS record. It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type,
 		ip netip.Addr, ttl TTL, proxied bool, recordComment string) (string, bool)
 
 	// EnsureWAFList creates an empty WAF list with IP ranges if it does not already exist yet.
-	// The first return value indicates whether the list already exists.
-	EnsureWAFList(ctx context.Context, ppfmt pp.PP, listName string, description string) (bool, bool)
+	// The first return value is the ID of the list.
+	// The second return value indicates whether the list already exists.
+	EnsureWAFList(ctx context.Context, ppfmt pp.PP, listName string, description string) (string, bool, bool)
 
 	// DeleteWAFList deletes a WAF list with IP ranges.
 	DeleteWAFList(ctx context.Context, ppfmt pp.PP, listName string) bool

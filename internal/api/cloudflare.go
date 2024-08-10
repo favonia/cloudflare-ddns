@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"net/netip"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -21,10 +20,10 @@ type CloudflareCache = struct {
 	listZones    *ttlcache.Cache[string, []string] // zone names to zone IDs
 	zoneOfDomain *ttlcache.Cache[string, string]   // domain names to the zone ID
 	// records of domains
-	listRecords map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr] // domain names to IPs
+	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domain names to records.
 	// lists
-	listLists     *ttlcache.Cache[struct{}, map[string][]string] // list names to list IDs
-	listListItems *ttlcache.Cache[string, []WAFListItem]         // list IDs to list items
+	listLists     *ttlcache.Cache[struct{}, map[string]string] // list names to list IDs
+	listListItems *ttlcache.Cache[string, []WAFListItem]       // list IDs to list items
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -72,11 +71,11 @@ func (t CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration time
 			sanityCheck:  newCache[struct{}, bool](cacheExpiration),
 			listZones:    newCache[string, []string](cacheExpiration),
 			zoneOfDomain: newCache[string, string](cacheExpiration),
-			listRecords: map[ipnet.Type]*ttlcache.Cache[string, map[string]netip.Addr]{
-				ipnet.IP4: newCache[string, map[string]netip.Addr](cacheExpiration),
-				ipnet.IP6: newCache[string, map[string]netip.Addr](cacheExpiration),
+			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
+				ipnet.IP4: newCache[string, *[]Record](cacheExpiration),
+				ipnet.IP6: newCache[string, *[]Record](cacheExpiration),
 			},
-			listLists:     newCache[struct{}, map[string][]string](cacheExpiration),
+			listLists:     newCache[struct{}, map[string]string](cacheExpiration),
 			listListItems: newCache[string, []WAFListItem](cacheExpiration),
 		},
 	}

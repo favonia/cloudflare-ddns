@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/netip"
+	"slices"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
@@ -105,9 +106,9 @@ zoneSearch:
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	domain domain.Domain, ipNet ipnet.Type,
-) (map[string]netip.Addr, bool, bool) {
+) ([]Record, bool, bool) {
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		return rmap.Value(), true, true
+		return *rmap.Value(), true, true
 	}
 
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
@@ -119,7 +120,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	h.forcePassSanityCheck()
 
 	//nolint:exhaustruct // Other fields are intentionally unspecified
-	rs, _, err := h.cf.ListDNSRecords(ctx,
+	raw, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(zone),
 		cloudflare.ListDNSRecordsParams{
 			Name: domain.DNSNameASCII(),
@@ -132,21 +133,23 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false
 	}
 
-	rmap := map[string]netip.Addr{}
-	for i := range rs {
-		rmap[rs[i].ID], err = netip.ParseAddr(rs[i].Content)
+	rs := make([]Record, 0, len(raw))
+	for _, r := range raw {
+		ip, err := netip.ParseAddr(r.Content)
 		if err != nil {
 			ppfmt.Warningf(pp.EmojiImpossible,
 				"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
-				ipNet.RecordType(), domain.Describe(), rs[i].ID, err)
+				ipNet.RecordType(), domain.Describe(), r.ID, err)
 			return nil, false, false
 		}
+
+		rs = append(rs, Record{ID: r.ID, IP: ip})
 	}
 
 	h.cache.listRecords[ipNet].DeleteExpired()
-	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), rmap, ttlcache.DefaultTTL)
+	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), &rs, ttlcache.DefaultTTL)
 
-	return rmap, false, true
+	return rs, false, true
 }
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
@@ -170,8 +173,8 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	// The operation went through. No need to perform any sanity checking in near future!
 	h.forcePassSanityCheck()
 
-	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		delete(rmap.Value(), id)
+	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
+		*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
 	}
 
 	return true
@@ -204,8 +207,12 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	// The operation went through. No need to perform any sanity checking in near future!
 	h.forcePassSanityCheck()
 
-	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		rmap.Value()[id] = ip
+	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
+		for i, r := range *rs.Value() {
+			if r.ID == id {
+				(*rs.Value())[i].IP = ip
+			}
+		}
 	}
 
 	return true
@@ -243,8 +250,8 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	// The operation went through. No need to perform any sanity checking in near future!
 	h.forcePassSanityCheck()
 
-	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		rmap.Value()[res.ID] = ip
+	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
+		*rs.Value() = append([]Record{{ID: res.ID, IP: ip}}, *rs.Value()...)
 	}
 
 	return res.ID, true

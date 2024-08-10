@@ -235,12 +235,13 @@ func (c *HandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP
 }
 
 // EnsureWAFList mocks base method.
-func (m *MockHandle) EnsureWAFList(arg0 context.Context, arg1 pp.PP, arg2, arg3 string) (bool, bool) {
+func (m *MockHandle) EnsureWAFList(arg0 context.Context, arg1 pp.PP, arg2, arg3 string) (string, bool, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureWAFList", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret2, _ := ret[2].(bool)
+	return ret0, ret1, ret2
 }
 
 // EnsureWAFList indicates an expected call of EnsureWAFList.
@@ -256,28 +257,28 @@ type HandleEnsureWAFListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleEnsureWAFListCall) Return(arg0, arg1 bool) *HandleEnsureWAFListCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *HandleEnsureWAFListCall) Return(arg0 string, arg1, arg2 bool) *HandleEnsureWAFListCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleEnsureWAFListCall) Do(f func(context.Context, pp.PP, string, string) (bool, bool)) *HandleEnsureWAFListCall {
+func (c *HandleEnsureWAFListCall) Do(f func(context.Context, pp.PP, string, string) (string, bool, bool)) *HandleEnsureWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleEnsureWAFListCall) DoAndReturn(f func(context.Context, pp.PP, string, string) (bool, bool)) *HandleEnsureWAFListCall {
+func (c *HandleEnsureWAFListCall) DoAndReturn(f func(context.Context, pp.PP, string, string) (string, bool, bool)) *HandleEnsureWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) (map[string]netip.Addr, bool, bool) {
+func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) ([]api.Record, bool, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(map[string]netip.Addr)
+	ret0, _ := ret[0].([]api.Record)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
 	return ret0, ret1, ret2
@@ -296,19 +297,19 @@ type HandleListRecordsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleListRecordsCall) Return(arg0 map[string]netip.Addr, arg1, arg2 bool) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *HandleListRecordsCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) (map[string]netip.Addr, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
