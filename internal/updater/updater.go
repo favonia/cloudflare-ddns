@@ -57,13 +57,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	} else {
 		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
-		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Infof(pp.EmojiHint,
-				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
-				c.DetectionTimeout,
-			)
-			ShouldDisplayHints[HintDetectionTimeouts] = false
-		} else if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
+		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
 				ppfmt.Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
@@ -72,6 +66,12 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 			case ipnet.IP4:
 				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
 			}
+		}
+		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Infof(pp.EmojiHint,
+				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
+				c.DetectionTimeout,
+			)
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
