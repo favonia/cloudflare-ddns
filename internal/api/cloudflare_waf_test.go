@@ -55,45 +55,29 @@ func mockListsResponse(listMetas []listMeta) cloudflare.ListListResponse {
 	}
 }
 
-func handleListLists(t *testing.T, listMetas []listMeta, w http.ResponseWriter, r *http.Request) {
+func newListListsHandler(t *testing.T, mux *http.ServeMux, listMetas []listMeta) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockListsResponse(listMetas))
-	assert.NoError(t, err)
-}
-
-type listListsHandler = httpHandler[[]listMeta]
-
-func newListListsHandler(t *testing.T, mux *http.ServeMux) listListsHandler {
-	t.Helper()
-
-	var (
-		listMetas    []listMeta
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists", mockAccountID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleListLists(t, listMetas, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListsResponse(listMetas))
+			assert.NoError(t, err)
 		})
 
-	return listListsHandler{
-		mux:          mux,
-		params:       &listMetas,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestListWAFLists(t *testing.T) {
@@ -128,21 +112,19 @@ func TestListWAFLists(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
+			lh := newListListsHandler(t, mux, tc.lists)
 
-			lh.set(tc.lists, 1)
+			lh.setRequestLimit(1)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, "list")
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, lists)
 			require.True(t, lh.isExhausted())
 
-			lh.set(nil, 0)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, "list")
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, lists)
-			require.True(t, lh.isExhausted())
 
 			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
@@ -236,9 +218,9 @@ func TestFindWAFList(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
+			lh := newListListsHandler(t, mux, tc.lists)
 
-			lh.set(tc.lists, tc.listRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -248,7 +230,6 @@ func TestFindWAFList(t *testing.T) {
 			require.Equal(t, tc.output, list)
 			require.True(t, lh.isExhausted())
 
-			lh.set(nil, 0)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -268,45 +249,29 @@ func mockListResponse(meta listMeta) cloudflare.ListResponse {
 	}
 }
 
-func handleCreateList(t *testing.T, meta listMeta, w http.ResponseWriter, r *http.Request) {
+func newCreateListHandler(t *testing.T, mux *http.ServeMux, listMeta listMeta) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockListResponse(meta))
-	assert.NoError(t, err)
-}
-
-type createListHandler = httpHandler[listMeta]
-
-func newCreateListHandler(t *testing.T, mux *http.ServeMux) createListHandler {
-	t.Helper()
-
-	var (
-		listMeta     listMeta
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("POST /accounts/%s/rules/lists", mockAccountID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleCreateList(t, listMeta, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListResponse(listMeta))
+			assert.NoError(t, err)
 		})
 
-	return createListHandler{
-		mux:          mux,
-		params:       &listMeta,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestEnsureWAFList(t *testing.T) {
@@ -393,11 +358,11 @@ func TestEnsureWAFList(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
-			ch := newCreateListHandler(t, mux)
+			lh := newListListsHandler(t, mux, tc.lists)
+			ch := newCreateListHandler(t, mux, tc.list)
 
-			lh.set(tc.lists, tc.listRequestLimit)
-			ch.set(tc.list, tc.createRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
+			ch.setRequestLimit(tc.createRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -409,8 +374,6 @@ func TestEnsureWAFList(t *testing.T) {
 			require.True(t, ch.isExhausted())
 
 			if tc.ok {
-				lh.set(nil, 0)
-				ch.set(listMeta{}, 0) //nolint:exhaustruct
 				mockPP = mocks.NewMockPP(mockCtrl)
 				output, ok = h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, "list", "description")
 				require.Equal(t, tc.ok, ok)
@@ -431,45 +394,29 @@ func mockDeleteListResponse(listID string) cloudflare.ListDeleteResponse {
 	}
 }
 
-func handleDeleteList(t *testing.T, listID string, w http.ResponseWriter, r *http.Request) {
+func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID string) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockDeleteListResponse(listID))
-	assert.NoError(t, err)
-}
-
-type deleteListHandler = httpHandler[struct{}]
-
-func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID string) deleteListHandler {
-	t.Helper()
-
-	var (
-		dummy        struct{}
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("DELETE /accounts/%s/rules/lists/%s", mockAccountID, listID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleDeleteList(t, listID, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockDeleteListResponse(listID))
+			assert.NoError(t, err)
 		})
 
-	return deleteListItemsHandler{
-		mux:          mux,
-		params:       &dummy,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestDeleteWAFList(t *testing.T) {
@@ -526,11 +473,11 @@ func TestDeleteWAFList(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
+			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, mux, mockID("list", 0))
 
-			lh.set([]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}}, tc.listRequestLimit)
-			dh.set(struct{}{}, tc.deleteRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
+			dh.setRequestLimit(tc.deleteRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -576,45 +523,29 @@ func mockListListItemsResponse(listItems []listItem) cloudflare.ListItemsListRes
 	}
 }
 
-func handleListListItems(t *testing.T, metas []listItem, w http.ResponseWriter, r *http.Request) {
+func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID string, listItems []listItem) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockListListItemsResponse(metas))
-	assert.NoError(t, err)
-}
-
-type listListItemsHandler = httpHandler[[]listItem]
-
-func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID string) listListItemsHandler {
-	t.Helper()
-
-	var (
-		listItems    []listItem
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleListListItems(t, listItems, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListListItemsResponse(listItems))
+			assert.NoError(t, err)
 		})
 
-	return listListItemsHandler{
-		mux:          mux,
-		params:       &listItems,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestListWAFListItems(t *testing.T) {
@@ -694,11 +625,11 @@ func TestListWAFListItems(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
-			lih := newListListItemsHandler(t, mux, mockID("list", 0))
+			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
+			lih := newListListItemsHandler(t, mux, mockID("list", 0), tc.items)
 
-			lh.set([]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}}, tc.listRequestLimit)
-			lih.set(tc.items, tc.listItemsRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
+			lih.setRequestLimit(tc.listItemsRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -712,8 +643,6 @@ func TestListWAFListItems(t *testing.T) {
 			require.True(t, lih.isExhausted())
 
 			if tc.ok {
-				lh.set(nil, 0)
-				lih.set(nil, 0)
 				mockPP = mocks.NewMockPP(mockCtrl)
 				//nolint:forcetypeassert
 				output, cached, ok := h.(api.CloudflareHandle).ListWAFListItems(context.Background(), mockPP, "list")
@@ -763,38 +692,27 @@ func mockListItemDeleteResponse(id string) cloudflare.ListItemDeleteResponse {
 	}
 }
 
-func handleDeleteListItems(t *testing.T, operationID string, w http.ResponseWriter, r *http.Request) {
+//nolint:dupl
+func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID string) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockListItemDeleteResponse(operationID))
-	assert.NoError(t, err)
-}
-
-type deleteListItemsHandler = httpHandler[struct{}]
-
-func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID string) deleteListItemsHandler {
-	t.Helper()
-
-	var (
-		dummy        struct{}
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("DELETE /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleDeleteListItems(t, operationID, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListItemDeleteResponse(operationID))
+			assert.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
@@ -802,11 +720,7 @@ func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 			handleListBulkOperation(t, operationID, w, r)
 		})
 
-	return deleteListItemsHandler{
-		mux:          mux,
-		params:       &dummy,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestDeleteWAFListItems(t *testing.T) {
@@ -888,13 +802,13 @@ func TestDeleteWAFListItems(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
+			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dih := newDeleteListItemsHandler(t, mux, mockID("list", 0), mockID("op", 0))
-			lih := newListListItemsHandler(t, mux, mockID("list", 0))
+			lih := newListListItemsHandler(t, mux, mockID("list", 0), tc.listItemsResponse)
 
-			lh.set([]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}}, tc.listRequestLimit)
-			dih.set(struct{}{}, tc.deleteRequestLimit)
-			lih.set(tc.listItemsResponse, tc.listItemsRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
+			dih.setRequestLimit(tc.deleteRequestLimit)
+			lih.setRequestLimit(tc.listItemsRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -907,9 +821,8 @@ func TestDeleteWAFListItems(t *testing.T) {
 			require.True(t, lih.isExhausted())
 
 			if tc.ok {
-				lh.set(nil, 0)
-				dih.set(struct{}{}, tc.deleteRequestLimit)
-				lih.set(nil, tc.listItemsRequestLimit)
+				dih.setRequestLimit(tc.deleteRequestLimit)
+				lih.setRequestLimit(tc.listItemsRequestLimit)
 				mockPP = mocks.NewMockPP(mockCtrl)
 				//nolint:forcetypeassert
 				ok := h.(api.CloudflareHandle).DeleteWAFListItems(context.Background(), mockPP, "list", tc.idsToDelete)
@@ -931,38 +844,27 @@ func mockListItemCreateResponse(id string) cloudflare.ListItemCreateResponse {
 	}
 }
 
-func handleCreateListItems(t *testing.T, operationID string, w http.ResponseWriter, r *http.Request) {
+//nolint:dupl
+func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID string) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockListItemCreateResponse(operationID))
-	assert.NoError(t, err)
-}
-
-type createListItemsHandler = httpHandler[struct{}]
-
-func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID string) createListItemsHandler {
-	t.Helper()
-
-	var (
-		dummy        struct{}
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("POST /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
 		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			requestLimit--
 
-			handleCreateListItems(t, operationID, w, r)
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListItemCreateResponse(operationID))
+			assert.NoError(t, err)
 		})
 
 	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
@@ -970,11 +872,7 @@ func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 			handleListBulkOperation(t, operationID, w, r)
 		})
 
-	return createListItemsHandler{
-		mux:          mux,
-		params:       &dummy,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestCreateWAFListItems(t *testing.T) {
@@ -1058,13 +956,13 @@ func TestCreateWAFListItems(t *testing.T) {
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux)
+			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			cih := newCreateListItemsHandler(t, mux, mockID("list", 0), mockID("op", 0))
-			lih := newListListItemsHandler(t, mux, mockID("list", 0))
+			lih := newListListItemsHandler(t, mux, mockID("list", 0), tc.listItemsResponse)
 
-			lh.set([]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}}, tc.listRequestLimit)
-			cih.set(struct{}{}, tc.createRequestLimit)
-			lih.set(tc.listItemsResponse, tc.listItemsRequestLimit)
+			lh.setRequestLimit(tc.listRequestLimit)
+			cih.setRequestLimit(tc.createRequestLimit)
+			lih.setRequestLimit(tc.listItemsRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
@@ -1078,9 +976,8 @@ func TestCreateWAFListItems(t *testing.T) {
 			require.True(t, lih.isExhausted())
 
 			if tc.ok {
-				lh.set(nil, 0)
-				cih.set(struct{}{}, tc.createRequestLimit)
-				lih.set(nil, tc.listItemsRequestLimit)
+				cih.setRequestLimit(tc.createRequestLimit)
+				lih.setRequestLimit(tc.listItemsRequestLimit)
 				mockPP = mocks.NewMockPP(mockCtrl)
 				//nolint:forcetypeassert
 				ok = h.(api.CloudflareHandle).CreateWAFListItems(context.Background(), mockPP,

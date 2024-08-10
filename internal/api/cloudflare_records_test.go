@@ -54,78 +54,56 @@ func mockZonesResponse(zoneName string, zoneStatuses []string) cloudflare.ZonesR
 	}
 }
 
-func handleZones(
-	t *testing.T, zoneName string, zoneStatuses []string, accountID string, w http.ResponseWriter, r *http.Request,
-) {
+func newZonesHandler(t *testing.T, mux *http.ServeMux, accountID string, zoneStatuses map[string][]string) httpHandler {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) {
-		panic(http.ErrAbortHandler)
-	}
-	if accountID == "" {
-		if !assert.Equal(t, url.Values{
-			"name":     {zoneName},
-			"per_page": {strconv.Itoa(zonePageSize)},
-		}, r.URL.Query()) {
-			panic(http.ErrAbortHandler)
-		}
-	} else {
-		if !assert.Equal(t, url.Values{
-			"account.id": {mockAccountID},
-			"name":       {zoneName},
-			"per_page":   {strconv.Itoa(zonePageSize)},
-		}, r.URL.Query()) {
-			panic(http.ErrAbortHandler)
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, zoneStatuses))
-	assert.NoError(t, err)
-}
-
-func handleExceedingRequestLimit(t *testing.T, w http.ResponseWriter, _ *http.Request) {
-	t.Helper()
-	w.WriteHeader(http.StatusBadRequest)
-}
-
-type zonesHandler = httpHandler[map[string][]string]
-
-func newZonesHandler(t *testing.T, mux *http.ServeMux, accountID string) zonesHandler {
-	t.Helper()
-
-	var (
-		zoneStatuses map[string][]string
-		requestLimit int
-	)
+	var requestLimit int
 
 	mux.HandleFunc("GET /zones", func(w http.ResponseWriter, r *http.Request) {
-		if requestLimit <= 0 {
-			handleExceedingRequestLimit(t, w, r)
+		if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		requestLimit--
 
 		zoneName := r.URL.Query().Get("name")
-		handleZones(t, zoneName, zoneStatuses[zoneName], accountID, w, r)
+		zoneStatuses := zoneStatuses[zoneName]
+
+		if accountID == "" {
+			if !assert.Equal(t, url.Values{
+				"name":     {zoneName},
+				"per_page": {strconv.Itoa(zonePageSize)},
+			}, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		} else {
+			if !assert.Equal(t, url.Values{
+				"account.id": {mockAccountID},
+				"name":       {zoneName},
+				"per_page":   {strconv.Itoa(zonePageSize)},
+			}, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(mockZonesResponse(zoneName, zoneStatuses))
+		assert.NoError(t, err)
 	})
 
-	return zonesHandler{
-		mux:          mux,
-		params:       &zoneStatuses,
-		requestLimit: &requestLimit,
-	}
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestListZonesTwo(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		zones       map[string][]string
-		numAccesses int
-		input       string
-		ok          bool
-		output      []string
+		zones        map[string][]string
+		requestLimit int
+		input        string
+		ok           bool
+		output       []string
 	}{
 		"root": {
 			nil,
@@ -155,23 +133,23 @@ func TestListZonesTwo(t *testing.T) {
 			mockPP := mocks.NewMockPP(mockCtrl)
 			mux, h, ok := newGoodHandle(t, mockPP)
 			require.True(t, ok)
-			zh := newZonesHandler(t, mux, mockAccountID)
+			zh := newZonesHandler(t, mux, mockAccountID, tc.zones)
 
-			zh.set(tc.zones, tc.numAccesses)
+			zh.setRequestLimit(tc.requestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			output, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
 			require.True(t, zh.isExhausted())
 
-			zh.set(nil, 0)
+			zh.setRequestLimit(0)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
 			require.True(t, zh.isExhausted())
 
-			if tc.numAccesses > 0 {
+			if tc.requestLimit > 0 {
 				h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
 				mockPP = mocks.NewMockPP(mockCtrl)
@@ -323,9 +301,9 @@ func TestZoneOfDomain(t *testing.T) {
 			mockPP := mocks.NewMockPP(mockCtrl)
 			mux, h, ok := newHandle(t, mockPP, tc.accountID, http.StatusOK, mockVerifyToken())
 			require.True(t, ok)
-			zh := newZonesHandler(t, mux, tc.accountID)
+			zh := newZonesHandler(t, mux, tc.accountID, tc.zoneStatuses)
 
-			zh.set(tc.zoneStatuses, tc.requestLimit)
+			zh.setRequestLimit(tc.requestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
@@ -336,7 +314,7 @@ func TestZoneOfDomain(t *testing.T) {
 			require.True(t, zh.isExhausted())
 
 			if tc.ok {
-				zh.set(nil, 0)
+				zh.setRequestLimit(0)
 				mockPP = mocks.NewMockPP(mockCtrl) // there should be no messages
 				zoneID, ok = h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
@@ -366,44 +344,62 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	require.Equal(t, "", zoneID)
 }
 
-func mockDNSRecord(id string, ipNet ipnet.Type, name string, ip string) *cloudflare.DNSRecord {
-	return &cloudflare.DNSRecord{ //nolint:exhaustruct
+func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudflare.DNSRecord {
+	return cloudflare.DNSRecord{ //nolint:exhaustruct
 		ID:      id,
 		Type:    ipNet.RecordType(),
-		Name:    name,
+		Name:    domain,
 		Content: ip,
 	}
 }
 
-func mockDNSListResponse(ipNet ipnet.Type, name string, ips map[string]string) *cloudflare.DNSListResponse {
+func mockDNSListResponse(ipNet ipnet.Type, domain string, ips map[string]string) cloudflare.DNSListResponse {
 	if len(ips) > dnsRecordPageSize {
 		panic("mockDNSResponse got too many IPs")
 	}
 
 	rs := make([]cloudflare.DNSRecord, 0, len(ips))
 	for id, ip := range ips {
-		rs = append(rs, *mockDNSRecord(id, ipNet, name, ip))
+		rs = append(rs, mockDNSRecord(id, ipNet, domain, ip))
 	}
 
-	return &cloudflare.DNSListResponse{
+	return cloudflare.DNSListResponse{
 		Result:     rs,
 		ResultInfo: mockResultInfo(len(ips), dnsRecordPageSize),
 		Response:   mockResponse(),
 	}
 }
 
-func mockDNSListResponseFromAddr(ipNet ipnet.Type, name string, ips map[string]netip.Addr) *cloudflare.DNSListResponse {
-	if len(ips) > dnsRecordPageSize {
-		panic("mockDNSResponse got too many IPs")
-	}
+func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
+	ipNet ipnet.Type, domain string, ips map[string]string, //nolint: unparam
+) httpHandler {
+	t.Helper()
 
-	strings := make(map[string]string)
+	var requestLimit int
 
-	for id, ip := range ips {
-		strings[id] = ip.String()
-	}
+	mux.HandleFunc(fmt.Sprintf("GET /zones/%s/dns_records", mockID("test.org", 0)),
+		func(w http.ResponseWriter, r *http.Request) {
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 
-	return mockDNSListResponse(ipNet, name, strings)
+			if !assert.Equal(t, url.Values{
+				"name":     {domain},
+				"page":     {"1"},
+				"per_page": {strconv.Itoa(dnsRecordPageSize)},
+				"type":     {ipNet.RecordType()},
+			}, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, domain, ips))
+			assert.NoError(t, err)
+		})
+
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 //nolint:dupl
@@ -415,56 +411,25 @@ func TestListRecords(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		ipNet        ipnet.Type
-		ips          map[string]netip.Addr
-		requestLimit int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1", "record2": "::2"})
+	lrh.setRequestLimit(1)
+	expectedIPs := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
-				return
-			}
-			requestLimit--
-
-			if !assert.Equal(t, http.MethodGet, r.Method) ||
-				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-				!assert.Equal(t, url.Values{
-					"name":     {"sub.test.org"},
-					"page":     {"1"},
-					"per_page": {strconv.Itoa(dnsRecordPageSize)},
-					"type":     {ipNet.RecordType()},
-				}, r.URL.Query()) {
-				panic(http.ErrAbortHandler)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSListResponseFromAddr(ipNet, "test.org", ips),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
-	ipNet, ips, requestLimit = ipnet.IP6, expected, 1
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
-	require.Equal(t, expected, ips)
-	require.Equal(t, 0, requestLimit)
+	require.Equal(t, expectedIPs, ips)
+	require.True(t, lrh.isExhausted())
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
 	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, expected, ips)
+	require.Equal(t, expectedIPs, ips)
 }
 
 //nolint:funlen
@@ -476,43 +441,13 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		ipNet        ipnet.Type
-		ips          map[string]netip.Addr
-		requestLimit int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org",
+		map[string]string{"record1": "::1", "record2": "not an ip"})
+	lrh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
-				return
-			}
-			requestLimit--
-
-			if !assert.Equal(t, http.MethodGet, r.Method) ||
-				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-				!assert.Equal(t, url.Values{
-					"name":     {"sub.test.org"},
-					"page":     {"1"},
-					"per_page": {strconv.Itoa(dnsRecordPageSize)},
-					"type":     {ipNet.RecordType()},
-				}, r.URL.Query()) {
-				panic(http.ErrAbortHandler)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, "test.org",
-				map[string]string{"record1": "::1", "record2": "NOT AN IP"},
-			)); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	ipNet, requestLimit = ipnet.IP6, 1
 	mockPP.EXPECT().Warningf(
 		pp.EmojiImpossible,
 		"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
@@ -525,7 +460,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Nil(t, ips)
-	require.Equal(t, 0, requestLimit)
+	require.True(t, lrh.isExhausted())
 
 	// testing the (no) caching
 	mockPP = mocks.NewMockPP(mockCtrl)
@@ -540,7 +475,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Nil(t, ips)
-	require.Equal(t, 0, requestLimit)
+	require.True(t, lrh.isExhausted())
 }
 
 //nolint:dupl
@@ -552,56 +487,26 @@ func TestListRecordsWildcard(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 1)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		ipNet        ipnet.Type
-		ips          map[string]netip.Addr
-		requestLimit int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "*.test.org", map[string]string{"record1": "::1", "record2": "::2"})
+	lrh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if requestLimit <= 0 {
-				handleExceedingRequestLimit(t, w, r)
-				return
-			}
-			requestLimit--
+	expectedIPs := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 
-			if !assert.Equal(t, http.MethodGet, r.Method) ||
-				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-				!assert.Equal(t, url.Values{
-					"name":     {"*.test.org"},
-					"page":     {"1"},
-					"per_page": {strconv.Itoa(dnsRecordPageSize)},
-					"type":     {ipNet.RecordType()},
-				}, r.URL.Query()) {
-				panic(http.ErrAbortHandler)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSListResponseFromAddr(ipNet, "*.test.org", ips),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	expected := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
-	ipNet, ips, requestLimit = ipnet.IP6, expected, 1
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
-	require.Equal(t, expected, ips)
-	require.Equal(t, 0, requestLimit)
+	require.Equal(t, expectedIPs, ips)
+	require.True(t, lrh.isExhausted())
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
 	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, expected, ips)
+	require.Equal(t, expectedIPs, ips)
 }
 
 func TestListRecordsInvalidDomain(t *testing.T) {
@@ -612,8 +517,8 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
 	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
@@ -661,16 +566,42 @@ func TestListRecordsInvalidZone(t *testing.T) {
 	require.Nil(t, ips)
 }
 
-func envelopDNSRecordResponse(record *cloudflare.DNSRecord) *cloudflare.DNSRecordResponse {
-	return &cloudflare.DNSRecordResponse{
-		Result:     *record,
+func envelopDNSRecordResponse(record cloudflare.DNSRecord) cloudflare.DNSRecordResponse {
+	return cloudflare.DNSRecordResponse{
+		Result:     record,
 		ResultInfo: mockResultInfo(1, dnsRecordPageSize),
 		Response:   mockResponse(),
 	}
 }
 
-func mockDNSRecordResponse(id string, ipNet ipnet.Type, name string, ip string) *cloudflare.DNSRecordResponse {
-	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, name, ip))
+func mockDNSRecordResponse(id string, ipNet ipnet.Type, domain string, ip string) cloudflare.DNSRecordResponse {
+	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, domain, ip))
+}
+
+func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string,
+) httpHandler {
+	t.Helper()
+
+	var requestLimit int
+
+	mux.HandleFunc(fmt.Sprintf("DELETE /zones/%s/dns_records/%s", mockID("test.org", 0), id),
+		func(w http.ResponseWriter, r *http.Request) {
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse(id, ipNet, domain, ip))
+			assert.NoError(t, err)
+		})
+
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 func TestDeleteRecordValid(t *testing.T) {
@@ -681,56 +612,20 @@ func TestDeleteRecordValid(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		listAccessCount   int
-		deleteAccessCount int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1"})
+	lrh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, _ *http.Request) {
-			if listAccessCount <= 0 {
-				panic(http.ErrAbortHandler)
-			}
-			listAccessCount--
+	drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+	drh.setRequestLimit(1)
 
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSListResponseFromAddr(ipnet.IP6, "test.org",
-					map[string]netip.Addr{"record1": mustIP("::1")}),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if deleteAccessCount <= 0 {
-				panic(http.ErrAbortHandler)
-			}
-			deleteAccessCount--
-
-			if !assert.Equal(t, http.MethodDelete, r.Method) ||
-				!assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-				!assert.Empty(t, r.URL.Query()) {
-				panic(http.ErrAbortHandler)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSRecordResponse("record1", ipnet.IP6, "test.org", "::1"),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	deleteAccessCount = 1
 	ok = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
 	require.True(t, ok)
+	require.True(t, drh.isExhausted())
 
-	listAccessCount, deleteAccessCount = 1, 1
+	drh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
@@ -738,6 +633,7 @@ func TestDeleteRecordValid(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Empty(t, rs)
+	require.True(t, drh.isExhausted())
 }
 
 func TestDeleteRecordInvalid(t *testing.T) {
@@ -748,8 +644,8 @@ func TestDeleteRecordInvalid(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 		"AAAA",
@@ -786,38 +682,16 @@ func TestUpdateRecordValid(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		listAccessCount   int
-		updateAccessCount int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1"})
+	lrh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
+	var updateAccessCount int
+
+	mux.HandleFunc(fmt.Sprintf("PATCH /zones/%s/dns_records/record1", mockID("test.org", 0)),
 		func(w http.ResponseWriter, r *http.Request) {
-			if !assert.Equal(t, http.MethodGet, r.Method) {
-				panic(http.ErrAbortHandler)
-			}
-			if listAccessCount <= 0 {
-				panic(http.ErrAbortHandler)
-			}
-			listAccessCount--
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSListResponse(ipnet.IP6, "test.org",
-					map[string]string{"record1": "::1"}),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records/record1", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if !assert.Equal(t, http.MethodPatch, r.Method) {
-				panic(http.ErrAbortHandler)
-			}
 			if updateAccessCount <= 0 {
 				panic(http.ErrAbortHandler)
 			}
@@ -849,7 +723,7 @@ func TestUpdateRecordValid(t *testing.T) {
 	ok = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	require.True(t, ok)
 
-	listAccessCount, updateAccessCount = 1, 1
+	updateAccessCount = 1
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
@@ -867,8 +741,8 @@ func TestUpdateRecordInvalid(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 		"AAAA",
@@ -896,6 +770,49 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 	require.False(t, ok)
 }
 
+func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string,
+) httpHandler {
+	t.Helper()
+
+	var requestLimit int
+
+	mux.HandleFunc(fmt.Sprintf("POST /zones/%s/dns_records", mockID("test.org", 0)),
+		func(w http.ResponseWriter, r *http.Request) {
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			var record cloudflare.DNSRecord
+			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !assert.Equal(t, domain, record.Name) ||
+				!assert.Equal(t, ipNet.RecordType(), record.Type) ||
+				!assert.Equal(t, ip, record.Content) ||
+				!assert.Equal(t, 100, record.TTL) ||
+				!assert.False(t, *record.Proxied) ||
+				!assert.Equal(t, "hello", record.Comment) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			record.ID = id
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(record))
+			assert.NoError(t, err)
+		})
+
+	return httpHandler{requestLimit: &requestLimit}
+}
+
 //nolint:funlen
 func TestCreateRecordValid(t *testing.T) {
 	t.Parallel()
@@ -905,74 +822,20 @@ func TestCreateRecordValid(t *testing.T) {
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID)
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 
-	var (
-		listAccessCount   int
-		createAccessCount int
-	)
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{})
+	lrh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("/zones/%s/dns_records", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				if listAccessCount <= 0 {
-					panic(http.ErrAbortHandler)
-				}
-				listAccessCount--
+	crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+	crh.setRequestLimit(1)
 
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(
-					mockDNSListResponse(ipnet.IP6, "test.org",
-						map[string]string{"record1": "::1"}),
-				); !assert.NoError(t, err) {
-					panic(http.ErrAbortHandler)
-				}
-			case http.MethodPost:
-				if createAccessCount <= 0 {
-					panic(http.ErrAbortHandler)
-				}
-				createAccessCount--
-
-				if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-					!assert.Empty(t, r.URL.Query()) {
-					panic(http.ErrAbortHandler)
-				}
-
-				var record cloudflare.DNSRecord
-				if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
-					panic(http.ErrAbortHandler)
-				}
-
-				if !assert.Equal(t, "sub.test.org", record.Name) ||
-					!assert.Equal(t, ipnet.IP6.RecordType(), record.Type) ||
-					!assert.Equal(t, "::1", record.Content) ||
-					!assert.Equal(t, 100, record.TTL) ||
-					!assert.False(t, *record.Proxied) ||
-					!assert.Equal(t, "hello", record.Comment) {
-					panic(http.ErrAbortHandler)
-				}
-				record.ID = "record1"
-
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(
-					envelopDNSRecordResponse(&record),
-				); !assert.NoError(t, err) {
-					panic(http.ErrAbortHandler)
-				}
-			}
-		})
-
-	createAccessCount = 1
+	mockPP = mocks.NewMockPP(mockCtrl)
+	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.True(t, ok)
 	require.Equal(t, "record1", actualID)
-
-	listAccessCount, createAccessCount = 1, 1
-	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
@@ -985,9 +848,8 @@ func TestCreateRecordInvalid(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mux, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
-	zh := newZonesHandler(t, mux, mockAccountID)
-
-	zh.set(map[string][]string{"test.org": {"active"}}, 2)
+	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 		"AAAA",
