@@ -586,19 +586,19 @@ func TestSetWAFList(t *testing.T) {
 							prefix4wrong1.ID,
 							prefix6wrong1.ID,
 						})).Return(true),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "20.0.0.0/20", listName, listID),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "20.0.0.0/24", listName, listID),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "20.0.0.0/16", listName, listID),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "4001:db8::/40", listName, listID),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "4001:db8::/48", listName, listID),
+					p.EXPECT().Noticef(pp.EmojiDeletion,
+						"Deleted %s from the list %q (ID: %s)", "4001:db8::/32", listName, listID),
 				)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "20.0.0.0/20", listName, listID)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "4001:db8::/40", listName, listID)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "4001:db8::/48", listName, listID)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "20.0.0.0/24", listName, listID)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "20.0.0.0/16", listName, listID)
-				p.EXPECT().Noticef(pp.EmojiDeletion,
-					"Deleted %s from the list %q (ID: %s)", "4001:db8::/32", listName, listID)
 			},
 		},
 		"create-fail": {
@@ -610,6 +610,8 @@ func TestSetWAFList(t *testing.T) {
 					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(items{}, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, listName,
 						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
+					p.EXPECT().Warningf(pp.EmojiError,
+						"Failed to properly update the list %q (ID: %s); its content may be inconsistent", listName, listID),
 				)
 			},
 		},
@@ -644,6 +646,8 @@ func TestSetWAFList(t *testing.T) {
 							prefix4wrong1.ID,
 							prefix6wrong1.ID,
 						})).Return(false),
+					p.EXPECT().Warningf(pp.EmojiError,
+						"Failed to properly update the list %q (ID: %s); its content may be inconsistent", listName, listID),
 				)
 			},
 		},

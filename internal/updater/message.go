@@ -46,7 +46,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish updating %s records of %s with %s; those of %s were updated.",
+				"Failed to properly update %s records of %s with %s; those of %s were updated.",
 				ipNet.RecordType(),
 				pp.EnglishJoin(s[setter.ResponseFailed]),
 				ip.String(),
@@ -64,7 +64,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish updating %s records of %s with %s.",
+				"Failed to properly update %s records of %s with %s.",
 				ipNet.RecordType(),
 				pp.EnglishJoin(s[setter.ResponseFailed]),
 				ip.String(),
@@ -105,7 +105,7 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish deleting %s records of %s; those of %s were deleted.",
+				"Failed to properly delete %s records of %s; those of %s were deleted.",
 				ipNet.RecordType(),
 				pp.EnglishJoin(s[setter.ResponseFailed]),
 				pp.EnglishJoin(s[setter.ResponseUpdated]),
@@ -121,7 +121,7 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 				pp.Join(s[setter.ResponseFailed]),
 			)},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish deleting %s records of %s.",
+				"Failed to properly delete %s records of %s.",
 				ipNet.RecordType(),
 				pp.EnglishJoin(s[setter.ResponseFailed]),
 			)},

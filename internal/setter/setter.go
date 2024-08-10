@@ -256,6 +256,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if !s.Handle.CreateWAFListItems(ctx, ppfmt, listName, itemsToCreate, itemComment) {
+		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
+			listName, listID)
 		return ResponseFailed
 	}
 	for _, item := range itemsToCreate {
@@ -268,6 +270,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		idsToDelete = append(idsToDelete, item.ID)
 	}
 	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, listName, idsToDelete) {
+		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
+			listName, listID)
 		return ResponseFailed
 	}
 	for _, item := range itemsToDelete {

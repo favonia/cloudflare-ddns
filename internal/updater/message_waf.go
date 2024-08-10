@@ -29,7 +29,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 				"Failed to set list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish updating WAF list(s) %s; %s were updated.",
+				"Failed to properly update WAF list(s) %s; %s were updated.",
 				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
 				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
 			)},
@@ -42,7 +42,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 				"Failed to set list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish updating WAF list(s) %s.",
+				"Failed to properly update WAF list(s) %s.",
 				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
 			)},
 		}
@@ -75,7 +75,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 				"Failed to delete list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish deleting WAF list(s) %s; %s were deleted.",
+				"Failed to properly delete WAF list(s) %s; %s were deleted.",
 				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
 				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
 			)},
@@ -88,7 +88,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 				"Failed to delete list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
 			NotifierMessages: []string{fmt.Sprintf(
-				"Failed to finish deleting WAF list(s) %s.",
+				"Failed to properly delete WAF list(s) %s.",
 				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
 			)},
 		}
