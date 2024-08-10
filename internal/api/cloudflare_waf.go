@@ -26,9 +26,9 @@ var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
 }
 
 // ListWAFLists lists all IP lists of the given name.
-func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, listName string) ([]string, bool) {
+func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP) (map[string]string, bool) {
 	if lmap := h.cache.listLists.Get(struct{}{}); lmap != nil {
-		return lmap.Value()[listName], true
+		return lmap.Value(), true
 	}
 
 	ls, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(h.accountID), cloudflare.ListListsParams{})
@@ -38,52 +38,59 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, listNam
 	}
 	h.forcePassSanityCheck()
 
-	lmap := make(map[string][]string)
+	lmap := map[string]string{}
 	for _, l := range ls {
 		if l.Kind == cloudflare.ListTypeIP {
-			lmap[l.Name] = append(lmap[l.Name], l.ID)
+			if anotherListID, conflicting := lmap[l.Name]; conflicting {
+				ppfmt.Warningf(pp.EmojiImpossible,
+					"Found multiple lists named %q (IDs: %s and %s); please report this at "+
+						"https://github.com/favonia/cloudflare-ddns/issues/new",
+					l.Name, anotherListID, l.ID)
+				return nil, false
+			}
+
+			lmap[l.Name] = l.ID
 		}
 	}
 
 	h.cache.listLists.DeleteExpired()
 	h.cache.listLists.Set(struct{}{}, lmap, ttlcache.DefaultTTL)
 
-	return lmap[listName], true
+	return lmap, true
 }
 
 // FindWAFList returns the ID of the IP list with the given name.
 func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, listName string) (string, bool) {
-	listIDs, ok := h.ListWAFLists(ctx, ppfmt, listName)
-
-	switch {
-	case !ok:
-		// ListWAFLists would have output some error messages, but this provides
-		// more context.
+	listMap, ok := h.ListWAFLists(ctx, ppfmt)
+	if !ok {
+		// ListWAFLists would have output some error messages, but this provides more context.
 		ppfmt.Warningf(pp.EmojiError, "Failed to find the list %q", listName)
-		return "", false
-	case len(listIDs) == 0:
-		ppfmt.Warningf(pp.EmojiError, "Failed to find the list %q", listName)
-		return "", false
-	case len(listIDs) == 1:
-		return listIDs[0], true
-	default: // len(listIDs) > 1
-		ppfmt.Warningf(pp.EmojiImpossible,
-			"Found multiple lists named %q; please report this at "+
-				"https://github.com/favonia/cloudflare-ddns/issues/new",
-			listName)
 		return "", false
 	}
+
+	listID, ok := listMap[listName]
+	if !ok {
+		ppfmt.Warningf(pp.EmojiError, "Failed to find the list %q", listName)
+		return "", false
+	}
+
+	return listID, true
 }
 
 // EnsureWAFList calls cloudflare.CreateList when the list does not already exist.
 func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP,
 	listName string, description string,
-) (bool, bool) {
-	switch listIDs, ok := h.ListWAFLists(ctx, ppfmt, listName); {
-	case !ok:
-		return false, false
-	case len(listIDs) >= 1:
-		return true, true
+) (string, bool, bool) {
+	listMap, ok := h.ListWAFLists(ctx, ppfmt)
+	if !ok {
+		// ListWAFLists would have output some error messages, but this provides more context.
+		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of the list %q", listName)
+		return "", false, false
+	}
+
+	listID, existing := listMap[listName]
+	if existing {
+		return listID, existing, true
 	}
 
 	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(h.accountID),
@@ -95,15 +102,15 @@ func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP,
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to create a list named %q: %v", listName, err)
 		h.cache.listLists.Delete(struct{}{})
-		return false, false
+		return "", false, false
 	}
 	h.forcePassSanityCheck()
 
 	if lmap := h.cache.listLists.Get(struct{}{}); lmap != nil {
-		lmap.Value()[listName] = append(lmap.Value()[listName], r.ID)
+		lmap.Value()[listName] = r.ID
 	}
 
-	return false, true
+	return r.ID, false, true
 }
 
 // DeleteWAFList calls cloudflare.DeleteList.

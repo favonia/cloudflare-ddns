@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"strconv"
 	"testing"
@@ -161,7 +160,7 @@ func TestListZonesTwo(t *testing.T) {
 				)
 				output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
 				require.False(t, ok)
-				require.Nil(t, output)
+				require.Zero(t, output)
 				require.True(t, zh.isExhausted())
 			}
 		})
@@ -353,25 +352,30 @@ func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudf
 	}
 }
 
-func mockDNSListResponse(ipNet ipnet.Type, domain string, ips map[string]string) cloudflare.DNSListResponse {
-	if len(ips) > dnsRecordPageSize {
+type formattedRecord struct {
+	ID string
+	IP string
+}
+
+func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
+	if len(rs) > dnsRecordPageSize {
 		panic("mockDNSResponse got too many IPs")
 	}
 
-	rs := make([]cloudflare.DNSRecord, 0, len(ips))
-	for id, ip := range ips {
-		rs = append(rs, mockDNSRecord(id, ipNet, domain, ip))
+	raw := make([]cloudflare.DNSRecord, 0, len(rs))
+	for _, r := range rs {
+		raw = append(raw, mockDNSRecord(r.ID, ipNet, domain, r.IP))
 	}
 
 	return cloudflare.DNSListResponse{
-		Result:     rs,
-		ResultInfo: mockResultInfo(len(ips), dnsRecordPageSize),
+		Result:     raw,
+		ResultInfo: mockResultInfo(len(rs), dnsRecordPageSize),
 		Response:   mockResponse(),
 	}
 }
 
 func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
-	ipNet ipnet.Type, domain string, ips map[string]string, //nolint: unparam
+	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint: unparam
 ) httpHandler {
 	t.Helper()
 
@@ -395,7 +399,7 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, domain, ips))
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, domain, rs))
 			assert.NoError(t, err)
 		})
 
@@ -414,22 +418,24 @@ func TestListRecords(t *testing.T) {
 	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1", "record2": "::2"})
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org",
+		[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}})
 	lrh.setRequestLimit(1)
-	expectedIPs := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
 
-	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	expected := []api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}}
+
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
-	require.Equal(t, expectedIPs, ips)
+	require.Equal(t, expected, rs)
 	require.True(t, lrh.isExhausted())
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, expectedIPs, ips)
+	require.Equal(t, expected, rs)
 }
 
 //nolint:funlen
@@ -445,7 +451,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org",
-		map[string]string{"record1": "::1", "record2": "not an ip"})
+		[]formattedRecord{{"record1", "::1"}, {"record2", "not an ip"}})
 	lrh.setRequestLimit(1)
 
 	mockPP.EXPECT().Warningf(
@@ -456,10 +462,10 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"record2",
 		gomock.Any(),
 	)
-	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 	require.True(t, lrh.isExhausted())
 
 	// testing the (no) caching
@@ -471,10 +477,10 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 	require.True(t, lrh.isExhausted())
 }
 
@@ -490,23 +496,24 @@ func TestListRecordsWildcard(t *testing.T) {
 	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "*.test.org", map[string]string{"record1": "::1", "record2": "::2"})
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "*.test.org",
+		[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}})
 	lrh.setRequestLimit(1)
 
-	expectedIPs := map[string]netip.Addr{"record1": mustIP("::1"), "record2": mustIP("::2")}
+	expected := []api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}}
 
-	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.False(t, cached)
-	require.Equal(t, expectedIPs, ips)
+	require.Equal(t, expected, rs)
 	require.True(t, lrh.isExhausted())
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, expectedIPs, ips)
+	require.Equal(t, expected, rs)
 }
 
 func TestListRecordsInvalidDomain(t *testing.T) {
@@ -521,17 +528,17 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
-	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "AAAA", "sub.test.org", gomock.Any()) //nolint:lll
-	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 }
 
 func TestListRecordsInvalidZone(t *testing.T) {
@@ -548,10 +555,10 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(
@@ -560,10 +567,10 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ips, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.False(t, ok)
 	require.False(t, cached)
-	require.Nil(t, ips)
+	require.Zero(t, rs)
 }
 
 func envelopDNSRecordResponse(record cloudflare.DNSRecord) cloudflare.DNSRecordResponse {
@@ -615,7 +622,7 @@ func TestDeleteRecordValid(t *testing.T) {
 	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1"})
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 	lrh.setRequestLimit(1)
 
 	drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
@@ -673,6 +680,42 @@ func TestDeleteRecordZoneInvalid(t *testing.T) {
 	require.False(t, ok)
 }
 
+func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip string) httpHandler {
+	t.Helper()
+
+	var requestLimit int
+
+	mux.HandleFunc(fmt.Sprintf("PATCH /zones/%s/dns_records/%s", mockID("test.org", 0), id),
+		func(w http.ResponseWriter, r *http.Request) {
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			var record cloudflare.DNSRecord
+			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !assert.Equal(t, ip, record.Content) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
+			assert.NoError(t, err)
+		})
+
+	return httpHandler{requestLimit: &requestLimit}
+}
+
 //nolint:funlen
 func TestUpdateRecordValid(t *testing.T) {
 	t.Parallel()
@@ -685,52 +728,24 @@ func TestUpdateRecordValid(t *testing.T) {
 	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{"record1": "::1"})
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 	lrh.setRequestLimit(1)
 
-	var updateAccessCount int
+	urh := newUpdateRecordHandler(t, mux, "record1", "::2")
+	urh.setRequestLimit(1)
 
-	mux.HandleFunc(fmt.Sprintf("PATCH /zones/%s/dns_records/record1", mockID("test.org", 0)),
-		func(w http.ResponseWriter, r *http.Request) {
-			if updateAccessCount <= 0 {
-				panic(http.ErrAbortHandler)
-			}
-			updateAccessCount--
-
-			if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-				!assert.Empty(t, r.URL.Query()) {
-				panic(http.ErrAbortHandler)
-			}
-
-			var record cloudflare.DNSRecord
-			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-
-			if !assert.Equal(t, "::2", record.Content) {
-				panic(http.ErrAbortHandler)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(
-				mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"),
-			); !assert.NoError(t, err) {
-				panic(http.ErrAbortHandler)
-			}
-		})
-
-	updateAccessCount = 1
 	ok = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	require.True(t, ok)
+	require.True(t, urh.isExhausted())
 
-	updateAccessCount = 1
+	urh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	_ = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::2")}, rs)
+	require.Equal(t, []api.Record{{"record1", mustIP("::2")}}, rs)
 }
 
 func TestUpdateRecordInvalid(t *testing.T) {
@@ -825,7 +840,7 @@ func TestCreateRecordValid(t *testing.T) {
 	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", map[string]string{})
+	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
 	lrh.setRequestLimit(1)
 
 	crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
@@ -839,7 +854,7 @@ func TestCreateRecordValid(t *testing.T) {
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
 	require.True(t, ok)
 	require.True(t, cached)
-	require.Equal(t, map[string]netip.Addr{"record1": mustIP("::1")}, rs)
+	require.Equal(t, []api.Record{{"record1", mustIP("::1")}}, rs)
 }
 
 func TestCreateRecordInvalid(t *testing.T) {

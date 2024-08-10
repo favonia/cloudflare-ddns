@@ -84,13 +84,15 @@ func TestListWAFLists(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		lists  []listMeta
-		ok     bool
-		output []string
+		lists        []listMeta
+		ok           bool
+		output       map[string]string
+		prepareMocks func(*mocks.MockPP)
 	}{
 		"empty": {
 			[]listMeta{},
 			true,
+			map[string]string{},
 			nil,
 		},
 		"2ip1asn": {
@@ -99,8 +101,22 @@ func TestListWAFLists(t *testing.T) {
 				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
 				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
 			},
+			false, nil,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					"Found multiple lists named %q (IDs: %s and %s); please report this at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
+					"list", mockID("list", 0), mockID("list", 2),
+				)
+			},
+		},
+		"1ip1asn": {
+			[]listMeta{
+				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
+				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
+			},
 			true,
-			mockIDs("list", 0, 2),
+			map[string]string{"list": mockID("list", 1)},
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -116,15 +132,23 @@ func TestListWAFLists(t *testing.T) {
 
 			lh.setRequestLimit(1)
 			mockPP = mocks.NewMockPP(mockCtrl)
-			lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, "list")
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(mockPP)
+			}
+			lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, lists)
 			require.True(t, lh.isExhausted())
 
-			mockPP = mocks.NewMockPP(mockCtrl)
-			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, "list")
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.output, lists)
+			if tc.ok {
+				mockPP = mocks.NewMockPP(mockCtrl)
+				if tc.prepareMocks != nil {
+					tc.prepareMocks(mockPP)
+				}
+				lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP)
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.output, lists)
+			}
 
 			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
@@ -134,9 +158,9 @@ func TestListWAFLists(t *testing.T) {
 				"Failed to list existing lists: %v",
 				gomock.Any(),
 			)
-			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, "list")
+			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP)
 			require.False(t, ok)
-			require.Nil(t, lists)
+			require.Zero(t, lists)
 			require.True(t, lh.isExhausted())
 		})
 	}
@@ -202,9 +226,15 @@ func TestFindWAFList(t *testing.T) {
 			false,
 			"",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
-					"Found multiple lists named %q; please report this at https://github.com/favonia/cloudflare-ddns/issues/new",
-					"list",
+				gomock.InOrder(
+					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+						"Found multiple lists named %q (IDs: %s and %s); please report this at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
+						"list", mockID("list", 0), mockID("list", 2),
+					),
+					ppfmt.EXPECT().Warningf(pp.EmojiError,
+						"Failed to find the list %q",
+						"list",
+					),
 				)
 			},
 		},
@@ -219,7 +249,6 @@ func TestFindWAFList(t *testing.T) {
 			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, tc.lists)
-
 			lh.setRequestLimit(tc.listRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
@@ -230,14 +259,15 @@ func TestFindWAFList(t *testing.T) {
 			require.Equal(t, tc.output, list)
 			require.True(t, lh.isExhausted())
 
-			mockPP = mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
+			if tc.ok {
+				mockPP = mocks.NewMockPP(mockCtrl)
+				if tc.prepareMocks != nil {
+					tc.prepareMocks(mockPP)
+				}
+				list, ok = h.(api.CloudflareHandle).FindWAFList(context.Background(), mockPP, "list")
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.output, list)
 			}
-			list, ok = h.(api.CloudflareHandle).FindWAFList(context.Background(), mockPP, "list")
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.output, list)
-			require.True(t, lh.isExhausted())
 		})
 	}
 }
@@ -283,7 +313,8 @@ func TestEnsureWAFList(t *testing.T) {
 		list               listMeta
 		createRequestLimit int
 		ok                 bool
-		output             bool
+		existing           bool
+		output             string
 		prepareMocks       func(*mocks.MockPP)
 	}{
 		"list-fail": {
@@ -291,12 +322,17 @@ func TestEnsureWAFList(t *testing.T) {
 			0,
 			listMeta{}, //nolint:exhaustruct
 			0,
-			false,
-			false,
+			false, false, "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError,
-					"Failed to list existing lists: %v",
-					gomock.Any(),
+				gomock.InOrder(
+					ppfmt.EXPECT().Warningf(pp.EmojiError,
+						"Failed to list existing lists: %v",
+						gomock.Any(),
+					),
+					ppfmt.EXPECT().Warningf(pp.EmojiError,
+						"Failed to check the existence of the list %q",
+						"list",
+					),
 				)
 			},
 		},
@@ -305,8 +341,7 @@ func TestEnsureWAFList(t *testing.T) {
 			1,
 			listMeta{name: "list", size: 13, kind: cloudflare.ListTypeIP},
 			1,
-			true,
-			false,
+			true, false, mockID("list", 0),
 			nil,
 		},
 		"empty/create-fail": {
@@ -314,8 +349,7 @@ func TestEnsureWAFList(t *testing.T) {
 			1,
 			listMeta{}, //nolint:exhaustruct
 			0,
-			false,
-			false,
+			false, false, "",
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Warningf(pp.EmojiError,
 					"Failed to create a list named %q: %v",
@@ -331,21 +365,7 @@ func TestEnsureWAFList(t *testing.T) {
 			1,
 			listMeta{}, //nolint:exhaustruct
 			0,
-			true,
-			true,
-			nil,
-		},
-		"2ip1asn": {
-			[]listMeta{
-				{name: "list", size: 10, kind: cloudflare.ListTypeIP},
-				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
-				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
-			},
-			1,
-			listMeta{}, //nolint:exhaustruct
-			0,
-			true,
-			true,
+			true, true, mockID("list", 1),
 			nil,
 		},
 	} {
@@ -367,17 +387,21 @@ func TestEnsureWAFList(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			output, ok := h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, "list", "description")
+			//nolint:forcetypeassert
+			output, existing, ok := h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, "list", "description")
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.existing, existing)
 			require.Equal(t, tc.output, output)
 			require.True(t, lh.isExhausted())
 			require.True(t, ch.isExhausted())
 
 			if tc.ok {
 				mockPP = mocks.NewMockPP(mockCtrl)
-				output, ok = h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, "list", "description")
+				//nolint:forcetypeassert
+				output, existing, ok = h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, "list", "description")
 				require.Equal(t, tc.ok, ok)
-				require.True(t, output)
+				require.True(t, existing)
+				require.Equal(t, tc.output, output)
 				require.True(t, lh.isExhausted())
 				require.True(t, ch.isExhausted())
 			}
