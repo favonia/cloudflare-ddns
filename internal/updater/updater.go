@@ -54,6 +54,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
+		ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
 	} else {
 		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
@@ -66,15 +67,16 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 			case ipnet.IP4:
 				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
 			}
+			ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
 		}
 		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
 			ppfmt.Infof(pp.EmojiHint,
 				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
 				c.DetectionTimeout,
 			)
+			ShouldDisplayHints[HintDetectionTimeouts] = false
 		}
 	}
-	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
 	return ip, generateDetectMessage(ipNet, ok)
 }
 
