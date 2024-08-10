@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -22,6 +23,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if !ReadAuth(ppfmt, &c.Auth) ||
 		!ReadProviderMap(ppfmt, &c.Provider) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
+		!ReadAndAppendWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
@@ -29,6 +31,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadTTL(ppfmt, "TTL", &c.TTL) ||
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
+		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
 		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||
@@ -57,8 +60,17 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
 		return false
 	}
-	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, or IP6_DOMAINS")
+	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
+		ppfmt.Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
+		return false
+	}
+	if (len(c.Domains[ipnet.IP4]) > 0 || len(c.Domains[ipnet.IP6]) > 0) && !c.Auth.SupportsRecords() {
+		ppfmt.Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but the updater should have stopped earlier")
+		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+		return false
+	}
+	if len(c.WAFLists) > 0 && !c.Auth.SupportsWAFLists() {
+		ppfmt.Errorf(pp.EmojiUserError, "Please give CF_ACCOUNT_ID to specify the WAF lists to update")
 		return false
 	}
 
@@ -73,7 +85,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		if c.DeleteOnStop {
 			ppfmt.Errorf(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true will immediately delete all domains when UPDATE_CRON=@once")
+				"DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once")
 			return false
 		}
 	}
@@ -87,9 +99,9 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		if c.Provider[ipNet] != nil {
 			domains := c.Domains[ipNet]
 
-			if len(domains) == 0 {
+			if len(domains) == 0 && len(c.WAFLists) == 0 {
 				ppfmt.Warningf(pp.EmojiUserWarning,
-					"IP%d_PROVIDER was changed to %q because no domains use %s",
+					"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 					ipNet.Int(), provider.Name(nil), ipNet.Describe())
 
 				continue
@@ -137,7 +149,28 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// Part 5: override the old values
+	// Step 5: check if new parameters are unused
+	if len(activeDomainSet) == 0 { // We are only updating WAF lists
+		if c.TTL != api.TTLAuto {
+			ppfmt.Warningf(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", c.TTL)
+		}
+		if c.ProxiedTemplate != "false" {
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"PROXIED=%s is ignored because no domains will be updated", c.ProxiedTemplate)
+		}
+		if c.RecordComment != "" {
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"RECORD_COMMENT=%s is ignored because no domains will be updated", c.RecordComment)
+		}
+	}
+	if len(c.WAFLists) == 0 { // We are only updating domains
+		if c.WAFListDescription != "" {
+			ppfmt.Warningf(pp.EmojiUserWarning,
+				"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", c.WAFListDescription)
+		}
+	}
+
+	// Part 6: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
 
