@@ -98,18 +98,25 @@ func newServerAuth(t *testing.T, accountID string) (*http.ServeMux, api.Cloudfla
 	return mux, auth
 }
 
-type httpHandler[T any] struct {
-	mux          *http.ServeMux
-	params       *T
-	requestLimit *int
+type httpHandler struct{ requestLimit *int }
+
+func (h httpHandler) setRequestLimit(requestLimit int) { *(h.requestLimit) = requestLimit }
+func (h httpHandler) isExhausted() bool                { return *h.requestLimit == 0 }
+
+func checkRequestLimit(t *testing.T, requestLimit *int) bool {
+	t.Helper()
+
+	if *requestLimit <= 0 {
+		return false
+	}
+	*requestLimit--
+
+	return true
 }
 
-func (h httpHandler[T]) set(params T, requestLimit int) {
-	*(h.params), *(h.requestLimit) = params, requestLimit
-}
-
-func (h httpHandler[T]) isExhausted() bool {
-	return *h.requestLimit == 0
+func checkToken(t *testing.T, r *http.Request) bool {
+	t.Helper()
+	return assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 }
 
 func handleVerifyToken(t *testing.T, w http.ResponseWriter, r *http.Request, responseCode int, response string) {
