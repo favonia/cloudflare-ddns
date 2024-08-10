@@ -13,7 +13,14 @@ import (
 
 //go:generate mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
 
-// A Handle represents a generic API to update DNS records. Currently, the only implementation is Cloudflare.
+// WAFListItem bundles a network prefix and a comment.
+type WAFListItem struct {
+	ID     string
+	Prefix netip.Prefix
+}
+
+// A Handle represents a generic API to update DNS records and WAF lists.
+// Currently, the only implementation is Cloudflare.
 type Handle interface {
 	// Perform basic checking (e.g., the validity of tokens).
 	// It returns false when we should give up all future operations.
@@ -34,12 +41,33 @@ type Handle interface {
 	CreateRecord(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipNet ipnet.Type,
 		ip netip.Addr, ttl TTL, proxied bool, recordComment string) (string, bool)
 
-	// FlushCache flushes the API cache. Flushing should automatically happen when other operations encounter errors.
-	FlushCache()
+	// EnsureWAFList creates an empty WAF list with IP ranges if it does not already exist yet.
+	// The first return value indicates whether the list already exists.
+	EnsureWAFList(ctx context.Context, ppfmt pp.PP, listName string, description string) (bool, bool)
+
+	// DeleteWAFList deletes a WAF list with IP ranges.
+	DeleteWAFList(ctx context.Context, ppfmt pp.PP, listName string) bool
+
+	// ListWAFListItems retrieves a WAF list with IP rages.
+	//
+	// The second return value indicates whether the list was cached.
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, listName string) ([]WAFListItem, bool, bool)
+
+	// DeleteWAFListItems deletes IP ranges from a WAF list.
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, listName string, ids []string) bool
+
+	// CreateWAFListItems adds IP ranges to a WAF list.
+	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, listName string, items []netip.Prefix, comment string) bool
 }
 
 // An Auth contains authentication information.
 type Auth interface {
 	// New uses the authentication information to create a Handle.
 	New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool)
+
+	// Check whether DNS records are supported.
+	SupportsRecords() bool
+
+	// Check whether WAF lists are supported.
+	SupportsWAFLists() bool
 }

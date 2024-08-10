@@ -64,7 +64,7 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 	if ip.IsUnspecified() {
 		ppfmt.Warningf(
 			pp.EmojiImpossible,
-			`Detected IP address %s is an unspicifed %s address`,
+			`Detected IP address %s is an unspecified %s address`,
 			ip.String(),
 			t.Describe(),
 		)
@@ -107,5 +107,17 @@ func (t Type) UDPNetwork() string {
 		return "udp6"
 	default:
 		return ""
+	}
+}
+
+// Matches checks whether an IP belongs to it.
+func (t Type) Matches(ip netip.Addr) bool {
+	switch t {
+	case IP4:
+		return ip.Is4()
+	case IP6:
+		return ip.Is6()
+	default:
+		return false
 	}
 }

@@ -113,7 +113,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			netip.Addr{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspicifed %s address", "0.0.0.0", "IPv4") //nolint:lll
+				m.EXPECT().Warningf(pp.EmojiImpossible, "Detected IP address %s is an unspecified %s address", "0.0.0.0", "IPv4") //nolint:lll
 			},
 		},
 	} {
@@ -144,6 +144,26 @@ func TestUDPNetwork(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.input.UDPNetwork())
+		})
+	}
+}
+
+func TestMatches(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		ipNet    ipnet.Type
+		ip       netip.Addr
+		expected bool
+	}{
+		"4/yes": {ipnet.IP4, netip.IPv4Unspecified(), true},
+		"4/no":  {ipnet.IP4, netip.IPv6Unspecified(), false},
+		"6/yes": {ipnet.IP6, netip.IPv6Unspecified(), true},
+		"6/no":  {ipnet.IP6, netip.IPv4Unspecified(), false},
+		"100":   {ipnet.Type(100), netip.Addr{}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.ipNet.Matches(tc.ip))
 		})
 	}
 }

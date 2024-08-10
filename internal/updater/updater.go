@@ -57,13 +57,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	} else {
 		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
-		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Infof(pp.EmojiHint,
-				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
-				c.DetectionTimeout,
-			)
-			ShouldDisplayHints[HintDetectionTimeouts] = false
-		} else if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
+		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
 			switch ipNet {
 			case ipnet.IP6:
 				ppfmt.Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
@@ -72,6 +66,12 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 			case ipnet.IP4:
 				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
 			}
+		}
+		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Infof(pp.EmojiHint,
+				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
+				c.DetectionTimeout,
+			)
 		}
 	}
 	ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
@@ -144,11 +144,45 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 	return generateDeleteMessage(ipNet, resps)
 }
 
+// setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
+func setWAFLists(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, s setter.Setter, detectedIPs map[ipnet.Type]netip.Addr,
+) message.Message {
+	resps := emptySetterWAFListResponses()
+
+	for _, name := range c.WAFLists {
+		resps.register(name,
+			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+				return s.SetWAFList(ctx, ppfmt, name, c.WAFListDescription, detectedIPs, "")
+			}),
+		)
+	}
+
+	return generateUpdateWAFListMessage(resps)
+}
+
+// deleteWAFLists extracts relevant settings from the configuration
+// and calls [setter.Setter.DeleteWAFList] with a deadline.
+func deleteWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
+	resps := emptySetterWAFListResponses()
+
+	for _, name := range c.WAFLists {
+		resps.register(name,
+			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+				return s.DeleteWAFList(ctx, ppfmt, name)
+			}),
+		)
+	}
+
+	return generateDeleteWAFListMessage(resps)
+}
+
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	var msgs []message.Message
 	detectedIPs := make(map[ipnet.Type]netip.Addr)
 
+	detectedAnyIP := false
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
 			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
@@ -158,10 +192,17 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.Ok {
+				detectedAnyIP = true
 				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
 		}
 	}
+
+	// Update WAF lists
+	if detectedAnyIP {
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPs))
+	}
+
 	return message.Merge(msgs...)
 }
 
@@ -174,6 +215,9 @@ func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 			msgs = append(msgs, deleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}
+
+	// Delete WAF lists
+	msgs = append(msgs, deleteWAFLists(ctx, ppfmt, c, s))
 
 	return message.Merge(msgs...)
 }
