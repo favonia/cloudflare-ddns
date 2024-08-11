@@ -149,14 +149,11 @@ func (h CloudflareHandle) SanityCheckToken(ctx context.Context, ppfmt pp.PP) (bo
 		// 401:1000:"Invalid API Token"
 
 		switch {
-		case errors.As(err, &requestError),
-			errors.As(err, &requestError) && requestError.InternalErrorCodeIs(6111),             //nolint:mnd
-			errors.As(err, &authorizationError) && authorizationError.InternalErrorCodeIs(1000): //nolint:mnd
-
+		case errors.As(err, &requestError), errors.As(err, &authorizationError):
 			ppfmt.Errorf(pp.EmojiUserError,
 				"The Cloudflare API token is invalid; "+
 					"please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
-			goto certainlyBad
+			return false, true
 
 		default:
 			// We will try again later.
@@ -169,7 +166,7 @@ func (h CloudflareHandle) SanityCheckToken(ctx context.Context, ppfmt pp.PP) (bo
 	case "active":
 	case "disabled", "expired":
 		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", res.Status)
-		goto certainlyBad
+		return false, true
 	default:
 		ppfmt.Warningf(pp.EmojiImpossible,
 			"The Cloudflare API token is in an undocumented state %q; please report this at %s",
@@ -187,13 +184,63 @@ func (h CloudflareHandle) SanityCheckToken(ctx context.Context, ppfmt pp.PP) (bo
 
 	h.cache.sanityCheck.Set(sanityCheckToken, true, ttlcache.DefaultTTL)
 	return true, true
-
-certainlyBad:
-	return false, true
 }
 
 // SanityCheck verifies both the Cloudflare API token and account ID.
 // It returns false only when the token or the account ID is certainly bad.
 func (h CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
-	return h.SanityCheckToken(ctx, ppfmt)
+	tokenOK, tokenCertain := h.SanityCheckToken(ctx, ppfmt)
+
+	if !tokenOK {
+		return false, tokenCertain
+	}
+
+	// If the account ID is empty, nothing to check other than the token!
+	if h.accountID == "" {
+		return true, tokenCertain
+	}
+
+	if valid := h.cache.sanityCheck.Get(sanityCheckAccount); valid != nil {
+		return valid.Value(), tokenCertain
+	}
+
+	quickCtx, cancel := context.WithTimeoutCause(ctx, time.Second, errTimeout)
+	defer cancel()
+
+	// Checking the account ID
+	_, _, err := h.cf.Account(quickCtx, h.accountID)
+	if err != nil {
+		if quickCtx.Err() != nil {
+			return true, false
+		}
+
+		var requestError *cloudflare.RequestError
+		var notFoundError *cloudflare.NotFoundError
+
+		// known ambiguous cases
+		// 403:9109:"Unauthorized to access requested resource": this might actually be okay
+
+		// known error messages
+		// 403:9109:"Invalid account identifier"
+		// 400:7003:"Could not route to ..., perhaps your object identifier is invalid?"
+		// 403:7003:"Invalid account identifier"
+		// 404:7003:"Could not route to ..., perhaps your object identifier is invalid?"
+
+		switch {
+		case errors.As(err, &requestError), errors.As(err, &notFoundError):
+			ppfmt.Errorf(pp.EmojiUserError,
+				"The Cloudflare account ID is invalid; "+
+					"please check the value of CF_ACCOUNT_ID")
+			return false, true
+
+		default:
+			// We will try again later.
+			return true, false
+		}
+	}
+
+	h.skipSanityCheckToken()
+	h.cache.sanityCheck.Set(sanityCheckAccount, true, ttlcache.DefaultTTL)
+
+	return true, true
 }
