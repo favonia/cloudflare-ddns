@@ -86,7 +86,7 @@ func TestSendMessageAll(t *testing.T) {
 				}
 
 				msg := message.Message{
-					Ok:               tc2.ok,
+					OK:               tc2.ok,
 					MonitorMessages:  monitorMessages,
 					NotifierMessages: tc1.notifierMessages,
 				}

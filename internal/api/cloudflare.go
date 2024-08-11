@@ -8,14 +8,22 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
 
+	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+)
+
+type sanityCheckType int
+
+const (
+	sanityCheckToken sanityCheckType = iota
+	sanityCheckAccount
 )
 
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
 	// sanity check
-	sanityCheck *ttlcache.Cache[struct{}, bool] // whether token is valid
+	sanityCheck *ttlcache.Cache[sanityCheckType, bool] // whether token or account is valid
 	// domains to zones
 	listZones    *ttlcache.Cache[string, []string] // zone names to zone IDs
 	zoneOfDomain *ttlcache.Cache[string, string]   // domain names to the zone ID
@@ -52,7 +60,7 @@ type CloudflareAuth struct {
 }
 
 // New creates a [CloudflareHandle] from the authentication data.
-func (t CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
+func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
 		ppfmt.Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
@@ -68,7 +76,7 @@ func (t CloudflareAuth) New(_ context.Context, ppfmt pp.PP, cacheExpiration time
 		cf:        handle,
 		accountID: t.AccountID,
 		cache: CloudflareCache{
-			sanityCheck:  newCache[struct{}, bool](cacheExpiration),
+			sanityCheck:  newCache[sanityCheckType, bool](cacheExpiration),
 			listZones:    newCache[string, []string](cacheExpiration),
 			zoneOfDomain: newCache[string, string](cacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
@@ -108,60 +116,84 @@ func (h CloudflareHandle) FlushCache() {
 // errTimeout for checking if it's timeout.
 var errTimeout = errors.New("timeout")
 
-// SanityCheck verifies Cloudflare tokens.
-//
-// Ideally, we should also verify accountID here, but that is impossible without
-// more permissions included in the API token.
-func (h CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
-	if valid := h.cache.sanityCheck.Get(struct{}{}); valid != nil {
-		return valid.Value()
+func (h CloudflareHandle) skipSanityCheckToken() {
+	h.cache.sanityCheck.Set(sanityCheckToken, true, ttlcache.DefaultTTL)
+}
+
+func (h CloudflareHandle) skipSanityCheck() {
+	h.skipSanityCheckToken()
+	h.cache.sanityCheck.Set(sanityCheckAccount, true, ttlcache.DefaultTTL)
+}
+
+// SanityCheckToken verifies the Cloudflare token.
+func (h CloudflareHandle) SanityCheckToken(ctx context.Context, ppfmt pp.PP) (bool, bool) {
+	if valid := h.cache.sanityCheck.Get(sanityCheckToken); valid != nil {
+		return valid.Value(), true
 	}
 
 	quickCtx, cancel := context.WithTimeoutCause(ctx, time.Second, errTimeout)
 	defer cancel()
 
-	ok := true
 	res, err := h.cf.VerifyAPIToken(quickCtx)
 	if err != nil {
-		// Check if the token is permanently invalid...
-		var aerr *cloudflare.AuthorizationError
-		var rerr *cloudflare.RequestError
-		if errors.As(err, &aerr) || errors.As(err, &rerr) {
-			ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", err)
-			ok = false
-			goto permanently
+		if quickCtx.Err() != nil {
+			return true, false
 		}
-		if !errors.Is(context.Cause(quickCtx), errTimeout) {
-			ppfmt.Warningf(pp.EmojiWarning, "Failed to verify the Cloudflare API token; will retry later: %v", err)
+
+		var requestError *cloudflare.RequestError
+		var authorizationError *cloudflare.AuthorizationError
+
+		// known error messages
+		// 400:6003:"Invalid request headers"
+		// 400:6111:"Invalid format for Authorization header"
+		// 401:1000:"Invalid API Token"
+
+		switch {
+		case errors.As(err, &requestError),
+			errors.As(err, &requestError) && requestError.InternalErrorCodeIs(6111),             //nolint:mnd
+			errors.As(err, &authorizationError) && authorizationError.InternalErrorCodeIs(1000): //nolint:mnd
+
+			ppfmt.Errorf(pp.EmojiUserError,
+				"The Cloudflare API token is invalid; "+
+					"please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
+			goto certainlyBad
+
+		default:
+			// We will try again later.
+			return true, false
 		}
-		return true // It could be that the network is temporarily down.
 	}
+
+	// The API call succeeded, but the token might be in a bad status.
 	switch res.Status {
 	case "active":
 	case "disabled", "expired":
 		ppfmt.Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", res.Status)
-		ok = false
-		goto permanently
+		goto certainlyBad
 	default:
 		ppfmt.Warningf(pp.EmojiImpossible,
 			"The Cloudflare API token is in an undocumented state %q; please report this at %s",
 			res.Status, pp.IssueReportingURL)
-		goto permanently
+		return true, false
 	}
 
 	if !res.ExpiresOn.IsZero() {
-		ppfmt.Warningf(pp.EmojiAlarm, "The token will expire at %s",
-			res.ExpiresOn.In(time.Local).Format(time.RFC1123Z))
+		now := time.Now()
+		remainingLifespan := max(res.ExpiresOn.Sub(now), 0)
+
+		ppfmt.Warningf(pp.EmojiAlarm, "The Cloudflare API token will expire at %s (%v left)",
+			cron.DescribeIntuitively(now, res.ExpiresOn), remainingLifespan)
 	}
 
-permanently:
-	if !ok {
-		ppfmt.Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE")
-	}
-	h.cache.sanityCheck.Set(struct{}{}, ok, ttlcache.DefaultTTL)
-	return ok
+	h.cache.sanityCheck.Set(sanityCheckToken, true, ttlcache.DefaultTTL)
+	return true, true
+
+certainlyBad:
+	return false, true
 }
 
-func (h CloudflareHandle) forcePassSanityCheck() {
-	h.cache.sanityCheck.Set(struct{}{}, true, ttlcache.DefaultTTL)
+// SanityCheck verifies both the Cloudflare API token and account ID.
+// It returns false only when the token or the account ID is certainly bad.
+func (h CloudflareHandle) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
+	return h.SanityCheckToken(ctx, ppfmt)
 }

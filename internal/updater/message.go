@@ -27,7 +27,7 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
 	}
 
 	return message.Message{
-		Ok:               false,
+		OK:               false,
 		MonitorMessages:  []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
 		NotifierMessages: []string{fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe())},
 	}
@@ -38,7 +38,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to set %s (%s): %s",
 				ipNet.RecordType(),
@@ -56,7 +56,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 
 	case len(s[setter.ResponseFailed]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to set %s (%s): %s",
 				ipNet.RecordType(),
@@ -73,7 +73,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 
 	case len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: true,
+			OK: true,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Set %s (%s): %s",
 				ipNet.RecordType(),
@@ -89,7 +89,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 		}
 
 	default:
-		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{OK: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }
 
@@ -98,7 +98,7 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
 				ipNet.RecordType(),
@@ -114,7 +114,7 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 
 	case len(s[setter.ResponseFailed]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Failed to delete %s: %s",
 				ipNet.RecordType(),
@@ -129,7 +129,7 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 
 	case len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: true,
+			OK: true,
 			MonitorMessages: []string{fmt.Sprintf(
 				"Deleted %s: %s",
 				ipNet.RecordType(),
@@ -143,6 +143,6 @@ func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) message.Message 
 		}
 
 	default:
-		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{OK: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }

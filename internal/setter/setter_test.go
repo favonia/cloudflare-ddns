@@ -28,10 +28,13 @@ func TestSanityCheck(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		answer bool
+		ok      bool
+		certain bool
 	}{
-		"true":  {true},
-		"false": {false},
+		"true-true":   {true, true},
+		"true-false":  {true, false},
+		"false-true":  {false, true},
+		"false-false": {false, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -46,8 +49,10 @@ func TestSanityCheck(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			mockHandle.EXPECT().SanityCheck(ctx, mockPP).Return(tc.answer)
-			require.Equal(t, tc.answer, s.SanityCheck(ctx, mockPP))
+			mockHandle.EXPECT().SanityCheck(ctx, mockPP).Return(tc.ok, tc.certain)
+			ok, certain := s.SanityCheck(ctx, mockPP)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.certain, certain)
 		})
 	}
 }
@@ -372,7 +377,9 @@ func TestDelete(t *testing.T) {
 						Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, domain, ipNetwork, record1).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
-					p.EXPECT().Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", gomock.Any()),
+					p.EXPECT().Infof(pp.EmojiTimeout,
+						"Deletion of %s records of %q aborted by timeout or signals; records might be inconsistent",
+						"AAAA", "sub.test.org"),
 				)
 			},
 		},

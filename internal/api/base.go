@@ -29,8 +29,9 @@ type WAFListItem struct {
 // Currently, the only implementation is Cloudflare.
 type Handle interface {
 	// Perform basic checking (e.g., the validity of tokens).
-	// It returns false when we should give up all future operations.
-	SanityCheck(ctx context.Context, ppfmt pp.PP) bool
+	// The first return value indicates whether it passes the test.
+	// The second return value indicates whether we are certain about the result.
+	SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool)
 
 	// ListRecords lists all matching DNS records.
 	//
@@ -70,7 +71,7 @@ type Handle interface {
 // An Auth contains authentication information.
 type Auth interface {
 	// New uses the authentication information to create a Handle.
-	New(ctx context.Context, ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool)
+	New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool)
 
 	// Check whether DNS records are supported.
 	SupportsRecords() bool

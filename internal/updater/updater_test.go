@@ -168,7 +168,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				Ok:               tc.ok,
+				OK:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
 			}, resp)
@@ -259,7 +259,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				Ok:               tc.ok,
+				OK:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
 			}, resp)
@@ -327,7 +327,7 @@ func TestUpdateIPsUninitializedProxied(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				Ok:               tc.ok,
+				OK:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
 			}, resp)
@@ -664,7 +664,7 @@ func TestUpdateIPs(t *testing.T) {
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				Ok:               tc.ok,
+				OK:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
 			}, resp)
@@ -871,7 +871,7 @@ func TestDeleteIPs(t *testing.T) {
 
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				Ok:               tc.ok,
+				OK:               tc.ok,
 				NotifierMessages: tc.notifierMessages,
 				MonitorMessages:  tc.monitorMessages,
 			}, resp)

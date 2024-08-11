@@ -39,8 +39,8 @@ func (h Handle) TearDown() {
 	signal.Stop(h.channel)
 }
 
-// SleepUntil waits for a period of time. It returns false if it is interrupted by signals in [Signals].
-func (h Handle) SleepUntil(ppfmt pp.PP, t time.Time) bool {
+// ReportSignalsUntil waits for a period of time. It returns true if it is interrupted by signals in [Signals].
+func (h Handle) ReportSignalsUntil(ppfmt pp.PP, t time.Time) bool {
 	timer := time.NewTimer(time.Until(t))
 	for {
 		select {
@@ -49,9 +49,9 @@ func (h Handle) SleepUntil(ppfmt pp.PP, t time.Time) bool {
 				<-timer.C
 			}
 			ppfmt.Noticef(pp.EmojiSignal, "Caught signal: %v", sig)
-			return false
-		case <-timer.C:
 			return true
+		case <-timer.C:
+			return false
 		}
 	}
 }

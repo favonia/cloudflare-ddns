@@ -88,8 +88,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 
 	type action int
 	const (
-		ActionOk action = iota
-		ActionNotOk
+		ActionOK action = iota
+		ActionNotOK
 		ActionAbort
 		ActionFail
 	)
@@ -109,7 +109,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.Success(context.Background(), ppfmt, "hello")
 			},
 			"/", "hello",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -124,7 +124,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.Success(context.Background(), ppfmt, "aloha")
 			},
 			"/", "aloha",
-			[]action{ActionAbort, ActionAbort, ActionNotOk},
+			[]action{ActionAbort, ActionAbort, ActionNotOK},
 			ActionAbort,
 			false, false,
 			func(m *mocks.MockPP) {
@@ -154,7 +154,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.Start(context.Background(), ppfmt, "starting now!")
 			},
 			"/start", "starting now!",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -169,7 +169,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.Failure(context.Background(), ppfmt, "something's wrong")
 			},
 			"/fail", "something's wrong",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -184,7 +184,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.Log(context.Background(), ppfmt, "message")
 			},
 			"/log", "message",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -199,7 +199,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.ExitStatus(context.Background(), ppfmt, 0, "bye!")
 			},
 			"/0", "bye!",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -214,7 +214,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				return m.ExitStatus(context.Background(), ppfmt, 1, "did exit(1)")
 			},
 			"/1", "did exit(1)",
-			[]action{ActionAbort, ActionAbort, ActionOk},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort,
 			true, true,
 			func(m *mocks.MockPP) {
@@ -266,12 +266,12 @@ func TestHealthchecksEndPoints(t *testing.T) {
 					action = tc.actions[visited-1]
 				}
 				switch action {
-				case ActionOk:
+				case ActionOK:
 					pinged = true
 					if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionNotOk:
+				case ActionNotOK:
 					w.WriteHeader(http.StatusBadRequest)
 					if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
 						panic(http.ErrAbortHandler)

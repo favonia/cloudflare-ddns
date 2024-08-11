@@ -28,7 +28,7 @@ func formatName() string {
 	return fmt.Sprintf("Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
+func initConfig(ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 	c := config.Default()
 
 	// Read the config
@@ -40,7 +40,7 @@ func initConfig(ctx context.Context, ppfmt pp.PP) (*config.Config, setter.Setter
 	c.Print(ppfmt)
 
 	// Get the handler
-	h, ok := c.Auth.New(ctx, ppfmt, c.CacheExpiration)
+	h, ok := c.Auth.New(ppfmt, c.CacheExpiration)
 	if !ok {
 		return c, nil, false
 	}
@@ -87,11 +87,11 @@ func realMain() int { //nolint:funlen
 	config.CheckRoot(ppfmt)
 
 	// Read the config and get the handler and the setter
-	c, s, configOk := initConfig(ctx, ppfmt)
+	c, s, configOK := initConfig(ppfmt)
 	// Ping monitors regardless of whether initConfig succeeded
 	monitor.StartAll(ctx, ppfmt, c.Monitors, formatName())
 	// Bail out now if initConfig failed
-	if !configOk {
+	if !configOK {
 		monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 1, "Configuration errors")
 		notifier.SendAll(ctx, ppfmt, c.Notifiers,
 			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details.")
@@ -124,18 +124,28 @@ func realMain() int { //nolint:funlen
 		if first && !c.UpdateOnStart {
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
-			if c.UpdateCron != nil && !s.SanityCheck(ctx, ppfmt) {
-				monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token")
-				notifier.SendAll(ctx, ppfmt, c.Notifiers,
-					"The Cloudflare API token is invalid. "+
-						"Please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE.",
-				)
-				return 1
+			if c.UpdateCron != nil { // no need to do sanity check if it's a one-time update
+				if ok, certain := s.SanityCheck(ctxWithSignals, ppfmt); !ok && certain {
+					monitor.FailureAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token")
+					notifier.SendAll(ctx, ppfmt, c.Notifiers,
+						"The Cloudflare API token is invalid. "+
+							"Please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE.",
+					)
+					return 1
+				}
+			}
+
+			if ctxWithSignals.Err() != nil {
+				goto signaled
 			}
 
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
 			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg)
 			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)
+		}
+
+		if ctxWithSignals.Err() != nil {
+			goto signaled
 		}
 
 		// Check if cron was disabled
@@ -168,8 +178,9 @@ func realMain() int { //nolint:funlen
 		// Display the remaining time interval
 		cron.PrintCountdown(ppfmt, "Checking the IP addresses", time.Now(), next)
 
+	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
-		if !sig.SleepUntil(ppfmt, next) {
+		if sig.ReportSignalsUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
 			if c.UpdateCron != nil {

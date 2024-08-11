@@ -164,7 +164,7 @@ func TestPingMessageAll(t *testing.T) {
 				}
 
 				msg := message.Message{
-					Ok:               tc2.ok,
+					OK:               tc2.ok,
 					MonitorMessages:  tc1.monitorMessages,
 					NotifierMessages: notifierMessages,
 				}
@@ -215,7 +215,7 @@ func TestLogMessageAll(t *testing.T) {
 				}
 
 				msg := message.Message{
-					Ok:               tc2.ok,
+					OK:               tc2.ok,
 					MonitorMessages:  tc1.monitorMessages,
 					NotifierMessages: notifierMessages,
 				}

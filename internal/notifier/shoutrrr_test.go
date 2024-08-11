@@ -45,7 +45,7 @@ func TestShoutrrrSend(t *testing.T) {
 			"hello",
 			true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiMessage, "Sent shoutrrr message")
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", `"generic"`)
 			},
 		},
 		"ill-formed url": {
@@ -54,7 +54,7 @@ func TestShoutrrrSend(t *testing.T) {
 			"hello",
 			false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to send shoutrrr message: %v", gomock.Any())
+				m.EXPECT().Warningf(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
 			},
 		},
 	} {

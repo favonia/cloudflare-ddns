@@ -24,7 +24,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{
 				"Failed to set list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
@@ -37,7 +37,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 
 	case len(s[setter.ResponseFailed]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{
 				"Failed to set list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
@@ -49,7 +49,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 
 	case len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: true,
+			OK: true,
 			MonitorMessages: []string{
 				"Set list(s): " + pp.Join(s[setter.ResponseUpdated]),
 			},
@@ -60,7 +60,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 		}
 
 	default:
-		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{OK: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }
 
@@ -70,7 +70,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 	case len(s[setter.ResponseFailed]) > 0 &&
 		len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{
 				"Failed to delete list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
@@ -83,7 +83,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 
 	case len(s[setter.ResponseFailed]) > 0:
 		return message.Message{
-			Ok: false,
+			OK: false,
 			MonitorMessages: []string{
 				"Failed to delete list(s): " + pp.Join(s[setter.ResponseFailed]),
 			},
@@ -95,7 +95,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 
 	case len(s[setter.ResponseUpdated]) > 0:
 		return message.Message{
-			Ok: true,
+			OK: true,
 			MonitorMessages: []string{
 				"Deleted list(s): " + pp.Join(s[setter.ResponseUpdated]),
 			},
@@ -106,6 +106,6 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 		}
 
 	default:
-		return message.Message{Ok: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
+		return message.Message{OK: true, MonitorMessages: []string{}, NotifierMessages: []string{}}
 	}
 }

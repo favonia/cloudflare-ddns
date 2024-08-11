@@ -22,7 +22,7 @@ func useMemFS(t *testing.T, memfs fstest.MapFS) {
 }
 
 //nolint:paralleltest // changing global var file.FS
-func TestReadStringOkay(t *testing.T) {
+func TestReadString(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	path := "test/file.txt"
@@ -77,7 +77,7 @@ func TestReadStringNoAccess(t *testing.T) {
 }
 
 //nolint:paralleltest // reading global var file.FS
-func TestReadStringOkayAbsolutePath(t *testing.T) {
+func TestReadStringAbsolutePath(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	path := "test/file.txt"
