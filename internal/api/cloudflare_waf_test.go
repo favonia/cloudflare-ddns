@@ -166,6 +166,34 @@ func TestListWAFLists(t *testing.T) {
 	}
 }
 
+func TestListWAFListsHint(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	mux, h, ok := newGoodHandle(t, mockPP)
+	require.True(t, ok)
+
+	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists", mockAccountID),
+		func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte(`{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}`))
+			assert.NoError(t, err)
+		})
+
+	mockPP = mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
+		mockPP.EXPECT().Hintf(pp.HintCloudflareWAFPermissions,
+			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
+	)
+	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP)
+	require.False(t, ok)
+	require.Zero(t, lists)
+}
+
 func TestFindWAFList(t *testing.T) {
 	t.Parallel()
 

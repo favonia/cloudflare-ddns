@@ -56,15 +56,15 @@ func (s Shoutrrr) Describe(callback func(service, params string)) {
 // Send sents the message msg.
 func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 	errs := s.Router.Send(msg, &types.Params{})
-	allOk := true
+	allOK := true
 	for _, err := range errs {
 		if err != nil {
-			ppfmt.Warningf(pp.EmojiError, "Failed to send shoutrrr message: %v", err)
-			allOk = false
+			ppfmt.Warningf(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", err)
+			allOK = false
 		}
 	}
-	if allOk {
-		ppfmt.Infof(pp.EmojiMessage, "Sent shoutrrr message")
+	if allOK {
+		ppfmt.Infof(pp.EmojiNotify, "Notified %s via shoutrrr", pp.QuotedEnglishJoin(s.ServiceNames))
 	}
-	return allOk
+	return allOK
 }

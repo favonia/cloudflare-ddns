@@ -92,8 +92,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 
 	type action int
 	const (
-		ActionOk action = iota
-		ActionNotOk
+		ActionOK action = iota
+		ActionNotOK
 		ActionGarbage
 		ActionAbort
 		ActionFail
@@ -123,7 +123,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.Success(context.Background(), ppfmt, "hello")
 			},
 			"/", "up", "OK", "",
-			[]action{ActionOk},
+			[]action{ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -133,7 +133,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.Success(context.Background(), ppfmt, "aloha")
 			},
 			"/", "up", "OK", "",
-			[]action{ActionNotOk},
+			[]action{ActionNotOK},
 			ActionAbort, false,
 			false,
 			func(m *mocks.MockPP) {
@@ -189,7 +189,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.Failure(context.Background(), ppfmt, "something's wrong")
 			},
 			"/", "down", "something's wrong", "",
-			[]action{ActionOk},
+			[]action{ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -199,7 +199,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.Failure(context.Background(), ppfmt, "")
 			},
 			"/", "down", "Failing", "",
-			[]action{ActionOk},
+			[]action{ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -233,7 +233,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.ExitStatus(context.Background(), ppfmt, 1, "did exit(1)")
 			},
 			"/", "down", "did exit(1)", "",
-			[]action{ActionOk},
+			[]action{ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -243,7 +243,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.ExitStatus(context.Background(), ppfmt, -1, "feeling negative")
 			},
 			"/", "down", "feeling negative", "",
-			[]action{ActionOk},
+			[]action{ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -286,12 +286,12 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 					action = tc.actions[visited-1]
 				}
 				switch action {
-				case ActionOk:
+				case ActionOK:
 					pinged = true
 					if _, err := io.WriteString(w, `{"ok":true}`); !assert.NoError(t, err) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionNotOk:
+				case ActionNotOK:
 					if _, err := io.WriteString(w, `{"ok":false,"msg":"bad"}`); !assert.NoError(t, err) {
 						panic(http.ErrAbortHandler)
 					}

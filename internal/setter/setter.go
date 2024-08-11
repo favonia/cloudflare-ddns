@@ -22,7 +22,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 }
 
 // SanityCheck calls [api.Handle.SanityCheck].
-func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) bool {
+func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
 	return s.Handle.SanityCheck(ctx, ppfmt)
 }
 
@@ -179,13 +179,15 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 		return ResponseNoop
 	}
 
-	allOk := true
+	allOK := true
 	for _, id := range unmatchedIDs {
 		if !s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
-			allOk = false
+			allOK = false
 
 			if ctx.Err() != nil {
-				ppfmt.Infof(pp.EmojiBailingOut, "Operation aborted (%v); bailing out . . .", ctx.Err())
+				ppfmt.Infof(pp.EmojiTimeout,
+					"Deletion of %s records of %q aborted by timeout or signals; records might be inconsistent",
+					recordType, domainDescription)
 				return ResponseFailed
 			}
 			continue
@@ -193,7 +195,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 	}
-	if !allOk {
+	if !allOK {
 		ppfmt.Warningf(pp.EmojiError,
 			"Failed to properly delete %s records of %q; records might be inconsistent",
 			recordType, domainDescription)

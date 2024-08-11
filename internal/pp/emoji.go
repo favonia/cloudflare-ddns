@@ -20,12 +20,12 @@ const (
 	EmojiUpdate   Emoji = "📡" // updating DNS records
 	EmojiClear    Emoji = "🧹" // clearing DNS records when exiting
 
-	EmojiPing    Emoji = "🔔" // pinging and health checks
-	EmojiMessage Emoji = "📨" // notifications
+	EmojiPing   Emoji = "🔔" // pinging and health checks
+	EmojiNotify Emoji = "📣" // notifications
 
+	EmojiTimeout     Emoji = "⌛" // Timeout or abortion
 	EmojiSignal      Emoji = "🚨" // catching signals
 	EmojiAlreadyDone Emoji = "🤷" // DNS records were already up to date
-	EmojiBailingOut  Emoji = "💨" // bailing out
 	EmojiNow         Emoji = "🏃" // an event that is happening now or immediately
 	EmojiAlarm       Emoji = "⏰" // an event that is scheduled to happen, but not immediately
 	EmojiBye         Emoji = "👋" // bye!

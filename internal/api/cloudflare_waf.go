@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -25,6 +26,14 @@ var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
 	ipnet.IP6: 64, //nolint:mnd
 }
 
+func hintTokenWAFPermission(ppfmt pp.PP, err error) {
+	var authentication *cloudflare.AuthenticationError
+	if errors.As(err, &authentication) {
+		ppfmt.Hintf(pp.HintCloudflareWAFPermissions,
+			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`)
+	}
+}
+
 // ListWAFLists lists all IP lists of the given name.
 func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP) (map[string]string, bool) {
 	if lmap := h.cache.listLists.Get(struct{}{}); lmap != nil {
@@ -34,9 +43,11 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP) (map[st
 	ls, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(h.accountID), cloudflare.ListListsParams{})
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to list existing lists: %v", err)
+		hintTokenWAFPermission(ppfmt, err)
 		return nil, false
 	}
-	h.forcePassSanityCheck()
+
+	h.skipSanityCheck()
 
 	lmap := map[string]string{}
 	for _, l := range ls {
@@ -100,10 +111,12 @@ func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP,
 		})
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to create a list named %q: %v", listName, err)
+		hintTokenWAFPermission(ppfmt, err)
 		h.cache.listLists.Delete(struct{}{})
 		return "", false, false
 	}
-	h.forcePassSanityCheck()
+
+	h.skipSanityCheck()
 
 	if lmap := h.cache.listLists.Get(struct{}{}); lmap != nil {
 		lmap.Value()[listName] = r.ID
@@ -121,10 +134,12 @@ func (h CloudflareHandle) DeleteWAFList(ctx context.Context, ppfmt pp.PP, listNa
 
 	if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(h.accountID), listID); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to delete the list %q: %v", listName, err)
+		hintTokenWAFPermission(ppfmt, err)
 		h.cache.listLists.Delete(struct{}{})
 		return false
 	}
-	h.forcePassSanityCheck()
+
+	h.skipSanityCheck()
 
 	if lmap := h.cache.listLists.Get(struct{}{}); lmap != nil {
 		delete(lmap.Value(), listName)
@@ -167,10 +182,11 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, lis
 	)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to retrieve items in the list %q (ID: %s): %v", listName, listID, err)
+		hintTokenWAFPermission(ppfmt, err)
 		return nil, false, false
 	}
 
-	h.forcePassSanityCheck()
+	h.skipSanityCheck()
 
 	items, ok := readWAFListItems(ppfmt, listName, listID, rawItems)
 	if !ok {
@@ -207,11 +223,12 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 	)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to finish deleting items from the list %q (ID: %s): %v", listName, listID, err)
+		hintTokenWAFPermission(ppfmt, err)
 		h.cache.listListItems.Delete(listID)
 		return false
 	}
 
-	h.forcePassSanityCheck()
+	h.skipSanityCheck()
 
 	items, ok := readWAFListItems(ppfmt, listName, listID, rawItems)
 	if !ok {
@@ -256,11 +273,12 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Warningf(
 			pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
 			listName, listID, err)
+		hintTokenWAFPermission(ppfmt, err)
 		h.cache.listListItems.Delete(listID)
 		return false
 	}
 
-	h.forcePassSanityCheck()
+	h.skipSanityCheck()
 
 	items, ok := readWAFListItems(ppfmt, listName, listID, rawItems)
 	if !ok {

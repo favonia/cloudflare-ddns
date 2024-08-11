@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:paralleltest //signals are global
-func TestSleep(t *testing.T) {
+func TestReportSignalUntil(t *testing.T) {
 	for name, tc := range map[string]struct {
 		alarmDelay    time.Duration
 		signalDelay   time.Duration
@@ -24,15 +24,15 @@ func TestSleep(t *testing.T) {
 		expected      bool
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"no-signal": {time.Second / 10, 0, 0, true, nil},
+		"no-signal": {time.Second / 10, 0, 0, false, nil},
 		"sigint": {
-			time.Second, time.Second / 10, syscall.SIGINT, false,
+			time.Second, time.Second / 10, syscall.SIGINT, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiSignal, "Caught signal: %v", syscall.SIGINT)
 			},
 		},
 		"sigterm": {
-			time.Second, time.Second / 10, syscall.SIGTERM, false,
+			time.Second, time.Second / 10, syscall.SIGTERM, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiSignal, "Caught signal: %v", syscall.SIGTERM)
 			},
@@ -58,7 +58,7 @@ func TestSleep(t *testing.T) {
 			sig := signal.Setup()
 			go signalSelf()
 			target := time.Now().Add(tc.alarmDelay)
-			res := sig.SleepUntil(mockPP, target)
+			res := sig.ReportSignalsUntil(mockPP, target)
 			<-done
 			sig.TearDown()
 

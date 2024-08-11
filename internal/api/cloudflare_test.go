@@ -133,18 +133,7 @@ func handleVerifyToken(t *testing.T, w http.ResponseWriter, r *http.Request, res
 }
 
 func mockVerifyToken() string {
-	return fmt.Sprintf(`{
-  "result": { "id": "%s", "status": "active" },
-  "success": true,
-  "errors": [],
-  "messages": [
-    {
-      "code": 10000,
-      "message": "This API Token is valid and active",
-      "type": null
-    }
-  ]
-}`, mockToken)
+	return fmt.Sprintf(`{"result":{"id":%q,"status":"active"},"success":true,"errors":[],"messages":[{"code":10000,"message":"This API Token is valid and active","type":null}]}`, mockToken) //nolint:lll
 }
 
 func newHandle(t *testing.T, ppfmt pp.PP, accountID string, httpStatus int, httpResponse string,
@@ -157,7 +146,7 @@ func newHandle(t *testing.T, ppfmt pp.PP, accountID string, httpStatus int, http
 		handleVerifyToken(t, w, r, httpStatus, httpResponse)
 	})
 
-	h, ok := auth.New(context.Background(), ppfmt, 8760*time.Hour) // a year
+	h, ok := auth.New(ppfmt, 8760*time.Hour) // a year
 	return mux, h, ok
 }
 
@@ -175,10 +164,14 @@ func TestNewValid(t *testing.T) {
 	_, h, ok := newGoodHandle(t, mockPP)
 	require.True(t, ok)
 
-	require.True(t, h.SanityCheck(context.Background(), mockPP))
+	ok, certain := h.SanityCheck(context.Background(), mockPP)
+	require.True(t, ok)
+	require.True(t, certain)
 
 	// Test again to test the caching
-	require.True(t, h.SanityCheck(context.Background(), mockPP))
+	ok, certain = h.SanityCheck(context.Background(), mockPP)
+	require.True(t, ok)
+	require.True(t, certain)
 }
 
 func TestNewEmptyToken(t *testing.T) {
@@ -190,161 +183,95 @@ func TestNewEmptyToken(t *testing.T) {
 
 	auth.Token = ""
 	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
-	h, ok := auth.New(context.Background(), mockPP, time.Second)
+	h, ok := auth.New(mockPP, time.Second)
 	require.False(t, ok)
 	require.Nil(t, h)
 }
 
-func TestSanityCheckExpiring(t *testing.T) {
+func TestSanityCheck(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		httpStatus              int
-		httpResponse            string
 		okNew                   bool
 		prepareMocksNew         func(*mocks.MockPP)
+		httpStatus              int
+		httpResponse            string
+		certainSanityCheck      bool
 		okSanityCheck           bool
 		prepareMocksSanityCheck func(*mocks.MockPP)
 	}{
 		"expiring": {
-			http.StatusOK,
-			`{
-  "success": true,
-  "errors": [],
-  "messages": [],
-  "result": {
-    "id": "11111111111111111111111111111111",
-    "status": "active",
-    "expires_on": "3000-01-01T00:00:00Z"
-  }
-}`,
 			true,
 			nil,
-			true,
+			http.StatusOK,
+			`{"success":true,"errors":[],"messages":[],"result":{"id":"11111111111111111111111111111111","status":"active","expires_on":"3000-01-01T00:00:00Z"}}`, //nolint:lll
+			true, true,
 			func(p *mocks.MockPP) {
-				deadline, err := time.Parse(time.RFC3339, "3000-01-01T00:00:00Z")
+				_, err := time.Parse(time.RFC3339, "3000-01-01T00:00:00Z")
 				require.NoError(t, err)
-				p.EXPECT().Warningf(pp.EmojiAlarm, "The token will expire at %s",
-					deadline.In(time.Local).Format(time.RFC1123Z))
+				p.EXPECT().Warningf(pp.EmojiAlarm, "The Cloudflare API token will expire at %s (%v left)",
+					gomock.Any(), gomock.Any())
 			},
 		},
 		"expired": {
-			http.StatusOK,
-			`{
-  "success": true,
-  "errors": [],
-  "messages": [],
-  "result": {
-    "id": "11111111111111111111111111111111",
-    "status": "expired"
-  }
-}`,
 			true,
 			nil,
-			false,
+			http.StatusOK,
+			`{"success":true,"errors":[],"messages":[],"result":{"id":"11111111111111111111111111111111","status":"expired"}}`,
+			true, false,
 			func(p *mocks.MockPP) {
-				gomock.InOrder(
-					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "expired"),
-					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-				)
+				p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "expired")
 			},
 		},
 		"funny": {
-			http.StatusOK,
-			`{
-  "success": true,
-  "errors": [],
-  "messages": [],
-  "result": {
-    "id": "11111111111111111111111111111111",
-    "status": "funny"
-  }
-}`,
 			true,
 			nil,
-			true,
+			http.StatusOK,
+			`{"success":true,"errors":[],"messages":[],"result":{"id":"11111111111111111111111111111111","status":"funny"}}`,
+			false, true,
 			func(p *mocks.MockPP) {
-				gomock.InOrder(
-					p.EXPECT().Warningf(pp.EmojiImpossible,
-						"The Cloudflare API token is in an undocumented state %q; please report this at %s",
-						"funny", pp.IssueReportingURL),
-				)
+				p.EXPECT().Warningf(pp.EmojiImpossible,
+					"The Cloudflare API token is in an undocumented state %q; please report this at %s",
+					"funny", pp.IssueReportingURL)
 			},
 		},
 		"disabled": {
-			http.StatusOK,
-			`{
-  "success": true,
-  "errors": [],
-  "messages": [],
-  "result": {
-    "id": "11111111111111111111111111111111",
-    "status": "disabled"
-  }
-}`,
 			true,
 			nil,
-			false,
+			http.StatusOK,
+			`{"success":true,"errors":[],"messages":[],"result":{"id":"11111111111111111111111111111111","status":"disabled"}}`,
+			true, false,
 			func(p *mocks.MockPP) {
-				gomock.InOrder(
-					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "disabled"),
-					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-				)
+				p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is %s", "disabled")
 			},
 		},
 		"invalid-token": {
-			http.StatusUnauthorized,
-			`{
-  "success": false,
-  "errors": [{ "code": 1000, "message": "Invalid API Token" }],
-  "messages": [],
-  "result": null
-}`,
 			true,
 			nil,
-			false,
+			http.StatusUnauthorized,
+			`{"success":false,"errors":[{"code":1000,"message":"Invalid API Token"}],"messages":[],"result":null}`,
+			true, false,
 			func(p *mocks.MockPP) {
-				gomock.InOrder(
-					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", gomock.Any()),
-					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-				)
+				p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid; please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE") //nolint:lll
 			},
 		},
 		"invalid-format": {
-			http.StatusUnauthorized,
-			`{
-  "success": false,
-  "errors": [
-    {
-      "code": 6003,
-      "message": "Invalid request headers",
-      "error_chain": [
-        { "code": 6111, "message": "Invalid format for Authorization header" }
-      ]
-    }
-  ],
-  "messages": [],
-  "result": null
-}`,
 			true,
 			nil,
-			false,
+			http.StatusBadRequest,
+			`{"success":false,"errors":[{"code":6003,"message": "Invalid request headers","error_chain":[{"code":6111,"message": "Invalid format for Authorization header" }]}],"messages":[],"result":null}`, //nolint:lll
+			true, false,
 			func(p *mocks.MockPP) {
-				gomock.InOrder(
-					p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid: %v", gomock.Any()),
-					p.EXPECT().Errorf(pp.EmojiUserError, "Please double-check the value of CF_API_TOKEN or CF_API_TOKEN_FILE"),
-				)
+				p.EXPECT().Errorf(pp.EmojiUserError, "The Cloudflare API token is invalid; please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE") //nolint:lll
 			},
 		},
 		"invalid-json": {
-			http.StatusOK,
-			`{`,
 			true,
 			nil,
-			true,
-			func(p *mocks.MockPP) {
-				p.EXPECT().Warningf(pp.EmojiWarning, "Failed to verify the Cloudflare API token; will retry later: %v", gomock.Any()) //nolint:lll
-			},
+			http.StatusOK,
+			`{`,
+			false, true,
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -364,7 +291,10 @@ func TestSanityCheckExpiring(t *testing.T) {
 			if tc.prepareMocksSanityCheck != nil {
 				tc.prepareMocksSanityCheck(mockPP)
 			}
-			require.Equal(t, tc.okSanityCheck, h.SanityCheck(context.Background(), mockPP))
+
+			ok, certain := h.SanityCheck(context.Background(), mockPP)
+			require.Equal(t, tc.okSanityCheck, ok)
+			require.Equal(t, tc.certainSanityCheck, certain)
 		})
 	}
 }
@@ -384,9 +314,10 @@ func TestSanityCheckTimeout(t *testing.T) {
 		panic(http.ErrAbortHandler)
 	})
 
-	h, ok := auth.New(context.Background(), mockPP, time.Second)
+	h, ok := auth.New(mockPP, time.Second)
 	require.True(t, ok)
 	require.NotNil(t, h)
-	ok = h.SanityCheck(context.Background(), mockPP)
+	ok, certain := h.SanityCheck(context.Background(), mockPP)
 	require.True(t, ok)
+	require.False(t, certain)
 }

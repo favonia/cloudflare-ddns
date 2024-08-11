@@ -6,7 +6,7 @@ package message
 // To monitors, the status is far more important than the message,
 // and to notifiers, all messages are important.
 type Message struct {
-	Ok               bool
+	OK               bool
 	MonitorMessages  []string
 	NotifierMessages []string
 }
@@ -14,7 +14,7 @@ type Message struct {
 // NewEmpty creates a new empty Message.
 func NewEmpty() Message {
 	return Message{
-		Ok:               true,
+		OK:               true,
 		MonitorMessages:  nil,
 		NotifierMessages: nil,
 	}
@@ -25,20 +25,20 @@ func NewEmpty() Message {
 // - For notifiers, we collect all the messages.
 func Merge(msgs ...Message) Message {
 	var (
-		allOk                        = true
+		allOK                        = true
 		allMonitorMessages           = map[bool][]string{}
 		allNotifierMessages []string = nil
 	)
 
 	for _, msg := range msgs {
-		allOk = allOk && msg.Ok
-		allMonitorMessages[msg.Ok] = append(allMonitorMessages[msg.Ok], msg.MonitorMessages...)
+		allOK = allOK && msg.OK
+		allMonitorMessages[msg.OK] = append(allMonitorMessages[msg.OK], msg.MonitorMessages...)
 		allNotifierMessages = append(allNotifierMessages, msg.NotifierMessages...)
 	}
 
 	return Message{
-		Ok:               allOk,
-		MonitorMessages:  allMonitorMessages[allOk],
+		OK:               allOK,
+		MonitorMessages:  allMonitorMessages[allOK],
 		NotifierMessages: allNotifierMessages,
 	}
 }

@@ -10,5 +10,6 @@ const (
 	HintIP6DetectionFails
 	HintDetectionTimeouts
 	HintUpdateTimeouts
+	HintCloudflareWAFPermissions
 	Hint1111Blockage
 )

@@ -121,11 +121,12 @@ func (c *SetterDeleteWAFListCall) DoAndReturn(f func(context.Context, pp.PP, str
 }
 
 // SanityCheck mocks base method.
-func (m *MockSetter) SanityCheck(arg0 context.Context, arg1 pp.PP) bool {
+func (m *MockSetter) SanityCheck(arg0 context.Context, arg1 pp.PP) (bool, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SanityCheck", arg0, arg1)
 	ret0, _ := ret[0].(bool)
-	return ret0
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
 }
 
 // SanityCheck indicates an expected call of SanityCheck.
@@ -141,19 +142,19 @@ type SetterSanityCheckCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SetterSanityCheckCall) Return(arg0 bool) *SetterSanityCheckCall {
-	c.Call = c.Call.Return(arg0)
+func (c *SetterSanityCheckCall) Return(arg0, arg1 bool) *SetterSanityCheckCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSanityCheckCall) Do(f func(context.Context, pp.PP) bool) *SetterSanityCheckCall {
+func (c *SetterSanityCheckCall) Do(f func(context.Context, pp.PP) (bool, bool)) *SetterSanityCheckCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) bool) *SetterSanityCheckCall {
+func (c *SetterSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) (bool, bool)) *SetterSanityCheckCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

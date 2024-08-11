@@ -63,7 +63,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 
 	// By default, the URL provided by Uptime Kuma has this:
 	//
-	//     https://some.host.name/api/push/GFWB6vsHMg?status=up&msg=Ok&ping=
+	//     https://some.host.name/api/push/GFWB6vsHMg?status=up&msg=OK&ping=
 	//
 	// The following will check the query part
 	if u.RawQuery != "" {
@@ -105,7 +105,7 @@ func (h UptimeKuma) Describe(callback func(service, params string)) {
 
 // UptimeKumaResponse is for parsing the response from Uptime Kuma.
 type UptimeKumaResponse struct {
-	Ok  bool   `json:"ok"`
+	OK  bool   `json:"ok"`
 	Msg string `json:"msg"`
 }
 
@@ -142,7 +142,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 		ppfmt.Warningf(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", err)
 		return false
 	}
-	if !parsedResp.Ok {
+	if !parsedResp.OK {
 		ppfmt.Warningf(pp.EmojiError, "Failed to ping Uptime Kuma: %q", parsedResp.Msg)
 		return false
 	}

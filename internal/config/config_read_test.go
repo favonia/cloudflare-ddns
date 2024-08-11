@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -91,7 +90,7 @@ type fakeAuth struct {
 	supportsWAFLists bool
 }
 
-func (a fakeAuth) New(context.Context, pp.PP, time.Duration) (api.Handle, bool) {
+func (a fakeAuth) New(pp.PP, time.Duration) (api.Handle, bool) {
 	return nil, false
 }
 func (a fakeAuth) SupportsRecords() bool  { return a.supportsRecords }
