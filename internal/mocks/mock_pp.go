@@ -79,40 +79,81 @@ func (c *PPErrorfCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPErrorfCa
 	return c
 }
 
-// IncIndent mocks base method.
-func (m *MockPP) IncIndent() pp.PP {
+// Hintf mocks base method.
+func (m *MockPP) Hintf(arg0 pp.Hint, arg1 string, arg2 ...any) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IncIndent")
-	ret0, _ := ret[0].(pp.PP)
-	return ret0
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "Hintf", varargs...)
 }
 
-// IncIndent indicates an expected call of IncIndent.
-func (mr *MockPPMockRecorder) IncIndent() *PPIncIndentCall {
+// Hintf indicates an expected call of Hintf.
+func (mr *MockPPMockRecorder) Hintf(arg0, arg1 any, arg2 ...any) *PPHintfCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncIndent", reflect.TypeOf((*MockPP)(nil).IncIndent))
-	return &PPIncIndentCall{Call: call}
+	varargs := append([]any{arg0, arg1}, arg2...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hintf", reflect.TypeOf((*MockPP)(nil).Hintf), varargs...)
+	return &PPHintfCall{Call: call}
 }
 
-// PPIncIndentCall wrap *gomock.Call
-type PPIncIndentCall struct {
+// PPHintfCall wrap *gomock.Call
+type PPHintfCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *PPIncIndentCall) Return(arg0 pp.PP) *PPIncIndentCall {
-	c.Call = c.Call.Return(arg0)
+func (c *PPHintfCall) Return() *PPHintfCall {
+	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PPIncIndentCall) Do(f func() pp.PP) *PPIncIndentCall {
+func (c *PPHintfCall) Do(f func(pp.Hint, string, ...any)) *PPHintfCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPIncIndentCall) DoAndReturn(f func() pp.PP) *PPIncIndentCall {
+func (c *PPHintfCall) DoAndReturn(f func(pp.Hint, string, ...any)) *PPHintfCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Indent mocks base method.
+func (m *MockPP) Indent() pp.PP {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Indent")
+	ret0, _ := ret[0].(pp.PP)
+	return ret0
+}
+
+// Indent indicates an expected call of Indent.
+func (mr *MockPPMockRecorder) Indent() *PPIndentCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Indent", reflect.TypeOf((*MockPP)(nil).Indent))
+	return &PPIndentCall{Call: call}
+}
+
+// PPIndentCall wrap *gomock.Call
+type PPIndentCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPIndentCall) Return(arg0 pp.PP) *PPIndentCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPIndentCall) Do(f func() pp.PP) *PPIndentCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPIndentCall) DoAndReturn(f func() pp.PP) *PPIndentCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -309,6 +350,42 @@ func (c *PPSetVerbosityCall) Do(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall 
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *PPSetVerbosityCall) DoAndReturn(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SuppressHint mocks base method.
+func (m *MockPP) SuppressHint(arg0 pp.Hint) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SuppressHint", arg0)
+}
+
+// SuppressHint indicates an expected call of SuppressHint.
+func (mr *MockPPMockRecorder) SuppressHint(arg0 any) *PPSuppressHintCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuppressHint", reflect.TypeOf((*MockPP)(nil).SuppressHint), arg0)
+	return &PPSuppressHintCall{Call: call}
+}
+
+// PPSuppressHintCall wrap *gomock.Call
+type PPSuppressHintCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPSuppressHintCall) Return() *PPSuppressHintCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPSuppressHintCall) Do(f func(pp.Hint)) *PPSuppressHintCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPSuppressHintCall) DoAndReturn(f func(pp.Hint)) *PPSuppressHintCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

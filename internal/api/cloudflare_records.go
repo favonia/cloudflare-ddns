@@ -53,7 +53,8 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
 			// skip these
 		default:
-			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at https://github.com/favonia/cloudflare-ddns/issues/new", name, zone.Status) //nolint:lll
+			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at %s",
+				name, zone.Status, pp.IssueReportingURL)
 			ids = append(ids, zone.ID)
 		}
 	}
@@ -89,8 +90,9 @@ zoneSearch:
 			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
-			ppfmt.Warningf(pp.EmojiImpossible, "Found multiple active zones named %q", zoneName)
-			ppfmt.Warningf(pp.EmojiImpossible, "Please report this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new") //nolint:lll
+			ppfmt.Warningf(pp.EmojiImpossible,
+				"Found multiple active zones named %q (IDs: %s); please report this at %s",
+				zoneName, pp.EnglishJoin(zones), pp.IssueReportingURL)
 			return "", false
 		}
 	}

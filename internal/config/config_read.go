@@ -17,7 +17,7 @@ import (
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
-		ppfmt = ppfmt.IncIndent()
+		ppfmt = ppfmt.Indent()
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
@@ -50,14 +50,15 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsEnabledFor(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
-		ppfmt = ppfmt.IncIndent()
+		ppfmt = ppfmt.Indent()
 	}
 
 	// Step 1: is there something to do, and do wo have an auth?
 	if c.Auth == nil {
 		// if c.Auth == nil, the user should have been warned.
-		ppfmt.Errorf(pp.EmojiImpossible, "Authorization info is missing, but this should be impossible")
-		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+		ppfmt.Errorf(pp.EmojiImpossible,
+			"Authorization info is missing, but this should be impossible; please report this at %s",
+			pp.IssueReportingURL)
 		return false
 	}
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
@@ -65,8 +66,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		return false
 	}
 	if (len(c.Domains[ipnet.IP4]) > 0 || len(c.Domains[ipnet.IP6]) > 0) && !c.Auth.SupportsRecords() {
-		ppfmt.Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but the updater should have stopped earlier")
-		ppfmt.Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new")
+		ppfmt.Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but this should be impossible; please report this at %s",
+			pp.IssueReportingURL)
 		return false
 	}
 	if len(c.WAFLists) > 0 && !c.Auth.SupportsWAFLists() {

@@ -179,12 +179,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(
-					pp.EmojiError,
-					"Detected IP address %s is not a valid %s address",
-					ip6.String(),
-					"IPv4",
-				)
+				m.EXPECT().Warningf(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip6.String())
 			},
 		},
 		"unmatched-id": {

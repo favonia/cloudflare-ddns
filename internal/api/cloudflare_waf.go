@@ -43,9 +43,8 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP) (map[st
 		if l.Kind == cloudflare.ListTypeIP {
 			if anotherListID, conflicting := lmap[l.Name]; conflicting {
 				ppfmt.Warningf(pp.EmojiImpossible,
-					"Found multiple lists named %q (IDs: %s and %s); please report this at "+
-						"https://github.com/favonia/cloudflare-ddns/issues/new",
-					l.Name, anotherListID, l.ID)
+					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
+					l.Name, anotherListID, l.ID, pp.IssueReportingURL)
 				return nil, false
 			}
 

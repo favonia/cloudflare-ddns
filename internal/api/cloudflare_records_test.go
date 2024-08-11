@@ -214,12 +214,8 @@ func TestZoneOfDomain(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
-						"Found multiple active zones named %q",
-						"test.org",
-					),
-					m.EXPECT().Warningf(
-						pp.EmojiImpossible,
-						"Please report this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new",
+						"Found multiple active zones named %q (IDs: %s); please report this at %s",
+						"test.org", pp.EnglishJoin(mockIDs("test.org", 0, 1)), pp.IssueReportingURL,
 					),
 				)
 			},
@@ -232,12 +228,8 @@ func TestZoneOfDomain(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
-						"Found multiple active zones named %q",
-						"test.org",
-					),
-					m.EXPECT().Warningf(
-						pp.EmojiImpossible,
-						"Please report this rare situation at https://github.com/favonia/cloudflare-ddns/issues/new",
+						"Found multiple active zones named %q (IDs: %s); please report this at %s",
+						"test.org", pp.EnglishJoin(mockIDs("test.org", 0, 1)), pp.IssueReportingURL,
 					),
 				)
 			},
@@ -281,7 +273,9 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "initializing"), //nolint:lll
+					m.EXPECT().Warningf(pp.EmojiWarning,
+						"Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected",
+						"test.org", "initializing"),
 				)
 			},
 		},
@@ -290,7 +284,9 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"some-undocumented-status"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at https://github.com/favonia/cloudflare-ddns/issues/new", "test.org", "some-undocumented-status") //nolint:lll
+				m.EXPECT().Warningf(pp.EmojiImpossible,
+					"Zone %q is in an undocumented status %q; please report this at %s",
+					"test.org", "some-undocumented-status", pp.IssueReportingURL)
 			},
 		},
 	} {

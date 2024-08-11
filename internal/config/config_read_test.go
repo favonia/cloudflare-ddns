@@ -52,7 +52,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "UPDATE_CRON", "@once"),
@@ -79,7 +79,7 @@ func TestReadEnvEmpty(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
-		mockPP.EXPECT().IncIndent().Return(innerMockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
 	)
 	ok := cfg.ReadEnv(mockPP)
@@ -117,9 +117,8 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "Authorization info is missing, but this should be impossible"),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiImpossible, "Authorization info is missing, but this should be impossible; please report this at %s", pp.IssueReportingURL), //nolint:lll
 				)
 			},
 		},
@@ -133,7 +132,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS"),
 				)
 			},
@@ -151,9 +150,8 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but the updater should have stopped earlier"),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "Please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new"), //nolint:lll
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but this should be impossible; please report this at %s", pp.IssueReportingURL), //nolint:lll
 				)
 			},
 		},
@@ -168,7 +166,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "Please give CF_ACCOUNT_ID to specify the WAF lists to update"),
 				)
 			},
@@ -187,7 +185,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once"),
 				)
 			},
@@ -207,7 +205,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"), //nolint:lll
 				)
 			},
@@ -231,7 +229,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError,
 						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 						"none"),
@@ -270,7 +268,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 						6, "none", "IPv6"),
@@ -294,7 +292,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 						6, "none", "IPv6"),
@@ -338,7 +336,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"Domain %q is ignored because it is only for %s but %s is disabled",
 						"d.e.f", "IPv4", "IPv4"),
@@ -376,7 +374,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"TTL=%v is ignored because no domains will be updated",
 						api.TTL(10000)),
@@ -425,7 +423,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Warningf(pp.EmojiUserWarning,
 						"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated",
 						"My list"),
@@ -465,7 +463,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 				)
 			},
 		},
@@ -487,7 +485,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `range`, `range`), //nolint:lll
 				)
 			},
@@ -510,7 +508,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `999`, `999`), //nolint:lll
 				)
 			},
@@ -533,7 +531,7 @@ func TestNormalize(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().IncIndent().Return(m),
+					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Errorf(pp.EmojiUserError, `%s (%q) is missing %q at the end`, keyProxied, `is(12345`, ")"),
 				)
 			},

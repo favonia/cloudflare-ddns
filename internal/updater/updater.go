@@ -15,31 +15,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-// Constants for names of various hints.
-const (
-	HintIP4DetectionFails string = "detect-ip4-fail"
-	HintIP6DetectionFails string = "detect-ip6-fail"
-	HintDetectionTimeouts string = "detect-timeout"
-	HintUpdateTimeouts    string = "update-timeout"
-)
-
-// ShouldDisplayHints determines whether help messages should be displayed.
-// The help messages are to help beginners detect possible misconfiguration.
-// These messages should be displayed at most once, and thus the value of this map
-// will be changed to false after displaying the help messages.
-//
-//nolint:gochecknoglobals
-var ShouldDisplayHints = map[string]bool{
-	HintIP4DetectionFails: true,
-	HintIP6DetectionFails: true,
-	HintDetectionTimeouts: true,
-	HintUpdateTimeouts:    true,
-}
-
-func getHintIDForDetection(ipNet ipnet.Type) string {
-	return map[ipnet.Type]string{
-		ipnet.IP4: HintIP4DetectionFails,
-		ipnet.IP6: HintIP6DetectionFails,
+func getHintIDForDetection(ipNet ipnet.Type) pp.Hint {
+	return map[ipnet.Type]pp.Hint{
+		ipnet.IP4: pp.HintIP4DetectionFails,
+		ipnet.IP6: pp.HintIP6DetectionFails,
 	}[ipNet]
 }
 
@@ -54,27 +33,27 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
-		ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
+		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
 		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
-		if ShouldDisplayHints[getHintIDForDetection(ipNet)] {
-			switch ipNet {
-			case ipnet.IP6:
-				ppfmt.Infof(pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 often requires additional setups")     //nolint:lll
-				ppfmt.Infof(pp.EmojiHint, "Read more about IPv6 networks at https://github.com/favonia/cloudflare-ddns")      //nolint:lll
-				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv6, you can disable it with IP6_PROVIDER=none") //nolint:lll
-			case ipnet.IP4:
-				ppfmt.Infof(pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none") //nolint:lll
-			}
-			ShouldDisplayHints[getHintIDForDetection(ipNet)] = false
+		switch ipNet {
+		case ipnet.IP6:
+			ppfmt.Hintf(getHintIDForDetection(ipNet),
+				"If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. "+
+					"If your network does not support IPv6, you can disable it with IP6_PROVIDER=none",
+				pp.ManualURL)
+
+		case ipnet.IP4:
+			ppfmt.Hintf(getHintIDForDetection(ipNet),
+				"If your network does not support IPv4, you can disable it with IP4_PROVIDER=none")
 		}
-		if ShouldDisplayHints[HintDetectionTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Infof(pp.EmojiHint,
+
+		if errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Hintf(pp.HintDetectionTimeouts,
 				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
 				c.DetectionTimeout,
 			)
-			ShouldDisplayHints[HintDetectionTimeouts] = false
 		}
 	}
 	return ip, generateDetectMessage(ipNet, ok)
@@ -86,8 +65,8 @@ func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 	}
 
 	ppfmt.Warningf(pp.EmojiImpossible,
-		"Proxied[%s] not initialized; this should not happen; please report the bug at https://github.com/favonia/cloudflare-ddns/issues/new", //nolint:lll
-		domain.Describe(),
+		"Proxied[%s] not initialized; this should not happen; please report this at %s",
+		domain.Describe(), pp.IssueReportingURL,
 	)
 	return false
 }
@@ -102,12 +81,11 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
 
 	resp := f(ctx)
 	if resp == setter.ResponseFailed {
-		if ShouldDisplayHints[HintUpdateTimeouts] && errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Infof(pp.EmojiHint,
+		if errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.Hintf(pp.HintUpdateTimeouts,
 				"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
 				c.UpdateTimeout,
 			)
-			ShouldDisplayHints[HintUpdateTimeouts] = false
 		}
 	}
 	return resp

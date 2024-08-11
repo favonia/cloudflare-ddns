@@ -26,7 +26,6 @@ func CheckRoot(ppfmt pp.PP) {
 		useDeprecated = true
 	}
 	if useDeprecated {
-		ppfmt.Warningf(pp.EmojiHint,
-			"See https://github.com/favonia/cloudflare-ddns for the new Docker template")
+		ppfmt.Hintf(pp.HintUpdateDockerTemplate, "See %s for the new Docker template", pp.ManualURL)
 	}
 }

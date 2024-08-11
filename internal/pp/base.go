@@ -14,8 +14,8 @@ type PP interface {
 	// IsEnabledFor checks whether a message of a certain level will be displayed.
 	IsEnabledFor(v Verbosity) bool
 
-	// IncIndent returns a new pretty-printer with more indentation.
-	IncIndent() PP
+	// Indent returns a new pretty-printer with more indentation.
+	Indent() PP
 
 	// Infof formats and prints a message at the info level.
 	Infof(emoji Emoji, format string, args ...any)
@@ -28,4 +28,10 @@ type PP interface {
 
 	// Errorf formats and prints a message at the error level.
 	Errorf(emoji Emoji, format string, args ...any)
+
+	// SuppressHint suppresses all future calls to [Hintf] with the same hint ID.
+	SuppressHint(hint Hint)
+
+	// Hintf formats and prints a hint.
+	Hintf(hint Hint, format string, args ...any)
 }

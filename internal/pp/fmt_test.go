@@ -31,16 +31,16 @@ func TestIsEnabledFor(t *testing.T) {
 	}
 }
 
-func TestIncIndent(t *testing.T) {
+func TestIndent(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
 	outer := pp.New(&buf)
 
 	outer.Errorf(pp.EmojiStar, "message1")
-	middle := outer.IncIndent()
+	middle := outer.Indent()
 	middle.Errorf(pp.EmojiStar, "message2")
-	inner := middle.IncIndent()
+	inner := middle.Indent()
 	outer.Errorf(pp.EmojiStar, "message3")
 	inner.Errorf(pp.EmojiStar, "message4")
 	middle.Errorf(pp.EmojiStar, "message5")
@@ -86,4 +86,18 @@ func TestPrint(t *testing.T) {
 			require.Equal(t, tc.expected, buf.String())
 		})
 	}
+}
+
+func TestSupressHint(t *testing.T) {
+	t.Parallel()
+
+	var buf strings.Builder
+	fmt := pp.New(&buf).SetEmoji(true).SetVerbosity(pp.Info)
+
+	fmt.SuppressHint(pp.Hint(0))
+	fmt.Hintf(pp.Hint(0), "hello %s", "world")
+	fmt.Hintf(pp.Hint(1), "hello %s", "galaxy")
+	fmt.Hintf(pp.Hint(1), "hello %s", "universe")
+
+	require.Equal(t, "💡 hello galaxy\n", buf.String())
 }
