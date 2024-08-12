@@ -26,9 +26,9 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### 🌥️ Enjoy Cloudflare-specific Features
 
-- 😶‍🌫️ You can toggle Cloudflare proxying for each domain.
-- 📜 You can update [web application firewall (WAF) custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) with detected IP addresses.
-- 📝 You can set DNS record comments (and record tags very soon).
+- 😶‍🌫️ You can toggle [Cloudflare proxying](https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/) for each domain.
+- 📝 You can set [DNS record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) (and record tags very soon).
+- 📜 The updater can manage a [custom list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses for you to use in [Web Application Firewalls (WAF)](https://developers.cloudflare.com/waf/) rules.
 
 ### 🕵️ Privacy
 
@@ -36,13 +36,13 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
 
 ### 👁️ Notification
 
-- 🩺 You can integrate the updater with [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails.
-- 📣 You can also instruct the updater to notify you using [shoutrrr](https://containrrr.dev/shoutrrr/). It supports all kinds of notification services, such as email, [ntfy](https://ntfy.sh/), [Pushover](https://pushover.net/), [Gotify](https://gotify.net/), etc.
+- 🩺 The updater can work with [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
+- 📣 The updater can also actively send you notifications via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
 
 ### 🛡️ Security
 
-- 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses; see the [Security Model](docs/DESIGN.markdown#network-security-threat-model).
-- <details><summary>✍️ You can verify the source of the Docker images using cosign <em>(click to expand)</em></summary>
+- 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/DESIGN.markdown#network-security-threat-model) for more information.
+- <details><summary>✍️ You can verify the Docker images were built from this repository using the cosign tool <em>(click to expand)</em></summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:latest \
