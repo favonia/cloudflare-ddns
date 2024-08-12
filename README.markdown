@@ -145,7 +145,13 @@ _(Click to expand the following important tips.)_
 <details>
 <summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token</summary>
 
-The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create and copy a token into the environment file. (The less secure API key authentication is deliberately _not_ supported.)
+The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). (The less secure API key authentication is deliberately _not_ supported.)
+
+- To update only DNS records, use the **Edit zone DNS** template to create a token.
+- To update only WAF lists, choose **Create Custom Token** and add the **Accounts - Account Filter Lists - Write** permission to create a token.
+- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and add the **Accounts - Account Filter Lists - Write** permission to create a token.
+
+You can also grant new permissions to existing tokens at any time!
 
 </details>
 
