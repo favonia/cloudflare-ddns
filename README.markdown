@@ -22,7 +22,13 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 - 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
 - 🌍 [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
-- 🕹️ You can toggle IPv4 (`A` records), IPv6 (`AAAA` records) and Cloudflare proxying for each domain.
+- 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
+
+### 🌥 Enjoy Cloudflare-specific Features
+
+- 😶‍🌫️ You can toggle Cloudflare proxying for each domain.
+- 📜 You can update [web application firewall (WAF) custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) with detected IP addresses.
+- 📝 Support DNS record comments.
 
 ### 🕵️ Privacy
 
@@ -30,8 +36,8 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
 
 ### 👁️ Notification
 
-- 🩺 The updater can notify you via [Healthchecks](https://healthchecks.io) and [Uptime Kuma](https://uptime.kuma.pet) when it fails.
-- 📣 The updater can also send you general updates via [shoutrrr](https://containrrr.dev/shoutrrr/).
+- 🩺 You can integrate the updater with [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails.
+- 📣 You can also instruct the updater to notify you using [shoutrrr](https://containrrr.dev/shoutrrr/). It supports all kinds of notification services, such as email, [ntfy](https://ntfy.sh/), [Pushover](https://pushover.net/), [Gotify](https://gotify.net/), etc.
 
 ### 🛡️ Security
 
@@ -298,23 +304,23 @@ _(Click to expand the following items.)_
 
 > 👉 The updater will preserve existing record parameters (TTL, proxy states, comments, etc.) unless it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing record parameters now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing record parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
 
-| Name             | Valid Values                                                                                                                                                                             | Meaning                                                                                                                                    | Required? | Default Value                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------ |
-| `PROXIED`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). 🧪 See below for experimental support of per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare                                                                                    | No        | `false`                                    |
-| `TTL`            | Time-to-live (TTL) values in seconds                                                                                                                                                     | The TTL values used to create new DNS records                                                                                              | No        | `1` (This means “automatic” to Cloudflare) |
-| `RECORD_COMMENT` | Strings (that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character))                                                                             | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) used to create new DNS records | No        | `""`                                       |
+| Name             | Valid Values                                                                                                                                                                                  | Meaning                                                                                                                                    | Required? | Default Value                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------ |
+| `PROXIED`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). Also see below for the advanced extension for per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare                                                                                    | No        | `false`                                    |
+| `TTL`            | Time-to-live (TTL) values in seconds                                                                                                                                                          | The TTL values used to create new DNS records                                                                                              | No        | `1` (This means “automatic” to Cloudflare) |
+| `RECORD_COMMENT` | Strings (that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character))                                                                                  | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) used to create new DNS records | No        | `""`                                       |
 
 > <details>
-> <summary>🧪 Experimental per-domain proxy settings (subject to changes):</summary>
+> <summary>Per-domain proxy settings</summary>
 >
-> The `PROXIED` can be a boolean expression. Here are some examples:
+> The `PROXIED` can be a boolean expression involving domains. Here are some examples:
 >
 > - `PROXIED=is(example.org)`: proxy only the domain `example.org`
 > - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
 > - `PROXIED=!is(example.org)`: proxy every managed domain _except for_ `example.org`
 > - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: proxy only the domains `example1.org`, `example2.org`, and `example3.org`
 >
-> A boolean expression has one of the following forms (all whitespace is ignored):
+> A boolean expression must be one of the following forms (all whitespace is ignored):
 >
 > - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true` or `FALSE` as `false`.
 > - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`).
@@ -391,7 +397,7 @@ _(Click to expand the following items.)_
 | `cloudflare.authentication.api_key`   | ❌  | Please use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)                                                                                                                                           |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | 🧪  | _(experimental)_ Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature                                                                          |
+| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this experimental feature                                                                                           |
 | `load_balancer`                       | ❌  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
