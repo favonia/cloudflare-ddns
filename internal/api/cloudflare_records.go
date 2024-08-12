@@ -25,7 +25,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 		return ids.Value(), true
 	}
 
-	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, h.accountID, ""))
+	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
@@ -98,9 +98,6 @@ zoneSearch:
 	}
 
 	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
-	if h.accountID != "" {
-		ppfmt.Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; you can usually leave it blank unless you are updating WAF lists") //nolint:lll
-	}
 
 	return "", false
 }
