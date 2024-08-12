@@ -24,11 +24,11 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
 
-### 🌥 Enjoy Cloudflare-specific Features
+### 🌥️ Enjoy Cloudflare-specific Features
 
 - 😶‍🌫️ You can toggle Cloudflare proxying for each domain.
 - 📜 You can update [web application firewall (WAF) custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) with detected IP addresses.
-- 📝 Support DNS record comments.
+- 📝 You can set DNS record comments (and record tags very soon).
 
 ### 🕵️ Privacy
 
