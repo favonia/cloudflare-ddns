@@ -546,15 +546,28 @@ func TestDeleteWAFList(t *testing.T) {
 type listItem = string
 
 func mockListItem(listItem listItem) cloudflare.ListItem {
-	return cloudflare.ListItem{
-		ID:         mockID(listItem, 0),
-		IP:         &listItem,
-		Redirect:   nil,
-		Hostname:   nil,
-		ASN:        nil,
-		Comment:    "",
-		CreatedOn:  nil,
-		ModifiedOn: nil,
+	if listItem == "" {
+		return cloudflare.ListItem{
+			ID:         mockID(listItem, 0),
+			IP:         nil,
+			Redirect:   nil,
+			Hostname:   nil,
+			ASN:        nil,
+			Comment:    "",
+			CreatedOn:  nil,
+			ModifiedOn: nil,
+		}
+	} else {
+		return cloudflare.ListItem{
+			ID:         mockID(listItem, 0),
+			IP:         &listItem,
+			Redirect:   nil,
+			Hostname:   nil,
+			ASN:        nil,
+			Comment:    "",
+			CreatedOn:  nil,
+			ModifiedOn: nil,
+		}
 	}
 }
 
@@ -665,6 +678,17 @@ func TestListWAFListItems(t *testing.T) {
 						"Found an invalid IP range/address %q in the list %q (ID: %s)",
 						"invalid item", "list", mockID("list", 0)),
 				)
+			},
+		},
+		"nil": {
+			1,
+			[]listItem{""},
+			1,
+			false, nil,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					"Found a non-IP in the list %q (ID: %s)",
+					"list", mockID("list", 0))
 			},
 		},
 	} {

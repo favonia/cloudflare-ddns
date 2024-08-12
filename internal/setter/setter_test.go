@@ -458,7 +458,7 @@ func TestSetWAFList(t *testing.T) {
 		resp         setter.ResponseCode
 		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
 	}{
-		"ensurefail": {
+		"ensure-fail": {
 			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
@@ -483,13 +483,31 @@ func TestSetWAFList(t *testing.T) {
 				)
 			},
 		},
-		"listfail": {
+		"list-fail": {
 			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(listID, true, true),
 					m.EXPECT().ListWAFListItems(ctx, p, listName).Return(nil, false, false),
+				)
+			},
+		},
+		"skip-unknown": {
+			ipmap{ipnet.IP4: netip.Addr{}, ipnet.IP6: ip6},
+			setter.ResponseNoop,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().EnsureWAFList(ctx, p, listName, listDescription).Return(listID, true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, listName).
+						Return(items{
+							prefix4wrong2,
+							prefix6range1,
+							prefix4wrong1,
+							prefix4wrong3,
+						}, true, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone,
+						"The list %q (ID: %s) is already up to date (cached)", listName, listID),
 				)
 			},
 		},
