@@ -126,10 +126,10 @@ func realMain() int { //nolint:funlen
 		} else {
 			if c.UpdateCron != nil { // no need to do sanity check if it's a one-time update
 				if ok, certain := s.SanityCheck(ctxWithSignals, ppfmt); !ok && certain {
-					monitor.FailureAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token")
+					monitor.FailureAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token or account ID")
 					notifier.SendAll(ctx, ppfmt, c.Notifiers,
-						"The Cloudflare API token is invalid. "+
-							"Please check the value of CF_API_TOKEN or CF_API_TOKEN_FILE.",
+						"The Cloudflare API token or account ID is invalid. "+
+							"Please check the values of CF_API_TOKEN, CF_ACCOUNT_ID, and CF_API_TOKEN_FILE.",
 					)
 					return 1
 				}

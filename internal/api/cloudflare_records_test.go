@@ -294,7 +294,8 @@ func TestZoneOfDomain(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
-			mux, h, ok := newHandle(t, mockPP, tc.accountID, http.StatusOK, mockVerifyToken())
+			mux, h, ok := newHandle(t, mockPP, tc.accountID,
+				http.StatusOK, mockTokenVerifyResponse, http.StatusOK, mockAccountResponse)
 			require.True(t, ok)
 			zh := newZonesHandler(t, mux, tc.accountID, tc.zoneStatuses)
 
