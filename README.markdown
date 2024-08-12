@@ -231,29 +231,30 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔑 Cloudflare accounts and API tokens</summary>
 
-| Name                | Valid Values                                                                                              | Meaning                                                                                                              | Required?                                                           | Default Value |
-| ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
-| `CF_ACCOUNT_ID`     | [Cloudflare Account IDs](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) | The Cloudflare account ID used to distinguish multiple DNS zones with the same name. It is _not_ your email address! | No (in most cases you can leave it blank)                           | (unset)       |
-| `CF_API_TOKEN`      | Cloudflare API tokens                                                                                     | The token to access the Cloudflare API                                                                               | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens                                                           | A file that contains the token to access the Cloudflare API                                                          | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+| Name                | Valid Values                                                                                              | Meaning                                                                                                                                    | Required?                                                           | Default Value |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------- |
+| `CF_API_TOKEN`      | Cloudflare API tokens                                                                                     | The token to access the Cloudflare API                                                                                                     | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens                                                           | A file that contains the token to access the Cloudflare API                                                                                | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+| `CF_ACCOUNT_ID`     | [Cloudflare Account IDs](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) | The default Cloudflare account ID to access WAF lists. It is _not_ your email address! Operations on DNS records will not use account IDs. | No (in most cases you can leave it blank)                           | (unset)       |
 
 </details>
 
 <details>
-<summary>📍 Domains and IP providers</summary>
+<summary>📍 Domains, WAF lists, and IP address providers</summary>
 
-| Name           | Valid Values                                                          | Meaning                                                                                                             | Required?   | Default Value      |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------ |
-| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records                                               | (See below) | (empty list)       |
-| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                                                               | (See below) | (empty list)       |
-| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records                                                            | (See below) | (empty list)       |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv4 addresses, or `none` to disable IPv4. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`   | How to detect IPv6 addresses, or `none` to disable IPv6. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
+| Name           | Valid Values                                                                                          | Meaning                                                                                                             | Required?   | Default Value      |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------ |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for both `A` and `AAAA` records                                               | (See below) | (empty list)       |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for `A` records                                                               | (See below) | (empty list)       |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for `AAAA` records                                                            | (See below) | (empty list)       |
+| `WAF_LISTS`    | Comma-separated names of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) | The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage          | (See below) | (empty list)       |
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`                                   | How to detect IPv4 addresses, or `none` to disable IPv4. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`                                   | How to detect IPv6 addresses, or `none` to disable IPv6. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
 
 > <details>
-> <summary>📍 At least one of <code>DOMAINS</code> and <code>IP4/6_DOMAINS</code> must be non-empty.</summary>
+> <summary>📍 At least one of <code>DOMAINS</code>, <code>IP4/6_DOMAINS</code>, and <code>WAF_LISTS</code> must be non-empty.</summary>
 >
-> At least one domain should be listed in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS`. Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing that is fully compatible with IDNA2008.
+> At least something should be listed in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or `WAF_LISTS`. Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing fully compatible with IDNA2008. See this [useful FAQ on internationalized domain names.](https://www.unicode.org/faq/idn.html)
 >
 > </details>
 
