@@ -101,7 +101,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, domain, ipNet, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
+				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
 			}),
 		)
 	}
@@ -116,7 +116,7 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Delete(ctx, ppfmt, domain, ipNet)
+				return s.Delete(ctx, ppfmt, ipNet, domain)
 			}),
 		)
 	}
@@ -130,10 +130,10 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 ) message.Message {
 	resps := emptySetterWAFListResponses()
 
-	for _, name := range c.WAFLists {
-		resps.register(name,
+	for _, l := range c.WAFLists {
+		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, name, c.WAFListDescription, detectedIPs, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, "")
 			}),
 		)
 	}
@@ -146,10 +146,10 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 func deleteWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	resps := emptySetterWAFListResponses()
 
-	for _, name := range c.WAFLists {
-		resps.register(name,
+	for _, l := range c.WAFLists {
+		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.DeleteWAFList(ctx, ppfmt, name)
+				return s.DeleteWAFList(ctx, ppfmt, l)
 			}),
 		)
 	}

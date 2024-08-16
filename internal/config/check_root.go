@@ -14,14 +14,14 @@ func CheckRoot(ppfmt pp.PP) {
 
 	useDeprecated := false
 	if val := Getenv("PUID"); val != "" {
-		ppfmt.Warningf(pp.EmojiUserError,
-			"PUID=%s is ignored; use Docker's built-in mechanism to set user ID",
+		ppfmt.Warningf(pp.EmojiUserWarning,
+			"PUID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set user ID",
 			val)
 		useDeprecated = true
 	}
 	if val := Getenv("PGID"); val != "" {
-		ppfmt.Warningf(pp.EmojiUserError,
-			"PGID=%s is ignored; use Docker's built-in mechanism to set group ID",
+		ppfmt.Warningf(pp.EmojiUserWarning,
+			"PGID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set group ID",
 			val)
 		useDeprecated = true
 	}

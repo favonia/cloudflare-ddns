@@ -20,7 +20,7 @@ type Config struct {
 	Provider           map[ipnet.Type]provider.Provider
 	ShouldWeUse1001    *bool
 	Domains            map[ipnet.Type][]domain.Domain
-	WAFLists           []string
+	WAFLists           []api.WAFList
 	UpdateCron         cron.Schedule
 	UpdateOnStart      bool
 	DeleteOnStop       bool
