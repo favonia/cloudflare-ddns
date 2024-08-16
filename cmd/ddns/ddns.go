@@ -81,7 +81,7 @@ func realMain() int { //nolint:funlen
 	}
 
 	// Show the name and the version of the updater
-	ppfmt.Infof(pp.EmojiStar, formatName())
+	ppfmt.Infof(pp.EmojiStar, "%s", formatName())
 
 	// Warn about root privileges
 	config.CheckRoot(ppfmt)
@@ -124,21 +124,6 @@ func realMain() int { //nolint:funlen
 		if first && !c.UpdateOnStart {
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
-			if c.UpdateCron != nil { // no need to do sanity check if it's a one-time update
-				if ok, certain := s.SanityCheck(ctxWithSignals, ppfmt); !ok && certain {
-					monitor.FailureAll(ctx, ppfmt, c.Monitors, "Invalid Cloudflare API token or account ID")
-					notifier.SendAll(ctx, ppfmt, c.Notifiers,
-						"The Cloudflare API token or account ID is invalid. "+
-							"Please check the values of CF_API_TOKEN, CF_ACCOUNT_ID, and CF_API_TOKEN_FILE.",
-					)
-					return 1
-				}
-			}
-
-			if ctxWithSignals.Err() != nil {
-				goto signaled
-			}
-
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
 			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg)
 			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)

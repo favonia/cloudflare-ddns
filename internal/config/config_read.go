@@ -53,25 +53,9 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		ppfmt = ppfmt.Indent()
 	}
 
-	// Step 1: is there something to do, and do wo have an auth?
-	if c.Auth == nil {
-		// if c.Auth == nil, the user should have been warned.
-		ppfmt.Errorf(pp.EmojiImpossible,
-			"Authorization info is missing, but this should be impossible; please report this at %s",
-			pp.IssueReportingURL)
-		return false
-	}
+	// Step 1: is there something to do?
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
 		ppfmt.Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
-		return false
-	}
-	if (len(c.Domains[ipnet.IP4]) > 0 || len(c.Domains[ipnet.IP6]) > 0) && !c.Auth.SupportsRecords() {
-		ppfmt.Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but this should be impossible; please report this at %s",
-			pp.IssueReportingURL)
-		return false
-	}
-	if len(c.WAFLists) > 0 && !c.Auth.SupportsWAFLists() {
-		ppfmt.Errorf(pp.EmojiUserError, "Please give CF_ACCOUNT_ID to specify the WAF lists to update")
 		return false
 	}
 

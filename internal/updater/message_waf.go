@@ -30,8 +30,8 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to properly update WAF list(s) %s; %s were updated.",
-				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
-				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 
@@ -43,7 +43,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to properly update WAF list(s) %s.",
-				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
 			)},
 		}
 
@@ -55,7 +55,7 @@ func generateUpdateWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Updated WAF list(s) %s.",
-				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 
@@ -76,8 +76,8 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to properly delete WAF list(s) %s; %s were deleted.",
-				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
-				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 
@@ -89,7 +89,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Failed to properly delete WAF list(s) %s.",
-				pp.QuotedEnglishJoin(s[setter.ResponseFailed]),
+				pp.EnglishJoin(s[setter.ResponseFailed]),
 			)},
 		}
 
@@ -101,7 +101,7 @@ func generateDeleteWAFListMessage(s setterWAFListResponses) message.Message {
 			},
 			NotifierMessages: []string{fmt.Sprintf(
 				"Deleted WAF list(s) %s.",
-				pp.QuotedEnglishJoin(s[setter.ResponseUpdated]),
+				pp.EnglishJoin(s[setter.ResponseUpdated]),
 			)},
 		}
 

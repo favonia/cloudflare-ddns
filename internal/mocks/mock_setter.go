@@ -45,7 +45,7 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockSetter) Delete(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type) setter.ResponseCode {
+func (m *MockSetter) Delete(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -71,19 +71,19 @@ func (c *SetterDeleteCall) Return(arg0 setter.ResponseCode) *SetterDeleteCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterDeleteCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) setter.ResponseCode) *SetterDeleteCall {
+func (c *SetterDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type) setter.ResponseCode) *SetterDeleteCall {
+func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteWAFList mocks base method.
-func (m *MockSetter) DeleteWAFList(arg0 context.Context, arg1 pp.PP, arg2 string) setter.ResponseCode {
+func (m *MockSetter) DeleteWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteWAFList", arg0, arg1, arg2)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -109,58 +109,19 @@ func (c *SetterDeleteWAFListCall) Return(arg0 setter.ResponseCode) *SetterDelete
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterDeleteWAFListCall) Do(f func(context.Context, pp.PP, string) setter.ResponseCode) *SetterDeleteWAFListCall {
+func (c *SetterDeleteWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterDeleteWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterDeleteWAFListCall) DoAndReturn(f func(context.Context, pp.PP, string) setter.ResponseCode) *SetterDeleteWAFListCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// SanityCheck mocks base method.
-func (m *MockSetter) SanityCheck(arg0 context.Context, arg1 pp.PP) (bool, bool) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SanityCheck", arg0, arg1)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
-}
-
-// SanityCheck indicates an expected call of SanityCheck.
-func (mr *MockSetterMockRecorder) SanityCheck(arg0, arg1 any) *SetterSanityCheckCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SanityCheck", reflect.TypeOf((*MockSetter)(nil).SanityCheck), arg0, arg1)
-	return &SetterSanityCheckCall{Call: call}
-}
-
-// SetterSanityCheckCall wrap *gomock.Call
-type SetterSanityCheckCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *SetterSanityCheckCall) Return(arg0, arg1 bool) *SetterSanityCheckCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *SetterSanityCheckCall) Do(f func(context.Context, pp.PP) (bool, bool)) *SetterSanityCheckCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSanityCheckCall) DoAndReturn(f func(context.Context, pp.PP) (bool, bool)) *SetterSanityCheckCall {
+func (c *SetterDeleteWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterDeleteWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Set mocks base method.
-func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 domain.Domain, arg3 ipnet.Type, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) setter.ResponseCode {
+func (m *MockSetter) Set(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -186,19 +147,19 @@ func (c *SetterSetCall) Return(arg0 setter.ResponseCode) *SetterSetCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSetCall) Do(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
+func (c *SetterSetCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, domain.Domain, ipnet.Type, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
+func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) setter.ResponseCode) *SetterSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(arg0 context.Context, arg1 pp.PP, arg2, arg3 string, arg4 map[ipnet.Type]netip.Addr, arg5 string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string, arg4 map[ipnet.Type]netip.Addr, arg5 string) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetWAFList", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -224,13 +185,13 @@ func (c *SetterSetWAFListCall) Return(arg0 setter.ResponseCode) *SetterSetWAFLis
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSetWAFListCall) Do(f func(context.Context, pp.PP, string, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
+func (c *SetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, string, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
+func (c *SetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

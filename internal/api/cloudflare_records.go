@@ -14,11 +14,11 @@ import (
 )
 
 // ListZones returns a list of zone IDs with the zone name.
-func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]string, bool) {
+func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]ID, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
 	if name == "" {
-		return []string{}, true
+		return []ID{}, true
 	}
 
 	if ids := h.cache.listZones.Get(name); ids != nil {
@@ -31,23 +31,20 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 		return nil, false
 	}
 
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.skipSanityCheckToken()
-
-	ids := make([]string, 0, len(res.Result))
+	ids := make([]ID, 0, len(res.Result))
 	for _, zone := range res.Result {
 		// The list of possible statuses was at https://api.cloudflare.com/#zone-list-zones
 		// but the documentation is missing now.
 		switch zone.Status {
 		case "active": // fully working
-			ids = append(ids, zone.ID)
+			ids = append(ids, ID(zone.ID))
 		case
 			"deactivated",  // violating term of service, etc.
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
 			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", name, zone.Status) //nolint:lll
-			ids = append(ids, zone.ID)
+			ids = append(ids, ID(zone.ID))
 		case
 			"deleted": // archived, pending/moved for too long
 			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
@@ -55,7 +52,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 		default:
 			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at %s",
 				name, zone.Status, pp.IssueReportingURL)
-			ids = append(ids, zone.ID)
+			ids = append(ids, ID(zone.ID))
 		}
 	}
 
@@ -66,7 +63,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 }
 
 // ZoneOfDomain finds the active zone ID governing a particular domain.
-func (h CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (string, bool) {
+func (h CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
 	if id := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); id != nil {
 		return id.Value(), true
 	}
@@ -79,9 +76,6 @@ zoneSearch:
 			return "", false
 		}
 
-		// The operation went through. No need to perform any sanity checking in near future!
-		h.skipSanityCheckToken()
-
 		switch len(zones) {
 		case 0: // len(zones) == 0
 			continue zoneSearch
@@ -92,7 +86,7 @@ zoneSearch:
 		default: // len(zones) > 1
 			ppfmt.Warningf(pp.EmojiImpossible,
 				"Found multiple active zones named %q (IDs: %s); please report this at %s",
-				zoneName, pp.EnglishJoin(zones), pp.IssueReportingURL)
+				zoneName, pp.EnglishJoinMap(ID.Describe, zones), pp.IssueReportingURL)
 			return "", false
 		}
 	}
@@ -104,7 +98,7 @@ zoneSearch:
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipNet ipnet.Type,
+	ipNet ipnet.Type, domain domain.Domain,
 ) ([]Record, bool, bool) {
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		return *rmap.Value(), true, true
@@ -115,12 +109,9 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false
 	}
 
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.skipSanityCheckToken()
-
 	//nolint:exhaustruct // Other fields are intentionally unspecified
 	raw, _, err := h.cf.ListDNSRecords(ctx,
-		cloudflare.ZoneIdentifier(zone),
+		cloudflare.ZoneIdentifier(string(zone)),
 		cloudflare.ListDNSRecordsParams{
 			Name: domain.DNSNameASCII(),
 			Type: ipNet.RecordType(),
@@ -142,7 +133,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 			return nil, false, false
 		}
 
-		rs = append(rs, Record{ID: r.ID, IP: ip})
+		rs = append(rs, Record{ID: ID(r.ID), IP: ip})
 	}
 
 	h.cache.listRecords[ipNet].DeleteExpired()
@@ -153,14 +144,14 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
 func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipNet ipnet.Type, id string,
+	ipNet ipnet.Type, domain domain.Domain, id ID,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
 
-	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), id); err != nil {
+	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
@@ -168,9 +159,6 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 
 		return false
 	}
-
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.skipSanityCheckToken()
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
 		*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
@@ -181,7 +169,9 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
 func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipNet ipnet.Type, id string, ip netip.Addr,
+	ipNet ipnet.Type,
+	domain domain.Domain,
+	id ID, ip netip.Addr,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -190,11 +180,11 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
 	params := cloudflare.UpdateDNSRecordParams{
-		ID:      id,
+		ID:      string(id),
 		Content: ip.String(),
 	}
 
-	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params); err != nil {
+	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params); err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
@@ -202,9 +192,6 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 		return false
 	}
-
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.skipSanityCheckToken()
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
 		for i, r := range *rs.Value() {
@@ -219,8 +206,8 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 // CreateRecord calls cloudflare.CreateDNSRecord.
 func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipNet ipnet.Type, ip netip.Addr, ttl TTL, proxied bool, recordComment string,
-) (string, bool) {
+	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl TTL, proxied bool, recordComment string,
+) (ID, bool) {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
@@ -236,7 +223,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		Comment: recordComment,
 	}
 
-	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone), params)
+	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
 		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
@@ -246,12 +233,9 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	// The operation went through. No need to perform any sanity checking in near future!
-	h.skipSanityCheckToken()
-
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
-		*rs.Value() = append([]Record{{ID: res.ID, IP: ip}}, *rs.Value()...)
+		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip}}, *rs.Value()...)
 	}
 
-	return res.ID, true
+	return ID(res.ID), true
 }
