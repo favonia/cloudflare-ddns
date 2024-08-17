@@ -229,37 +229,51 @@ Is your “public” IP address on your router between `100.64.0.0` and `100.127
 _(Click to expand the following items.)_
 
 <details>
-<summary>🔑 Cloudflare accounts and API tokens</summary>
+<summary>🔑 Cloudflare API tokens</summary>
 
-| Name                | Valid Values                                                                                              | Meaning                                                                                                                                    | Required?                                                           | Default Value |
-| ------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------- |
-| `CF_API_TOKEN`      | Cloudflare API tokens                                                                                     | The token to access the Cloudflare API                                                                                                     | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens                                                           | A file that contains the token to access the Cloudflare API                                                                                | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_ACCOUNT_ID`     | [Cloudflare Account IDs](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) | The default Cloudflare account ID to access WAF lists. It is _not_ your email address! Operations on DNS records will not use account IDs. | No (in most cases you can leave it blank)                           | (unset)       |
+| Name                | Valid Values                                    | Meaning                                                     | Required?                                                           | Default Value |
+| ------------------- | ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
+| `CF_API_TOKEN`      | Cloudflare API tokens                           | The token to access the Cloudflare API                      | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
 
 </details>
 
 <details>
-<summary>📍 Domains, WAF lists, and IP address providers</summary>
+<summary>📍 DNS Domains to Update</summary>
 
-| Name           | Valid Values                                                                                          | Meaning                                                                                                             | Required?   | Default Value      |
-| -------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------ |
-| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for both `A` and `AAAA` records                                               | (See below) | (empty list)       |
-| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for `A` records                                                               | (See below) | (empty list)       |
-| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names                                 | The domains the updater should manage for `AAAA` records                                                            | (See below) | (empty list)       |
-| `WAF_LISTS`    | Comma-separated names of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) | The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage          | (See below) | (empty list)       |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`                                   | How to detect IPv4 addresses, or `none` to disable IPv4. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none`                                   | How to detect IPv6 addresses, or `none` to disable IPv6. (See below for the detailed description of each provider.) | No          | `cloudflare.trace` |
+| Name          | Valid Values                                                          | Meaning                                                               | Required?   | Default Value |
+| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------- |
+| `DOMAINS`     | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)  |
+| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)  |
+| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)  |
 
 > <details>
 > <summary>📍 At least one of <code>DOMAINS</code>, <code>IP4/6_DOMAINS</code>, and <code>WAF_LISTS</code> must be non-empty.</summary>
 >
-> At least something should be listed in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or `WAF_LISTS`. Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing fully compatible with IDNA2008. See this [useful FAQ on internationalized domain names.](https://www.unicode.org/faq/idn.html)
+> At least something should be listed in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or `WAF_LISTS`. Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing fully compatible with IDNA2008. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 >
 > </details>
 
 > <details>
-> <summary>📜 Available providers for <code>IP4_PROVIDER</code> and <code>IP6_PROVIDER</code>:</summary>
+> <summary>🃏 What are wildcard domains?</summary>
+>
+> Wildcard domains (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
+>
+> </details>
+
+</details>
+
+<details>
+<summary>🔍 IP address providers</summary>
+
+| Name           | Valid Values                                                        | Meaning                                                             | Required? | Default Value      |
+| -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- | --------- | ------------------ |
+| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv4 addresses, or `none` to disable IPv4 (see below) | No        | `cloudflare.trace` |
+| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv6 addresses, or `none` to disable IPv6 (see below) | No        | `cloudflare.trace` |
+
+> The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
+>
+> Here are available IP address providers:
 >
 > - `cloudflare.doh`\
 >   Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
@@ -274,33 +288,30 @@ _(Click to expand the following items.)_
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
-> The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
->
 > Some technical details: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
->
-> </details>
-
-> <details>
-> <summary>🃏 What are wildcard domains?</summary>
->
-> Wildcard domains (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
->
-> </details>
 
 </details>
 
 <details>
-<summary>⏳ Schedules, triggers, and timeouts</summary>
+<summary>⏳ Timeouts</summary>
 
-| Name                | Valid Values                                                                                                                                                                  | Meaning                                                                                                                                                                             | Required? | Default Value                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
-| `CACHE_EXPIRATION`  | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The expiration of cached Cloudflare API responses                                                                                                                                   | No        | `6h0m0s` (6 hours)            |
-| `DELETE_ON_STOP`    | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether managed DNS records should be deleted on exit                                                                                                                               | No        | `false`                       |
-| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The timeout of each attempt to detect IP addresses                                                                                                                                  | No        | `5s` (5 seconds)              |
-| `TZ`                | Recognized timezones, such as `UTC`                                                                                                                                           | The timezone used for logging and parsing `UPDATE_CRON`                                                                                                                             | No        | `UTC`                         |
-| `UPDATE_CRON`       | Cron expressions or the special value `@once`. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for cron expressions. | The schedule to re-check IP addresses and update DNS records (if necessary). The special value `@once` means the updater will terminate immediately after updating the DNS records. | No        | `@every 5m` (every 5 minutes) |
-| `UPDATE_ON_START`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                  | No        | `true`                        |
-| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The timeout of each attempt to update DNS records, per domain, per record type                                                                                                      | No        | `30s` (30 seconds)            |
+| Name                | Valid Values                                                                                                                      | Meaning                                                                        | Required? | Default Value      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- | ------------------ |
+| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses                             | No        | `5s` (5 seconds)   |
+| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No        | `30s` (30 seconds) |
+
+</details>
+
+<details>
+<summary>📅 Scheduling</summary>
+
+| Name               | Valid Values                                                                                                                                                                  | Meaning                                                                                                                                                                             | Required? | Default Value                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
+| `CACHE_EXPIRATION` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The expiration of cached Cloudflare API responses                                                                                                                                   | No        | `6h0m0s` (6 hours)            |
+| `DELETE_ON_STOP`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether managed DNS records should be deleted on exit                                                                                                                               | No        | `false`                       |
+| `TZ`               | Recognized timezones, such as `UTC`                                                                                                                                           | The timezone used for logging and parsing `UPDATE_CRON`                                                                                                                             | No        | `UTC`                         |
+| `UPDATE_CRON`      | Cron expressions or the special value `@once`. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for cron expressions. | The schedule to re-check IP addresses and update DNS records (if necessary). The special value `@once` means the updater will terminate immediately after updating the DNS records. | No        | `@every 5m` (every 5 minutes) |
+| `UPDATE_ON_START`  | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                  | No        | `true`                        |
 
 > ⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
 
@@ -347,6 +358,15 @@ _(Click to expand the following items.)_
 > - `PROXYD=is(example1.org) || is(example2.org) || is(example3.org)`
 > - `PROXIED=is(example1.org,example2.org,example3.org)`
 > </details>
+
+</details>
+
+<details>
+<summary>📜 Web Application Firewalls (WAF) Lists</summary>
+
+| Name | Valid Values | Meaning | Required? | Default Value |
+| `WAF_LISTS` | Comma-separated names of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) in format `account-id/list-name` | The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. `account-id` is the account ID and `list-name`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). | (See below) | (empty list) |
+| `WAF_LIST_DESCRIPTION` | Comma-separated names of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) in format `account-id/list-name` | The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. `account-id` is the account ID and `list-name`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). | (See below) | (empty list) |
 
 </details>
 
