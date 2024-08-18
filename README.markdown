@@ -381,7 +381,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📣 External notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+<summary>📣 External notifications (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
 
 > 🧪 The integration with `shoutrrr` is still somewhat experimental (introduced in 1.12.0).
 
