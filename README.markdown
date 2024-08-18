@@ -239,7 +239,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📍 DNS Domains to Update</summary>
+<summary>📍 DNS domains to update</summary>
 
 | Name          | Valid Values                                                          | Meaning                                                               | Required?   | Default Value |
 | ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------- |
@@ -363,21 +363,31 @@ _(Click to expand the following items.)_
 
 > 🧪 The feature to manipulate WAF lists is experimental (introduced in 1.14.0) and is subject to changes.
 
-| Name                      | Valid Values                                                                                                                                                                                                                                                                                              | Meaning                                                                                                                                                                                                                         | Required? | Default Value |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| 🧪 `WAF_LISTS`            | Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/). A list reference is in the format `account-id/list-name` where `account-id` is the account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist` | The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). | No        | (empty list)  |
-| 🧪 `WAF_LIST_DESCRIPTION` | Strings that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character)                                                                                                                                                                                                | The description of newly created lists (the updater will keep existing descriptions)                                                                                                                                            | No        | `""`          |
+| Name                      | Valid Values                                                                                                                                                                                                                                                                                                 | Meaning                                                                                                                                                                                                                            | Required? | Default Value |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
+| 🧪 `WAF_LISTS`            | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/). A list reference is in the format `account-id/list-name` where `account-id` is the account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist` | 🧪 The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). | No        | (empty list)  |
+| 🧪 `WAF_LIST_DESCRIPTION` | 🧪 Strings that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character)                                                                                                                                                                                                | 🧪 The description of newly created lists (the updater will keep existing descriptions)                                                                                                                                            | No        | `""`          |
 
 </details>
 
 <details>
-<summary>👁️ Logging, Healthchecks, Uptime Kuma, and shoutrrr</summary>
+<summary>👁️ Logging</summary>
+
+| Name    | Valid Values                                                                                                        | Meaning                                              | Required? | Default Value |
+| ------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------- | ------------- |
+| `EMOJI` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should use emojis in the logging | No        | `true`        |
+| `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging        | No        | `false`       |
+
+</details>
+
+<details>
+<summary>📣 External notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+
+> 🧪 The integration with `shoutrrr` is still somewhat experimental (introduced in 1.12.0).
 
 | Name           | Valid Values                                                                                                                                                      | Meaning                                                                                                                                                                                         | Required? | Default Value |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| `EMOJI`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should use emojis in the logging                                                                                                                                            | No        | `true`        |
 | `HEALTHCHECKS` | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                 | No        | (unset)       |
-| `QUIET`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                               | Whether the updater should reduce the logging                                                                                                                                                   | No        | `false`       |
 | `UPTIMEKUMA`   | Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.       | If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
 | 🧪 `SHOUTRRR`  | 🧪 Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/) such as `discord://<token>@<id>`                                                           | 🧪 If set, the updater will send messages when it updates IP addresses                                                                                                                          | No        | (unset)       |
 
