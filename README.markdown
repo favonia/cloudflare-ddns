@@ -229,7 +229,7 @@ Is your “public” IP address on your router between `100.64.0.0` and `100.127
 _(Click to expand the following items.)_
 
 <details>
-<summary>🔑 Cloudflare API tokens</summary>
+<summary>🔑 The Cloudflare API token</summary>
 
 | Name                | Valid Values                                    | Meaning                                                     | Required?                                                           | Default Value |
 | ------------------- | ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
@@ -284,21 +284,11 @@ _(Click to expand the following items.)_
 >   ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 > - `url:URL`\
 >   Fetch the content at a URL via the HTTP(S) protocol as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 addresses from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org).
->   ⚠️ Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at the URL. Therefore, for `IP4_PROVIDER=url:URL`, the updater might use IPv6 to connect to `URL`, get an IPv6 address, and then fail (and vice versa). The `URL` must either restrict its access to the expected IP network or return a valid IP address in the expected IP network regardless of what IP network is used for connection. As a working example, <https://api4.ipify.org> has restricted its access to IPv4, and thus it’s impossible to use the wrong IP network to connect to it. The updater did not force IPv4 or IPv6 because there are no elegant ways to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case so that I can consider some really ugly hack to force it.
+>   ⚠️ Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at the URL. Therefore, for `IP4_PROVIDER=url:URL`, the updater might use IPv6 to connect to `URL`, get an IPv6 address, and then fail (and vice versa). The `URL` must either restrict its access to the expected IP network or return a valid IP address in the expected IP network regardless of what IP network is used for connection. As a working example, <https://api4.ipify.org> has restricted its access to IPv4, and thus it’s impossible to use the wrong IP network (IPv6) to connect to it. The updater did not force IPv4 or IPv6 because there are no elegant ways to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case so that I can consider some really ugly hack to force it.
 > - `none`\
 >   Stop the DNS updating completely. Existing DNS records will not be removed.
 >
 > Some technical details: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
-
-</details>
-
-<details>
-<summary>⏳ Timeouts</summary>
-
-| Name                | Valid Values                                                                                                                      | Meaning                                                                        | Required? | Default Value      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- | ------------------ |
-| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses                             | No        | `5s` (5 seconds)   |
-| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No        | `30s` (30 seconds) |
 
 </details>
 
@@ -314,6 +304,16 @@ _(Click to expand the following items.)_
 | `UPDATE_ON_START`  | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                  | No        | `true`                        |
 
 > ⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
+
+</details>
+
+<details>
+<summary>⏳ Timeouts</summary>
+
+| Name                | Valid Values                                                                                                                      | Meaning                                                                        | Required? | Default Value      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- | ------------------ |
+| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses                             | No        | `5s` (5 seconds)   |
+| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No        | `30s` (30 seconds) |
 
 </details>
 
