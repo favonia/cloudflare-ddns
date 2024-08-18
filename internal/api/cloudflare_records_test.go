@@ -23,7 +23,7 @@ import (
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {
 	return &cloudflare.Zone{ //nolint:exhaustruct
-		ID:     mockID(name, i),
+		ID:     string(mockID(name, i)),
 		Name:   name,
 		Status: status,
 	}
@@ -53,7 +53,7 @@ func mockZonesResponse(zoneName string, zoneStatuses []string) cloudflare.ZonesR
 	}
 }
 
-func newZonesHandler(t *testing.T, mux *http.ServeMux, accountID string, zoneStatuses map[string][]string) httpHandler {
+func newZonesHandler(t *testing.T, mux *http.ServeMux, zoneStatuses map[string][]string) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -67,23 +67,12 @@ func newZonesHandler(t *testing.T, mux *http.ServeMux, accountID string, zoneSta
 		zoneName := r.URL.Query().Get("name")
 		zoneStatuses := zoneStatuses[zoneName]
 
-		if accountID == "" {
-			if !assert.Equal(t, url.Values{
-				"name":     {zoneName},
-				"per_page": {strconv.Itoa(zonePageSize)},
-			}, r.URL.Query()) {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		} else {
-			if !assert.Equal(t, url.Values{
-				"account.id": {mockAccountID},
-				"name":       {zoneName},
-				"per_page":   {strconv.Itoa(zonePageSize)},
-			}, r.URL.Query()) {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+		if !assert.Equal(t, url.Values{
+			"name":     {zoneName},
+			"per_page": {strconv.Itoa(zonePageSize)},
+		}, r.URL.Query()) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -102,37 +91,36 @@ func TestListZonesTwo(t *testing.T) {
 		requestLimit int
 		input        string
 		ok           bool
-		output       []string
+		output       []api.ID
 	}{
 		"root": {
 			nil,
 			0,
 			"",
 			true,
-			[]string{},
+			[]api.ID{},
 		},
 		"two": {
 			map[string][]string{"test.org": {"active", "active"}},
 			1,
 			"test.org",
-			true,
-			mockIDs("test.org", 0, 1),
+			true, mockIDs("test.org", 0, 1),
 		},
 		"empty": {
 			map[string][]string{},
 			1,
 			"test.org",
 			true,
-			[]string{},
+			[]api.ID{},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
-			mux, h, ok := newGoodHandle(t, mockPP)
+			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
-			zh := newZonesHandler(t, mux, mockAccountID, tc.zones)
+			zh := newZonesHandler(t, mux, tc.zones)
 
 			zh.setRequestLimit(tc.requestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
@@ -172,42 +160,35 @@ func TestZoneOfDomain(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		accountID     string
 		zone          string
 		domain        domain.Domain
 		zoneStatuses  map[string][]string
 		requestLimit  int
-		expected      string
+		expected      api.ID
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"root":     {mockAccountID, "test.org", domain.FQDN("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},     //nolint:lll
-		"wildcard": {mockAccountID, "test.org", domain.Wildcard("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
-		"one":      {mockAccountID, "test.org", domain.FQDN("sub.test.org"), map[string][]string{"test.org": {"active"}}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
+		"root":     {"test.org", domain.FQDN("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},     //nolint:lll
+		"wildcard": {"test.org", domain.Wildcard("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
+		"one":      {"test.org", domain.FQDN("sub.test.org"), map[string][]string{"test.org": {"active"}}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
 		"none": {
-			mockAccountID, "test.org", domain.FQDN("sub.test.org"),
+			"test.org", domain.FQDN("sub.test.org"),
 			map[string][]string{},
 			3, "", false,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org"),
-					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; you can usually leave it blank unless you are updating WAF lists"), //nolint:lll
-				)
+				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
 			},
 		},
 		"none/wildcard": {
-			mockAccountID, "test.org", domain.Wildcard("test.org"),
+			"test.org", domain.Wildcard("test.org"),
 			map[string][]string{},
 			2, "", false,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org"),
-					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; you can usually leave it blank unless you are updating WAF lists"), //nolint:lll
-				)
+				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org")
 			},
 		},
 		"multiple": {
-			mockAccountID, "test.org", domain.FQDN("sub.test.org"),
+			"test.org", domain.FQDN("sub.test.org"),
 			map[string][]string{"test.org": {"active", "active"}},
 			2, "", false,
 			func(m *mocks.MockPP) {
@@ -215,13 +196,13 @@ func TestZoneOfDomain(t *testing.T) {
 					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
 						"Found multiple active zones named %q (IDs: %s); please report this at %s",
-						"test.org", pp.EnglishJoin(mockIDs("test.org", 0, 1)), pp.IssueReportingURL,
+						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
 					),
 				)
 			},
 		},
 		"multiple/wildcard": {
-			mockAccountID, "test.org", domain.Wildcard("test.org"),
+			"test.org", domain.Wildcard("test.org"),
 			map[string][]string{"test.org": {"active", "active"}},
 			1, "", false,
 			func(m *mocks.MockPP) {
@@ -229,25 +210,13 @@ func TestZoneOfDomain(t *testing.T) {
 					m.EXPECT().Warningf(
 						pp.EmojiImpossible,
 						"Found multiple active zones named %q (IDs: %s); please report this at %s",
-						"test.org", pp.EnglishJoin(mockIDs("test.org", 0, 1)), pp.IssueReportingURL,
+						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
 					),
 				)
 			},
 		},
 		"deleted": {
-			mockAccountID, "test.org", domain.FQDN("test.org"),
-			map[string][]string{"test.org": {"deleted"}},
-			2, "", false,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", "test.org", "deleted"),
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
-					m.EXPECT().Infof(pp.EmojiHint, "Double-check the value of CF_ACCOUNT_ID; you can usually leave it blank unless you are updating WAF lists"), //nolint:lll
-				)
-			},
-		},
-		"deleted/empty-account": {
-			"", "test.org", domain.FQDN("test.org"),
+			"test.org", domain.FQDN("test.org"),
 			map[string][]string{"test.org": {"deleted"}},
 			2, "", false,
 			func(m *mocks.MockPP) {
@@ -258,7 +227,7 @@ func TestZoneOfDomain(t *testing.T) {
 			},
 		},
 		"pending": {
-			mockAccountID, "test.org", domain.FQDN("test.org"),
+			"test.org", domain.FQDN("test.org"),
 			map[string][]string{"test.org": {"pending"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
@@ -268,7 +237,7 @@ func TestZoneOfDomain(t *testing.T) {
 			},
 		},
 		"initializing": {
-			mockAccountID, "test.org", domain.FQDN("test.org"),
+			"test.org", domain.FQDN("test.org"),
 			map[string][]string{"test.org": {"initializing"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
@@ -280,7 +249,7 @@ func TestZoneOfDomain(t *testing.T) {
 			},
 		},
 		"undocumented": {
-			mockAccountID, "test.org", domain.FQDN("test.org"),
+			"test.org", domain.FQDN("test.org"),
 			map[string][]string{"test.org": {"some-undocumented-status"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
@@ -294,10 +263,9 @@ func TestZoneOfDomain(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
-			mux, h, ok := newHandle(t, mockPP, tc.accountID,
-				http.StatusOK, mockTokenVerifyResponse, http.StatusOK, mockAccountResponse)
+			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
-			zh := newZonesHandler(t, mux, tc.accountID, tc.zoneStatuses)
+			zh := newZonesHandler(t, mux, tc.zoneStatuses)
 
 			zh.setRequestLimit(tc.requestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
@@ -326,7 +294,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newGoodHandle(t, mockPP)
+	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
 	mockPP.EXPECT().Warningf(
@@ -337,7 +305,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	)
 	zoneID, ok := h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
-	require.Equal(t, "", zoneID)
+	require.Zero(t, zoneID)
 }
 
 func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudflare.DNSRecord {
@@ -409,10 +377,10 @@ func TestListRecords(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org",
@@ -421,7 +389,7 @@ func TestListRecords(t *testing.T) {
 
 	expected := []api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}}
 
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, expected, rs)
@@ -429,7 +397,7 @@ func TestListRecords(t *testing.T) {
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, expected, rs)
@@ -441,10 +409,10 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org",
@@ -459,7 +427,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"record2",
 		gomock.Any(),
 	)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
@@ -474,7 +442,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
@@ -487,10 +455,10 @@ func TestListRecordsWildcard(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "*.test.org",
@@ -499,7 +467,7 @@ func TestListRecordsWildcard(t *testing.T) {
 
 	expected := []api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}}
 
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.Wildcard("test.org"))
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, expected, rs)
@@ -507,7 +475,7 @@ func TestListRecordsWildcard(t *testing.T) {
 
 	// testing the caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.Wildcard("test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.Wildcard("test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, expected, rs)
@@ -518,21 +486,21 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP4, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "AAAA", "sub.test.org", gomock.Any()) //nolint:lll
-	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
@@ -543,7 +511,7 @@ func TestListRecordsInvalidZone(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newGoodHandle(t, mockPP)
+	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
 	mockPP.EXPECT().Warningf(
@@ -552,7 +520,7 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP4)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP4, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
@@ -564,7 +532,7 @@ func TestListRecordsInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	rs, cached, ok = h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP4, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
@@ -613,10 +581,10 @@ func TestDeleteRecordValid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
@@ -625,15 +593,15 @@ func TestDeleteRecordValid(t *testing.T) {
 	drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
 	drh.setRequestLimit(1)
 
-	ok = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
 	require.True(t, ok)
 	require.True(t, drh.isExhausted())
 
 	drh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	_ = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+	_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Empty(t, rs)
@@ -645,19 +613,19 @@ func TestDeleteRecordInvalid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
-		"record1",
+		api.ID("record1"),
 		gomock.Any(),
 	)
-	ok = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
 	require.False(t, ok)
 }
 
@@ -666,14 +634,14 @@ func TestDeleteRecordZoneInvalid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newGoodHandle(t, mockPP)
+	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ok = h.DeleteRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
 	require.False(t, ok)
 }
 
@@ -719,10 +687,10 @@ func TestUpdateRecordValid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
@@ -731,15 +699,15 @@ func TestUpdateRecordValid(t *testing.T) {
 	urh := newUpdateRecordHandler(t, mux, "record1", "::2")
 	urh.setRequestLimit(1)
 
-	ok = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"))
 	require.True(t, ok)
 	require.True(t, urh.isExhausted())
 
 	urh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	_ = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::2"))
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+	_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"))
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{{"record1", mustIP("::2")}}, rs)
@@ -750,19 +718,19 @@ func TestUpdateRecordInvalid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
-		"record1",
+		api.ID("record1"),
 		gomock.Any(),
 	)
-	ok = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::1"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"))
 	require.False(t, ok)
 }
 
@@ -771,14 +739,14 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newGoodHandle(t, mockPP)
+	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ok = h.UpdateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, "record1", mustIP("::1"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"))
 	require.False(t, ok)
 }
 
@@ -831,10 +799,10 @@ func TestCreateRecordValid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
@@ -844,11 +812,11 @@ func TestCreateRecordValid(t *testing.T) {
 	crh.setRequestLimit(1)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
+	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.True(t, ok)
-	require.Equal(t, "record1", actualID)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6)
+	require.Equal(t, api.ID("record1"), actualID)
+	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{{"record1", mustIP("::1")}}, rs)
@@ -858,9 +826,9 @@ func TestCreateRecordInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mux, h, ok := newGoodHandle(t, mockPP)
+	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
-	zh := newZonesHandler(t, mux, mockAccountID, map[string][]string{"test.org": {"active"}})
+	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
@@ -868,9 +836,9 @@ func TestCreateRecordInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.False(t, ok)
-	require.Equal(t, "", actualID)
+	require.Zero(t, actualID)
 }
 
 func TestCreateRecordInvalidZone(t *testing.T) {
@@ -878,14 +846,14 @@ func TestCreateRecordInvalidZone(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newGoodHandle(t, mockPP)
+	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
 	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, domain.FQDN("sub.test.org"), ipnet.IP6, mustIP("::1"), 100, false, "hello") //nolint:lll
+	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
 	require.False(t, ok)
-	require.Equal(t, "", actualID)
+	require.Zero(t, actualID)
 }

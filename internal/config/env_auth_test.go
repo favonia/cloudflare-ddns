@@ -25,12 +25,23 @@ func TestReadAuth(t *testing.T) {
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"full":      {"123456789", "secret account", true, nil},
-		"noaccount": {"123456789", "", true, nil},
-		"notoken": {
+		"success": {"123456789", "", true, nil},
+		"empty-token": {
 			"", "account", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
+			},
+		},
+		"invalid": {
+			"!!!", "", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "The API token does not look like a valid OAuth2 bearer token")
+			},
+		},
+		"account": {
+			"123456789", "secret account", true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Warningf(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
 			},
 		},
 		"copycat": {
@@ -55,7 +66,7 @@ func TestReadAuth(t *testing.T) {
 			ok := config.ReadAuth(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.Equal(t, &api.CloudflareAuth{Token: tc.token, AccountID: tc.account, BaseURL: ""}, field)
+				require.Equal(t, &api.CloudflareAuth{Token: tc.token, BaseURL: ""}, field)
 			} else {
 				require.Nil(t, field)
 			}
@@ -74,34 +85,33 @@ func TestReadAuthWithFile(t *testing.T) {
 	for name, tc := range map[string]struct {
 		token         string
 		tokenFile     string
-		account       string
 		actualPath    string
 		actualContent string
 		expected      string
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"ok": {"", "test.txt", "secret account", "test.txt", "hello", "hello", true, nil},
+		"ok": {"", "test.txt", "test.txt", "hello", "hello", true, nil},
 		"both": {
-			"123456789", "test.txt", "secret account", "test.txt", "hello", "", false,
+			"123456789", "test.txt", "test.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
 			},
 		},
 		"wrong.path": {
-			"", "wrong.txt", "secret account", "actual.txt", "hello", "", false,
+			"", "wrong.txt", "actual.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
 			},
 		},
 		"empty": {
-			"", "test.txt", "secret account", "test.txt", "", "", false,
+			"", "test.txt", "test.txt", "", "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
 			},
 		},
 		"invalid path": {
-			"", "dir", "secret account", "dir/test.txt", "hello", "", false,
+			"", "dir", "dir/test.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
 			},
@@ -112,7 +122,6 @@ func TestReadAuthWithFile(t *testing.T) {
 
 			store(t, "CF_API_TOKEN", tc.token)
 			store(t, "CF_API_TOKEN_FILE", tc.tokenFile)
-			store(t, "CF_ACCOUNT_ID", tc.account)
 
 			useMemFS(fstest.MapFS{
 				tc.actualPath: &fstest.MapFile{
@@ -131,7 +140,7 @@ func TestReadAuthWithFile(t *testing.T) {
 			ok := config.ReadAuth(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			if tc.expected != "" {
-				require.Equal(t, &api.CloudflareAuth{Token: tc.expected, AccountID: tc.account, BaseURL: ""}, field)
+				require.Equal(t, &api.CloudflareAuth{Token: tc.expected, BaseURL: ""}, field)
 			} else {
 				require.Nil(t, field)
 			}

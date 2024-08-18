@@ -166,6 +166,7 @@ func TestParseExpression(t *testing.T) {
 		"sub/2":     {"sub(example.com)", true, w("example.com"), true, nil},
 		"sub/3":     {"sub(example.com)", true, f("sub.example.com"), true, nil},
 		"sub/4":     {"sub(example.com)", true, f("subexample.com"), false, nil},
+		"sub/5":     {"sub(example.com)", true, f("sub.sub.example.com"), true, nil},
 		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/2": {"sub(Xn--53H.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/3": {"sub(Xn--53H.de)", true, w("xn--53h.de"), true, nil},
