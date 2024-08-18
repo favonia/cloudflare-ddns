@@ -339,7 +339,7 @@ _(Click to expand the following items.)_
 >
 > - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true` or `FALSE` as `false`.
 > - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`).
-> - `sub(d)` which matches subdomains of `d`, such as `a.d` and `b.d`. It does not match the domain `d` itself.
+> - `sub(d)` which matches subdomains of `d`, such as `a.d` and `b.c.d`. It does not match the domain `d` itself.
 > - `! e` where `e` is a boolean expression, representing logical negation of `e`.
 > - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical disjunction of `e1` and `e2`.
 > - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical conjunction of `e1` and `e2`.
