@@ -61,7 +61,7 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `List %q should be in format "account_id/list_name"`, "+++")
+				m.EXPECT().Errorf(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, "+++")
 			},
 		},
 		"invalid-name": {
