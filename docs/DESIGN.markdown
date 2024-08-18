@@ -25,10 +25,6 @@ Be the 🌟 best DDNS updater 🌟 that [favonia](mailto:favonia+github@gmail.co
 
 The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout), where `/cmd/` holds the command-line interface and `/internal/` holds the internal packages. The updater is factored into many internal packages, each in charged of a small part of the program logic. See the [Go Reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for a detailed documentation of the code structure.
 
-### Roadmap
-
-See [Issues](https://github.com/favonia/cloudflare-ddns/issues) and [Milestones](https://github.com/favonia/cloudflare-ddns/milestones).
-
 ### Logging Message Convention
 
 1. Cloudflare IDs (zone IDs, DNS record IDs, etc.) are already designed to use only “very safe” characters and should not be quoted. The formatter `%s` should be used instead of `%q`.
@@ -56,3 +52,7 @@ Public IP addresses, by their own definition, depend on how other machines (in o
 3. The adversary can access the cable between your machine and the internet, or that you are within a country-scale firewall. (Although they can already redirect the traffic in this case, and thus whether the updater is secure or not is no longer relevant.)
 
 There is no way to securely detect the intended public IP address in these scenarios. If you wish to be immune to these attacks, it is recommended to buy static IP addresses instead of using this updater (or any DDNS updater).
+
+## Roadmap
+
+See [Issues](https://github.com/favonia/cloudflare-ddns/issues) and [Milestones](https://github.com/favonia/cloudflare-ddns/milestones).

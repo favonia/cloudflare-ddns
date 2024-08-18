@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -18,8 +19,8 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      []string
-		newField      []string
+		oldField      []api.WAFList
+		newField      []api.WAFList
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -30,42 +31,55 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			true, "", nil, nil, true, nil,
 		},
 		"one": {
-			true, "hello",
+			true, "hey/hello",
 			nil,
-			[]string{"hello"},
+			[]api.WAFList{{AccountID: "hey", ListName: "hello"}},
 			true,
 			nil,
 		},
 		"two": {
-			true, "hello,aloha",
+			true, "hey/hello,here/aloha",
 			nil,
-			[]string{"hello", "aloha"},
+			[]api.WAFList{{AccountID: "hey", ListName: "hello"}, {AccountID: "here", ListName: "aloha"}},
 			true,
 			nil,
 		},
 		"one+two": {
-			true, "hello,aloha",
-			[]string{"hey"},
-			[]string{"hey", "hello", "aloha"},
+			true, "hey/hello,here/aloha",
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
+			[]api.WAFList{
+				{AccountID: "there", ListName: "ciao"},
+				{AccountID: "hey", ListName: "hello"},
+				{AccountID: "here", ListName: "aloha"},
+			},
 			true,
 			nil,
 		},
-		"invalid": {
-			true, "hello,+++,aloha",
-			[]string{"hey"},
-			[]string{"hey"},
+		"invalid-format": {
+			true, "+++",
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s=%s contains invalid character %q", key, "+++", "+")
+				m.EXPECT().Errorf(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, "+++")
+			},
+		},
+		"invalid-name": {
+			true, "hey/hello,+++/!!!,here/aloha",
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Errorf(pp.EmojiUserError, "List name %q contains invalid character %q", "!!!", "!")
 			},
 		},
 		"toolong": {
-			true, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", //nolint:lll
-			[]string{"hey"},
-			[]string{"hey"},
+			true, "x/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", //nolint:lll
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
+			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s is too long (more than 50 characters in a name)", key)
+				m.EXPECT().Errorf(pp.EmojiUserError, "List name \"%.10s...\" is too long (more than 50 characters)", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") //nolint:lll
 			},
 		},
 	} {

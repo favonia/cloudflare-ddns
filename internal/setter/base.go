@@ -19,20 +19,12 @@ import (
 
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
-	// SanityCheck determines whether one should continue trying.
-	// The first return value indicates whether it passes the test.
-	// The second return value indicates whether we are certain about the result.
-	SanityCheck(
-		ctx context.Context,
-		ppfmt pp.PP,
-	) (bool, bool)
-
 	// Set sets a particular domain to the given IP address.
 	Set(
 		ctx context.Context,
 		ppfmt pp.PP,
-		Domain domain.Domain,
 		IPNetwork ipnet.Type,
+		Domain domain.Domain,
 		IP netip.Addr,
 		ttl api.TTL,
 		proxied bool,
@@ -43,8 +35,8 @@ type Setter interface {
 	Delete(
 		ctx context.Context,
 		ppfmt pp.PP,
-		Domain domain.Domain,
 		IPNetwork ipnet.Type,
+		Domain domain.Domain,
 	) ResponseCode
 
 	// SetWAFList keeps only IP ranges overlapping with detected IPs
@@ -52,7 +44,7 @@ type Setter interface {
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
-		listName string,
+		list api.WAFList,
 		listDescription string,
 		detected map[ipnet.Type]netip.Addr,
 		itemComment string,
@@ -62,6 +54,6 @@ type Setter interface {
 	DeleteWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
-		listName string,
+		list api.WAFList,
 	) ResponseCode
 }

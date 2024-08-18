@@ -85,17 +85,6 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-type fakeAuth struct {
-	supportsRecords  bool
-	supportsWAFLists bool
-}
-
-func (a fakeAuth) New(pp.PP, time.Duration) (api.Handle, bool) {
-	return nil, false
-}
-func (a fakeAuth) SupportsRecords() bool  { return a.supportsRecords }
-func (a fakeAuth) SupportsWAFLists() bool { return a.supportsWAFLists }
-
 //nolint:funlen
 func TestNormalize(t *testing.T) {
 	t.Parallel()
@@ -108,22 +97,8 @@ func TestNormalize(t *testing.T) {
 		expected      *config.Config
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"authnil": {
-			input:    &config.Config{}, //nolint:exhaustruct
-			ok:       false,
-			expected: nil,
-			prepareMockPP: func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
-					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "Authorization info is missing, but this should be impossible; please report this at %s", pp.IssueReportingURL), //nolint:lll
-				)
-			},
-		},
 		"nothing-to-do": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{true, true},
 			},
 			ok:       false,
 			expected: nil,
@@ -136,43 +111,8 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
-		"auth-dns-unsupported": {
-			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{false, true},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
-			},
-			ok:       false,
-			expected: nil,
-			prepareMockPP: func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
-					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiImpossible, "CF_API_TOKEN is empty, but this should be impossible; please report this at %s", pp.IssueReportingURL), //nolint:lll
-				)
-			},
-		},
-		"auth-waf-unsupported": {
-			input: &config.Config{ //nolint:exhaustruct
-				Auth:     fakeAuth{true, false},
-				WAFLists: []string{"list"},
-			},
-			ok:       false,
-			expected: nil,
-			prepareMockPP: func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().IsEnabledFor(pp.Info).Return(true),
-					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Errorf(pp.EmojiUserError, "Please give CF_ACCOUNT_ID to specify the WAF lists to update"),
-				)
-			},
-		},
 		"once/update-on-start": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{true, true},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 				},
@@ -191,7 +131,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"once/delete-on-stop": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth: fakeAuth{true, true},
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 				},
@@ -211,7 +150,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"nilprovider": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
@@ -237,7 +175,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"dns6empty": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
@@ -250,7 +187,6 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
@@ -276,7 +212,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"dns6empty-ip4none": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -303,7 +238,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"ip4none": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -316,7 +250,6 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -344,26 +277,24 @@ func TestNormalize(t *testing.T) {
 		},
 		"ignored/dns": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains:         map[ipnet.Type][]domain.Domain{},
-				WAFLists:        []string{"list"},
+				WAFLists:        []api.WAFList{{AccountID: "account", ListName: "list"}},
 				TTL:             10000,
 				ProxiedTemplate: "true",
 				RecordComment:   "hello",
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				Domains:         map[ipnet.Type][]domain.Domain{},
-				WAFLists:        []string{"list"},
+				WAFLists:        []api.WAFList{{AccountID: "account", ListName: "list"}},
 				TTL:             10000,
 				ProxiedTemplate: "true",
 				Proxied:         map[domain.Domain]bool{},
@@ -388,7 +319,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"ignored/waf": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -404,7 +334,6 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -431,7 +360,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -443,7 +371,6 @@ func TestNormalize(t *testing.T) {
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -468,7 +395,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/1": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -491,7 +417,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/2": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -514,7 +439,6 @@ func TestNormalize(t *testing.T) {
 		},
 		"proxied/invalid/3": {
 			input: &config.Config{ //nolint:exhaustruct
-				Auth:          fakeAuth{true, true},
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),

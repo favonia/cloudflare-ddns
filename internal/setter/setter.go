@@ -21,15 +21,10 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
-// SanityCheck calls [api.Handle.SanityCheck].
-func (s setter) SanityCheck(ctx context.Context, ppfmt pp.PP) (bool, bool) {
-	return s.Handle.SanityCheck(ctx, ppfmt)
-}
-
 // partitionRecords partitions record maps into matched and unmatched ones.
 //
 // The target IP is assumed to be non-zero.
-func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatchedIDs []string) {
+func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatchedIDs []api.ID) {
 	for _, r := range rs {
 		if r.IP == target {
 			matchedIDs = append(matchedIDs, r.ID)
@@ -45,12 +40,12 @@ func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatched
 //
 //nolint:funlen
 func (s setter) Set(ctx context.Context, ppfmt pp.PP,
-	domain domain.Domain, ipnet ipnet.Type, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
+	ipnet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
 	if !ok {
 		return ResponseFailed
 	}
@@ -89,7 +84,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Again, we prefer updating stale records instead of creating new ones so that we can
 	// preserve the current TTL and proxy setting.
 	if !foundMatched && len(unprocessedUnmatched) > 0 {
-		if ok := s.Handle.UpdateRecord(ctx, ppfmt, domain, ipnet, unprocessedUnmatched[0], ip); !ok {
+		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0], ip); !ok {
 			ppfmt.Warningf(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
@@ -112,7 +107,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// If it's still not up to date at this point, it means there are no stale records to update.
 	// This leaves us no choices---we have to create a new record with the correct IP.
 	if !foundMatched {
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, domain, ipnet, ip, ttl, proxied, recordComment)
+		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, ttl, proxied, recordComment)
 		if !ok {
 			ppfmt.Warningf(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
@@ -128,7 +123,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); !ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id); !ok {
 			ppfmt.Warningf(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
@@ -142,7 +137,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// We should also delete all duplicate records even if they are up to date.
 	// This has lower priority than deleting the stale records.
 	for _, id := range unprocessedMatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id); ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id); ok {
 			ppfmt.Noticef(pp.EmojiDeletion,
 				"Deleted a duplicate %s record of %q (ID: %s)", recordType, domainDescription, id)
 		}
@@ -155,17 +150,17 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 }
 
 // Delete deletes all managed DNS records.
-func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, ipnet ipnet.Type) ResponseCode {
+func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, domain, ipnet)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
 	if !ok {
 		return ResponseFailed
 	}
 
 	// Sorting is not needed for correctness, but it will make the function deterministic.
-	unmatchedIDs := make([]string, 0, len(rs))
+	unmatchedIDs := make([]api.ID, 0, len(rs))
 	for _, r := range rs {
 		unmatchedIDs = append(unmatchedIDs, r.ID)
 	}
@@ -181,7 +176,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 
 	allOK := true
 	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, domain, ipnet, id) {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id) {
 			allOK = false
 
 			if ctx.Err() != nil {
@@ -210,17 +205,17 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, domain domain.Domain, i
 // If detectedIPs contains a zero (invalid) IP, it means the detection is attempted but failed
 // and all matching IP addresses should be preserved.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
-	listName, listDescription string, detectedIPs map[ipnet.Type]netip.Addr, itemComment string,
+	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type]netip.Addr, itemComment string,
 ) ResponseCode {
-	listID, alreadyExisting, ok := s.Handle.EnsureWAFList(ctx, ppfmt, listName, listDescription)
+	listID, alreadyExisting, ok := s.Handle.EnsureWAFList(ctx, ppfmt, list, listDescription)
 	if !ok {
 		return ResponseFailed
 	}
 	if !alreadyExisting {
-		ppfmt.Noticef(pp.EmojiCreation, "Created a new list named %q (ID: %s)", listName, listID)
+		ppfmt.Noticef(pp.EmojiCreation, "Created a new list named %q (ID: %s)", list.ListName, listID)
 	}
 
-	items, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, listName)
+	items, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list)
 	if !ok {
 		return ResponseFailed
 	}
@@ -250,45 +245,45 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date (cached)", listName, listID)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date (cached)", list.ListName, listID)
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date", listName, listID)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date", list.ListName, listID)
 		}
 		return ResponseNoop
 	}
 
-	if !s.Handle.CreateWAFListItems(ctx, ppfmt, listName, itemsToCreate, itemComment) {
+	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, itemsToCreate, itemComment) {
 		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
-			listName, listID)
+			list.ListName, listID)
 		return ResponseFailed
 	}
 	for _, item := range itemsToCreate {
 		ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %q (ID: %s)",
-			ipnet.DescribePrefixOrIP(item), listName, listID)
+			ipnet.DescribePrefixOrIP(item), list.ListName, listID)
 	}
 
-	idsToDelete := make([]string, 0, len(itemsToDelete))
+	idsToDelete := make([]api.ID, 0, len(itemsToDelete))
 	for _, item := range itemsToDelete {
 		idsToDelete = append(idsToDelete, item.ID)
 	}
-	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, listName, idsToDelete) {
+	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, idsToDelete) {
 		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
-			listName, listID)
+			list.ListName, listID)
 		return ResponseFailed
 	}
 	for _, item := range itemsToDelete {
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %q (ID: %s)",
-			ipnet.DescribePrefixOrIP(item.Prefix), listName, listID)
+			ipnet.DescribePrefixOrIP(item.Prefix), list.ListName, listID)
 	}
 
 	return ResponseUpdated
 }
 
 // DeleteWAFList deletes a WAF list.
-func (s setter) DeleteWAFList(ctx context.Context, ppfmt pp.PP, listName string) ResponseCode {
-	if !s.Handle.DeleteWAFList(ctx, ppfmt, listName) {
+func (s setter) DeleteWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList) ResponseCode {
+	if !s.Handle.DeleteWAFList(ctx, ppfmt, list) {
 		return ResponseFailed
 	}
-	ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", listName)
+	ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.ListName)
 	return ResponseUpdated
 }

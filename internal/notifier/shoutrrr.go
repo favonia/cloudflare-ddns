@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/containrrr/shoutrrr"
@@ -64,7 +65,7 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 		}
 	}
 	if allOK {
-		ppfmt.Infof(pp.EmojiNotify, "Notified %s via shoutrrr", pp.QuotedEnglishJoin(s.ServiceNames))
+		ppfmt.Infof(pp.EmojiNotify, "Notified %s via shoutrrr", pp.EnglishJoinMap(strconv.Quote, s.ServiceNames))
 	}
 	return allOK
 }

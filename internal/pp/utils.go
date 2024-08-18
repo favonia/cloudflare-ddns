@@ -2,7 +2,6 @@ package pp
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -33,12 +32,22 @@ func EnglishJoin(items []string) string {
 	}
 }
 
-// QuotedEnglishJoin is similar to EnglishJoin except that every item is quoted.
-func QuotedEnglishJoin(items []string) string {
-	quoted := make([]string, 0, len(items))
+// JoinMap applies a function to each element in the slice and then call Join.
+func JoinMap[T any](f func(t T) string, items []T) string {
+	ss := make([]string, 0, len(items))
 	for _, item := range items {
-		quoted = append(quoted, strconv.Quote(item))
+		ss = append(ss, f(item))
 	}
 
-	return EnglishJoin(quoted)
+	return Join(ss)
+}
+
+// EnglishJoinMap applies a function to each element in the slice and then call EnglishJoin.
+func EnglishJoinMap[T any](f func(t T) string, items []T) string {
+	ss := make([]string, 0, len(items))
+	for _, item := range items {
+		ss = append(ss, f(item))
+	}
+
+	return EnglishJoin(ss)
 }
