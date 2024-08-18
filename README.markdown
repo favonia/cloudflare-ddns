@@ -28,7 +28,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 - 😶‍🌫️ You can toggle [Cloudflare proxying](https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/) for each domain.
 - 📝 You can set [DNS record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) (and record tags very soon).
-- 📜 The updater can manage a [custom list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses for you to use in [Web Application Firewalls (WAF)](https://developers.cloudflare.com/waf/) rules.
+- 📜 The updater can maintain [custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses for you to use in [Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) rules.
 
 ### 🕵️ Privacy
 
