@@ -140,7 +140,7 @@ func TestListZonesTwo(t *testing.T) {
 				h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
 				mockPP = mocks.NewMockPP(mockCtrl)
-				mockPP.EXPECT().Warningf(
+				mockPP.EXPECT().Noticef(
 					pp.EmojiError,
 					"Failed to check the existence of a zone named %q: %v",
 					"test.org",
@@ -176,7 +176,7 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{},
 			3, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %q", "sub.test.org")
 			},
 		},
 		"none/wildcard": {
@@ -184,7 +184,7 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{},
 			2, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "*.test.org")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %q", "*.test.org")
 			},
 		},
 		"multiple": {
@@ -193,7 +193,7 @@ func TestZoneOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiImpossible,
 						"Found multiple active zones named %q (IDs: %s); please report this at %s",
 						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
@@ -207,7 +207,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiImpossible,
 						"Found multiple active zones named %q (IDs: %s); please report this at %s",
 						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
@@ -222,7 +222,7 @@ func TestZoneOfDomain(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", "test.org", "deleted"),
-					m.EXPECT().Warningf(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %q", "test.org"),
 				)
 			},
 		},
@@ -232,7 +232,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "pending"), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "pending"), //nolint:lll
 				)
 			},
 		},
@@ -242,7 +242,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Warningf(pp.EmojiWarning,
+					m.EXPECT().Noticef(pp.EmojiWarning,
 						"Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected",
 						"test.org", "initializing"),
 				)
@@ -253,7 +253,7 @@ func TestZoneOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"some-undocumented-status"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible,
+				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"Zone %q is in an undocumented status %q; please report this at %s",
 					"test.org", "some-undocumented-status", pp.IssueReportingURL)
 			},
@@ -297,7 +297,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Warningf(
+	mockPP.EXPECT().Noticef(
 		pp.EmojiError,
 		"Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
@@ -419,7 +419,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 		[]formattedRecord{{"record1", "::1"}, {"record2", "not an ip"}})
 	lrh.setRequestLimit(1)
 
-	mockPP.EXPECT().Warningf(
+	mockPP.EXPECT().Noticef(
 		pp.EmojiImpossible,
 		"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
 		"AAAA",
@@ -435,7 +435,7 @@ func TestListRecordsInvalidIPAddress(t *testing.T) {
 
 	// testing the (no) caching
 	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(
+	mockPP.EXPECT().Noticef(
 		pp.EmojiError,
 		"Failed to retrieve %s records of %q: %v",
 		"AAAA",
@@ -492,14 +492,14 @@ func TestListRecordsInvalidDomain(t *testing.T) {
 	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "A", "sub.test.org", gomock.Any())
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP4, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
 	require.Zero(t, rs)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "AAAA", "sub.test.org", gomock.Any()) //nolint:lll
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %q: %v", "AAAA", "sub.test.org", gomock.Any()) //nolint:lll
 	rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.False(t, cached)
@@ -514,7 +514,7 @@ func TestListRecordsInvalidZone(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Warningf(
+	mockPP.EXPECT().Noticef(
 		pp.EmojiError,
 		"Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
@@ -526,7 +526,7 @@ func TestListRecordsInvalidZone(t *testing.T) {
 	require.Zero(t, rs)
 
 	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(
+	mockPP.EXPECT().Noticef(
 		pp.EmojiError,
 		"Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
@@ -619,7 +619,7 @@ func TestDeleteRecordInvalid(t *testing.T) {
 	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
 		api.ID("record1"),
@@ -637,7 +637,7 @@ func TestDeleteRecordZoneInvalid(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)
@@ -724,7 +724,7 @@ func TestUpdateRecordInvalid(t *testing.T) {
 	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 		"AAAA",
 		"sub.test.org",
 		api.ID("record1"),
@@ -742,7 +742,7 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)
@@ -831,7 +831,7 @@ func TestCreateRecordInvalid(t *testing.T) {
 	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
 	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 		"AAAA",
 		"sub.test.org",
 		gomock.Any(),
@@ -849,7 +849,7 @@ func TestCreateRecordInvalidZone(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
 		"sub.test.org",
 		gomock.Any(),
 	)

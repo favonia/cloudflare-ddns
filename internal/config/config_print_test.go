@@ -28,7 +28,7 @@ func TestPrintDefault(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().Indent().Return(mockPP),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
@@ -66,7 +66,7 @@ func TestPrintValues(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().Indent().Return(mockPP),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
@@ -138,7 +138,7 @@ func TestPrintEmpty(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
 		mockPP.EXPECT().Indent().Return(mockPP),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
@@ -171,7 +171,7 @@ func TestPrintHidden(t *testing.T) {
 	store(t, "TZ", "UTC")
 
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().IsEnabledFor(pp.Info).Return(false)
+	mockPP.EXPECT().IsShowing(pp.Info).Return(false)
 
 	var cfg config.Config
 	cfg.Print(mockPP)

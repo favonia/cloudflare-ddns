@@ -20,7 +20,7 @@ func TestSetupPP(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, ppfmt)
 
-	ppfmt.Errorf(pp.EmojiStar, "message")
+	ppfmt.Noticef(pp.EmojiStar, "message")
 	require.Equal(t, `🌟 message
 `, buf.String())
 }

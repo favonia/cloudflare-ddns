@@ -61,7 +61,7 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, "+++")
+				m.EXPECT().Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, "+++")
 			},
 		},
 		"invalid-name": {
@@ -70,7 +70,7 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "List name %q contains invalid character %q", "!!!", "!")
+				m.EXPECT().Noticef(pp.EmojiUserError, "List name %q contains invalid character %q", "!!!", "!")
 			},
 		},
 		"toolong": {
@@ -79,7 +79,7 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", ListName: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "List name \"%.10s...\" is too long (more than 50 characters)", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiUserError, "List name \"%.10s...\" is too long (more than 50 characters)", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") //nolint:lll
 			},
 		},
 	} {

@@ -37,7 +37,7 @@ func TestReadEmoji(t *testing.T) {
 		"illform": {
 			true, "weird", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {
@@ -83,7 +83,7 @@ func TestReadQuiet(t *testing.T) {
 		"illform": {
 			true, "weird", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {

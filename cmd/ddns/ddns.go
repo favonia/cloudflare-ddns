@@ -110,7 +110,7 @@ func realMain() int { //nolint:funlen
 	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
 	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
 	// having the internal cron disabled.)
-	if c.UpdateCron != nil && !ppfmt.IsEnabledFor(pp.Verbose) {
+	if c.UpdateCron != nil && !ppfmt.IsShowing(pp.Verbose) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -143,7 +143,7 @@ func realMain() int { //nolint:funlen
 
 		// If there's nothing scheduled in near future
 		if next.IsZero() {
-			ppfmt.Errorf(pp.EmojiUserError,
+			ppfmt.Noticef(pp.EmojiUserError,
 				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
 				cron.DescribeSchedule(c.UpdateCron),
 			)

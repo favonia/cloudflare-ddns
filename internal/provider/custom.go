@@ -13,24 +13,24 @@ import (
 func NewCustom(ppfmt pp.PP, rawURL string) (Provider, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
 		return nil, false
 	}
 
 	if !u.IsAbs() || u.Opaque != "" || u.Host == "" {
-		ppfmt.Errorf(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
 		return nil, false
 	}
 
 	switch u.Scheme {
 	case "http":
-		ppfmt.Warningf(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
+		ppfmt.Noticef(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
 
 	case "https":
 		// HTTPS is good!
 
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
+		ppfmt.Noticef(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
 		return nil, false
 	}
 

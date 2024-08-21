@@ -29,25 +29,25 @@ func TestNewCustom(t *testing.T) {
 		{
 			":::::", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
 			},
 		},
 		{
 			"http://1.2.3.4", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
 			},
 		},
 		{
 			"ftp://1.2.3.4", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
 			},
 		},
 		{
 			"", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
 			},
 		},
 	} {

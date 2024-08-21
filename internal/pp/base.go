@@ -11,8 +11,8 @@ type PP interface {
 	// SetVerbosity sets the level under which messages will be hidden.
 	SetVerbosity(v Verbosity) PP
 
-	// IsEnabledFor checks whether a message of a certain level will be displayed.
-	IsEnabledFor(v Verbosity) bool
+	// IsShowing checks whether a message of a certain level will be displayed.
+	IsShowing(v Verbosity) bool
 
 	// Indent returns a new pretty-printer with more indentation.
 	Indent() PP
@@ -22,12 +22,6 @@ type PP interface {
 
 	// Noticef formats and prints a message at the notice level.
 	Noticef(emoji Emoji, format string, args ...any)
-
-	// Warningf formats and prints a message at the warning level.
-	Warningf(emoji Emoji, format string, args ...any)
-
-	// Errorf formats and prints a message at the error level.
-	Errorf(emoji Emoji, format string, args ...any)
 
 	// SuppressHint suppresses all future calls to [Hintf] with the same hint ID.
 	SuppressHint(hint Hint)

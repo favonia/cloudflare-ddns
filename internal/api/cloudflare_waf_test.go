@@ -106,7 +106,7 @@ func TestListWAFLists(t *testing.T) {
 			},
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
 					"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 				)
@@ -156,7 +156,7 @@ func TestListWAFLists(t *testing.T) {
 			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
 			mockPP = mocks.NewMockPP(mockCtrl)
-			mockPP.EXPECT().Warningf(
+			mockPP.EXPECT().Noticef(
 				pp.EmojiError,
 				"Failed to list existing lists: %v",
 				gomock.Any(),
@@ -188,7 +188,7 @@ func TestListWAFListsHint(t *testing.T) {
 
 	mockPP = mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().Warningf(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
 		mockPP.EXPECT().Hintf(pp.HintCloudflareWAFPermissions,
 			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
@@ -213,11 +213,11 @@ func TestFindWAFList(t *testing.T) {
 			false, "",
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -229,7 +229,7 @@ func TestFindWAFList(t *testing.T) {
 			1,
 			false, "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError,
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to find the list %q",
 					"list",
 				)
@@ -254,11 +254,11 @@ func TestFindWAFList(t *testing.T) {
 			false, "",
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
 						"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -352,11 +352,11 @@ func TestEnsureWAFList(t *testing.T) {
 			false, false, "",
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to check the existence of the list %q",
 						"list",
 					),
@@ -378,7 +378,7 @@ func TestEnsureWAFList(t *testing.T) {
 			0,
 			false, false, "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError,
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to create a list named %q: %v",
 					"list", gomock.Any(),
 				)
@@ -494,11 +494,11 @@ func TestDeleteWAFList(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -511,7 +511,7 @@ func TestDeleteWAFList(t *testing.T) {
 			0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError, "Failed to delete the list %q: %v", "list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %q: %v", "list", gomock.Any())
 			},
 		},
 	} {
@@ -632,11 +632,11 @@ func TestListWAFListItems(t *testing.T) {
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -649,7 +649,7 @@ func TestListWAFListItems(t *testing.T) {
 			0,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError,
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to retrieve items in the list %q (ID: %s): %v",
 					"list", mockID("list", 0), gomock.Any())
 			},
@@ -661,11 +661,11 @@ func TestListWAFListItems(t *testing.T) {
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Found an invalid IP range/address %q in the list %q (ID: %s)",
 						"invalid item", "list", mockID("list", 0)),
 				)
@@ -677,7 +677,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 					"Found a non-IP in the list %q (ID: %s)",
 					"list", mockID("list", 0))
 			},
@@ -818,11 +818,11 @@ func TestDeleteWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -835,7 +835,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError,
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to finish deleting items from the list %q (ID: %s): %v",
 					"list", mockID("list", 0), gomock.Any())
 			},
@@ -849,11 +849,11 @@ func TestDeleteWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Found an invalid IP range/address %q in the list %q (ID: %s)",
 						"invalid item", "list", mockID("list", 0)),
 				)
@@ -973,11 +973,11 @@ func TestCreateWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to list existing lists: %v",
 						gomock.Any(),
 					),
-					ppfmt.EXPECT().Warningf(pp.EmojiError,
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
 						"Failed to find the list %q",
 						"list",
 					),
@@ -990,7 +990,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Warningf(pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
 					"list", mockID("list", 0), gomock.Any())
 			},
 		},
@@ -1003,11 +1003,11 @@ func TestCreateWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Warningf(pp.EmojiImpossible,
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 						"Found an invalid IP range/address %q in the list %q (ID: %s)",
 						"invalid item", "list", mockID("list", 0)),
 				)

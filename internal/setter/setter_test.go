@@ -62,7 +62,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{}, true, true),
 					h.EXPECT().CreateRecord(ctx, p, ipNetwork, domain, ip1, api.TTLAuto, false, "hello").Return(record1, false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -89,7 +89,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1).Return(false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -231,7 +231,7 @@ func TestSet(t *testing.T) {
 					),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -243,7 +243,7 @@ func TestSet(t *testing.T) {
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1).Return(false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -331,7 +331,7 @@ func TestDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1).Return(false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to properly delete %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly delete %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
 		},
@@ -602,7 +602,7 @@ func TestSetWAFList(t *testing.T) {
 					m.EXPECT().ListWAFListItems(ctx, p, wafList).Return(items{}, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList,
 						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
-					p.EXPECT().Warningf(pp.EmojiError,
+					p.EXPECT().Noticef(pp.EmojiError,
 						"Failed to properly update the list %q (ID: %s); its content may be inconsistent", listName, listID),
 				)
 			},
@@ -638,7 +638,7 @@ func TestSetWAFList(t *testing.T) {
 							prefix4wrong1.ID,
 							prefix6wrong1.ID,
 						})).Return(false),
-					p.EXPECT().Warningf(pp.EmojiError,
+					p.EXPECT().Noticef(pp.EmojiError,
 						"Failed to properly update the list %q (ID: %s); its content may be inconsistent", listName, listID),
 				)
 			},

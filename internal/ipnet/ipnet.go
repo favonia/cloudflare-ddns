@@ -54,7 +54,7 @@ func (t Type) Int() int {
 // NormalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
 func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
-		ppfmt.Warningf(
+		ppfmt.Noticef(
 			pp.EmojiImpossible,
 			`Detected IP address is not valid`,
 		)
@@ -62,7 +62,7 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 	}
 
 	if ip.IsUnspecified() {
-		ppfmt.Warningf(
+		ppfmt.Noticef(
 			pp.EmojiImpossible,
 			`Detected IP address %s is an unspecified %s address`,
 			ip.String(),
@@ -77,20 +77,20 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		ip = ip.Unmap()
 
 		if !ip.Is4() {
-			ppfmt.Warningf(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip.String())
+			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip.String())
 			return netip.Addr{}, false
 		}
 	case IP6:
 		// If the address is an IPv4 address, map it back to an IPv6 address.
 		ip = netip.AddrFrom16(ip.As16())
 	default:
-		ppfmt.Warningf(pp.EmojiImpossible,
+		ppfmt.Noticef(pp.EmojiImpossible,
 			"Unrecognized IP version %d was used; please report this at %s", int(t), pp.IssueReportingURL)
 		return netip.Addr{}, false
 	}
 
 	if !ip.IsGlobalUnicast() {
-		ppfmt.Warningf(
+		ppfmt.Noticef(
 			pp.EmojiUserWarning,
 			`Detected IP address %s does not look like a global unicast IP address.`,
 			ip.String(),

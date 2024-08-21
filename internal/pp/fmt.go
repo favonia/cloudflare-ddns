@@ -37,8 +37,8 @@ func (f formatter) SetVerbosity(v Verbosity) PP {
 	return f
 }
 
-// IsEnabledFor checks whether a message of verbosity level v will be printed.
-func (f formatter) IsEnabledFor(v Verbosity) bool {
+// IsShowing checks whether a message of verbosity level v will be printed.
+func (f formatter) IsShowing(v Verbosity) bool {
 	return v >= f.verbosity
 }
 
@@ -80,16 +80,6 @@ func (f formatter) Infof(emoji Emoji, format string, args ...any) {
 // Noticef formats and sends a message at the level [Notice].
 func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
-}
-
-// Warningf formats and sends a message at the level [Warning].
-func (f formatter) Warningf(emoji Emoji, format string, args ...any) {
-	f.printf(Warning, emoji, format, args...)
-}
-
-// Errorf formats and sends a message at the level [Error].
-func (f formatter) Errorf(emoji Emoji, format string, args ...any) {
-	f.printf(Error, emoji, format, args...)
 }
 
 // SuppressHint sets the hint in the internal map to be "shown".

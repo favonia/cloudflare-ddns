@@ -64,13 +64,13 @@ func TestFieldGetIP(t *testing.T) {
 			"6to4": {
 				ipnet.IP4, ip6Server.URL, "hello6", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip6.String())
+					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip6.String())
 				},
 			},
 			"4-nil1": {
 				ipnet.IP4, dummy.URL, "ip", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiError,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,
@@ -80,7 +80,7 @@ func TestFieldGetIP(t *testing.T) {
 			"6-nil1": {
 				ipnet.IP6, dummy.URL, "ip", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiError,
 						`Failed to parse the IP address in the response of %q: %s`,
 						dummy.URL,
@@ -90,7 +90,7 @@ func TestFieldGetIP(t *testing.T) {
 			"4-nil2": {
 				ipnet.IP4, "", "", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiError,
 						"Failed to send HTTP(S) request to %q: %v",
 						"",
@@ -101,7 +101,7 @@ func TestFieldGetIP(t *testing.T) {
 			"6-nil2": {
 				ipnet.IP6, "", "", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(
+					m.EXPECT().Noticef(
 						pp.EmojiError,
 						"Failed to send HTTP(S) request to %q: %v",
 						"",
@@ -112,19 +112,19 @@ func TestFieldGetIP(t *testing.T) {
 			"4-nil3": {
 				ipnet.IP4, ip4Server.URL, "hello4", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 				},
 			},
 			"6-nil3": {
 				ipnet.IP6, ip6Server.URL, "hello6", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 				},
 			},
 			"4-nil4": {
 				ipnet.IP4, dummy.URL, "nonexisting4", ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(pp.EmojiError,
+					m.EXPECT().Noticef(pp.EmojiError,
 						`Failed to find the IP address in the response of %q: %s`,
 						dummy.URL,
 						[]byte("ip=none"))
@@ -133,7 +133,7 @@ func TestFieldGetIP(t *testing.T) {
 			"6-nil4": {
 				ipnet.IP6, dummy.URL, "nonexisting6", ipnet.IP6, invalidIP,
 				func(m *mocks.MockPP) {
-					m.EXPECT().Warningf(pp.EmojiError,
+					m.EXPECT().Noticef(pp.EmojiError,
 						`Failed to find the IP address in the response of %q: %s`,
 						dummy.URL,
 						[]byte("ip=none"))

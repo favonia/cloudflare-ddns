@@ -54,7 +54,7 @@ func TestShoutrrrSend(t *testing.T) {
 			"hello",
 			false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
 			},
 		},
 	} {

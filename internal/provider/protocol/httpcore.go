@@ -26,7 +26,7 @@ func (h httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 
@@ -39,14 +39,14 @@ func (h httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", h.url, err)
 		return invalidIP, false
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxReadLength))
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
 		return invalidIP, false
 	}
 

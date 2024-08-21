@@ -38,7 +38,7 @@ func (c *Config) ShouldWeUse1001Now(ctx context.Context, ppfmt pp.PP) bool {
 		return false // any answer would work
 	}
 
-	if ppfmt.IsEnabledFor(pp.Info) {
+	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Probing 1.1.1.1 and 1.0.0.1 . . .")
 		ppfmt = ppfmt.Indent()
 	}
@@ -51,14 +51,14 @@ func (c *Config) ShouldWeUse1001Now(ctx context.Context, ppfmt pp.PP) bool {
 		return false
 	} else {
 		if ProbeURL(ctx, "https://1.0.0.1") {
-			ppfmt.Warningf(pp.EmojiError, "1.1.1.1 is not working, but 1.0.0.1 is; using 1.0.0.1")
+			ppfmt.Noticef(pp.EmojiError, "1.1.1.1 is not working, but 1.0.0.1 is; using 1.0.0.1")
 			ppfmt.Infof(pp.EmojiHint, "1.1.1.1 is probably blocked or hijacked by your router or ISP")
 
 			res := true
 			c.ShouldWeUse1001 = &res
 			return true
 		} else {
-			ppfmt.Warningf(pp.EmojiError, "Both 1.1.1.1 and 1.0.0.1 are not working; sticking to 1.1.1.1 now")
+			ppfmt.Noticef(pp.EmojiError, "Both 1.1.1.1 and 1.0.0.1 are not working; sticking to 1.1.1.1 now")
 			ppfmt.Infof(pp.EmojiHint, "The network might be temporarily down; will redo probing later")
 			return false
 		}

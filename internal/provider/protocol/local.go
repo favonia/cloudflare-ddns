@@ -36,13 +36,13 @@ func (p Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use100
 
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
 	if !found {
-		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return invalidIP, false
 	}
 
 	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr.Switch(use1001))
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
 		return invalidIP, false
 	}
 	defer conn.Close()

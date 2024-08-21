@@ -9,7 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestIsEnabledFor(t *testing.T) {
+func TestIsShowing(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -18,7 +18,7 @@ func TestIsEnabledFor(t *testing.T) {
 		expected bool
 	}{
 		"info-notice": {pp.Info, pp.Notice, true},
-		"erorr-info":  {pp.Error, pp.Info, false},
+		"notice-info": {pp.Notice, pp.Info, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -26,7 +26,7 @@ func TestIsEnabledFor(t *testing.T) {
 			var buf strings.Builder
 			fmt := pp.New(&buf).SetVerbosity(tc.set)
 
-			require.Equal(t, tc.expected, fmt.IsEnabledFor(tc.test))
+			require.Equal(t, tc.expected, fmt.IsShowing(tc.test))
 		})
 	}
 }
@@ -37,13 +37,13 @@ func TestIndent(t *testing.T) {
 	var buf strings.Builder
 	outer := pp.New(&buf)
 
-	outer.Errorf(pp.EmojiStar, "message1")
+	outer.Noticef(pp.EmojiStar, "message1")
 	middle := outer.Indent()
-	middle.Errorf(pp.EmojiStar, "message2")
+	middle.Noticef(pp.EmojiStar, "message2")
 	inner := middle.Indent()
-	outer.Errorf(pp.EmojiStar, "message3")
-	inner.Errorf(pp.EmojiStar, "message4")
-	middle.Errorf(pp.EmojiStar, "message5")
+	outer.Noticef(pp.EmojiStar, "message3")
+	inner.Noticef(pp.EmojiStar, "message4")
+	middle.Noticef(pp.EmojiStar, "message5")
 
 	require.Equal(t,
 		`🌟 message1
@@ -63,14 +63,10 @@ func TestPrint(t *testing.T) {
 		verbosity pp.Verbosity
 		expected  string
 	}{
-		"info":              {true, pp.Info, "🌟 info\n🌟 notice\n🌟 warning\n🌟 error\n"},
-		"notice":            {true, pp.Notice, "🌟 notice\n🌟 warning\n🌟 error\n"},
-		"warning":           {true, pp.Warning, "🌟 warning\n🌟 error\n"},
-		"errorfmt":          {true, pp.Error, "🌟 error\n"},
-		"info/no-emoji":     {false, pp.Info, "info\nnotice\nwarning\nerror\n"},
-		"notice/no-emoji":   {false, pp.Notice, "notice\nwarning\nerror\n"},
-		"warning/no-emoji":  {false, pp.Warning, "warning\nerror\n"},
-		"errorfmt/no-emoji": {false, pp.Error, "error\n"},
+		"info":            {true, pp.Info, "🌟 info\n🌟 notice\n"},
+		"notice":          {true, pp.Notice, "🌟 notice\n"},
+		"info/no-emoji":   {false, pp.Info, "info\nnotice\n"},
+		"notice/no-emoji": {false, pp.Notice, "notice\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -80,8 +76,6 @@ func TestPrint(t *testing.T) {
 
 			fmt.Infof(pp.EmojiStar, "info")
 			fmt.Noticef(pp.EmojiStar, "notice")
-			fmt.Warningf(pp.EmojiStar, "warning")
-			fmt.Errorf(pp.EmojiStar, "error")
 
 			require.Equal(t, tc.expected, buf.String())
 		})

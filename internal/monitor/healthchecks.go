@@ -37,26 +37,26 @@ const (
 func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
 	if !(u.IsAbs() && u.Opaque == "" && u.Host != "" && u.RawQuery == "") {
-		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
-		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
 	switch u.Scheme {
 	case "http":
-		ppfmt.Warningf(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS")
+		ppfmt.Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS")
 
 	case "https":
 		// HTTPS is good!
 
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
-		ppfmt.Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
@@ -115,7 +115,7 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 
 	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, url.String(), strings.NewReader(message))
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiImpossible,
+		ppfmt.Noticef(pp.EmojiImpossible,
 			"Failed to prepare HTTP(S) request to the %s endpoint of Healthchecks: %v",
 			endpointDescription, err)
 		return false
@@ -126,7 +126,7 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 
 	resp, err := c.Do(req)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError,
+		ppfmt.Noticef(pp.EmojiError,
 			"Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v",
 			endpointDescription, err)
 		return false
@@ -134,7 +134,7 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxReadLength))
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError,
+		ppfmt.Noticef(pp.EmojiError,
 			"Failed to read HTTP(S) response from the %s endpoint of Healthchecks: %v",
 			endpointDescription, err)
 		return false
@@ -142,7 +142,7 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 
 	bodyAsString := strings.TrimSpace(string(body))
 	if resp.StatusCode != http.StatusOK || bodyAsString != "OK" {
-		ppfmt.Warningf(pp.EmojiError,
+		ppfmt.Noticef(pp.EmojiError,
 			"Failed to ping the %s endpoint of Healthchecks; got response code: %d %s",
 			endpointDescription, resp.StatusCode, bodyAsString,
 		)
@@ -176,7 +176,7 @@ func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, message string) bool
 // ExitStatus pings the /number endpoint where number is the exit status.
 func (h Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
 	if code < 0 || code > 255 {
-		ppfmt.Errorf(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)
+		ppfmt.Noticef(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)
 		return false
 	}
 

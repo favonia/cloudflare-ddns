@@ -310,7 +310,7 @@ func TestUpdateIPsUninitializedProxied(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4, true).Return(ip4, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					p.EXPECT().Warningf(pp.EmojiImpossible,
+					p.EXPECT().Noticef(pp.EmojiImpossible,
 						"Proxied[%s] not initialized; this should not happen; please report this at %s",
 						"ip4.hello", pp.IssueReportingURL,
 					),
@@ -545,7 +545,7 @@ func TestUpdateIPs(t *testing.T) {
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4, true).Return(netip.Addr{}, false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6, true).Return(ip6, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address: %v", "IPv6", ip6),
@@ -570,7 +570,7 @@ func TestUpdateIPs(t *testing.T) {
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6, true).Return(netip.Addr{}, false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					p.EXPECT().Hintf(pp.HintIP6DetectionFails, "If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. If your network does not support IPv6, you can disable it with IP6_PROVIDER=none", pp.ManualURL), //nolint:lll
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: netip.Addr{}}, ""),
@@ -585,10 +585,10 @@ func TestUpdateIPs(t *testing.T) {
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4, true).Return(netip.Addr{}, false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6, true).Return(netip.Addr{}, false),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					p.EXPECT().Hintf(pp.HintIP6DetectionFails, "If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. If your network does not support IPv6, you can disable it with IP6_PROVIDER=none", pp.ManualURL), //nolint:lll
 				)
 			},
@@ -607,7 +607,7 @@ func TestUpdateIPs(t *testing.T) {
 								return netip.Addr{}, false
 							},
 						),
-					p.EXPECT().Warningf(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),                    //nolint:lll
 					p.EXPECT().Hintf(pp.HintDetectionTimeouts, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
 				)
