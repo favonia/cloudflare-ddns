@@ -47,7 +47,7 @@ func NewCustom(ppfmt pp.PP, rawURL string) (Provider, bool) {
 // MustNewCustom creates a HTTP provider and panics if it fails.
 func MustNewCustom(rawURL string) Provider {
 	var buf strings.Builder
-	p, ok := NewCustom(pp.New(&buf), rawURL)
+	p, ok := NewCustom(pp.New(&buf, true, pp.DefaultVerbosity), rawURL)
 	if !ok {
 		panic(buf.String())
 	}

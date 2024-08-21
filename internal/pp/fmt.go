@@ -15,26 +15,14 @@ type formatter struct {
 }
 
 // New creates a new pretty printer.
-func New(writer io.Writer) PP {
+func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	return formatter{
 		writer:    writer,
-		emoji:     true,
+		emoji:     emoji,
 		indent:    0,
 		hintShown: map[Hint]bool{},
-		verbosity: DefaultVerbosity,
+		verbosity: verbosity,
 	}
-}
-
-// SetEmoji sets whether emojis should be printed.
-func (f formatter) SetEmoji(emoji bool) PP {
-	f.emoji = emoji
-	return f
-}
-
-// SetVerbosity sets messages of what verbosity levels should be printed.
-func (f formatter) SetVerbosity(v Verbosity) PP {
-	f.verbosity = v
-	return f
 }
 
 // IsShowing checks whether a message of verbosity level v will be printed.
