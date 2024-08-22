@@ -43,7 +43,7 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 
 // Print prints the Config on the screen.
 func (c *Config) Print(ppfmt pp.PP) {
-	if !ppfmt.IsEnabledFor(pp.Info) {
+	if ppfmt.Verbosity() < pp.Info {
 		return
 	}
 

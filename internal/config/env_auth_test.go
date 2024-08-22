@@ -29,25 +29,25 @@ func TestReadAuth(t *testing.T) {
 		"empty-token": {
 			"", "account", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
 			},
 		},
 		"invalid": {
 			"!!!", "", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "The API token does not look like a valid OAuth2 bearer token")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The API token does not look like a valid OAuth2 bearer token")
 			},
 		},
 		"account": {
 			"123456789", "secret account", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
 			},
 		},
 		"copycat": {
 			"YOUR-CLOUDFLARE-API-TOKEN", "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN")
+				m.EXPECT().Noticef(pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN")
 			},
 		},
 	} {
@@ -95,25 +95,25 @@ func TestReadAuthWithFile(t *testing.T) {
 		"both": {
 			"123456789", "test.txt", "test.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
 			},
 		},
 		"wrong.path": {
 			"", "wrong.txt", "actual.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
 			},
 		},
 		"empty": {
 			"", "test.txt", "test.txt", "", "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
 			},
 		},
 		"invalid path": {
 			"", "dir", "dir/test.txt", "hello", "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
 			},
 		},
 	} {

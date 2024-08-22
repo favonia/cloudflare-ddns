@@ -65,7 +65,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
 			},
 		},
 		"multiple": {

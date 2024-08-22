@@ -53,7 +53,7 @@ func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, val, err)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, val, err)
 		return false
 	}
 
@@ -72,11 +72,11 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	i, err := strconv.Atoi(val)
 	switch {
 	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
 		return false
 
 	case i < 0:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%d) is negative", key, i)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%d) is negative", key, i)
 		return false
 
 	default:
@@ -103,11 +103,11 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	res, err := strconv.Atoi(val)
 	switch {
 	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
 		return false
 
 	case res != 1 && (res < 30 || res > 86400):
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, res)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, res)
 		return false
 
 	default:
@@ -128,10 +128,10 @@ func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 
 	switch {
 	case err != nil:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a time duration: %v", key, val, err)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a time duration: %v", key, val, err)
 		return false
 	case t < 0:
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%v) is negative", key, t)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%v) is negative", key, t)
 		return false
 	}
 
@@ -151,14 +151,14 @@ func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 		return true
 
 	case "@disabled", "@nevermore":
-		ppfmt.Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, val, key)
+		ppfmt.Noticef(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, val, key)
 		*field = nil
 		return true
 
 	default:
 		c, err := cron.New(val)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, val, err)
+			ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, val, err)
 			return false
 		}
 		*field = c

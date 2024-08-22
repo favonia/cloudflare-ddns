@@ -35,7 +35,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
 		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
-		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
 		switch ipNet {
 		case ipnet.IP6:
@@ -64,7 +64,7 @@ func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
 		return proxied
 	}
 
-	ppfmt.Warningf(pp.EmojiImpossible,
+	ppfmt.Noticef(pp.EmojiImpossible,
 		"Proxied[%s] not initialized; this should not happen; please report this at %s",
 		domain.Describe(), pp.IssueReportingURL,
 	)

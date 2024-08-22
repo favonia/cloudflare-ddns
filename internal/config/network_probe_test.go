@@ -41,7 +41,7 @@ func TestProbeCloudflareIPs(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsEnabledFor(pp.Info).Return(true),
+		mockPP.EXPECT().Verbosity().Return(pp.Info),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Probing 1.1.1.1 and 1.0.0.1 . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Infof(pp.EmojiGood, "1.1.1.1 is working. Great!"),

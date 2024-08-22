@@ -14,8 +14,8 @@ func ParsePrefixOrIP(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 		if errAddr != nil {
 			// The context is an IP list from Cloudflare. Theoretically, it's impossible to have
 			// invalid IP ranges/addresses.
-			ppfmt.Warningf(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", s, errPrefix)
-			ppfmt.Warningf(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", s, errAddr)
+			ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", s, errPrefix)
+			ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", s, errAddr)
 			return netip.Prefix{}, false
 		}
 		p = netip.PrefixFrom(ip, ip.BitLen())

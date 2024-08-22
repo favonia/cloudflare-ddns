@@ -15,7 +15,7 @@ import (
 // - output-related ones (QUIET and EMOJI)
 // One should subsequently call [Config.Normalize] to restore invariants across fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
-	if ppfmt.IsEnabledFor(pp.Info) {
+	if ppfmt.Verbosity() >= pp.Info {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
@@ -48,27 +48,27 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 //
 //nolint:funlen
 func (c *Config) Normalize(ppfmt pp.PP) bool {
-	if ppfmt.IsEnabledFor(pp.Info) {
+	if ppfmt.Verbosity() >= pp.Info {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
 
 	// Step 1: is there something to do?
 	if len(c.Domains[ipnet.IP4]) == 0 && len(c.Domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
+		ppfmt.Noticef(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
 		return false
 	}
 
 	// Part 2: check DELETE_ON_STOP and UpdateOnStart
 	if c.UpdateCron == nil {
 		if !c.UpdateOnStart {
-			ppfmt.Errorf(
+			ppfmt.Noticef(
 				pp.EmojiUserError,
 				"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
 			return false
 		}
 		if c.DeleteOnStop {
-			ppfmt.Errorf(
+			ppfmt.Noticef(
 				pp.EmojiUserError,
 				"DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once")
 			return false
@@ -85,7 +85,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 			domains := c.Domains[ipNet]
 
 			if len(domains) == 0 && len(c.WAFLists) == 0 {
-				ppfmt.Warningf(pp.EmojiUserWarning,
+				ppfmt.Noticef(pp.EmojiUserWarning,
 					"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
 					ipNet.Int(), provider.Name(nil), ipNet.Describe())
 
@@ -101,7 +101,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 
 	// Step 3.2: check if all providers were turned off
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
+		ppfmt.Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
 		return false
 	}
@@ -114,7 +114,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 					continue
 				}
 
-				ppfmt.Warningf(pp.EmojiUserWarning,
+				ppfmt.Noticef(pp.EmojiUserWarning,
 					"Domain %q is ignored because it is only for %s but %s is disabled",
 					domain.Describe(), ipNet.Describe(), ipNet.Describe())
 			}
@@ -137,20 +137,20 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	// Step 5: check if new parameters are unused
 	if len(activeDomainSet) == 0 { // We are only updating WAF lists
 		if c.TTL != api.TTLAuto {
-			ppfmt.Warningf(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", c.TTL)
+			ppfmt.Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", c.TTL)
 		}
 		if c.ProxiedTemplate != "false" {
-			ppfmt.Warningf(pp.EmojiUserWarning,
+			ppfmt.Noticef(pp.EmojiUserWarning,
 				"PROXIED=%s is ignored because no domains will be updated", c.ProxiedTemplate)
 		}
 		if c.RecordComment != "" {
-			ppfmt.Warningf(pp.EmojiUserWarning,
+			ppfmt.Noticef(pp.EmojiUserWarning,
 				"RECORD_COMMENT=%s is ignored because no domains will be updated", c.RecordComment)
 		}
 	}
 	if len(c.WAFLists) == 0 { // We are only updating domains
 		if c.WAFListDescription != "" {
-			ppfmt.Warningf(pp.EmojiUserWarning,
+			ppfmt.Noticef(pp.EmojiUserWarning,
 				"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", c.WAFListDescription)
 		}
 	}

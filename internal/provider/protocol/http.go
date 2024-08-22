@@ -20,7 +20,7 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bo
 			ipString := strings.TrimSpace(string(body))
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Warningf(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Noticef(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
 				return netip.Addr{}, false
 			}
 			return ip, true
@@ -46,7 +46,7 @@ func (p HTTP) Name() string {
 func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	url, found := p.URL[ipNet]
 	if !found {
-		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 

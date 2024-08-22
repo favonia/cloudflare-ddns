@@ -45,7 +45,7 @@ func TestLocalGetIP(t *testing.T) {
 		"4": {
 			ipnet.IP4, "127.0.0.1:80", ipnet.IP4, gomock.Eq(ip4Loopback), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"Detected IP address %s does not look like a global unicast IP address.", "127.0.0.1")
 			},
 		},
@@ -62,7 +62,7 @@ func TestLocalGetIP(t *testing.T) {
 				})),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning,
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"Detected IP address %s does not look like a global unicast IP address.",
 					gomock.AnyOf(
 						"::1",
@@ -78,25 +78,25 @@ func TestLocalGetIP(t *testing.T) {
 		"4-nil1": {
 			ipnet.IP4, "", ipnet.IP4, gomock.Eq(invalidIP), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
 			},
 		},
 		"6-nil1": {
 			ipnet.IP6, "", ipnet.IP6, gomock.Eq(invalidIP), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
 			},
 		},
 		"4-nil2": {
 			ipnet.IP4, "127.0.0.1:80", ipnet.IP6, gomock.Eq(invalidIP), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 			},
 		},
 		"6-nil2": {
 			ipnet.IP6, "::1:80", ipnet.IP4, gomock.Eq(invalidIP), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},
 		},
 	} {

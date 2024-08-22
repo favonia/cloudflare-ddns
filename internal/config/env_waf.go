@@ -44,18 +44,18 @@ func ReadAndAppendWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bo
 
 		parts := strings.SplitN(val, "/", 2) //nolint:mnd
 		if len(parts) != 2 {                 //nolint:mnd
-			ppfmt.Errorf(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, val)
+			ppfmt.Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, val)
 			return false
 		}
 		list.AccountID, list.ListName = api.ID(parts[0]), parts[1]
 
 		if !wafListNameRegex.MatchString(list.ListName) {
-			ppfmt.Errorf(pp.EmojiUserError, "List name %q contains invalid character %q",
+			ppfmt.Noticef(pp.EmojiUserError, "List name %q contains invalid character %q",
 				list.ListName, inverseWAFListNameRegex.FindString(list.ListName))
 			return false
 		}
 		if len(val) > wafListNameMaxLength {
-			ppfmt.Errorf(pp.EmojiUserError, `List name "%.10s..." is too long (more than 50 characters)`, list.ListName)
+			ppfmt.Noticef(pp.EmojiUserError, `List name "%.10s..." is too long (more than 50 characters)`, list.ListName)
 			return false
 		}
 

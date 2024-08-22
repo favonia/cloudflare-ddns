@@ -51,7 +51,7 @@ func TestReadStringWrongPath(t *testing.T) {
 
 	path := "wrong/path.txt"
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", path, gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, gomock.Any())
 	content, ok := file.ReadString(mockPP, path)
 	require.False(t, ok)
 	require.Empty(t, content)
@@ -70,7 +70,7 @@ func TestReadStringNoAccess(t *testing.T) {
 	})
 
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
 	content, ok := file.ReadString(mockPP, "dir")
 	require.False(t, ok)
 	require.Empty(t, content)

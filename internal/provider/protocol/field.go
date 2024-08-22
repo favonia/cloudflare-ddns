@@ -22,13 +22,13 @@ func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) 
 			re := regexp.MustCompile(`(?m:^` + regexp.QuoteMeta(field) + `=(.*)$)`)
 			matched := re.FindSubmatch(body)
 			if matched == nil {
-				ppfmt.Warningf(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
+				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
 				return invalidIP, false
 			}
 			ipString := string(matched[1])
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Warningf(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
 				return invalidIP, false
 			}
 			return ip, true
@@ -57,7 +57,7 @@ func (p Field) Name() string {
 func (p Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
-		ppfmt.Warningf(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 

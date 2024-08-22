@@ -32,7 +32,7 @@ const (
 func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 	r, err := shoutrrr.CreateSender(rawURLs...)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Could not create shoutrrr client: %v", err)
+		ppfmt.Noticef(pp.EmojiUserError, "Could not create shoutrrr client: %v", err)
 		return Shoutrrr{}, false //nolint:exhaustruct
 	}
 
@@ -60,7 +60,7 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 	allOK := true
 	for _, err := range errs {
 		if err != nil {
-			ppfmt.Warningf(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", err)
+			ppfmt.Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", err)
 			allOK = false
 		}
 	}

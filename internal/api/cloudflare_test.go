@@ -136,7 +136,7 @@ func TestNewEmptyToken(t *testing.T) {
 	_, auth := newServerAuth(t)
 
 	auth.Token = ""
-	mockPP.EXPECT().Errorf(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
 	h, ok := auth.New(mockPP, time.Second)
 	require.False(t, ok)
 	require.Nil(t, h)

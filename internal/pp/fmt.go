@@ -14,32 +14,37 @@ type formatter struct {
 	verbosity Verbosity
 }
 
+// Verbosity is the type of message levels.
+type Verbosity int
+
+// Pre-defined verbosity levels. A higher level means "more verbose".
+const (
+	Notice           Verbosity = iota // useful additional info
+	Info                              // important messages
+	Quiet            Verbosity = Notice
+	Verbose          Verbosity = Info
+	DefaultVerbosity Verbosity = Verbose
+)
+
 // New creates a new pretty printer.
-func New(writer io.Writer) PP {
+func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	return formatter{
 		writer:    writer,
-		emoji:     true,
+		emoji:     emoji,
 		indent:    0,
 		hintShown: map[Hint]bool{},
-		verbosity: DefaultVerbosity,
+		verbosity: verbosity,
 	}
 }
 
-// SetEmoji sets whether emojis should be printed.
-func (f formatter) SetEmoji(emoji bool) PP {
-	f.emoji = emoji
-	return f
+// NewDefault creates a new pretty printer with default settings.
+func NewDefault(writer io.Writer) PP {
+	return New(writer, true, DefaultVerbosity)
 }
 
-// SetVerbosity sets messages of what verbosity levels should be printed.
-func (f formatter) SetVerbosity(v Verbosity) PP {
-	f.verbosity = v
-	return f
-}
-
-// IsEnabledFor checks whether a message of verbosity level v will be printed.
-func (f formatter) IsEnabledFor(v Verbosity) bool {
-	return v >= f.verbosity
+// Verbosity returns the current verbosity level.
+func (f formatter) Verbosity() Verbosity {
+	return f.verbosity
 }
 
 // Indent returns a new printer that indents the messages more than the input printer.
@@ -49,7 +54,7 @@ func (f formatter) Indent() PP {
 }
 
 func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
-	if v < f.verbosity {
+	if v > f.verbosity {
 		return
 	}
 
@@ -80,16 +85,6 @@ func (f formatter) Infof(emoji Emoji, format string, args ...any) {
 // Noticef formats and sends a message at the level [Notice].
 func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
-}
-
-// Warningf formats and sends a message at the level [Warning].
-func (f formatter) Warningf(emoji Emoji, format string, args ...any) {
-	f.printf(Warning, emoji, format, args...)
-}
-
-// Errorf formats and sends a message at the level [Error].
-func (f formatter) Errorf(emoji Emoji, format string, args ...any) {
-	f.printf(Error, emoji, format, args...)
 }
 
 // SuppressHint sets the hint in the internal map to be "shown".
