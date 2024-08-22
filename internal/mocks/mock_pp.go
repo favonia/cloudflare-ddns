@@ -158,44 +158,6 @@ func (c *PPInfofCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPInfofCall
 	return c
 }
 
-// IsShowing mocks base method.
-func (m *MockPP) IsShowing(arg0 pp.Verbosity) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsShowing", arg0)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsShowing indicates an expected call of IsShowing.
-func (mr *MockPPMockRecorder) IsShowing(arg0 any) *PPIsShowingCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsShowing", reflect.TypeOf((*MockPP)(nil).IsShowing), arg0)
-	return &PPIsShowingCall{Call: call}
-}
-
-// PPIsShowingCall wrap *gomock.Call
-type PPIsShowingCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPIsShowingCall) Return(arg0 bool) *PPIsShowingCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPIsShowingCall) Do(f func(pp.Verbosity) bool) *PPIsShowingCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPIsShowingCall) DoAndReturn(f func(pp.Verbosity) bool) *PPIsShowingCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // Noticef mocks base method.
 func (m *MockPP) Noticef(arg0 pp.Emoji, arg1 string, arg2 ...any) {
 	m.ctrl.T.Helper()
@@ -237,82 +199,6 @@ func (c *PPNoticefCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPNoticef
 	return c
 }
 
-// SetEmoji mocks base method.
-func (m *MockPP) SetEmoji(arg0 bool) pp.PP {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetEmoji", arg0)
-	ret0, _ := ret[0].(pp.PP)
-	return ret0
-}
-
-// SetEmoji indicates an expected call of SetEmoji.
-func (mr *MockPPMockRecorder) SetEmoji(arg0 any) *PPSetEmojiCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEmoji", reflect.TypeOf((*MockPP)(nil).SetEmoji), arg0)
-	return &PPSetEmojiCall{Call: call}
-}
-
-// PPSetEmojiCall wrap *gomock.Call
-type PPSetEmojiCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPSetEmojiCall) Return(arg0 pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPSetEmojiCall) Do(f func(bool) pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSetEmojiCall) DoAndReturn(f func(bool) pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// SetVerbosity mocks base method.
-func (m *MockPP) SetVerbosity(arg0 pp.Verbosity) pp.PP {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetVerbosity", arg0)
-	ret0, _ := ret[0].(pp.PP)
-	return ret0
-}
-
-// SetVerbosity indicates an expected call of SetVerbosity.
-func (mr *MockPPMockRecorder) SetVerbosity(arg0 any) *PPSetVerbosityCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVerbosity", reflect.TypeOf((*MockPP)(nil).SetVerbosity), arg0)
-	return &PPSetVerbosityCall{Call: call}
-}
-
-// PPSetVerbosityCall wrap *gomock.Call
-type PPSetVerbosityCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPSetVerbosityCall) Return(arg0 pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPSetVerbosityCall) Do(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSetVerbosityCall) DoAndReturn(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // SuppressHint mocks base method.
 func (m *MockPP) SuppressHint(arg0 pp.Hint) {
 	m.ctrl.T.Helper()
@@ -345,6 +231,44 @@ func (c *PPSuppressHintCall) Do(f func(pp.Hint)) *PPSuppressHintCall {
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *PPSuppressHintCall) DoAndReturn(f func(pp.Hint)) *PPSuppressHintCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Verbosity mocks base method.
+func (m *MockPP) Verbosity() pp.Verbosity {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Verbosity")
+	ret0, _ := ret[0].(pp.Verbosity)
+	return ret0
+}
+
+// Verbosity indicates an expected call of Verbosity.
+func (mr *MockPPMockRecorder) Verbosity() *PPVerbosityCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verbosity", reflect.TypeOf((*MockPP)(nil).Verbosity))
+	return &PPVerbosityCall{Call: call}
+}
+
+// PPVerbosityCall wrap *gomock.Call
+type PPVerbosityCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPVerbosityCall) Return(arg0 pp.Verbosity) *PPVerbosityCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPVerbosityCall) Do(f func() pp.Verbosity) *PPVerbosityCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPVerbosityCall) DoAndReturn(f func() pp.Verbosity) *PPVerbosityCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

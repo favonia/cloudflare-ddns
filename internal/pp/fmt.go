@@ -14,6 +14,18 @@ type formatter struct {
 	verbosity Verbosity
 }
 
+// Verbosity is the type of message levels.
+type Verbosity int
+
+// Pre-defined verbosity levels. A higher level means "more verbose".
+const (
+	Notice           Verbosity = iota // useful additional info
+	Info                              // important messages
+	Quiet            Verbosity = Notice
+	Verbose          Verbosity = Info
+	DefaultVerbosity Verbosity = Verbose
+)
+
 // New creates a new pretty printer.
 func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	return formatter{
@@ -25,9 +37,14 @@ func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	}
 }
 
-// IsShowing checks whether a message of verbosity level v will be printed.
-func (f formatter) IsShowing(v Verbosity) bool {
-	return v >= f.verbosity
+// NewDefault creates a new pretty printer with default settings.
+func NewDefault(writer io.Writer) PP {
+	return New(writer, true, DefaultVerbosity)
+}
+
+// Verbosity returns the current verbosity level.
+func (f formatter) Verbosity() Verbosity {
+	return f.verbosity
 }
 
 // Indent returns a new printer that indents the messages more than the input printer.
@@ -37,7 +54,7 @@ func (f formatter) Indent() PP {
 }
 
 func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
-	if v < f.verbosity {
+	if v > f.verbosity {
 		return
 	}
 

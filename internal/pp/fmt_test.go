@@ -1,6 +1,7 @@
 package pp_test
 
 import (
+	"io"
 	"strings"
 	"testing"
 
@@ -9,33 +10,17 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestIsShowing(t *testing.T) {
+func TestVerbosity(t *testing.T) {
 	t.Parallel()
 
-	for name, tc := range map[string]struct {
-		set      pp.Verbosity
-		test     pp.Verbosity
-		expected bool
-	}{
-		"info-notice": {pp.Info, pp.Notice, true},
-		"notice-info": {pp.Notice, pp.Info, false},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			var buf strings.Builder
-			fmt := pp.New(&buf).SetVerbosity(tc.set)
-
-			require.Equal(t, tc.expected, fmt.IsShowing(tc.test))
-		})
-	}
+	require.Equal(t, pp.Verbosity(123), pp.New(io.Discard, true, 123).Verbosity())
 }
 
 func TestIndent(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
-	outer := pp.New(&buf)
+	outer := pp.New(&buf, true, pp.DefaultVerbosity)
 
 	outer.Noticef(pp.EmojiStar, "message1")
 	middle := outer.Indent()
@@ -72,7 +57,7 @@ func TestPrint(t *testing.T) {
 			t.Parallel()
 
 			var buf strings.Builder
-			fmt := pp.New(&buf).SetEmoji(tc.emoji).SetVerbosity(tc.verbosity)
+			fmt := pp.New(&buf, tc.emoji, tc.verbosity)
 
 			fmt.Infof(pp.EmojiStar, "info")
 			fmt.Noticef(pp.EmojiStar, "notice")
@@ -86,7 +71,7 @@ func TestSupressHint(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
-	fmt := pp.New(&buf).SetEmoji(true).SetVerbosity(pp.Info)
+	fmt := pp.New(&buf, true, pp.Info)
 
 	fmt.SuppressHint(pp.Hint(0))
 	fmt.Hintf(pp.Hint(0), "hello %s", "world")

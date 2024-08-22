@@ -49,7 +49,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
+		mockPP.EXPECT().Verbosity().Return(pp.Info),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
@@ -76,7 +76,7 @@ func TestReadEnvEmpty(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
-		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
+		mockPP.EXPECT().Verbosity().Return(pp.Info),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Noticef(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
@@ -104,7 +104,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS"),
@@ -122,7 +122,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, "UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once"),
@@ -141,7 +141,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"), //nolint:lll
@@ -164,7 +164,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError,
@@ -201,7 +201,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
@@ -224,7 +224,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
@@ -266,7 +266,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
@@ -302,7 +302,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
@@ -349,7 +349,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
@@ -387,7 +387,7 @@ func TestNormalize(t *testing.T) {
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 				)
@@ -408,7 +408,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `range`, `range`), //nolint:lll
@@ -430,7 +430,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `999`, `999`), //nolint:lll
@@ -452,7 +452,7 @@ func TestNormalize(t *testing.T) {
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Verbosity().Return(pp.Info),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, keyProxied, `is(12345`, ")"),

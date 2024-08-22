@@ -15,7 +15,7 @@ import (
 // - output-related ones (QUIET and EMOJI)
 // One should subsequently call [Config.Normalize] to restore invariants across fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
-	if ppfmt.IsShowing(pp.Info) {
+	if ppfmt.Verbosity() >= pp.Info {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
@@ -48,7 +48,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 //
 //nolint:funlen
 func (c *Config) Normalize(ppfmt pp.PP) bool {
-	if ppfmt.IsShowing(pp.Info) {
+	if ppfmt.Verbosity() >= pp.Info {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
