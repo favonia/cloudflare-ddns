@@ -2,7 +2,7 @@
 
 ## Principles and Priorities
 
-Be the 🌟 best DDNS updater 🌟 that [favonia](mailto:favonia+github@gmail.com) wants to use.
+Be the 🌟 best DDNS updater 🌟 that [favonia](mailto:favonia+github@gmail.com) (me) wants to use.
 
 1. Support all features [favonia](mailto:favonia+github@gmail.com) wants, including emojis.
 
@@ -25,9 +25,12 @@ Be the 🌟 best DDNS updater 🌟 that [favonia](mailto:favonia+github@gmail.co
 
 The source code follows the [standard Go project layout](https://github.com/golang-standards/project-layout), where `/cmd/` holds the command-line interface and `/internal/` holds the internal packages. The updater is factored into many internal packages, each in charged of a small part of the program logic. See the [Go Reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for a detailed documentation of the code structure.
 
-### Logging Message Convention
+### Coding Convention
+
+Here is some arbitrary coding convention that I chose to follow. It may change in the future, but the whole codebase should be consistent with it at any time:
 
 1. Cloudflare IDs (zone IDs, DNS record IDs, etc.) are already designed to use only “very safe” characters and should not be quoted. The formatter `%s` should be used instead of `%q`.
+2. A variable name of type `map[..]...` is not in a plural form just because it is of type `map[...]...`. For example, a mapping from IP networks to detected IPs should be named `detectedIP` not `detectedIPs`.
 
 ## Network Security Threat Model
 

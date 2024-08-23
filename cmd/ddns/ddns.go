@@ -110,7 +110,7 @@ func realMain() int { //nolint:funlen
 	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
 	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
 	// having the internal cron disabled.)
-	if c.UpdateCron != nil && ppfmt.Verbosity() <= pp.Quiet {
+	if c.UpdateCron != nil && ppfmt.IsShowing(pp.Verbose) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -165,7 +165,7 @@ func realMain() int { //nolint:funlen
 
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
-		if sig.ReportSignalsUntil(ppfmt, next) {
+		if sig.WaitForSignalsUntil(ppfmt, next) {
 			stopUpdating(ctx, ppfmt, c, s)
 			monitor.ExitStatusAll(ctx, ppfmt, c.Monitors, 0, "Stopped")
 			if c.UpdateCron != nil {

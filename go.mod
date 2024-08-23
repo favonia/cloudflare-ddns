@@ -1,6 +1,6 @@
 module github.com/favonia/cloudflare-ddns
 
-go 1.22.0
+go 1.23.0 // with patch version to satisfy CodeQL
 
 require (
 	github.com/cloudflare/cloudflare-go v0.102.0

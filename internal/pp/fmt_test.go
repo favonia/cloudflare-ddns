@@ -1,7 +1,6 @@
 package pp_test
 
 import (
-	"io"
 	"strings"
 	"testing"
 
@@ -10,10 +9,26 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestVerbosity(t *testing.T) {
+func TestIsShowing(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, pp.Verbosity(123), pp.New(io.Discard, true, 123).Verbosity())
+	for name, tc := range map[string]struct {
+		set      pp.Verbosity
+		test     pp.Verbosity
+		expected bool
+	}{
+		"info/notice": {pp.Info, pp.Notice, true},
+		"notice/info": {pp.Notice, pp.Info, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf strings.Builder
+			fmt := pp.New(&buf, true, tc.set)
+
+			require.Equal(t, tc.expected, fmt.IsShowing(tc.test))
+		})
+	}
 }
 
 func TestIndent(t *testing.T) {

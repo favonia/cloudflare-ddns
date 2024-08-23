@@ -15,7 +15,7 @@ import (
 // - output-related ones (QUIET and EMOJI)
 // One should subsequently call [Config.Normalize] to restore invariants across fields.
 func (c *Config) ReadEnv(ppfmt pp.PP) bool {
-	if ppfmt.Verbosity() >= pp.Info {
+	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
@@ -48,7 +48,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 //
 //nolint:funlen
 func (c *Config) Normalize(ppfmt pp.PP) bool {
-	if ppfmt.Verbosity() >= pp.Info {
+	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
@@ -121,7 +121,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// Step 4: fill in proxiedMap
+	// Step 4: regenerate proxiedMap from [Config.Proxied]
 	proxiedMap := map[domain.Domain]bool{}
 	if len(activeDomainSet) > 0 {
 		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedTemplate)

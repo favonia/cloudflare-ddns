@@ -5,8 +5,8 @@ package pp
 
 // PP is the abstraction of a pretty printer.
 type PP interface {
-	// Verbosity returns the verbosity level.
-	Verbosity() Verbosity
+	// IsShowing checks whether a message of a certain level will be printed.
+	IsShowing(v Verbosity) bool
 
 	// Indent returns a new pretty-printer with more indentation.
 	Indent() PP
