@@ -42,9 +42,9 @@ func NewDefault(writer io.Writer) PP {
 	return New(writer, true, DefaultVerbosity)
 }
 
-// Verbosity returns the current verbosity level.
-func (f formatter) Verbosity() Verbosity {
-	return f.verbosity
+// IsShowing compares the internal verbosity level against the given level.
+func (f formatter) IsShowing(v Verbosity) bool {
+	return f.verbosity >= v
 }
 
 // Indent returns a new printer that indents the messages more than the input printer.
@@ -54,7 +54,7 @@ func (f formatter) Indent() PP {
 }
 
 func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
-	if v > f.verbosity {
+	if !f.IsShowing(v) {
 		return
 	}
 
@@ -92,7 +92,7 @@ func (f formatter) SuppressHint(hint Hint) {
 	f.hintShown[hint] = true
 }
 
-// Hintf called [Infof] with the emoji [EmojiHint].
+// Hintf calls [Infof] with the emoji [EmojiHint].
 func (f formatter) Hintf(hint Hint, format string, args ...any) {
 	if !f.hintShown[hint] {
 		f.Infof(EmojiHint, format, args...)

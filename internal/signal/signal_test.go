@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:paralleltest //signals are global
-func TestReportSignalUntil(t *testing.T) {
+func TestWaitForSignalsUntil(t *testing.T) {
 	for name, tc := range map[string]struct {
 		alarmDelay    time.Duration
 		signalDelay   time.Duration
@@ -58,9 +58,8 @@ func TestReportSignalUntil(t *testing.T) {
 			sig := signal.Setup()
 			go signalSelf()
 			target := time.Now().Add(tc.alarmDelay)
-			res := sig.ReportSignalsUntil(mockPP, target)
+			res := sig.WaitForSignalsUntil(mockPP, target)
 			<-done
-			sig.TearDown()
 
 			require.Equal(t, tc.expected, res)
 		})

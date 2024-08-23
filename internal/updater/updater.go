@@ -32,7 +32,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 
 	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
 	if ok {
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
 		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
