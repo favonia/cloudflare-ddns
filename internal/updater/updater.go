@@ -126,14 +126,14 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, detectedIPs map[ipnet.Type]netip.Addr,
+	c *config.Config, s setter.Setter, detectedIP map[ipnet.Type]netip.Addr,
 ) message.Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIP, "")
 			}),
 		)
 	}
@@ -160,27 +160,28 @@ func deleteWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	var msgs []message.Message
-	detectedIPs := make(map[ipnet.Type]netip.Addr)
-
-	detectedAnyIP := false
+	detectedIP := map[ipnet.Type]netip.Addr{}
+	numManagedNetworks := 0
+	numValidIPs := 0
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
+			numManagedNetworks++
 			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
-			detectedIPs[ipNet] = ip
+			detectedIP[ipNet] = ip
 			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.OK {
-				detectedAnyIP = true
+				numValidIPs++
 				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
 		}
 	}
 
 	// Update WAF lists
-	if detectedAnyIP {
-		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPs))
+	if !(numManagedNetworks == 2 && numValidIPs == 0) {
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIP))
 	}
 
 	return message.Merge(msgs...)

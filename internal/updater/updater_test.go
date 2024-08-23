@@ -598,7 +598,7 @@ func TestUpdateIPs(t *testing.T) {
 			[]string{"Failed to detect IPv4 address"},
 			[]string{"Failed to detect the IPv4 address."},
 			providerEnablers{ipnet.IP4: true},
-			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4, true).
 						DoAndReturn(
@@ -610,6 +610,8 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),                    //nolint:lll
 					p.EXPECT().Hintf(pp.HintDetectionTimeouts, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: netip.Addr{}}, "").
+						Return(setter.ResponseNoop),
 				)
 			},
 		},
