@@ -17,11 +17,8 @@ type Local struct {
 	// Name of the detection protocol.
 	ProviderName string
 
-	// Whether 1.1.1.1 is used for IPv4
-	Is1111UsedForIP4 bool
-
 	// The target IP address of the UDP packet to be sent.
-	RemoteUDPAddr map[ipnet.Type]Switch
+	RemoteUDPAddr map[ipnet.Type]string
 }
 
 // Name of the detection protocol.
@@ -31,26 +28,24 @@ func (p Local) Name() string {
 
 // GetIP detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p Local) GetIP(_ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p Local) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, Method, bool) {
 	var invalidIP netip.Addr
 
 	remoteUDPAddr, found := p.RemoteUDPAddr[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return invalidIP, false
+		return invalidIP, MethodUnspecified, false
 	}
 
-	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr.Switch(use1001))
+	conn, err := net.Dial(ipNet.UDPNetwork(), remoteUDPAddr)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
-		return invalidIP, false
+		return invalidIP, MethodUnspecified, false
 	}
 	defer conn.Close()
 
 	ip := conn.LocalAddr().(*net.UDPAddr).AddrPort().Addr() //nolint:forcetypeassert
 
-	return ipNet.NormalizeDetectedIP(ppfmt, ip)
+	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, ip)
+	return normalizedIP, MethodPrimary, ok
 }
-
-// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p Local) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }

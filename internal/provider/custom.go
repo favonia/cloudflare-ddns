@@ -34,14 +34,13 @@ func NewCustom(ppfmt pp.PP, rawURL string) (Provider, bool) {
 		return nil, false
 	}
 
-	return &protocol.HTTP{
-		ProviderName:     "custom",
-		Is1111UsedForIP4: false,
+	return NewHappyEyeballs(protocol.HTTP{
+		ProviderName: "custom",
 		URL: map[ipnet.Type]protocol.Switch{
 			ipnet.IP4: protocol.Constant(rawURL),
 			ipnet.IP6: protocol.Constant(rawURL),
 		},
-	}, true
+	}), true
 }
 
 // MustNewCustom creates a HTTP provider and panics if it fails.

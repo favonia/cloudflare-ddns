@@ -18,9 +18,8 @@ func TestLocalName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.Local{
-		ProviderName:     "very secret name",
-		Is1111UsedForIP4: false,
-		RemoteUDPAddr:    nil,
+		ProviderName:  "very secret name",
+		RemoteUDPAddr: nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -105,10 +104,9 @@ func TestLocalGetIP(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			provider := &protocol.Local{
-				ProviderName:     "",
-				Is1111UsedForIP4: false,
-				RemoteUDPAddr: map[ipnet.Type]protocol.Switch{
-					tc.addrKey: protocol.Constant(tc.addr),
+				ProviderName: "",
+				RemoteUDPAddr: map[ipnet.Type]string{
+					tc.addrKey: tc.addr,
 				},
 			}
 
@@ -116,25 +114,10 @@ func TestLocalGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, true)
+			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.True(t, tc.expected.Matches(ip))
+			require.NotEqual(t, protocol.MethodAlternative, method)
 			require.Equal(t, tc.ok, ok)
 		})
 	}
-}
-
-func TestLocalShouldWeCheck1111(t *testing.T) {
-	t.Parallel()
-
-	require.True(t, (&protocol.Local{
-		ProviderName:     "",
-		Is1111UsedForIP4: true,
-		RemoteUDPAddr:    nil,
-	}).ShouldWeCheck1111())
-
-	require.False(t, (&protocol.Local{
-		ProviderName:     "",
-		Is1111UsedForIP4: false,
-		RemoteUDPAddr:    nil,
-	}).ShouldWeCheck1111())
 }

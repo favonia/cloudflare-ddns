@@ -18,7 +18,6 @@ import (
 type Config struct {
 	Auth               api.Auth
 	Provider           map[ipnet.Type]provider.Provider
-	ShouldWeUse1001    *bool
 	Domains            map[ipnet.Type][]domain.Domain
 	WAFLists           []api.WAFList
 	UpdateCron         cron.Schedule
@@ -44,7 +43,6 @@ func Default() *Config {
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
-		ShouldWeUse1001: nil,
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
@@ -59,8 +57,8 @@ func Default() *Config {
 		Proxied:            map[domain.Domain]bool{},
 		RecordComment:      "",
 		WAFListDescription: "",
-		UpdateTimeout:      time.Second * 30, //nolint:mnd
 		DetectionTimeout:   time.Second * 5,  //nolint:mnd
+		UpdateTimeout:      time.Second * 30, //nolint:mnd
 		Monitors:           nil,
 		Notifiers:          nil,
 	}

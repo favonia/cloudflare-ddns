@@ -10,7 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) (netip.Addr, bool) {
+func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, url string, re *regexp.Regexp) (netip.Addr, bool) {
 	c := httpCore{
 		url:               url,
 		method:            http.MethodGet,
@@ -19,9 +19,8 @@ func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) 
 		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
 			var invalidIP netip.Addr
 
-			re := regexp.MustCompile(`(?m:^` + regexp.QuoteMeta(field) + `=(.*)$)`)
 			matched := re.FindSubmatch(body)
-			if matched == nil {
+			if len(matched) < 2 { //nolint:mnd
 				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
 				return invalidIP, false
 			}
@@ -38,30 +37,30 @@ func getIPFromField(ctx context.Context, ppfmt pp.PP, url string, field string) 
 	return c.getIP(ctx, ppfmt)
 }
 
-// Field represents a generic detection protocol to parse an HTTP response.
-type Field struct {
-	ProviderName     string // name of the detection protocol
-	Is1111UsedforIP4 bool
-	Param            map[ipnet.Type]struct {
-		URL   Switch // URL of the detection page
-		Field string // name of the field holding the IP address
-	}
+// RegexpParam is the type of parameters for the Regexp provider for a specific IP network.
+type RegexpParam = struct {
+	URL    Switch         // URL of the detection page
+	Regexp *regexp.Regexp // regular expression to match the IP address
+}
+
+// Regexp represents a generic detection protocol to parse an HTTP response.
+type Regexp struct {
+	ProviderName string // name of the detection protocol
+	Param        map[ipnet.Type]RegexpParam
 }
 
 // Name of the detection protocol.
-func (p Field) Name() string {
-	return p.ProviderName
-}
+func (p Regexp) Name() string { return p.ProviderName }
 
 // GetIP detects the IP address by parsing the HTTP response.
-func (p Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p Regexp) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method Method) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromField(ctx, ppfmt, param.URL.Switch(use1001), param.Field)
+	ip, ok := getIPFromRegexp(ctx, ppfmt, param.URL.Switch(method), param.Regexp)
 	if !ok {
 		return netip.Addr{}, false
 	}
@@ -69,5 +68,5 @@ func (p Field) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
 
-// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p Field) ShouldWeCheck1111() bool { return p.Is1111UsedforIP4 }
+// HasAlternative calls [Switch.HasAlternative].
+func (p Regexp) HasAlternative(ipNet ipnet.Type) bool { return p.Param[ipNet].URL.HasAlternative() }

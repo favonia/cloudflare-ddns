@@ -22,14 +22,15 @@ func (s setterResponses) register(d domain.Domain, code setter.ResponseCode) {
 }
 
 func generateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
-	if ok {
+	switch {
+	default:
 		return message.NewEmpty()
-	}
-
-	return message.Message{
-		OK:               false,
-		MonitorMessages:  []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
-		NotifierMessages: []string{fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe())},
+	case !ok:
+		return message.Message{
+			OK:               false,
+			MonitorMessages:  []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
+			NotifierMessages: []string{fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe())},
+		}
 	}
 }
 

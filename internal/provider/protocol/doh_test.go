@@ -23,9 +23,8 @@ func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
 	p := protocol.DNSOverHTTPS{
-		ProviderName:     "very secret name",
-		Is1111UsedForIP4: false,
-		Param:            nil,
+		ProviderName: "very secret name",
+		Param:        nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -577,13 +576,8 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			server := setupServer(t, tc.name, tc.class, tc.response, tc.header, tc.idShift, tc.answers)
 
 			provider := &protocol.DNSOverHTTPS{
-				ProviderName:     "",
-				Is1111UsedForIP4: false,
-				Param: map[ipnet.Type]struct {
-					URL   protocol.Switch
-					Name  string
-					Class dnsmessage.Class
-				}{
+				ProviderName: "",
+				Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
 					tc.urlKey: {protocol.Constant(server.URL), tc.name, tc.class},
 				},
 			}
@@ -592,25 +586,24 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, true)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, protocol.MethodPrimary)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
 }
 
-func TestDOHShouldWeCheck1111(t *testing.T) {
+func TestDOHHasAlternative(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, (&protocol.DNSOverHTTPS{
-		ProviderName:     "",
-		Is1111UsedForIP4: true,
-		Param:            nil,
-	}).ShouldWeCheck1111())
-
-	require.False(t, (&protocol.DNSOverHTTPS{
-		ProviderName:     "",
-		Is1111UsedForIP4: false,
-		Param:            nil,
-	}).ShouldWeCheck1111())
+		ProviderName: "",
+		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
+			ipnet.IP4: {
+				Name:  "whoami.",
+				Class: dnsmessage.ClassANY,
+				URL:   protocol.Switchable{}, //nolint:exhaustruct
+			},
+		},
+	}).HasAlternative(ipnet.IP4))
 }

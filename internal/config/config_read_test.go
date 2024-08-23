@@ -183,7 +183,8 @@ func TestNormalize(t *testing.T) {
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP4: {domain.FQDN("a.b.c")},
 				},
-				ProxiedTemplate: "false",
+				ProxiedTemplate:  "false",
+				DetectionTimeout: 5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -198,6 +199,7 @@ func TestNormalize(t *testing.T) {
 				Proxied: map[domain.Domain]bool{
 					domain.FQDN("a.b.c"): false,
 				},
+				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -246,7 +248,8 @@ func TestNormalize(t *testing.T) {
 					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 				},
-				ProxiedTemplate: "false",
+				ProxiedTemplate:  "false",
+				DetectionTimeout: 5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -263,6 +266,7 @@ func TestNormalize(t *testing.T) {
 					domain.FQDN("a.b.c"): false,
 					domain.FQDN("g.h.i"): false,
 				},
+				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -281,11 +285,12 @@ func TestNormalize(t *testing.T) {
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains:         map[ipnet.Type][]domain.Domain{},
-				WAFLists:        []api.WAFList{{AccountID: "account", ListName: "list"}},
-				TTL:             10000,
-				ProxiedTemplate: "true",
-				RecordComment:   "hello",
+				Domains:          map[ipnet.Type][]domain.Domain{},
+				WAFLists:         []api.WAFList{{AccountID: "account", ListName: "list"}},
+				TTL:              10000,
+				ProxiedTemplate:  "true",
+				RecordComment:    "hello",
+				DetectionTimeout: 5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -293,12 +298,13 @@ func TestNormalize(t *testing.T) {
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains:         map[ipnet.Type][]domain.Domain{},
-				WAFLists:        []api.WAFList{{AccountID: "account", ListName: "list"}},
-				TTL:             10000,
-				ProxiedTemplate: "true",
-				Proxied:         map[domain.Domain]bool{},
-				RecordComment:   "hello",
+				Domains:          map[ipnet.Type][]domain.Domain{},
+				WAFLists:         []api.WAFList{{AccountID: "account", ListName: "list"}},
+				TTL:              10000,
+				ProxiedTemplate:  "true",
+				Proxied:          map[domain.Domain]bool{},
+				RecordComment:    "hello",
+				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -331,6 +337,7 @@ func TestNormalize(t *testing.T) {
 					domain.FQDN("a.b.c"): true,
 				},
 				WAFListDescription: "My list",
+				DetectionTimeout:   5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -346,6 +353,7 @@ func TestNormalize(t *testing.T) {
 					domain.FQDN("a.b.c"): true,
 				},
 				WAFListDescription: "My list",
+				DetectionTimeout:   5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -367,7 +375,8 @@ func TestNormalize(t *testing.T) {
 				Domains: map[ipnet.Type][]domain.Domain{
 					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 				},
-				ProxiedTemplate: ` true && !is(a.bb.c) `,
+				ProxiedTemplate:  ` true && !is(a.bb.c) `,
+				DetectionTimeout: 5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -384,6 +393,7 @@ func TestNormalize(t *testing.T) {
 					domain.FQDN("a.bb.c"):  false,
 					domain.FQDN("a.d.e.f"): true,
 				},
+				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -456,6 +466,43 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, keyProxied, `is(12345`, ")"),
+				)
+			},
+		},
+		"dectioctn-time-too-short": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate:  "true",
+				DetectionTimeout: time.Nanosecond,
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate:  "true",
+				Proxied:          map[domain.Domain]bool{domain.FQDN("a.b.c"): true},
+				DetectionTimeout: time.Nanosecond,
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work",
+						time.Nanosecond),
+					m.EXPECT().Hintf(pp.Hint1111Blockage, "%s", provider.Hint1111BlocakageText),
 				)
 			},
 		},
