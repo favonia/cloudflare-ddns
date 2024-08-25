@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-querystring/query"
+	"github.com/hashicorp/go-retryablehttp"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -124,13 +125,16 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 	v, _ := query.Values(param)
 	url.RawQuery = v.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to Uptime Kuma: %v", err)
 		return false
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	c := retryablehttp.NewClient()
+	c.Logger = nil
+
+	resp, err := c.Do(req)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to Uptime Kuma: %v", err)
 		return false
