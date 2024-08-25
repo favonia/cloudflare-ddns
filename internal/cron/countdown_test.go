@@ -101,7 +101,7 @@ func TestPrintCountdown(t *testing.T) {
 			t.Run(interval.String(), func(t *testing.T) {
 				t.Parallel()
 				var buf strings.Builder
-				pp := pp.New(&buf)
+				pp := pp.NewDefault(&buf)
 
 				now := time.Now()
 				target := now.Add(interval)

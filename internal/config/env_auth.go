@@ -19,13 +19,13 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 
 	// foolproof checks
 	if token == "YOUR-CLOUDFLARE-API-TOKEN" {
-		ppfmt.Errorf(pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN")
+		ppfmt.Noticef(pp.EmojiUserError, "You need to provide a real API token as CF_API_TOKEN")
 		return "", false
 	}
 
 	switch {
 	case token != "" && tokenFile != "":
-		ppfmt.Errorf(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
+		ppfmt.Noticef(pp.EmojiUserError, "Cannot have both CF_API_TOKEN and CF_API_TOKEN_FILE set")
 		return "", false
 	case token != "":
 	case tokenFile != "":
@@ -35,16 +35,16 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 		}
 
 		if token == "" {
-			ppfmt.Errorf(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
+			ppfmt.Noticef(pp.EmojiUserError, "The token in the file specified by CF_API_TOKEN_FILE is empty")
 			return "", false
 		}
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
+		ppfmt.Noticef(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
 		return "", false
 	}
 
 	if !oauthBearerRegex.MatchString(token) {
-		ppfmt.Warningf(pp.EmojiUserWarning, "The API token does not look like a valid OAuth2 bearer token")
+		ppfmt.Noticef(pp.EmojiUserWarning, "The API token does not look like a valid OAuth2 bearer token")
 	}
 
 	return token, true
@@ -59,7 +59,7 @@ func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
 	}
 
 	if Getenv("CF_ACCOUNT_ID") != "" {
-		ppfmt.Warningf(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
+		ppfmt.Noticef(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
 	}
 
 	*field = &api.CloudflareAuth{Token: token, BaseURL: ""}

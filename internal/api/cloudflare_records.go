@@ -27,7 +27,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
 		return nil, false
 	}
 
@@ -43,14 +43,14 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
-			ppfmt.Warningf(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", name, zone.Status) //nolint:lll
+			ppfmt.Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", name, zone.Status) //nolint:lll
 			ids = append(ids, ID(zone.ID))
 		case
 			"deleted": // archived, pending/moved for too long
 			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
 			// skip these
 		default:
-			ppfmt.Warningf(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at %s",
+			ppfmt.Noticef(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at %s",
 				name, zone.Status, pp.IssueReportingURL)
 			ids = append(ids, ID(zone.ID))
 		}
@@ -84,14 +84,14 @@ zoneSearch:
 			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
-			ppfmt.Warningf(pp.EmojiImpossible,
+			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %q (IDs: %s); please report this at %s",
 				zoneName, pp.EnglishJoinMap(ID.Describe, zones), pp.IssueReportingURL)
 			return "", false
 		}
 	}
 
-	ppfmt.Warningf(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
+	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
 
 	return "", false
 }
@@ -117,7 +117,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 			Type: ipNet.RecordType(),
 		})
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError,
+		ppfmt.Noticef(pp.EmojiError,
 			"Failed to retrieve %s records of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 		return nil, false, false
@@ -127,7 +127,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 	for _, r := range raw {
 		ip, err := netip.ParseAddr(r.Content)
 		if err != nil {
-			ppfmt.Warningf(pp.EmojiImpossible,
+			ppfmt.Noticef(pp.EmojiImpossible,
 				"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
 				ipNet.RecordType(), domain.Describe(), r.ID, err)
 			return nil, false, false
@@ -152,7 +152,7 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
@@ -185,7 +185,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params); err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
@@ -225,7 +225,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to add a new %s record of %q: %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())

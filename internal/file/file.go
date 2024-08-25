@@ -24,7 +24,7 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 	if filepath.IsAbs(path) {
 		newpath, err := filepath.Rel(LinuxRoot, path)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiImpossible, `%q is an absolute path but does not start with %q: %v`, path, LinuxRoot, err)
+			ppfmt.Noticef(pp.EmojiImpossible, `%q is an absolute path but does not start with %q: %v`, path, LinuxRoot, err)
 			return "", false
 		}
 		path = newpath
@@ -32,7 +32,7 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 
 	body, err := fs.ReadFile(FS, path)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
 		return "", false
 	}
 

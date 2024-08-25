@@ -69,8 +69,8 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-					m.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
 				)
 			},
 		},
@@ -79,7 +79,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 			nil,
 			nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse the Healthchecks URL (redacted)`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to parse the Healthchecks URL (redacted)`)
 			},
 		},
 		"illformed/not-abs": {
@@ -88,8 +88,8 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 			nil, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Errorf(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-					m.EXPECT().Errorf(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
 				)
 			},
 		},
@@ -168,7 +168,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 			}},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserError,
+				m.EXPECT().Noticef(pp.EmojiUserError,
 					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
 					"hello")
 			},
@@ -178,7 +178,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 			nil,
 			nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `Failed to parse the Uptime Kuma URL (redacted)`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to parse the Uptime Kuma URL (redacted)`)
 			},
 		},
 		"illformed/not-abs": {
@@ -186,7 +186,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 			nil,
 			nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
 			},
 		},
 	} {

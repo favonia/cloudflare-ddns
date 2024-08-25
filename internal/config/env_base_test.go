@@ -176,13 +176,13 @@ func TestReadBool(t *testing.T) {
 		"illform1": {
 			true, "weird\t  ", false, false, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 		"illform2": {
 			true, " weird", true, true, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean: %v", key, "weird", gomock.Any())
 			},
 		},
 	} {
@@ -228,20 +228,20 @@ func TestReadNonnegInt(t *testing.T) {
 		"-1": {
 			true, "   -1", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) is negative", key, -1)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) is negative", key, -1)
 			},
 		},
 		"1": {true, "   1   ", 100, 1, true, nil},
 		"1.0": {
 			true, "   1.0   ", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
 			},
 		},
 		"words": {
 			true, "   word   ", 100, 100, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
 			},
 		},
 	} {
@@ -280,32 +280,32 @@ func TestReadTTL(t *testing.T) {
 		"0": {
 			true, "0   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 0)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 0)
 			},
 		},
 		"-1": {
 			true, "   -1", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, -1)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, -1)
 			},
 		},
 		"1": {true, "   1   ", api.TTLAuto, api.TTLAuto, true, nil},
 		"20": {
 			true, "   20   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 20)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 20)
 			},
 		},
 		"9999999": {
 			true, "   9999999   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 9999999)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) should be 1 (auto) or between 30 and 86400", key, 9999999)
 			},
 		},
 		"words": {
 			true, "   word   ", api.TTLAuto, api.TTLAuto, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
 			},
 		},
 	} {
@@ -352,13 +352,13 @@ func TestReadNonnegDuration(t *testing.T) {
 		"1": {
 			true, "  1  ", 123, 123, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a time duration: %v", key, "1", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a time duration: %v", key, "1", gomock.Any())
 			},
 		},
 		"-1s": {
 			true, "  -1s  ", 456, 456, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%v) is negative", key, -time.Second)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%v) is negative", key, -time.Second)
 			},
 		},
 		"0h": {true, "  0h  ", 123456, 0, true, nil},
@@ -416,20 +416,20 @@ func TestReadCron(t *testing.T) {
 		"@disabled": {
 			true, " @disabled  ", cron.MustNew("@yearly"), nil, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@disabled", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@disabled", gomock.Any())
 			},
 		},
 		"@nevermore": {
 			true, " @nevermore\t", cron.MustNew("@yearly"), nil, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Warningf(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@nevermore", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s=%s is deprecated; use %s=@once", key, "@nevermore", gomock.Any())
 			},
 		},
 		"@once": {true, "\t\t@once", cron.MustNew("@yearly"), nil, true, nil},
 		"illformed": {
 			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Errorf(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, "@ddddd", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, "@ddddd", gomock.Any())
 			},
 		},
 	} {

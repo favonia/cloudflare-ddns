@@ -18,7 +18,7 @@ func TestCheckRoot(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	if syscall.Geteuid() == 0 {
-		mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
 	}
 	config.CheckRoot(mockPP)
 }
@@ -32,11 +32,11 @@ func TestCheckRootWithOldConfigs(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	var calls []any
 	if syscall.Geteuid() == 0 {
-		calls = append(calls, mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")) //nolint:lll
+		calls = append(calls, mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")) //nolint:lll
 	}
 	calls = append(calls,
-		mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "PUID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set user ID", "1000"),  //nolint:lll
-		mockPP.EXPECT().Warningf(pp.EmojiUserWarning, "PGID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set group ID", "1000"), //nolint:lll
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "PUID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set user ID", "1000"),  //nolint:lll
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "PGID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set group ID", "1000"), //nolint:lll
 		mockPP.EXPECT().Hintf(pp.HintUpdateDockerTemplate, "See %s for the new Docker template", pp.ManualURL),
 	)
 	gomock.InOrder(calls...)

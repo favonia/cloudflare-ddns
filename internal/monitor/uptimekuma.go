@@ -40,24 +40,24 @@ const (
 func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		ppfmt.Errorf(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
 	if !(u.IsAbs() && u.Opaque == "" && u.Host != "") {
-		ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
 	switch u.Scheme {
 	case "http":
-		ppfmt.Warningf(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS")
+		ppfmt.Noticef(pp.EmojiUserWarning, "The Uptime Kuma URL (redacted) uses HTTP; please consider using HTTPS")
 
 	case "https":
 		// HTTPS is good!
 
 	default:
-		ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
@@ -69,7 +69,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	if u.RawQuery != "" {
 		q, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+			ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
 			return UptimeKuma{}, false //nolint:exhaustruct
 		}
 
@@ -80,7 +80,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 			case k == "ping" && slices.Equal(vs, []string{""}): // ping=
 
 			default: // problematic case
-				ppfmt.Warningf(pp.EmojiUserError,
+				ppfmt.Noticef(pp.EmojiUserError,
 					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
 					k)
 			}
@@ -126,24 +126,24 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to Uptime Kuma: %v", err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to Uptime Kuma: %v", err)
 		return false
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to send HTTP(S) request to Uptime Kuma: %v", err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to Uptime Kuma: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
 
 	var parsedResp UptimeKumaResponse
 	if err = json.NewDecoder(io.LimitReader(resp.Body, maxReadLength)).Decode(&parsedResp); err != nil {
-		ppfmt.Warningf(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", err)
 		return false
 	}
 	if !parsedResp.OK {
-		ppfmt.Warningf(pp.EmojiError, "Failed to ping Uptime Kuma: %q", parsedResp.Msg)
+		ppfmt.Noticef(pp.EmojiError, "Failed to ping Uptime Kuma: %q", parsedResp.Msg)
 		return false
 	}
 

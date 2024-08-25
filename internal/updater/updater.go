@@ -8,10 +8,11 @@ import (
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
-	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -22,20 +23,23 @@ func getHintIDForDetection(ipNet ipnet.Type) pp.Hint {
 	}[ipNet]
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, ipNet ipnet.Type,
-) (netip.Addr, message.Message) {
-	use1001 := c.ShouldWeUse1001Now(ctx, ppfmt)
-
+func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, message.Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
+	ip, method, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
+
 	if ok {
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address: %v", ipNet.Describe(), ip)
+		switch method {
+		case protocol.MethodAlternative:
+			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", ipNet.Describe(), ip)
+			provider.Hint1111Blockage(ppfmt)
+		default:
+			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
+		}
 		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
-		ppfmt.Warningf(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
 		switch ipNet {
 		case ipnet.IP6:
@@ -57,18 +61,6 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	return ip, generateDetectMessage(ipNet, ok)
-}
-
-func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
-	if proxied, ok := c.Proxied[domain]; ok {
-		return proxied
-	}
-
-	ppfmt.Warningf(pp.EmojiImpossible,
-		"Proxied[%s] not initialized; this should not happen; please report this at %s",
-		domain.Describe(), pp.IssueReportingURL,
-	)
-	return false
 }
 
 var errTimeout = errors.New("timeout")
@@ -101,7 +93,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
+				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, c.Proxied[domain], c.RecordComment)
 			}),
 		)
 	}
@@ -126,14 +118,14 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, detectedIPs map[ipnet.Type]netip.Addr,
+	c *config.Config, s setter.Setter, detectedIP map[ipnet.Type]netip.Addr,
 ) message.Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIP, "")
 			}),
 		)
 	}
@@ -160,27 +152,28 @@ func deleteWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	var msgs []message.Message
-	detectedIPs := make(map[ipnet.Type]netip.Addr)
-
-	detectedAnyIP := false
+	detectedIP := map[ipnet.Type]netip.Addr{}
+	numManagedNetworks := 0
+	numValidIPs := 0
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		if c.Provider[ipNet] != nil {
+			numManagedNetworks++
 			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
-			detectedIPs[ipNet] = ip
+			detectedIP[ipNet] = ip
 			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.OK {
-				detectedAnyIP = true
+				numValidIPs++
 				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}
 		}
 	}
 
 	// Update WAF lists
-	if detectedAnyIP {
-		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPs))
+	if !(numManagedNetworks == 2 && numValidIPs == 0) {
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIP))
 	}
 
 	return message.Merge(msgs...)

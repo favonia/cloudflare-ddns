@@ -14,6 +14,7 @@ const (
 	EmojiMute         Emoji = "🔇" // quiet mode
 	EmojiDisabled     Emoji = "🚫" // feature is disabled
 	EmojiExperimental Emoji = "🧪" // experimental features
+	EmojiSwitch       Emoji = "🔀" // the happy eyeballs algorithm chose the alternative
 
 	EmojiCreation Emoji = "🐣" // adding new DNS records
 	EmojiDeletion Emoji = "💀" // deleting DNS records

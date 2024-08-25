@@ -38,47 +38,6 @@ func (m *MockPP) EXPECT() *MockPPMockRecorder {
 	return m.recorder
 }
 
-// Errorf mocks base method.
-func (m *MockPP) Errorf(arg0 pp.Emoji, arg1 string, arg2 ...any) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	m.ctrl.Call(m, "Errorf", varargs...)
-}
-
-// Errorf indicates an expected call of Errorf.
-func (mr *MockPPMockRecorder) Errorf(arg0, arg1 any, arg2 ...any) *PPErrorfCall {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Errorf", reflect.TypeOf((*MockPP)(nil).Errorf), varargs...)
-	return &PPErrorfCall{Call: call}
-}
-
-// PPErrorfCall wrap *gomock.Call
-type PPErrorfCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPErrorfCall) Return() *PPErrorfCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPErrorfCall) Do(f func(pp.Emoji, string, ...any)) *PPErrorfCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPErrorfCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPErrorfCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // Hintf mocks base method.
 func (m *MockPP) Hintf(arg0 pp.Hint, arg1 string, arg2 ...any) {
 	m.ctrl.T.Helper()
@@ -199,40 +158,40 @@ func (c *PPInfofCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPInfofCall
 	return c
 }
 
-// IsEnabledFor mocks base method.
-func (m *MockPP) IsEnabledFor(arg0 pp.Verbosity) bool {
+// IsShowing mocks base method.
+func (m *MockPP) IsShowing(arg0 pp.Verbosity) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsEnabledFor", arg0)
+	ret := m.ctrl.Call(m, "IsShowing", arg0)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// IsEnabledFor indicates an expected call of IsEnabledFor.
-func (mr *MockPPMockRecorder) IsEnabledFor(arg0 any) *PPIsEnabledForCall {
+// IsShowing indicates an expected call of IsShowing.
+func (mr *MockPPMockRecorder) IsShowing(arg0 any) *PPIsShowingCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsEnabledFor", reflect.TypeOf((*MockPP)(nil).IsEnabledFor), arg0)
-	return &PPIsEnabledForCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsShowing", reflect.TypeOf((*MockPP)(nil).IsShowing), arg0)
+	return &PPIsShowingCall{Call: call}
 }
 
-// PPIsEnabledForCall wrap *gomock.Call
-type PPIsEnabledForCall struct {
+// PPIsShowingCall wrap *gomock.Call
+type PPIsShowingCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *PPIsEnabledForCall) Return(arg0 bool) *PPIsEnabledForCall {
+func (c *PPIsShowingCall) Return(arg0 bool) *PPIsShowingCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PPIsEnabledForCall) Do(f func(pp.Verbosity) bool) *PPIsEnabledForCall {
+func (c *PPIsShowingCall) Do(f func(pp.Verbosity) bool) *PPIsShowingCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPIsEnabledForCall) DoAndReturn(f func(pp.Verbosity) bool) *PPIsEnabledForCall {
+func (c *PPIsShowingCall) DoAndReturn(f func(pp.Verbosity) bool) *PPIsShowingCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -278,82 +237,6 @@ func (c *PPNoticefCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPNoticef
 	return c
 }
 
-// SetEmoji mocks base method.
-func (m *MockPP) SetEmoji(arg0 bool) pp.PP {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetEmoji", arg0)
-	ret0, _ := ret[0].(pp.PP)
-	return ret0
-}
-
-// SetEmoji indicates an expected call of SetEmoji.
-func (mr *MockPPMockRecorder) SetEmoji(arg0 any) *PPSetEmojiCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEmoji", reflect.TypeOf((*MockPP)(nil).SetEmoji), arg0)
-	return &PPSetEmojiCall{Call: call}
-}
-
-// PPSetEmojiCall wrap *gomock.Call
-type PPSetEmojiCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPSetEmojiCall) Return(arg0 pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPSetEmojiCall) Do(f func(bool) pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSetEmojiCall) DoAndReturn(f func(bool) pp.PP) *PPSetEmojiCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// SetVerbosity mocks base method.
-func (m *MockPP) SetVerbosity(arg0 pp.Verbosity) pp.PP {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetVerbosity", arg0)
-	ret0, _ := ret[0].(pp.PP)
-	return ret0
-}
-
-// SetVerbosity indicates an expected call of SetVerbosity.
-func (mr *MockPPMockRecorder) SetVerbosity(arg0 any) *PPSetVerbosityCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVerbosity", reflect.TypeOf((*MockPP)(nil).SetVerbosity), arg0)
-	return &PPSetVerbosityCall{Call: call}
-}
-
-// PPSetVerbosityCall wrap *gomock.Call
-type PPSetVerbosityCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPSetVerbosityCall) Return(arg0 pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPSetVerbosityCall) Do(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSetVerbosityCall) DoAndReturn(f func(pp.Verbosity) pp.PP) *PPSetVerbosityCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // SuppressHint mocks base method.
 func (m *MockPP) SuppressHint(arg0 pp.Hint) {
 	m.ctrl.T.Helper()
@@ -386,47 +269,6 @@ func (c *PPSuppressHintCall) Do(f func(pp.Hint)) *PPSuppressHintCall {
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *PPSuppressHintCall) DoAndReturn(f func(pp.Hint)) *PPSuppressHintCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// Warningf mocks base method.
-func (m *MockPP) Warningf(arg0 pp.Emoji, arg1 string, arg2 ...any) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	m.ctrl.Call(m, "Warningf", varargs...)
-}
-
-// Warningf indicates an expected call of Warningf.
-func (mr *MockPPMockRecorder) Warningf(arg0, arg1 any, arg2 ...any) *PPWarningfCall {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Warningf", reflect.TypeOf((*MockPP)(nil).Warningf), varargs...)
-	return &PPWarningfCall{Call: call}
-}
-
-// PPWarningfCall wrap *gomock.Call
-type PPWarningfCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPWarningfCall) Return() *PPWarningfCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPWarningfCall) Do(f func(pp.Emoji, string, ...any)) *PPWarningfCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPWarningfCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPWarningfCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

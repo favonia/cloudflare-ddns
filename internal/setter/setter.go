@@ -85,7 +85,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// preserve the current TTL and proxy setting.
 	if !foundMatched && len(unprocessedUnmatched) > 0 {
 		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0], ip); !ok {
-			ppfmt.Warningf(pp.EmojiError,
+			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
@@ -109,7 +109,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	if !foundMatched {
 		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, ttl, proxied, recordComment)
 		if !ok {
-			ppfmt.Warningf(pp.EmojiError,
+			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
@@ -124,7 +124,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id); !ok {
-			ppfmt.Warningf(pp.EmojiError,
+			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
@@ -191,7 +191,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domai
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
 	}
 	if !allOK {
-		ppfmt.Warningf(pp.EmojiError,
+		ppfmt.Noticef(pp.EmojiError,
 			"Failed to properly delete %s records of %q; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseFailed
@@ -202,10 +202,10 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domai
 
 // SetWAFList updates a WAF list.
 //
-// If detectedIPs contains a zero (invalid) IP, it means the detection is attempted but failed
+// If detectedIP contains a zero (invalid) IP, it means the detection is attempted but failed
 // and all matching IP addresses should be preserved.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
-	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type]netip.Addr, itemComment string,
+	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
 ) ResponseCode {
 	listID, alreadyExisting, ok := s.Handle.EnsureWAFList(ctx, ppfmt, list, listDescription)
 	if !ok {
@@ -223,7 +223,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	var itemsToDelete []api.WAFListItem
 	var itemsToCreate []netip.Prefix
 	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		detectedIP, managed := detectedIPs[ipNet]
+		detectedIP, managed := detectedIP[ipNet]
 		covered := false
 		for _, item := range items {
 			if ipNet.Matches(item.Prefix.Addr()) {
@@ -253,7 +253,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, itemsToCreate, itemComment) {
-		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
+		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
 			list.ListName, listID)
 		return ResponseFailed
 	}
@@ -267,7 +267,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		idsToDelete = append(idsToDelete, item.ID)
 	}
 	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, idsToDelete) {
-		ppfmt.Warningf(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
+		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
 			list.ListName, listID)
 		return ResponseFailed
 	}

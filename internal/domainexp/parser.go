@@ -18,11 +18,11 @@ func scanList(ppfmt pp.PP, key string, input string, tokens []string) ([]string,
 		case ")":
 			return list, tokens
 		case "(", "&&", "||", "!":
-			ppfmt.Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
+			ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
 			return nil, nil
 		default:
 			if !readyForNext {
-				ppfmt.Warningf(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, tokens[0])
+				ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, tokens[0])
 			}
 			list = append(list, tokens[0])
 			readyForNext = false
@@ -48,7 +48,7 @@ func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]d
 	for _, raw := range list {
 		domain, err := domain.New(raw)
 		if err != nil {
-			ppfmt.Errorf(pp.EmojiUserError,
+			ppfmt.Noticef(pp.EmojiUserError,
 				"%s (%q) contains an ill-formed domain %q: %v",
 				key, input, domain.Describe(), err)
 			return nil, nil
@@ -72,13 +72,14 @@ func scanConstants(_ppfmt pp.PP, _key string, _input string, tokens []string, ex
 
 func scanMustConstant(ppfmt pp.PP, key string, input string, tokens []string, expected string) []string {
 	if len(tokens) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, input, expected)
+		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, input, expected)
 		return nil
 	}
 	if expected == tokens[0] {
 		return tokens[1:]
 	}
-	ppfmt.Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q when %q is expected`, key, input, tokens[0], expected)
+	ppfmt.Noticef(pp.EmojiUserError,
+		`%s (%q) has unexpected token %q when %q is expected`, key, input, tokens[0], expected)
 	return nil
 }
 
@@ -171,9 +172,10 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 	}
 
 	if len(tokens) == 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression", key, input)
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression", key, input)
 	} else {
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", key, input, tokens[0])
+		ppfmt.Noticef(pp.EmojiUserError,
+			"%s (%q) is not a boolean expression: got unexpected token %q", key, input, tokens[0])
 	}
 	return nil, nil
 }
@@ -235,7 +237,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
+		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
 		return nil, false
 	}
 
@@ -266,7 +268,7 @@ func ParseExpression(ppfmt pp.PP, key string, input string) (predicate, bool) {
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
-		ppfmt.Errorf(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, input, tokens[0])
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, input, tokens[0])
 		return nil, false
 	}
 
