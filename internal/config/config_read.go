@@ -155,7 +155,14 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// Part 6: override the old values
+	// Part 7: Warn about short DetectionTimeout
+	if c.DetectionTimeout <= provider.HappyEyeballsAlternativeDelay {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work", c.DetectionTimeout)
+		provider.Hint1111Blockage(ppfmt)
+	}
+
+	// Final Part: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
 

@@ -63,8 +63,7 @@ func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([
 	return msg, true
 }
 
-func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource,
-	name string, class dnsmessage.Class,
+func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource, name string, class dnsmessage.Class,
 ) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 	var ipString string
@@ -137,8 +136,7 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
-	url string, name string, class dnsmessage.Class,
+func getIPFromDNS(ctx context.Context, ppfmt pp.PP, url string, name string, class dnsmessage.Class,
 ) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
@@ -166,15 +164,17 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP,
 	return c.getIP(ctx, ppfmt)
 }
 
+// DNSOverHTTPSParam is the parameter of a DNS-based IP provider.
+type DNSOverHTTPSParam = struct {
+	URL   Switch           // the DoH server
+	Name  string           // domain name to query
+	Class dnsmessage.Class // DNS class to query
+}
+
 // DNSOverHTTPS represents a generic detection protocol using DNS over HTTPS.
 type DNSOverHTTPS struct {
-	ProviderName     string // name of the protocol
-	Is1111UsedForIP4 bool   // whether 1.1.1.1 is used
-	Param            map[ipnet.Type]struct {
-		URL   Switch           // the DoH server
-		Name  string           // domain name to query
-		Class dnsmessage.Class // DNS class to query
-	}
+	ProviderName string // name of the protocol
+	Param        map[ipnet.Type]DNSOverHTTPSParam
 }
 
 // Name of the detection protocol.
@@ -183,14 +183,14 @@ func (p DNSOverHTTPS) Name() string {
 }
 
 // GetIP detects the IP address by DNS over HTTPS.
-func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, use1001 bool) (netip.Addr, bool) {
+func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method Method) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL.Switch(use1001), param.Name, param.Class)
+	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL.Switch(method), param.Name, param.Class)
 	if !ok {
 		return netip.Addr{}, false
 	}
@@ -198,5 +198,7 @@ func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
 
-// ShouldWeCheck1111 returns whether we should check 1.1.1.1.
-func (p DNSOverHTTPS) ShouldWeCheck1111() bool { return p.Is1111UsedForIP4 }
+// HasAlternative calls [Switch.HasAlternative].
+func (p DNSOverHTTPS) HasAlternative(ipNet ipnet.Type) bool {
+	return p.Param[ipNet].URL.HasAlternative()
+}

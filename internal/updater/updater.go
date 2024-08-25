@@ -8,10 +8,11 @@ import (
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
-	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -22,17 +23,20 @@ func getHintIDForDetection(ipNet ipnet.Type) pp.Hint {
 	}[ipNet]
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, ipNet ipnet.Type,
-) (netip.Addr, message.Message) {
-	use1001 := c.ShouldWeUse1001Now(ctx, ppfmt)
-
+func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, message.Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet, use1001)
+	ip, method, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
+
 	if ok {
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
+		switch method {
+		case protocol.MethodAlternative:
+			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", ipNet.Describe(), ip)
+			provider.Hint1111Blockage(ppfmt)
+		default:
+			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
+		}
 		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
@@ -57,18 +61,6 @@ func detectIP(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 	return ip, generateDetectMessage(ipNet, ok)
-}
-
-func getProxied(ppfmt pp.PP, c *config.Config, domain domain.Domain) bool {
-	if proxied, ok := c.Proxied[domain]; ok {
-		return proxied
-	}
-
-	ppfmt.Noticef(pp.EmojiImpossible,
-		"Proxied[%s] not initialized; this should not happen; please report this at %s",
-		domain.Describe(), pp.IssueReportingURL,
-	)
-	return false
 }
 
 var errTimeout = errors.New("timeout")
@@ -101,7 +93,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, getProxied(ppfmt, c, domain), c.RecordComment)
+				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, c.Proxied[domain], c.RecordComment)
 			}),
 		)
 	}

@@ -11,13 +11,15 @@ import (
 func TestConstant(t *testing.T) {
 	t.Parallel()
 	s := protocol.Constant("very secret string")
-	require.Equal(t, "very secret string", s.Switch(false))
-	require.Equal(t, "very secret string", s.Switch(true))
+	require.Equal(t, "very secret string", s.Switch(protocol.MethodPrimary))
+	require.Equal(t, "very secret string", s.Switch(protocol.MethodAlternative))
+	require.False(t, s.HasAlternative())
 }
 
 func TestSwitchable(t *testing.T) {
 	t.Parallel()
-	s := protocol.Switchable{ValueFor1001: "very secret string 1", ValueFor1111: "very secret string 2"}
-	require.Equal(t, "very secret string 2", s.Switch(false))
-	require.Equal(t, "very secret string 1", s.Switch(true))
+	s := protocol.Switchable{Primary: "very secret string 1", Alternative: "very secret string 2"}
+	require.Equal(t, "very secret string 1", s.Switch(protocol.MethodPrimary))
+	require.Equal(t, "very secret string 2", s.Switch(protocol.MethodAlternative))
+	require.True(t, s.HasAlternative())
 }

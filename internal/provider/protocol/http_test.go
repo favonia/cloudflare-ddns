@@ -21,9 +21,8 @@ func TestHTTPName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.HTTP{
-		ProviderName:     "very secret name",
-		Is1111UsedForIP4: false,
-		URL:              nil,
+		ProviderName: "very secret name",
+		URL:          nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -137,8 +136,7 @@ func TestHTTPGetIP(t *testing.T) {
 				mockCtrl := gomock.NewController(t)
 
 				provider := &protocol.HTTP{
-					ProviderName:     "secret name",
-					Is1111UsedForIP4: false,
+					ProviderName: "secret name",
 					URL: map[ipnet.Type]protocol.Switch{
 						tc.urlKey: protocol.Constant(tc.url),
 					},
@@ -152,7 +150,7 @@ func TestHTTPGetIP(t *testing.T) {
 				if tc.prepareMockPP != nil {
 					tc.prepareMockPP(mockPP)
 				}
-				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet, true)
+				ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet, protocol.MethodPrimary)
 				require.Equal(t, tc.expected, ip)
 				require.Equal(t, tc.expected.IsValid(), ok)
 			})
@@ -160,18 +158,13 @@ func TestHTTPGetIP(t *testing.T) {
 	})
 }
 
-func TestHTTPShouldWeCheck1111(t *testing.T) {
+func TestHTTPHasAlternative(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, (&protocol.HTTP{
-		ProviderName:     "",
-		Is1111UsedForIP4: true,
-		URL:              nil,
-	}).ShouldWeCheck1111())
-
-	require.False(t, (&protocol.HTTP{
-		ProviderName:     "",
-		Is1111UsedForIP4: false,
-		URL:              nil,
-	}).ShouldWeCheck1111())
+		ProviderName: "",
+		URL: map[ipnet.Type]protocol.Switch{
+			ipnet.IP4: protocol.Switchable{}, //nolint:exhaustruct
+		},
+	}).HasAlternative(ipnet.IP4))
 }
