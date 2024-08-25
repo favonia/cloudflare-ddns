@@ -7,8 +7,9 @@ As a reminder, since 1.13.0, **the updater will no longer drop superuser privile
 Other notable changes:
 
 1. The global Cloudflare account ID will no longer be used when searching for DNS zones. `CF_ACCOUNT_ID` will be ignored.
-2. To reduce network traffic and delay, the Cloudflare API token will no longer be additionally verified via the Cloudflare’s token verification API. Instead, the updater will locally check whether it looks like a valid [Bearer Token](https://oauth.net/2/bearer-tokens/).
+2. To reduce network traffic and delay, the Cloudflare API token will no longer be additionally verified via [Cloudflare’s token verification API](https://developers.cloudflare.com/api/operations/user-api-tokens-verify-token). Instead, the updater will locally check whether the token looks like a valid [Bearer Token](https://oauth.net/2/bearer-tokens/) before using the API.
 3. Many parts of the [README](./README.markdown) have been rewritten to improve clarity and to document the support of WAF lists.
+4. The DNS record updating algorithm was revised to be more deterministic, which means the updater will not give up updating stale DNS records (and create new ones) when there are errors; it will simply try again next time. As a result, in very rare cases, the updater may need more rounds to recover from errors.
 
 ### Bug Fixes
 
