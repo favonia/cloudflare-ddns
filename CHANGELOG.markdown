@@ -1,3 +1,31 @@
+# [1.14.0](https://github.com/favonia/cloudflare-ddns/compare/v1.13.2...v1.14.0) (2024-08-25)
+
+This is a major release with many improvements! The most significant new feature is the ability to maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/) of detected IP addresses; you can then refer to the list in your firewall rules. Please consult the [README](./README.markdown). The second most important update is to use a variant of [the Happy Eyeballs (Fast Fallback) algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to detect the blockage of 1.1.1.1. As the name of the new algorithm suggests, you should not notice any delay due to the detection, being happy. 😄
+
+As a reminder, since 1.13.0, **the updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant the new updater unneeded privileges, which is not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. If you are not using Docker Compose, chances are your system supports similar options under different names.
+
+Other notable changes:
+
+1. The global Cloudflare account ID will no longer be used when searching for DNS zones. `CF_ACCOUNT_ID` will be ignored.
+2. To reduce network traffic and delay, the Cloudflare API token will no longer be additionally verified via the Cloudflare’s token verification API. Instead, the updater will locally check whether it looks like a valid [Bearer Token](https://oauth.net/2/bearer-tokens/).
+3. Many parts of the [README](./README.markdown) have been rewritten to improve clarity and to document the support of WAF lists.
+
+### Bug Fixes
+
+- **api:** decouple account IDs from operations on DNS records ([#875](https://github.com/favonia/cloudflare-ddns/issues/875)) ([0fa1085](https://github.com/favonia/cloudflare-ddns/commit/0fa108504fed7d7e9bd6fce866c6983eaf420f2e))
+- **api:** eliminate potential memory leak in caching ([#854](https://github.com/favonia/cloudflare-ddns/issues/854)) ([b9c7327](https://github.com/favonia/cloudflare-ddns/commit/b9c7327c84910d65b41f68dc74b413cd49b55f7d))
+- **api:** make the updating algorithm more deterministic ([#864](https://github.com/favonia/cloudflare-ddns/issues/864)) ([b557c41](https://github.com/favonia/cloudflare-ddns/commit/b557c41e8873be4132992273356600662f32922f))
+- **api:** remove global account ID and remote token verification ([#877](https://github.com/favonia/cloudflare-ddns/issues/877)) ([5a40ea7](https://github.com/favonia/cloudflare-ddns/commit/5a40ea7c21fd75b3829227b49362b886168dd107))
+- **monitor:** retry connections to Uptime Kuma ([#890](https://github.com/favonia/cloudflare-ddns/issues/890)) ([8236410](https://github.com/favonia/cloudflare-ddns/commit/823641046c62e6a81838fa4e15fa57d4b15995a8))
+- **setter:** do not quote DNS record IDs ([#851](https://github.com/favonia/cloudflare-ddns/issues/851)) ([fc8accb](https://github.com/favonia/cloudflare-ddns/commit/fc8accb45ec17fd4111a5920fccc30fdf5130cbe))
+- **updater:** delete unmanaged IP addresses from WAF lists ([#885](https://github.com/favonia/cloudflare-ddns/issues/885)) ([bf0361c](https://github.com/favonia/cloudflare-ddns/commit/bf0361c85d449cdb703f9565f68dc8aaefb03323))
+- **updater:** show the hint to disable a network when IP detection timeouts ([#859](https://github.com/favonia/cloudflare-ddns/issues/859)) ([bdf154c](https://github.com/favonia/cloudflare-ddns/commit/bdf154c1d7519d5a86ddeb0aa9fd8811bfe1f5d6)) ([#862](https://github.com/favonia/cloudflare-ddns/issues/862)) ([397e722](https://github.com/favonia/cloudflare-ddns/commit/397e722562257523716c37d81709289a126d4636))
+
+### Features
+
+- **api:** ability to update WAF lists ([#797](https://github.com/favonia/cloudflare-ddns/issues/797)) ([180bcd7](https://github.com/favonia/cloudflare-ddns/commit/180bcd7b48104b5bc779ffdad9dc08cdf32c4529))
+- **provider:** Happy Eyeballs for 1.1.1.1 v.s. 1.0.0.1 ([#883](https://github.com/favonia/cloudflare-ddns/issues/883)) ([be0109b](https://github.com/favonia/cloudflare-ddns/commit/be0109b931c3dabebe73694f5205bba2ed22dda3))
+
 # [1.13.2](https://github.com/favonia/cloudflare-ddns/compare/v1.13.1...v1.13.2) (2024-07-23)
 
 This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](./README.markdown)) with `user: ...` (not `PUID` or `PGID`) to explicitly set the user and group IDs, this release does not affect you.

@@ -202,7 +202,7 @@ docker-compose up --detach --build cloudflare-ddns
 _(Click to expand the following items.)_
 
 <details>
-<summary>😠 I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
+<summary>❔ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
 
 Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
@@ -216,7 +216,7 @@ If you really wish to test the updater with simulated IP changes in the DNS reco
 </details>
 
 <details>
-<summary>⏱️ Can I see the timestamps of the IP checks and/or updates?</summary>
+<summary>❔ How can I see the timestamps of the IP checks and/or updates?</summary>
 
 The updater does not itself add timestamps because all major systems already timestamp everything:
 
@@ -226,7 +226,7 @@ The updater does not itself add timestamps because all major systems already tim
 </details>
 
 <details>
-<summary>😠 Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
+<summary>❔ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
 
 Is your “public” IP address on your router between `100.64.0.0` and `100.127.255.255`? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public IP address, nor does it allow you to forward IP packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) that can work around CGNAT.
 
@@ -266,7 +266,7 @@ _(Click to expand the following items.)_
 
 > 🧪 The feature to manipulate WAF lists is experimental (introduced in 1.14.0) and is subject to changes. In particular, the updater currently deletes unmanaged IPs from WAF lists (e.g., deleting IPv6 addresses if you disable IPv6), but another reasonable implementation is to leave them alone. Please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to provide feedback. Thanks!
 
-> 🤖 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major implementations have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+> 🤖 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > <details>
 > <summary>🃏 What are wildcard domains?</summary>
