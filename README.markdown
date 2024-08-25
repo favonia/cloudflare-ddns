@@ -206,12 +206,22 @@ _(Click to expand the following items.)_
 
 Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
-1. A change of your actual IP address (a real change), or
-2. A change of the IP address in the DNS records (a simulated change).
+1. A change of your actual IP address (a _real_ change), or
+2. A change of the IP address in the DNS records (a _simulated_ change).
 
 The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot detect your simulated changes. However, when your actual IP address changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records and detect simulated changes after `CACHE_EXPIRATION` (six hours by default) has passed.
 
 If you really wish to test the updater with simulated IP changes in the DNS records, you can set `CACHE_EXPIRATION=1ns` (all cache expiring in one nanosecond), effectively disabling the caching. However, it is recommended to keep the default value (six hours) to reduce your network traffic.
+
+</details>
+
+<details>
+<summary>⏱️ Can I see the timestamps of the IP checks and/or updates?</summary>
+
+The updater does not itself add timestamps because all major systems already timestamp everything:
+
+- If you are using Docker Compose, Kubernetes, or Docker directly, add the option `--timestamps` when viewing the logs.
+- If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
 
 </details>
 
@@ -245,12 +255,12 @@ _(Click to expand the following items.)_
 
 > You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` for the updater to update.
 
-| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`.                                                                                                                                                                                                               |
-| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                                                                                                                                                                                                                                |
-| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                             |
-| 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) |
+| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`.                                                                                                                                                                                                                   |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                                                                                                                                                                                                                                    |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                                 |
+| 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. 💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). |
 
 > 🌍 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major implementations have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
