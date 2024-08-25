@@ -24,11 +24,11 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
 
-### 🌥️ Enjoy Cloudflare-specific Features
+### 🌥️ Support of Cloudflare-specific Features
 
 - 😶‍🌫️ You can toggle [Cloudflare proxying](https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/) for each domain.
 - 📝 You can set [DNS record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) (and record tags very soon).
-- 📜 The updater can maintain [custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses for you to use in [Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) rules.
+- 📜 The updater can maintain [custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. These lists can then be used in [Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) rules.
 
 ### 🕵️ Privacy
 
@@ -36,8 +36,8 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
 
 ### 👁️ Notification
 
-- 🩺 The updater can work with [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
-- 📣 The updater can also actively send you notifications via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
+- 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
+- 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
 
 ### 🛡️ Security
 
@@ -50,7 +50,7 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   ```
 
-  Note: this only proves that a Docker image is from this repository. It cannot prevent malicious code if someone hacks into GitHub or this repository.
+  Note: this only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
@@ -148,17 +148,17 @@ _(Click to expand the following important tips.)_
 The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). (The less secure API key authentication is deliberately _not_ supported.)
 
 - To update only DNS records, use the **Edit zone DNS** template to create a token.
-- To update only WAF lists, choose **Create Custom Token** and add the **Accounts - Account Filter Lists - Write** permission to create a token.
-- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and add the **Accounts - Account Filter Lists - Write** permission to create a token.
+- To update only WAF lists, choose **Create Custom Token** and then add the **Accounts - Account Filter Lists - Write** permission to create a token.
+- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Accounts - Account Filter Lists - Write** permission when creating the token.
 
-You can also grant new permissions to existing tokens at any time!
+You can also adjust the permissions of existing tokens at any time!
 
 </details>
 
 <details>
 <summary>📍 <code>DOMAINS</code> is the list of domains to update</summary>
 
-The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
+The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to share the same DNS zone---the updater will take care of the DNS zones behind the scene.
 
 </details>
 
@@ -172,14 +172,14 @@ The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your 
 <details>
 <summary>📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
 
-The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid all the detection errors), add the setting `IP6_PROVIDER=none`.
+The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid seeing the detection errors), add `IP6_PROVIDER=none`.
 
 </details>
 
 <details>
 <summary>📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Use newer versions of Docker that come with (much) better IPv6 support.
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Do use newer versions of Docker that come with much better IPv6 support!
 
 </details>
 
@@ -190,7 +190,7 @@ Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to us
 
 </details>
 
-### 🚀 Step 2: Building the Container
+### 🚀 Step 2: Building and Running the Container
 
 ```bash
 docker-compose pull cloudflare-ddns
