@@ -24,22 +24,22 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
 
-### 🌥️ Enjoy Cloudflare-specific Features
+### 🌥️ Cloudflare-specific Features
 
 - 😶‍🌫️ You can toggle [Cloudflare proxying](https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/) for each domain.
-- 📝 You can set [DNS record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) (and record tags very soon).
-- 📜 The updater can manage a [custom list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses for you to use in [Web Application Firewalls (WAF)](https://developers.cloudflare.com/waf/) rules.
+- 📝 You can set [DNS record comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) (and probably record tags soon).
+- 📜 The updater can maintain [custom lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. These lists can then be referenced in [Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) rules.
 
-### 🕵️ Privacy
+### 👁️ Integration with Notification Services
+
+- 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
+- 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
+
+### 🕵️ Minimum Privacy Impact
 
 By default, public IP addresses are obtained via [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
-### 👁️ Notification
-
-- 🩺 The updater can work with [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
-- 📣 The updater can also actively send you notifications via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
-
-### 🛡️ Security
+### 🛡️ Attention to Security
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/DESIGN.markdown#network-security-threat-model) for more information.
 - <details><summary>✍️ You can verify the Docker images were built from this repository using the cosign tool <em>(click to expand)</em></summary>
@@ -50,7 +50,7 @@ By default, public IP addresses are obtained via [Cloudflare debugging page](htt
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   ```
 
-  Note: this only proves that a Docker image is from this repository. It cannot prevent malicious code if someone hacks into GitHub or this repository.
+  Note: this only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
 - <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
 
@@ -148,17 +148,17 @@ _(Click to expand the following important tips.)_
 The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). (The less secure API key authentication is deliberately _not_ supported.)
 
 - To update only DNS records, use the **Edit zone DNS** template to create a token.
-- To update only WAF lists, choose **Create Custom Token** and add the **Accounts - Account Filter Lists - Write** permission to create a token.
-- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and add the **Accounts - Account Filter Lists - Write** permission to create a token.
+- To update only WAF lists, choose **Create Custom Token** and then add the **Account - Account Filter Lists - Edit** permission to create a token.
+- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Account - Account Filter Lists - Edit** permission when creating the token.
 
-You can also grant new permissions to existing tokens at any time!
+You can also adjust the permissions of existing tokens at any time!
 
 </details>
 
 <details>
 <summary>📍 <code>DOMAINS</code> is the list of domains to update</summary>
 
-The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to be in the same zone---the updater will identify their zones automatically.
+The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to share the same DNS zone---the updater will take care of the DNS zones behind the scene.
 
 </details>
 
@@ -172,14 +172,14 @@ The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your 
 <details>
 <summary>📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
 
-The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid all the detection errors), add the setting `IP6_PROVIDER=none`.
+The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid seeing the detection errors), add `IP6_PROVIDER=none`.
 
 </details>
 
 <details>
 <summary>📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
 
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Use newer versions of Docker that come with (much) better IPv6 support.
+The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Do use newer versions of Docker that come with much better IPv6 support!
 
 </details>
 
@@ -190,7 +190,7 @@ Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to us
 
 </details>
 
-### 🚀 Step 2: Building the Container
+### 🚀 Step 2: Building and Running the Container
 
 ```bash
 docker-compose pull cloudflare-ddns
@@ -202,12 +202,12 @@ docker-compose up --detach --build cloudflare-ddns
 _(Click to expand the following items.)_
 
 <details>
-<summary>😠 I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
+<summary>❔ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
 
 Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
-1. A change of your actual IP address (a real change), or
-2. A change of the IP address in the DNS records (a simulated change).
+1. A change of your actual IP address (a _real_ change), or
+2. A change of the IP address in the DNS records (a _simulated_ change).
 
 The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot detect your simulated changes. However, when your actual IP address changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records and detect simulated changes after `CACHE_EXPIRATION` (six hours by default) has passed.
 
@@ -216,7 +216,17 @@ If you really wish to test the updater with simulated IP changes in the DNS reco
 </details>
 
 <details>
-<summary>😠 Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
+<summary>❔ How can I see the timestamps of the IP checks and/or updates?</summary>
+
+The updater does not itself add timestamps because all major systems already timestamp everything:
+
+- If you are using Docker Compose, Kubernetes, or Docker directly, add the option `--timestamps` when viewing the logs.
+- If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
+
+</details>
+
+<details>
+<summary>❔ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
 
 Is your “public” IP address on your router between `100.64.0.0` and `100.127.255.255`? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public IP address, nor does it allow you to forward IP packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) that can work around CGNAT.
 
@@ -226,33 +236,40 @@ Is your “public” IP address on your router between `100.64.0.0` and `100.127
 
 ### ⚙️ All Settings
 
+The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details.
+
 _(Click to expand the following items.)_
 
 <details>
 <summary>🔑 The Cloudflare API token</summary>
 
-| Name                | Valid Values                                    | Meaning                                                     | Required?                                                           | Default Value |
-| ------------------- | ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
-| `CF_API_TOKEN`      | Cloudflare API tokens                           | The token to access the Cloudflare API                      | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+> Exactly one of the following variables should be set.
+
+| Name                | Meaning                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `CF_API_TOKEN`      | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
+| `CF_API_TOKEN_FILE` | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
+
+- 🔑 To update DNS records, the updater needs the **Account - Account Filter Lists - Edit** permission.
+- 🔑 To manipulate WAF lists, the updater needs the **Zone - DNS - Edit** permission.
 
 </details>
 
 <details>
-<summary>📍 DNS domains to update</summary>
+<summary>📍 DNS domains and WAF lists to update</summary>
 
-| Name          | Valid Values                                                          | Meaning                                                               | Required?   | Default Value |
-| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------- |
-| `DOMAINS`     | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)  |
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)  |
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)  |
+> You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` for the updater to update.
 
-> <details>
-> <summary>📍 At least one of <code>DOMAINS</code>, <code>IP4/6_DOMAINS</code>, and <code>WAF_LISTS</code> must be non-empty.</summary>
->
-> At least something should be listed in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or `WAF_LISTS` (for WAF lists, see below). Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing fully compatible with IDNA2008. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
->
-> </details>
+| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`.                                                                                                                                                                                                                   |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                                                                                                                                                                                                                                    |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                                 |
+| 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. 💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). |
+
+> 🧪 The feature to manipulate WAF lists is experimental (introduced in 1.14.0) and is subject to changes. In particular, the updater currently deletes unmanaged IPs from WAF lists (e.g., deleting IPv6 addresses if you disable IPv6), but another reasonable implementation is to leave them alone. Please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to provide feedback. Thanks!
+
+> 🤖 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > <details>
 > <summary>🃏 What are wildcard domains?</summary>
@@ -266,69 +283,68 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔍 IP address providers</summary>
 
-| Name           | Valid Values                                                        | Meaning                                                             | Required? | Default Value      |
-| -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- | --------- | ------------------ |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv4 addresses, or `none` to disable IPv4 (see below) | No        | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv6 addresses, or `none` to disable IPv6 (see below) | No        | `cloudflare.trace` |
+| Name           | Meaning                                                                                                                                                                                                                                              | Default Value      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv4 completely. See below for a detailed explanation. | `cloudflare.trace` |
+| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv6 completely. See below for a detailed explanation. | `cloudflare.trace` |
 
-> 👉 The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
->
-> 👉 Here are available IP address providers:
+> 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
+
+> 📡 Available IP address providers:
 >
 > - `cloudflare.doh`\
->   Get the public IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https) and update DNS records accordingly.
+>   Get the IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https).
 > - `cloudflare.trace`\
->   Get the public IP address by parsing the [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace) and update DNS records accordingly. This is the default provider.
+>   Get the IP address by parsing the [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This is the default provider.
 > - `local`\
->   Get the address via local network interfaces and update DNS records accordingly. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that would have been used for outbound UDP connections to Cloudflare servers.
->   ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside the [bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
+>   Get the IP address via local network interfaces. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.)
+>   ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.
 > - `url:URL`\
->   Fetch the content at a URL via the HTTP(S) protocol as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 addresses from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org).
->   ⚠️ Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at the URL. Therefore, for `IP4_PROVIDER=url:URL`, the updater might use IPv6 to connect to `URL`, get an IPv6 address, and then fail (and vice versa). The `URL` must either restrict its access to the expected IP network or return a valid IP address in the expected IP network regardless of what IP network is used for connection. As a working example, <https://api4.ipify.org> has restricted its access to IPv4, and thus it’s impossible to use the wrong IP network (IPv6) to connect to it. The updater did not force IPv4 or IPv6 because there are no elegant ways to force IPv4 or IPv6 using the Go standard library; please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) if you have a use case so that I can consider some really ugly hack to force it.
+>   Fetch the content at `URL` via the HTTP(S) protocol treat the content as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 address from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org).
+>   🐞 **KNOWN ISSUE: Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at `URL`.** Therefore, for `IP4_PROVIDER=url:URL`, the updater might use IPv6 (instead of the expected IPv4) to connect to `URL`, and if the server returns an IPv6 address because of this, the updating will fail. The server at `URL` must either restrict its access to the expected IP network or return a valid IP address in the expected IP network regardless of what IP network is used for connection. As a working example, <https://api4.ipify.org> has restricted its access to IPv4, and thus it’s impossible to use the wrong IP network (IPv6) to connect to it. 🧪 This is a known issue and may be fixed in the future.
 > - `none`\
->   Stop the DNS updating completely. Existing DNS records will not be removed.
+>   Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed. ⚠️ The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. 🧪 As the support of WAF lists is experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).
 >
-> 🤖 Some technical details: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
+> 🤖 Technical details: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
 
 </details>
 
 <details>
-<summary>📅 Scheduling</summary>
+<summary>📅 Scheduling of IP detections and updates</summary>
 
-| Name               | Valid Values                                                                                                                                                                  | Meaning                                                                                                                                                                             | Required? | Default Value                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
-| `CACHE_EXPIRATION` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)                                             | The expiration of cached Cloudflare API responses                                                                                                                                   | No        | `6h0m0s` (6 hours)            |
-| `DELETE_ON_STOP`   | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether managed DNS records should be deleted on exit                                                                                                                               | No        | `false`                       |
-| `TZ`               | Recognized timezones, such as `UTC`                                                                                                                                           | The timezone used for logging and parsing `UPDATE_CRON`                                                                                                                             | No        | `UTC`                         |
-| `UPDATE_CRON`      | Cron expressions or the special value `@once`. See the [documentation of cron](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for cron expressions. | The schedule to re-check IP addresses and update DNS records (if necessary). The special value `@once` means the updater will terminate immediately after updating the DNS records. | No        | `@every 5m` (every 5 minutes) |
-| `UPDATE_ON_START`  | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool)                                                           | Whether to check IP addresses on start regardless of `UPDATE_CRON`                                                                                                                  | No        | `true`                        |
-
-> ⚠️ The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is “for every 5 minutes”, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.
+| Name               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Default Value                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `CACHE_EXPIRATION` | The expiration of cached Cloudflare API responses. It can be any positive time duration accepted by [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration), such as `1h` or `10m`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `6h0m0s` (6 hours)            |
+| `DELETE_ON_STOP`   | Whether managed DNS records and WAF lists should be deleted on exit. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `false`                       |
+| `TZ`               | The timezone used for logging messages and parsing `UPDATE_CRON`. It can be any timezone accepted by [time.LoadLocation](https://pkg.go.dev/time#LoadLocation), including any IANA Time Zone. 🤖 The pre-built Docker images come with the embedded timezone database via the [time/tzdata](https://pkg.go.dev/time/tzdata) package.                                                                                                                                                                                                                                                                                                                                                              | `UTC`                         |
+| `UPDATE_CRON`      | The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` means the updater will terminate immediately after updating the DNS records or WAF lists, effectively disabling the scheduling feature. 🤖 The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is `@every 5m`, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes. | `@every 5m` (every 5 minutes) |
+| `UPDATE_ON_START`  | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`.                                                                                                                                                                                                                                                                                                                                                                                       | `true`                        |
 
 </details>
 
 <details>
-<summary>⏳ Timeouts</summary>
+<summary>⏳ Timeouts of various operations</summary>
 
-| Name                | Valid Values                                                                                                                      | Meaning                                                                        | Required? | Default Value      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- | ------------------ |
-| `DETECTION_TIMEOUT` | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to detect IP addresses                             | No        | `5s` (5 seconds)   |
-| `UPDATE_TIMEOUT`    | Positive time durations with a unit, such as `1h` and `10m`. See [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) | The timeout of each attempt to update DNS records, per domain, per record type | No        | `30s` (30 seconds) |
+| Name                | Meaning                                                                                                                                                                                                                     | Default Value      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `DETECTION_TIMEOUT` | The timeout of each attempt to detect IP address, per IP version (IPv4 and IPv6). It can be any positive time duration accepted by [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration), such as `1h` or `10m`. | `5s` (5 seconds)   |
+| `UPDATE_TIMEOUT`    | The timeout of each attempt to update DNS records, per domain, per record type. It can be any positive time duration accepted by [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration), such as `1h` or `10m`.   | `30s` (30 seconds) |
 
 </details>
 
 <details>
-<summary>🐣 Parameters of new DNS records</summary>
+<summary>🐣 Parameters of new DNS records and WAF lists</summary>
 
-> 👉 The updater will preserve existing record parameters (TTL, proxy states, comments, etc.) unless it has to create new DNS records (or recreate deleted ones). Only when it creates DNS records, the following settings will apply. To change existing record parameters now, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing record parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
+> 👉 The updater will preserve existing parameters (TTL, proxy states, comments, etc.). Only when it creates new DNS records or new WAF lists, the following settings will apply. To change existing parameters, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
 
-| Name             | Valid Values                                                                                                                                                                                  | Meaning                                                                                                                                    | Required? | Default Value                              |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------ |
-| `PROXIED`        | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool). Also see below for the advanced extension for per-domain proxy settings. | Whether new DNS records should be proxied by Cloudflare                                                                                    | No        | `false`                                    |
-| `TTL`            | Time-to-live (TTL) values in seconds                                                                                                                                                          | The TTL values used to create new DNS records                                                                                              | No        | `1` (This means “automatic” to Cloudflare) |
-| `RECORD_COMMENT` | Strings that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character)                                                                                    | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) used to create new DNS records | No        | `""`                                       |
+| Name                      | Meaning                                                                                                                                                                                                                                                                      | Default Value                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `PROXIED`                 | Whether new DNS records should be proxied by Cloudflare. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`. 🧪 It can also be a domain-dependent boolean expression as described below. | `false`                                    |
+| `TTL`                     | The time-to-live (TTL) (in seconds) of new DNS records.                                                                                                                                                                                                                      | `1` (This means “automatic” to Cloudflare) |
+| `RECORD_COMMENT`          | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) of new DNS records.                                                                                                                                              | `""`                                       |
+| 🧪 `WAF_LIST_DESCRIPTION` | 🧪 The text description of new WAF lists.                                                                                                                                                                                                                                    | `""`                                       |
 
-> 🔨 If you are an advanced user, the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
+> 🤖🧪 If you are an advanced user, the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
 >
 > - `PROXIED=is(example.org)`: proxy only the domain `example.org`
 > - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
@@ -359,24 +375,12 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📜 Web Application Firewalls (WAF) Lists</summary>
+<summary>👁️ Message logging options</summary>
 
-> 🧪 The feature to manipulate WAF lists is experimental (introduced in 1.14.0) and is subject to changes. In particular, the updater currently deletes unmanaged IPs from WAF lists (e.g., deleting IPv6 addresses if you are not using IPv6), but another reasonable implementation is to leave them alone. Please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to provide feedback. Thanks!
-
-| Name                      | Valid Values                                                                                                                                                                                                                                                                                                 | Meaning                                                                                                                                                                                                                            | Required? | Default Value |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| 🧪 `WAF_LISTS`            | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/). A list reference is in the format `account-id/list-name` where `account-id` is the account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist` | 🧪 The [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/). | No        | (empty list)  |
-| 🧪 `WAF_LIST_DESCRIPTION` | 🧪 Strings that consist of only [Unicode graphic characters](https://en.wikipedia.org/wiki/Graphic_character)                                                                                                                                                                                                | 🧪 The description of newly created lists (the updater will keep existing descriptions)                                                                                                                                            | No        | `""`          |
-
-</details>
-
-<details>
-<summary>👁️ Logging</summary>
-
-| Name    | Valid Values                                                                                                        | Meaning                                              | Required? | Default Value |
-| ------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------- | ------------- |
-| `EMOJI` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should use emojis in the logging | No        | `true`        |
-| `QUIET` | Boolean values, such as `true`, `false`, `0` and `1`. See [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool) | Whether the updater should reduce the logging        | No        | `false`       |
+| Name    | Meaning                                                                                                                                                                                       | Default Value |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `EMOJI` | Whether the updater should use emojis in the logging. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`. | `true`        |
+| `QUIET` | Whether the updater should reduce the logging. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`.        | `false`       |
 
 </details>
 
@@ -385,15 +389,13 @@ _(Click to expand the following items.)_
 
 > 🧪 The integration with `shoutrrr` is still somewhat experimental (introduced in 1.12.0).
 
-| Name           | Valid Values                                                                                                                                                      | Meaning                                                                                                                                                                                         | Required? | Default Value |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------- |
-| `HEALTHCHECKS` | [Healthchecks ping URLs](https://healthchecks.io/docs/), such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` (see below) | If set, the updater will ping the URL when it successfully updates IP addresses                                                                                                                 | No        | (unset)       |
-| `UPTIMEKUMA`   | Uptime Kuma’s Push URLs, such as `https://<host>/push/<id>`. For convenience, you can directly copy the ‘Push URL’ from the Uptime Kuma configuration page.       | If set, the updater will ping the URL when it successfully updates IP addresses. ⚠️ Remember to change the “Heartbeat Interval” to match your DNS updating schedule specified in `UPDATE_CRON`. | No        | (unset)       |
-| 🧪 `SHOUTRRR`  | 🧪 Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/) such as `discord://<token>@<id>`                                                           | 🧪 If set, the updater will send messages when it updates IP addresses                                                                                                                          | No        | (unset)       |
+| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HEALTHCHECKS` | The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` ⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`. 🤖 The updater can work with _any_ server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled. |
+| `UPTIMEKUMA`   | The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page. ⚠️ Remember to change the “Heartbeat Interval” to match the update schedule specified by `UPDATE_CRON`.                                                                                                                                                                                                                                                                                                                                                       |
+| 🧪 `SHOUTRRR`  | 🧪 A list of notifications services the updater should send messages to when it updates IP addresses. The format is newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/), such as `discord://<token>@<id>`.                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
-> 🩺 For `HEALTHCHECKS`, the updater can work with any server following the [same notification protocol](https://healthchecks.io/docs/http_api/), including but not limited to self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.
-
-> ⚠️ If using Healthchecks or Uptime Kuma, please note that a failure of IPv6 would be reported as _down_ even if IPv4 records are updated successfully (and similarly if IPv6 works but IPv4 fails). If your setup does not support IPv6, please add `IP6_PROVIDER=none` to disable IPv6 completely.
+> ⚠️ Please note that a failure in handling IPv6 will cause the status to be reported as _down_ even if IPv4 records are updated successfully (and similarly if IPv6 works but IPv4 fails). If your network does not support IPv6, add `IP6_PROVIDER=none` to disable IPv6 completely.
 
 </details>
 
@@ -441,7 +443,7 @@ _(Click to expand the following items.)_
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
-> This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python code always purged unmanaged DNS records back then and it was not configurable via environment variables. There were feature requests to address these issues but they seemed to be neglected by its author [timothymiller](https://github.com/timothymiller/); I thus made my clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments. [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) eventually provided an option `purgeUnknownRecords` to disable the unwanted purging, but this updater already went on its way. I believe my Go clone is now much improved and enhanced, but my opinions are biased and you should check the technical details by yourself.
+> 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program always purged unmanaged DNS records back then and it was not configurable via environment variables. (It is still not configurable via environment variables at the time of writing.) There were feature requests to address these issues but the author [timothymiller](https://github.com/timothymiller/) seemed to ignore them; I thus made my Go clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments towards other aspects of the Python updater. Eventually, an option `purgeUnknownRecords` was added to the Python program to disable the unwanted purging, but my Go clone already went on its way. I believe my Go clone is now a much better choice, but my opinions are obviously biased and you should check the technical details by yourself. 😉
 
 </details>
 
