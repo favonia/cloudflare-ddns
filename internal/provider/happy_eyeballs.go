@@ -15,7 +15,7 @@ import (
 const HappyEyeballsAlternativeDelay = time.Second / 2
 
 // Hint1111BlocakageText is the explanation of why we want the parallel detection algorithm.
-const Hint1111BlocakageText string = "Many IPv4 detection methods use 1.1.1.1 to obtain your public IPv4 address, but it is not uncommon for your ISPs or routers to block or intercept 1.1.1.1. To work around the blockage, the updater may connect to 1.0.0.1 if 1.1.1.1 does not immediately respond. Whichever returns first will be used in the future." //nolint:lll
+const Hint1111BlocakageText string = "You are using an IPv4 provider that connects to 1.1.1.1 to obtain your public IPv4 address, but it is not uncommon for your ISPs or routers to block or intercept 1.1.1.1. To work around the blockage, the updater may connect to 1.0.0.1 if 1.1.1.1 does not immediately respond. Whichever returns first will be used in future IP detection." //nolint:lll
 
 // Hint1111Blockage prints out a message that explains the parallel connection to 1.0.0.1.
 func Hint1111Blockage(ppfmt pp.PP) { ppfmt.Hintf(pp.Hint1111Blockage, "%s", Hint1111BlocakageText) }
