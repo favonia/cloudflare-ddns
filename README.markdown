@@ -148,8 +148,8 @@ _(Click to expand the following important tips.)_
 The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). (The less secure API key authentication is deliberately _not_ supported.)
 
 - To update only DNS records, use the **Edit zone DNS** template to create a token.
-- To update only WAF lists, choose **Create Custom Token** and then add the **Accounts - Account Filter Lists - Write** permission to create a token.
-- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Accounts - Account Filter Lists - Write** permission when creating the token.
+- To update only WAF lists, choose **Create Custom Token** and then add the **Account - Account Filter Lists - Edit** permission to create a token.
+- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Account - Account Filter Lists - Edit** permission when creating the token.
 
 You can also adjust the permissions of existing tokens at any time!
 
@@ -250,6 +250,9 @@ _(Click to expand the following items.)_
 | `CF_API_TOKEN`      | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
 | `CF_API_TOKEN_FILE` | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
 
+- 🔑 To update DNS records, the updater needs the **Account - Account Filter Lists - Edit** permission.
+- 🔑 To manipulate WAF lists, the updater needs the **Zone - DNS - Edit** permission.
+
 </details>
 
 <details>
@@ -280,12 +283,12 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔍 IP address providers</summary>
 
-| Name           | Meaning                                                                                                                                                                                                                                      | Default Value      |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `IP4_PROVIDER` | This specifies how to detect the IPv4 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv4 completely. See below for a detailed explanation. | `cloudflare.trace` |
-| `IP6_PROVIDER` | This specifies how to detect the IPv6 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv6 completely. See below for a detailed explanation. | `cloudflare.trace` |
+| Name           | Meaning                                                                                                                                                                                                                                              | Default Value      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv4 completely. See below for a detailed explanation. | `cloudflare.trace` |
+| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. The special `none` provider disables IPv6 completely. See below for a detailed explanation. | `cloudflare.trace` |
 
-> 💡 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
+> 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
 > 📡 Available IP address providers:
 >
@@ -332,7 +335,7 @@ _(Click to expand the following items.)_
 <details>
 <summary>🐣 Parameters of new DNS records and WAF lists</summary>
 
-> 🤖 The updater will preserve existing parameters (TTL, proxy states, comments, etc.). Only when it creates new DNS records or new WAF lists, the following settings will apply. To change existing parameters, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
+> 👉 The updater will preserve existing parameters (TTL, proxy states, comments, etc.). Only when it creates new DNS records or new WAF lists, the following settings will apply. To change existing parameters, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new).
 
 | Name                      | Meaning                                                                                                                                                                                                                                                                      | Default Value                              |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
