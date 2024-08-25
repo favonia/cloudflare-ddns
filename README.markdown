@@ -239,20 +239,18 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📍 DNS domains to update</summary>
+<summary>📍 DNS domains and WAF lists to update</summary>
 
-| Name          | Valid Values                                                          | Meaning                                                               | Required?   | Default Value |
-| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ------------- |
-| `DOMAINS`     | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for both `A` and `AAAA` records | (See below) | (empty list)  |
-| `IP4_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `A` records                 | (See below) | (empty list)  |
-| `IP6_DOMAINS` | Comma-separated fully qualified domain names or wildcard domain names | The domains the updater should manage for `AAAA` records              | (See below) | (empty list)  |
+> You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` for the updater to update.
 
-> <details>
-> <summary>📍 At least one of <code>DOMAINS</code>, <code>IP4/6_DOMAINS</code>, and <code>WAF_LISTS</code> must be non-empty.</summary>
->
-> At least something should be listed in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or `WAF_LISTS` (for WAF lists, see below). Otherwise, if all of them are empty, then the updater has nothing to do. It is fine to list the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`, which is equivalent to listing it in `DOMAINS`. Internationalized domain names are supported using the non-transitional processing fully compatible with IDNA2008. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
->
-> </details>
+| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DOMAINS`      | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`.                                                                                                                                                                                                               |
+| `IP4_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                                                                                                                                                                                                                                |
+| `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                             |
+| 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) |
+
+> 🌍 Internationalized domain names are handled using the _non-transitional processing_ (fully compatible with IDNA2008). See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > <details>
 > <summary>🃏 What are wildcard domains?</summary>
@@ -266,10 +264,10 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔍 IP address providers</summary>
 
-| Name           | Valid Values                                                        | Meaning                                                             | Required? | Default Value      |
-| -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- | --------- | ------------------ |
-| `IP4_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv4 addresses, or `none` to disable IPv4 (see below) | No        | `cloudflare.trace` |
-| `IP6_PROVIDER` | `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, or `none` | How to detect IPv6 addresses, or `none` to disable IPv6 (see below) | No        | `cloudflare.trace` |
+| Name           | Meaning                                                                                                                                                                               | Required? | Default Value      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------ |
+| `IP4_PROVIDER` | How to detect IPv4 addresses, or `none` to disable IPv4. Valid values are `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. See below for a detailed explanation. | No        | `cloudflare.trace` |
+| `IP6_PROVIDER` | How to detect IPv6 addresses, or `none` to disable IPv6. Valid values are `cloudflare.doh`, `cloudflare.trace`, `local`, `url:URL`, and `none`. See below for a detailed explanation. | No        | `cloudflare.trace` |
 
 > 👉 The option `IP4_PROVIDER` is governing IPv4 addresses and `A`-type records, while the option `IP6_PROVIDER` is governing IPv6 addresses and `AAAA`-type records. The two options act independently of each other; that is, you can specify different address providers for IPv4 and IPv6.
 >
