@@ -250,7 +250,7 @@ _(Click to expand the following items.)_
 | `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                             |
 | 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) |
 
-> 🌍 Internationalized domain names are handled using the _non-transitional processing_ (fully compatible with IDNA2008). See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+> 🌍 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major implementations have switched to IDNA2008 from IDNA2003. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > <details>
 > <summary>🃏 What are wildcard domains?</summary>
