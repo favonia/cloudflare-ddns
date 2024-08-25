@@ -231,10 +231,12 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔑 The Cloudflare API token</summary>
 
-| Name                | Valid Values                                    | Meaning                                                     | Required?                                                           | Default Value |
-| ------------------- | ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------- |
-| `CF_API_TOKEN`      | Cloudflare API tokens                           | The token to access the Cloudflare API                      | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
-| `CF_API_TOKEN_FILE` | Paths to files containing Cloudflare API tokens | A file that contains the token to access the Cloudflare API | Exactly one of `CF_API_TOKEN` and `CF_API_TOKEN_FILE` should be set | N/A           |
+> Exactly one of the following variables should be set
+
+| Name                | Meaning                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `CF_API_TOKEN`      | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
+| `CF_API_TOKEN_FILE` | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
 
 </details>
 
@@ -250,7 +252,7 @@ _(Click to expand the following items.)_
 | `IP6_DOMAINS`  | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                             |
 | 🧪 `WAF_LISTS` | 🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `account-id/list-name` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) |
 
-> 🌍 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major implementations have switched to IDNA2008 from IDNA2003. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+> 🌍 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major implementations have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > <details>
 > <summary>🃏 What are wildcard domains?</summary>
