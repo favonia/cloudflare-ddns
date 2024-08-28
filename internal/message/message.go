@@ -1,44 +1,33 @@
-// Package message defines the structure holding messages to
+// Package message defines the structures holding messages for
 // monitors and notifiers.
 package message
 
-// Message holds the messages and success/failure status.
-// To monitors, the status is far more important than the message,
-// and to notifiers, all messages are important.
+// Message encapsulates the messages to both monitiors and notifiers.
 type Message struct {
-	OK               bool
-	MonitorMessages  []string
-	NotifierMessages []string
+	NotifierMessage
+	MonitorMessage
 }
 
-// NewEmpty creates a new empty Message.
-func NewEmpty() Message {
+// New creates a new, empty message.
+func New() Message {
 	return Message{
-		OK:               true,
-		MonitorMessages:  nil,
-		NotifierMessages: nil,
+		MonitorMessage:  NewMonitorMessage(),
+		NotifierMessage: NewNotifierMessage(),
 	}
 }
 
-// Merge merges a list of messages in the following way:
-// - For monitors, we collect only the messages of higher severity.
-// - For notifiers, we collect all the messages.
+// Merge combines multiple compound messages.
 func Merge(msgs ...Message) Message {
-	var (
-		allOK                        = true
-		allMonitorMessages           = map[bool][]string{}
-		allNotifierMessages []string = nil
-	)
+	mms := make([]MonitorMessage, len(msgs))
+	nms := make([]NotifierMessage, len(msgs))
 
-	for _, msg := range msgs {
-		allOK = allOK && msg.OK
-		allMonitorMessages[msg.OK] = append(allMonitorMessages[msg.OK], msg.MonitorMessages...)
-		allNotifierMessages = append(allNotifierMessages, msg.NotifierMessages...)
+	for i := range msgs {
+		mms[i] = msgs[i].MonitorMessage
+		nms[i] = msgs[i].NotifierMessage
 	}
 
 	return Message{
-		OK:               allOK,
-		MonitorMessages:  allMonitorMessages[allOK],
-		NotifierMessages: allNotifierMessages,
+		MonitorMessage:  MergeMonitorMessages(mms...),
+		NotifierMessage: MergeNotifierMessages(nms...),
 	}
 }

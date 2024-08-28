@@ -123,7 +123,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id); !ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, false); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
@@ -137,7 +137,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// We should also delete all duplicate records even if they are up to date.
 	// This has lower priority than deleting the stale records.
 	for _, id := range unprocessedMatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id); ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, false); ok {
 			ppfmt.Noticef(pp.EmojiDeletion,
 				"Deleted a duplicate %s record of %q (ID: %s)", recordType, domainDescription, id)
 		}
@@ -176,7 +176,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domai
 
 	allOK := true
 	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id) {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, true) {
 			allOK = false
 
 			if ctx.Err() != nil {
@@ -279,11 +279,17 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	return ResponseUpdated
 }
 
-// DeleteWAFList deletes a WAF list.
-func (s setter) DeleteWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList) ResponseCode {
-	if !s.Handle.DeleteWAFList(ctx, ppfmt, list) {
+// ClearWAFList calls [api.Handle.DeleteWAFList] or [api.Handle.ClearWAFList].
+func (s setter) ClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList) ResponseCode {
+	deleted, ok := s.Handle.ClearWAFListAsync(ctx, ppfmt, list, true)
+	switch {
+	case ok && deleted:
+		ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.ListName)
+		return ResponseUpdated
+	case ok && !deleted:
+		ppfmt.Noticef(pp.EmojiClear, "The list %q is being cleared (asynchronously)", list.ListName)
+		return ResponseUpdating
+	default:
 		return ResponseFailed
 	}
-	ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.ListName)
-	return ResponseUpdated
 }

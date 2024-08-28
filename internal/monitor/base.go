@@ -3,7 +3,6 @@ package monitor
 
 import (
 	"context"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -37,23 +36,21 @@ type Monitor interface {
 }
 
 // PingMessage formats and pings with a [message.Message].
-func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
-	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+func PingMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.MonitorMessage) bool {
 	if msg.OK {
-		return m.Success(ctx, ppfmt, monitorMsg)
+		return m.Success(ctx, ppfmt, msg.Format())
 	} else {
-		return m.Failure(ctx, ppfmt, monitorMsg)
+		return m.Failure(ctx, ppfmt, msg.Format())
 	}
 }
 
 // LogMessage formats and logs a [message.Message].
-func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.Message) bool {
-	monitorMsg := strings.Join(msg.MonitorMessages, "\n")
+func LogMessage(ctx context.Context, ppfmt pp.PP, m Monitor, msg message.MonitorMessage) bool {
 	switch {
 	case !msg.OK:
-		return m.Failure(ctx, ppfmt, monitorMsg)
-	case len(msg.MonitorMessages) > 0:
-		return m.Log(ctx, ppfmt, monitorMsg)
+		return m.Failure(ctx, ppfmt, msg.Format())
+	case len(msg.Lines) > 0:
+		return m.Log(ctx, ppfmt, msg.Format())
 	default:
 		return true
 	}

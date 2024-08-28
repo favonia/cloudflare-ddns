@@ -44,6 +44,44 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 	return m.recorder
 }
 
+// ClearWAFList mocks base method.
+func (m *MockSetter) ClearWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList) setter.ResponseCode {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearWAFList", arg0, arg1, arg2)
+	ret0, _ := ret[0].(setter.ResponseCode)
+	return ret0
+}
+
+// ClearWAFList indicates an expected call of ClearWAFList.
+func (mr *MockSetterMockRecorder) ClearWAFList(arg0, arg1, arg2 any) *SetterClearWAFListCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearWAFList", reflect.TypeOf((*MockSetter)(nil).ClearWAFList), arg0, arg1, arg2)
+	return &SetterClearWAFListCall{Call: call}
+}
+
+// SetterClearWAFListCall wrap *gomock.Call
+type SetterClearWAFListCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *SetterClearWAFListCall) Return(arg0 setter.ResponseCode) *SetterClearWAFListCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *SetterClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterClearWAFListCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *SetterClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterClearWAFListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Delete mocks base method.
 func (m *MockSetter) Delete(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain) setter.ResponseCode {
 	m.ctrl.T.Helper()
@@ -78,44 +116,6 @@ func (c *SetterDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterDeleteCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// DeleteWAFList mocks base method.
-func (m *MockSetter) DeleteWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList) setter.ResponseCode {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteWAFList", arg0, arg1, arg2)
-	ret0, _ := ret[0].(setter.ResponseCode)
-	return ret0
-}
-
-// DeleteWAFList indicates an expected call of DeleteWAFList.
-func (mr *MockSetterMockRecorder) DeleteWAFList(arg0, arg1, arg2 any) *SetterDeleteWAFListCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWAFList", reflect.TypeOf((*MockSetter)(nil).DeleteWAFList), arg0, arg1, arg2)
-	return &SetterDeleteWAFListCall{Call: call}
-}
-
-// SetterDeleteWAFListCall wrap *gomock.Call
-type SetterDeleteWAFListCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *SetterDeleteWAFListCall) Return(arg0 setter.ResponseCode) *SetterDeleteWAFListCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *SetterDeleteWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterDeleteWAFListCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterDeleteWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterDeleteWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

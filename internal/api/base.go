@@ -50,7 +50,11 @@ type Handle interface {
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain) ([]Record, bool, bool)
 
 	// DeleteRecord deletes one DNS record.
-	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID) bool
+	//
+	// Note: the keepCacheWhenFails is to optimize the deletion when exiting the program. The cache
+	// from list names to list IDs should not be cleared if we are only deleting things.
+	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID,
+		keepCacheWhenFails bool) bool
 
 	// UpdateRecord updates one DNS record.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr) bool
@@ -64,8 +68,13 @@ type Handle interface {
 	// The second return value indicates whether the list already exists.
 	EnsureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList, description string) (ID, bool, bool)
 
-	// DeleteWAFList deletes a WAF list with IP ranges.
-	DeleteWAFList(ctx context.Context, ppfmt pp.PP, list WAFList) bool
+	// ClearWAFListAsync deletes or clears a WAF list with IP ranges.
+	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.
+	// If it's false, then it's being cleared asynchronously instead of being deleted.
+	//
+	// Note: the keepCacheWhenFails is to optimize the deletion when exiting the program. The cache
+	// from list names to list IDs should not be cleared if we are only deleting things.
+	ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list WAFList, keepCacheWhenFails bool) (bool, bool)
 
 	// ListWAFListItems retrieves a WAF list with IP rages.
 	//

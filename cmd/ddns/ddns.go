@@ -57,8 +57,8 @@ func initConfig(ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
 		msg := updater.DeleteIPs(ctx, ppfmt, c, s)
-		monitor.LogMessageAll(ctx, ppfmt, c.Monitors, msg)
-		notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)
+		monitor.LogMessageAll(ctx, ppfmt, c.Monitors, msg.MonitorMessage)
+		notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg.NotifierMessage)
 	}
 }
 
@@ -125,8 +125,8 @@ func realMain() int { //nolint:funlen
 			monitor.SuccessAll(ctx, ppfmt, c.Monitors, "Started (no action)")
 		} else {
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
-			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg)
-			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg)
+			monitor.PingMessageAll(ctx, ppfmt, c.Monitors, msg.MonitorMessage)
+			notifier.SendMessageAll(ctx, ppfmt, c.Notifiers, msg.NotifierMessage)
 		}
 
 		if ctxWithSignals.Err() != nil {

@@ -16,8 +16,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID) bool {
-	return func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID) bool {
+func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, bool) bool {
+	return func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, bool) bool {
 		cancel()
 		return false
 	}
@@ -121,7 +121,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).Return(true),
 					p.EXPECT().Noticef(
 						pp.EmojiDeletion,
 						"Deleted a duplicate %s record of %q (ID: %s)",
@@ -129,7 +129,7 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record2,
 					),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, false).Return(true),
 					p.EXPECT().Noticef(
 						pp.EmojiDeletion,
 						"Deleted a duplicate %s record of %q (ID: %s)",
@@ -147,8 +147,8 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).Return(false),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).Return(false),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, false).Return(true),
 					p.EXPECT().Noticef(
 						pp.EmojiDeletion,
 						"Deleted a duplicate %s record of %q (ID: %s)",
@@ -166,7 +166,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).Return(true),
 					p.EXPECT().Noticef(
 						pp.EmojiDeletion,
 						"Deleted a duplicate %s record of %q (ID: %s)",
@@ -174,7 +174,7 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record2,
 					),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3).Return(false),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, false).Return(false),
 				)
 			},
 		},
@@ -185,7 +185,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
 				)
 			},
@@ -205,7 +205,7 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record1,
 					),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion,
 						"Deleted a stale %s record of %q (ID: %s)",
 						"AAAA",
@@ -229,7 +229,7 @@ func TestSet(t *testing.T) {
 						"sub.test.org",
 						record1,
 					),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, false).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
@@ -320,7 +320,7 @@ func TestDelete(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, true).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
 				)
 			},
@@ -330,7 +330,7 @@ func TestDelete(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1).Return(false),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, true).Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly delete %s records of %q; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
 				)
 			},
@@ -341,7 +341,7 @@ func TestDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
 						Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1).
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, true).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
 					p.EXPECT().Infof(pp.EmojiTimeout,
 						"Deletion of %s records of %q aborted by timeout or signals; records might be inconsistent",
@@ -354,9 +354,9 @@ func TestDelete(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: invalidIP}}, true, true), //nolint:lll
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, true).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2).Return(true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, true).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
 				)
 			},
@@ -666,7 +666,7 @@ func TestSetWAFList(t *testing.T) {
 	}
 }
 
-func TestDeleteWAFList(t *testing.T) {
+func TestClearWAFList(t *testing.T) {
 	t.Parallel()
 
 	const listName = "list"
@@ -676,19 +676,28 @@ func TestDeleteWAFList(t *testing.T) {
 		resp         setter.ResponseCode
 		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
 	}{
-		"fail": {
-			setter.ResponseFailed,
-			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().DeleteWAFList(ctx, p, wafList).Return(false)
-			},
-		},
 		"deleted": {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().DeleteWAFList(ctx, p, wafList).Return(true),
+					m.EXPECT().ClearWAFListAsync(ctx, p, wafList, true).Return(true, true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "The list %q was deleted", listName),
 				)
+			},
+		},
+		"cleared": {
+			setter.ResponseUpdating,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				gomock.InOrder(
+					m.EXPECT().ClearWAFListAsync(ctx, p, wafList, true).Return(false, true),
+					p.EXPECT().Noticef(pp.EmojiClear, "The list %q is being cleared (asynchronously)", listName),
+				)
+			},
+		},
+		"delete-fail/clear-fail": {
+			setter.ResponseFailed,
+			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				m.EXPECT().ClearWAFListAsync(ctx, p, wafList, true).Return(false, false)
 			},
 		},
 	} {
@@ -708,7 +717,7 @@ func TestDeleteWAFList(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			resp := s.DeleteWAFList(ctx, mockPP, wafList)
+			resp := s.ClearWAFList(ctx, mockPP, wafList)
 			require.Equal(t, tc.resp, resp)
 		})
 	}

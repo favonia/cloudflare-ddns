@@ -128,17 +128,15 @@ func TestExitStatusAll(t *testing.T) {
 func TestPingMessageAll(t *testing.T) {
 	t.Parallel()
 
-	notifierMessages := []string{"ocean", "moon"}
-
 	for name1, tc1 := range map[string]struct {
-		monitorMessages []string
+		lines []string
 	}{
 		"nil":   {nil},
 		"empty": {[]string{}},
 		"one":   {[]string{"hi"}},
 		"two":   {[]string{"hi", "hey"}},
 	} {
-		monitorMessage := strings.Join(tc1.monitorMessages, "\n")
+		monitorMessage := strings.Join(tc1.lines, "\n")
 
 		for name2, tc2 := range map[string]struct {
 			ok bool
@@ -163,10 +161,9 @@ func TestPingMessageAll(t *testing.T) {
 					ms = append(ms, m)
 				}
 
-				msg := message.Message{
-					OK:               tc2.ok,
-					MonitorMessages:  tc1.monitorMessages,
-					NotifierMessages: notifierMessages,
+				msg := message.MonitorMessage{
+					OK:    tc2.ok,
+					Lines: tc1.lines,
 				}
 				monitor.PingMessageAll(context.Background(), mockPP, ms, msg)
 			})
@@ -177,17 +174,15 @@ func TestPingMessageAll(t *testing.T) {
 func TestLogMessageAll(t *testing.T) {
 	t.Parallel()
 
-	notifierMessages := []string{"ocean", "moon"}
-
 	for name1, tc1 := range map[string]struct {
-		monitorMessages []string
+		lines []string
 	}{
 		"nil":   {nil},
 		"empty": {[]string{}},
 		"one":   {[]string{"hi"}},
 		"two":   {[]string{"hi", "hey"}},
 	} {
-		monitorMessage := strings.Join(tc1.monitorMessages, "\n")
+		monitorMessage := strings.Join(tc1.lines, "\n")
 
 		for name2, tc2 := range map[string]struct {
 			ok bool
@@ -214,10 +209,9 @@ func TestLogMessageAll(t *testing.T) {
 					ms = append(ms, m)
 				}
 
-				msg := message.Message{
-					OK:               tc2.ok,
-					MonitorMessages:  tc1.monitorMessages,
-					NotifierMessages: notifierMessages,
+				msg := message.MonitorMessage{
+					OK:    tc2.ok,
+					Lines: tc1.lines,
 				}
 				monitor.LogMessageAll(context.Background(), mockPP, ms, msg)
 			})

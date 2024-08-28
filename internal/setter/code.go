@@ -13,6 +13,12 @@ const (
 	// and we deleted them.
 	ResponseUpdated
 
+	// ResponseUpdating means records should be updated
+	// and we started the updating asynchronously, or that
+	// they should be deleted and we started the deletion
+	// asynchronously.
+	ResponseUpdating
+
 	// ResponseFailed means records should be updated
 	// but we failed to finish the updating, or that they
 	// should be deleted and we failed to finish the deletion.

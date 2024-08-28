@@ -144,7 +144,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
 func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type, domain domain.Domain, id ID,
+	ipNet ipnet.Type, domain domain.Domain, id ID, keepCacheWhenFails bool,
 ) bool {
 	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -155,7 +155,9 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 
-		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
+		if !keepCacheWhenFails {
+			h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
+		}
 
 		return false
 	}

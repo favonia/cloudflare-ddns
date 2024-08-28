@@ -43,6 +43,45 @@ func (m *MockHandle) EXPECT() *MockHandleMockRecorder {
 	return m.recorder
 }
 
+// ClearWAFListAsync mocks base method.
+func (m *MockHandle) ClearWAFListAsync(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 bool) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearWAFListAsync", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// ClearWAFListAsync indicates an expected call of ClearWAFListAsync.
+func (mr *MockHandleMockRecorder) ClearWAFListAsync(arg0, arg1, arg2, arg3 any) *HandleClearWAFListAsyncCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearWAFListAsync", reflect.TypeOf((*MockHandle)(nil).ClearWAFListAsync), arg0, arg1, arg2, arg3)
+	return &HandleClearWAFListAsyncCall{Call: call}
+}
+
+// HandleClearWAFListAsyncCall wrap *gomock.Call
+type HandleClearWAFListAsyncCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *HandleClearWAFListAsyncCall) Return(arg0, arg1 bool) *HandleClearWAFListAsyncCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *HandleClearWAFListAsyncCall) Do(f func(context.Context, pp.PP, api.WAFList, bool) (bool, bool)) *HandleClearWAFListAsyncCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *HandleClearWAFListAsyncCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, bool) (bool, bool)) *HandleClearWAFListAsyncCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateRecord mocks base method.
 func (m *MockHandle) CreateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) (api.ID, bool) {
 	m.ctrl.T.Helper()
@@ -121,17 +160,17 @@ func (c *HandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP
 }
 
 // DeleteRecord mocks base method.
-func (m *MockHandle) DeleteRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID) bool {
+func (m *MockHandle) DeleteRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID, arg5 bool) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRecord", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "DeleteRecord", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // DeleteRecord indicates an expected call of DeleteRecord.
-func (mr *MockHandleMockRecorder) DeleteRecord(arg0, arg1, arg2, arg3, arg4 any) *HandleDeleteRecordCall {
+func (mr *MockHandleMockRecorder) DeleteRecord(arg0, arg1, arg2, arg3, arg4, arg5 any) *HandleDeleteRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecord", reflect.TypeOf((*MockHandle)(nil).DeleteRecord), arg0, arg1, arg2, arg3, arg4)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecord", reflect.TypeOf((*MockHandle)(nil).DeleteRecord), arg0, arg1, arg2, arg3, arg4, arg5)
 	return &HandleDeleteRecordCall{Call: call}
 }
 
@@ -147,51 +186,13 @@ func (c *HandleDeleteRecordCall) Return(arg0 bool) *HandleDeleteRecordCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID) bool) *HandleDeleteRecordCall {
+func (c *HandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, bool) bool) *HandleDeleteRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID) bool) *HandleDeleteRecordCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// DeleteWAFList mocks base method.
-func (m *MockHandle) DeleteWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteWAFList", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DeleteWAFList indicates an expected call of DeleteWAFList.
-func (mr *MockHandleMockRecorder) DeleteWAFList(arg0, arg1, arg2 any) *HandleDeleteWAFListCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWAFList", reflect.TypeOf((*MockHandle)(nil).DeleteWAFList), arg0, arg1, arg2)
-	return &HandleDeleteWAFListCall{Call: call}
-}
-
-// HandleDeleteWAFListCall wrap *gomock.Call
-type HandleDeleteWAFListCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *HandleDeleteWAFListCall) Return(arg0 bool) *HandleDeleteWAFListCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *HandleDeleteWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList) bool) *HandleDeleteWAFListCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleDeleteWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList) bool) *HandleDeleteWAFListCall {
+func (c *HandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, bool) bool) *HandleDeleteRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
