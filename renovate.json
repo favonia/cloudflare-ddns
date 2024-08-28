@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "group:allNonMajor"],
+  "packageRules": [
+    {
+      "matchPackageNames": ["github.com/cloudflare/cloudflare-go"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
