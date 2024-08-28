@@ -7,5 +7,6 @@
       "matchUpdateTypes": ["major"],
       "enabled": false
     }
-  ]
+  ],
+  "postUpdateOptions": ["gomodTidy"]
 }
