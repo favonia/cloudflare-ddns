@@ -593,14 +593,14 @@ func TestDeleteRecordValid(t *testing.T) {
 	drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
 	drh.setRequestLimit(1)
 
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 	require.True(t, ok)
 	require.True(t, drh.isExhausted())
 
 	drh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
+	_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
@@ -625,7 +625,7 @@ func TestDeleteRecordInvalid(t *testing.T) {
 		api.ID("record1"),
 		gomock.Any(),
 	)
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 	require.False(t, ok)
 }
 
@@ -641,7 +641,7 @@ func TestDeleteRecordZoneInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1")
+	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 	require.False(t, ok)
 }
 

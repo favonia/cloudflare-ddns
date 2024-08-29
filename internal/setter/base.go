@@ -50,8 +50,8 @@ type Setter interface {
 		itemComment string,
 	) ResponseCode
 
-	// DeleteWAFList deletes a list.
-	DeleteWAFList(
+	// ClearWAFList deletes or empties a list.
+	ClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,

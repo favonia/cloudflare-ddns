@@ -3,7 +3,6 @@ package notifier
 
 import (
 	"context"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -21,9 +20,9 @@ type Notifier interface {
 }
 
 // SendMessage formats and sends a [message.Message].
-func SendMessage(ctx context.Context, ppfmt pp.PP, n Notifier, msg message.Message) bool {
-	if len(msg.NotifierMessages) == 0 {
+func SendMessage(ctx context.Context, ppfmt pp.PP, n Notifier, msg message.NotifierMessage) bool {
+	if len(msg) == 0 {
 		return true
 	}
-	return n.Send(ctx, ppfmt, strings.Join(msg.NotifierMessages, " "))
+	return n.Send(ctx, ppfmt, msg.Format())
 }

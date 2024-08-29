@@ -130,23 +130,23 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	return generateUpdateWAFListMessage(resps)
+	return generateUpdateWAFListsMessage(resps)
 }
 
-// deleteWAFLists extracts relevant settings from the configuration
-// and calls [setter.Setter.DeleteWAFList] with a deadline.
-func deleteWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
+// clearWAFLists extracts relevant settings from the configuration
+// and calls [setter.Setter.ClearWAFList] with a deadline.
+func clearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.DeleteWAFList(ctx, ppfmt, l)
+				return s.ClearWAFList(ctx, ppfmt, l)
 			}),
 		)
 	}
 
-	return generateDeleteWAFListMessage(resps)
+	return generateClearWAFListsMessage(resps)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
@@ -189,8 +189,8 @@ func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 		}
 	}
 
-	// Delete WAF lists
-	msgs = append(msgs, deleteWAFLists(ctx, ppfmt, c, s))
+	// Clear WAF lists
+	msgs = append(msgs, clearWAFLists(ctx, ppfmt, c, s))
 
 	return message.Merge(msgs...)
 }

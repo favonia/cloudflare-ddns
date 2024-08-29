@@ -26,7 +26,7 @@ func SendAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, message string) bo
 }
 
 // SendMessageAll calls [SendMessage] for each monitor in the group.
-func SendMessageAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, msg message.Message) bool {
+func SendMessageAll(ctx context.Context, ppfmt pp.PP, ns []Notifier, msg message.NotifierMessage) bool {
 	ok := true
 	for _, n := range ns {
 		if !SendMessage(ctx, ppfmt, n, msg) {

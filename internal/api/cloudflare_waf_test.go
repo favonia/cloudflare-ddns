@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/netip"
-	"net/url"
 	"testing"
 	"time"
 
@@ -189,7 +188,7 @@ func TestListWAFListsHint(t *testing.T) {
 	mockPP = mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
-		mockPP.EXPECT().Hintf(pp.HintCloudflareWAFPermissions,
+		mockPP.EXPECT().Hintf(pp.HintWAFListPermission,
 			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
 	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
@@ -470,28 +469,29 @@ func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID api.ID) httpH
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestDeleteWAFList(t *testing.T) {
+func TestClearWAFListAsync(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		listRequestLimit   int
-		listID             api.ID
-		deleteRequestLimit int
-		ok                 bool
-		prepareMocks       func(*mocks.MockPP)
+		keepCacheWhenFails  bool
+		listRequestLimit    int
+		listID              api.ID
+		deleteRequestLimit  int
+		replaceRequestLimit int
+		deleted             bool
+		ok                  bool
+		prepareMocks        func(*mocks.MockPP)
 	}{
 		"success": {
-			1,
-			mockID("list", 0),
-			1,
-			true,
+			false,
+			1, mockID("list", 0), 1, 0,
+			true, true,
 			nil,
 		},
 		"list-fail": {
-			0,
-			mockID("list", 0),
-			0,
 			false,
+			0, mockID("list", 0), 0, 0,
+			false, false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiError,
@@ -505,13 +505,44 @@ func TestDeleteWAFList(t *testing.T) {
 				)
 			},
 		},
-		"delete-fail": {
-			1,
-			mockID("list", 0),
-			0,
+		"delete-fail/clear": {
 			false,
+			1, mockID("list", 0), 0, 1,
+			false, true,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %q: %v", "list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to delete the list %q (ID: %s); clearing it instead: %v",
+					"list", mockID("list", 0), gomock.Any())
+			},
+		},
+		"delete-fail/clear-fail": {
+			false,
+			1, mockID("list", 0), 0, 0,
+			false, false,
+			func(ppfmt *mocks.MockPP) {
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
+						"Failed to delete the list %q (ID: %s); clearing it instead: %v",
+						"list", mockID("list", 0), gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
+						"Failed to start clearing the list %q (ID: %s): %v",
+						"list", mockID("list", 0), gomock.Any()),
+				)
+			},
+		},
+		"delete-fail/clear-fail/keep-cache": {
+			true,
+			1, mockID("list", 0), 0, 0,
+			false, false,
+			func(ppfmt *mocks.MockPP) {
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
+						"Failed to delete the list %q (ID: %s); clearing it instead: %v",
+						"list", mockID("list", 0), gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError,
+						"Failed to start clearing the list %q (ID: %s): %v",
+						"list", mockID("list", 0), gomock.Any()),
+				)
 			},
 		},
 	} {
@@ -526,18 +557,29 @@ func TestDeleteWAFList(t *testing.T) {
 
 			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, mux, mockID("list", 0))
+			rih := newReplaceListItemsHandler(t, mux, mockID("list", 0), mockID("op", 0))
 
 			lh.setRequestLimit(tc.listRequestLimit)
 			dh.setRequestLimit(tc.deleteRequestLimit)
+			rih.setRequestLimit(tc.replaceRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			//nolint:forcetypeassert
-			ok = h.(api.CloudflareHandle).DeleteWAFList(context.Background(), mockPP, mockWAFList)
+			deleted, ok := h.(api.CloudflareHandle).ClearWAFListAsync(context.Background(), mockPP,
+				mockWAFList, tc.keepCacheWhenFails)
+			require.Equal(t, tc.deleted, deleted)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, lh.isExhausted())
 			require.True(t, dh.isExhausted())
+			require.True(t, rih.isExhausted())
+
+			if tc.ok && tc.keepCacheWhenFails {
+				deleted, ok := h.(api.CloudflareHandle).ClearWAFListAsync(context.Background(), mockPP,
+					mockWAFList, tc.keepCacheWhenFails)
+				require.Equal(t, tc.deleted, deleted)
+				require.Equal(t, tc.ok, ok)
+			}
 		})
 	}
 }
@@ -740,9 +782,14 @@ func mockListBulkOperationResponse(id api.ID) cloudflare.ListBulkOperationRespon
 func handleListBulkOperation(t *testing.T, operationID api.ID, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
-	if !assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"]) ||
-		!assert.Equal(t, url.Values{}, r.URL.Query()) {
-		panic(http.ErrAbortHandler)
+	if !checkToken(t, r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !assert.Empty(t, r.URL.Query()) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -909,6 +956,37 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 		}{OperationID: string(id)},
 		Response: mockResponse(),
 	}
+}
+
+//nolint:dupl
+func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
+	t.Helper()
+
+	var requestLimit int
+
+	mux.HandleFunc(fmt.Sprintf("PUT /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
+		func(w http.ResponseWriter, r *http.Request) {
+			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(mockListItemCreateResponse(operationID))
+			assert.NoError(t, err)
+		})
+
+	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
+		func(w http.ResponseWriter, r *http.Request) {
+			handleListBulkOperation(t, operationID, w, r)
+		})
+
+	return httpHandler{requestLimit: &requestLimit}
 }
 
 //nolint:dupl

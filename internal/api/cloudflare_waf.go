@@ -26,10 +26,10 @@ var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
 	ipnet.IP6: 64, //nolint:mnd
 }
 
-func hintTokenWAFPermission(ppfmt pp.PP, err error) {
+func hintWAFListPermission(ppfmt pp.PP, err error) {
 	var authentication *cloudflare.AuthenticationError
 	if errors.As(err, &authentication) {
-		ppfmt.Hintf(pp.HintCloudflareWAFPermissions,
+		ppfmt.Hintf(pp.HintWAFListPermission,
 			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`)
 	}
 }
@@ -43,7 +43,7 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, account
 	ls, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(string(accountID)), cloudflare.ListListsParams{})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to list existing lists: %v", err)
-		hintTokenWAFPermission(ppfmt, err)
+		hintWAFListPermission(ppfmt, err)
 		return nil, false
 	}
 
@@ -108,7 +108,7 @@ func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP, l WAFL
 		})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to create a list named %q: %v", l.ListName, err)
-		hintTokenWAFPermission(ppfmt, err)
+		hintWAFListPermission(ppfmt, err)
 		h.cache.listLists.Delete(l.AccountID)
 		return "", false, false
 	}
@@ -120,25 +120,47 @@ func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP, l WAFL
 	return ID(r.ID), false, true
 }
 
-// DeleteWAFList calls cloudflare.DeleteList.
-func (h CloudflareHandle) DeleteWAFList(ctx context.Context, ppfmt pp.PP, l WAFList) bool {
+// ClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
+// Note: a failure will not clear the cache, assuming that the list deletion/cleaning only happens
+// right before exiting the updater.
+func (h CloudflareHandle) ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, l WAFList, keepCacheWhenFails bool,
+) (bool, bool) {
 	listID, ok := h.FindWAFList(ctx, ppfmt, l)
 	if !ok {
-		return false
+		return false, false
 	}
 
 	if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(l.AccountID)), string(listID)); err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to delete the list %q: %v", l.ListName, err)
-		hintTokenWAFPermission(ppfmt, err)
-		h.cache.listLists.Delete(l.AccountID)
-		return false
+		ppfmt.Noticef(pp.EmojiError,
+			"Failed to delete the list %q (ID: %s); clearing it instead: %v",
+			l.ListName, listID, err)
+		_, err := h.cf.ReplaceListItemsAsync(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+			cloudflare.ListReplaceItemsParams{
+				ID:    string(listID),
+				Items: []cloudflare.ListItemCreateRequest{},
+			},
+		)
+		if err != nil {
+			ppfmt.Noticef(pp.EmojiError,
+				"Failed to start clearing the list %q (ID: %s): %v", l.ListName, listID, err)
+			hintWAFListPermission(ppfmt, err)
+
+			if !keepCacheWhenFails {
+				h.cache.listLists.Delete(l.AccountID)
+				h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+			}
+			return false, false
+		}
+
+		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+		return false, true
 	}
 
 	if lmap := h.cache.listLists.Get(l.AccountID); lmap != nil {
 		delete(lmap.Value(), l.ListName)
 	}
-
-	return true
+	h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+	return true, true
 }
 
 func readWAFListItems(ppfmt pp.PP, listName string, listID ID, rawItems []cloudflare.ListItem) ([]WAFListItem, bool) {
@@ -175,7 +197,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, l W
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve items in the list %q (ID: %s): %v", l.ListName, listID, err)
-		hintTokenWAFPermission(ppfmt, err)
+		hintWAFListPermission(ppfmt, err)
 		return nil, false, false
 	}
 
@@ -215,7 +237,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to finish deleting items from the list %q (ID: %s): %v", l.ListName, listID, err)
-		hintTokenWAFPermission(ppfmt, err)
+		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
 		return false
 	}
@@ -263,7 +285,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(
 			pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
 			l.ListName, listID, err)
-		hintTokenWAFPermission(ppfmt, err)
+		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
 		return false
 	}
