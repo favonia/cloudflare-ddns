@@ -269,12 +269,12 @@ _(Click to expand the following items.)_
 
 > 🃏🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 
-> 🌐🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+> 🌐🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 > 🤖 Technical notes on WAF lists:
 >
 > 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), and thus the updater will use the smallest IP range allowed by Cloudflare that contains the detected IPv6 address.
-> 2. The updater will delete unmanaged IPs from WAF lists (e.g., if you disable IPv6 with `IP6_PROVIDER=none`, then all existing IPv6 addresses or IPv6 ranges will be deleted). The idea is that the list should only contain detected IP addresses.
+> 2. The updater will delete unmanaged IPs from the specified WAF lists (e.g., if you disable IPv6 with `IP6_PROVIDER=none`, then existing IPv6 addresses or IPv6 ranges in the lists will be deleted). The idea is that the list should only contain detected IP addresses.
 
 </details>
 
@@ -297,8 +297,6 @@ _(Click to expand the following items.)_
 > | `local`            | Get the IP address via local network interfaces. When multiple local network interfaces or in general multiple IP addresses are present, the updater will use the address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.) ⚠️ You need access to the host network (such as `network_mode: host` in Docker Compose) for this policy, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 > | `url:URL`          | Fetch the content at `URL` via the HTTP(S) protocol treat the content as the IP address. The provider format is `url:` followed by the URL. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 address from <https://api4.ipify.org>, a server maintained by [ipify](https://www.ipify.org). 🐞 **KNOWN ISSUE: Currently, the updater _will not_ force IPv4 or IPv6 when retrieving the IPv4 or IPv6 address at `URL`.** Therefore, for `IP4_PROVIDER=url:URL`, the updater might use IPv6 (instead of the expected IPv4) to connect to `URL`, and if the server returns an IPv6 address because of this, the updating will fail. The server at `URL` must either restrict its access to the expected IP network or return a valid IP address in the expected IP network regardless of what IP network is used for connection. As a working example, <https://api4.ipify.org> has restricted its access to IPv4, and thus it’s impossible to use the wrong IP network (IPv6) to connect to it. 🧪 This is a known issue and may be fixed in the future. |
 > | `none`             | Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed. ⚠️ The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. 🧪 As the support of WAF lists is experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
->
-> 🤖 Technical notes: For the providers `cloudflare.doh` and `cloudflare.trace`, the updater will connect to the servers `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon).
 
 </details>
 
@@ -346,22 +344,25 @@ _(Click to expand the following items.)_
 >
 > A boolean expression must be one of the following forms (all whitespace is ignored):
 >
-> - A boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `t` as `true` or `FALSE` as `false`.
-> - `is(d)` which matches the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`).
-> - `sub(d)` which matches subdomains of `d`, such as `a.d` and `b.c.d`. It does not match the domain `d` itself.
-> - `! e` where `e` is a boolean expression, representing logical negation of `e`.
-> - `e1 || e2` where `e1` and `e2` are boolean expressions, representing logical disjunction of `e1` and `e2`.
-> - `e1 && e2` where `e1` and `e2` are boolean expressions, representing logical conjunction of `e1` and `e2`.
+> | Syntax                                                                                                                 | Meaning                                                                                                                                             |
+> | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | Any string accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1` | Logical truth or falsehood                                                                                                                          |
+> | `is(d)`                                                                                                                | Matching the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`). |
+> | `sub(d)`                                                                                                               | Matching **subdomains** of `d`, such as `a.d`, `b.c.d`, and `*.d`. It does not match the domain `d` itself.                                         |
+> | `! e`                                                                                                                  | The logical negation of the boolean expression `e`                                                                                                  |
+> | <code>e1 &#124;&#124; e2</code>                                                                                        | The logical disjunction of the boolean expressions `e1` and `e2`                                                                                    |
+> | `e1 && e2`                                                                                                             | The logical conjunction of the boolean expressions `e1` and `e2`                                                                                    |
 >
-> One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`.
-> For convenience, the engine also accepts these short forms:
+> One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`. For convenience, the parser also accepts these short forms:
 >
-> - `is(d1, d2, ..., dn)` is `is(d1) || is(d2) || ... || is(dn)`
-> - `sub(d1, d2, ..., dn)` is `sub(d1) || sub(d2) || ... || sub(dn)`
+> | Short Form             | Equivalent Full Form                                                            |
+> | ---------------------- | ------------------------------------------------------------------------------- |
+> | `is(d1, d2, ..., dn)`  | <code>is(d1) &#124;&#124; is(d2) &#124;&#124; ... &#124;&#124; is(dn)</code>    |
+> | `sub(d1, d2, ..., dn)` | <code>sub(d1) &#124;&#124; sub(d2) &#124;&#124; ... &#124;&#124; sub(dn)</code> |
 >
 > For example, these two settings are equivalent:
 >
-> - `PROXYD=is(example1.org) || is(example2.org) || is(example3.org)`
+> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`
 > - `PROXIED=is(example1.org,example2.org,example3.org)`
 > </details>
 
