@@ -34,9 +34,9 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitors) ||
-		!ReadAndAppendUptimeKumaURL(ppfmt, "UPTIMEKUMA", &c.Monitors) ||
-		!ReadAndAppendShoutrrrURL(ppfmt, "SHOUTRRR", &c.Notifiers) {
+		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitor) ||
+		!ReadAndAppendUptimeKumaURL(ppfmt, "UPTIMEKUMA", &c.Monitor) ||
+		!ReadAndAppendShoutrrrURL(ppfmt, "SHOUTRRR", &c.Notifier) {
 		return false
 	}
 

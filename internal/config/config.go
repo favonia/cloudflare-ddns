@@ -31,8 +31,8 @@ type Config struct {
 	WAFListDescription string
 	DetectionTimeout   time.Duration
 	UpdateTimeout      time.Duration
-	Monitors           []monitor.Monitor
-	Notifiers          []notifier.Notifier
+	Monitor            monitor.Monitor
+	Notifier           notifier.Notifier
 }
 
 // Default gives the default configuration.
@@ -59,7 +59,7 @@ func Default() *Config {
 		WAFListDescription: "",
 		DetectionTimeout:   time.Second * 5,  //nolint:mnd
 		UpdateTimeout:      time.Second * 30, //nolint:mnd
-		Monitors:           nil,
-		Notifiers:          nil,
+		Monitor:            nil,
+		Notifier:           nil,
 	}
 }

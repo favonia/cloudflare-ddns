@@ -6,7 +6,7 @@ import (
 )
 
 // ReadAndAppendHealthchecksURL reads the base URL of a Healthchecks endpoint.
-func ReadAndAppendHealthchecksURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+func ReadAndAppendHealthchecksURL(ppfmt pp.PP, key string, field *monitor.Monitor) bool {
 	val := Getenv(key)
 
 	if val == "" {
@@ -19,12 +19,12 @@ func ReadAndAppendHealthchecksURL(ppfmt pp.PP, key string, field *[]monitor.Moni
 	}
 
 	// Append the new monitor to the existing list
-	*field = append(*field, h)
+	*field = monitor.NewComposed(*field, h)
 	return true
 }
 
 // ReadAndAppendUptimeKumaURL reads the URL of a Push Monitor of an Uptime Kuma server.
-func ReadAndAppendUptimeKumaURL(ppfmt pp.PP, key string, field *[]monitor.Monitor) bool {
+func ReadAndAppendUptimeKumaURL(ppfmt pp.PP, key string, field *monitor.Monitor) bool {
 	val := Getenv(key)
 
 	if val == "" {
@@ -37,6 +37,6 @@ func ReadAndAppendUptimeKumaURL(ppfmt pp.PP, key string, field *[]monitor.Monito
 	}
 
 	// Append the new monitor to the existing list
-	*field = append(*field, h)
+	*field = monitor.NewComposed(*field, h)
 	return true
 }

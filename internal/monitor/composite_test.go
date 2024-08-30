@@ -3,7 +3,6 @@ package monitor_test
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -11,48 +10,73 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDescribeAll(t *testing.T) {
+func TestComposedDescribe(t *testing.T) {
 	t.Parallel()
 
-	ms := make([]monitor.Monitor, 0, 5)
+	ms := make([]monitor.BasicMonitor, 0, 5)
 
 	mockCtrl := gomock.NewController(t)
 
 	for range 5 {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Describe(gomock.Any())
+		m.EXPECT().Describe(gomock.Any()).Return()
 		ms = append(ms, m)
 	}
 
-	callback := func(_service, _params string) { /* the callback content is not relevant here. */ }
-	monitor.DescribeAll(callback, ms)
-}
-
-func TestSuccessAll(t *testing.T) {
-	t.Parallel()
-
-	ms := make([]monitor.Monitor, 0, 5)
-
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	message := "aloha"
-
-	for range 5 {
-		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Success(context.Background(), mockPP, message)
-		ms = append(ms, m)
+	for range monitor.NewComposed(ms...).Describe {
+		/* the loop content is not relevant here. */
 	}
-
-	monitor.SuccessAll(context.Background(), mockPP, ms, message)
 }
 
-func TestStartAll(t *testing.T) {
+func TestComposedPing(t *testing.T) {
 	t.Parallel()
 
-	ms := make([]monitor.Monitor, 0, 5)
+	for name1, tc1 := range map[string]struct {
+		lines []string
+	}{
+		"nil":   {nil},
+		"empty": {[]string{}},
+		"one":   {[]string{"hi"}},
+		"two":   {[]string{"hi", "hey"}},
+	} {
+		for name2, tc2 := range map[string]struct {
+			ok bool
+		}{
+			"ok":     {true},
+			"not-ok": {false},
+		} {
+			t.Run(fmt.Sprintf("%s/%s", name1, name2), func(t *testing.T) {
+				t.Parallel()
+
+				ms := make([]monitor.BasicMonitor, 0, 5)
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
+
+				msg := message.MonitorMessage{
+					OK:    tc2.ok,
+					Lines: tc1.lines,
+				}
+
+				for range 5 {
+					m := mocks.NewMockMonitor(mockCtrl)
+					m.EXPECT().Ping(context.Background(), mockPP, msg).Return(true)
+					ms = append(ms, m)
+				}
+
+				ok := monitor.NewComposed(ms...).Ping(context.Background(), mockPP, msg)
+				require.True(t, ok)
+			})
+		}
+	}
+}
+
+func TestComposedStart(t *testing.T) {
+	t.Parallel()
+
+	ms := make([]monitor.BasicMonitor, 0, 5)
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -61,55 +85,18 @@ func TestStartAll(t *testing.T) {
 
 	for range 5 {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Start(context.Background(), mockPP, message)
+		m.EXPECT().Start(context.Background(), mockPP, message).Return(true)
 		ms = append(ms, m)
 	}
 
-	monitor.StartAll(context.Background(), mockPP, ms, message)
+	ok := monitor.NewComposed(ms...).Start(context.Background(), mockPP, message)
+	require.True(t, ok)
 }
 
-func TestFailureAll(t *testing.T) {
+func TestComposedExit(t *testing.T) {
 	t.Parallel()
 
-	ms := make([]monitor.Monitor, 0, 5)
-
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	message := "secret"
-
-	for range 5 {
-		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Failure(context.Background(), mockPP, message)
-		ms = append(ms, m)
-	}
-
-	monitor.FailureAll(context.Background(), mockPP, ms, message)
-}
-
-func TestLogAll(t *testing.T) {
-	t.Parallel()
-
-	ms := make([]monitor.Monitor, 0, 5)
-
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	message := "forest"
-
-	for range 5 {
-		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Log(context.Background(), mockPP, message)
-		ms = append(ms, m)
-	}
-
-	monitor.LogAll(context.Background(), mockPP, ms, message)
-}
-
-func TestExitStatusAll(t *testing.T) {
-	t.Parallel()
-
-	ms := make([]monitor.Monitor, 0, 5)
+	ms := make([]monitor.BasicMonitor, 0, 5)
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -118,14 +105,15 @@ func TestExitStatusAll(t *testing.T) {
 
 	for range 5 {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().ExitStatus(context.Background(), mockPP, 42, message)
+		m.EXPECT().Exit(context.Background(), mockPP, message).Return(true)
 		ms = append(ms, m)
 	}
 
-	monitor.ExitStatusAll(context.Background(), mockPP, ms, 42, message)
+	ok := monitor.NewComposed(ms...).Exit(context.Background(), mockPP, message)
+	require.True(t, ok)
 }
 
-func TestPingMessageAll(t *testing.T) {
+func TestComposedLog(t *testing.T) {
 	t.Parallel()
 
 	for name1, tc1 := range map[string]struct {
@@ -136,84 +124,32 @@ func TestPingMessageAll(t *testing.T) {
 		"one":   {[]string{"hi"}},
 		"two":   {[]string{"hi", "hey"}},
 	} {
-		monitorMessage := strings.Join(tc1.lines, "\n")
-
 		for name2, tc2 := range map[string]struct {
 			ok bool
 		}{
-			"ok":    {true},
-			"notok": {false},
+			"ok":     {true},
+			"not-ok": {false},
 		} {
 			t.Run(fmt.Sprintf("%s/%s", name1, name2), func(t *testing.T) {
 				t.Parallel()
 
-				ms := make([]monitor.Monitor, 0, 5)
+				ms := make([]monitor.BasicMonitor, 0, 5)
 				mockCtrl := gomock.NewController(t)
 				mockPP := mocks.NewMockPP(mockCtrl)
-
-				for range 5 {
-					m := mocks.NewMockMonitor(mockCtrl)
-					if tc2.ok {
-						m.EXPECT().Success(context.Background(), mockPP, monitorMessage)
-					} else {
-						m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
-					}
-					ms = append(ms, m)
-				}
 
 				msg := message.MonitorMessage{
 					OK:    tc2.ok,
 					Lines: tc1.lines,
 				}
-				monitor.PingMessageAll(context.Background(), mockPP, ms, msg)
-			})
-		}
-	}
-}
-
-func TestLogMessageAll(t *testing.T) {
-	t.Parallel()
-
-	for name1, tc1 := range map[string]struct {
-		lines []string
-	}{
-		"nil":   {nil},
-		"empty": {[]string{}},
-		"one":   {[]string{"hi"}},
-		"two":   {[]string{"hi", "hey"}},
-	} {
-		monitorMessage := strings.Join(tc1.lines, "\n")
-
-		for name2, tc2 := range map[string]struct {
-			ok bool
-		}{
-			"ok":    {true},
-			"notok": {false},
-		} {
-			t.Run(fmt.Sprintf("%s/%s", name1, name2), func(t *testing.T) {
-				t.Parallel()
-
-				ms := make([]monitor.Monitor, 0, 5)
-				mockCtrl := gomock.NewController(t)
-				mockPP := mocks.NewMockPP(mockCtrl)
 
 				for range 5 {
 					m := mocks.NewMockMonitor(mockCtrl)
-					switch {
-					case tc2.ok && len(monitorMessage) > 0:
-						m.EXPECT().Log(context.Background(), mockPP, monitorMessage)
-					case tc2.ok:
-					default: // !tc.ok
-						m.EXPECT().Failure(context.Background(), mockPP, monitorMessage)
-					}
+					m.EXPECT().Log(context.Background(), mockPP, msg).Return(true)
 					ms = append(ms, m)
 				}
 
-				msg := message.MonitorMessage{
-					OK:    tc2.ok,
-					Lines: tc1.lines,
-				}
-				monitor.LogMessageAll(context.Background(), mockPP, ms, msg)
+				ok := monitor.NewComposed(ms...).Log(context.Background(), mockPP, msg)
+				require.True(t, ok)
 			})
 		}
 	}

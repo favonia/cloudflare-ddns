@@ -1,6 +1,7 @@
 package message
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -12,17 +13,15 @@ type MonitorMessage struct {
 }
 
 // NewMonitorMessage creates a new empty MonitorMessage.
-func NewMonitorMessage() MonitorMessage {
-	return MonitorMessage{
-		OK:    true,
-		Lines: nil,
-	}
+func NewMonitorMessage() MonitorMessage { return MonitorMessage{OK: true, Lines: nil} }
+
+// NewMonitorMessagef creates a new MonitorMessage containing one formatted line.
+func NewMonitorMessagef(ok bool, format string, args ...any) MonitorMessage {
+	return MonitorMessage{OK: ok, Lines: []string{fmt.Sprintf(format, args...)}}
 }
 
 // Format turns the message into a single string.
-func (m MonitorMessage) Format() string {
-	return strings.Join(m.Lines, "\n")
-}
+func (m MonitorMessage) Format() string { return strings.Join(m.Lines, "\n") }
 
 // MergeMonitorMessages keeps only the ones with highest severity.
 func MergeMonitorMessages(msgs ...MonitorMessage) MonitorMessage {
@@ -41,3 +40,6 @@ func MergeMonitorMessages(msgs ...MonitorMessage) MonitorMessage {
 		Lines: slices.Concat(Lines[OK]...),
 	}
 }
+
+// IsEmpty checks if the message is empty.
+func (m MonitorMessage) IsEmpty() bool { return len(m.Lines) == 0 }

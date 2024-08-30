@@ -10,8 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -88,17 +86,17 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("IP detection:", "%v", c.DetectionTimeout)
 	item("Record/list updating:", "%v", c.UpdateTimeout)
 
-	if len(c.Monitors) > 0 {
+	if c.Monitor != nil {
 		section("Monitors:")
-		monitor.DescribeAll(func(service, params string) {
-			item(service+":", "%s", params)
-		}, c.Monitors)
+		for name, params := range c.Monitor.Describe {
+			item(name+":", "%s", params)
+		}
 	}
 
-	if len(c.Notifiers) > 0 {
+	if c.Notifier != nil {
 		section("Notification services (via shoutrrr):")
-		notifier.DescribeAll(func(service, params string) {
-			item(service+":", "%s", params)
-		}, c.Notifiers)
+		for name, params := range c.Notifier.Describe {
+			item(name+":", "%s", params)
+		}
 	}
 }

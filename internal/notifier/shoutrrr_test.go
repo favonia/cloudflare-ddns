@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -23,9 +24,9 @@ func TestShoutrrrDescripbe(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := notifier.NewShoutrrr(mockPP, []string{"generic://localhost/"})
 	require.True(t, ok)
-	m.Describe(func(service, _params string) {
-		require.Equal(t, "generic", service)
-	})
+	for name := range m.Describe {
+		require.Equal(t, "Generic", name)
+	}
 }
 
 func TestShoutrrrSend(t *testing.T) {
@@ -34,7 +35,7 @@ func TestShoutrrrSend(t *testing.T) {
 	for name, tc := range map[string]struct {
 		path          string
 		service       func(serverURL string) string
-		message       string
+		message       message.NotifierMessage
 		pinged        bool
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
@@ -42,16 +43,16 @@ func TestShoutrrrSend(t *testing.T) {
 		"success": {
 			"/greeting",
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			"hello",
+			message.NewNotifierMessagef("hello"),
 			true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", `"generic"`)
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", "Generic")
 			},
 		},
 		"ill-formed url": {
 			"",
 			func(_serverURL string) string { return "generic+https://0.0.0.0" },
-			"hello",
+			message.NewNotifierMessagef("hello"),
 			false, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
@@ -74,7 +75,7 @@ func TestShoutrrrSend(t *testing.T) {
 				}
 
 				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Equal(t, tc.message, string(reqBody)) {
+					!assert.Equal(t, tc.message.Format(), string(reqBody)) {
 					panic(http.ErrAbortHandler)
 				}
 

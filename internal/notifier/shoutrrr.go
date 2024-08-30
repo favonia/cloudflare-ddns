@@ -2,13 +2,15 @@ package notifier
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/containrrr/shoutrrr/pkg/types"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
+	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -18,7 +20,7 @@ type Shoutrrr struct {
 	Router *router.ServiceRouter
 
 	// The services
-	ServiceNames []string
+	ServiceDescriptions []string
 }
 
 var _ Notifier = Shoutrrr{} //nolint:exhaustruct
@@ -27,6 +29,40 @@ const (
 	// ShoutrrrDefaultTimeout is the default timeout for a UptimeKuma ping.
 	ShoutrrrDefaultTimeout = 10 * time.Second
 )
+
+// DescribeShoutrrrService gives a human-readable description for a service.
+func DescribeShoutrrrService(ppfmt pp.PP, proto string) string {
+	name, known := map[string]string{
+		"bark":       "Bark",
+		"discord":    "Discord",
+		"smtp":       "Email",
+		"gotify":     "Gotify",
+		"googlechat": "Google Chat",
+		"ifttt":      "IFTTT",
+		"join":       "Join",
+		"mattermost": "Mattermost",
+		"matrix":     "Matrix",
+		"ntfy":       "Ntfy",
+		"opsgenie":   "OpsGenie",
+		"pushbullet": "Pushbullet",
+		"pushover":   "Pushover",
+		"rocketchat": "Rocketchat",
+		"slack":      "Slack",
+		"teams":      "Teams",
+		"telegram":   "Telegram",
+		"zulip":      "Zulip Chat",
+		"generic":    "Generic",
+	}[proto]
+
+	if known {
+		return name
+	} else {
+		ppfmt.Noticef(pp.EmojiImpossible,
+			"Unknown shoutrrr service name %q; please report it at %s",
+			name, pp.IssueReportingURL)
+		return cases.Title(language.English).String(proto)
+	}
+}
 
 // NewShoutrrr creates a new shoutrrr notifier.
 func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
@@ -38,25 +74,31 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 
 	r.Timeout = ShoutrrrDefaultTimeout
 
-	serviceNames := make([]string, 0, len(rawURLs))
+	serviceDescriptions := make([]string, 0, len(rawURLs))
 	for _, u := range rawURLs {
 		s, _, _ := r.ExtractServiceName(u)
-		serviceNames = append(serviceNames, s)
+		serviceDescriptions = append(serviceDescriptions, DescribeShoutrrrService(ppfmt, s))
 	}
 
-	return Shoutrrr{Router: r, ServiceNames: serviceNames}, true
+	return Shoutrrr{Router: r, ServiceDescriptions: serviceDescriptions}, true
 }
 
 // Describe calls callback on each registered notification service.
-func (s Shoutrrr) Describe(callback func(service, params string)) {
-	for _, n := range s.ServiceNames {
-		callback(n, "(URL redacted)")
+func (s Shoutrrr) Describe(yield func(string, string) bool) {
+	for _, n := range s.ServiceDescriptions {
+		if !yield(n, "(URL redacted)") {
+			return
+		}
 	}
 }
 
 // Send sents the message msg.
-func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
-	errs := s.Router.Send(msg, &types.Params{})
+func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg message.NotifierMessage) bool {
+	if msg.IsEmpty() {
+		return true
+	}
+
+	errs := s.Router.Send(msg.Format(), &types.Params{})
 	allOK := true
 	for _, err := range errs {
 		if err != nil {
@@ -65,7 +107,9 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg string) bool {
 		}
 	}
 	if allOK {
-		ppfmt.Infof(pp.EmojiNotify, "Notified %s via shoutrrr", pp.EnglishJoinMap(strconv.Quote, s.ServiceNames))
+		ppfmt.Infof(pp.EmojiNotify,
+			"Notified %s via shoutrrr",
+			pp.EnglishJoin(s.ServiceDescriptions))
 	}
 	return allOK
 }
