@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
-	"github.com/stretchr/testify/require"
 )
 
 func TestComposedDescribe(t *testing.T) {
@@ -31,7 +31,7 @@ func TestComposedDescribe(t *testing.T) {
 	}
 }
 
-func TestComposedPing(t *testing.T) {
+func TestComposedPing(t *testing.T) { //nolint:dupl
 	t.Parallel()
 
 	for name1, tc1 := range map[string]struct {
@@ -113,7 +113,7 @@ func TestComposedExit(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestComposedLog(t *testing.T) {
+func TestComposedLog(t *testing.T) { //nolint:dupl
 	t.Parallel()
 
 	for name1, tc1 := range map[string]struct {

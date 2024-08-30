@@ -1,6 +1,5 @@
 package monitor
 
-//nolint:gci // Needed until https://github.com/daixiang0/gci/pull/214 is merged
 import (
 	"context"
 
@@ -10,8 +9,9 @@ import (
 
 type monitors []BasicMonitor
 
-var _ Monitor = monitors{} //nolint:exhaustruct
+var _ Monitor = monitors{}
 
+// NewComposed creates a new composed monitor
 func NewComposed(mons ...BasicMonitor) monitors {
 	ms := make([]BasicMonitor, 0, len(mons))
 	for _, m := range mons {
