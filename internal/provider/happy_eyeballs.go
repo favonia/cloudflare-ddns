@@ -104,6 +104,11 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 				// remember this successful IP detection
 				p.chosen[ipNet] = r.method
 				queuedPP[r.method].Flush()
+
+				if r.method == protocol.MethodAlternative {
+					ppfmt.Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
+				}
+
 				return r.ip, r.method, r.ok
 			}
 

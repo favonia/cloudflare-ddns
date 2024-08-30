@@ -83,6 +83,7 @@ func TestHappyEyeballs(t *testing.T) {
 						return ip1001, true
 					}).Times(1)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
 			},
 		},
 		"primary-delayed/alternative-instant-fails": {
@@ -140,6 +141,7 @@ func TestHappyEyeballs(t *testing.T) {
 						return ip1001, true
 					}).Times(1)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
 			},
 		},
 		"primary-instant-fails/alternative-instant-fails": {
@@ -179,6 +181,7 @@ func TestHappyEyeballs(t *testing.T) {
 						return ip1001, true
 					}).Times(1)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
 			},
 		},
 		"primary-timeout/alternative-timeout": {
