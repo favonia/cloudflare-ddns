@@ -16,19 +16,33 @@ import (
 func TestComposedDescribe(t *testing.T) {
 	t.Parallel()
 
-	ms := make([]monitor.BasicMonitor, 0, 5)
-
 	mockCtrl := gomock.NewController(t)
 
-	for range 5 {
+	ms1 := make([]monitor.BasicMonitor, 0, 5)
+	for range 3 {
 		m := mocks.NewMockMonitor(mockCtrl)
-		m.EXPECT().Describe(gomock.Any()).Return()
-		ms = append(ms, m)
+		m.EXPECT().Describe(gomock.Any()).DoAndReturn(
+			func(yield func(string, string) bool) {
+				yield("name", "params")
+			},
+		)
+		ms1 = append(ms1, m)
 	}
+	ms2 := make([]monitor.BasicMonitor, 0, 5)
+	for range 2 {
+		m := mocks.NewMockMonitor(mockCtrl)
+		ms2 = append(ms2, m)
+	}
+	c := monitor.NewComposed(monitor.NewComposed(ms1...), monitor.NewComposed(ms2...))
 
-	for range monitor.NewComposed(ms...).Describe {
-		/* the loop content is not relevant here. */
+	count := 0
+	for range c.Describe {
+		count++
+		if count >= 3 {
+			break
+		}
 	}
+	require.Equal(t, 3, count)
 }
 
 func TestComposedPing(t *testing.T) { //nolint:dupl
@@ -142,9 +156,16 @@ func TestComposedLog(t *testing.T) { //nolint:dupl
 					Lines: tc1.lines,
 				}
 
-				for range 5 {
+				for range 3 {
 					m := mocks.NewMockMonitor(mockCtrl)
 					m.EXPECT().Log(context.Background(), mockPP, msg).Return(true)
+					ms = append(ms, m)
+				}
+				for range 2 {
+					m := mocks.NewMockBasicMonitor(mockCtrl)
+					if !tc2.ok {
+						m.EXPECT().Ping(context.Background(), mockPP, msg).Return(true)
+					}
 					ms = append(ms, m)
 				}
 
