@@ -269,14 +269,9 @@ _(Click to expand the following items.)_
 
 > 🧪 The feature to manipulate WAF lists is experimental (introduced in 1.14.0) and is subject to changes. In particular, the updater currently deletes unmanaged IPs from WAF lists (e.g., deleting IPv6 addresses if you disable IPv6), but another reasonable implementation is to leave them alone. Please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) to provide feedback. Thanks!
 
-> 🤖 Internationalized domain names are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+> 🌐🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See this [useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
-> <details>
-> <summary>🃏 What are wildcard domains?</summary>
->
-> Wildcard domains (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
->
-> </details>
+> 🃏🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 
 </details>
 
