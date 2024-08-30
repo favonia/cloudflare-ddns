@@ -335,7 +335,7 @@ _(Click to expand the following items.)_
 | `RECORD_COMMENT`          | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) of new DNS records.                                                                                                                                              | `""`                                       |
 | 🧪 `WAF_LIST_DESCRIPTION` | 🧪 The text description of new WAF lists.                                                                                                                                                                                                                                    | `""`                                       |
 
-> 🤖🧪 If you are an advanced user, the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
+> 🤖🧪 For advanced users: the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
 >
 > - `PROXIED=is(example.org)`: proxy only the domain `example.org`
 > - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
@@ -348,10 +348,10 @@ _(Click to expand the following items.)_
 > | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 > | Any string accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1` | Logical truth or falsehood                                                                                                                          |
 > | `is(d)`                                                                                                                | Matching the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`). |
-> | `sub(d)`                                                                                                               | Matching **subdomains** of `d`, such as `a.d`, `b.c.d`, and `*.d`. It does not match the domain `d` itself.                                         |
-> | `! e`                                                                                                                  | The logical negation of the boolean expression `e`                                                                                                  |
-> | <code>e1 &#124;&#124; e2</code>                                                                                        | The logical disjunction of the boolean expressions `e1` and `e2`                                                                                    |
-> | `e1 && e2`                                                                                                             | The logical conjunction of the boolean expressions `e1` and `e2`                                                                                    |
+> | `sub(d)`                                                                                                               | Matching subdomains of `d`, such as `a.d`, `b.c.d`, and `*.d`. It does not match the domain `d` itself.                                             |
+> | `! e`                                                                                                                  | Logical negation of the boolean expression `e`                                                                                                      |
+> | <code>e1 &#124;&#124; e2</code>                                                                                        | Logical disjunction of the boolean expressions `e1` and `e2`                                                                                        |
+> | `e1 && e2`                                                                                                             | Logical conjunction of the boolean expressions `e1` and `e2`                                                                                        |
 >
 > One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`. For convenience, the parser also accepts these short forms:
 >
