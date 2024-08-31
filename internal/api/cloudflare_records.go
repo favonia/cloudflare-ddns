@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"slices"
 
@@ -12,6 +13,16 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func hintRecordPermission(ppfmt pp.PP, err error) {
+	var authentication *cloudflare.AuthenticationError
+	var authorization *cloudflare.AuthorizationError
+	if errors.As(err, &authentication) || errors.As(err, &authorization) {
+		ppfmt.Hintf(pp.HintRecordPermission,
+			"Double check your API token. "+
+				`Make sure you granted the "Edit" permission of "Zone - DNS"`)
+	}
+}
 
 // ListZones returns a list of zone IDs with the zone name.
 func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]ID, bool) {
@@ -28,6 +39,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
+		hintRecordPermission(ppfmt, err)
 		return nil, false
 	}
 
@@ -119,6 +131,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to retrieve %s records of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
+		hintRecordPermission(ppfmt, err)
 		return nil, false, false
 	}
 
@@ -153,6 +166,7 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
+		hintRecordPermission(ppfmt, err)
 
 		if !keepCacheWhenFails {
 			h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
@@ -188,6 +202,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params); err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
+		hintRecordPermission(ppfmt, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
@@ -228,6 +243,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
+		hintRecordPermission(ppfmt, err)
 
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
