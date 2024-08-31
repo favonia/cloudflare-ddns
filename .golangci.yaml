@@ -10,6 +10,8 @@ linters-settings:
     settings:
       printf:
         funcs:
+          - github.com/favonia/cloudflare-ddns/internal/message.NewMonitorMessagef
+          - github.com/favonia/cloudflare-ddns/internal/message.NewNotifierMessagef
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Infof
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Hintf
@@ -39,6 +41,7 @@ linters:
   disable:
     - execinquery # deprecated
     - gomnd # deprecated
+    - exportloopref # deprecated
 
     - cyclop # can detect complicated code, but never leads to actual code changes
     - funlen # can detect complicated code, but never leads to actual code changes

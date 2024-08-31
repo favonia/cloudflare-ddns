@@ -16,16 +16,66 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestShoutrrrDescripbe(t *testing.T) {
+func TestDescribeShoutrrrService(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		input        string
+		output       string
+		prepareMocks func(*mocks.MockPP)
+	}{
+		"ifttt": {"ifttt", "IFTTT", nil},
+		"zulip": {"zulip", "Zulip Chat", nil},
+		"empty": {
+			"", "",
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Unknown shoutrrr service name %q; please report it at %s",
+					"", pp.IssueReportingURL)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(mockPP)
+			}
+
+			output := notifier.DescribeShoutrrrService(mockPP, tc.input)
+			require.Equal(t, tc.output, output)
+		})
+	}
+}
+
+func TestShoutrrrDescribe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := notifier.NewShoutrrr(mockPP, []string{"generic://localhost/"})
-	require.True(t, ok)
-	m.Describe(func(service, _params string) {
-		require.Equal(t, "generic", service)
+	m, ok := notifier.NewShoutrrr(mockPP, []string{
+		"generic://localhost/",
+		"gotify://host:80/path/tokentoken",
+		"ifttt://hey/?events=1",
 	})
+	require.True(t, ok)
+
+	count := 0
+outer:
+	for name := range m.Describe {
+		count++
+		switch count {
+		case 1:
+			require.Equal(t, "Generic", name)
+		case 2:
+			require.Equal(t, "Gotify", name)
+			break outer
+		default:
+		}
+	}
+	require.Equal(t, 2, count)
 }
 
 func TestShoutrrrSend(t *testing.T) {
@@ -33,29 +83,36 @@ func TestShoutrrrSend(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		path          string
+		pinged        int
 		service       func(serverURL string) string
-		message       string
-		pinged        bool
+		message       notifier.Message
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
-			"/greeting",
+			"/greeting", 1,
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			"hello",
-			true, true,
+			notifier.NewMessagef("hello"),
+			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", `"generic"`)
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", "Generic")
 			},
 		},
 		"ill-formed url": {
-			"",
+			"", 0,
 			func(_serverURL string) string { return "generic+https://0.0.0.0" },
-			"hello",
-			false, false,
+			notifier.NewMessagef("hello"),
+			false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
 			},
+		},
+		"empty": {
+			"/greeting", 0,
+			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
+			notifier.NewMessage(),
+			true,
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -66,7 +123,7 @@ func TestShoutrrrSend(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			pinged := false
+			pinged := 0
 			server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				if !assert.Equal(t, http.MethodPost, r.Method) ||
 					!assert.Equal(t, tc.path, r.URL.EscapedPath()) {
@@ -74,11 +131,11 @@ func TestShoutrrrSend(t *testing.T) {
 				}
 
 				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Equal(t, tc.message, string(reqBody)) {
+					!assert.Equal(t, tc.message.Format(), string(reqBody)) {
 					panic(http.ErrAbortHandler)
 				}
 
-				pinged = true
+				pinged++
 			}))
 
 			s, ok := notifier.NewShoutrrr(mockPP, []string{tc.service(server.URL)})

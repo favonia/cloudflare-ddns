@@ -2,24 +2,29 @@
 // monitors and notifiers.
 package message
 
+import (
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
+)
+
 // Message encapsulates the messages to both monitiors and notifiers.
 type Message struct {
-	NotifierMessage
-	MonitorMessage
+	MonitorMessage  monitor.Message
+	NotifierMessage notifier.Message
 }
 
 // New creates a new, empty message.
 func New() Message {
 	return Message{
-		MonitorMessage:  NewMonitorMessage(),
-		NotifierMessage: NewNotifierMessage(),
+		MonitorMessage:  monitor.NewMessage(),
+		NotifierMessage: notifier.NewMessage(),
 	}
 }
 
 // Merge combines multiple compound messages.
 func Merge(msgs ...Message) Message {
-	mms := make([]MonitorMessage, len(msgs))
-	nms := make([]NotifierMessage, len(msgs))
+	mms := make([]monitor.Message, len(msgs))
+	nms := make([]notifier.Message, len(msgs))
 
 	for i := range msgs {
 		mms[i] = msgs[i].MonitorMessage
@@ -27,7 +32,7 @@ func Merge(msgs ...Message) Message {
 	}
 
 	return Message{
-		MonitorMessage:  MergeMonitorMessages(mms...),
-		NotifierMessage: MergeNotifierMessages(nms...),
+		MonitorMessage:  monitor.MergeMessages(mms...),
+		NotifierMessage: notifier.MergeMessages(nms...),
 	}
 }

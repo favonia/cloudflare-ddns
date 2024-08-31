@@ -34,7 +34,7 @@ func TestNewHealthchecks(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestHealthchecksNewHealthchecksFail1(t *testing.T) {
+func TestNewHealthchecksFail1(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -47,7 +47,7 @@ func TestHealthchecksNewHealthchecksFail1(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestHealthchecksNewHealthchecksFail2(t *testing.T) {
+func TestNewHealthchecksFail2(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -60,7 +60,7 @@ func TestHealthchecksNewHealthchecksFail2(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestHealthchecksNewHealthchecksFail3(t *testing.T) {
+func TestNewHealthchecksFail3(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -70,16 +70,21 @@ func TestHealthchecksNewHealthchecksFail3(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestHealthchecksDescripbe(t *testing.T) {
+func TestHealthchecksDescribe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
+
 	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
-	m.Describe(func(service, _params string) {
-		require.Equal(t, "Healthchecks", service)
-	})
+
+	count := 0
+	for name := range m.Describe {
+		count++
+		require.Equal(t, "Healthchecks", name)
+	}
+	require.Equal(t, 1, count)
 }
 
 //nolint:funlen
@@ -100,18 +105,18 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		message       string
 		actions       []action
 		defaultAction action
-		pinged        bool
+		pinged        int
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "hello")
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
 			},
 			"/", "hello",
 			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
+			ActionAbort, 1,
+			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
@@ -119,14 +124,14 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"success/notok": {
+		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "aloha")
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "aloha",
 			[]action{ActionAbort, ActionAbort, ActionNotOK},
-			ActionAbort,
-			false, false,
+			ActionAbort, 0,
+			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
@@ -136,16 +141,30 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"success/abort/all": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "stop now")
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
 			},
 			"/", "stop now",
-			nil,
-			ActionAbort,
-			false, false,
+			nil, ActionAbort, 0,
+			false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
 					m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `default (root)`, gomock.Any()), //nolint:lll
+				)
+			},
+		},
+		"failure": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
+			},
+			"/fail", "something's wrong",
+			[]action{ActionAbort, ActionAbort, ActionOK},
+			ActionAbort, 1,
+			true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/fail"`),
 				)
 			},
 		},
@@ -155,8 +174,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 			"/start", "starting now!",
 			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
+			ActionAbort, 1,
+			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
@@ -164,44 +183,14 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"failure": {
+		"exits": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Failure(context.Background(), ppfmt, "something's wrong")
-			},
-			"/fail", "something's wrong",
-			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/fail"`),
-				)
-			},
-		},
-		"log": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, "message")
-			},
-			"/log", "message",
-			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
-			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/log"`),
-				)
-			},
-		},
-		"exitstatus/0": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, 0, "bye!")
+				return m.Exit(context.Background(), ppfmt, "bye!")
 			},
 			"/0", "bye!",
 			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
+			ActionAbort, 1,
+			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
@@ -209,33 +198,46 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"exitstatus/1": {
+		"log": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, 1, "did exit(1)")
+				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(true, "message"))
 			},
-			"/1", "did exit(1)",
+			"/log", "message",
 			[]action{ActionAbort, ActionAbort, ActionOK},
-			ActionAbort,
-			true, true,
+			ActionAbort, 1,
+			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/1"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/log"`),
 				)
 			},
 		},
-		"exitstatus/-1": {
+		"log/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, -1, "feeling negative")
+				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(false, "oops!"))
 			},
-			"", "feeling negative",
-			nil, ActionAbort,
-			false, false,
+			"/fail", "oops!",
+			[]action{ActionOK},
+			ActionAbort, 1,
+			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Noticef(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", -1),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/fail"`),
 				)
+			},
+		},
+		"log/empty": {
+			func(ppfmt pp.PP, m monitor.Monitor) bool {
+				return m.Log(context.Background(), ppfmt, monitor.NewMessage())
+			},
+			"/log", "message",
+			[]action{},
+			ActionAbort, 0,
+			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS")
 			},
 		},
 	} {
@@ -248,7 +250,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			}
 
 			visited := 0
-			pinged := false
+			pinged := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if !assert.Equal(t, http.MethodPost, r.Method) ||
 					!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
@@ -267,7 +269,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				}
 				switch action {
 				case ActionOK:
-					pinged = true
+					pinged++
 					if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
 						panic(http.ErrAbortHandler)
 					}

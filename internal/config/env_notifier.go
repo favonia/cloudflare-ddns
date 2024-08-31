@@ -6,7 +6,7 @@ import (
 )
 
 // ReadAndAppendShoutrrrURL reads the URLs separated by the newline.
-func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *[]notifier.Notifier) bool {
+func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *notifier.Notifier) bool {
 	vals := GetenvAsList(key, "\n")
 	if len(vals) == 0 {
 		return true
@@ -18,6 +18,6 @@ func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *[]notifier.Notifie
 	}
 
 	// Append the new monitor to the existing list
-	*field = append(*field, s)
+	*field = s
 	return true
 }

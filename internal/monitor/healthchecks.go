@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -69,8 +68,8 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 }
 
 // Describe calls the callback with the service name "Healthchecks".
-func (h Healthchecks) Describe(callback func(service, params string)) {
-	callback("Healthchecks", "(URL redacted)")
+func (h Healthchecks) Describe(yield func(service, params string) bool) {
+	yield("Healthchecks", "(URL redacted)")
 }
 
 /*
@@ -153,9 +152,13 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 	return true
 }
 
-// Success pings the root endpoint.
-func (h Healthchecks) Success(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, "", message)
+// Ping formats and pings with a [Message].
+func (h Healthchecks) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	if msg.OK {
+		return h.ping(ctx, ppfmt, "", msg.Format())
+	} else {
+		return h.ping(ctx, ppfmt, "/fail", msg.Format())
+	}
 }
 
 // Start pings the /start endpoint.
@@ -163,22 +166,19 @@ func (h Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bo
 	return h.ping(ctx, ppfmt, "/start", message)
 }
 
-// Failure pings the /fail endpoint.
-func (h Healthchecks) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, "/fail", message)
+// Exit pings the /0 endpoint.
+func (h Healthchecks) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
+	return h.ping(ctx, ppfmt, "/0", message)
 }
 
-// Log pings the /log endpoint.
-func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, "/log", message)
-}
-
-// ExitStatus pings the /number endpoint where number is the exit status.
-func (h Healthchecks) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
-	if code < 0 || code > 255 {
-		ppfmt.Noticef(pp.EmojiImpossible, "Exit code (%d) not within the range 0-255", code)
-		return false
+// Log formats and logs a [Message].
+func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	switch {
+	case !msg.OK:
+		return h.ping(ctx, ppfmt, "/fail", msg.Format())
+	case !msg.IsEmpty():
+		return h.ping(ctx, ppfmt, "/log", msg.Format())
+	default:
+		return true
 	}
-
-	return h.ping(ctx, ppfmt, fmt.Sprintf("/%d", code), message)
 }

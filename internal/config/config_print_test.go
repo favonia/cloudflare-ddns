@@ -9,8 +9,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -114,17 +112,17 @@ func TestPrintValues(t *testing.T) {
 
 	m := mocks.NewMockMonitor(mockCtrl)
 	m.EXPECT().Describe(gomock.Any()).
-		DoAndReturn(func(f func(string, string)) {
+		DoAndReturn(func(f func(string, string) bool) {
 			f("Meow", "purrrr")
 		}).AnyTimes()
-	c.Monitors = []monitor.Monitor{m}
+	c.Monitor = m
 
 	n := mocks.NewMockNotifier(mockCtrl)
 	n.EXPECT().Describe(gomock.Any()).
-		DoAndReturn(func(f func(string, string)) {
+		DoAndReturn(func(f func(string, string) bool) {
 			f("Snake", "hissss")
 		}).AnyTimes()
-	c.Notifiers = []notifier.Notifier{n}
+	c.Notifier = n
 
 	c.Print(mockPP)
 }

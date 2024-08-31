@@ -164,7 +164,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if msg.OK {
+			if msg.MonitorMessage.OK {
 				numValidIPs++
 				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
 			}

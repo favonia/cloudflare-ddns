@@ -12,6 +12,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	notifier "github.com/favonia/cloudflare-ddns/internal/notifier"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -40,7 +41,7 @@ func (m *MockNotifier) EXPECT() *MockNotifierMockRecorder {
 }
 
 // Describe mocks base method.
-func (m *MockNotifier) Describe(arg0 func(string, string)) {
+func (m *MockNotifier) Describe(arg0 func(string, string) bool) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Describe", arg0)
 }
@@ -64,19 +65,19 @@ func (c *NotifierDescribeCall) Return() *NotifierDescribeCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NotifierDescribeCall) Do(f func(func(string, string))) *NotifierDescribeCall {
+func (c *NotifierDescribeCall) Do(f func(func(string, string) bool)) *NotifierDescribeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NotifierDescribeCall) DoAndReturn(f func(func(string, string))) *NotifierDescribeCall {
+func (c *NotifierDescribeCall) DoAndReturn(f func(func(string, string) bool)) *NotifierDescribeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Send mocks base method.
-func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
+func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 notifier.Message) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -102,13 +103,13 @@ func (c *NotifierSendCall) Return(arg0 bool) *NotifierSendCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, string) bool) *NotifierSendCall {
+func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, notifier.Message) bool) *NotifierSendCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *NotifierSendCall {
+func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, notifier.Message) bool) *NotifierSendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

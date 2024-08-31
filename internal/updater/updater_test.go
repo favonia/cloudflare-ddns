@@ -15,6 +15,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
@@ -177,11 +179,11 @@ func TestUpdateIPsMultiple(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				MonitorMessage: message.MonitorMessage{
+				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: message.NotifierMessage(tc.notifierMessages),
+				NotifierMessage: notifier.Message(tc.notifierMessages),
 			}, resp)
 		})
 	}
@@ -278,11 +280,11 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				MonitorMessage: message.MonitorMessage{
+				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: message.NotifierMessage(tc.notifierMessages),
+				NotifierMessage: notifier.Message(tc.notifierMessages),
 			}, resp)
 		})
 	}
@@ -649,11 +651,11 @@ func TestUpdateIPs(t *testing.T) {
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				MonitorMessage: message.MonitorMessage{
+				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: message.NotifierMessage(tc.notifierMessages),
+				NotifierMessage: notifier.Message(tc.notifierMessages),
 			}, resp)
 		})
 	}
@@ -874,11 +876,11 @@ func TestDeleteIPs(t *testing.T) {
 
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, message.Message{
-				MonitorMessage: message.MonitorMessage{
+				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: message.NotifierMessage(tc.notifierMessages),
+				NotifierMessage: notifier.Message(tc.notifierMessages),
 			}, resp)
 		})
 	}

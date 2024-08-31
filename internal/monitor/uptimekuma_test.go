@@ -74,16 +74,21 @@ func TestNewUptimeKuma(t *testing.T) {
 	}
 }
 
-func TestUptimeKumaDescripbe(t *testing.T) {
+func TestUptimeKumaDescribe(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
+
 	m, ok := monitor.NewUptimeKuma(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
-	m.Describe(func(service, _params string) {
-		require.Equal(t, "Uptime Kuma", service)
-	})
+
+	count := 0
+	for name := range m.Describe {
+		count++
+		require.Equal(t, "Uptime Kuma", name)
+	}
+	require.Equal(t, 1, count)
 }
 
 //nolint:funlen
@@ -107,7 +112,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	}
 
 	for name, tc := range map[string]struct {
-		endpoint      func(pp.PP, monitor.Monitor) bool
+		endpoint      func(pp.PP, monitor.BasicMonitor) bool
 		url           string
 		status        string
 		msg           string
@@ -119,8 +124,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "hello")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionOK},
@@ -129,8 +134,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			successPP,
 		},
 		"success/not-ok": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "aloha")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionNotOK},
@@ -144,8 +149,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			},
 		},
 		"success/garbage-response": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "aloha")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionGarbage},
@@ -159,8 +164,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			},
 		},
 		"success/abort/all": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Success(context.Background(), ppfmt, "stop now")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
 			},
 			"/", "up", "OK", "",
 			nil, ActionAbort, false,
@@ -172,21 +177,9 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				)
 			},
 		},
-		"start": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Start(context.Background(), ppfmt, "starting now!")
-			},
-			"/", "", "", "",
-			[]action{},
-			ActionAbort, false,
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, httpUnsafeMsg)
-			},
-		},
 		"failure": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Failure(context.Background(), ppfmt, "something's wrong")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
 			},
 			"/", "down", "something's wrong", "",
 			[]action{ActionOK},
@@ -195,54 +188,10 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			successPP,
 		},
 		"failure/empty": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Failure(context.Background(), ppfmt, "")
+			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, ""))
 			},
 			"/", "down", "Failing", "",
-			[]action{ActionOK},
-			ActionAbort, true,
-			true,
-			successPP,
-		},
-		"log": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, "message")
-			},
-			"/", "", "", "",
-			[]action{},
-			ActionAbort, false,
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, httpUnsafeMsg)
-			},
-		},
-		"exitstatus/0": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, 0, "bye!")
-			},
-			"/", "", "", "",
-			[]action{},
-			ActionAbort, false,
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, httpUnsafeMsg)
-			},
-		},
-		"exitstatus/1": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, 1, "did exit(1)")
-			},
-			"/", "down", "did exit(1)", "",
-			[]action{ActionOK},
-			ActionAbort, true,
-			true,
-			successPP,
-		},
-		"exitstatus/-1": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.ExitStatus(context.Background(), ppfmt, -1, "feeling negative")
-			},
-			"/", "down", "feeling negative", "",
 			[]action{ActionOK},
 			ActionAbort, true,
 			true,

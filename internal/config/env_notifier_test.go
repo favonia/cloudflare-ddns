@@ -21,37 +21,35 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      []not
-		newField      func(*testing.T, []not)
+		oldField      not
+		newField      func(*testing.T, not)
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"unset": {
 			false, "", nil,
-			func(t *testing.T, ns []not) {
+			func(t *testing.T, n not) {
 				t.Helper()
-				require.Nil(t, ns)
+				require.Nil(t, n)
 			},
 			true, nil,
 		},
 		"empty": {
 			true, "", nil,
-			func(t *testing.T, ns []not) {
+			func(t *testing.T, n not) {
 				t.Helper()
-				require.Nil(t, ns)
+				require.Nil(t, n)
 			},
 			true, nil,
 		},
 		"generic": {
 			true, "generic+https://example.com/api/v1/postStuff",
 			nil,
-			func(t *testing.T, ns []not) {
+			func(t *testing.T, n not) {
 				t.Helper()
-				require.Len(t, ns, 1)
-				m := ns[0]
-				s, ok := m.(notifier.Shoutrrr)
+				s, ok := n.(notifier.Shoutrrr)
 				require.True(t, ok)
-				require.Equal(t, []string{"generic"}, s.ServiceNames)
+				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
 			},
 			true,
 			nil,
@@ -59,9 +57,9 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 		"ill-formed": {
 			true, "meow-meow-meow://cute",
 			nil,
-			func(t *testing.T, ns []not) {
+			func(t *testing.T, n not) {
 				t.Helper()
-				require.Nil(t, ns)
+				require.Nil(t, n)
 			},
 			false,
 			func(m *mocks.MockPP) {
@@ -71,13 +69,11 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 		"multiple": {
 			true, "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
 			nil,
-			func(t *testing.T, ns []not) {
+			func(t *testing.T, n not) {
 				t.Helper()
-				require.Len(t, ns, 1)
-				m := ns[0]
-				s, ok := m.(notifier.Shoutrrr)
+				s, ok := n.(notifier.Shoutrrr)
 				require.True(t, ok)
-				require.Equal(t, []string{"generic", "pushover"}, s.ServiceNames)
+				require.Equal(t, []string{"Generic", "Pushover"}, s.ServiceDescriptions)
 			},
 			true,
 			nil,

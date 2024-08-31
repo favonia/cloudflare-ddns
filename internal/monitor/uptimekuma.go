@@ -30,7 +30,7 @@ type UptimeKuma struct {
 	Timeout time.Duration
 }
 
-var _ Monitor = UptimeKuma{} //nolint:exhaustruct
+var _ BasicMonitor = UptimeKuma{} //nolint:exhaustruct
 
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
@@ -100,8 +100,8 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 }
 
 // Describe calls the callback with the service name "Uptime Kuma".
-func (h UptimeKuma) Describe(callback func(service, params string)) {
-	callback("Uptime Kuma", "(URL redacted)")
+func (h UptimeKuma) Describe(yield func(name, params string) bool) {
+	yield("Uptime Kuma", "(URL redacted)")
 }
 
 // UptimeKumaResponse is for parsing the response from Uptime Kuma.
@@ -155,40 +155,23 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 	return true
 }
 
-// Success pings the server with status=up. Messages are ignored and "OK" is used instead.
-// The reason is that Uptime Kuma seems to show only the first success message
-// and it could be misleading if an outdated message stays in the UI.
-func (h UptimeKuma) Success(ctx context.Context, ppfmt pp.PP, _message string) bool {
-	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
-}
+// Ping pings the server with status=up/down depending on Message.OK.
+func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	if msg.OK {
+		// Pings the server with status=up. Messages are ignored and "OK" is used instead.
+		// The reason is that Uptime Kuma seems to show only the first success message
+		// and it could be misleading if an outdated message stays in the UI.
+		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
+	}
 
-// Start does nothing.
-func (h UptimeKuma) Start(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
-	return true
-}
-
-// Failure pings the server with status=down.
-func (h UptimeKuma) Failure(ctx context.Context, ppfmt pp.PP, message string) bool {
-	if message == "" {
+	formatted := msg.Format()
+	if formatted == "" {
 		// If we do not send a non-empty message to Uptime Kuma, it seems to
 		// either keep the previous message (even if it was for success) or
 		// assume the message is "OK". Either is bad.
 		//
 		// We can send a non-empty message to overwrite it.
-		message = "Failing"
+		formatted = "Failing"
 	}
-	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: message, Ping: ""})
-}
-
-// Log does nothing.
-func (h UptimeKuma) Log(_ctx context.Context, _ppfmt pp.PP, _message string) bool {
-	return true
-}
-
-// ExitStatus with non-zero triggers [Failure]. Otherwise, it does nothing.
-func (h UptimeKuma) ExitStatus(ctx context.Context, ppfmt pp.PP, code int, message string) bool {
-	if code != 0 {
-		return h.Failure(ctx, ppfmt, message)
-	}
-	return true
+	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: formatted, Ping: ""})
 }

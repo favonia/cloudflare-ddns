@@ -21,8 +21,8 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      []mon
-		newField      []mon
+		oldField      mon
+		newField      mon
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -35,30 +35,30 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			nil,
-			[]mon{monitor.Healthchecks{
+			monitor.NewComposed(monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			[]mon{monitor.Healthchecks{
+			monitor.NewComposed(monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			[]mon{monitor.Healthchecks{
+			monitor.NewComposed(monitor.Healthchecks{
 				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
 				Timeout: monitor.HealthchecksDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
@@ -118,8 +118,8 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set           bool
 		val           string
-		oldField      []mon
-		newField      []mon
+		oldField      mon
+		newField      mon
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -132,40 +132,40 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			nil,
-			[]mon{monitor.UptimeKuma{
+			monitor.NewComposed(monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			[]mon{monitor.UptimeKuma{
+			monitor.NewComposed(monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			[]mon{monitor.UptimeKuma{
+			monitor.NewComposed(monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}},
+			}),
 			true,
 			nil,
 		},
 		"query": {
 			true, "https://hi.org/1234?hello=123",
 			nil,
-			[]mon{monitor.UptimeKuma{
+			monitor.NewComposed(monitor.UptimeKuma{
 				BaseURL: urlMustParse(t, "https://hi.org/1234"),
 				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}},
+			}),
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
