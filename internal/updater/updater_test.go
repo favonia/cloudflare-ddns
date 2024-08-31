@@ -13,7 +13,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -178,7 +177,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			}
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, message.Message{
+			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -279,7 +278,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 				tc.prepareMocks(mockPP, mockSetter)
 			}
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, message.Message{
+			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -650,7 +649,7 @@ func TestUpdateIPs(t *testing.T) {
 				tc.prepareMocks(mockPP, mockProviders, mockSetter)
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, message.Message{
+			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -875,7 +874,7 @@ func TestDeleteIPs(t *testing.T) {
 			}
 
 			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, message.Message{
+			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,

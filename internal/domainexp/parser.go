@@ -91,9 +91,7 @@ func hasStrictSuffix(s, suffix string) bool {
 
 // scanFactor mimics ParseBool, call scanFunction, and then check parenthesized expressions.
 //
-// <factor> --> true | false | <fun> | ! <factor> | ( <expression> )
-//
-
+//	<factor> --> true | false | <fun> | ! <factor> | ( <expression> )
 func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predicate, []string) {
 	// fmt.Printf("scanFactor(tokens = %#v)\n", tokens)
 
