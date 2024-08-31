@@ -78,7 +78,7 @@ func useMemFS(memfs fstest.MapFS) {
 	file.FS = memfs
 }
 
-//nolint:funlen,paralleltest // environment vars and file system are global
+//nolint:paralleltest // environment vars and file system are global
 func TestReadAuthWithFile(t *testing.T) {
 	unset(t, "CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID")
 

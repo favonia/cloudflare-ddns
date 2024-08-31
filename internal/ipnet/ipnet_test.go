@@ -67,7 +67,6 @@ func TestInt(t *testing.T) {
 	}
 }
 
-//nolint:funlen
 func TestNormalizeDetectedIP(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
@@ -165,4 +164,19 @@ func TestMatches(t *testing.T) {
 			require.Equal(t, tc.expected, tc.ipNet.Matches(tc.ip))
 		})
 	}
+}
+
+func TestBindings(t *testing.T) {
+	t.Parallel()
+
+	count := 0
+	for ipNet := range ipnet.Bindings(map[ipnet.Type]int{
+		ipnet.IP4: 400,
+		ipnet.IP6: 600,
+	}) {
+		count++
+		require.Equal(t, ipnet.IP4, ipNet)
+		break
+	}
+	require.Equal(t, 1, count)
 }

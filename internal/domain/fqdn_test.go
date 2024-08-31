@@ -65,8 +65,7 @@ func TestFQDNDescribe(t *testing.T) {
 	}
 }
 
-//nolint:dupl
-func TestFQDNSplitter(t *testing.T) {
+func TestFQDNZones(t *testing.T) {
 	t.Parallel()
 	type r = string
 	for _, tc := range [...]struct {
@@ -82,11 +81,11 @@ func TestFQDNSplitter(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			var rs []r
-			for s := domain.FQDN(tc.input).Split(); s.IsValid(); s = s.Next() {
-				rs = append(rs, s.ZoneNameASCII())
+			i := 0
+			for zone := range domain.FQDN(tc.input).Zones {
+				require.Equal(t, tc.expected[i], zone)
+				i++
 			}
-			require.Equal(t, tc.expected, rs)
 		})
 	}
 }

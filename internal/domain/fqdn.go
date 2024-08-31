@@ -13,41 +13,17 @@ func (f FQDN) Describe() string {
 	return safelyToUnicode(string(f))
 }
 
-// FQDNSplitter implements [Splitter] for a [FQDN].
-type FQDNSplitter struct {
-	domain    string
-	cursor    int
-	exhausted bool
-}
-
-// Split constructs a [FQDNSplitter] for the FQDN.
-func (f FQDN) Split() Splitter {
-	return FQDNSplitter{
-		domain:    string(f),
-		cursor:    0,
-		exhausted: false,
-	}
-}
-
-// IsValid checks whether the cursor is still valid.
-func (s FQDNSplitter) IsValid() bool { return !s.exhausted }
-
-// ZoneNameASCII gives the ASCII form of the current zone suffix.
-func (s FQDNSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
-
-// Next moves the cursor to the next spltting point.
-// Call [IsValid] to check whether the resulting cursor is valid.
-func (s FQDNSplitter) Next() Splitter {
-	next := s
-	if s.cursor == len(s.domain) {
-		next.exhausted = true
-	} else {
-		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
-		if shift == -1 {
-			next.cursor = len(s.domain)
+// Zones starts from a.b.c for the domain a.b.c.
+func (f FQDN) Zones(yield func(ZoneNameASCII string) bool) {
+	domain := string(f)
+	for {
+		if !yield(domain) {
+			return
+		}
+		if i := strings.IndexRune(domain, '.'); i == -1 {
+			return
 		} else {
-			next.cursor += shift + 1
+			domain = domain[i+1:]
 		}
 	}
-	return next
 }

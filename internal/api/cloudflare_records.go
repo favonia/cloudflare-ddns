@@ -69,8 +69,7 @@ func (h CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain 
 	}
 
 zoneSearch:
-	for s := domain.Split(); s.IsValid(); s = s.Next() {
-		zoneName := s.ZoneNameASCII()
+	for zoneName := range domain.Zones {
 		zones, ok := h.ListZones(ctx, ppfmt, zoneName)
 		if !ok {
 			return "", false

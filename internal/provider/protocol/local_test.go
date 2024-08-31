@@ -25,7 +25,6 @@ func TestLocalName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
-//nolint:funlen
 func TestLocalGetIP(t *testing.T) {
 	t.Parallel()
 

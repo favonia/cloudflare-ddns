@@ -12,7 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
+//nolint:paralleltest // paralleltest should not be used because environment vars are global
 func TestReadAndAppendHealthchecksURL(t *testing.T) {
 	key := keyPrefix + "HEALTHCHECKS"
 
@@ -109,7 +109,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
+//nolint:paralleltest // paralleltest should not be used because environment vars are global
 func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 	key := keyPrefix + "UPTIMEKUMA"
 

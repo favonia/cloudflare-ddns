@@ -76,7 +76,6 @@ func (m ErrorMatcher) String() string {
 	return m.Error.Error()
 }
 
-//nolint:funlen
 func TestParseExpression(t *testing.T) {
 	t.Parallel()
 	key := "key"

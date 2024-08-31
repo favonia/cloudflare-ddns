@@ -28,7 +28,6 @@ func TestHTTPName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
-//nolint:funlen
 func TestHTTPGetIP(t *testing.T) {
 	ip4 := netip.MustParseAddr("1.2.3.4")
 	ip4As6 := netip.MustParseAddr("::ffff:1.2.3.4")

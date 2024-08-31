@@ -155,8 +155,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	detectedIP := map[ipnet.Type]netip.Addr{}
 	numManagedNetworks := 0
 	numValidIPs := 0
-	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		if c.Provider[ipNet] != nil {
+	for ipNet, provider := range ipnet.Bindings(c.Provider) {
+		if provider != nil {
 			numManagedNetworks++
 			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
 			detectedIP[ipNet] = ip
@@ -183,8 +183,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
 	var msgs []message.Message
 
-	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		if c.Provider[ipNet] != nil {
+	for ipNet, provider := range ipnet.Bindings(c.Provider) {
+		if provider != nil {
 			msgs = append(msgs, deleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}

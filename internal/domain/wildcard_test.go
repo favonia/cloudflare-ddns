@@ -69,8 +69,7 @@ func TestWildcardDescribe(t *testing.T) {
 	}
 }
 
-//nolint:dupl
-func TestWildcardSplitter(t *testing.T) {
+func TestWildcardZones(t *testing.T) {
 	t.Parallel()
 	type r = string
 	for _, tc := range [...]struct {
@@ -86,11 +85,11 @@ func TestWildcardSplitter(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			var rs []r
-			for s := domain.Wildcard(tc.input).Split(); s.IsValid(); s = s.Next() {
-				rs = append(rs, s.ZoneNameASCII())
+			i := 0
+			for zone := range domain.Wildcard(tc.input).Zones {
+				require.Equal(t, tc.expected[i], zone)
+				i++
 			}
-			require.Equal(t, tc.expected, rs)
 		})
 	}
 }

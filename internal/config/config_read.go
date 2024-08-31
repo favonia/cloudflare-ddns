@@ -45,8 +45,6 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 
 // Normalize checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
 // When any error is reported, the original configuration remain unchanged.
-//
-//nolint:funlen
 func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
@@ -80,8 +78,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	// Step 3.1: fill in providerMap and activeDomainSet
 	providerMap := map[ipnet.Type]provider.Provider{}
 	activeDomainSet := map[domain.Domain]bool{}
-	for ipNet := range c.Provider {
-		if c.Provider[ipNet] != nil {
+	for ipNet, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
 			domains := c.Domains[ipNet]
 
 			if len(domains) == 0 && len(c.WAFLists) == 0 {
@@ -92,7 +90,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 				continue
 			}
 
-			providerMap[ipNet] = c.Provider[ipNet]
+			providerMap[ipNet] = p
 			for _, domain := range domains {
 				activeDomainSet[domain] = true
 			}
@@ -107,7 +105,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	}
 
 	// Step 3.3: check if some domains are unused
-	for ipNet, domains := range c.Domains {
+	for ipNet, domains := range ipnet.Bindings(c.Domains) {
 		if providerMap[ipNet] == nil {
 			for _, domain := range domains {
 				if activeDomainSet[domain] {

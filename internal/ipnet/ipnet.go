@@ -1,8 +1,10 @@
 // Package ipnet contains utility functions for IPv4 and IPv6 networks.
 package ipnet
 
+//nolint:gci
 import (
 	"fmt"
+	"iter"
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -121,5 +123,24 @@ func (t Type) Matches(ip netip.Addr) bool {
 		return ip.Is6()
 	default:
 		return false
+	}
+}
+
+// All enumerates [IP4] and then [IP6].
+func All(yield func(Type) bool) {
+	_ = yield(IP4) && yield(IP6)
+}
+
+// Bindings enumerates the key [IP4] and then [IP6] for a map.
+func Bindings[V any](m map[Type]V) iter.Seq2[Type, V] {
+	return func(yield func(Type, V) bool) {
+		for ipNet := range All {
+			v, ok := m[ipNet]
+			if ok {
+				if !yield(ipNet, v) {
+					return
+				}
+			}
+		}
 	}
 }

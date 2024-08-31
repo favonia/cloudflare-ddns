@@ -93,7 +93,7 @@ func hasStrictSuffix(s, suffix string) bool {
 //
 // <factor> --> true | false | <fun> | ! <factor> | ( <expression> )
 //
-//nolint:funlen
+
 func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predicate, []string) {
 	// fmt.Printf("scanFactor(tokens = %#v)\n", tokens)
 

@@ -13,7 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//nolint:paralleltest,funlen // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadDomains(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
 	type ds = []domain.Domain
@@ -87,7 +87,7 @@ func TestReadDomains(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,funlen // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	for name, tc := range map[string]struct {
 		domains       string

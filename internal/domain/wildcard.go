@@ -24,41 +24,17 @@ func (w Wildcard) Describe() string {
 	return "*." + safelyToUnicode(string(w))
 }
 
-// WildcardSplitter implements [Splitter] for a wildcard domain.
-type WildcardSplitter struct {
-	domain    string
-	cursor    int
-	exhausted bool
-}
-
-// Split constructs a [Splitter] for a wildcard domain.
-func (w Wildcard) Split() Splitter {
-	return WildcardSplitter{
-		domain:    string(w),
-		cursor:    0,
-		exhausted: false,
-	}
-}
-
-// IsValid checks whether the cursor is still valid.
-func (s WildcardSplitter) IsValid() bool { return !s.exhausted }
-
-// ZoneNameASCII gives the ASCII form of the current zone suffix.
-func (s WildcardSplitter) ZoneNameASCII() string { return s.domain[s.cursor:] }
-
-// Next moves the cursor to the next spltting point.
-// Call [WildcardSplitter.IsValid] to check whether the resulting cursor is valid.
-func (s WildcardSplitter) Next() Splitter {
-	next := s
-	if s.cursor == len(s.domain) {
-		next.exhausted = true
-	} else {
-		shift := strings.IndexRune(s.ZoneNameASCII(), '.')
-		if shift == -1 {
-			next.cursor = len(s.domain)
+// Zones starts from a.b.c for the wildcard domain *.a.b.c.
+func (w Wildcard) Zones(yield func(ZoneNameASCII string) bool) {
+	domain := string(w)
+	for {
+		if !yield(domain) {
+			return
+		}
+		if i := strings.IndexRune(domain, '.'); i == -1 {
+			return
 		} else {
-			next.cursor += shift + 1
+			domain = domain[i+1:]
 		}
 	}
-	return next
 }
