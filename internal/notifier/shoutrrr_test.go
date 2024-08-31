@@ -56,11 +56,28 @@ func TestShoutrrrDescribe(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := notifier.NewShoutrrr(mockPP, []string{"generic://localhost/"})
+	m, ok := notifier.NewShoutrrr(mockPP, []string{
+		"generic://localhost/",
+		"gotify://host:80/path/tokentoken",
+		"ifttt://hey/?events=1",
+	})
 	require.True(t, ok)
+
+	count := 0
 	for name := range m.Describe {
-		require.Equal(t, "Generic", name)
+		count++
+		switch count {
+		case 1:
+			require.Equal(t, "Generic", name)
+		case 2:
+			require.Equal(t, "Gotify", name)
+		case 3:
+			require.Equal(t, "IFTTT", name)
+			break
+		default:
+		}
 	}
+	require.Equal(t, 3, count)
 }
 
 func TestShoutrrrSend(t *testing.T) {
