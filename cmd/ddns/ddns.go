@@ -9,7 +9,8 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/message"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/signal"
@@ -91,15 +92,15 @@ func realMain() int { //nolint:funlen
 	c.Monitor.Start(ctx, ppfmt, formatName())
 	// Bail out now if initConfig failed
 	if !configOK {
-		c.Monitor.Ping(ctx, ppfmt, message.NewMonitorMessagef(false, "Configuration errors"))
-		c.Notifier.Send(ctx, ppfmt, message.NewNotifierMessagef(
+		c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "Configuration errors"))
+		c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef(
 			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details."))
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if c.UpdateCron != nil {
-		c.Notifier.Send(ctx, ppfmt, message.NewNotifierMessagef("Started running Cloudflare DDNS."))
+		c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -121,7 +122,7 @@ func realMain() int { //nolint:funlen
 
 		// Update the IP addresses
 		if first && !c.UpdateOnStart {
-			c.Monitor.Ping(ctx, ppfmt, message.NewMonitorMessagef(true, "Started (no action)"))
+			c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(true, "Started (no action)"))
 		} else {
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
 			c.Monitor.Ping(ctx, ppfmt, msg.MonitorMessage)
@@ -147,9 +148,9 @@ func realMain() int { //nolint:funlen
 				cron.DescribeSchedule(c.UpdateCron),
 			)
 			stopUpdating(ctx, ppfmt, c, s)
-			c.Monitor.Ping(ctx, ppfmt, message.NewMonitorMessagef(false, "No scheduled updates"))
+			c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "No scheduled updates"))
 			c.Notifier.Send(ctx, ppfmt,
-				message.NewNotifierMessagef(
+				notifier.NewMessagef(
 					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
 						"Consider changing the value of UPDATE_CRON (%s).",
 					cron.DescribeSchedule(c.UpdateCron),
@@ -168,7 +169,7 @@ func realMain() int { //nolint:funlen
 			stopUpdating(ctx, ppfmt, c, s)
 			c.Monitor.Exit(ctx, ppfmt, "Stopped")
 			if c.UpdateCron != nil {
-				c.Notifier.Send(ctx, ppfmt, message.NewNotifierMessagef("Stopped running Cloudflare DDNS."))
+				c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
