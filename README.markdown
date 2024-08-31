@@ -274,7 +274,7 @@ _(Click to expand the following items.)_
 > 🤖 Technical notes on WAF lists:
 >
 > 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), and thus the updater will use the smallest IP range allowed by Cloudflare that contains the detected IPv6 address.
-> 2. The updater will delete IP addresses belonging to unmanaged IP families from the specified WAF lists (_e.g.,_ if you disable IPv6 with `IP6_PROVIDER=none`, then existing IPv6 addresses or IPv6 ranges in the lists will be deleted). The idea is that the list should only contain detected IP addresses.
+> 2. The updater will delete IP addresses belonging to unmanaged IP families from the specified WAF lists (_e.g.,_ if you disable IPv6 with `IP6_PROVIDER=none`, then existing IPv6 addresses or IPv6 ranges in the lists will be deleted). The idea is that the list should contain only detected IP addresses.
 
 </details>
 
