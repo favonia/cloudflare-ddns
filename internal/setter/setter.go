@@ -37,8 +37,6 @@ func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatched
 }
 
 // Set updates the IP address of one domain to the given ip. The IP address (ip) must be non-zero.
-//
-//nolint:funlen
 func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	ipnet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
 ) ResponseCode {

@@ -85,7 +85,6 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-//nolint:funlen
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 

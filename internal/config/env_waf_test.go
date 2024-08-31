@@ -12,7 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
+//nolint:paralleltest // paralleltest should not be used because environment vars are global
 func TestReadAndAppendWAFListNames(t *testing.T) {
 	key := keyPrefix + "WAF_LISTS"
 

@@ -23,7 +23,6 @@ var (
 	ErrUTF8 = errors.New(`invalid UTF-8 string`)
 )
 
-//nolint:funlen
 func splitter(data []byte, atEOF bool) (int, []byte, error) {
 	reader := bytes.NewReader(data)
 	startIndex := 0

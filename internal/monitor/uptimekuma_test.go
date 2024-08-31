@@ -91,7 +91,6 @@ func TestUptimeKumaDescribe(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-//nolint:funlen
 func TestUptimeKumaEndPoints(t *testing.T) {
 	t.Parallel()
 

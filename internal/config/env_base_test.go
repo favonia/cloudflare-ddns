@@ -134,7 +134,7 @@ func TestReadString(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadBool(t *testing.T) {
 	key := keyPrefix + "BOOL"
 	for name, tc := range map[string]struct {
@@ -260,7 +260,7 @@ func TestReadNonnegInt(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadTTL(t *testing.T) {
 	key := keyPrefix + "TTL"
 	for name, tc := range map[string]struct {
@@ -378,7 +378,7 @@ func TestReadNonnegDuration(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,funlen // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadCron(t *testing.T) {
 	key := keyPrefix + "CRON"
 

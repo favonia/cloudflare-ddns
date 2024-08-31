@@ -155,7 +155,6 @@ func TestListZonesTwo(t *testing.T) {
 	}
 }
 
-//nolint:funlen
 func TestZoneOfDomain(t *testing.T) {
 	t.Parallel()
 
@@ -403,7 +402,6 @@ func TestListRecords(t *testing.T) {
 	require.Equal(t, expected, rs)
 }
 
-//nolint:funlen
 func TestListRecordsInvalidIPAddress(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
@@ -681,7 +679,6 @@ func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-//nolint:funlen
 func TestUpdateRecordValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
@@ -793,7 +790,6 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-//nolint:funlen
 func TestCreateRecordValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)

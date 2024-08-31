@@ -67,7 +67,6 @@ func TestInt(t *testing.T) {
 	}
 }
 
-//nolint:funlen
 func TestNormalizeDetectedIP(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {

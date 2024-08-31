@@ -45,8 +45,6 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 
 // Normalize checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
 // When any error is reported, the original configuration remain unchanged.
-//
-//nolint:funlen
 func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")

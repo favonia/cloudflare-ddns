@@ -13,7 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-//nolint:paralleltest,funlen // paralleltest should not be used because environment vars are global
+//nolint:paralleltest // paralleltest should not be used because environment vars are global
 func TestReadProvider(t *testing.T) {
 	key := keyPrefix + "PROVIDER"
 	keyDeprecated := keyPrefix + "DEPRECATED"
@@ -190,7 +190,7 @@ func TestReadProvider(t *testing.T) {
 	}
 }
 
-//nolint:funlen,paralleltest // environment vars are global
+//nolint:paralleltest // environment vars are global
 func TestReadProviderMap(t *testing.T) {
 	var (
 		none  provider.Provider

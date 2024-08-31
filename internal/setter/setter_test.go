@@ -23,7 +23,6 @@ func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, 
 	}
 }
 
-//nolint:funlen
 func TestSet(t *testing.T) {
 	t.Parallel()
 
@@ -277,7 +276,6 @@ func TestSet(t *testing.T) {
 	}
 }
 
-//nolint:funlen
 func TestDelete(t *testing.T) {
 	t.Parallel()
 

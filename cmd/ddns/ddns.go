@@ -67,7 +67,7 @@ func main() {
 	os.Exit(realMain())
 }
 
-func realMain() int { //nolint:funlen
+func realMain() int {
 	// Get the contexts and start catching SIGINT and SIGTERM
 	ctx := context.Background()
 	sig := signal.Setup()

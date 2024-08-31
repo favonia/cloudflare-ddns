@@ -87,7 +87,6 @@ func TestHealthchecksDescribe(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-//nolint:funlen
 func TestHealthchecksEndPoints(t *testing.T) {
 	t.Parallel()
 

@@ -11,7 +11,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
-//nolint:funlen
 func TestNew(t *testing.T) {
 	t.Parallel()
 	type f = domain.FQDN
