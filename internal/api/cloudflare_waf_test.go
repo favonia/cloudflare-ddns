@@ -189,7 +189,8 @@ func TestListWAFListsHint(t *testing.T) {
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
 		mockPP.EXPECT().Hintf(pp.HintWAFListPermission,
-			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
+			"Double check your API token and account ID. "+
+				`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
 	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
 	require.False(t, ok)

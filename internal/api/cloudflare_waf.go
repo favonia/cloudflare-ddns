@@ -28,9 +28,11 @@ var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
 
 func hintWAFListPermission(ppfmt pp.PP, err error) {
 	var authentication *cloudflare.AuthenticationError
-	if errors.As(err, &authentication) {
+	var authorization *cloudflare.AuthorizationError
+	if errors.As(err, &authentication) || errors.As(err, &authorization) {
 		ppfmt.Hintf(pp.HintWAFListPermission,
-			`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`)
+			"Double check your API token and account ID. "+
+				`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`)
 	}
 }
 
