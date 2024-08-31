@@ -222,7 +222,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	var itemsToDelete []api.WAFListItem
 	var itemsToCreate []netip.Prefix
-	for _, ipNet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+	for ipNet := range ipnet.All {
 		detectedIP, managed := detectedIP[ipNet]
 		covered := false
 		for _, item := range items {

@@ -55,13 +55,11 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 
 	section("Domains, IP providers, and WAF lists:")
-	if c.Provider[ipnet.IP4] != nil {
-		item("IPv4-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipnet.IP4]))
-		item("IPv4 provider:", "%s", provider.Name(c.Provider[ipnet.IP4]))
-	}
-	if c.Provider[ipnet.IP6] != nil {
-		item("IPv6-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipnet.IP6]))
-		item("IPv6 provider:", "%s", provider.Name(c.Provider[ipnet.IP6]))
+	for ipNet, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
+			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipNet]))
+			item(ipNet.Describe()+" provider:", "%s", provider.Name(p))
+		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))
 
