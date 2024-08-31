@@ -131,7 +131,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to retrieve %s records of %q: %v",
 			ipNet.RecordType(), domain.Describe(), err)
-			hintRecordPermission(ppfmt, err)
+		hintRecordPermission(ppfmt, err)
 		return nil, false, false
 	}
 
