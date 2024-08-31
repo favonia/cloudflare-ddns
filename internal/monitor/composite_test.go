@@ -44,7 +44,7 @@ func TestComposedDescribe(t *testing.T) {
 	require.Equal(t, 3, count)
 }
 
-func TestComposedPing(t *testing.T) { //nolint:dupl
+func TestComposedPing(t *testing.T) {
 	t.Parallel()
 
 	for name1, tc1 := range map[string]struct {
@@ -126,7 +126,7 @@ func TestComposedExit(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestComposedLog(t *testing.T) { //nolint:dupl
+func TestComposedLog(t *testing.T) {
 	t.Parallel()
 
 	for name1, tc1 := range map[string]struct {

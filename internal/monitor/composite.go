@@ -10,7 +10,7 @@ type monitors []BasicMonitor
 
 var _ Monitor = monitors{}
 
-// NewComposed creates a new composed monitor
+// NewComposed creates a new composed monitor.
 func NewComposed(mons ...BasicMonitor) monitors {
 	ms := make([]BasicMonitor, 0, len(mons))
 	for _, m := range mons {

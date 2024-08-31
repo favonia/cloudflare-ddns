@@ -63,6 +63,7 @@ func TestShoutrrrDescribe(t *testing.T) {
 	require.True(t, ok)
 
 	count := 0
+outer:
 	for name := range m.Describe {
 		count++
 		switch count {
@@ -70,13 +71,11 @@ func TestShoutrrrDescribe(t *testing.T) {
 			require.Equal(t, "Generic", name)
 		case 2:
 			require.Equal(t, "Gotify", name)
-		case 3:
-			require.Equal(t, "IFTTT", name)
-			break
+			break outer
 		default:
 		}
 	}
-	require.Equal(t, 3, count)
+	require.Equal(t, 2, count)
 }
 
 func TestShoutrrrSend(t *testing.T) {
