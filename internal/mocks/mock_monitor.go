@@ -12,7 +12,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	message "github.com/favonia/cloudflare-ddns/internal/message"
+	monitor "github.com/favonia/cloudflare-ddns/internal/monitor"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -77,7 +77,7 @@ func (c *BasicMonitorDescribeCall) DoAndReturn(f func(func(string, string) bool)
 }
 
 // Ping mocks base method.
-func (m *MockBasicMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 message.MonitorMessage) bool {
+func (m *MockBasicMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Ping", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -103,13 +103,13 @@ func (c *BasicMonitorPingCall) Return(arg0 bool) *BasicMonitorPingCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *BasicMonitorPingCall) Do(f func(context.Context, pp.PP, message.MonitorMessage) bool) *BasicMonitorPingCall {
+func (c *BasicMonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *BasicMonitorPingCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *BasicMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, message.MonitorMessage) bool) *BasicMonitorPingCall {
+func (c *BasicMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *BasicMonitorPingCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -212,7 +212,7 @@ func (c *MonitorExitCall) DoAndReturn(f func(context.Context, pp.PP, string) boo
 }
 
 // Log mocks base method.
-func (m *MockMonitor) Log(arg0 context.Context, arg1 pp.PP, arg2 message.MonitorMessage) bool {
+func (m *MockMonitor) Log(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Log", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -238,19 +238,19 @@ func (c *MonitorLogCall) Return(arg0 bool) *MonitorLogCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorLogCall) Do(f func(context.Context, pp.PP, message.MonitorMessage) bool) *MonitorLogCall {
+func (c *MonitorLogCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorLogCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorLogCall) DoAndReturn(f func(context.Context, pp.PP, message.MonitorMessage) bool) *MonitorLogCall {
+func (c *MonitorLogCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorLogCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Ping mocks base method.
-func (m *MockMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 message.MonitorMessage) bool {
+func (m *MockMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Ping", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -276,13 +276,13 @@ func (c *MonitorPingCall) Return(arg0 bool) *MonitorPingCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorPingCall) Do(f func(context.Context, pp.PP, message.MonitorMessage) bool) *MonitorPingCall {
+func (c *MonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorPingCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, message.MonitorMessage) bool) *MonitorPingCall {
+func (c *MonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorPingCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

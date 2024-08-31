@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -112,7 +111,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 	}{
 		"success": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "hello"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
 			},
 			"/", "hello",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -127,7 +126,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "aloha"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "aloha",
 			[]action{ActionAbort, ActionAbort, ActionNotOK},
@@ -142,7 +141,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"success/abort/all": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "stop now"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
 			},
 			"/", "stop now",
 			nil, ActionAbort, 0,
@@ -156,7 +155,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"failure": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(false, "something's wrong"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
 			},
 			"/fail", "something's wrong",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -201,7 +200,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"log": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, message.NewMonitorMessagef(true, "message"))
+				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(true, "message"))
 			},
 			"/log", "message",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -216,7 +215,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"log/not-ok": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, message.NewMonitorMessagef(false, "oops!"))
+				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(false, "oops!"))
 			},
 			"/fail", "oops!",
 			[]action{ActionOK},
@@ -231,7 +230,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		},
 		"log/empty": {
 			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, message.NewMonitorMessage())
+				return m.Log(context.Background(), ppfmt, monitor.NewMessage())
 			},
 			"/log", "message",
 			[]action{},

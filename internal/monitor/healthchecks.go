@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -153,8 +152,8 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 	return true
 }
 
-// Ping formats and pings with a [message.Message].
-func (h Healthchecks) Ping(ctx context.Context, ppfmt pp.PP, msg message.MonitorMessage) bool {
+// Ping formats and pings with a [Message].
+func (h Healthchecks) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 	if msg.OK {
 		return h.ping(ctx, ppfmt, "", msg.Format())
 	} else {
@@ -172,8 +171,8 @@ func (h Healthchecks) Exit(ctx context.Context, ppfmt pp.PP, message string) boo
 	return h.ping(ctx, ppfmt, "/0", message)
 }
 
-// Log formats and logs a [message.Message].
-func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, msg message.MonitorMessage) bool {
+// Log formats and logs a [Message].
+func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 	switch {
 	case !msg.OK:
 		return h.ping(ctx, ppfmt, "/fail", msg.Format())

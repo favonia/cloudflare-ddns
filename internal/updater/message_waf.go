@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/message"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
@@ -18,9 +20,9 @@ func (s setterWAFListResponses) register(name string, code setter.ResponseCode) 
 	s[code] = append(s[code], name)
 }
 
-func generateUpdateWAFListsMonitorMessage(s setterWAFListResponses) message.MonitorMessage {
+func generateUpdateWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return message.MonitorMessage{
+		return monitor.Message{
 			OK:    false,
 			Lines: []string{"Failed to set list(s) " + pp.Join(domains)},
 		}
@@ -36,10 +38,10 @@ func generateUpdateWAFListsMonitorMessage(s setterWAFListResponses) message.Moni
 		successLines = append(successLines, "Set list(s) "+pp.Join(domains))
 	}
 
-	return message.MonitorMessage{OK: true, Lines: successLines}
+	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) message.NotifierMessage {
+func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -66,7 +68,7 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) message.Not
 		return nil
 	} else {
 		fragments = append(fragments, ".")
-		return message.NotifierMessage{strings.Join(fragments, "")}
+		return notifier.Message{strings.Join(fragments, "")}
 	}
 }
 
@@ -77,9 +79,9 @@ func generateUpdateWAFListsMessage(s setterWAFListResponses) message.Message {
 	}
 }
 
-func generateClearWAFListsMonitorMessage(s setterWAFListResponses) message.MonitorMessage {
+func generateClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return message.MonitorMessage{
+		return monitor.Message{
 			OK:    false,
 			Lines: []string{"Failed to clear list(s) " + pp.Join(domains)},
 		}
@@ -95,10 +97,10 @@ func generateClearWAFListsMonitorMessage(s setterWAFListResponses) message.Monit
 		successLines = append(successLines, "Cleared list(s) "+pp.Join(domains))
 	}
 
-	return message.MonitorMessage{OK: true, Lines: successLines}
+	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateClearWAFListsNotifierMessage(s setterWAFListResponses) message.NotifierMessage {
+func generateClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -125,7 +127,7 @@ func generateClearWAFListsNotifierMessage(s setterWAFListResponses) message.Noti
 		return nil
 	} else {
 		fragments = append(fragments, ".")
-		return message.NotifierMessage{strings.Join(fragments, "")}
+		return notifier.Message{strings.Join(fragments, "")}
 	}
 }
 

@@ -8,6 +8,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/message"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
@@ -28,20 +30,20 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) message.Message {
 		return message.New()
 	case !ok:
 		return message.Message{
-			MonitorMessage: message.MonitorMessage{
+			MonitorMessage: monitor.Message{
 				OK:    false,
 				Lines: []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
 			},
-			NotifierMessage: message.NotifierMessage{
+			NotifierMessage: notifier.Message{
 				fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe()),
 			},
 		}
 	}
 }
 
-func generateUpdateMonitorMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) message.MonitorMessage {
+func generateUpdateMonitorMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return message.MonitorMessage{
+		return monitor.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Failed to set %s (%s) of %s",
@@ -66,10 +68,10 @@ func generateUpdateMonitorMessage(ipNet ipnet.Type, ip netip.Addr, s setterRespo
 		))
 	}
 
-	return message.MonitorMessage{OK: true, Lines: successLines}
+	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) message.NotifierMessage {
+func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -106,7 +108,7 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResp
 		return nil
 	} else {
 		fragments = append(fragments, ".")
-		return message.NotifierMessage{strings.Join(fragments, "")}
+		return notifier.Message{strings.Join(fragments, "")}
 	}
 }
 
@@ -117,9 +119,9 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) m
 	}
 }
 
-func generateDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) message.MonitorMessage {
+func generateDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return message.MonitorMessage{
+		return monitor.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Failed to delete %s of %s",
@@ -144,10 +146,10 @@ func generateDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) message.M
 		))
 	}
 
-	return message.MonitorMessage{OK: true, Lines: successLines}
+	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) message.NotifierMessage {
+func generateDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -184,7 +186,7 @@ func generateDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) message.
 		return nil
 	} else {
 		fragments = append(fragments, ".")
-		return message.NotifierMessage{strings.Join(fragments, "")}
+		return notifier.Message{strings.Join(fragments, "")}
 	}
 }
 

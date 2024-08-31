@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -126,7 +125,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	}{
 		"success": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "hello"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionOK},
@@ -136,7 +135,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		},
 		"success/not-ok": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "aloha"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionNotOK},
@@ -151,7 +150,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		},
 		"success/garbage-response": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "aloha"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionGarbage},
@@ -166,7 +165,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		},
 		"success/abort/all": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(true, "stop now"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
 			},
 			"/", "up", "OK", "",
 			nil, ActionAbort, false,
@@ -180,7 +179,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		},
 		"failure": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(false, "something's wrong"))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
 			},
 			"/", "down", "something's wrong", "",
 			[]action{ActionOK},
@@ -190,7 +189,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		},
 		"failure/empty": {
 			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, message.NewMonitorMessagef(false, ""))
+				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, ""))
 			},
 			"/", "down", "Failing", "",
 			[]action{ActionOK},

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -87,14 +86,14 @@ func TestShoutrrrSend(t *testing.T) {
 		path          string
 		pinged        int
 		service       func(serverURL string) string
-		message       message.NotifierMessage
+		message       notifier.Message
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
 			"/greeting", 1,
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			message.NewNotifierMessagef("hello"),
+			notifier.NewMessagef("hello"),
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", "Generic")
@@ -103,7 +102,7 @@ func TestShoutrrrSend(t *testing.T) {
 		"ill-formed url": {
 			"", 0,
 			func(_serverURL string) string { return "generic+https://0.0.0.0" },
-			message.NewNotifierMessagef("hello"),
+			notifier.NewMessagef("hello"),
 			false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
@@ -112,7 +111,7 @@ func TestShoutrrrSend(t *testing.T) {
 		"empty": {
 			"/greeting", 0,
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			message.NewNotifierMessage(),
+			notifier.NewMessage(),
 			true,
 			nil,
 		},

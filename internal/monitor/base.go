@@ -4,7 +4,6 @@ package monitor
 import (
 	"context"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -21,7 +20,7 @@ type BasicMonitor interface {
 
 	// Ping with OK=true prevent notifications.
 	// Ping with OK=false immediately notifies the user.
-	Ping(ctx context.Context, ppfmt pp.PP, msg message.MonitorMessage) bool
+	Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool
 }
 
 // Monitor provides more advanced features.
@@ -36,5 +35,5 @@ type Monitor interface {
 
 	// Log with OK=true provides additional information without changing the state.
 	// Log with OK=false immediately notifies the user.
-	Log(ctx context.Context, ppfmt pp.PP, msg message.MonitorMessage) bool
+	Log(ctx context.Context, ppfmt pp.PP, msg Message) bool
 }

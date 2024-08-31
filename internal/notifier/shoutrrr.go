@@ -10,7 +10,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -93,7 +92,7 @@ func (s Shoutrrr) Describe(yield func(string, string) bool) {
 }
 
 // Send sents the message msg.
-func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg message.NotifierMessage) bool {
+func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 	if msg.IsEmpty() {
 		return true
 	}

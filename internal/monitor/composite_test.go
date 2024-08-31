@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 )
@@ -69,7 +68,7 @@ func TestComposedPing(t *testing.T) { //nolint:dupl
 				mockCtrl := gomock.NewController(t)
 				mockPP := mocks.NewMockPP(mockCtrl)
 
-				msg := message.MonitorMessage{
+				msg := monitor.Message{
 					OK:    tc2.ok,
 					Lines: tc1.lines,
 				}
@@ -151,7 +150,7 @@ func TestComposedLog(t *testing.T) { //nolint:dupl
 				mockCtrl := gomock.NewController(t)
 				mockPP := mocks.NewMockPP(mockCtrl)
 
-				msg := message.MonitorMessage{
+				msg := monitor.Message{
 					OK:    tc2.ok,
 					Lines: tc1.lines,
 				}

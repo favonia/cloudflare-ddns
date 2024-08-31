@@ -3,7 +3,6 @@ package monitor
 import (
 	"context"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -39,7 +38,7 @@ func (ms monitors) Describe(yield func(name string, params string) bool) {
 }
 
 // Ping calls [Monitor.Ping] for each monitor in the group.
-func (ms monitors) Ping(ctx context.Context, ppfmt pp.PP, message message.MonitorMessage) bool {
+func (ms monitors) Ping(ctx context.Context, ppfmt pp.PP, message Message) bool {
 	ok := true
 	for _, m := range ms {
 		ok = ok && m.Ping(ctx, ppfmt, message)
@@ -70,13 +69,13 @@ func (ms monitors) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
 }
 
 // Log calls [Monitor.Log] for each monitor in the group.
-func (ms monitors) Log(ctx context.Context, ppfmt pp.PP, message message.MonitorMessage) bool {
+func (ms monitors) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 	ok := true
 	for _, m := range ms {
 		if em, extended := m.(Monitor); extended {
-			ok = ok && em.Log(ctx, ppfmt, message)
-		} else if !message.OK {
-			ok = ok && m.Ping(ctx, ppfmt, message)
+			ok = ok && em.Log(ctx, ppfmt, msg)
+		} else if !msg.OK {
+			ok = ok && m.Ping(ctx, ppfmt, msg)
 		}
 	}
 	return ok

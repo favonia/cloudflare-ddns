@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -156,8 +155,8 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 	return true
 }
 
-// Ping pings the server with status=up/down depending on message.OK.
-func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg message.MonitorMessage) bool {
+// Ping pings the server with status=up/down depending on Message.OK.
+func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 	if msg.OK {
 		// Pings the server with status=up. Messages are ignored and "OK" is used instead.
 		// The reason is that Uptime Kuma seems to show only the first success message

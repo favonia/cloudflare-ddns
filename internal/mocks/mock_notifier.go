@@ -12,7 +12,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	message "github.com/favonia/cloudflare-ddns/internal/message"
+	notifier "github.com/favonia/cloudflare-ddns/internal/notifier"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -77,7 +77,7 @@ func (c *NotifierDescribeCall) DoAndReturn(f func(func(string, string) bool)) *N
 }
 
 // Send mocks base method.
-func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 message.NotifierMessage) bool {
+func (m *MockNotifier) Send(arg0 context.Context, arg1 pp.PP, arg2 notifier.Message) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
@@ -103,13 +103,13 @@ func (c *NotifierSendCall) Return(arg0 bool) *NotifierSendCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, message.NotifierMessage) bool) *NotifierSendCall {
+func (c *NotifierSendCall) Do(f func(context.Context, pp.PP, notifier.Message) bool) *NotifierSendCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, message.NotifierMessage) bool) *NotifierSendCall {
+func (c *NotifierSendCall) DoAndReturn(f func(context.Context, pp.PP, notifier.Message) bool) *NotifierSendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
