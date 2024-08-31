@@ -165,3 +165,18 @@ func TestMatches(t *testing.T) {
 		})
 	}
 }
+
+func TestBindings(t *testing.T) {
+	t.Parallel()
+
+	count := 0
+	for ipNet := range ipnet.Bindings(map[ipnet.Type]int{
+		ipnet.IP4: 400,
+		ipnet.IP6: 600,
+	}) {
+		count++
+		require.Equal(t, ipnet.IP4, ipNet)
+		break
+	}
+	require.Equal(t, 1, count)
+}
