@@ -9,7 +9,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
@@ -23,7 +22,7 @@ func getHintIDForDetection(ipNet ipnet.Type) pp.Hint {
 	}[ipNet]
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, message.Message) {
+func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
@@ -87,7 +86,7 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
 // ip must be non-zero.
 func setIP(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
-) message.Message {
+) Message {
 	resps := emptySetterResponses()
 
 	for _, domain := range c.Domains[ipNet] {
@@ -102,7 +101,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 }
 
 // deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
-func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) message.Message {
+func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) Message {
 	resps := emptySetterResponses()
 
 	for _, domain := range c.Domains[ipNet] {
@@ -119,7 +118,7 @@ func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sette
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
 	c *config.Config, s setter.Setter, detectedIP map[ipnet.Type]netip.Addr,
-) message.Message {
+) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
@@ -135,7 +134,7 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 
 // clearWAFLists extracts relevant settings from the configuration
 // and calls [setter.Setter.ClearWAFList] with a deadline.
-func clearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
+func clearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
@@ -150,8 +149,8 @@ func clearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
-func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
-	var msgs []message.Message
+func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+	var msgs []Message
 	detectedIP := map[ipnet.Type]netip.Addr{}
 	numManagedNetworks := 0
 	numValidIPs := 0
@@ -176,12 +175,12 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIP))
 	}
 
-	return message.Merge(msgs...)
+	return MergeMessages(msgs...)
 }
 
 // DeleteIPs removes all DNS records of managed domains.
-func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) message.Message {
-	var msgs []message.Message
+func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+	var msgs []Message
 
 	for ipNet, provider := range ipnet.Bindings(c.Provider) {
 		if provider != nil {
@@ -192,5 +191,5 @@ func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	// Clear WAF lists
 	msgs = append(msgs, clearWAFLists(ctx, ppfmt, c, s))
 
-	return message.Merge(msgs...)
+	return MergeMessages(msgs...)
 }

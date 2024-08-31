@@ -3,7 +3,6 @@ package updater
 import (
 	"strings"
 
-	"github.com/favonia/cloudflare-ddns/internal/message"
 	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -72,8 +71,8 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 	}
 }
 
-func generateUpdateWAFListsMessage(s setterWAFListResponses) message.Message {
-	return message.Message{
+func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
+	return Message{
 		MonitorMessage:  generateUpdateWAFListsMonitorMessage(s),
 		NotifierMessage: generateUpdateWAFListsNotifierMessage(s),
 	}
@@ -131,8 +130,8 @@ func generateClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Mes
 	}
 }
 
-func generateClearWAFListsMessage(s setterWAFListResponses) message.Message {
-	return message.Message{
+func generateClearWAFListsMessage(s setterWAFListResponses) Message {
+	return Message{
 		MonitorMessage:  generateClearWAFListsMonitorMessage(s),
 		NotifierMessage: generateClearWAFListsNotifierMessage(s),
 	}
