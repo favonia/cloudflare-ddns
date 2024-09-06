@@ -149,19 +149,19 @@ func (h CloudflareHandle) ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, l 
 
 			if !keepCacheWhenFails {
 				h.cache.listLists.Delete(l.AccountID)
-				h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+				h.cache.listListItems.Delete(l)
 			}
 			return false, false
 		}
 
-		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+		h.cache.listListItems.Delete(l)
 		return false, true
 	}
 
 	if lmap := h.cache.listLists.Get(l.AccountID); lmap != nil {
 		delete(lmap.Value(), l.ListName)
 	}
-	h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+	h.cache.listListItems.Delete(l)
 	return true, true
 }
 
@@ -190,7 +190,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, l W
 		return nil, false, false
 	}
 
-	if items := h.cache.listListItems.Get(globalListID{l.AccountID, listID}); items != nil {
+	if items := h.cache.listListItems.Get(l); items != nil {
 		return items.Value(), true, true
 	}
 
@@ -209,7 +209,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, l W
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(globalListID{l.AccountID, listID}, items, ttlcache.DefaultTTL)
+	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
 
 	return items, false, true
 }
@@ -240,7 +240,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to finish deleting items from the list %q (ID: %s): %v", l.ListName, listID, err)
 		hintWAFListPermission(ppfmt, err)
-		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+		h.cache.listListItems.Delete(l)
 		return false
 	}
 
@@ -250,7 +250,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(globalListID{l.AccountID, listID}, items, ttlcache.DefaultTTL)
+	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
 
 	return true
 }
@@ -288,7 +288,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 			pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
 			l.ListName, listID, err)
 		hintWAFListPermission(ppfmt, err)
-		h.cache.listListItems.Delete(globalListID{l.AccountID, listID})
+		h.cache.listListItems.Delete(l)
 		return false
 	}
 
@@ -298,7 +298,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(globalListID{l.AccountID, listID}, items, ttlcache.DefaultTTL)
+	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
 
 	return true
 }
