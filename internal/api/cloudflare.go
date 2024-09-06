@@ -10,12 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// globalListID pairs up an account ID and a list ID.
-type globalListID struct {
-	Account ID
-	List    ID
-}
-
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
 	// domains to zones
@@ -24,8 +18,8 @@ type CloudflareCache = struct {
 	// records of domains
 	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domains to records.
 	// lists
-	listLists     *ttlcache.Cache[ID, map[string]ID]           // account IDs to list names to list IDs
-	listListItems *ttlcache.Cache[globalListID, []WAFListItem] // list IDs to list items
+	listLists     *ttlcache.Cache[ID, map[string]ID]      // account IDs to list names to list IDs
+	listListItems *ttlcache.Cache[WAFList, []WAFListItem] // list IDs to list items
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -74,7 +68,7 @@ func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle,
 				ipnet.IP6: newCache[string, *[]Record](cacheExpiration),
 			},
 			listLists:     newCache[ID, map[string]ID](cacheExpiration),
-			listListItems: newCache[globalListID, []WAFListItem](cacheExpiration),
+			listListItems: newCache[WAFList, []WAFListItem](cacheExpiration),
 		},
 	}
 
