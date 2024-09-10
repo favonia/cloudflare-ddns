@@ -100,19 +100,20 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	return generateUpdateMessage(ipNet, ip, resps)
 }
 
-// deleteIP extracts relevant settings from the configuration and calls [setter.Setter.Delete] with a deadline.
-func deleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) Message {
+// finalDeleteIP extracts relevant settings from the configuration
+// and calls [setter.Setter.FinalDelete] with a deadline.
+func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) Message {
 	resps := emptySetterResponses()
 
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Delete(ctx, ppfmt, ipNet, domain)
+				return s.FinalDelete(ctx, ppfmt, ipNet, domain)
 			}),
 		)
 	}
 
-	return generateDeleteMessage(ipNet, resps)
+	return generateFinalDeleteMessage(ipNet, resps)
 }
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
@@ -132,20 +133,20 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 	return generateUpdateWAFListsMessage(resps)
 }
 
-// clearWAFLists extracts relevant settings from the configuration
+// finalClearWAFLists extracts relevant settings from the configuration
 // and calls [setter.Setter.ClearWAFList] with a deadline.
-func clearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.ClearWAFList(ctx, ppfmt, l)
+				return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription)
 			}),
 		)
 	}
 
-	return generateClearWAFListsMessage(resps)
+	return generateFinalClearWAFListsMessage(resps)
 }
 
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
@@ -178,18 +179,18 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	return MergeMessages(msgs...)
 }
 
-// DeleteIPs removes all DNS records of managed domains.
-func DeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+// FinalDeleteIPs removes all DNS records of managed domains.
+func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	var msgs []Message
 
 	for ipNet, provider := range ipnet.Bindings(c.Provider) {
 		if provider != nil {
-			msgs = append(msgs, deleteIP(ctx, ppfmt, c, s, ipNet))
+			msgs = append(msgs, finalDeleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}
 
 	// Clear WAF lists
-	msgs = append(msgs, clearWAFLists(ctx, ppfmt, c, s))
+	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s))
 
 	return MergeMessages(msgs...)
 }

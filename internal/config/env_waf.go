@@ -9,19 +9,9 @@ import (
 )
 
 // According to the Cloudflare documentation:
-//   - The maximum length of a list name is 50 characters.
-//
-// Note that all valid characters in a name are ASCII printable, so we can count the characters
-// by the number of bytes without worrying about multi-byte characters.
-const wafListNameMaxLength int = 50
-
-// According to the Cloudflare documentation:
 //   - The name uses only lowercase letters, numbers, and the underscore (_) character in the name.
 //     A valid name satisfies this regular expression: ^[a-z0-9_]+$.
-var (
-	wafListNameRegex        = regexp.MustCompile(`^[a-z0-9_]+$`)
-	inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
-)
+var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 
 // ReadAndAppendWAFListNames reads an environment variable as
 // a comma-separated list of IP list names and append the list
@@ -47,16 +37,13 @@ func ReadAndAppendWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bo
 			ppfmt.Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, val)
 			return false
 		}
-		list.AccountID, list.ListName = api.ID(parts[0]), parts[1]
-
-		if !wafListNameRegex.MatchString(list.ListName) {
-			ppfmt.Noticef(pp.EmojiUserError, "List name %q contains invalid character %q",
-				list.ListName, inverseWAFListNameRegex.FindString(list.ListName))
-			return false
+		list = api.WAFList{
+			AccountID: api.ID(parts[0]),
+			Name:      parts[1],
 		}
-		if len(val) > wafListNameMaxLength {
-			ppfmt.Noticef(pp.EmojiUserError, `List name "%.10s..." is too long (more than 50 characters)`, list.ListName)
-			return false
+
+		if violated := inverseWAFListNameRegex.FindString(list.Name); violated != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning, "List name %q contains invalid character %q", list.Name, violated)
 		}
 
 		lists = append(lists, list)

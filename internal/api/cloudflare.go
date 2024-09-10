@@ -10,16 +10,25 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+// WAFListMeta contains the metadata of a list.
+type WAFListMeta struct {
+	ID          ID
+	Name        string
+	Description string
+}
+
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
-	// domains to zones
-	listZones    *ttlcache.Cache[string, []ID] // zone names to zone IDs
-	zoneOfDomain *ttlcache.Cache[string, ID]   // domains to their zone IDs
+	// domains to zone IDs
+	listZones      *ttlcache.Cache[string, []ID] // zone names to zone IDs
+	zoneIDOfDomain *ttlcache.Cache[string, ID]   // domain names to their zone IDs
 	// records of domains
-	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domains to records.
-	// lists
-	listLists     *ttlcache.Cache[ID, map[string]ID]      // account IDs to list names to list IDs
-	listListItems *ttlcache.Cache[WAFList, []WAFListItem] // list IDs to list items
+	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domain names to records.
+	// lists to list IDs
+	listLists *ttlcache.Cache[ID, *[]WAFListMeta] // account IDs to list names to list IDs and other meta information
+	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
+	//
+	listListItems *ttlcache.Cache[WAFList, *[]WAFListItem] // lists to list items
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -61,14 +70,15 @@ func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle,
 	h := CloudflareHandle{
 		cf: handle,
 		cache: CloudflareCache{
-			listZones:    newCache[string, []ID](cacheExpiration),
-			zoneOfDomain: newCache[string, ID](cacheExpiration),
+			listZones:      newCache[string, []ID](cacheExpiration),
+			zoneIDOfDomain: newCache[string, ID](cacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
 				ipnet.IP4: newCache[string, *[]Record](cacheExpiration),
 				ipnet.IP6: newCache[string, *[]Record](cacheExpiration),
 			},
-			listLists:     newCache[ID, map[string]ID](cacheExpiration),
-			listListItems: newCache[WAFList, []WAFListItem](cacheExpiration),
+			listLists:     newCache[ID, *[]WAFListMeta](cacheExpiration),
+			listID:        newCache[WAFList, ID](cacheExpiration),
+			listListItems: newCache[WAFList, *[]WAFListItem](cacheExpiration),
 		},
 	}
 
@@ -78,10 +88,11 @@ func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle,
 // FlushCache flushes the API cache.
 func (h CloudflareHandle) FlushCache() {
 	h.cache.listZones.DeleteAll()
-	h.cache.zoneOfDomain.DeleteAll()
+	h.cache.zoneIDOfDomain.DeleteAll()
 	for _, cache := range h.cache.listRecords {
 		cache.DeleteAll()
 	}
 	h.cache.listLists.DeleteAll()
+	h.cache.listID.DeleteAll()
 	h.cache.listListItems.DeleteAll()
 }

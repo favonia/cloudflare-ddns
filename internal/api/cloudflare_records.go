@@ -24,6 +24,13 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	}
 }
 
+func hintMismatchedRecordAttributes(ppfmt pp.PP) {
+	ppfmt.Hintf(pp.HintMismatchedRecordAttributes,
+		"The updater will not overwrite proxy statuses, TTLs, or record comments; "+
+			"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com",
+	)
+}
+
 // ListZones returns a list of zone IDs with the zone name.
 func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]ID, bool) {
 	// WithZoneFilters does not work with the empty zone name,
@@ -55,7 +62,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
-			ppfmt.Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", name, zone.Status) //nolint:lll
+			ppfmt.Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features (e.g., proxying) might not work as expected", name, zone.Status) //nolint:lll
 			ids = append(ids, ID(zone.ID))
 		case
 			"deleted": // archived, pending/moved for too long
@@ -74,9 +81,9 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 	return ids, true
 }
 
-// ZoneOfDomain finds the active zone ID governing a particular domain.
-func (h CloudflareHandle) ZoneOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
-	if id := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); id != nil {
+// ZoneIDOfDomain finds the active zone ID governing a particular domain.
+func (h CloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
+	if id := h.cache.zoneIDOfDomain.Get(domain.DNSNameASCII()); id != nil {
 		return id.Value(), true
 	}
 
@@ -91,13 +98,13 @@ zoneSearch:
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneOfDomain.DeleteExpired()
-			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
+			h.cache.zoneIDOfDomain.DeleteExpired()
+			h.cache.zoneIDOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %q (IDs: %s); please report this at %s",
-				zoneName, pp.EnglishJoinMap(ID.Describe, zones), pp.IssueReportingURL)
+				zoneName, pp.EnglishJoinMap(ID.String, zones), pp.IssueReportingURL)
 			return "", false
 		}
 	}
@@ -108,14 +115,13 @@ zoneSearch:
 }
 
 // ListRecords calls cloudflare.ListDNSRecords.
-func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type, domain domain.Domain,
+func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
 ) ([]Record, bool, bool) {
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		return *rmap.Value(), true, true
 	}
 
-	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return nil, false, false
 	}
@@ -156,9 +162,10 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP,
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
 func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type, domain domain.Domain, id ID, keepCacheWhenFails bool,
+	ipNet ipnet.Type, domain domain.Domain, id ID,
+	mode DeletionMode,
 ) bool {
-	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
@@ -167,11 +174,9 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
-
-		if !keepCacheWhenFails {
+		if mode == RegularDelitionMode {
 			h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 		}
-
 		return false
 	}
 
@@ -184,11 +189,10 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
 func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type,
-	domain domain.Domain,
-	id ID, ip netip.Addr,
+	ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
+	expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
 ) bool {
-	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
@@ -199,7 +203,8 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 	}
 
-	if _, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params); err != nil {
+	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
+	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
@@ -207,6 +212,30 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		h.cache.listRecords[ipNet].Delete(domain.DNSNameASCII())
 
 		return false
+	}
+
+	// be default, proxied = false
+	if r.Proxied == nil && expectedProxied ||
+		r.Proxied != nil && *r.Proxied != expectedProxied {
+		ppfmt.Infof(pp.EmojiUserWarning,
+			"The proxy status of the %s record of %q (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
+			ipNet.RecordType(), domain.Describe(), r.ID, expectedProxied,
+		)
+		hintMismatchedRecordAttributes(ppfmt)
+	}
+	if TTL(r.TTL) != expectedTTL {
+		ppfmt.Infof(pp.EmojiUserWarning,
+			"The TTL of the %s record of %q (ID: %s) differs from the value of TTL (%s) and will be kept",
+			ipNet.RecordType(), domain.Describe(), r.ID, expectedTTL.Describe(),
+		)
+		hintMismatchedRecordAttributes(ppfmt)
+	}
+	if r.Comment != expectedRecordComment {
+		ppfmt.Infof(pp.EmojiUserWarning,
+			"The comment of the %s record of %q (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept",
+			ipNet.RecordType(), domain.Describe(), r.ID, expectedRecordComment,
+		)
+		hintMismatchedRecordAttributes(ppfmt)
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
@@ -224,7 +253,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl TTL, proxied bool, recordComment string,
 ) (ID, bool) {
-	zone, ok := h.ZoneOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
 	}

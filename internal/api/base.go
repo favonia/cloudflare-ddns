@@ -17,17 +17,16 @@ import (
 // ID is a new type representing identifiers to avoid programming mistakes.
 type ID string
 
-// Describe converts an ID to a string.
-func (id ID) Describe() string { return string(id) }
+func (id ID) String() string { return string(id) }
 
 // WAFList represents a WAF list to update.
 type WAFList struct {
 	AccountID ID
-	ListName  string
+	Name      string
 }
 
 // Describe formats WAFList as a string.
-func (l WAFList) Describe() string { return fmt.Sprintf("%s/%s", string(l.AccountID), l.ListName) }
+func (l WAFList) Describe() string { return fmt.Sprintf("%s/%s", string(l.AccountID), l.Name) }
 
 // Record bundles an ID and an IP address, representing a DNS record.
 type Record struct {
@@ -41,6 +40,17 @@ type WAFListItem struct {
 	Prefix netip.Prefix
 }
 
+// DeletionMode tells the deletion updater whether a careful re-reading of lists
+// must be enforced if an error happens.
+type DeletionMode bool
+
+const (
+	// RegularDelitionMode enables re-reading when an error occurs.
+	RegularDelitionMode DeletionMode = false
+	// FinalDeletionMode disables re-reading when an error occurs.
+	FinalDeletionMode DeletionMode = true
+)
+
 // A Handle represents a generic API to update DNS records and WAF lists.
 // Currently, the only implementation is Cloudflare.
 type Handle interface {
@@ -49,43 +59,44 @@ type Handle interface {
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain) ([]Record, bool, bool)
 
-	// DeleteRecord deletes one DNS record.
-	//
-	// Note: the keepCacheWhenFails is to optimize the deletion when exiting the program. The cache
-	// from list names to list IDs should not be cleared if we are only deleting things.
-	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID,
-		keepCacheWhenFails bool) bool
-
 	// UpdateRecord updates one DNS record.
-	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr) bool
+	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
+		expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
+	) bool
 
 	// CreateRecord creates one DNS record. It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
 		ip netip.Addr, ttl TTL, proxied bool, recordComment string) (ID, bool)
 
-	// EnsureWAFList creates an empty WAF list with IP ranges if it does not already exist yet.
+	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
+	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
+
+	// ListWAFListItems retrieves a WAF list with IP rages.
+	// It creates an empty WAF list with IP ranges if it does not already exist yet.
 	// The first return value is the ID of the list.
 	// The second return value indicates whether the list already exists.
-	EnsureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList, description string) (ID, bool, bool)
+	//
+	// The second return value indicates whether the list was cached.
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	) ([]WAFListItem, bool, bool)
 
-	// ClearWAFListAsync deletes or clears a WAF list with IP ranges.
+	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
+	// update or create the list.
+	//
 	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.
 	// If it's false, then it's being cleared asynchronously instead of being deleted.
 	//
-	// Note: the keepCacheWhenFails is to optimize the deletion when exiting the program. The cache
-	// from list names to list IDs should not be cleared if we are only deleting things.
-	ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list WAFList, keepCacheWhenFails bool) (bool, bool)
-
-	// ListWAFListItems retrieves a WAF list with IP rages.
-	//
-	// The second return value indicates whether the list was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList) ([]WAFListItem, bool, bool)
+	// The cache from list names to list IDs will not be cleared even if all deletion attempts fail.
+	FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	) (bool, bool)
 
 	// DeleteWAFListItems deletes IP ranges from a WAF list.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, ids []ID) bool
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+		ids []ID) bool
 
 	// CreateWAFListItems adds IP ranges to a WAF list.
-	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, items []netip.Prefix, comment string) bool
+	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+		items []netip.Prefix, comment string) bool
 }
 
 // An Auth contains authentication information.

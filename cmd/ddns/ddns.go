@@ -56,7 +56,7 @@ func initConfig(ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 
 func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
 	if c.DeleteOnStop {
-		msg := updater.DeleteIPs(ctx, ppfmt, c, s)
+		msg := updater.FinalDeleteIPs(ctx, ppfmt, c, s)
 		c.Monitor.Log(ctx, ppfmt, msg.MonitorMessage)
 		c.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
 	}

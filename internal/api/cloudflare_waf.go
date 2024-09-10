@@ -36,51 +36,100 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 	}
 }
 
+func hintMismatchedWAFListAttributes(ppfmt pp.PP, accountID ID) {
+	ppfmt.Hintf(pp.HintMismatchedWAFListAttributes,
+		"The updater will not overwrite WAF list descriptions; "+
+			"you can change them at https://dash.cloudflare.com/%s/configurations/lists",
+		accountID,
+	)
+}
+
 // ListWAFLists lists all IP lists of the given name.
-func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, accountID ID) (map[string]ID, bool) {
-	if lmap := h.cache.listLists.Get(accountID); lmap != nil {
-		return lmap.Value(), true
+func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, accountID ID) ([]WAFListMeta, bool) {
+	if ls := h.cache.listLists.Get(accountID); ls != nil {
+		return *ls.Value(), true
 	}
 
-	ls, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(string(accountID)), cloudflare.ListListsParams{})
+	raw, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(string(accountID)), cloudflare.ListListsParams{})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to list existing lists: %v", err)
 		hintWAFListPermission(ppfmt, err)
 		return nil, false
 	}
 
-	lmap := map[string]ID{}
-	for _, l := range ls {
+	ls := make([]WAFListMeta, 0, len(raw))
+	for _, l := range raw {
 		if l.Kind == cloudflare.ListTypeIP {
-			if anotherListID, conflicting := lmap[l.Name]; conflicting {
-				ppfmt.Noticef(pp.EmojiImpossible,
-					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
-					l.Name, anotherListID, ID(l.ID), pp.IssueReportingURL)
-				return nil, false
-			}
-
-			lmap[l.Name] = ID(l.ID)
+			ls = append(ls, WAFListMeta{
+				ID:          ID(l.ID),
+				Name:        l.Name,
+				Description: l.Description,
+			})
 		}
 	}
 
 	h.cache.listLists.DeleteExpired()
-	h.cache.listLists.Set(accountID, lmap, ttlcache.DefaultTTL)
+	h.cache.listLists.Set(accountID, &ls, ttlcache.DefaultTTL)
+	return ls, true
+}
 
-	return lmap, true
+// WAFListID finds the ID of the list, if any.
+// The second return value indicates whether the list is found.
+func (h CloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFList,
+	expectedDescription string,
+) (ID, bool, bool) {
+	if listID := h.cache.listID.Get(list); listID != nil {
+		return listID.Value(), true, true
+	}
+
+	ls, ok := h.ListWAFLists(ctx, ppfmt, list.AccountID)
+	if !ok {
+		return "", false, false
+	}
+
+	count := 0
+	listID := ID("")
+	for _, l := range ls {
+		if l.Name == list.Name {
+			count++
+			if count > 1 {
+				ppfmt.Noticef(pp.EmojiImpossible,
+					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
+					l.Name, listID, l.ID, pp.IssueReportingURL,
+				)
+				return "", false, false
+			}
+
+			if l.Description != expectedDescription {
+				ppfmt.Infof(pp.EmojiUserWarning,
+					"The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)",
+					list.Describe(), l.ID, expectedDescription,
+				)
+				hintMismatchedWAFListAttributes(ppfmt, list.AccountID)
+			}
+
+			listID = l.ID
+		}
+	}
+
+	if count == 0 {
+		return "", false, true
+	}
+
+	h.cache.listID.DeleteExpired()
+	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
+	return listID, true, true
 }
 
 // FindWAFList returns the ID of the IP list with the given name.
-func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, l WAFList) (ID, bool) {
-	listMap, ok := h.ListWAFLists(ctx, ppfmt, l.AccountID)
-	if !ok {
-		// ListWAFLists would have output some error messages, but this provides more context.
-		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %q", l.ListName)
-		return "", false
-	}
-
-	listID, ok := listMap[l.ListName]
-	if !ok {
-		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %q", l.ListName)
+func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+	expectedDescription string,
+) (ID, bool) {
+	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
+	if !ok || !found {
+		// When ok is false, ListWAFLists (called by WAFListID) would have output some error messages,
+		// but this provides more context.
+		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %s", list.Describe())
 		return "", false
 	}
 
@@ -88,55 +137,63 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, l WAFLis
 }
 
 // EnsureWAFList calls cloudflare.CreateList when the list does not already exist.
-func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP, l WAFList, description string,
+func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+	expectedDescription string,
 ) (ID, bool, bool) {
-	listMap, ok := h.ListWAFLists(ctx, ppfmt, l.AccountID)
+	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
 	if !ok {
-		// ListWAFLists would have output some error messages, but this provides more context.
-		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of the list %q", l.ListName)
+		// ListWAFLists (called by WAFListID) would have output some error messages,
+		// but this provides more context.
+		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of the list %s", list.Describe())
 		return "", false, false
 	}
 
-	listID, existing := listMap[l.ListName]
-	if existing {
-		return listID, existing, true
+	if found {
+		return listID, found, true
 	}
 
-	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListCreateParams{
-			Name:        l.ListName,
-			Description: description,
+			Name:        list.Name,
+			Description: expectedDescription,
 			Kind:        cloudflare.ListTypeIP,
 		})
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to create a list named %q: %v", l.ListName, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to create the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
-		h.cache.listLists.Delete(l.AccountID)
+		h.cache.listLists.Delete(list.AccountID)
 		return "", false, false
 	}
 
-	if lmap := h.cache.listLists.Get(l.AccountID); lmap != nil {
-		lmap.Value()[l.ListName] = ID(r.ID)
+	listID = ID(r.ID)
+	if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
+		*ls.Value() = append([]WAFListMeta{{ID: listID, Description: expectedDescription, Name: list.Name}}, *ls.Value()...)
 	}
 
-	return ID(r.ID), false, true
+	h.cache.listID.DeleteExpired()
+	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
+	return listID, false, true
 }
 
-// ClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
-// Note: a failure will not clear the cache, assuming that the list deletion/cleaning only happens
-// right before exiting the updater.
-func (h CloudflareHandle) ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, l WAFList, keepCacheWhenFails bool,
+// FinalClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
+//
+// We only deleted cached data in listListItems and listID, but not the cached lists
+// in listLists so that we do not have to re-query the lists under the same account.
+// Managing multiple lists under the same account makes little sense in practice,
+// but the tool should still do the right thing even under rare circumstances.
+func (h CloudflareHandle) FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP,
+	list WAFList, expectedDescription string,
 ) (bool, bool) {
-	listID, ok := h.FindWAFList(ctx, ppfmt, l)
+	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
 		return false, false
 	}
 
-	if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(l.AccountID)), string(listID)); err != nil {
+	if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)), string(listID)); err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to delete the list %q (ID: %s); clearing it instead: %v",
-			l.ListName, listID, err)
-		_, err := h.cf.ReplaceListItemsAsync(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+			"Failed to delete the list %s; clearing it instead: %v",
+			list.Describe(), err)
+		_, err := h.cf.ReplaceListItemsAsync(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 			cloudflare.ListReplaceItemsParams{
 				ID:    string(listID),
 				Items: []cloudflare.ListItemCreateRequest{},
@@ -144,38 +201,35 @@ func (h CloudflareHandle) ClearWAFListAsync(ctx context.Context, ppfmt pp.PP, l 
 		)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to start clearing the list %q (ID: %s): %v", l.ListName, listID, err)
+				"Failed to start clearing the list %s: %v", list.Describe(), err)
 			hintWAFListPermission(ppfmt, err)
 
-			if !keepCacheWhenFails {
-				h.cache.listLists.Delete(l.AccountID)
-				h.cache.listListItems.Delete(l)
-			}
+			h.cache.listListItems.Delete(list)
+			h.cache.listID.Delete(list)
 			return false, false
 		}
 
-		h.cache.listListItems.Delete(l)
+		h.cache.listListItems.Delete(list)
+		h.cache.listID.Delete(list)
 		return false, true
 	}
 
-	if lmap := h.cache.listLists.Get(l.AccountID); lmap != nil {
-		delete(lmap.Value(), l.ListName)
-	}
-	h.cache.listListItems.Delete(l)
+	h.cache.listListItems.Delete(list)
+	h.cache.listID.Delete(list)
 	return true, true
 }
 
-func readWAFListItems(ppfmt pp.PP, listName string, listID ID, rawItems []cloudflare.ListItem) ([]WAFListItem, bool) {
+func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem) ([]WAFListItem, bool) {
 	items := make([]WAFListItem, 0, len(rawItems))
 	for _, rawItem := range rawItems {
 		if rawItem.IP == nil {
-			ppfmt.Noticef(pp.EmojiImpossible, "Found a non-IP in the list %q (ID: %s)", listName, listID)
+			ppfmt.Noticef(pp.EmojiImpossible, "Found a non-IP in the list %s", list.Describe())
 			return nil, false
 		}
 		p, ok := ipnet.ParsePrefixOrIP(ppfmt, *rawItem.IP)
 		if !ok {
-			ppfmt.Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %q (ID: %s)",
-				*rawItem.IP, listName, listID)
+			ppfmt.Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s",
+				*rawItem.IP, list.Describe())
 			return nil, false
 		}
 		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p})
@@ -184,43 +238,50 @@ func readWAFListItems(ppfmt pp.PP, listName string, listID ID, rawItems []cloudf
 }
 
 // ListWAFListItems calls cloudflare.ListListItems.
-func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, l WAFList) ([]WAFListItem, bool, bool) {
-	listID, ok := h.FindWAFList(ctx, ppfmt, l)
+func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
+	list WAFList, expectedDescription string,
+) ([]WAFListItem, bool, bool) {
+	if items := h.cache.listListItems.Get(list); items != nil {
+		return *items.Value(), true, true
+	}
+
+	listID, alreadyExisting, ok := h.EnsureWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
 		return nil, false, false
 	}
-
-	if items := h.cache.listListItems.Get(l); items != nil {
-		return items.Value(), true, true
+	if !alreadyExisting {
+		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 	}
 
-	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListListItemsParams{ID: string(listID)}, //nolint:exhaustruct
 	)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve items in the list %q (ID: %s): %v", l.ListName, listID, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve items in the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		return nil, false, false
 	}
 
-	items, ok := readWAFListItems(ppfmt, l.ListName, listID, rawItems)
+	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
 		return nil, false, false
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
-
+	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
 	return items, false, true
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
-func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l WAFList, ids []ID) bool {
+func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
+	list WAFList, expectedDescription string,
+	ids []ID,
+) bool {
 	if len(ids) == 0 {
 		return true
 	}
 
-	listID, ok := h.FindWAFList(ctx, ppfmt, l)
+	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
 		return false
 	}
@@ -230,7 +291,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 		itemRequests = append(itemRequests, cloudflare.ListItemDeleteItemRequest{ID: string(id)})
 	}
 
-	rawItems, err := h.cf.DeleteListItems(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+	rawItems, err := h.cf.DeleteListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListDeleteItemsParams{
 			ID:    string(listID),
 			Items: cloudflare.ListItemDeleteRequest{Items: itemRequests},
@@ -238,32 +299,32 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, l
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to finish deleting items from the list %q (ID: %s): %v", l.ListName, listID, err)
+			"Failed to finish deleting items from the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
-		h.cache.listListItems.Delete(l)
+		h.cache.listListItems.Delete(list)
 		return false
 	}
 
-	items, ok := readWAFListItems(ppfmt, l.ListName, listID, rawItems)
+	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
 		return false
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
-
+	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
 	return true
 }
 
 // CreateWAFListItems calls cloudflare.CreateListItems.
 func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
-	l WAFList, itemsToCreate []netip.Prefix, comment string,
+	list WAFList, expectedDescription string,
+	itemsToCreate []netip.Prefix, comment string,
 ) bool {
 	if len(itemsToCreate) == 0 {
 		return true
 	}
 
-	listID, ok := h.FindWAFList(ctx, ppfmt, l)
+	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
 		return false
 	}
@@ -277,7 +338,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		})
 	}
 
-	rawItems, err := h.cf.CreateListItems(ctx, cloudflare.AccountIdentifier(string(l.AccountID)),
+	rawItems, err := h.cf.CreateListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListCreateItemsParams{
 			ID:    string(listID),
 			Items: rawItemsToCreate,
@@ -285,20 +346,19 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(
-			pp.EmojiError, "Failed to finish adding items to the list %q (ID: %s): %v",
-			l.ListName, listID, err)
+			pp.EmojiError, "Failed to finish adding items to the list %s: %v",
+			list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
-		h.cache.listListItems.Delete(l)
+		h.cache.listListItems.Delete(list)
 		return false
 	}
 
-	items, ok := readWAFListItems(ppfmt, l.ListName, listID, rawItems)
+	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
 		return false
 	}
 
 	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(l, items, ttlcache.DefaultTTL)
-
+	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
 	return true
 }

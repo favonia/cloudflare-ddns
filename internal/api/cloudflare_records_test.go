@@ -149,7 +149,7 @@ func TestListZonesTwo(t *testing.T) {
 	}
 }
 
-func TestZoneOfDomain(t *testing.T) {
+func TestZoneIDOfDomain(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -225,7 +225,7 @@ func TestZoneOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected", "test.org", "pending"), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features (e.g., proxying) might not work as expected", "test.org", "pending"), //nolint:lll
 				)
 			},
 		},
@@ -236,7 +236,7 @@ func TestZoneOfDomain(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiWarning,
-						"Zone %q is %q; your Cloudflare setup is incomplete; some features might not work as expected",
+						"Zone %q is %q; your Cloudflare setup is incomplete; some features (e.g., proxying) might not work as expected",
 						"test.org", "initializing"),
 				)
 			},
@@ -265,7 +265,7 @@ func TestZoneOfDomain(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			zoneID, ok := h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
+			zoneID, ok := h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, zoneID)
 			require.True(t, zh.isExhausted())
@@ -273,7 +273,7 @@ func TestZoneOfDomain(t *testing.T) {
 			if tc.ok {
 				zh.setRequestLimit(0)
 				mockPP = mocks.NewMockPP(mockCtrl) // there should be no messages
-				zoneID, ok = h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, tc.domain)
+				zoneID, ok = h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
 				require.True(t, zh.isExhausted())
@@ -282,7 +282,7 @@ func TestZoneOfDomain(t *testing.T) {
 	}
 }
 
-func TestZoneOfDomainInvalid(t *testing.T) {
+func TestZoneIDOfDomainInvalid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -296,7 +296,7 @@ func TestZoneOfDomainInvalid(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	zoneID, ok := h.(api.CloudflareHandle).ZoneOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	zoneID, ok := h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
 }
@@ -307,6 +307,7 @@ func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudf
 		Type:    ipNet.RecordType(),
 		Name:    domain,
 		Content: ip,
+		TTL:     100,
 	}
 }
 
@@ -680,14 +681,18 @@ func TestUpdateRecordValid(t *testing.T) {
 	urh := newUpdateRecordHandler(t, mux, "record1", "::2")
 	urh.setRequestLimit(1)
 
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
+		100, false, "",
+	)
 	require.True(t, ok)
 	require.True(t, urh.isExhausted())
 
 	urh.setRequestLimit(1)
 	mockPP = mocks.NewMockPP(mockCtrl)
 	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"))
+	_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
+		100, false, "",
+	)
 	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 	require.True(t, ok)
 	require.True(t, cached)
@@ -711,7 +716,9 @@ func TestUpdateRecordInvalid(t *testing.T) {
 		api.ID("record1"),
 		gomock.Any(),
 	)
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"),
+		1, false, "",
+	)
 	require.False(t, ok)
 }
 
@@ -727,7 +734,9 @@ func TestUpdateRecordInvalidZone(t *testing.T) {
 		"sub.test.org",
 		gomock.Any(),
 	)
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"))
+	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"),
+		1, false, "",
+	)
 	require.False(t, ok)
 }
 
