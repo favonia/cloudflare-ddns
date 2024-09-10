@@ -1,7 +1,6 @@
 // Package ipnet contains utility functions for IPv4 and IPv6 networks.
 package ipnet
 
-//nolint:gci
 import (
 	"fmt"
 	"iter"
