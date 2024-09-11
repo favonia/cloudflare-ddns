@@ -214,26 +214,26 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
+	if TTL(r.TTL) != expectedTTL {
+		ppfmt.Infof(pp.EmojiUserWarning,
+			"The TTL of the %s record of %q (ID: %s) to be updated differs from the value of TTL (%s) and will be kept",
+			ipNet.RecordType(), domain.Describe(), id, expectedTTL.Describe(),
+		)
+		hintMismatchedRecordAttributes(ppfmt)
+	}
 	// be default, proxied = false
 	if r.Proxied == nil && expectedProxied ||
 		r.Proxied != nil && *r.Proxied != expectedProxied {
 		ppfmt.Infof(pp.EmojiUserWarning,
-			"The proxy status of the %s record of %q (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-			ipNet.RecordType(), domain.Describe(), r.ID, expectedProxied,
-		)
-		hintMismatchedRecordAttributes(ppfmt)
-	}
-	if TTL(r.TTL) != expectedTTL {
-		ppfmt.Infof(pp.EmojiUserWarning,
-			"The TTL of the %s record of %q (ID: %s) differs from the value of TTL (%s) and will be kept",
-			ipNet.RecordType(), domain.Describe(), r.ID, expectedTTL.Describe(),
+			"The proxy status of the %s record of %q (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
+			ipNet.RecordType(), domain.Describe(), id, expectedProxied,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}
 	if r.Comment != expectedRecordComment {
 		ppfmt.Infof(pp.EmojiUserWarning,
-			"The comment of the %s record of %q (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept",
-			ipNet.RecordType(), domain.Describe(), r.ID, expectedRecordComment,
+			"The comment of the %s record of %q (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
+			ipNet.RecordType(), domain.Describe(), id, expectedRecordComment,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}

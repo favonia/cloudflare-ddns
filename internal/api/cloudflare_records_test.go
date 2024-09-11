@@ -639,6 +639,9 @@ func TestDeleteRecordValid(t *testing.T) {
 				lrh.setRequestLimit(1)
 				drh.setRequestLimit(1)
 				mockPP = mocks.NewMockPP(mockCtrl)
+				if tc.prepareMocks != nil {
+					tc.prepareMocks(mockPP)
+				}
 				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
 				_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
@@ -691,78 +694,138 @@ func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 
 func TestUpdateRecordValid(t *testing.T) {
 	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
+	for name, tc := range map[string]struct {
+		zones              map[string][]string
+		zoneRequestLimit   int
+		records            []formattedRecord
+		listRequestLimit   int
+		updateRequestLimit int
+		expectedTTL        api.TTL
+		expectedProxied    bool
+		expectedComment    string
+		ok                 bool
+		prepareMocks       func(*mocks.MockPP)
+	}{
+		"success": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			[]formattedRecord{{"record1", "::1"}},
+			0,
+			1,
+			100, false, "",
+			true,
+			nil,
+		},
+		"zone-fails": {
+			nil,
+			0,
+			nil,
+			0,
+			0,
+			100, false, "",
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to check the existence of a zone named %q: %v",
+					"sub.test.org", gomock.Any(),
+				)
+			},
+		},
+		"update-fails": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			nil,
+			0,
+			0,
+			100, false, "",
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to update a stale %s record of %q (ID: %s): %v",
+					"AAAA", "sub.test.org", api.ID("record1"), gomock.Any(),
+				)
+			},
+		},
+		"mismatch-attribute": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			[]formattedRecord{{"record1", "::1"}},
+			0,
+			1,
+			1, true, "hello",
+			true,
+			func(ppfmt *mocks.MockPP) {
+				const hintText = "The updater will not overwrite proxy statuses, TTLs, or record comments; " +
+					"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com"
 
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
+				gomock.InOrder(
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
+						"The TTL of the %s record of %q (ID: %s) to be updated differs from the value of TTL (%s) and will be kept", //nolint:lll
+						"AAAA", "sub.test.org", api.ID("record1"), "1 (auto)",
+					),
+					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
+						"The proxy status of the %s record of %q (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
+						"AAAA", "sub.test.org", api.ID("record1"), true,
+					),
+					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
+						"The comment of the %s record of %q (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
+						"AAAA", "sub.test.org", api.ID("record1"), "hello",
+					),
+					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(mockPP)
+			}
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
-	lrh.setRequestLimit(1)
+			mux, h, ok := newHandle(t, mockPP)
+			require.True(t, ok)
 
-	urh := newUpdateRecordHandler(t, mux, "record1", "::2")
-	urh.setRequestLimit(1)
+			zh := newZonesHandler(t, mux, tc.zones)
+			zh.setRequestLimit(tc.zoneRequestLimit)
 
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
-		100, false, "",
-	)
-	require.True(t, ok)
-	require.True(t, urh.isExhausted())
+			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", tc.records)
+			lrh.setRequestLimit(tc.listRequestLimit)
 
-	urh.setRequestLimit(1)
-	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
-		100, false, "",
-	)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Equal(t, []api.Record{{"record1", mustIP("::2")}}, rs)
-}
+			urh := newUpdateRecordHandler(t, mux, "record1", "::2")
+			urh.setRequestLimit(tc.updateRequestLimit)
 
-func TestUpdateRecordInvalid(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
+			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
+				tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
+			require.Equal(t, tc.ok, ok)
+			require.True(t, zh.isExhausted())
+			require.True(t, lrh.isExhausted())
+			require.True(t, urh.isExhausted())
 
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
-		"AAAA",
-		"sub.test.org",
-		api.ID("record1"),
-		gomock.Any(),
-	)
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"),
-		1, false, "",
-	)
-	require.False(t, ok)
-}
-
-func TestUpdateRecordInvalidZone(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	_, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
-		"sub.test.org",
-		gomock.Any(),
-	)
-	ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::1"),
-		1, false, "",
-	)
-	require.False(t, ok)
+			if ok {
+				lrh.setRequestLimit(1)
+				urh.setRequestLimit(1)
+				mockPP = mocks.NewMockPP(mockCtrl)
+				if tc.prepareMocks != nil {
+					tc.prepareMocks(mockPP)
+				}
+				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
+					tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				require.Equal(t, tc.ok, ok)
+				require.True(t, cached)
+				require.Equal(t, []api.Record{{"record1", mustIP("::2")}}, rs)
+				require.True(t, zh.isExhausted())
+				require.True(t, lrh.isExhausted())
+				require.True(t, urh.isExhausted())
+			}
+		})
+	}
 }
 
 func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string,
