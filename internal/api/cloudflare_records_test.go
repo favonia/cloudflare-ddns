@@ -561,71 +561,96 @@ func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 
 func TestDeleteRecordValid(t *testing.T) {
 	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
+	for name, tc := range map[string]struct {
+		zones              map[string][]string
+		zoneRequestLimit   int
+		records            []formattedRecord
+		listRequestLimit   int
+		deleteRequestLimit int
+		ok                 bool
+		prepareMocks       func(*mocks.MockPP)
+	}{
+		"success": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			[]formattedRecord{{"record1", "::1"}},
+			0,
+			1,
+			true,
+			nil,
+		},
+		"zone-fails": {
+			nil,
+			0,
+			nil,
+			0,
+			0,
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to check the existence of a zone named %q: %v",
+					"sub.test.org", gomock.Any(),
+				)
+			},
+		},
+		"delete-fails": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			nil,
+			0,
+			0,
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to delete a stale %s record of %q (ID: %s): %v",
+					"AAAA", "sub.test.org", api.ID("record1"), gomock.Any(),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(mockPP)
+			}
 
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
+			mux, h, ok := newHandle(t, mockPP)
+			require.True(t, ok)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
-	lrh.setRequestLimit(1)
+			zh := newZonesHandler(t, mux, tc.zones)
+			zh.setRequestLimit(tc.zoneRequestLimit)
 
-	drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
-	drh.setRequestLimit(1)
+			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", tc.records)
+			lrh.setRequestLimit(tc.listRequestLimit)
 
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-	require.True(t, ok)
-	require.True(t, drh.isExhausted())
+			drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			drh.setRequestLimit(tc.deleteRequestLimit)
 
-	drh.setRequestLimit(1)
-	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Empty(t, rs)
-	require.True(t, drh.isExhausted())
-}
+			ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+			require.Equal(t, tc.ok, ok)
+			require.True(t, zh.isExhausted())
+			require.True(t, lrh.isExhausted())
+			require.True(t, drh.isExhausted())
 
-func TestDeleteRecordInvalid(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
-		"AAAA",
-		"sub.test.org",
-		api.ID("record1"),
-		gomock.Any(),
-	)
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-	require.False(t, ok)
-}
-
-func TestDeleteRecordZoneInvalid(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	_, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
-		"sub.test.org",
-		gomock.Any(),
-	)
-	ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-	require.False(t, ok)
+			if ok {
+				lrh.setRequestLimit(1)
+				drh.setRequestLimit(1)
+				mockPP = mocks.NewMockPP(mockCtrl)
+				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				require.Equal(t, tc.ok, ok)
+				require.True(t, cached)
+				require.Empty(t, rs)
+				require.True(t, zh.isExhausted())
+				require.True(t, lrh.isExhausted())
+				require.True(t, drh.isExhausted())
+			}
+		})
+	}
 }
 
 func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip string) httpHandler {
