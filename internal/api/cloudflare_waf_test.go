@@ -824,7 +824,6 @@ func mockListItemDeleteResponse(id api.ID) cloudflare.ListItemDeleteResponse {
 	}
 }
 
-//nolint:dupl
 func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
 	t.Helper()
 
@@ -972,7 +971,6 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 	}
 }
 
-//nolint:dupl
 func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
 	t.Helper()
 
@@ -1003,7 +1001,6 @@ func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operat
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-//nolint:dupl
 func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
 	t.Helper()
 

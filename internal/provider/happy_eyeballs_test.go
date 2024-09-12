@@ -40,7 +40,7 @@ func TestHappyEyeballs(t *testing.T) {
 		elapsed      time.Duration
 		prepareMocks func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider)
 	}{
-		"no-alternative": { //nolint:dupl
+		"no-alternative": {
 			ip1111, protocol.MethodPrimary, true,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
@@ -55,7 +55,7 @@ func TestHappyEyeballs(t *testing.T) {
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.1.1.1!")
 			},
 		},
-		"primary-instant": { //nolint:dupl
+		"primary-instant": {
 			ip1111, protocol.MethodPrimary, true,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {

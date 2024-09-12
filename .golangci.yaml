@@ -43,6 +43,8 @@ linters:
     - gomnd # deprecated
     - exportloopref # deprecated
 
+    - dupl # somewhat unpredictable, and never leads to actual code changes
+
     - cyclop # can detect complicated code, but never leads to actual code changes
     - funlen # can detect complicated code, but never leads to actual code changes
     - gocognit # can detect complicated code, but never leads to actual code changes
@@ -58,4 +60,4 @@ linters:
     - wsl # I don't agree with the style enforced by wsl
 
     - ireturn # doesn't work for private struct types; see https://github.com/butuzov/ireturn/issues/31
-    - nonamedreturns # named returns are needed in the internal updater package
+    - nonamedreturns # named returns are needed in the internal setter package for partitioning records

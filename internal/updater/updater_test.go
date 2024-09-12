@@ -93,7 +93,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				`Failed to properly update WAF list(s) xxxxxxxx/list2; updating 12341234/list1; updated zzz/list4.`,
 			},
 			providerEnablers{ipnet.IP4: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
@@ -129,7 +129,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				`Updating WAF list(s) 12341234/list1; updated AAAAAAAA/list3 and zzz/list4.`,
 			},
 			providerEnablers{ipnet.IP4: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
@@ -207,7 +207,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 		notifierMessages []string
 		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
-		"1yes1doing1no": { //nolint:dupl
+		"1yes1doing1no": {
 			false,
 			[]string{"Failed to delete A of ip4.hello2", "Failed to clear list(s) xxxxxxxx/list2"},
 			[]string{
@@ -231,7 +231,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 				)
 			},
 		},
-		"3yes": { //nolint:dupl
+		"3yes": {
 			true,
 			[]string{
 				"Deleted A of ip4.hello1, ip4.hello3, ip4.hello4",
@@ -328,7 +328,7 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
-		"ip4-only/set-fail": { //nolint:dupl
+		"ip4-only/set-fail": {
 			false,
 			[]string{"Failed to set A (127.0.0.1) of ip4.hello", "Failed to set list(s) 12341234/list"},
 			[]string{
@@ -348,7 +348,7 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
-		"ip4-only/setting": { //nolint:dupl
+		"ip4-only/setting": {
 			true,
 			[]string{"Setting A (127.0.0.1) of ip4.hello", "Setting list(s) 12341234/list"},
 			[]string{
@@ -368,7 +368,7 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
-		"ip6-only": { //nolint:dupl
+		"ip6-only": {
 			true,
 			[]string{"Set AAAA (::1) of ip6.hello", "Set list(s) 12341234/list"},
 			[]string{
@@ -388,7 +388,7 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
-		"ip6-only/set-fail": { //nolint:dupl
+		"ip6-only/set-fail": {
 			false,
 			[]string{"Failed to set AAAA (::1) of ip6.hello", "Failed to set list(s) 12341234/list"},
 			[]string{
@@ -411,7 +411,7 @@ func TestUpdateIPs(t *testing.T) {
 		"dual": {
 			true, nil, nil,
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
@@ -435,7 +435,7 @@ func TestUpdateIPs(t *testing.T) {
 			[]string{"Failed to set A (127.0.0.1) of ip4.hello"},
 			[]string{"Failed to properly update A records of ip4.hello with 127.0.0.1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
@@ -459,7 +459,7 @@ func TestUpdateIPs(t *testing.T) {
 			[]string{"Failed to set AAAA (::1) of ip6.hello"},
 			[]string{"Failed to properly update AAAA records of ip6.hello with ::1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
@@ -483,7 +483,7 @@ func TestUpdateIPs(t *testing.T) {
 			[]string{`Failed to set list(s) 12341234/list`},
 			[]string{`Failed to properly update WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) { //nolint:dupl
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),

@@ -106,7 +106,6 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 	}
 
 	{
-		//nolint:nestif
 		if funName, newTokens := scanConstants(ppfmt, key, input, tokens, []string{"is", "sub"}); newTokens != nil {
 			newTokens = scanMustConstant(ppfmt, key, input, newTokens, "(")
 			if newTokens == nil {
