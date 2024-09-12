@@ -12,5 +12,7 @@ const (
 	HintUpdateTimeouts
 	HintRecordPermission
 	HintWAFListPermission
+	HintMismatchedRecordAttributes
+	HintMismatchedWAFListAttributes
 	Hint1111Blockage
 )

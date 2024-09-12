@@ -78,7 +78,7 @@ func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
 	}
 }
 
-func generateClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
+func generateFinalClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return monitor.Message{
 			OK:    false,
@@ -99,7 +99,7 @@ func generateClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.Messa
 	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
+func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -130,9 +130,9 @@ func generateClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Mes
 	}
 }
 
-func generateClearWAFListsMessage(s setterWAFListResponses) Message {
+func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
-		MonitorMessage:  generateClearWAFListsMonitorMessage(s),
-		NotifierMessage: generateClearWAFListsNotifierMessage(s),
+		MonitorMessage:  generateFinalClearWAFListsMonitorMessage(s),
+		NotifierMessage: generateFinalClearWAFListsNotifierMessage(s),
 	}
 }

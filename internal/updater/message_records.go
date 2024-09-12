@@ -118,7 +118,7 @@ func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) M
 	}
 }
 
-func generateDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) monitor.Message {
+func generateFinalDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) monitor.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return monitor.Message{
 			OK: false,
@@ -148,7 +148,7 @@ func generateDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) monitor.M
 	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier.Message {
+func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -189,9 +189,9 @@ func generateDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier
 	}
 }
 
-func generateDeleteMessage(ipNet ipnet.Type, s setterResponses) Message {
+func generateFinalDeleteMessage(ipNet ipnet.Type, s setterResponses) Message {
 	return Message{
-		MonitorMessage:  generateDeleteMonitorMessage(ipNet, s),
-		NotifierMessage: generateDeleteNotifierMessage(ipNet, s),
+		MonitorMessage:  generateFinalDeleteMonitorMessage(ipNet, s),
+		NotifierMessage: generateFinalDeleteNotifierMessage(ipNet, s),
 	}
 }

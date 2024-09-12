@@ -82,7 +82,9 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Again, we prefer updating stale records instead of creating new ones so that we can
 	// preserve the current TTL and proxy setting.
 	if !foundMatched && len(unprocessedUnmatched) > 0 {
-		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0], ip); !ok {
+		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0], ip,
+			ttl, proxied, recordComment,
+		); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
@@ -121,7 +123,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, false); !ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %q; records might be inconsistent",
 				recordType, domainDescription)
@@ -135,7 +137,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// We should also delete all duplicate records even if they are up to date.
 	// This has lower priority than deleting the stale records.
 	for _, id := range unprocessedMatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, false); ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); ok {
 			ppfmt.Noticef(pp.EmojiDeletion,
 				"Deleted a duplicate %s record of %q (ID: %s)", recordType, domainDescription, id)
 		}
@@ -147,8 +149,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	return ResponseUpdated
 }
 
-// Delete deletes all managed DNS records.
-func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain) ResponseCode {
+// FinalDelete deletes all managed DNS records.
+func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
@@ -174,7 +176,7 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domai
 
 	allOK := true
 	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, true) {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.FinalDeletionMode) {
 			allOK = false
 
 			if ctx.Err() != nil {
@@ -205,17 +207,12 @@ func (s setter) Delete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domai
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
 ) ResponseCode {
-	listID, alreadyExisting, ok := s.Handle.EnsureWAFList(ctx, ppfmt, list, listDescription)
+	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
 	if !ok {
 		return ResponseFailed
 	}
 	if !alreadyExisting {
-		ppfmt.Noticef(pp.EmojiCreation, "Created a new list named %q (ID: %s)", list.ListName, listID)
-	}
-
-	items, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list)
-	if !ok {
-		return ResponseFailed
+		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 	}
 
 	var itemsToDelete []api.WAFListItem
@@ -243,49 +240,50 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date (cached)", list.ListName, listID)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", list.Describe())
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %q (ID: %s) is already up to date", list.ListName, listID)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %s is already up to date", list.Describe())
 		}
 		return ResponseNoop
 	}
 
-	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, itemsToCreate, itemComment) {
-		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
-			list.ListName, listID)
+	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate, itemComment) {
+		ppfmt.Noticef(pp.EmojiError,
+			"Failed to properly update the list %s; its content may be inconsistent", list.Describe())
 		return ResponseFailed
 	}
 	for _, item := range itemsToCreate {
-		ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %q (ID: %s)",
-			ipnet.DescribePrefixOrIP(item), list.ListName, listID)
+		ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %s",
+			ipnet.DescribePrefixOrIP(item), list.Describe())
 	}
 
 	idsToDelete := make([]api.ID, 0, len(itemsToDelete))
 	for _, item := range itemsToDelete {
 		idsToDelete = append(idsToDelete, item.ID)
 	}
-	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, idsToDelete) {
-		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %q (ID: %s); its content may be inconsistent",
-			list.ListName, listID)
+	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete) {
+		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent",
+			list.Describe())
 		return ResponseFailed
 	}
 	for _, item := range itemsToDelete {
-		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %q (ID: %s)",
-			ipnet.DescribePrefixOrIP(item.Prefix), list.ListName, listID)
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+			ipnet.DescribePrefixOrIP(item.Prefix), list.Describe())
 	}
 
 	return ResponseUpdated
 }
 
-// ClearWAFList calls [api.Handle.DeleteWAFList] or [api.Handle.ClearWAFList].
-func (s setter) ClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList) ResponseCode {
-	deleted, ok := s.Handle.ClearWAFListAsync(ctx, ppfmt, list, true)
+// FinalClearWAFList calls [api.Handle.DeleteWAFList] or [api.Handle.ClearWAFList].
+func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
+) ResponseCode {
+	deleted, ok := s.Handle.FinalClearWAFListAsync(ctx, ppfmt, list, listDescription)
 	switch {
 	case ok && deleted:
-		ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.ListName)
+		ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.Name)
 		return ResponseUpdated
 	case ok && !deleted:
-		ppfmt.Noticef(pp.EmojiClear, "The list %q is being cleared (asynchronously)", list.ListName)
+		ppfmt.Noticef(pp.EmojiClear, "The list %q is being cleared (asynchronously)", list.Name)
 		return ResponseUpdating
 	default:
 		return ResponseFailed

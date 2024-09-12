@@ -69,10 +69,10 @@ func TestUpdateIPsMultiple(t *testing.T) {
 		ipnet.IP4: {domain4_1, domain4_2, domain4_3, domain4_4},
 	}
 
-	list1 := api.WAFList{AccountID: "12341234", ListName: "list1"}
-	list2 := api.WAFList{AccountID: "xxxxxxxx", ListName: "list2"}
-	list3 := api.WAFList{AccountID: "AAAAAAAA", ListName: "list3"}
-	list4 := api.WAFList{AccountID: "zzz", ListName: "list4"}
+	list1 := api.WAFList{AccountID: "12341234", Name: "list1"}
+	list2 := api.WAFList{AccountID: "xxxxxxxx", Name: "list2"}
+	list3 := api.WAFList{AccountID: "AAAAAAAA", Name: "list3"}
+	list4 := api.WAFList{AccountID: "zzz", Name: "list4"}
 	lists := []api.WAFList{list1, list2, list3, list4}
 
 	ip4 := netip.MustParseAddr("127.0.0.1")
@@ -188,17 +188,17 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	}
 }
 
-func TestDeleteIPsMultiple(t *testing.T) {
+func TestFinalDeleteIPsMultiple(t *testing.T) {
 	t.Parallel()
 
 	domains := map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain4_1, domain4_2, domain4_3, domain4_4},
 	}
 
-	list1 := api.WAFList{AccountID: "12341234", ListName: "list1"}
-	list2 := api.WAFList{AccountID: "xxxxxxxx", ListName: "list2"}
-	list3 := api.WAFList{AccountID: "AAAAAAAA", ListName: "list3"}
-	list4 := api.WAFList{AccountID: "zzz", ListName: "list4"}
+	list1 := api.WAFList{AccountID: "12341234", Name: "list1"}
+	list2 := api.WAFList{AccountID: "xxxxxxxx", Name: "list2"}
+	list3 := api.WAFList{AccountID: "AAAAAAAA", Name: "list3"}
+	list4 := api.WAFList{AccountID: "zzz", Name: "list4"}
 	lists := []api.WAFList{list1, list2, list3, list4}
 
 	for name, tc := range map[string]struct {
@@ -216,18 +216,18 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
 						Return(setter.ResponseUpdating),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
 						Return(setter.ResponseFailed),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
 						Return(setter.ResponseNoop),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
 						Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list1).Return(setter.ResponseUpdating),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list2).Return(setter.ResponseFailed),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list3).Return(setter.ResponseNoop),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list4).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription).Return(setter.ResponseUpdating),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription).Return(setter.ResponseFailed),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription).Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -243,18 +243,18 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
 						Return(setter.ResponseUpdated),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
 						Return(setter.ResponseNoop),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
 						Return(setter.ResponseUpdated),
-					s.EXPECT().Delete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
 						Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list1).Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list2).Return(setter.ResponseNoop),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list3).Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), p, list4).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription).Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -277,7 +277,7 @@ func TestDeleteIPsMultiple(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP, mockSetter)
 			}
-			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
+			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,
@@ -300,7 +300,7 @@ func TestUpdateIPs(t *testing.T) {
 		ipnet.IP4: {domain4},
 		ipnet.IP6: {domain6},
 	}
-	list := api.WAFList{AccountID: "12341234", ListName: "list"}
+	list := api.WAFList{AccountID: "12341234", Name: "list"}
 	lists := []api.WAFList{list}
 
 	ip4 := netip.MustParseAddr("127.0.0.1")
@@ -660,14 +660,14 @@ func TestUpdateIPs(t *testing.T) {
 	}
 }
 
-func TestDeleteIPs(t *testing.T) {
+func TestFinalDeleteIPs(t *testing.T) {
 	t.Parallel()
 
 	domains := map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain4},
 		ipnet.IP6: {domain6},
 	}
-	list := api.WAFList{AccountID: "12341234", ListName: "list"}
+	list := api.WAFList{AccountID: "12341234", Name: "list"}
 	lists := []api.WAFList{list}
 
 	type mockproviders = map[ipnet.Type]bool
@@ -689,8 +689,8 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -704,8 +704,8 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseFailed),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseFailed),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -719,8 +719,8 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdating),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseUpdating),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdating),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseUpdating),
 				)
 			},
 		},
@@ -734,8 +734,8 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -749,8 +749,8 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseFailed),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseFailed),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -764,9 +764,9 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdated),
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseUpdated),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -777,9 +777,9 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseFailed),
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseNoop),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -790,9 +790,9 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseNoop),
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseFailed),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseFailed),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -803,9 +803,9 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseNoop),
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseNoop),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -816,14 +816,14 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
 						DoAndReturn(
 							func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode {
 								time.Sleep(2 * time.Second)
 								return setter.ResponseFailed
 							}),
 					ppfmt.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -834,11 +834,11 @@ func TestDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().Delete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
 						Return(setter.ResponseNoop),
-					s.EXPECT().ClearWAFList(gomock.Any(), ppfmt, list).
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).
 						DoAndReturn(
-							func(context.Context, pp.PP, api.WAFList) setter.ResponseCode {
+							func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode {
 								time.Sleep(2 * time.Second)
 								return setter.ResponseFailed
 							}),
@@ -873,7 +873,7 @@ func TestDeleteIPs(t *testing.T) {
 				conf.Provider[ipnet] = mocks.NewMockProvider(mockCtrl)
 			}
 
-			resp := updater.DeleteIPs(ctx, mockPP, conf, mockSetter)
+			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
 				MonitorMessage: monitor.Message{
 					OK:    tc.ok,

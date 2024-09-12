@@ -44,78 +44,78 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 	return m.recorder
 }
 
-// ClearWAFList mocks base method.
-func (m *MockSetter) ClearWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList) setter.ResponseCode {
+// FinalClearWAFList mocks base method.
+func (m *MockSetter) FinalClearWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClearWAFList", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "FinalClearWAFList", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
-// ClearWAFList indicates an expected call of ClearWAFList.
-func (mr *MockSetterMockRecorder) ClearWAFList(arg0, arg1, arg2 any) *SetterClearWAFListCall {
+// FinalClearWAFList indicates an expected call of FinalClearWAFList.
+func (mr *MockSetterMockRecorder) FinalClearWAFList(arg0, arg1, arg2, arg3 any) *SetterFinalClearWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearWAFList", reflect.TypeOf((*MockSetter)(nil).ClearWAFList), arg0, arg1, arg2)
-	return &SetterClearWAFListCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFList", reflect.TypeOf((*MockSetter)(nil).FinalClearWAFList), arg0, arg1, arg2, arg3)
+	return &SetterFinalClearWAFListCall{Call: call}
 }
 
-// SetterClearWAFListCall wrap *gomock.Call
-type SetterClearWAFListCall struct {
+// SetterFinalClearWAFListCall wrap *gomock.Call
+type SetterFinalClearWAFListCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SetterClearWAFListCall) Return(arg0 setter.ResponseCode) *SetterClearWAFListCall {
+func (c *SetterFinalClearWAFListCall) Return(arg0 setter.ResponseCode) *SetterFinalClearWAFListCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterClearWAFListCall {
+func (c *SetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode) *SetterFinalClearWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList) setter.ResponseCode) *SetterClearWAFListCall {
+func (c *SetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode) *SetterFinalClearWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
-// Delete mocks base method.
-func (m *MockSetter) Delete(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain) setter.ResponseCode {
+// FinalDelete mocks base method.
+func (m *MockSetter) FinalDelete(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "FinalDelete", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
-// Delete indicates an expected call of Delete.
-func (mr *MockSetterMockRecorder) Delete(arg0, arg1, arg2, arg3 any) *SetterDeleteCall {
+// FinalDelete indicates an expected call of FinalDelete.
+func (mr *MockSetterMockRecorder) FinalDelete(arg0, arg1, arg2, arg3 any) *SetterFinalDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSetter)(nil).Delete), arg0, arg1, arg2, arg3)
-	return &SetterDeleteCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalDelete", reflect.TypeOf((*MockSetter)(nil).FinalDelete), arg0, arg1, arg2, arg3)
+	return &SetterFinalDeleteCall{Call: call}
 }
 
-// SetterDeleteCall wrap *gomock.Call
-type SetterDeleteCall struct {
+// SetterFinalDeleteCall wrap *gomock.Call
+type SetterFinalDeleteCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *SetterDeleteCall) Return(arg0 setter.ResponseCode) *SetterDeleteCall {
+func (c *SetterFinalDeleteCall) Return(arg0 setter.ResponseCode) *SetterFinalDeleteCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterDeleteCall {
+func (c *SetterFinalDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterFinalDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterDeleteCall {
+func (c *SetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode) *SetterFinalDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

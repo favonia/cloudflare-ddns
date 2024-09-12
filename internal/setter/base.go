@@ -31,8 +31,8 @@ type Setter interface {
 		recordComment string,
 	) ResponseCode
 
-	// Delete removes DNS records of a particular domain.
-	Delete(
+	// FinalDelete removes DNS records of a particular domain.
+	FinalDelete(
 		ctx context.Context,
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
@@ -50,10 +50,11 @@ type Setter interface {
 		itemComment string,
 	) ResponseCode
 
-	// ClearWAFList deletes or empties a list.
-	ClearWAFList(
+	// FinalClearWAFList deletes or empties a list.
+	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
+		listDescription string,
 	) ResponseCode
 }
