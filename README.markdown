@@ -190,6 +190,13 @@ Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to us
 
 </details>
 
+<details>
+<summary>😢 Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
+
+Some Docker installations seem to have trouble with the extra security protection `no-new-privileges`. Chances are you cannot run _any_ Docker image (not only this updater) with `no-new-privileges`. If that is the case, there is not much this updater can do, and the best known workaround is to remove `security_opt: [no-new-privileges:true]` completely. It will be slightly less secure, but better than not running at all. If _only_ this updater does not run, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) so that we can investigate the bug.
+
+</details>
+
 ### 🚀 Step 2: Building and Running the Container
 
 ```bash
