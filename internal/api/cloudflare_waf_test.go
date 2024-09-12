@@ -174,6 +174,7 @@ func TestWAFListID(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		lists        []listMeta
+		description  string
 		ok           bool
 		found        bool
 		output       api.ID
@@ -181,6 +182,7 @@ func TestWAFListID(t *testing.T) {
 	}{
 		"empty": {
 			[]listMeta{},
+			"description",
 			true, false, "",
 			nil,
 		},
@@ -190,6 +192,7 @@ func TestWAFListID(t *testing.T) {
 				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
 				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
 			},
+			"description",
 			false, false, "",
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
@@ -203,8 +206,30 @@ func TestWAFListID(t *testing.T) {
 				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
 				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
 			},
+			"description",
 			true, true, mockID("list", 1),
 			nil,
+		},
+		"mismatched-description": {
+			[]listMeta{
+				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
+				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
+			},
+			"mismatched description",
+			true, true, mockID("list", 1),
+			func(ppfmt *mocks.MockPP) {
+				gomock.InOrder(
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
+						"The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)",
+						"account456/list", mockID("list", 1), "mismatched description",
+					),
+					ppfmt.EXPECT().Hintf(pp.HintMismatchedWAFListAttributes,
+						"The updater will not overwrite WAF list descriptions; "+
+							"you can change them at https://dash.cloudflare.com/%s/configurations/lists",
+						api.ID("account456"),
+					),
+				)
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -224,7 +249,7 @@ func TestWAFListID(t *testing.T) {
 				tc.prepareMocks(mockPP)
 			}
 			//nolint: forcetypeassert
-			id, found, ok := h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, "description")
+			id, found, ok := h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.found, found)
 			require.Equal(t, tc.output, id)
@@ -232,11 +257,8 @@ func TestWAFListID(t *testing.T) {
 
 			if tc.ok {
 				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMocks != nil {
-					tc.prepareMocks(mockPP)
-				}
 				//nolint: forcetypeassert
-				id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, "description")
+				id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.found, found)
 				require.Equal(t, tc.output, id)
@@ -247,7 +269,7 @@ func TestWAFListID(t *testing.T) {
 			mockPP = mocks.NewMockPP(mockCtrl)
 			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
 			//nolint: forcetypeassert
-			id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, "description")
+			id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 			require.False(t, ok)
 			require.Zero(t, found)
 			require.Zero(t, id)
