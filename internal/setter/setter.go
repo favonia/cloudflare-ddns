@@ -207,9 +207,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
 ) ResponseCode {
-	items, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
+	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
 	if !ok {
 		return ResponseFailed
+	}
+	if !alreadyExisting {
+		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 	}
 
 	var itemsToDelete []api.WAFListItem

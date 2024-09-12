@@ -429,7 +429,8 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, false, true),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, false, false, true),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", wafListDescribed),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
 						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation,
@@ -444,7 +445,7 @@ func TestSetWAFList(t *testing.T) {
 			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(nil, false, false)
+				m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(nil, false, false, false)
 			},
 		},
 		"skip-unknown": {
@@ -458,7 +459,7 @@ func TestSetWAFList(t *testing.T) {
 							prefix6range1,
 							prefix4wrong1,
 							prefix4wrong3,
-						}, true, true),
+						}, true, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone,
 						"The list %s is already up to date (cached)", wafListDescribed),
 				)
@@ -470,7 +471,7 @@ func TestSetWAFList(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{prefix4, prefix6}, false, true),
+						Return(items{prefix4, prefix6}, true, false, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone,
 						"The list %s is already up to date", wafListDescribed),
 				)
@@ -482,7 +483,7 @@ func TestSetWAFList(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{prefix4, prefix6}, true, true),
+						Return(items{prefix4, prefix6}, true, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone,
 						"The list %s is already up to date (cached)", wafListDescribed),
 				)
@@ -507,7 +508,7 @@ func TestSetWAFList(t *testing.T) {
 							prefix4range1,
 							prefix4wrong1,
 							prefix6wrong1,
-						}, false, true),
+						}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription,
 						gomock.InAnyOrder([]api.ID{
@@ -546,7 +547,7 @@ func TestSetWAFList(t *testing.T) {
 							prefix4wrong3,
 							prefix4wrong1,
 							prefix6wrong1,
-						}, false, true),
+						}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
 						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation,
@@ -583,7 +584,7 @@ func TestSetWAFList(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{}, false, true),
+						Return(items{}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
 						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
 					p.EXPECT().Noticef(pp.EmojiError,
@@ -610,7 +611,7 @@ func TestSetWAFList(t *testing.T) {
 							prefix4range1,
 							prefix4wrong1,
 							prefix6wrong1,
-						}, false, true),
+						}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription,
 						gomock.InAnyOrder([]api.ID{

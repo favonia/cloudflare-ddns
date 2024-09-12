@@ -75,10 +75,9 @@ type Handle interface {
 	// It creates an empty WAF list with IP ranges if it does not already exist yet.
 	// The first return value is the ID of the list.
 	// The second return value indicates whether the list already exists.
-	//
-	// The second return value indicates whether the list was cached.
+	// The third return value indicates whether the list content was cached.
 	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-	) ([]WAFListItem, bool, bool)
+	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
 	// update or create the list.

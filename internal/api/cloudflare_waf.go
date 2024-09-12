@@ -136,45 +136,6 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 	return listID, true
 }
 
-// EnsureWAFList calls cloudflare.CreateList when the list does not already exist.
-func (h CloudflareHandle) EnsureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-	expectedDescription string,
-) (ID, bool, bool) {
-	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
-	if !ok {
-		// ListWAFLists (called by WAFListID) would have output some error messages,
-		// but this provides more context.
-		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of the list %s", list.Describe())
-		return "", false, false
-	}
-
-	if found {
-		return listID, found, true
-	}
-
-	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
-		cloudflare.ListCreateParams{
-			Name:        list.Name,
-			Description: expectedDescription,
-			Kind:        cloudflare.ListTypeIP,
-		})
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to create the list %s: %v", list.Describe(), err)
-		hintWAFListPermission(ppfmt, err)
-		h.cache.listLists.Delete(list.AccountID)
-		return "", false, false
-	}
-
-	listID = ID(r.ID)
-	if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
-		*ls.Value() = append([]WAFListMeta{{ID: listID, Description: expectedDescription, Name: list.Name}}, *ls.Value()...)
-	}
-
-	h.cache.listID.DeleteExpired()
-	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
-	return listID, false, true
-}
-
 // FinalClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
 //
 // We only deleted cached data in listListItems and listID, but not the cached lists
@@ -237,20 +198,46 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 	return items, true
 }
 
-// ListWAFListItems calls cloudflare.ListListItems.
+// ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
 func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
-) ([]WAFListItem, bool, bool) {
+) ([]WAFListItem, bool, bool, bool) {
 	if items := h.cache.listListItems.Get(list); items != nil {
-		return *items.Value(), true, true
+		return *items.Value(), true, true, true
 	}
 
-	listID, alreadyExisting, ok := h.EnsureWAFList(ctx, ppfmt, list, expectedDescription)
+	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
 	if !ok {
-		return nil, false, false
+		// ListWAFLists (called by WAFListID) would have output some error messages,
+		// but this provides more context.
+		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of the list %s", list.Describe())
+		return nil, false, false, false
 	}
-	if !alreadyExisting {
-		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
+	if !found {
+		r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
+			cloudflare.ListCreateParams{
+				Name:        list.Name,
+				Description: expectedDescription,
+				Kind:        cloudflare.ListTypeIP,
+			})
+		if err != nil {
+			ppfmt.Noticef(pp.EmojiError, "Failed to create the list %s: %v", list.Describe(), err)
+			hintWAFListPermission(ppfmt, err)
+			h.cache.listLists.Delete(list.AccountID)
+			return nil, false, false, false
+		}
+
+		listID = ID(r.ID)
+		var items []WAFListItem
+
+		if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
+			*ls.Value() = append([]WAFListMeta{{ID: listID, Description: expectedDescription, Name: list.Name}}, *ls.Value()...)
+		}
+		h.cache.listID.DeleteExpired()
+		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
+		h.cache.listListItems.DeleteExpired()
+		h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
+		return items, false, false, true
 	}
 
 	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -259,17 +246,17 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve items in the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
-		return nil, false, false
+		return nil, false, false, false
 	}
 
 	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
-		return nil, false, false
+		return nil, false, false, false
 	}
 
 	h.cache.listListItems.DeleteExpired()
 	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
-	return items, false, true
+	return items, true, false, true
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.

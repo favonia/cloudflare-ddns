@@ -276,13 +276,14 @@ func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet
 }
 
 // ListWAFListItems mocks base method.
-func (m *MockHandle) ListWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string) ([]api.WAFListItem, bool, bool) {
+func (m *MockHandle) ListWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string) ([]api.WAFListItem, bool, bool, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListWAFListItems", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]api.WAFListItem)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
-	return ret0, ret1, ret2
+	ret3, _ := ret[3].(bool)
+	return ret0, ret1, ret2, ret3
 }
 
 // ListWAFListItems indicates an expected call of ListWAFListItems.
@@ -298,19 +299,19 @@ type HandleListWAFListItemsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleListWAFListItemsCall) Return(arg0 []api.WAFListItem, arg1, arg2 bool) *HandleListWAFListItemsCall {
-	c.Call = c.Call.Return(arg0, arg1, arg2)
+func (c *HandleListWAFListItemsCall) Return(arg0 []api.WAFListItem, arg1, arg2, arg3 bool) *HandleListWAFListItemsCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2, arg3)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool)) *HandleListWAFListItemsCall {
+func (c *HandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *HandleListWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool)) *HandleListWAFListItemsCall {
+func (c *HandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *HandleListWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -429,108 +429,6 @@ func newCreateListHandler(t *testing.T, mux *http.ServeMux, listMeta listMeta) h
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestEnsureWAFList(t *testing.T) {
-	t.Parallel()
-
-	for name, tc := range map[string]struct {
-		lists              []listMeta
-		listRequestLimit   int
-		list               listMeta
-		createRequestLimit int
-		ok                 bool
-		existing           bool
-		output             api.ID
-		prepareMocks       func(*mocks.MockPP)
-	}{
-		"list-fail": {
-			nil,
-			0,
-			listMeta{}, //nolint:exhaustruct
-			0,
-			false, false, "",
-			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to list existing lists: %v",
-						gomock.Any(),
-					),
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to check the existence of the list %s",
-						"account456/list",
-					),
-				)
-			},
-		},
-		"empty": {
-			[]listMeta{},
-			1,
-			listMeta{name: "list", size: 13, kind: cloudflare.ListTypeIP},
-			1,
-			true, false, (mockID("list", 0)),
-			nil,
-		},
-		"empty/create-fail": {
-			[]listMeta{},
-			1,
-			listMeta{}, //nolint:exhaustruct
-			0,
-			false, false, "",
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to create the list %s: %v", "account456/list", gomock.Any())
-			},
-		},
-		"1ip1asn": {
-			[]listMeta{
-				{name: "list", size: 11, kind: cloudflare.ListTypeASN},
-				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
-			},
-			1,
-			listMeta{}, //nolint:exhaustruct
-			0,
-			true, true, (mockID("list", 1)),
-			nil,
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-
-			lh := newListListsHandler(t, mux, tc.lists)
-			ch := newCreateListHandler(t, mux, tc.list)
-
-			lh.setRequestLimit(tc.listRequestLimit)
-			ch.setRequestLimit(tc.createRequestLimit)
-			mockPP = mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
-			}
-			//nolint:forcetypeassert
-			output, existing, ok := h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, mockWAFList, "description") //nolint:lll
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.existing, existing)
-			require.Equal(t, tc.output, output)
-			require.True(t, lh.isExhausted())
-			require.True(t, ch.isExhausted())
-
-			if tc.ok {
-				mockPP = mocks.NewMockPP(mockCtrl)
-				//nolint:forcetypeassert
-				output, existing, ok = h.(api.CloudflareHandle).EnsureWAFList(context.Background(), mockPP, mockWAFList, "description") //nolint:lll
-				require.Equal(t, tc.ok, ok)
-				require.True(t, existing)
-				require.Equal(t, tc.output, output)
-				require.True(t, lh.isExhausted())
-				require.True(t, ch.isExhausted())
-			}
-		})
-	}
-}
-
 func mockDeleteListResponse(listID api.ID) cloudflare.ListDeleteResponse {
 	return cloudflare.ListDeleteResponse{
 		Response: mockResponse(),
@@ -726,19 +624,28 @@ func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID api.ID, li
 func TestListWAFListItems(t *testing.T) {
 	t.Parallel()
 
+	emptyListMeta := listMeta{} //nolint:exhaustruct
+
 	for name, tc := range map[string]struct {
+		lists                 []listMeta
 		listRequestLimit      int
+		newList               listMeta
+		createRequestLimit    int
 		items                 []listItem
 		listItemsRequestLimit int
 		ok                    bool
+		alreadyExisting       bool
 		output                []api.WAFListItem
 		prepareMocks          func(*mocks.MockPP)
 	}{
-		"success": {
+		"existing": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
+			emptyListMeta,
+			0,
 			[]listItem{"10.0.0.1", "2001:db8::/32", "10.0.0.0/20"},
 			1,
-			true,
+			true, true,
 			[]api.WAFListItem{
 				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
 				{ID: (mockID("2001:db8::/32", 0)), Prefix: netip.MustParsePrefix("2001:db8::/32")},
@@ -746,9 +653,34 @@ func TestListWAFListItems(t *testing.T) {
 			},
 			nil,
 		},
+		"create": {
+			[]listMeta{},
+			1,
+			listMeta{name: "list", size: 5, kind: cloudflare.ListTypeIP},
+			1,
+			nil,
+			0,
+			true, false, nil,
+			nil,
+		},
+		"create-fail": {
+			[]listMeta{},
+			1,
+			emptyListMeta,
+			0,
+			nil,
+			0,
+			false, false, nil,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to create the list %s: %v", "account456/list", gomock.Any())
+			},
+		},
 		"list-fail": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			0,
+			emptyListMeta,
 			0, nil, 0,
-			false, nil,
+			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
@@ -757,10 +689,13 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"list-item-fail": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
+			emptyListMeta,
+			0,
 			[]listItem{"10.0.0.1"},
 			0,
-			false, nil,
+			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to retrieve items in the list %s: %v",
@@ -768,10 +703,13 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"invalid": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
+			emptyListMeta,
+			0,
 			[]listItem{"invalid item"},
 			1,
-			false, nil,
+			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
@@ -785,10 +723,13 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"nil": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
+			emptyListMeta,
+			0,
 			[]listItem{""},
 			1,
-			false, nil,
+			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 					"Found a non-IP in the list %s",
@@ -805,32 +746,37 @@ func TestListWAFListItems(t *testing.T) {
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
 
-			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
+			lh := newListListsHandler(t, mux, tc.lists)
+			ch := newCreateListHandler(t, mux, tc.newList)
 			lih := newListListItemsHandler(t, mux, mockID("list", 0), tc.items)
 
 			lh.setRequestLimit(tc.listRequestLimit)
+			ch.setRequestLimit(tc.createRequestLimit)
 			lih.setRequestLimit(tc.listItemsRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
 			//nolint:forcetypeassert
-			output, cached, ok := h.(api.CloudflareHandle).
+			output, alreadyExisting, cached, ok := h.(api.CloudflareHandle).
 				ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.output, output)
 			require.False(t, cached)
+			require.Equal(t, tc.alreadyExisting, alreadyExisting)
+			require.Equal(t, tc.output, output)
 			require.True(t, lh.isExhausted())
+			require.True(t, ch.isExhausted())
 			require.True(t, lih.isExhausted())
 
 			if tc.ok {
 				mockPP = mocks.NewMockPP(mockCtrl)
 				//nolint:forcetypeassert
-				output, cached, ok := h.(api.CloudflareHandle).
+				output, alreadyExisting, cached, ok := h.(api.CloudflareHandle).
 					ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
 				require.Equal(t, tc.ok, ok)
-				require.Equal(t, tc.output, output)
 				require.True(t, cached)
+				require.True(t, alreadyExisting)
+				require.Equal(t, tc.output, output)
 				require.True(t, lh.isExhausted())
 				require.True(t, lih.isExhausted())
 			}
