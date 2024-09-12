@@ -559,33 +559,23 @@ func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestDeleteRecordValid(t *testing.T) {
+func TestDeleteRecord(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		zones              map[string][]string
 		zoneRequestLimit   int
-		records            []formattedRecord
 		listRequestLimit   int
 		deleteRequestLimit int
 		ok                 bool
 		prepareMocks       func(*mocks.MockPP)
 	}{
 		"success": {
-			map[string][]string{"test.org": {"active"}},
-			2,
-			[]formattedRecord{{"record1", "::1"}},
-			0,
-			1,
+			2, 0, 1,
 			true,
 			nil,
 		},
 		"zone-fails": {
-			nil,
-			0,
-			nil,
-			0,
-			0,
+			0, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
@@ -595,11 +585,7 @@ func TestDeleteRecordValid(t *testing.T) {
 			},
 		},
 		"delete-fails": {
-			map[string][]string{"test.org": {"active"}},
-			2,
-			nil,
-			0,
-			0,
+			2, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
@@ -620,10 +606,10 @@ func TestDeleteRecordValid(t *testing.T) {
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
 
-			zh := newZonesHandler(t, mux, tc.zones)
+			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", tc.records)
+			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
@@ -692,13 +678,11 @@ func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestUpdateRecordValid(t *testing.T) {
+func TestUpdateRecord(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		zones              map[string][]string
 		zoneRequestLimit   int
-		records            []formattedRecord
 		listRequestLimit   int
 		updateRequestLimit int
 		expectedTTL        api.TTL
@@ -708,21 +692,13 @@ func TestUpdateRecordValid(t *testing.T) {
 		prepareMocks       func(*mocks.MockPP)
 	}{
 		"success": {
-			map[string][]string{"test.org": {"active"}},
-			2,
-			[]formattedRecord{{"record1", "::1"}},
-			0,
-			1,
+			2, 0, 1,
 			100, false, "",
 			true,
 			nil,
 		},
 		"zone-fails": {
-			nil,
-			0,
-			nil,
-			0,
-			0,
+			0, 0, 0,
 			100, false, "",
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -733,11 +709,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			},
 		},
 		"update-fails": {
-			map[string][]string{"test.org": {"active"}},
-			2,
-			nil,
-			0,
-			0,
+			2, 0, 0,
 			100, false, "",
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -748,11 +720,7 @@ func TestUpdateRecordValid(t *testing.T) {
 			},
 		},
 		"mismatch-attribute": {
-			map[string][]string{"test.org": {"active"}},
-			2,
-			[]formattedRecord{{"record1", "::1"}},
-			0,
-			1,
+			2, 0, 1,
 			1, true, "hello",
 			true,
 			func(ppfmt *mocks.MockPP) {
@@ -790,10 +758,10 @@ func TestUpdateRecordValid(t *testing.T) {
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
 
-			zh := newZonesHandler(t, mux, tc.zones)
+			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", tc.records)
+			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			urh := newUpdateRecordHandler(t, mux, "record1", "::2")
@@ -871,66 +839,74 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestCreateRecordValid(t *testing.T) {
+func TestCreateRecord(t *testing.T) {
 	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
+	for name, tc := range map[string]struct {
+		zoneRequestLimit   int
+		listRequestLimit   int
+		createRequestLimit int
+		ok                 bool
+		prepareMocks       func(*mocks.MockPP)
+	}{
+		"success": {
+			2, 1, 1,
+			true,
+			nil,
+		},
+		"zone-fails": {
+			0, 0, 0,
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to check the existence of a zone named %q: %v",
+					"sub.test.org", gomock.Any(),
+				).Times(2)
+			},
+		},
+		"create-fails": {
+			2, 1, 0,
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to add a new %s record of %q: %v",
+					"AAAA", "sub.test.org", gomock.Any(),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMocks != nil {
+				tc.prepareMocks(mockPP)
+			}
 
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
+			mux, h, ok := newHandle(t, mockPP)
+			require.True(t, ok)
 
-	lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
-	lrh.setRequestLimit(1)
+			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
+			zh.setRequestLimit(tc.zoneRequestLimit)
 
-	crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
-	crh.setRequestLimit(1)
+			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+			lrh.setRequestLimit(tc.listRequestLimit)
 
-	mockPP = mocks.NewMockPP(mockCtrl)
-	h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), actualID)
-	rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Equal(t, []api.Record{{"record1", mustIP("::1")}}, rs)
-}
+			crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			crh.setRequestLimit(tc.createRequestLimit)
 
-func TestCreateRecordInvalid(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-	mux, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-	zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	mockPP = mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to add a new %s record of %q: %v",
-		"AAAA",
-		"sub.test.org",
-		gomock.Any(),
-	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
-	require.False(t, ok)
-	require.Zero(t, actualID)
-}
-
-func TestCreateRecordInvalidZone(t *testing.T) {
-	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	_, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v",
-		"sub.test.org",
-		gomock.Any(),
-	)
-	actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
-	require.False(t, ok)
-	require.Zero(t, actualID)
+			h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
+			require.Equal(t, tc.ok, ok)
+			if ok {
+				require.Equal(t, api.ID("record1"), actualID)
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				require.True(t, ok)
+				require.True(t, cached)
+				require.Equal(t, []api.Record{{"record1", mustIP("::1")}}, rs)
+			} else {
+				require.Zero(t, actualID)
+			}
+		})
+	}
 }
