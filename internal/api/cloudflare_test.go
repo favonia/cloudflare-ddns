@@ -71,7 +71,7 @@ func mockResponse() cloudflare.Response {
 const (
 	mockToken      = "token123"
 	mockAuthString = "Bearer " + mockToken
-	mockAccountID  = "account456"
+	mockAccountID  = api.ID("account456")
 )
 
 func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth) {

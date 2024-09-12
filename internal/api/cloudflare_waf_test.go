@@ -196,8 +196,8 @@ func TestWAFListID(t *testing.T) {
 			false, false, "",
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
-					"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
+					"Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s",
+					"list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 				)
 			},
 		},
@@ -226,7 +226,7 @@ func TestWAFListID(t *testing.T) {
 					ppfmt.EXPECT().Hintf(pp.HintMismatchedWAFListAttributes,
 						"The updater will not overwrite WAF list descriptions; "+
 							"you can change them at https://dash.cloudflare.com/%s/configurations/lists",
-						api.ID("account456"),
+						mockAccountID,
 					),
 				)
 			},
@@ -356,8 +356,8 @@ func TestFindWAFList(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
-						"list", mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
+						"Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s",
+						"list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
 					),
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find the list %s", "account456/list"),
 				)

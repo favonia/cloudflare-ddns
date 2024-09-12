@@ -45,7 +45,7 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of a zone named %q: %v", name, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", name, err)
 		hintRecordPermission(ppfmt, err)
 		return nil, false
 	}
@@ -62,14 +62,13 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
-			ppfmt.Noticef(pp.EmojiWarning, "Zone %q is %q; your Cloudflare setup is incomplete; some features (e.g., proxying) might not work as expected", name, zone.Status) //nolint:lll
+			ppfmt.Noticef(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected", name, zone.Status) //nolint:lll
 			ids = append(ids, ID(zone.ID))
 		case
 			"deleted": // archived, pending/moved for too long
-			ppfmt.Infof(pp.EmojiWarning, "Zone %q is %q and thus skipped", name, zone.Status)
-			// skip these
+			ppfmt.Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", name, zone.Status)
 		default:
-			ppfmt.Noticef(pp.EmojiImpossible, "Zone %q is in an undocumented status %q; please report this at %s",
+			ppfmt.Noticef(pp.EmojiImpossible, "DNS zone %s is in an undocumented status %q in your Cloudflare account; please report this at %s", //nolint:lll
 				name, zone.Status, pp.IssueReportingURL)
 			ids = append(ids, ID(zone.ID))
 		}
@@ -103,13 +102,13 @@ zoneSearch:
 			return zones[0], true
 		default: // len(zones) > 1
 			ppfmt.Noticef(pp.EmojiImpossible,
-				"Found multiple active zones named %q (IDs: %s); please report this at %s",
+				"Found multiple active zones named %s (IDs: %s); please report this at %s",
 				zoneName, pp.EnglishJoinMap(ID.String, zones), pp.IssueReportingURL)
 			return "", false
 		}
 	}
 
-	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %q", domain.Describe())
+	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s", domain.Describe())
 
 	return "", false
 }
@@ -135,7 +134,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to retrieve %s records of %q: %v",
+			"Failed to retrieve %s records of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 		hintRecordPermission(ppfmt, err)
 		return nil, false, false
@@ -146,7 +145,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		ip, err := netip.ParseAddr(r.Content)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiImpossible,
-				"Failed to parse the IP address in an %s record of %q (ID: %s): %v",
+				"Failed to parse the IP address in an %s record of %s (ID: %s): %v",
 				ipNet.RecordType(), domain.Describe(), r.ID, err)
 			return nil, false, false
 		}
@@ -171,7 +170,7 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %q (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 		if mode == RegularDelitionMode {
@@ -205,7 +204,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %q (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 
@@ -216,7 +215,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	if TTL(r.TTL) != expectedTTL {
 		ppfmt.Infof(pp.EmojiUserWarning,
-			"The TTL of the %s record of %q (ID: %s) to be updated differs from the value of TTL (%s) and will be kept",
+			"The TTL of the %s record of %s (ID: %s) to be updated differs from the value of TTL (%s) and will be kept",
 			ipNet.RecordType(), domain.Describe(), id, expectedTTL.Describe(),
 		)
 		hintMismatchedRecordAttributes(ppfmt)
@@ -225,14 +224,14 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	if r.Proxied == nil && expectedProxied ||
 		r.Proxied != nil && *r.Proxied != expectedProxied {
 		ppfmt.Infof(pp.EmojiUserWarning,
-			"The proxy status of the %s record of %q (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
+			"The proxy status of the %s record of %s (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
 			ipNet.RecordType(), domain.Describe(), id, expectedProxied,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}
 	if r.Comment != expectedRecordComment {
 		ppfmt.Infof(pp.EmojiUserWarning,
-			"The comment of the %s record of %q (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
+			"The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
 			ipNet.RecordType(), domain.Describe(), id, expectedRecordComment,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
@@ -270,7 +269,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %q: %v",
+		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 		hintRecordPermission(ppfmt, err)
 
