@@ -94,8 +94,8 @@ func (h CloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFLi
 			count++
 			if count > 1 {
 				ppfmt.Noticef(pp.EmojiImpossible,
-					"Found multiple lists named %q (IDs: %s and %s); please report this at %s",
-					l.Name, listID, l.ID, pp.IssueReportingURL,
+					"Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s",
+					list.Name, list.AccountID, listID, l.ID, pp.IssueReportingURL,
 				)
 				return "", false, false
 			}

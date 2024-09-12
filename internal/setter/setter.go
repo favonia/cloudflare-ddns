@@ -66,11 +66,11 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	if foundMatched && len(unprocessedMatched) == 0 && len(unprocessedUnmatched) == 0 {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
-				"The %s records of %q are already up to date (cached)",
+				"The %s records of %s are already up to date (cached)",
 				recordType, domainDescription)
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
-				"The %s records of %q are already up to date",
+				"The %s records of %s are already up to date",
 				recordType, domainDescription)
 		}
 		return ResponseNoop
@@ -86,7 +86,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 			ttl, proxied, recordComment,
 		); !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %q; records might be inconsistent",
+				"Failed to properly update %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -95,7 +95,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 		//
 		// Note that there can still be stale records at this point.
 		ppfmt.Noticef(pp.EmojiUpdate,
-			"Updated a stale %s record of %q (ID: %s)",
+			"Updated a stale %s record of %s (ID: %s)",
 			recordType, domainDescription, unprocessedUnmatched[0])
 
 		// Now it's up to date! Note that unprocessedMatched must be empty
@@ -110,7 +110,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, ttl, proxied, recordComment)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %q; records might be inconsistent",
+				"Failed to properly update %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -118,20 +118,20 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 		// Note that both unprocessedMatched and unprocessedUnmatched must be empty at this point
 		// and the records are updated.
 		ppfmt.Noticef(pp.EmojiCreation,
-			"Added a new %s record of %q (ID: %s)", recordType, domainDescription, id)
+			"Added a new %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 
 	// Now, we should try to delete all remaining stale records.
 	for _, id := range unprocessedUnmatched {
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %q; records might be inconsistent",
+				"Failed to properly update %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
 
 		ppfmt.Noticef(pp.EmojiDeletion,
-			"Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 
 	// We should also delete all duplicate records even if they are up to date.
@@ -139,7 +139,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	for _, id := range unprocessedMatched {
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); ok {
 			ppfmt.Noticef(pp.EmojiDeletion,
-				"Deleted a duplicate %s record of %q (ID: %s)", recordType, domainDescription, id)
+				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, id)
 		}
 		if ctx.Err() != nil {
 			return ResponseUpdated
@@ -167,9 +167,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 	if len(unmatchedIDs) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted (cached)", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted (cached)", recordType, domainDescription)
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %q were already deleted", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted", recordType, domainDescription)
 		}
 		return ResponseNoop
 	}
@@ -181,18 +181,18 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 			if ctx.Err() != nil {
 				ppfmt.Infof(pp.EmojiTimeout,
-					"Deletion of %s records of %q aborted by timeout or signals; records might be inconsistent",
+					"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
 					recordType, domainDescription)
 				return ResponseFailed
 			}
 			continue
 		}
 
-		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %q (ID: %s)", recordType, domainDescription, id)
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 	if !allOK {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to properly delete %s records of %q; records might be inconsistent",
+			"Failed to properly delete %s records of %s; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseFailed
 	}
@@ -280,10 +280,10 @@ func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAF
 	deleted, ok := s.Handle.FinalClearWAFListAsync(ctx, ppfmt, list, listDescription)
 	switch {
 	case ok && deleted:
-		ppfmt.Noticef(pp.EmojiDeletion, "The list %q was deleted", list.Name)
+		ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
 		return ResponseUpdated
 	case ok && !deleted:
-		ppfmt.Noticef(pp.EmojiClear, "The list %q is being cleared (asynchronously)", list.Name)
+		ppfmt.Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", list.Describe())
 		return ResponseUpdating
 	default:
 		return ResponseFailed

@@ -143,7 +143,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, httpUnsafeMsg),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to ping Uptime Kuma: %q", "bad"),
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to ping Uptime Kuma: %s", "bad"),
 				)
 			},
 		},

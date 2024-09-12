@@ -147,7 +147,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 		return false
 	}
 	if !parsedResp.OK {
-		ppfmt.Noticef(pp.EmojiError, "Failed to ping Uptime Kuma: %q", parsedResp.Msg)
+		ppfmt.Noticef(pp.EmojiError, "Failed to ping Uptime Kuma: %s", parsedResp.Msg)
 		return false
 	}
 

@@ -29,8 +29,11 @@ The source code follows the [standard Go project layout](https://github.com/gola
 
 Here is some arbitrary coding convention that I chose to follow. It may change in the future, but the whole codebase should be consistent with it at any time:
 
-1. Cloudflare IDs (zone IDs, DNS record IDs, etc.) are already designed to use only “very safe” characters and should not be quoted. The formatter `%s` should be used instead of `%q`.
-2. A variable name of type `map[..]...` is not in a plural form just because it is of type `map[...]...`. For example, a mapping from IP networks to detected IPs should be named `detectedIP` not `detectedIPs`.
+1. These are in general not quoted in the logging because they use only “safe” characters and usually do not cause confusion in a textual context; the formatter `%s` should be used instead of `%q`:
+   - Cloudflare IDs (DNS zone IDs, DNS record IDs, WAF list IDs, etc.)
+   - Domain names
+   - Full list references (`account/name`)
+2. A variable of type `map[..]...` should not be named in a plural form just because it is of type `map[...]...`. For example, a mapping from IP networks to detected IPs should be named `detectedIP` not `detectedIPs`.
 
 ## Network Security Threat Model
 
