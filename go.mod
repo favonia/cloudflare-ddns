@@ -2,6 +2,11 @@ module github.com/favonia/cloudflare-ddns
 
 go 1.23.0 // with patch version to satisfy CodeQL
 
+retract (
+	v1.14.1 // nil pointer bug
+	[v0.0.0, v1.7.99] // incompatible templates for PROXIED before 1.7.1; for safety, 1.7.* are also retracted
+)
+
 require (
 	github.com/cloudflare/cloudflare-go v0.104.0
 	github.com/containrrr/shoutrrr v0.8.0
