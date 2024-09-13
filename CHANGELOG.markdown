@@ -1,3 +1,16 @@
+# [1.14.1](https://github.com/favonia/cloudflare-ddns/compare/v1.14.0...v1.14.1) (2024-09-13)
+
+This is a minor release that addresses minor issues and improves the usability of the new feature for managing WAF lists, which was initially introduced in version 1.14.0.
+
+### Bug Fixes
+
+- reduce unnecessary quotation marks in logging ([#925](https://github.com/favonia/cloudflare-ddns/issues/925)) ([dc3a26b](https://github.com/favonia/cloudflare-ddns/commit/dc3a26b18c92990e9fe4d2a4d5e6d47ea6153ffb))
+
+### Features
+
+- **api:** clear a WAF list when it cannot be deleted ([#908](https://github.com/favonia/cloudflare-ddns/issues/908)) ([1acf11d](https://github.com/favonia/cloudflare-ddns/commit/1acf11d311addfc504695c788213226b51e5b89b))
+- **api:** warn about mismatched attributes ([#921](https://github.com/favonia/cloudflare-ddns/issues/921)) ([80388a0](https://github.com/favonia/cloudflare-ddns/commit/80388a0959c6828fde2ee55b90100b215ccbeed6))
+
 # [1.14.0](https://github.com/favonia/cloudflare-ddns/compare/v1.13.2...v1.14.0) (2024-08-25)
 
 This is a major release with many improvements! The most significant new feature is the ability to maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/) of detected IP addresses; you can then refer to the list in your firewall rules. Please consult the [README](./README.markdown). The second most important update is to use a variant of [the Happy Eyeballs (Fast Fallback) algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to detect the blockage of 1.1.1.1. As the name of the new algorithm suggests, you should not notice any delay due to the detection, being happy. 😄
