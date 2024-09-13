@@ -1,10 +1,10 @@
 # [1.14.2](https://github.com/favonia/cloudflare-ddns/compare/v1.14.1...v1.14.2) (2024-09-13)
 
-This is an emergent hotfix that fixes a nil pointer bug in version 1.14.1.
+This is an urgent hotfix that resolves a nil pointer dereference issue introduced in version 1.14.1.
 
 ### Bug Fixes
 
-- nil pointer bug introduced by commit 319e6a0 (issue [#911](https://github.com/favonia/cloudflare-ddns/issues/911)) ([#930](https://github.com/favonia/cloudflare-ddns/issues/930)) ([3ea0eb9](https://github.com/favonia/cloudflare-ddns/commit/3ea0eb9f818cd84965a855e1c6851c6d7ecc6458))
+- fix a nil pointer bug introduced by the commit [319e6a0](https://github.com/favonia/cloudflare-ddns/commit/319e6a0d266a060037c08080ceb2495df600d63f) (issue [#911](https://github.com/favonia/cloudflare-ddns/issues/911)) ([#930](https://github.com/favonia/cloudflare-ddns/issues/930)) ([3ea0eb9](https://github.com/favonia/cloudflare-ddns/commit/3ea0eb9f818cd84965a855e1c6851c6d7ecc6458))
 
 # [1.14.1](https://github.com/favonia/cloudflare-ddns/compare/v1.14.0...v1.14.1) (2024-09-13)
 
