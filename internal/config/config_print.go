@@ -85,15 +85,23 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Record/list updating:", "%v", c.UpdateTimeout)
 
 	if c.Monitor != nil {
-		section("Monitors:")
+		count := 0
 		for name, params := range c.Monitor.Describe {
+			count++
+			if count == 1 {
+				section("Monitors:")
+			}
 			item(name+":", "%s", params)
 		}
 	}
 
 	if c.Notifier != nil {
-		section("Notification services (via shoutrrr):")
+		count := 0
 		for name, params := range c.Notifier.Describe {
+			count++
+			if count == 1 {
+				section("Notification services (via shoutrrr):")
+			}
 			item(name+":", "%s", params)
 		}
 	}

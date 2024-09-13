@@ -47,7 +47,10 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			nil,
 			func(t *testing.T, n not) {
 				t.Helper()
-				s, ok := n.(notifier.Shoutrrr)
+				ns, ok := n.(notifier.Composed)
+				require.True(t, ok)
+				require.Len(t, ns, 1)
+				s, ok := ns[0].(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
 			},
@@ -71,7 +74,10 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			nil,
 			func(t *testing.T, n not) {
 				t.Helper()
-				s, ok := n.(notifier.Shoutrrr)
+				ns, ok := n.(notifier.Composed)
+				require.True(t, ok)
+				require.Len(t, ns, 1)
+				s, ok := ns[0].(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"Generic", "Pushover"}, s.ServiceDescriptions)
 			},

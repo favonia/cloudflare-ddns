@@ -17,7 +17,7 @@ func TestComposedDescribe(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 
-	ms1 := make([]monitor.BasicMonitor, 0, 5)
+	ms1 := make([]monitor.BasicMonitor, 0, 3)
 	for range 3 {
 		m := mocks.NewMockMonitor(mockCtrl)
 		m.EXPECT().Describe(gomock.Any()).DoAndReturn(
@@ -27,7 +27,7 @@ func TestComposedDescribe(t *testing.T) {
 		)
 		ms1 = append(ms1, m)
 	}
-	ms2 := make([]monitor.BasicMonitor, 0, 5)
+	ms2 := make([]monitor.BasicMonitor, 0, 2)
 	for range 2 {
 		m := mocks.NewMockMonitor(mockCtrl)
 		ms2 = append(ms2, m)

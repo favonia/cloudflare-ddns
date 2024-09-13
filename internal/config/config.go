@@ -59,7 +59,7 @@ func Default() *Config {
 		WAFListDescription: "",
 		DetectionTimeout:   time.Second * 5,  //nolint:mnd
 		UpdateTimeout:      time.Second * 30, //nolint:mnd
-		Monitor:            nil,
-		Notifier:           nil,
+		Monitor:            monitor.NewComposed(),
+		Notifier:           notifier.NewComposed(),
 	}
 }

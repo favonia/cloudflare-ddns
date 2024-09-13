@@ -18,6 +18,6 @@ func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *notifier.Notifier)
 	}
 
 	// Append the new monitor to the existing list
-	*field = s
+	*field = notifier.NewComposed(*field, s)
 	return true
 }
