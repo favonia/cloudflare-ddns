@@ -1,4 +1,14 @@
+# [1.14.2](https://github.com/favonia/cloudflare-ddns/compare/v1.14.1...v1.14.2) (2024-09-13)
+
+This is an emergent hotfix that fixes a nil pointer bug in version 1.14.1.
+
+### Bug Fixes
+
+- nil pointer bug introduced by commit 319e6a0 (issue [#911](https://github.com/favonia/cloudflare-ddns/issues/911)) ([#930](https://github.com/favonia/cloudflare-ddns/issues/930)) ([3ea0eb9](https://github.com/favonia/cloudflare-ddns/commit/3ea0eb9f818cd84965a855e1c6851c6d7ecc6458))
+
 # [1.14.1](https://github.com/favonia/cloudflare-ddns/compare/v1.14.0...v1.14.1) (2024-09-13)
+
+**_This version is buggy; use version 1.14.2 instead._**
 
 This is a minor release that addresses minor issues and improves the usability of the new feature for managing WAF lists, which was initially introduced in version 1.14.0.
 
