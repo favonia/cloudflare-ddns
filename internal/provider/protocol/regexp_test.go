@@ -31,7 +31,6 @@ func TestRegexpName(t *testing.T) {
 
 func TestRegexpGetIP(t *testing.T) {
 	ip4 := netip.MustParseAddr("1.2.3.4")
-	ip4As6 := netip.MustParseAddr("::ffff:1.2.3.4")
 	ip6 := netip.MustParseAddr("::1:2:3:4:5:6")
 	invalidIP := netip.Addr{}
 
@@ -57,9 +56,8 @@ func TestRegexpGetIP(t *testing.T) {
 			expected      netip.Addr
 			prepareMockPP func(*mocks.MockPP)
 		}{
-			"4":    {ipnet.IP4, ip4Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, ip4, nil},
-			"6":    {ipnet.IP6, ip6Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, ip6, nil},
-			"4to6": {ipnet.IP6, ip4Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, ip4As6, nil},
+			"4": {ipnet.IP4, ip4Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, ip4, nil},
+			"6": {ipnet.IP6, ip6Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, ip6, nil},
 			"6to4": {
 				ipnet.IP4, ip6Server.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {

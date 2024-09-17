@@ -8,6 +8,7 @@ const (
 	HintUpdateDockerTemplate Hint = iota
 	HintIP4DetectionFails
 	HintIP6DetectionFails
+	HintIP4MappedIP6Address
 	HintDetectionTimeouts
 	HintUpdateTimeouts
 	HintRecordPermission
