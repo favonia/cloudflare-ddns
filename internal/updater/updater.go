@@ -43,8 +43,8 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 		switch ipNet {
 		case ipnet.IP6:
 			ppfmt.Hintf(getHintIDForDetection(ipNet),
-				"If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. "+
-					"If your network does not support IPv6, you can disable it with IP6_PROVIDER=none",
+				"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. "+
+					"If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none",
 				pp.ManualURL)
 
 		case ipnet.IP4:

@@ -62,6 +62,12 @@ func initConfig() *config.Config {
 	return conf
 }
 
+func hintIP6DetectionFails(p *mocks.MockPP) *mocks.PPHintfCall {
+	return p.EXPECT().Hintf(pp.HintIP6DetectionFails,
+		"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", //nolint:lll
+		pp.ManualURL)
+}
+
 func TestUpdateIPsMultiple(t *testing.T) {
 	t.Parallel()
 
@@ -537,7 +543,7 @@ func TestUpdateIPs(t *testing.T) {
 						Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, protocol.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
-					p.EXPECT().Hintf(pp.HintIP6DetectionFails, "If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. If your network does not support IPv6, you can disable it with IP6_PROVIDER=none", pp.ManualURL), //nolint:lll
+					hintIP6DetectionFails(p),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: netip.Addr{}}, ""),
 				)
@@ -555,7 +561,7 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, protocol.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
-					p.EXPECT().Hintf(pp.HintIP6DetectionFails, "If you are using Docker or Kubernetes, IPv6 often requires additional steps to set up; read more at %s. If your network does not support IPv6, you can disable it with IP6_PROVIDER=none", pp.ManualURL), //nolint:lll
+					hintIP6DetectionFails(p),
 				)
 			},
 		},
