@@ -84,6 +84,6 @@ jobs:
       - name: ✍️ Install Cosign
         uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
       - name: ✍️ Sign the Docker images
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'release' }}
         run: |
           cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
