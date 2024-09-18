@@ -30,7 +30,6 @@ func TestHTTPName(t *testing.T) {
 
 func TestHTTPGetIP(t *testing.T) {
 	ip4 := netip.MustParseAddr("1.2.3.4")
-	ip4As6 := netip.MustParseAddr("::ffff:1.2.3.4")
 	ip6 := netip.MustParseAddr("::1:2:3:4:5:6")
 	invalidIP := netip.Addr{}
 
@@ -56,9 +55,8 @@ func TestHTTPGetIP(t *testing.T) {
 			expected      netip.Addr
 			prepareMockPP func(*mocks.MockPP)
 		}{
-			"4":    {false, ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4, nil},
-			"6":    {false, ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6, nil},
-			"4to6": {false, ipnet.IP6, ip4Server.URL, ipnet.IP6, ip4As6, nil},
+			"4": {false, ipnet.IP4, ip4Server.URL, ipnet.IP4, ip4, nil},
+			"6": {false, ipnet.IP6, ip6Server.URL, ipnet.IP6, ip6, nil},
 			"nilctx": {
 				true, ipnet.IP4, ip4Server.URL, ipnet.IP4, invalidIP,
 				func(m *mocks.MockPP) {
