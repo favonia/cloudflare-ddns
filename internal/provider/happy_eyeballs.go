@@ -7,7 +7,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 // HappyEyeballsAlternativeDelay is the delay to start the alternative
@@ -21,21 +20,21 @@ const Hint1111BlocakageText string = "Your IPv4 provider is using 1.1.1.1 to get
 func Hint1111Blockage(ppfmt pp.PP) { ppfmt.Hintf(pp.Hint1111Blockage, "%s", Hint1111BlocakageText) }
 
 type splitResult struct {
-	method protocol.Method
+	method Method
 	ip     netip.Addr
 	ok     bool
 }
 
 type happyEyeballs struct {
 	provider SplitProvider
-	chosen   map[ipnet.Type]protocol.Method
+	chosen   map[ipnet.Type]Method
 }
 
 // NewHappyEyeballs creates a new [Provider] by applying the Happy Eyeballs algorithm to [SplitProvider].
 func NewHappyEyeballs(provider SplitProvider) Provider {
 	return happyEyeballs{
 		provider: provider,
-		chosen:   map[ipnet.Type]protocol.Method{},
+		chosen:   map[ipnet.Type]Method{},
 	}
 }
 
@@ -51,12 +50,12 @@ func (p happyEyeballs) Name() string {
 //     by [HappyEyeballsAlternativeDelay], which is longer than
 //     what's recommended in RFC 6555.
 //  2. The state will not be flushed because 1.1.1.1 is not
-func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, protocol.Method, bool) {
+func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, Method, bool) {
 	if !p.provider.HasAlternative(ipNet) {
-		p.chosen[ipNet] = protocol.MethodPrimary
+		p.chosen[ipNet] = MethodPrimary
 	}
 
-	if method := p.chosen[ipNet]; method != protocol.MethodUnspecified {
+	if method := p.chosen[ipNet]; method != MethodUnspecified {
 		ip, ok := p.provider.GetIP(ctx, ppfmt, ipNet, method)
 		return ip, method, ok
 	}
@@ -65,10 +64,10 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 	defer close(finished)
 
 	splitResults := make(chan splitResult)
-	failed := map[protocol.Method]bool{}
-	queuedPP := map[protocol.Method]pp.QueuedPP{}
+	failed := map[Method]bool{}
+	queuedPP := map[Method]pp.QueuedPP{}
 
-	start := func(ctx context.Context, ppfmt pp.PP, method protocol.Method) {
+	start := func(ctx context.Context, ppfmt pp.PP, method Method) {
 		ip, ok := p.provider.GetIP(ctx, ppfmt, ipNet, method)
 
 		select {
@@ -77,7 +76,7 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 		}
 	}
 
-	fork := func(method protocol.Method) func() {
+	fork := func(method Method) func() {
 		ctx, cancel := context.WithCancel(ctx)
 		queuedPP[method] = pp.NewQueued(ppfmt)
 		go start(ctx, queuedPP[method], method)
@@ -85,7 +84,7 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 		return cancel
 	}
 
-	primaryCancel := fork(protocol.MethodPrimary)
+	primaryCancel := fork(MethodPrimary)
 	defer primaryCancel()
 
 	// Some delay for the alternative method so that
@@ -96,7 +95,7 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 	for {
 		select {
 		case <-alternativeDelayTimer.C:
-			alternativeCancel := fork(protocol.MethodAlternative)
+			alternativeCancel := fork(MethodAlternative)
 			defer alternativeCancel()
 
 		case r := <-splitResults:
@@ -105,7 +104,7 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 				p.chosen[ipNet] = r.method
 				queuedPP[r.method].Flush()
 
-				if r.method == protocol.MethodAlternative {
+				if r.method == MethodAlternative {
 					ppfmt.Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
 				}
 
@@ -116,15 +115,15 @@ func (p happyEyeballs) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type)
 			failed[r.method] = true
 
 			// If both methods fail, then the detection fails.
-			if failed[protocol.MethodPrimary] && failed[protocol.MethodAlternative] {
+			if failed[MethodPrimary] && failed[MethodAlternative] {
 				// Flush out the messages from the primary method.
-				queuedPP[protocol.MethodPrimary].Flush()
+				queuedPP[MethodPrimary].Flush()
 
-				return netip.Addr{}, protocol.MethodUnspecified, false
+				return netip.Addr{}, MethodUnspecified, false
 			}
 
 			// If the primary method fails, start the alternative method immediately.
-			if r.method == protocol.MethodPrimary {
+			if r.method == MethodPrimary {
 				if alternativeDelayTimer.Stop() {
 					alternativeDelayTimer.Reset(0)
 				}
