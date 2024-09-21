@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -14,6 +15,7 @@ import (
 const maxReadLength int64 = 102400
 
 type httpCore struct {
+	ipNet             ipnet.Type
 	url               string
 	method            string
 	additionalHeaders map[string]string
@@ -34,8 +36,7 @@ func (h httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 		req.Header.Set(header, value)
 	}
 
-	c := retryablehttp.NewClient()
-	c.Logger = nil
+	c := SharedRetryableSplitClient(h.ipNet)
 
 	resp, err := c.Do(req)
 	if err != nil {
