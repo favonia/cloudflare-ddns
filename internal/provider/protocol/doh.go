@@ -136,7 +136,7 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, ppfmt pp.PP, url string, name string, class dnsmessage.Class,
+func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string, name string, class dnsmessage.Class,
 ) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
@@ -149,6 +149,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP, url string, name string, cla
 	}
 
 	c := httpCore{
+		ipNet:  ipNet,
 		url:    url,
 		method: http.MethodPost,
 		additionalHeaders: map[string]string{
@@ -190,7 +191,7 @@ func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, 
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromDNS(ctx, ppfmt, param.URL.Switch(method), param.Name, param.Class)
+	ip, ok := getIPFromDNS(ctx, ppfmt, ipNet, param.URL.Switch(method), param.Name, param.Class)
 	if !ok {
 		return netip.Addr{}, false
 	}

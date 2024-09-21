@@ -18,7 +18,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
-	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
@@ -101,7 +100,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).
@@ -137,7 +136,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).
@@ -324,7 +323,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
@@ -344,7 +343,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
@@ -364,7 +363,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
@@ -384,7 +383,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -404,7 +403,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -419,13 +418,13 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseNoop),
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -443,13 +442,13 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseFailed),
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -467,13 +466,13 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseNoop),
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -491,13 +490,13 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseNoop),
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -515,10 +514,10 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, protocol.MethodUnspecified, false),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, protocol.MethodPrimary, true),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
@@ -535,13 +534,13 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodAlternative, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodAlternative, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
 						Return(setter.ResponseNoop),
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, protocol.MethodUnspecified, false),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					hintIP6DetectionFails(p),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
@@ -556,10 +555,10 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, protocol.MethodUnspecified, false),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
 					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
-					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, protocol.MethodUnspecified, false),
+					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					hintIP6DetectionFails(p),
 				)
@@ -574,9 +573,9 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).
 						DoAndReturn(
-							func(context.Context, pp.PP, ipnet.Type) (netip.Addr, protocol.Method, bool) {
+							func(context.Context, pp.PP, ipnet.Type) (netip.Addr, provider.Method, bool) {
 								time.Sleep(2 * time.Second)
-								return netip.Addr{}, protocol.MethodUnspecified, false
+								return netip.Addr{}, provider.MethodUnspecified, false
 							},
 						),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
@@ -594,7 +593,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
@@ -616,7 +615,7 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, protocol.MethodPrimary, true),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
 					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
