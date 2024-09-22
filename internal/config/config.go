@@ -51,14 +51,14 @@ func Default() *Config {
 		UpdateCron:         cron.MustNew("@every 5m"),
 		UpdateOnStart:      true,
 		DeleteOnStop:       false,
-		CacheExpiration:    time.Hour * 6, //nolint:mnd
+		CacheExpiration:    time.Hour * 6,
 		TTL:                api.TTLAuto,
 		ProxiedTemplate:    "false",
 		Proxied:            map[domain.Domain]bool{},
 		RecordComment:      "",
 		WAFListDescription: "",
-		DetectionTimeout:   time.Second * 5,  //nolint:mnd
-		UpdateTimeout:      time.Second * 30, //nolint:mnd
+		DetectionTimeout:   time.Second * 5,
+		UpdateTimeout:      time.Second * 30,
 		Monitor:            monitor.NewComposed(),
 		Notifier:           notifier.NewComposed(),
 	}

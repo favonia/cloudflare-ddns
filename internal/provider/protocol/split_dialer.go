@@ -35,8 +35,8 @@ func filterIP4Only(_ context.Context, network, _ string, _ syscall.RawConn) erro
 
 func newControlledDialer(control func(context.Context, string, string, syscall.RawConn) error) *net.Dialer {
 	return &net.Dialer{ //nolint:exhaustruct
-		Timeout:        30 * time.Second, //nolint:mnd
-		KeepAlive:      30 * time.Second, //nolint:mnd
+		Timeout:        30 * time.Second,
+		KeepAlive:      30 * time.Second,
 		ControlContext: control,
 	}
 }
@@ -46,9 +46,9 @@ func newControlledTransport(control func(context.Context, string, string, syscal
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           newControlledDialer(control).DialContext,
 		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,              //nolint:mnd
-		IdleConnTimeout:       90 * time.Second, //nolint:mnd
-		TLSHandshakeTimeout:   10 * time.Second, //nolint:mnd
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 }

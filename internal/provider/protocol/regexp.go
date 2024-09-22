@@ -22,7 +22,7 @@ func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url str
 			var invalidIP netip.Addr
 
 			matched := re.FindSubmatch(body)
-			if len(matched) < 2 { //nolint:mnd
+			if len(matched) < 2 {
 				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
 				return invalidIP, false
 			}

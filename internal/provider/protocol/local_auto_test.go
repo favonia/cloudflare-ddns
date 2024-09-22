@@ -14,24 +14,23 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func TestLocalName(t *testing.T) {
+func TestLocalAuteName(t *testing.T) {
 	t.Parallel()
 
-	p := &protocol.Local{
+	p := &protocol.LocalAuto{
 		ProviderName:  "very secret name",
-		RemoteUDPAddr: nil,
+		RemoteUDPAddr: "",
 	}
 
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestLocalGetIP(t *testing.T) {
+func TestLocalAuteGetIP(t *testing.T) {
 	t.Parallel()
 
 	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
-		addrKey       ipnet.Type
 		addr          string
 		ipNet         ipnet.Type
 		ok            bool
@@ -39,7 +38,7 @@ func TestLocalGetIP(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"loopback/4": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP4,
+			"127.0.0.1:80", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
@@ -47,7 +46,7 @@ func TestLocalGetIP(t *testing.T) {
 			},
 		},
 		"loopback/6": {
-			ipnet.IP6, "[::1]:80", ipnet.IP6,
+			"[::1]:80", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
@@ -55,48 +54,31 @@ func TestLocalGetIP(t *testing.T) {
 			},
 		},
 		"empty/4": {
-			ipnet.IP4, "", ipnet.IP4,
+			"", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
 			},
 		},
 		"empty/6": {
-			ipnet.IP6, "", ipnet.IP6,
+			"", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
-			},
-		},
-		"mismatch/6": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP6,
-			false, invalidIP,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
-			},
-		},
-		"mismatch/4": {
-			ipnet.IP6, "::1:80", ipnet.IP4,
-			false, invalidIP,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
-
-			provider := &protocol.Local{
-				ProviderName: "",
-				RemoteUDPAddr: map[ipnet.Type]string{
-					tc.addrKey: tc.addr,
-				},
-			}
-
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
+			}
+
+			provider := &protocol.LocalAuto{
+				ProviderName:  "",
+				RemoteUDPAddr: tc.addr,
 			}
 			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
