@@ -11,10 +11,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-func TestCustomName(t *testing.T) {
+func TestCustomURLName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "custom", provider.Name(provider.MustNewCustom("https://1.1.1.1/")))
+	require.Equal(t, "url:(redacted)", provider.Name(provider.MustNewCustomURL("https://1.1.1.1/")))
 }
 
 func TestNewCustom(t *testing.T) {
@@ -29,25 +29,25 @@ func TestNewCustom(t *testing.T) {
 		{
 			":::::", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the provider url:(redacted)")
 			},
 		},
 		{
 			"http://1.2.3.4", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The provider url:(redacted) uses HTTP; consider using HTTPS instead")
 			},
 		},
 		{
 			"ftp://1.2.3.4", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The provider url:(redacted) only supports HTTP and HTTPS`)
 			},
 		},
 		{
 			"", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The provider url:(redacted) does not contain a valid URL`)
 			},
 		},
 	} {
@@ -59,7 +59,7 @@ func TestNewCustom(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			p, ok := provider.NewCustom(mockPP, tc.input)
+			p, ok := provider.NewCustomURL(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.NotNil(t, p)
@@ -87,9 +87,9 @@ func TestMustNewCustom(t *testing.T) {
 			t.Parallel()
 
 			if tc.ok {
-				require.NotPanics(t, func() { provider.MustNewCustom(tc.input) })
+				require.NotPanics(t, func() { provider.MustNewCustomURL(tc.input) })
 			} else {
-				require.Panics(t, func() { provider.MustNewCustom(tc.input) })
+				require.Panics(t, func() { provider.MustNewCustomURL(tc.input) })
 			}
 		})
 	}

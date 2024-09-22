@@ -115,7 +115,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 
 	if strings.HasPrefix(val, "url:") {
 		url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
-		p, ok := provider.NewCustom(ppfmt, url)
+		p, ok := provider.NewCustomURL(ppfmt, url)
 		if ok {
 			*field = p
 		}
