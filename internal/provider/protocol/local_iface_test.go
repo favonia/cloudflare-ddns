@@ -31,6 +31,8 @@ func TestLocalWithInterfaceName(t *testing.T) {
 func TestExtractInterfaceAddr(t *testing.T) {
 	t.Parallel()
 
+	var invalidIP netip.Addr
+
 	for name, tc := range map[string]struct {
 		input         net.Addr
 		ok            bool
@@ -46,6 +48,15 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			&net.IPAddr{IP: net.ParseIP("::1"), Zone: "123"},
 			true, netip.MustParseAddr("::1%123"),
 			nil,
+		},
+		"ipaddr/illformed": {
+			&net.IPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: ""},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Failed to parse address %q assigned to interface %q",
+					"?0102", "iface")
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
