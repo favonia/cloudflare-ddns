@@ -28,71 +28,56 @@ func TestLocalName(t *testing.T) {
 func TestLocalGetIP(t *testing.T) {
 	t.Parallel()
 
-	ip4Loopback := netip.MustParseAddr("127.0.0.1")
-	ip6Loopback := netip.MustParseAddr("::1")
 	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
 		addrKey       ipnet.Type
 		addr          string
 		ipNet         ipnet.Type
-		expected      gomock.Matcher
 		ok            bool
+		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"4": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP4, gomock.Eq(ip4Loopback), true,
+		"loopback/4": {
+			ipnet.IP4, "127.0.0.1:80", ipnet.IP4,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"Detected IP address %s does not look like a global unicast IP address.", "127.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
 			},
 		},
-		"6": {
+		"loopback/6": {
 			ipnet.IP6, "[::1]:80", ipnet.IP6,
-			gomock.AnyOf(
-				ip6Loopback,
-				gomock.Cond(func(x any) bool {
-					a, ok := x.(netip.Addr)
-					if !ok {
-						return false
-					}
-					return a.IsLinkLocalUnicast()
-				})),
-			true,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"Detected IP address %s does not look like a global unicast IP address.",
-					gomock.AnyOf(
-						"::1",
-						gomock.Cond(func(x any) bool {
-							s, ok := x.(string)
-							if !ok {
-								return false
-							}
-							return netip.MustParseAddr(s).IsLinkLocalUnicast()
-						})))
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected %s address %s is a loopback address", "IPv6", "::1")
 			},
 		},
-		"4-nil1": {
-			ipnet.IP4, "", ipnet.IP4, gomock.Eq(invalidIP), false,
+		"empty/4": {
+			ipnet.IP4, "", ipnet.IP4,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
 			},
 		},
-		"6-nil1": {
-			ipnet.IP6, "", ipnet.IP6, gomock.Eq(invalidIP), false,
+		"empty/6": {
+			ipnet.IP6, "", ipnet.IP6,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
 			},
 		},
-		"4-nil2": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP6, gomock.Eq(invalidIP), false,
+		"mismatch/6": {
+			ipnet.IP4, "127.0.0.1:80", ipnet.IP6,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 			},
 		},
-		"6-nil2": {
-			ipnet.IP6, "::1:80", ipnet.IP4, gomock.Eq(invalidIP), false,
+		"mismatch/4": {
+			ipnet.IP6, "::1:80", ipnet.IP4,
+			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},
@@ -114,7 +99,7 @@ func TestLocalGetIP(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
-			require.True(t, tc.expected.Matches(ip))
+			require.Equal(t, tc.expected, ip)
 			require.NotEqual(t, protocol.MethodAlternative, method)
 			require.Equal(t, tc.ok, ok)
 		})
