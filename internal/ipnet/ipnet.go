@@ -66,6 +66,7 @@ func (t Type) UDPNetwork() string {
 
 // Matches checks whether an IP belongs to it.
 func (t Type) Matches(ip netip.Addr) bool {
+	ip = ip.Unmap()
 	switch t {
 	case IP4:
 		return ip.Is4()
@@ -79,9 +80,9 @@ func (t Type) Matches(ip netip.Addr) bool {
 // NormalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
 func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
-		ppfmt.Noticef(
-			pp.EmojiImpossible,
-			`Detected IP address is not valid`,
+		ppfmt.Noticef(pp.EmojiImpossible,
+			`Detected IP address is not valid; this should not happen and please report it at %s`,
+			pp.IssueReportingURL,
 		)
 		return netip.Addr{}, false
 	}
@@ -115,21 +116,38 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		return netip.Addr{}, false
 	}
 
-	if ip.IsUnspecified() {
-		ppfmt.Noticef(
-			pp.EmojiImpossible,
-			`Detected IP address %s is an unspecified %s address`,
-			ip.String(),
-			t.Describe(),
+	switch {
+	case ip.IsUnspecified():
+		ppfmt.Noticef(pp.EmojiError,
+			`Detected %s address %s is an unspecified address`,
+			t.Describe(), ip.String(),
+		)
+		return netip.Addr{}, false
+	case ip.IsLoopback():
+		ppfmt.Noticef(pp.EmojiError,
+			`Detected %s address %s is a loopback address`,
+			t.Describe(), ip.String(),
+		)
+		return netip.Addr{}, false
+	case ip.IsInterfaceLocalMulticast():
+		ppfmt.Noticef(pp.EmojiError,
+			`Detected %s address %s is an interface-local multicast address`,
+			t.Describe(), ip.String(),
+		)
+		return netip.Addr{}, false
+	case ip.IsLinkLocalMulticast(), ip.IsLinkLocalUnicast():
+		ppfmt.Noticef(pp.EmojiError,
+			`Detected %s address %s is a link-local address`,
+			t.Describe(), ip.String(),
 		)
 		return netip.Addr{}, false
 	}
 
 	if !ip.IsGlobalUnicast() {
 		ppfmt.Noticef(
-			pp.EmojiUserWarning,
-			`Detected IP address %s does not look like a global unicast IP address.`,
-			ip.String(),
+			pp.EmojiWarning,
+			`Detected %s address %s does not look like a global unicast address`,
+			t.Describe(), ip.String(),
 		)
 	}
 
