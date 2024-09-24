@@ -54,7 +54,7 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Failed to parse address %q assigned to interface %q",
+					"Failed to parse address %q assigned to interface %s",
 					"?0102", "iface")
 			},
 		},
@@ -62,6 +62,15 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			&net.IPNet{IP: net.ParseIP("1.2.3.4"), Mask: net.CIDRMask(10, 22)},
 			true, netip.MustParseAddr("1.2.3.4"),
 			nil,
+		},
+		"ipnet/illformed": {
+			&net.IPNet{IP: net.IP([]byte{0x01, 0x02}), Mask: net.CIDRMask(10, 22)},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Failed to parse address %q assigned to interface %s",
+					"?0102", "iface")
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -73,8 +82,56 @@ func TestExtractInterfaceAddr(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			output, ok := protocol.ExtractInterfaceAddr(mockPP, tc.input, "iface")
+			output, ok := protocol.ExtractInterfaceAddr(mockPP, "iface", tc.input)
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.output, output)
+		})
+	}
+}
+
+func TestSelectInterfaceIP(t *testing.T) {
+	t.Parallel()
+
+	var invalidIP netip.Addr
+
+	for name, tc := range map[string]struct {
+		ipNet         ipnet.Type
+		input         []net.Addr
+		ok            bool
+		method        protocol.Method
+		output        netip.Addr
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"ipaddr/4/1": {
+			ipnet.IP4,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""}},
+			true, protocol.MethodPrimary, netip.MustParseAddr("1.2.3.4"),
+			nil,
+		},
+		"ipaddr/4/none": {
+			ipnet.IP4,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("::1"), Zone: ""}},
+			false, protocol.MethodUnspecified, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to find any global unicast %s address assigned to interface %s",
+					"IPv4", "iface",
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			output, method, ok := protocol.SelectInterfaceIP(mockPP, "iface", tc.ipNet, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.method, method)
 			require.Equal(t, tc.output, output)
 		})
 	}
@@ -95,7 +152,7 @@ func TestLocalWithInterfaceGetIP(t *testing.T) {
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %q",
+					"Failed to find any global unicast %s address assigned to interface %s",
 					"IPv4", "lo")
 			},
 		},
@@ -104,7 +161,7 @@ func TestLocalWithInterfaceGetIP(t *testing.T) {
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %q",
+					"Failed to find any global unicast %s address assigned to interface %s",
 					"IPv6", "lo")
 			},
 		},
