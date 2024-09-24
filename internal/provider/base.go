@@ -54,3 +54,9 @@ func Name(p Provider) string {
 
 	return p.Name()
 }
+
+// CloseIdleConnections closes all idle (keep-alive) connections after the detection.
+// This is to prevent some lingering TCP connections from disturbing the IP detection.
+func CloseIdleConnections() {
+	protocol.CloseIdleConnections()
+}
