@@ -40,8 +40,8 @@ func TestExtractInterfaceAddr(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"ipaddr/4": {
-			&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""},
-			true, netip.MustParseAddr("127.0.0.1"),
+			&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""},
+			true, netip.MustParseAddr("1.2.3.4"),
 			nil,
 		},
 		"ipaddr/6/zone-123": {
@@ -57,6 +57,11 @@ func TestExtractInterfaceAddr(t *testing.T) {
 					"Failed to parse address %q assigned to interface %q",
 					"?0102", "iface")
 			},
+		},
+		"ipnet/4": {
+			&net.IPNet{IP: net.ParseIP("1.2.3.4"), Mask: net.CIDRMask(10, 22)},
+			true, netip.MustParseAddr("1.2.3.4"),
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
