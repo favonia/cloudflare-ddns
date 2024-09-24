@@ -13,7 +13,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
-	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 func sleepCtx(ctx context.Context, d time.Duration) {
@@ -34,19 +33,19 @@ func TestHappyEyeballs(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		ip           netip.Addr
-		method       protocol.Method
+		method       provider.Method
 		ok           bool
 		timeout      time.Duration
 		elapsed      time.Duration
 		prepareMocks func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider)
 	}{
 		"no-alternative": {
-			ip1111, protocol.MethodPrimary, true,
+			ip1111, provider.MethodPrimary, true,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(false)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.1.1.1!")
 						return ip1111, true
 					}).Times(2)
@@ -56,12 +55,12 @@ func TestHappyEyeballs(t *testing.T) {
 			},
 		},
 		"primary-instant": {
-			ip1111, protocol.MethodPrimary, true,
+			ip1111, provider.MethodPrimary, true,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.1.1.1!")
 						return ip1111, true
 					}).Times(2)
@@ -71,40 +70,40 @@ func TestHappyEyeballs(t *testing.T) {
 			},
 		},
 		"primary-delayed/alternative-instant": {
-			ip1001, protocol.MethodAlternative, true,
+			ip1001, provider.MethodAlternative, true,
 			3 * time.Second, provider.HappyEyeballsAlternativeDelay,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.1.1.1!")
 						sleepCtx(ctx, time.Second)
 						return ip1111, true
 					}).Times(1)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.0.0.1!")
 						return ip1001, true
 					}).Times(2)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
-				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on")
 				p.EXPECT().HasAlternative(ipNet).Return(true)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
 			},
 		},
 		"primary-delayed/alternative-instant-fails": {
-			ip1111, protocol.MethodPrimary, true,
+			ip1111, provider.MethodPrimary, true,
 			3 * time.Second, time.Second,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.1.1.1!")
 						sleepCtx(ctx, time.Second)
 						return ip1111, true
 					}).Times(2)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.0.0.1")
 						return netip.Addr{}, false
 					}).Times(1)
@@ -114,18 +113,18 @@ func TestHappyEyeballs(t *testing.T) {
 			},
 		},
 		"primary-delayed/alternative-timeout": {
-			ip1111, protocol.MethodPrimary, true,
+			ip1111, provider.MethodPrimary, true,
 			3 * time.Second, time.Second,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.1.1.1!")
 						sleepCtx(ctx, time.Second)
 						return ip1111, true
 					}).Times(2)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.0.0.1!")
 						sleepCtx(ctx, forever)
 						return ip1001, true
@@ -136,39 +135,39 @@ func TestHappyEyeballs(t *testing.T) {
 			},
 		},
 		"primary-instant-fails/alternative-instant": {
-			ip1001, protocol.MethodAlternative, true,
+			ip1001, provider.MethodAlternative, true,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.1.1.1")
 						return netip.Addr{}, false
 					}).Times(1)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.0.0.1!")
 						return ip1001, true
 					}).Times(2)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
-				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on")
 				p.EXPECT().HasAlternative(ipNet).Return(true)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
 			},
 		},
 		"primary-instant-fails/alternative-instant-fails": {
 			netip.Addr{},
-			protocol.MethodUnspecified, false,
+			provider.MethodUnspecified, false,
 			3 * time.Second, 0,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.1.1.1")
 						return netip.Addr{}, false
 					}).Times(1)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(_ context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.0.0.1")
 						return netip.Addr{}, false
 					}).Times(1)
@@ -176,42 +175,42 @@ func TestHappyEyeballs(t *testing.T) {
 			},
 		},
 		"primary-timeout/alternative-delayed": {
-			ip1001, protocol.MethodAlternative, true,
+			ip1001, provider.MethodAlternative, true,
 			3 * time.Second, provider.HappyEyeballsAlternativeDelay + time.Second,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.1.1.1")
 						sleepCtx(ctx, forever)
 						return netip.Addr{}, false
 					}).Times(1)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Infof(pp.EmojiGood, "Got 1.0.0.1!")
 						sleepCtx(ctx, time.Second)
 						return ip1001, true
 					}).Times(2)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
-				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on.")
+				ppfmt.EXPECT().Infof(pp.EmojiNow, "The server 1.0.0.1 responded before 1.1.1.1 does and will be used from now on")
 				p.EXPECT().HasAlternative(ipNet).Return(true)
 				ppfmt.EXPECT().Infof(pp.EmojiGood, "Got 1.0.0.1!")
 			},
 		},
 		"primary-timeout/alternative-timeout": {
 			netip.Addr{},
-			protocol.MethodUnspecified, false,
+			provider.MethodUnspecified, false,
 			3 * time.Second, 3 * time.Second,
 			func(ppfmt *mocks.MockPP, p *mocks.MockSplitProvider) {
 				p.EXPECT().HasAlternative(ipNet).Return(true)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodPrimary).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodPrimary).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.1.1.1")
 						sleepCtx(ctx, forever)
 						return netip.Addr{}, false
 					}).Times(1)
-				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, protocol.MethodAlternative).DoAndReturn(
-					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ protocol.Method) (netip.Addr, bool) {
+				p.EXPECT().GetIP(gomock.Any(), gomock.Any(), ipNet, provider.MethodAlternative).DoAndReturn(
+					func(ctx context.Context, ppfmt pp.PP, _ ipnet.Type, _ provider.Method) (netip.Addr, bool) {
 						ppfmt.Noticef(pp.EmojiError, "Can't get 1.0.0.1")
 						sleepCtx(ctx, forever)
 						return netip.Addr{}, false

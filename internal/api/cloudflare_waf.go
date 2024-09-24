@@ -22,8 +22,8 @@ import (
 // - An IPv6 CIDR ranges with a prefix from /4 to /64
 // For this updater, only the maximum values matter.
 var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
-	ipnet.IP4: 32, //nolint:mnd
-	ipnet.IP6: 64, //nolint:mnd
+	ipnet.IP4: 32,
+	ipnet.IP6: 64,
 }
 
 func hintWAFListPermission(ppfmt pp.PP, err error) {

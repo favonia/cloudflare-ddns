@@ -12,12 +12,22 @@ import (
 
 //go:generate mockgen -typed -destination=../mocks/mock_provider.go -package=mocks . Provider,SplitProvider
 
+// Method reexports [protocol.Method].
+type Method = protocol.Method
+
+// Re-exporting constants from protocol.
+const (
+	MethodPrimary     = protocol.MethodPrimary
+	MethodAlternative = protocol.MethodAlternative
+	MethodUnspecified = protocol.MethodUnspecified
+)
+
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {
 	Name() string
 	// Name gives the name of the protocol.
 
-	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, protocol.Method, bool)
+	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, Method, bool)
 	// GetIP gets the IP.
 }
 
@@ -32,7 +42,7 @@ type SplitProvider interface {
 	HasAlternative(ipNet ipnet.Type) bool
 	// HasAlternative checks whether there is a different alternative method.
 
-	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method protocol.Method) (netip.Addr, bool)
+	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method Method) (netip.Addr, bool)
 	// GetIP gets the IP.
 }
 
@@ -43,4 +53,10 @@ func Name(p Provider) string {
 	}
 
 	return p.Name()
+}
+
+// CloseIdleConnections closes all idle (keep-alive) connections after the detection.
+// This is to prevent some lingering TCP connections from disturbing the IP detection.
+func CloseIdleConnections() {
+	protocol.CloseIdleConnections()
 }

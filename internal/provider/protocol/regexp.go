@@ -10,8 +10,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, url string, re *regexp.Regexp) (netip.Addr, bool) {
+func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string, re *regexp.Regexp,
+) (netip.Addr, bool) {
 	c := httpCore{
+		ipNet:             ipNet,
 		url:               url,
 		method:            http.MethodGet,
 		additionalHeaders: nil,
@@ -20,7 +22,7 @@ func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, url string, re *regexp.Re
 			var invalidIP netip.Addr
 
 			matched := re.FindSubmatch(body)
-			if len(matched) < 2 { //nolint:mnd
+			if len(matched) < 2 {
 				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
 				return invalidIP, false
 			}
@@ -60,7 +62,7 @@ func (p Regexp) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromRegexp(ctx, ppfmt, param.URL.Switch(method), param.Regexp)
+	ip, ok := getIPFromRegexp(ctx, ppfmt, ipNet, param.URL.Switch(method), param.Regexp)
 	if !ok {
 		return netip.Addr{}, false
 	}

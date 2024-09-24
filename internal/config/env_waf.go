@@ -32,8 +32,8 @@ func ReadAndAppendWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bo
 	for _, val := range vals {
 		var list api.WAFList
 
-		parts := strings.SplitN(val, "/", 2) //nolint:mnd
-		if len(parts) != 2 {                 //nolint:mnd
+		parts := strings.SplitN(val, "/", 2)
+		if len(parts) != 2 {
 			ppfmt.Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, val)
 			return false
 		}

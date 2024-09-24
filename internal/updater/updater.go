@@ -11,7 +11,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
-	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -30,7 +29,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 
 	if ok {
 		switch method {
-		case protocol.MethodAlternative:
+		case provider.MethodAlternative:
 			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", ipNet.Describe(), ip)
 			provider.Hint1111Blockage(ppfmt)
 		default:
@@ -170,6 +169,9 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 			}
 		}
 	}
+
+	// Close all idle connections after the IP detection
+	provider.CloseIdleConnections()
 
 	// Update WAF lists
 	if !(numManagedNetworks == 2 && numValidIPs == 0) {

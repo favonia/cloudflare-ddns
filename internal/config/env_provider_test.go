@@ -19,12 +19,13 @@ func TestReadProvider(t *testing.T) {
 	keyDeprecated := keyPrefix + "DEPRECATED"
 
 	var (
-		none   provider.Provider
-		doh    = provider.NewCloudflareDOH()
-		trace  = provider.NewCloudflareTrace()
-		local  = provider.NewLocal()
-		ipify  = provider.NewIpify()
-		custom = provider.MustNewCustom("https://url.io")
+		none          provider.Provider
+		doh           = provider.NewCloudflareDOH()
+		trace         = provider.NewCloudflareTrace()
+		local         = provider.NewLocal()
+		localLoopback = provider.NewLocalWithInterface("lo")
+		ipify         = provider.NewIpify()
+		custom        = provider.MustNewCustomURL("https://url.io")
 	)
 
 	for name, tc := range map[string]struct {
@@ -154,7 +155,18 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
 		"none":             {true, "   none   ", false, "", trace, none, true, nil},
 		"local":            {true, "   local   ", false, "", trace, local, true, nil},
-		"custom":           {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
+		"local:lo":         {true, "   local   :  lo ", false, "", trace, localLoopback, true, nil},
+		"local:": {
+			true, "   local: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`%s=local: must be followed by a network interface name`,
+					key,
+				)
+			},
+		},
+		"custom": {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
 		"ipify": {
 			true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {

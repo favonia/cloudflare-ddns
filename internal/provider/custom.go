@@ -9,33 +9,33 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-// NewCustom creates a HTTP provider.
-func NewCustom(ppfmt pp.PP, rawURL string) (Provider, bool) {
+// NewCustomURL creates a HTTP provider.
+func NewCustomURL(ppfmt pp.PP, rawURL string) (Provider, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the custom provider (redacted)")
+		ppfmt.Noticef(pp.EmojiUserError, `Failed to parse the provider url:(redacted)`)
 		return nil, false
 	}
 
 	if !u.IsAbs() || u.Opaque != "" || u.Host == "" {
-		ppfmt.Noticef(pp.EmojiUserError, `The custom provider (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The provider url:(redacted) does not contain a valid URL`)
 		return nil, false
 	}
 
 	switch u.Scheme {
 	case "http":
-		ppfmt.Noticef(pp.EmojiUserWarning, "The custom provider (redacted) uses HTTP; consider using HTTPS instead")
+		ppfmt.Noticef(pp.EmojiUserWarning, "The provider url:(redacted) uses HTTP; consider using HTTPS instead")
 
 	case "https":
 		// HTTPS is good!
 
 	default:
-		ppfmt.Noticef(pp.EmojiUserError, `The custom provider (redacted) must use HTTP or HTTPS`)
+		ppfmt.Noticef(pp.EmojiUserError, `The provider url:(redacted) only supports HTTP and HTTPS`)
 		return nil, false
 	}
 
 	return NewHappyEyeballs(protocol.HTTP{
-		ProviderName: "custom",
+		ProviderName: "url:(redacted)",
 		URL: map[ipnet.Type]protocol.Switch{
 			ipnet.IP4: protocol.Constant(rawURL),
 			ipnet.IP6: protocol.Constant(rawURL),
@@ -43,10 +43,10 @@ func NewCustom(ppfmt pp.PP, rawURL string) (Provider, bool) {
 	}), true
 }
 
-// MustNewCustom creates a HTTP provider and panics if it fails.
-func MustNewCustom(rawURL string) Provider {
+// MustNewCustomURL creates a HTTP provider and panics if it fails.
+func MustNewCustomURL(rawURL string) Provider {
 	var buf strings.Builder
-	p, ok := NewCustom(pp.NewDefault(&buf), rawURL)
+	p, ok := NewCustomURL(pp.NewDefault(&buf), rawURL)
 	if !ok {
 		panic(buf.String())
 	}

@@ -10,8 +10,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bool) {
+func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string) (netip.Addr, bool) {
 	c := httpCore{
+		ipNet:             ipNet,
 		url:               url,
 		method:            http.MethodGet,
 		additionalHeaders: nil,
@@ -20,7 +21,7 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, url string) (netip.Addr, bo
 			ipString := strings.TrimSpace(string(body))
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Noticef(pp.EmojiImpossible, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
 				return netip.Addr{}, false
 			}
 			return ip, true
@@ -49,7 +50,7 @@ func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method M
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromHTTP(ctx, ppfmt, url.Switch(method))
+	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url.Switch(method))
 	if !ok {
 		return netip.Addr{}, false
 	}
