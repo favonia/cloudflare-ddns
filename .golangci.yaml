@@ -44,6 +44,8 @@ linters:
     - exportloopref # deprecated
 
     - dupl # somewhat unpredictable, and never leads to actual code changes
+    - goconst # never leads to actual code changes
+    - mnd # never leads to actual code changes
 
     - cyclop # can detect complicated code, but never leads to actual code changes
     - funlen # can detect complicated code, but never leads to actual code changes

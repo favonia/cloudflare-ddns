@@ -25,7 +25,7 @@ func EnglishJoin(items []string) string {
 		return "(none)"
 	case 1:
 		return items[0]
-	case 2: //nolint:mnd
+	case 2:
 		return fmt.Sprintf("%s and %s", items[0], items[1])
 	default:
 		return fmt.Sprintf("%s, and %s", strings.Join(items[:l-1], ", "), items[l-1])

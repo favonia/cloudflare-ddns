@@ -2,6 +2,7 @@ package protocol_test
 
 import (
 	"context"
+	"net"
 	"net/netip"
 	"testing"
 
@@ -14,24 +15,79 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func TestLocalName(t *testing.T) {
+func TestLocalAuteName(t *testing.T) {
 	t.Parallel()
 
-	p := &protocol.Local{
+	p := &protocol.LocalAuto{
 		ProviderName:  "very secret name",
-		RemoteUDPAddr: nil,
+		RemoteUDPAddr: "",
 	}
 
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestLocalGetIP(t *testing.T) {
+func TestExtractUDPAddr(t *testing.T) {
+	t.Parallel()
+
+	var invalidIP netip.Addr
+
+	for name, tc := range map[string]struct {
+		input         net.Addr
+		ok            bool
+		output        netip.Addr
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"udpaddr/4": {
+			&net.UDPAddr{IP: net.ParseIP("1.2.3.4"), Zone: "", Port: 123},
+			true, netip.MustParseAddr("1.2.3.4"),
+			nil,
+		},
+		"udpaddr/6/zone-123": {
+			&net.UDPAddr{IP: net.ParseIP("::1"), Zone: "123", Port: 123},
+			true, netip.MustParseAddr("::1%123"),
+			nil,
+		},
+		"udpaddr/illformed": {
+			&net.UDPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: "", Port: 123},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Failed to parse UDP source address %q",
+					"?0102")
+			},
+		},
+		"dummy": {
+			&Dummy{},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Unexpected UDP source address data %q of type %T",
+					"dummy/string", &Dummy{})
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			output, ok := protocol.ExtractUDPAddr(mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.output, output)
+		})
+	}
+}
+
+func TestLocalAuteGetIP(t *testing.T) {
 	t.Parallel()
 
 	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
-		addrKey       ipnet.Type
 		addr          string
 		ipNet         ipnet.Type
 		ok            bool
@@ -39,7 +95,7 @@ func TestLocalGetIP(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"loopback/4": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP4,
+			"127.0.0.1:80", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
@@ -47,7 +103,7 @@ func TestLocalGetIP(t *testing.T) {
 			},
 		},
 		"loopback/6": {
-			ipnet.IP6, "[::1]:80", ipnet.IP6,
+			"[::1]:80", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
@@ -55,48 +111,31 @@ func TestLocalGetIP(t *testing.T) {
 			},
 		},
 		"empty/4": {
-			ipnet.IP4, "", ipnet.IP4,
+			"", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv4", gomock.Any())
 			},
 		},
 		"empty/6": {
-			ipnet.IP6, "", ipnet.IP6,
+			"", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", "IPv6", gomock.Any())
-			},
-		},
-		"mismatch/6": {
-			ipnet.IP4, "127.0.0.1:80", ipnet.IP6,
-			false, invalidIP,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
-			},
-		},
-		"mismatch/4": {
-			ipnet.IP6, "::1:80", ipnet.IP4,
-			false, invalidIP,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
-
-			provider := &protocol.Local{
-				ProviderName: "",
-				RemoteUDPAddr: map[ipnet.Type]string{
-					tc.addrKey: tc.addr,
-				},
-			}
-
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
+			}
+
+			provider := &protocol.LocalAuto{
+				ProviderName:  "",
+				RemoteUDPAddr: tc.addr,
 			}
 			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)

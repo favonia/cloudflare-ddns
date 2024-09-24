@@ -83,21 +83,26 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		return false
 	}
 
-	switch val {
-	case "cloudflare":
+	parts := strings.SplitN(val, ":", 2) // len(parts) >= 1 because val is not empty
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+
+	switch {
+	case len(parts) == 1 && parts[0] == "cloudflare":
 		ppfmt.Noticef(
 			pp.EmojiUserError,
 			`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
 			key, key, key,
 		)
 		return false
-	case "cloudflare.trace":
+	case len(parts) == 1 && parts[0] == "cloudflare.trace":
 		*field = provider.NewCloudflareTrace()
 		return true
-	case "cloudflare.doh":
+	case len(parts) == 1 && parts[0] == "cloudflare.doh":
 		*field = provider.NewCloudflareDOH()
 		return true
-	case "ipify":
+	case len(parts) == 1 && parts[0] == "ipify":
 		ppfmt.Noticef(
 			pp.EmojiUserWarning,
 			`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
@@ -105,25 +110,33 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		)
 		*field = provider.NewIpify()
 		return true
-	case "local":
+	case len(parts) == 1 && parts[0] == "local":
 		*field = provider.NewLocal()
 		return true
-	case "none":
-		*field = nil
+	case len(parts) == 2 && parts[0] == "local":
+		if parts[1] == "" {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				`%s=local: must be followed by a network interface name`,
+				key,
+			)
+			return false
+		}
+		*field = provider.NewLocalWithInterface(parts[1])
 		return true
-	}
-
-	if strings.HasPrefix(val, "url:") {
-		url := strings.TrimSpace(strings.TrimPrefix(val, "url:"))
-		p, ok := provider.NewCustomURL(ppfmt, url)
+	case len(parts) == 2 && parts[0] == "url":
+		p, ok := provider.NewCustomURL(ppfmt, parts[1])
 		if ok {
 			*field = p
 		}
 		return ok
+	case len(parts) == 1 && parts[0] == "none":
+		*field = nil
+		return true
+	default:
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
+		return false
 	}
-
-	ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
-	return false
 }
 
 // ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
