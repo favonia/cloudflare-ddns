@@ -170,6 +170,9 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 		}
 	}
 
+	// Close all idle connections after the IP detection
+	provider.CloseIdleConnections()
+
 	// Update WAF lists
 	if !(numManagedNetworks == 2 && numValidIPs == 0) {
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIP))

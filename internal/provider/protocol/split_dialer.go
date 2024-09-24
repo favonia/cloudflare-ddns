@@ -76,3 +76,10 @@ func SharedRetryableSplitClient(ipNet ipnet.Type) *retryablehttp.Client {
 	c.Logger = nil
 	return c
 }
+
+// CloseIdleConnections closes all idle connections after making detecting the IP addresses.
+func CloseIdleConnections() {
+	for _, client := range ipnet.Bindings(sharedSplitClient) {
+		client.CloseIdleConnections()
+	}
+}
