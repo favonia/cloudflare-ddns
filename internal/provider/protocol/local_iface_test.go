@@ -161,6 +161,16 @@ func TestSelectInterfaceIP(t *testing.T) {
 				)
 			},
 		},
+		"ipaddr/4/dummy": {
+			ipnet.IP6,
+			[]net.Addr{&Dummy{}},
+			false, protocol.MethodUnspecified, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Unexpected data %q of type %T in interface %s",
+					"dummy/string", &Dummy{}, "iface")
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
