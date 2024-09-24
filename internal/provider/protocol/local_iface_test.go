@@ -28,6 +28,11 @@ func TestLocalWithInterfaceName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
+type Dummy struct{}
+
+func (*Dummy) Network() string { return "dummy/network" }
+func (*Dummy) String() string  { return "dummy/string" }
+
 func TestExtractInterfaceAddr(t *testing.T) {
 	t.Parallel()
 
@@ -72,6 +77,15 @@ func TestExtractInterfaceAddr(t *testing.T) {
 					"?0102", "iface")
 			},
 		},
+		"dummy": {
+			&Dummy{},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Unexpected data %q of type %T in interface %s",
+					"dummy/string", &Dummy{}, "iface")
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -102,20 +116,48 @@ func TestSelectInterfaceIP(t *testing.T) {
 		output        netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"ipaddr/4/1": {
+		"ipaddr/4/6+4": {
 			ipnet.IP4,
-			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""}},
+			[]net.Addr{
+				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""},
+				&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""},
+				&net.IPAddr{IP: net.ParseIP("4.3.2.1"), Zone: ""},
+				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""},
+			},
 			true, protocol.MethodPrimary, netip.MustParseAddr("1.2.3.4"),
 			nil,
 		},
 		"ipaddr/4/none": {
 			ipnet.IP4,
-			[]net.Addr{&net.IPAddr{IP: net.ParseIP("::1"), Zone: ""}},
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""}, &net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""}},
 			false, protocol.MethodUnspecified, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError,
 					"Failed to find any global unicast %s address assigned to interface %s",
 					"IPv4", "iface",
+				)
+			},
+		},
+		"ipaddr/4/loopback": {
+			ipnet.IP4,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
+			false, protocol.MethodUnspecified, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError,
+					"Failed to find any global unicast %s address assigned to interface %s",
+					"IPv4", "iface",
+				)
+			},
+		},
+		"ipaddr/6/ff05::2": {
+			ipnet.IP6,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
+			true, protocol.MethodPrimary, netip.MustParseAddr("ff05::2%site"),
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
+					"Failed to find any global unicast %s address assigned to interface %s, "+
+						"but found an address %s with a scope larger than the link-local scope",
+					"IPv6", "iface", "ff05::2%site",
 				)
 			},
 		},
