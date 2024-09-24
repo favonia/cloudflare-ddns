@@ -31,9 +31,14 @@ func (p LocalAuto) Name() string {
 func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 	switch v := addr.(type) {
 	case *net.UDPAddr:
-		return v.AddrPort().Addr().Unmap(), true
+		ip := v.AddrPort().Addr().Unmap()
+		if !ip.IsValid() {
+			ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse UDP source address %q", v.IP.String())
+			return netip.Addr{}, false
+		}
+		return ip, ip.IsValid()
 	default:
-		ppfmt.Noticef(pp.EmojiImpossible, "Unexpected address data of type %T when detecting a local address", addr)
+		ppfmt.Noticef(pp.EmojiImpossible, "Unexpected UDP source address data %q of type %T", addr.String(), addr)
 		return netip.Addr{}, false
 	}
 }

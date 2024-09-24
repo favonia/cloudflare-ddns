@@ -44,11 +44,14 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 		}
 		return ip.Unmap(), true
 	default:
-		ppfmt.Noticef(pp.EmojiImpossible, "Unexpected data %q of type %T in interface %s", addr.String(), addr, iface)
+		ppfmt.Noticef(pp.EmojiImpossible,
+			"Unexpected address data %q of type %T found in interface %s",
+			addr.String(), addr, iface)
 		return netip.Addr{}, false
 	}
 }
 
+// SelectInterfaceIP takes a list of [net.Addr] and choose the first reasonable IP (if any).
 func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) (netip.Addr, Method, bool) {
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {

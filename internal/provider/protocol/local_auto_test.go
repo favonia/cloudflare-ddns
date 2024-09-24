@@ -2,6 +2,7 @@ package protocol_test
 
 import (
 	"context"
+	"net"
 	"net/netip"
 	"testing"
 
@@ -23,6 +24,62 @@ func TestLocalAuteName(t *testing.T) {
 	}
 
 	require.Equal(t, "very secret name", p.Name())
+}
+
+func TestExtractUDPAddr(t *testing.T) {
+	t.Parallel()
+
+	var invalidIP netip.Addr
+
+	for name, tc := range map[string]struct {
+		input         net.Addr
+		ok            bool
+		output        netip.Addr
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"udpaddr/4": {
+			&net.UDPAddr{IP: net.ParseIP("1.2.3.4"), Zone: "", Port: 123},
+			true, netip.MustParseAddr("1.2.3.4"),
+			nil,
+		},
+		"udpaddr/6/zone-123": {
+			&net.UDPAddr{IP: net.ParseIP("::1"), Zone: "123", Port: 123},
+			true, netip.MustParseAddr("::1%123"),
+			nil,
+		},
+		"udpaddr/illformed": {
+			&net.UDPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: "", Port: 123},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Failed to parse UDP source address %q",
+					"?0102")
+			},
+		},
+		"dummy": {
+			&Dummy{},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
+					"Unexpected UDP source address data %q of type %T",
+					"dummy/string", &Dummy{})
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			output, ok := protocol.ExtractUDPAddr(mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.output, output)
+		})
+	}
 }
 
 func TestLocalAuteGetIP(t *testing.T) {

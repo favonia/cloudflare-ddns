@@ -82,7 +82,7 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unexpected data %q of type %T in interface %s",
+					"Unexpected address data %q of type %T found in interface %s",
 					"dummy/string", &Dummy{}, "iface")
 			},
 		},
@@ -167,7 +167,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			false, protocol.MethodUnspecified, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unexpected data %q of type %T in interface %s",
+					"Unexpected address data %q of type %T found in interface %s",
 					"dummy/string", &Dummy{}, "iface")
 			},
 		},
