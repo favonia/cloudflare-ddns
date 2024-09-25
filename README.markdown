@@ -244,7 +244,7 @@ Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/w
 <details>
 <summary>❔ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
 
-Some Docker installations seem to have trouble with the extra security protection `no-new-privileges`. Chances are you cannot run _any_ Docker image (not only this updater) with `no-new-privileges`. If that is the case, there is not much this updater can do, and the best known workaround is to remove `security_opt: [no-new-privileges:true]` completely. It will be slightly less secure, but better than not running at all. If _only_ this updater does not run, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new) so that we can investigate the bug.
+Certain Docker installations may have issues with the `no-new-privileges` security option. If you cannot run Docker images with this option (including this updater), removing it might be necessary. This will slightly compromise security, but it’s better than not running the updater at all. If _only_ this updater is affected, please [report this issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new).
 
 </details>
 
