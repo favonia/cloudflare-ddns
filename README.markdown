@@ -37,7 +37,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ### 🕵️ Minimum Privacy Impact
 
-By default, public IP addresses are obtained via [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
+By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
 ### 🛡️ Attention to Security
 
@@ -233,11 +233,11 @@ Is your “public” IP address on your router between `100.64.0.0` and `100.127
 </details>
 
 <details>
-<summary>❔ How should I install this updater in Kubernetes?</summary>
+<summary>❔ How should I install this updater in ☸️ Kubernetes?</summary>
 
-Due to high maintenance, the instructions for Kubernetes were removed, but you can generate Kubernetes configurations from the provided Docker Compose template. One popular conversion tool is [Kompose](https://kompose.io/). (However, only the recent versions of Kompose support the `user: "UID:GID"` attribute with `GID`; see [my own pull request that added this feature to Kompose](https://github.com/kubernetes/kompose/pull/1929).)
+While the instructions for Kubernetes were removed due to high maintenance, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). Please note that only recent versions of Kompose support the `user: "UID:GID"` attribute with `GID`. (For more information, see [my pull request that adds this feature to Kompose](https://github.com/kubernetes/kompose/pull/1929).)
 
-Note that you only need a [Kubernetes Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/). You do not need [Kubernetes Services](https://kubernetes.io/docs/concepts/services-networking/service/) or open ports for inbound network traffic in general.
+Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) will suffice here. Since there’s no inbound network traffic, a [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/) isn’t required.
 
 </details>
 
