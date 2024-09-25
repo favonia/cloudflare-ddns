@@ -122,6 +122,9 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			)
 			return false
 		}
+		ppfmt.Hintf(pp.HintExperimentalLocalWithInterface,
+			`You are using the experimental provider "local:%s" added in version 1.15.0`,
+			parts[1])
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
 	case len(parts) == 2 && parts[0] == "url":

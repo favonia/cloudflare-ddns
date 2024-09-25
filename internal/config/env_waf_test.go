@@ -35,14 +35,20 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			nil,
 			[]api.WAFList{{AccountID: "hey", Name: "hello"}},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalWAF,
+					"You're using the new WAF list manipulation feature added in version 1.14.0")
+			},
 		},
 		"two": {
 			true, "hey/hello,here/aloha",
 			nil,
 			[]api.WAFList{{AccountID: "hey", Name: "hello"}, {AccountID: "here", Name: "aloha"}},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalWAF,
+					"You're using the new WAF list manipulation feature added in version 1.14.0")
+			},
 		},
 		"one+two": {
 			true, "hey/hello,here/aloha",
@@ -53,7 +59,10 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 				{AccountID: "here", Name: "aloha"},
 			},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalWAF,
+					"You're using the new WAF list manipulation feature added in version 1.14.0")
+			},
 		},
 		"invalid-format": {
 			true, "+++",
@@ -61,6 +70,8 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalWAF,
+					"You're using the new WAF list manipulation feature added in version 1.14.0")
 				m.EXPECT().Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, "+++")
 			},
 		},
@@ -75,6 +86,8 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalWAF,
+					"You're using the new WAF list manipulation feature added in version 1.14.0")
 				m.EXPECT().Noticef(pp.EmojiUserWarning, "List name %q contains invalid character %q", "!!!", "!")
 			},
 		},

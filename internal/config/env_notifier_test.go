@@ -32,7 +32,8 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				t.Helper()
 				require.Nil(t, n)
 			},
-			true, nil,
+			true,
+			nil,
 		},
 		"empty": {
 			true, "", nil,
@@ -40,7 +41,8 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				t.Helper()
 				require.Nil(t, n)
 			},
-			true, nil,
+			true,
+			nil,
 		},
 		"generic": {
 			true, "generic+https://example.com/api/v1/postStuff",
@@ -55,7 +57,9 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
 			},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
+			},
 		},
 		"ill-formed": {
 			true, "meow-meow-meow://cute",
@@ -66,6 +70,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			},
 			false,
 			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
 				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
 			},
 		},
@@ -82,7 +87,9 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 				require.Equal(t, []string{"Generic", "Pushover"}, s.ServiceDescriptions)
 			},
 			true,
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

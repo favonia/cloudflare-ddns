@@ -16,4 +16,7 @@ const (
 	HintMismatchedRecordAttributes
 	HintMismatchedWAFListAttributes
 	Hint1111Blockage
+	HintExperimentalShoutrrr           // introduced in 1.12.0
+	HintExperimentalWAF                // introduced in 1.14.0
+	HintExperimentalLocalWithInterface // introduced in 1.15.0
 )
