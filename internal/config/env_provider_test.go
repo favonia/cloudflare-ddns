@@ -155,18 +155,18 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.doh":   {true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
 		"none":             {true, "   none   ", false, "", trace, none, true, nil},
 		"local":            {true, "   local   ", false, "", trace, local, true, nil},
-		"local:lo": {
-			true, "   local   :  lo ", false, "", trace, localLoopback, true,
+		"local.iface:lo": {
+			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental provider "local:%s" added in version 1.15.0`, "lo") //nolint:lll
+				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental provider "local.iface:%s" added in version 1.15.0`, "lo") //nolint:lll
 			},
 		},
-		"local:": {
-			true, "   local: ", false, "", trace, trace, false,
+		"local.iface:": {
+			true, "   local.iface: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`%s=local: must be followed by a network interface name`,
+					`%s=local.iface: must be followed by a network interface name`,
 					key,
 				)
 			},

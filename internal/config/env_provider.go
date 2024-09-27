@@ -113,17 +113,17 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 	case len(parts) == 1 && parts[0] == "local":
 		*field = provider.NewLocal()
 		return true
-	case len(parts) == 2 && parts[0] == "local":
+	case len(parts) == 2 && parts[0] == "local.iface":
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				`%s=local: must be followed by a network interface name`,
+				`%s=local.iface: must be followed by a network interface name`,
 				key,
 			)
 			return false
 		}
 		ppfmt.Hintf(pp.HintExperimentalLocalWithInterface,
-			`You are using the experimental provider "local:%s" added in version 1.15.0`,
+			`You are using the experimental provider "local.iface:%s" added in version 1.15.0`,
 			parts[1])
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
