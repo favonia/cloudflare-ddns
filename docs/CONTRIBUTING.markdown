@@ -16,7 +16,7 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
 1. Check the license.
 
-   Roughly speaking, you agree to license your contribution under [Apache 2.0](../LICENSE), and you assert that you have full power to license your contribution under [Apache 2.0](../LICENSE). Please refer to the [license text](../LICENSE) for the precise legal terms.
+   Roughly speaking, you agree to license your contribution under [Apache 2.0 with LLVM exceptions](../LICENSE), and you assert that you have full power to license your contribution under [Apache 2.0 with LLVM exceptions](../LICENSE). Please refer to the [license text](../LICENSE) for the precise legal terms.
 
 2. Test your code!
 
