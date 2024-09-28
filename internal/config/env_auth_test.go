@@ -37,14 +37,37 @@ func TestReadAuth(t *testing.T) {
 			"123456789", "", "", "", "",
 			true, "123456789", nil,
 		},
-		"empty-token": {
+		"empty": {
 			map[string]string{},
-			"", "", "", "", "account",
+			"", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
 					"Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
 			},
+		},
+		"conflicting": {
+			map[string]string{},
+			"token1", "token2", "", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"The values of %s and %s do not match; they must specify the same token",
+					"CLOUDFLARE_API_TOKEN", "CF_API_TOKEN")
+			},
+		},
+		"old": {
+			map[string]string{},
+			"", "token2", "", "", "",
+			true, "token2",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintAuthTokenNewPrefix, config.HintAuthTokenNewPrefix)
+			},
+		},
+		"old/same": {
+			map[string]string{},
+			"token", "token", "", "", "",
+			true, "token", nil,
 		},
 		"invalid": {
 			map[string]string{},
@@ -52,7 +75,7 @@ func TestReadAuth(t *testing.T) {
 			true, "!!!",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The API token appears to be invalid. It does not follow the OAuth2 bearer token format.")
+					"The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
 			},
 		},
 		"account": {
@@ -77,14 +100,6 @@ func TestReadAuth(t *testing.T) {
 			"", "", "token.txt", "", "",
 			true, "hello", nil,
 		},
-		"file/wrong.path": {
-			map[string]string{},
-			"", "", "wrong.txt", "", "",
-			false, "",
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
-			},
-		},
 		"file/empty": {
 			map[string]string{"empty.txt": ""},
 			"", "", "empty.txt", "", "",
@@ -95,7 +110,63 @@ func TestReadAuth(t *testing.T) {
 					"CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
-		"file/invalid-path": {
+		"file/conflicting": {
+			map[string]string{"token1.txt": "hello1", "token2.txt": "hello2"},
+			"", "", "token1.txt", "token2.txt", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"The files specified by %s and %s have conflicting tokens; their content must match",
+					"CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
+			},
+		},
+		"file/conflicting/non-file": {
+			map[string]string{"token.txt": "file"},
+			"plain", "", "token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"The value of %s does not match the token found in the file specified by %s; "+
+						"they must specify the same token",
+					"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE",
+				)
+			},
+		},
+		"file/same/non-file": {
+			map[string]string{"token.txt": "token"},
+			"token", "", "token.txt", "", "",
+			true, "token", nil,
+		},
+		"file/old": {
+			map[string]string{"token.txt": "hello"},
+			"", "", "", "token.txt", "",
+			true, "hello",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintAuthTokenNewPrefix, config.HintAuthTokenNewPrefix)
+			},
+		},
+		"file/old/same": {
+			map[string]string{"token1.txt": "hello", "token2.txt": "hello"},
+			"", "", "token1.txt", "token2.txt", "",
+			true, "hello", nil,
+		},
+		"file/wrong.path": {
+			map[string]string{},
+			"", "", "wrong.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
+			},
+		},
+		"file/wrong.path/2": {
+			map[string]string{},
+			"", "", "", "wrong.txt", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
+			},
+		},
+		"file/invalid-directory": {
 			map[string]string{"dir/file.txt": ""},
 			"", "", "dir", "", "",
 			false, "",

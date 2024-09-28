@@ -31,7 +31,8 @@ func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 	case token1 == "" && token2 == "":
 		return "", "", true
 	case token1 != "" && token2 != "" && token1 != token2:
-		ppfmt.Noticef(pp.EmojiUserError, "The values of %s and %s do not match", TokenKey1, TokenKey2)
+		ppfmt.Noticef(pp.EmojiUserError,
+			"The values of %s and %s do not match; they must specify the same token", TokenKey1, TokenKey2)
 		return "", "", false
 	case token1 != "":
 		token, tokenKey = token1, TokenKey1
@@ -82,7 +83,7 @@ func readAuthTokenFiles(ppfmt pp.PP) (string, string, bool) {
 	switch {
 	case token1 != "" && token2 != "" && token1 != token2:
 		ppfmt.Noticef(pp.EmojiUserError,
-			"The files specified by %s and %s contain conflicting tokens", TokenFileKey1, TokenFileKey2)
+			"The files specified by %s and %s have conflicting tokens; their content must match", TokenFileKey1, TokenFileKey2)
 		return "", "", false
 	case token1 != "":
 		return token1, TokenFileKey1, true
@@ -95,11 +96,6 @@ func readAuthTokenFiles(ppfmt pp.PP) (string, string, bool) {
 }
 
 func readAuthToken(ppfmt pp.PP) (string, bool) {
-	//default:
-	//	ppfmt.Noticef(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE")
-	//	return "", false
-	//}
-
 	tokenPlain, tokenPlainKey, ok := readPlainAuthTokens(ppfmt)
 	if !ok {
 		return "", false
@@ -114,7 +110,8 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	switch {
 	case tokenPlain != "" && tokenFile != "" && tokenPlain != tokenFile:
 		ppfmt.Noticef(pp.EmojiUserError,
-			"The value of %s does not match the token found in the file specified by %s", tokenPlainKey, tokenFileKey)
+			"The value of %s does not match the token found in the file specified by %s; they must specify the same token",
+			tokenPlainKey, tokenFileKey)
 		return "", false
 	case tokenPlain != "":
 		token = tokenPlain
@@ -127,7 +124,7 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 
 	if !oauthBearerRegex.MatchString(token) {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The API token appears to be invalid. It does not follow the OAuth2 bearer token format.")
+			"The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
 	}
 
 	return token, true
