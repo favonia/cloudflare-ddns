@@ -19,6 +19,7 @@ import (
 func unsetAll(t *testing.T) {
 	t.Helper()
 	unset(t,
+		"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE",
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
 		"IP4_PROVIDER", "IP6_PROVIDER",
 		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS", "WAF_LISTS",
@@ -43,7 +44,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	unsetAll(t)
-	store(t, "CF_API_TOKEN", "deadbeaf")
+	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 
 	var cfg config.Config
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -79,7 +80,8 @@ func TestReadEnvEmpty(t *testing.T) {
 		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
-		innerMockPP.EXPECT().Noticef(pp.EmojiUserError, "Needs either CF_API_TOKEN or CF_API_TOKEN_FILE"),
+		innerMockPP.EXPECT().Noticef(pp.EmojiUserError,
+			"Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE"),
 	)
 	ok := cfg.ReadEnv(mockPP)
 	require.False(t, ok)
