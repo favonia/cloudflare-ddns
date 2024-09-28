@@ -82,7 +82,7 @@ _(Click to expand the following items.)_
 ```bash
 docker run \
   --network host \
-  -e CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+  -e CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   -e DOMAINS=example.org,www.example.org,example.io \
   -e PROXIED=true \
   favonia/cloudflare-ddns:latest
@@ -95,7 +95,7 @@ docker run \
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
 ```bash
-CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
+CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
@@ -132,7 +132,7 @@ services:
     security_opt: [no-new-privileges:true]
     # Another protection to restrict superuser privileges (optional but recommended)
     environment:
-      - CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
+      - CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN
         # Your Cloudflare API token
       - DOMAINS=example.org,www.example.org,example.io
         # Your domains (separated by commas)
@@ -143,15 +143,14 @@ services:
 _(Click to expand the following important tips.)_
 
 <details>
-<summary>🔑 <code>CF_API_TOKEN</code> is your Cloudflare API token</summary>
+<summary>🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
 
-The value of `CF_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). (The less secure API key authentication is deliberately _not_ supported.)
+The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). The less secure API key authentication is deliberately _not_ supported.
 
 - To update only DNS records, use the **Edit zone DNS** template to create a token.
 - To update only WAF lists, choose **Create Custom Token** and then add the **Account - Account Filter Lists - Edit** permission to create a token.
-- To update DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Account - Account Filter Lists - Edit** permission when creating the token.
-
-You can also adjust the permissions of existing tokens at any time!
+- To update _both_ DNS records _and_ WAF lists, use the **Edit zone DNS** template and then add the **Account - Account Filter Lists - Edit** permission when creating the token.
+- You can adjust the permissions of existing tokens at any time!
 
 </details>
 
@@ -259,15 +258,20 @@ _(Click to expand the following items.)_
 <details>
 <summary>🔑 The Cloudflare API token</summary>
 
-> Exactly one of the following variables should be set.
+> Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
-| Name                | Meaning                                                                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `CF_API_TOKEN`      | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
-| `CF_API_TOKEN_FILE` | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
+| Name                                                    | Meaning                                                                                                                                |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`                                  | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
+| `CLOUDFLARE_API_TOKEN_FILE`                             | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
+| `CF_API_TOKEN` (will be deprecated in version 2.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
+| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
 
-- 🔑 To update DNS records, the updater needs the **Account - Account Filter Lists - Edit** permission.
-- 🔑 To manipulate WAF lists, the updater needs the **Zone - DNS - Edit** permission.
+> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting to align with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.
+>
+> 🔑 To update DNS records, the updater needs the **Account - Account Filter Lists - Edit** permission.
+>
+> 🔑 To manipulate WAF lists, the updater needs the **Zone - DNS - Edit** permission.
 
 </details>
 
@@ -423,8 +427,8 @@ _(Click to expand the following items.)_
 
 | Old Parameter                          |     | Note                                                                                                                                                                                                           |
 | -------------------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_KEY=key`                          | ✔️  | Use `CF_API_TOKEN=key`                                                                                                                                                                                         |
-| `API_KEY_FILE=file`                    | ✔️  | Use `CF_API_TOKEN_FILE=file`                                                                                                                                                                                   |
+| `API_KEY=key`                          | ✔️  | Use `CLOUDFLARE_API_TOKEN=key`                                                                                                                                                                                 |
+| `API_KEY_FILE=file`                    | ✔️  | Use `CLOUDFLARE_API_TOKEN_FILE=file`                                                                                                                                                                           |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                         |
 | `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                          |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                             |
@@ -441,7 +445,7 @@ _(Click to expand the following items.)_
 
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cloudflare.authentication.api_token` | ✔️  | Use `CF_API_TOKEN=key`                                                                                                                                                                                                                   |
+| `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=key`                                                                                                                                                                                                           |
 | `cloudflare.authentication.api_key`   | ❌  | Please use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)                                                                                                                                           |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
