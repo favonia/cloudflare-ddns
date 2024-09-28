@@ -260,14 +260,14 @@ _(Click to expand the following items.)_
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
-| Name                                                    | Meaning                                                                                                                                |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`                                  | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
-| `CLOUDFLARE_API_TOKEN_FILE`                             | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
-| `CF_API_TOKEN` (will be deprecated in version 2.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
-| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
+| Name                                                      | Meaning                                                                                                                                |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`                                    | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
+| `CLOUDFLARE_API_TOKEN_FILE`                               | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
+| `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
+| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
 
-> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting to align with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.
+> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting to align with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
 > 🔑 To update DNS records, the updater needs the **Account - Account Filter Lists - Edit** permission.
 >
