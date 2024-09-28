@@ -15,22 +15,24 @@ import (
 
 // This file contains mechanisms to limit connections to only IPv4 or IPv6.
 
-var errForbiddenIPFamily = errors.New("forbidden IP family")
+var errBlockedNetwork = errors.New("blocked network")
 
 func filterIP6Only(_ context.Context, network, _ string, _ syscall.RawConn) error {
 	switch network {
-	case "tcp4", "udp4", "ip4":
-		return errForbiddenIPFamily
+	case "tcp6", "udp6", "ip6":
+		return nil // allowed
+	default:
+		return errBlockedNetwork
 	}
-	return nil
 }
 
 func filterIP4Only(_ context.Context, network, _ string, _ syscall.RawConn) error {
 	switch network {
-	case "tcp6", "udp6", "ip6":
-		return errForbiddenIPFamily
+	case "tcp4", "udp4", "ip4":
+		return nil // allowed
+	default:
+		return errBlockedNetwork
 	}
-	return nil
 }
 
 func newControlledDialer(control func(context.Context, string, string, syscall.RawConn) error) *net.Dialer {
