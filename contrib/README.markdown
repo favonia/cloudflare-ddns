@@ -20,7 +20,7 @@ To use:
 
 ```sh
 cloudflare_ddns:\
-        :setenv=CF_API_TOKEN=YOUR_TOKEN,DOMAINS=THE_DOMAINS_YOU_WISH_TO_USE,EMOJI=false:\
+        :setenv=EMOJI=false,CF_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN,DOMAINS=YOUR-DOMAINS:\
         :tc=daemon:
 
 ```
