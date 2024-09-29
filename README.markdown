@@ -103,6 +103,10 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 </details>
 
+## 🏁 Deployment as a System Service
+
+See [community-contributed sample configurations](./contrib/README.markdown) for systemd and OpenBSD.
+
 ## 🐋 Deployment with Docker Compose
 
 ### 📦 Step 1: Updating the Compose File
