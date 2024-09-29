@@ -103,6 +103,10 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 </details>
 
+## 🏁 Deployment as a System Service
+
+See [community-contributed sample configurations](./contrib/README.markdown) for systemd and OpenBSD.
+
 ## 🐋 Deployment with Docker Compose
 
 ### 📦 Step 1: Updating the Compose File
@@ -409,13 +413,6 @@ _(Click to expand the following items.)_
 | 🧪 `SHOUTRRR` (since version 1.12.0) | Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. Each shoutrrr URL represents a notification service, such as `discord://<token>@<id>` for Discord.                                                                                                                                                                                                                                                                                                                                                                    |
 
 > ⚠️ If your network does not support IPv6, set `IP6_PROVIDER=none` to disable IPv6 completely. Otherwise, a failure to handle IPv6 will result in the status being reported as _down,_ even if IPv4 records are updated successfully.
-
-</details>
-
-<details>
-<summary>🏁Adding init scripts for non-Docker setups</summary>
-
-See: [contrib](./contrib) for init scripts for systemd and OpenBSD
 
 </details>
 
