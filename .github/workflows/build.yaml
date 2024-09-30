@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build:
-    name: 'Build'
+    name: "Build"
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-build-${{ github.ref }}
@@ -63,7 +63,7 @@ jobs:
             type=semver,pattern={{major}}
             type=semver,pattern={{version}}
           annotations: |
-            io.artifacthub.package.license=Apache-2.0
+            io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
         env:
