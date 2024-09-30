@@ -7,7 +7,7 @@
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://securityscorecards.dev/viewer/?uri=github.com/favonia/cloudflare-ddns)
 
-A feature-rich and robust Cloudflare DDNS updater with a small footprint. The program will detect your machine's public IP addresses and update DNS records using the Cloudflare API.
+A feature-rich and robust Cloudflare DDNS updater with a small footprint. The program will detect your machine’s public IP addresses and update DNS records using the Cloudflare API.
 
 ## 📜 Highlights
 
@@ -404,15 +404,15 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📣 External notifications (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+<summary>📣 Notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+
+> 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to disable IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 
 | Name                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HEALTHCHECKS`                       | The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>` ⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`. 🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled. |
 | `UPTIMEKUMA`                         | The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page. ⚠️ Remember to change the “Heartbeat Interval” to match the update schedule specified by `UPDATE_CRON`.                                                                                                                                                                                                                                                                                                                                    |
 | 🧪 `SHOUTRRR` (since version 1.12.0) | Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. Each shoutrrr URL represents a notification service, such as `discord://<token>@<id>` for Discord.                                                                                                                                                                                                                                                                                                                                                                    |
-
-> ⚠️ If your network does not support IPv6, set `IP6_PROVIDER=none` to disable IPv6 completely. Otherwise, a failure to handle IPv6 will result in the status being reported as _down,_ even if IPv4 records are updated successfully.
 
 </details>
 
