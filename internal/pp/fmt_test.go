@@ -42,14 +42,18 @@ func TestIndent(t *testing.T) {
 	middle.Noticef(pp.EmojiStar, "message2")
 	inner := middle.Indent()
 	outer.Noticef(pp.EmojiStar, "message3")
+	outer.BlankLineIfVerbose()
 	inner.Noticef(pp.EmojiStar, "message4")
+	inner.BlankLineIfVerbose()
 	middle.Noticef(pp.EmojiStar, "message5")
 
 	require.Equal(t,
 		`🌟 message1
    🌟 message2
 🌟 message3
+
       🌟 message4
+
    🌟 message5
 `,
 		buf.String())

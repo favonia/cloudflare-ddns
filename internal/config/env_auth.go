@@ -20,7 +20,7 @@ const (
 
 // HintAuthTokenNewPrefix contains the hint about the transition from
 // CF_* to CLOUDFLARE_*.
-const HintAuthTokenNewPrefix string = "Cloudflare is transitioning its tools to use the prefix CLOUDFLARE instead of CF. To align with this change, it is recommended to use CLOUDFLARE_API_TOKEN (or CLOUDFLARE_API_TOKEN_FILE) instead of CF_API_TOKEN (or CF_API_TOKEN_FILE) moving forward. All options will be fully supported until version 2.0." //nolint:lll,gosec
+const HintAuthTokenNewPrefix string = "Cloudflare is transitioning its tools to use the prefix CLOUDFLARE instead of CF. To align with this change, it is recommended to use CLOUDFLARE_API_TOKEN (or CLOUDFLARE_API_TOKEN_FILE) instead of CF_API_TOKEN (or CF_API_TOKEN_FILE) moving forward. All these options will be fully supported until version 2.0." //nolint:lll,gosec
 
 func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 	token1 := Getenv(TokenKey1)
