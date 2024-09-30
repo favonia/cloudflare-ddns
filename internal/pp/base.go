@@ -3,6 +3,18 @@ package pp
 
 //go:generate mockgen -typed -destination=../mocks/mock_pp.go -package=mocks . PP
 
+// Verbosity is the type of message levels.
+type Verbosity int
+
+// Pre-defined verbosity levels. A higher level means "more verbose".
+const (
+	Notice           Verbosity = iota // useful additional info
+	Info                              // important messages
+	Quiet            Verbosity = Notice
+	Verbose          Verbosity = Info
+	DefaultVerbosity Verbosity = Verbose
+)
+
 // PP is the abstraction of a pretty printer.
 type PP interface {
 	// IsShowing checks whether a message of a certain level will be printed.
@@ -10,6 +22,9 @@ type PP interface {
 
 	// Indent returns a new pretty-printer with more indentation.
 	Indent() PP
+
+	// BlankLineIfVerbose prints a blank line at the [Verbose] level
+	BlankLineIfVerbose()
 
 	// Infof formats and prints a message at the info level.
 	Infof(emoji Emoji, format string, args ...any)

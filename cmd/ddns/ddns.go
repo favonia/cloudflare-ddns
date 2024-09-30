@@ -124,6 +124,9 @@ func realMain() int {
 		if first && !c.UpdateOnStart {
 			c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(true, "Started (no action)"))
 		} else {
+			// Improve readability of the logging by separating each round of checks with blank lines.
+			ppfmt.BlankLineIfVerbose()
+
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
 			c.Monitor.Ping(ctx, ppfmt, msg.MonitorMessage)
 			c.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)

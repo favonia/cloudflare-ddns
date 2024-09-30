@@ -38,6 +38,42 @@ func (m *MockPP) EXPECT() *MockPPMockRecorder {
 	return m.recorder
 }
 
+// BlankLineIfVerbose mocks base method.
+func (m *MockPP) BlankLineIfVerbose() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "BlankLineIfVerbose")
+}
+
+// BlankLineIfVerbose indicates an expected call of BlankLineIfVerbose.
+func (mr *MockPPMockRecorder) BlankLineIfVerbose() *PPBlankLineIfVerboseCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlankLineIfVerbose", reflect.TypeOf((*MockPP)(nil).BlankLineIfVerbose))
+	return &PPBlankLineIfVerboseCall{Call: call}
+}
+
+// PPBlankLineIfVerboseCall wrap *gomock.Call
+type PPBlankLineIfVerboseCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPBlankLineIfVerboseCall) Return() *PPBlankLineIfVerboseCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPBlankLineIfVerboseCall) Do(f func()) *PPBlankLineIfVerboseCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPBlankLineIfVerboseCall) DoAndReturn(f func()) *PPBlankLineIfVerboseCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Hintf mocks base method.
 func (m *MockPP) Hintf(arg0 pp.Hint, arg1 string, arg2 ...any) {
 	m.ctrl.T.Helper()

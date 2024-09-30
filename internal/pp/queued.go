@@ -30,26 +30,37 @@ func (b QueuedPP) Indent() PP {
 	return b
 }
 
+// BlankLineIfVerbose queues a call to [PP.BlankLineIfVerbose] of the upstream.
+func (b QueuedPP) BlankLineIfVerbose() {
+	// It's important to save the current upstream because [Indent] may change it.
+	upstream := b.upstream
+	*b.queue = append(*b.queue, func() { upstream.BlankLineIfVerbose() })
+}
+
 // Infof queues a call to [PP.Infof] of the upstream.
 func (b QueuedPP) Infof(emoji Emoji, format string, args ...any) {
+	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
 	*b.queue = append(*b.queue, func() { upstream.Infof(emoji, format, args...) })
 }
 
 // Noticef queues a call to [PP.Noticef] of the upstream.
 func (b QueuedPP) Noticef(emoji Emoji, format string, args ...any) {
+	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
 	*b.queue = append(*b.queue, func() { upstream.Noticef(emoji, format, args...) })
 }
 
 // SuppressHint queues a call to [PP.SuppressHint] of the upstream.
 func (b QueuedPP) SuppressHint(hint Hint) {
+	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
 	*b.queue = append(*b.queue, func() { upstream.SuppressHint(hint) })
 }
 
 // Hintf queues a call to [PP.Hintf] of the upstream.
 func (b QueuedPP) Hintf(hint Hint, format string, args ...any) {
+	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
 	*b.queue = append(*b.queue, func() { upstream.Hintf(hint, format, args...) })
 }
