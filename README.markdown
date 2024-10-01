@@ -467,3 +467,7 @@ _(Click to expand the following items.)_
 ## 💖 Feedback
 
 Questions, suggestions, feature requests, and contributions are all welcome! Feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
+
+## 📜 License
+
+The code is licensed under [Apache 2.0 with LLVM exceptions](./LICENSE). (The LLVM exceptions provide better compatibility with GPL 2.0 and other license exceptions.)
