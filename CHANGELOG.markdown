@@ -1,3 +1,28 @@
+# [1.15.0](https://github.com/favonia/cloudflare-ddns/compare/v1.14.2...v1.15.0) (2024-10-01)
+
+This is a major release with many improvements:
+
+1. **New `CLOUDFLARE_*` variables**: Cloudflare is transitioning its tools to use the new prefix `CLOUDFLARE_*`. Therefore, the updater now accepts `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_API_TOKEN_FILE`. The old `CF_API_TOKEN` and `CF_API_TOKEN_FILE` will still be fully supported until 2.0.0, then deprecated (but still supported) until 3.0.0.
+2. **Improved custom IP providers**: The updater now forces IPv4 or IPv6 when connecting to custom IP providers `url:<URL>`. This solves a long-standing issue where custom providers couldn't be used on dual-stack machines supporting both IPv4 and IPv6. This enforcement ensures predictable IPv4/IPv6 detection on such machines.
+3. **Stricter IP validation**: The updater now rejects unusual IP addresses for updating DNS records, such as link-local addresses or IPv4-mapped IPv6 addresses for AAAA records. These addresses are unsuitable and may cause trouble.
+4. **Experimental support of using a network interface’s IP address** (not finalized until 1.16.0): Experimental support lets you use the address assigned to a specific network interface, bypassing the routing table used by the `local` provider. The syntax for this feature is under development and will not be finalized until 1.16.0. Please refer to [README](./README.markdown) and join the discussion on [GitHub issue #713](https://github.com/favonia/cloudflare-ddns/issues/713) if you are interested.
+
+As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+
+### Bug Fixes
+
+- **ipnet:** reject IPv4-mapped IPv6 addresses for updating IPv6 records ([#936](https://github.com/favonia/cloudflare-ddns/issues/936)) ([be5b3a7](https://github.com/favonia/cloudflare-ddns/commit/be5b3a7232225d5d9db251357e0caa1326a57aba))
+- **ipnet:** tighten the checking of IP addresses ([#942](https://github.com/favonia/cloudflare-ddns/issues/942)) ([640d30b](https://github.com/favonia/cloudflare-ddns/commit/640d30b1a3d6aa91479391766d90a977e002d84c))
+- **pp:** print blank lines to separate each round of updating ([#958](https://github.com/favonia/cloudflare-ddns/issues/958)) ([0a6c71b](https://github.com/favonia/cloudflare-ddns/commit/0a6c71beeb8cf3bb507f9da3862725441e6f90b7))
+- **provider:** fix the name and messages of custom URL providers ([#940](https://github.com/favonia/cloudflare-ddns/issues/940)) ([2d95d69](https://github.com/favonia/cloudflare-ddns/commit/2d95d69290bb406f6d006e5651613d120de195e5))
+- **provider:** force IPv4/IPv6 for custom URL providers ([#939](https://github.com/favonia/cloudflare-ddns/issues/939)) ([3e80358](https://github.com/favonia/cloudflare-ddns/commit/3e803584db697ff9d89581f5e79df79465dc6521))
+- **updater:** actively close idle connections for IP detection ([#943](https://github.com/favonia/cloudflare-ddns/issues/943)) ([05cbf7e](https://github.com/favonia/cloudflare-ddns/commit/05cbf7e1239fac3197d93c9322dadd92fd8d3609))
+
+### Features
+
+- **config:** accept `CLOUDFLARE_*` and all compatible token settings ([#948](https://github.com/favonia/cloudflare-ddns/issues/948)) ([4fc883c](https://github.com/favonia/cloudflare-ddns/commit/4fc883c45cb3068572d0fa55740ecd338c4ccd4f))
+- **provider:** get IP from a specific network interface ([#941](https://github.com/favonia/cloudflare-ddns/issues/941)) ([69f8cf2](https://github.com/favonia/cloudflare-ddns/commit/69f8cf2f62c533cffb7652fe6377f7a6ba8959cb)) ([#947](https://github.com/favonia/cloudflare-ddns/issues/947)) ([4518fac](https://github.com/favonia/cloudflare-ddns/commit/4518faca43c375545ee3dd6828b571b327579b6b))
+
 # [1.14.2](https://github.com/favonia/cloudflare-ddns/compare/v1.14.1...v1.14.2) (2024-09-13)
 
 This is an urgent hotfix that resolves a nil pointer dereference issue introduced in version 1.14.1.
