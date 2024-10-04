@@ -1,11 +1,14 @@
 linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
   gci:
     sections:
       - standard
       - default
       - prefix(github.com/favonia/cloudflare-ddns)
-  exhaustive:
-    default-signifies-exhaustive: true
+  gosec:
+    excludes:
+      - G101
   govet:
     settings:
       printf:
@@ -28,6 +31,12 @@ linters-settings:
           - allowRegex: "^_"
 
 issues:
+  exclude-rules:
+    - path: "_test.go"
+      linters:
+        - lll
+        - dupl
+        - goconst
   include:
     - EXC0002
     - EXC0011
@@ -43,8 +52,6 @@ linters:
     - gomnd # deprecated
     - exportloopref # deprecated
 
-    - dupl # somewhat unpredictable, and never leads to actual code changes
-    - goconst # never leads to actual code changes
     - mnd # never leads to actual code changes
 
     - cyclop # can detect complicated code, but never leads to actual code changes

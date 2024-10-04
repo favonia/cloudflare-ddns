@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -145,7 +146,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"),
 				)
 			},
 		},
@@ -168,9 +169,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError,
-						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
-						"none"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q", "none"),
 				)
 			},
 		},
@@ -207,9 +206,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
-						6, "none", "IPv6"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s", 6, "none", "IPv6"),
 				)
 			},
 		},
@@ -230,12 +227,8 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
-						6, "none", "IPv6"),
-					m.EXPECT().Noticef(pp.EmojiUserError,
-						"Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
-						"none"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s", 6, "none", "IPv6"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q", "none"),
 				)
 			},
 		},
@@ -274,9 +267,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"Domain %q is ignored because it is only for %s but %s is disabled",
-						"d.e.f", "IPv4", "IPv4"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "Domain %q is ignored because it is only for %s but %s is disabled", "d.e.f", "IPv4", "IPv4"),
 				)
 			},
 		},
@@ -312,15 +303,9 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"TTL=%v is ignored because no domains will be updated",
-						api.TTL(10000)),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"PROXIED=%s is ignored because no domains will be updated",
-						"true"),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"RECORD_COMMENT=%s is ignored because no domains will be updated",
-						"hello"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", api.TTL(10000)),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED=%s is ignored because no domains will be updated", "true"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT=%s is ignored because no domains will be updated", "hello"),
 				)
 			},
 		},
@@ -361,9 +346,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated",
-						"My list"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", "My list"),
 				)
 			},
 		},
@@ -422,7 +405,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `range`, `range`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `range`, `range`),
 				)
 			},
 		},
@@ -444,7 +427,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `999`, `999`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression: got unexpected token %q", keyProxied, `999`, `999`),
 				)
 			},
 		},
@@ -500,9 +483,7 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work",
-						time.Nanosecond),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work", time.Nanosecond),
 					m.EXPECT().Hintf(pp.Hint1111Blockage, "%s", provider.Hint1111BlocakageText),
 				)
 			},

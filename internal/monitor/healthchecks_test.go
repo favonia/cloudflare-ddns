@@ -1,3 +1,4 @@
+// vim: nowrap
 package monitor_test
 
 import (
@@ -41,7 +42,7 @@ func TestNewHealthchecksFail1(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 	)
 	_, ok := monitor.NewHealthchecks(mockPP, "this is not a valid URL")
 	require.False(t, ok)
@@ -54,7 +55,7 @@ func TestNewHealthchecksFail2(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 	)
 	_, ok := monitor.NewHealthchecks(mockPP, "ftp://example.org")
 	require.False(t, ok)
@@ -134,7 +135,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to ping the %s endpoint of Healthchecks; got response code: %d %s", `default (root)`, 400, "invalid url format"), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to ping the %s endpoint of Healthchecks; got response code: %d %s", `default (root)`, 400, "invalid url format"),
 				)
 			},
 		},
@@ -148,7 +149,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `default (root)`, gomock.Any()), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `default (root)`, gomock.Any()),
 				)
 			},
 		},

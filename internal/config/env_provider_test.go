@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -53,70 +54,37 @@ func TestReadProvider(t *testing.T) {
 		"deprecated/cloudflare": {
 			false, "", true, "    cloudflare\t   ", none, trace, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-					keyDeprecated, key, key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, keyDeprecated, key, key)
 			},
 		},
 		"deprecated/cloudflare.trace": {
 			false, "", true, " cloudflare.trace", none, trace, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s is deprecated; use %s=%s`,
-					keyDeprecated,
-					key,
-					"cloudflare.trace",
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "cloudflare.trace")
 			},
 		},
 		"deprecated/cloudflare.doh": {
 			false, "", true, "    \tcloudflare.doh   ", none, doh, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s is deprecated; use %s=%s`,
-					keyDeprecated,
-					key,
-					"cloudflare.doh",
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "cloudflare.doh")
 			},
 		},
 		"deprecated/unmanaged": {
 			false, "", true, "   unmanaged   ", trace, none, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s is deprecated; use %s=none`,
-					keyDeprecated,
-					key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=none`, keyDeprecated, key)
 			},
 		},
 		"deprecated/local": {
 			false, "", true, "   local   ", trace, local, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s is deprecated; use %s=%s`,
-					keyDeprecated,
-					key,
-					"local",
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "local")
 			},
 		},
 		"deprecated/ipify": {
 			false, "", true, "     ipify  ", trace, ipify, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-					keyDeprecated,
-					key,
-					key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, keyDeprecated, key, key)
 			},
 		},
 		"deprecated/others": {
@@ -128,11 +96,7 @@ func TestReadProvider(t *testing.T) {
 		"conflicts": {
 			true, "cloudflare.doh", true, "cloudflare.doh", ipify, ipify, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserError,
-					`Cannot have both %s and %s set`,
-					key, keyDeprecated,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, `Cannot have both %s and %s set`, key, keyDeprecated)
 			},
 		},
 		"empty": {
@@ -144,11 +108,7 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare": {
 			true, "    cloudflare\t   ", false, "", none, none, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserError,
-					`%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`,
-					key, key, key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`, key, key, key)
 			},
 		},
 		"cloudflare.trace": {true, " cloudflare.trace", false, "", none, trace, true, nil},
@@ -158,30 +118,20 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental provider "local.iface:%s" added in version 1.15.0`, "lo") //nolint:lll
+				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental provider "local.iface:%s" added in version 1.15.0`, "lo")
 			},
 		},
 		"local.iface:": {
 			true, "   local.iface: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserError,
-					`%s=local.iface: must be followed by a network interface name`,
-					key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key)
 			},
 		},
 		"custom": {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
 		"ipify": {
 			true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiUserWarning,
-					`%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`,
-					key,
-					key,
-					key,
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, key, key, key)
 			},
 		},
 		"others": {

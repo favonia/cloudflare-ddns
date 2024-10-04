@@ -34,6 +34,7 @@ Here is some arbitrary coding convention that I chose to follow. It may change i
    - Domain names
    - Full WAF list references (`account/name`)
 2. A variable of type `map[..]...` should not be named in a plural form just because it is of type `map[...]...`. For example, a mapping from IP networks to detected IPs should be named `detectedIP` not `detectedIPs`.
+3. For testing, an expected call to a mocked interface should be specified in one line in most cases, even if the line becomes very long.
 
 ## Network Security Threat Model
 

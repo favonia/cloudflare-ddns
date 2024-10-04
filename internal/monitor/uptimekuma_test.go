@@ -36,7 +36,7 @@ func TestNewUptimeKuma(t *testing.T) {
 		"unexpected": {
 			"https://user:pass@host/path?random=", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored", "random") //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored", "random")
 			},
 		},
 		"ill-formed-query": {

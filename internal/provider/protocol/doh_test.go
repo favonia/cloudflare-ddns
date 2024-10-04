@@ -1,3 +1,4 @@
+// vim: nowrap
 package protocol_test
 
 import (
@@ -151,11 +152,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to prepare the DNS query: %v",
-					gomock.Any(),
-				)
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to prepare the DNS query: %v", gomock.Any())
 			},
 		},
 		"6to4": {
@@ -199,9 +196,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`)
 			},
 		},
 		"notxt": {
@@ -213,9 +208,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			[]dnsmessage.Resource{},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`)
 			},
 		},
 		"notresponse": {
@@ -237,9 +230,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: QR was not set`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: QR was not set`)
 			},
 		},
 		"truncated": {
@@ -261,9 +252,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: TC was set`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: TC was set`)
 			},
 		},
 		"rcode": {
@@ -285,11 +274,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					"Invalid DNS response: response code is %v",
-					dnsmessage.RCodeFormatError,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: response code is %v", dnsmessage.RCodeFormatError)
 			},
 		},
 		"irrelevant-records1": {
@@ -369,9 +354,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`)
 			},
 		},
 		"irrelevant-records4": {
@@ -451,11 +434,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					`Invalid DNS response: failed to parse the IP address in the TXT record: %s`,
-					"I am definitely not an IP address",
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: failed to parse the IP address in the TXT record: %s`, "I am definitely not an IP address")
 			},
 		},
 		"multiple1": {
@@ -477,9 +456,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`)
 			},
 		},
 		"multiple2": {
@@ -510,9 +487,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`,
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`)
 			},
 		},
 		"noresponse": {
@@ -534,11 +509,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					"Invalid DNS response: %v",
-					gomock.Any(),
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: %v", gomock.Any())
 			},
 		},
 		"nourl": {
@@ -560,11 +531,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					"Unhandled IP network: %s",
-					"IPv6",
-				)
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 			},
 		},
 	} {

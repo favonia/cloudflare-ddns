@@ -1,3 +1,4 @@
+// vim: nowrap
 package api_test
 
 import (
@@ -134,12 +135,7 @@ func TestListZonesTwo(t *testing.T) {
 				h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
 				mockPP = mocks.NewMockPP(mockCtrl)
-				mockPP.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"test.org",
-					gomock.Any(),
-				)
+				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "test.org", gomock.Any())
 				output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
 				require.False(t, ok)
 				require.Zero(t, output)
@@ -161,9 +157,9 @@ func TestZoneIDOfDomain(t *testing.T) {
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"root":     {"test.org", domain.FQDN("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},     //nolint:lll
-		"wildcard": {"test.org", domain.Wildcard("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil}, //nolint:lll
-		"one":      {"test.org", domain.FQDN("sub.test.org"), map[string][]string{"test.org": {"active"}}, 2, mockID("test.org", 0), true, nil}, //nolint:lll
+		"root":     {"test.org", domain.FQDN("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},
+		"wildcard": {"test.org", domain.Wildcard("test.org"), map[string][]string{"test.org": {"active"}}, 1, mockID("test.org", 0), true, nil},
+		"one":      {"test.org", domain.FQDN("sub.test.org"), map[string][]string{"test.org": {"active"}}, 2, mockID("test.org", 0), true, nil},
 		"none": {
 			"test.org", domain.FQDN("sub.test.org"),
 			map[string][]string{},
@@ -186,11 +182,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(
-						pp.EmojiImpossible,
-						"Found multiple active zones named %s (IDs: %s); please report this at %s",
-						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
-					),
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL),
 				)
 			},
 		},
@@ -200,11 +192,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			1, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(
-						pp.EmojiImpossible,
-						"Found multiple active zones named %s (IDs: %s); please report this at %s",
-						"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL,
-					),
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL),
 				)
 			},
 		},
@@ -214,7 +202,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", "test.org", "deleted"), //nolint:lll
+					m.EXPECT().Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", "test.org", "deleted"),
 					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s", "test.org"),
 				)
 			},
@@ -225,7 +213,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected", "test.org", "pending"), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected", "test.org", "pending"),
 				)
 			},
 		},
@@ -235,9 +223,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiWarning,
-						"DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected",
-						"test.org", "initializing"),
+					m.EXPECT().Noticef(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected", "test.org", "initializing"),
 				)
 			},
 		},
@@ -246,9 +232,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			map[string][]string{"test.org": {"some-undocumented-status"}},
 			1, mockID("test.org", 0), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"DNS zone %s is in an undocumented status %q in your Cloudflare account; please report this at %s",
-					"test.org", "some-undocumented-status", pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, "DNS zone %s is in an undocumented status %q in your Cloudflare account; please report this at %s", "test.org", "some-undocumented-status", pp.IssueReportingURL)
 			},
 		},
 	} {
@@ -290,12 +274,7 @@ func TestZoneIDOfDomainInvalid(t *testing.T) {
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
 
-	mockPP.EXPECT().Noticef(
-		pp.EmojiError,
-		"Failed to check the existence of a zone named %s: %v",
-		"sub.test.org",
-		gomock.Any(),
-	)
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 	zoneID, ok := h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
@@ -344,7 +323,7 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 		func(w http.ResponseWriter, r *http.Request) {
 			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
 				w.WriteHeader(http.StatusUnauthorized)
-				_, err := w.Write([]byte(`{"success":false,"errors":[{"code":9109,"message":"Invalid access token"}],"messages":[],"result":null}`)) //nolint:lll
+				_, err := w.Write([]byte(`{"success":false,"errors":[{"code":9109,"message":"Invalid access token"}],"messages":[],"result":null}`))
 				assert.NoError(t, err)
 				return
 			}
@@ -413,23 +392,13 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any(),
-				)
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission,
-					"Double check your API token. "+
-						`Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any(),
-				)
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission,
-					"Double check your API token. "+
-						`Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 		},
 		"no-zone": {
@@ -439,19 +408,11 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"sub.test.org", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"sub.test.org", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"invalid-ip": {
@@ -464,22 +425,12 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					"Failed to parse the IP address in an %s record of %s (ID: %s): %v",
-					"AAAA", "sub.test.org", "record2", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse the IP address in an %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", "record2", gomock.Any())
 			},
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Failed to retrieve %s records of %s: %v",
-					"AAAA", "sub.test.org", gomock.Any(),
-				)
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission,
-					"Double check your API token. "+
-						`Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 		},
 	} {
@@ -533,8 +484,7 @@ func mockDNSRecordResponse(id string, ipNet ipnet.Type, domain string, ip string
 	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, domain, ip))
 }
 
-func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string,
-) httpHandler {
+func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -578,20 +528,14 @@ func TestDeleteRecord(t *testing.T) {
 			0, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"sub.test.org", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"delete-fails": {
 			2, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to delete a stale %s record of %s (ID: %s): %v",
-					"AAAA", "sub.test.org", api.ID("record1"), gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 	} {
@@ -702,10 +646,7 @@ func TestUpdateRecord(t *testing.T) {
 			100, false, "",
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"sub.test.org", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"update-fails": {
@@ -713,10 +654,7 @@ func TestUpdateRecord(t *testing.T) {
 			100, false, "",
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to update a stale %s record of %s (ID: %s): %v",
-					"AAAA", "sub.test.org", api.ID("record1"), gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatch-attribute": {
@@ -728,20 +666,11 @@ func TestUpdateRecord(t *testing.T) {
 					"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com"
 
 				gomock.InOrder(
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
-						"The TTL of the %s record of %s (ID: %s) to be updated differs from the value of TTL (%s) and will be kept", //nolint:lll
-						"AAAA", "sub.test.org", api.ID("record1"), "1 (auto)",
-					),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The TTL of the %s record of %s (ID: %s) to be updated differs from the value of TTL (%s) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "1 (auto)"),
 					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
-						"The proxy status of the %s record of %s (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-						"AAAA", "sub.test.org", api.ID("record1"), true,
-					),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The proxy status of the %s record of %s (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), true),
 					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
-						"The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
-						"AAAA", "sub.test.org", api.ID("record1"), "hello",
-					),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "hello"),
 					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
 				)
 			},
@@ -767,8 +696,7 @@ func TestUpdateRecord(t *testing.T) {
 			urh := newUpdateRecordHandler(t, mux, "record1", "::2")
 			urh.setRequestLimit(tc.updateRequestLimit)
 
-			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
-				tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
+			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, zh.isExhausted())
 			require.True(t, lrh.isExhausted())
@@ -796,8 +724,7 @@ func TestUpdateRecord(t *testing.T) {
 	}
 }
 
-func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string,
-) httpHandler {
+func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -858,20 +785,14 @@ func TestCreateRecord(t *testing.T) {
 			0, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to check the existence of a zone named %s: %v",
-					"sub.test.org", gomock.Any(),
-				).Times(2)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any()).Times(2)
 			},
 		},
 		"create-fails": {
 			2, 1, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to add a new %s record of %s: %v",
-					"AAAA", "sub.test.org", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to add a new %s record of %s: %v", "AAAA", "sub.test.org", gomock.Any())
 			},
 		},
 	} {
@@ -896,7 +817,7 @@ func TestCreateRecord(t *testing.T) {
 			crh.setRequestLimit(tc.createRequestLimit)
 
 			h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello") //nolint:lll
+			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello")
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.Equal(t, api.ID("record1"), actualID)
