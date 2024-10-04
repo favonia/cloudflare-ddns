@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -58,7 +59,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0")
 			},
 		},
 		"ill-formed": {
@@ -70,7 +71,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0")
 				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
 			},
 		},
@@ -88,7 +89,7 @@ func TestReadAndAppendShoutrrrURL(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0") //nolint:lll
+				m.EXPECT().Hintf(pp.HintExperimentalShoutrrr, "You are using the experimental shoutrrr support added in version 1.12.0")
 			},
 		},
 	} {

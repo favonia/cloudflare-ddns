@@ -12,15 +12,15 @@ var oauthBearerRegex = regexp.MustCompile(`^[-a-zA-Z0-9._~+/]+=*$`)
 
 // Keys of environment variables.
 const (
-	TokenKey1     string = "CLOUDFLARE_API_TOKEN"      //nolint:gosec
-	TokenKey2     string = "CF_API_TOKEN"              //nolint:gosec
-	TokenFileKey1 string = "CLOUDFLARE_API_TOKEN_FILE" //nolint:gosec
-	TokenFileKey2 string = "CF_API_TOKEN_FILE"         //nolint:gosec
+	TokenKey1     string = "CLOUDFLARE_API_TOKEN"
+	TokenKey2     string = "CF_API_TOKEN"
+	TokenFileKey1 string = "CLOUDFLARE_API_TOKEN_FILE"
+	TokenFileKey2 string = "CF_API_TOKEN_FILE"
 )
 
 // HintAuthTokenNewPrefix contains the hint about the transition from
 // CF_* to CLOUDFLARE_*.
-const HintAuthTokenNewPrefix string = "Cloudflare is transitioning its tools to use the prefix CLOUDFLARE instead of CF. To align with this change, it is recommended to use CLOUDFLARE_API_TOKEN (or CLOUDFLARE_API_TOKEN_FILE) instead of CF_API_TOKEN (or CF_API_TOKEN_FILE) moving forward. All these options will be fully supported until version 2.0." //nolint:lll,gosec
+const HintAuthTokenNewPrefix string = "Cloudflare is switching to the CLOUDFLARE_* prefix for its tools. Use CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE instead of CF_* (fully supported until 2.0.0 and then minimally supported until 3.0.0)." //nolint:lll
 
 func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 	token1 := Getenv(TokenKey1)

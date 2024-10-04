@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -42,8 +43,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"conflicting": {
@@ -51,9 +51,7 @@ func TestReadAuth(t *testing.T) {
 			"token1", "token2", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The values of %s and %s do not match; they must specify the same token",
-					"CLOUDFLARE_API_TOKEN", "CF_API_TOKEN")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The values of %s and %s do not match; they must specify the same token", "CLOUDFLARE_API_TOKEN", "CF_API_TOKEN")
 			},
 		},
 		"old": {
@@ -74,8 +72,7 @@ func TestReadAuth(t *testing.T) {
 			"!!!", "", "", "", "",
 			true, "!!!",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
 			},
 		},
 		"account": {
@@ -91,8 +88,7 @@ func TestReadAuth(t *testing.T) {
 			"YOUR-CLOUDFLARE-API-TOKEN", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"You need to provide a real API token as %s", "CLOUDFLARE_API_TOKEN")
+				m.EXPECT().Noticef(pp.EmojiUserError, "You need to provide a real API token as %s", "CLOUDFLARE_API_TOKEN")
 			},
 		},
 		"file/success": {
@@ -105,9 +101,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "empty.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The file specified by %s does not contain an API token",
-					"CLOUDFLARE_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The file specified by %s does not contain an API token", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"file/conflicting": {
@@ -115,9 +109,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "token1.txt", "token2.txt", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The files specified by %s and %s have conflicting tokens; their content must match",
-					"CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The files specified by %s and %s have conflicting tokens; their content must match", "CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
 			},
 		},
 		"file/conflicting/non-file": {
@@ -125,11 +117,7 @@ func TestReadAuth(t *testing.T) {
 			"plain", "", "token.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The value of %s does not match the token found in the file specified by %s; "+
-						"they must specify the same token",
-					"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE",
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, "The value of %s does not match the token found in the file specified by %s; they must specify the same token", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"file/same/non-file": {

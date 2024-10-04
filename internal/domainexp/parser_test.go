@@ -1,3 +1,4 @@
+// vim: nowrap
 package domainexp_test
 
 import (
@@ -199,7 +200,7 @@ func TestParseExpression(t *testing.T) {
 		"utf8/invalid": {
 			"\200\300", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "\200\300", ErrorMatcher{domainexp.ErrUTF8}) //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "\200\300", ErrorMatcher{domainexp.ErrUTF8})
 			},
 		},
 	} {

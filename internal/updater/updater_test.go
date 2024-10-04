@@ -1,3 +1,4 @@
+// vim: nowrap
 package updater_test
 
 import (
@@ -62,9 +63,7 @@ func initConfig() *config.Config {
 }
 
 func hintIP6DetectionFails(p *mocks.MockPP) *mocks.PPHintfCall {
-	return p.EXPECT().Hintf(pp.HintIP6DetectionFails,
-		"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", //nolint:lll
-		pp.ManualURL)
+	return p.EXPECT().Hintf(pp.HintIP6DetectionFails, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", pp.ManualURL)
 }
 
 func TestUpdateIPsMultiple(t *testing.T) {
@@ -92,9 +91,12 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	}{
 		"1yes1doing1no": {
 			false,
-			[]string{"Failed to set A (127.0.0.1) of ip4.hello2", "Failed to set list(s) xxxxxxxx/list2"},
 			[]string{
-				"Failed to properly update A records of ip4.hello2 with 127.0.0.1; updating those of ip4.hello1; updated those of ip4.hello4.", //nolint:lll
+				"Failed to set A (127.0.0.1) of ip4.hello2",
+				"Failed to set list(s) xxxxxxxx/list2",
+			},
+			[]string{
+				"Failed to properly update A records of ip4.hello2 with 127.0.0.1; updating those of ip4.hello1; updated those of ip4.hello4.",
 				`Failed to properly update WAF list(s) xxxxxxxx/list2; updating 12341234/list1; updated zzz/list4.`,
 			},
 			providerEnablers{ipnet.IP4: true},
@@ -103,22 +105,14 @@ func TestUpdateIPsMultiple(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdating),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseFailed),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdated),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdating),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseFailed),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdating),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseFailed),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -139,22 +133,14 @@ func TestUpdateIPsMultiple(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, detected{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdated),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdated),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdated),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdating),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, detected{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdated),
 				)
 			},
 		},
@@ -214,21 +200,20 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 	}{
 		"1yes1doing1no": {
 			false,
-			[]string{"Failed to delete A of ip4.hello2", "Failed to clear list(s) xxxxxxxx/list2"},
+			[]string{
+				"Failed to delete A of ip4.hello2",
+				"Failed to clear list(s) xxxxxxxx/list2",
+			},
 			[]string{
 				"Failed to properly delete A records of ip4.hello2; deleting those of ip4.hello1; deleted those of ip4.hello4.",
 				`Failed to properly clear WAF list(s) xxxxxxxx/list2; clearing 12341234/list1; cleared zzz/list4.`,
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
-						Return(setter.ResponseUpdating),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
-						Return(setter.ResponseFailed),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
-						Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
-						Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).Return(setter.ResponseUpdating),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).Return(setter.ResponseUpdated),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription).Return(setter.ResponseUpdating),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription).Return(setter.ResponseFailed),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription).Return(setter.ResponseNoop),
@@ -248,14 +233,10 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).
-						Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).
-						Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1")).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2")).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3")).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4")).Return(setter.ResponseUpdated),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription).Return(setter.ResponseUpdated),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription).Return(setter.ResponseNoop),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription).Return(setter.ResponseUpdated),
@@ -326,90 +307,68 @@ func TestUpdateIPs(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
 		"ip4-only/set-fail": {
 			false,
 			[]string{"Failed to set A (127.0.0.1) of ip4.hello", "Failed to set list(s) 12341234/list"},
-			[]string{
-				"Failed to properly update A records of ip4.hello with 127.0.0.1.",
-				`Failed to properly update WAF list(s) 12341234/list.`,
-			},
+			[]string{"Failed to properly update A records of ip4.hello with 127.0.0.1.", `Failed to properly update WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseFailed),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").Return(setter.ResponseFailed),
 				)
 			},
 		},
 		"ip4-only/setting": {
 			true,
 			[]string{"Setting A (127.0.0.1) of ip4.hello", "Setting list(s) 12341234/list"},
-			[]string{
-				"Updating A records of ip4.hello with 127.0.0.1.",
-				`Updating WAF list(s) 12341234/list.`,
-			},
+			[]string{"Updating A records of ip4.hello with 127.0.0.1.", `Updating WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseUpdating),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdating),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").Return(setter.ResponseUpdating),
 				)
 			},
 		},
 		"ip6-only": {
 			true,
 			[]string{"Set AAAA (::1) of ip6.hello", "Set list(s) 12341234/list"},
-			[]string{
-				"Updated AAAA records of ip6.hello with ::1.",
-				`Updated WAF list(s) 12341234/list.`,
-			},
+			[]string{"Updated AAAA records of ip6.hello with ::1.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP6: ip6}, "").
-						Return(setter.ResponseUpdated),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP6: ip6}, "").Return(setter.ResponseUpdated),
 				)
 			},
 		},
 		"ip6-only/set-fail": {
 			false,
 			[]string{"Failed to set AAAA (::1) of ip6.hello", "Failed to set list(s) 12341234/list"},
-			[]string{
-				"Failed to properly update AAAA records of ip6.hello with ::1.",
-				`Failed to properly update WAF list(s) 12341234/list.`,
-			},
+			[]string{"Failed to properly update AAAA records of ip6.hello with ::1.", `Failed to properly update WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP6: ip6}, "").
-						Return(setter.ResponseFailed),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP6: ip6}, "").Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -422,16 +381,12 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -446,16 +401,12 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseFailed),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseFailed),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -470,16 +421,12 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -494,16 +441,12 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").
-						Return(setter.ResponseFailed),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4, ipnet.IP6: ip6}, "").Return(setter.ResponseFailed),
 				)
 			},
 		},
@@ -516,14 +459,12 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
-					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
+					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(ip6, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().SuppressHint(pp.HintIP6DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: netip.Addr{}, ipnet.IP6: ip6}, ""),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), ip6, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: netip.Addr{}, ipnet.IP6: ip6}, ""),
 				)
 			},
 		},
@@ -538,13 +479,11 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", "IPv4", ip4),
 					expectHint1111Blockage(p),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					hintIP6DetectionFails(p),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
-						detectedIPs{ipnet.IP4: ip4, ipnet.IP6: netip.Addr{}}, ""),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4, ipnet.IP6: netip.Addr{}}, ""),
 				)
 			},
 		},
@@ -557,7 +496,7 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
-					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"), //nolint:lll
+					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetIP(gomock.Any(), p, ipnet.IP6).Return(netip.Addr{}, provider.MethodUnspecified, false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv6"),
 					hintIP6DetectionFails(p),
@@ -571,18 +510,16 @@ func TestUpdateIPs(t *testing.T) {
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
-					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).
-						DoAndReturn(
-							func(context.Context, pp.PP, ipnet.Type) (netip.Addr, provider.Method, bool) {
-								time.Sleep(2 * time.Second)
-								return netip.Addr{}, provider.MethodUnspecified, false
-							},
-						),
+					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).DoAndReturn(
+						func(context.Context, pp.PP, ipnet.Type) (netip.Addr, provider.Method, bool) {
+							time.Sleep(2 * time.Second)
+							return netip.Addr{}, provider.MethodUnspecified, false
+						},
+					),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect the %s address", "IPv4"),
-					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),                    //nolint:lll
-					p.EXPECT().Hintf(pp.HintDetectionTimeouts, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second), //nolint:lll
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: netip.Addr{}}, "").
-						Return(setter.ResponseNoop),
+					p.EXPECT().Hintf(pp.HintIP4DetectionFails, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
+					p.EXPECT().Hintf(pp.HintDetectionTimeouts, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: netip.Addr{}}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -596,15 +533,13 @@ func TestUpdateIPs(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						DoAndReturn(
-							func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) setter.ResponseCode { //nolint:lll
-								time.Sleep(2 * time.Second)
-								return setter.ResponseFailed
-							}),
-					p.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").
-						Return(setter.ResponseNoop),
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).DoAndReturn(
+						func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) setter.ResponseCode {
+							time.Sleep(2 * time.Second)
+							return setter.ResponseFailed
+						}),
+					p.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").Return(setter.ResponseNoop),
 				)
 			},
 		},
@@ -618,15 +553,13 @@ func TestUpdateIPs(t *testing.T) {
 					pv[ipnet.IP4].EXPECT().GetIP(gomock.Any(), p, ipnet.IP4).Return(ip4, provider.MethodPrimary, true),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv4", ip4),
 					p.EXPECT().SuppressHint(pp.HintIP4DetectionFails),
-					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).
-						Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").
-						DoAndReturn(
-							func(context.Context, pp.PP, api.WAFList, string, detectedIPs, string) setter.ResponseCode {
-								time.Sleep(2 * time.Second)
-								return setter.ResponseFailed
-							}),
-					p.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
+					s.EXPECT().Set(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), ip4, api.TTLAuto, false, recordComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, detectedIPs{ipnet.IP4: ip4}, "").DoAndReturn(
+						func(context.Context, pp.PP, api.WAFList, string, detectedIPs, string) setter.ResponseCode {
+							time.Sleep(2 * time.Second)
+							return setter.ResponseFailed
+						}),
+					p.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
 				)
 			},
 		},
@@ -687,10 +620,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"ip4-only": {
 			true,
 			[]string{"Deleted A of ip4.hello", "Cleared list(s) 12341234/list"},
-			[]string{
-				"Deleted A records of ip4.hello.",
-				`Cleared WAF list(s) 12341234/list.`,
-			},
+			[]string{"Deleted A records of ip4.hello.", `Cleared WAF list(s) 12341234/list.`},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -821,13 +751,12 @@ func TestFinalDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
-						DoAndReturn(
-							func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode {
-								time.Sleep(2 * time.Second)
-								return setter.ResponseFailed
-							}),
-					ppfmt.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).DoAndReturn(
+						func(context.Context, pp.PP, ipnet.Type, domain.Domain) setter.ResponseCode {
+							time.Sleep(2 * time.Second)
+							return setter.ResponseFailed
+						}),
+					ppfmt.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).Return(setter.ResponseNoop),
 				)
 			},
@@ -839,15 +768,13 @@ func TestFinalDeleteIPs(t *testing.T) {
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).
-						Return(setter.ResponseNoop),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).
-						DoAndReturn(
-							func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode {
-								time.Sleep(2 * time.Second)
-								return setter.ResponseFailed
-							}),
-					ppfmt.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second), //nolint:lll
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello")).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription).DoAndReturn(
+						func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode {
+							time.Sleep(2 * time.Second)
+							return setter.ResponseFailed
+						}),
+					ppfmt.EXPECT().Hintf(pp.HintUpdateTimeouts, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
 				)
 			},
 		},

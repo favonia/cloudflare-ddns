@@ -1,3 +1,4 @@
+// vim: nowrap
 package setter_test
 
 import (
@@ -16,8 +17,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func wrapCancelAsDelete(cancel func(),
-) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
+func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
 	return func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
 		cancel()
 		return false
@@ -62,7 +62,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{}, true, true),
 					h.EXPECT().CreateRecord(ctx, p, ipNetwork, domain, ip1, api.TTLAuto, false, "hello").Return(record1, false),
-					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -73,12 +73,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, api.TTLAuto, false, "hello").Return(true),
-					p.EXPECT().Noticef(pp.EmojiUpdate,
-						"Updated a stale %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record1,
-					),
+					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
 				)
 			},
 		},
@@ -89,7 +84,7 @@ func TestSet(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, api.TTLAuto, false, "hello").Return(false),
-					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -119,24 +114,11 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiDeletion,
-						"Deleted a duplicate %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record2,
-					),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, api.RegularDelitionMode).Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiDeletion,
-						"Deleted a duplicate %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record3,
-					),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record3),
 				)
 			},
 		},
@@ -145,17 +127,10 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, api.RegularDelitionMode).Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiDeletion,
-						"Deleted a duplicate %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record3,
-					),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record3),
 				)
 			},
 		},
@@ -164,16 +139,9 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}, {ID: record3, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiDeletion,
-						"Deleted a duplicate %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record2,
-					),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, api.RegularDelitionMode).Return(false),
 				)
 			},
@@ -183,10 +151,8 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: ip1}}, true, true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Do(wrapCancelAsDelete(cancel)).Return(false),
 				)
 			},
 		},
@@ -195,22 +161,11 @@ func TestSet(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, api.TTLAuto, false, "hello").Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiUpdate,
-						"Updated a stale %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record1,
-					),
+					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted a stale %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record2),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
 				)
 			},
 		},
@@ -219,19 +174,11 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, api.TTLAuto, false, "hello").Return(true),
-					p.EXPECT().Noticef(
-						pp.EmojiUpdate,
-						"Updated a stale %s record of %s (ID: %s)",
-						"AAAA",
-						"sub.test.org",
-						record1,
-					),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
-					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Do(wrapCancelAsDelete(cancel)).Return(false),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -240,10 +187,9 @@ func TestSet(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip2}, {ID: record2, IP: ip2}}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, api.TTLAuto, false, "hello").Return(false),
-					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -301,7 +247,7 @@ func TestFinalDelete(t *testing.T) {
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{}, true, true),
-					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted (cached)", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted (cached)", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -320,7 +266,7 @@ func TestFinalDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, api.FinalDeletionMode).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
 				)
 			},
 		},
@@ -330,7 +276,7 @@ func TestFinalDelete(t *testing.T) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, api.FinalDeletionMode).Return(false),
-					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly delete %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly delete %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -338,13 +284,9 @@ func TestFinalDelete(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).
-						Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
-					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, api.FinalDeletionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
-					p.EXPECT().Infof(pp.EmojiTimeout,
-						"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
-						"AAAA", "sub.test.org"),
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}}, true, true),
+					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, api.FinalDeletionMode).Do(wrapCancelAsDelete(cancel)).Return(false),
+					p.EXPECT().Infof(pp.EmojiTimeout, "Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
@@ -352,11 +294,11 @@ func TestFinalDelete(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: invalidIP}}, true, true), //nolint:lll
+					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain).Return([]api.Record{{ID: record1, IP: ip1}, {ID: record2, IP: invalidIP}}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record1, api.FinalDeletionMode).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.FinalDeletionMode).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2), //nolint:lll
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
 				)
 			},
 		},
@@ -431,12 +373,9 @@ func TestSetWAFList(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, false, false, true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", wafListDescribed),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
-						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
-					p.EXPECT().Noticef(pp.EmojiCreation,
-						"Added %s to the list %s", "10.0.0.1", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiCreation,
-						"Added %s to the list %s", "2001:db8::/64", wafListDescribed),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, []api.ID{}).Return(true),
 				)
 			},
@@ -453,15 +392,13 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{
-							prefix4wrong2,
-							prefix6range1,
-							prefix4wrong1,
-							prefix4wrong3,
-						}, true, true, true),
-					p.EXPECT().Infof(pp.EmojiAlreadyDone,
-						"The list %s is already up to date (cached)", wafListDescribed),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
+						prefix4wrong2,
+						prefix6range1,
+						prefix4wrong1,
+						prefix4wrong3,
+					}, true, true, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", wafListDescribed),
 				)
 			},
 		},
@@ -470,10 +407,8 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{prefix4, prefix6}, true, false, true),
-					p.EXPECT().Infof(pp.EmojiAlreadyDone,
-						"The list %s is already up to date", wafListDescribed),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{prefix4, prefix6}, true, false, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date", wafListDescribed),
 				)
 			},
 		},
@@ -482,10 +417,8 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{prefix4, prefix6}, true, true, true),
-					p.EXPECT().Infof(pp.EmojiAlreadyDone,
-						"The list %s is already up to date (cached)", wafListDescribed),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{prefix4, prefix6}, true, true, true),
+					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", wafListDescribed),
 				)
 			},
 		},
@@ -494,43 +427,35 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{
-							prefix6range1,
-							prefix4wrong2,
-							prefix6range2,
-							prefix6range3,
-							prefix4range2,
-							prefix4range3,
-							prefix6wrong2,
-							prefix6wrong3,
-							prefix4wrong3,
-							prefix4range1,
-							prefix4wrong1,
-							prefix6wrong1,
-						}, true, false, true),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
+						prefix6range1,
+						prefix4wrong2,
+						prefix6range2,
+						prefix6range3,
+						prefix4range2,
+						prefix4range3,
+						prefix6wrong2,
+						prefix6wrong3,
+						prefix4wrong3,
+						prefix4range1,
+						prefix4wrong1,
+						prefix6wrong1,
+					}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
-					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription,
-						gomock.InAnyOrder([]api.ID{
-							prefix4wrong2.ID,
-							prefix6wrong2.ID,
-							prefix6wrong3.ID,
-							prefix4wrong3.ID,
-							prefix4wrong1.ID,
-							prefix6wrong1.ID,
-						})).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/16", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/40", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/48", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/32", wafListDescribed),
+					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
+						prefix4wrong2.ID,
+						prefix6wrong2.ID,
+						prefix6wrong3.ID,
+						prefix4wrong3.ID,
+						prefix4wrong1.ID,
+						prefix6wrong1.ID,
+					})).Return(true),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/16", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/40", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/48", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/32", wafListDescribed),
 				)
 			},
 		},
@@ -539,42 +464,31 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{
-							prefix4wrong2,
-							prefix6wrong2,
-							prefix6wrong3,
-							prefix4wrong3,
-							prefix4wrong1,
-							prefix6wrong1,
-						}, true, false, true),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
-						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
-					p.EXPECT().Noticef(pp.EmojiCreation,
-						"Added %s to the list %s", "10.0.0.1", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiCreation,
-						"Added %s to the list %s", "2001:db8::/64", wafListDescribed),
-					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription,
-						gomock.InAnyOrder([]api.ID{
-							prefix4wrong2.ID,
-							prefix6wrong2.ID,
-							prefix6wrong3.ID,
-							prefix4wrong3.ID,
-							prefix4wrong1.ID,
-							prefix6wrong1.ID,
-						})).Return(true),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "20.0.0.0/16", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/40", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/48", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiDeletion,
-						"Deleted %s from the list %s", "4001:db8::/32", wafListDescribed),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
+						prefix4wrong2,
+						prefix6wrong2,
+						prefix6wrong3,
+						prefix4wrong3,
+						prefix4wrong1,
+						prefix6wrong1,
+					}, true, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
+					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
+						prefix4wrong2.ID,
+						prefix6wrong2.ID,
+						prefix6wrong3.ID,
+						prefix4wrong3.ID,
+						prefix4wrong1.ID,
+						prefix6wrong1.ID,
+					})).Return(true),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/16", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/40", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/48", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "4001:db8::/32", wafListDescribed),
 				)
 			},
 		},
@@ -583,12 +497,9 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{}, true, false, true),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription,
-						[]netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
-					p.EXPECT().Noticef(pp.EmojiError,
-						"Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, true, false, true),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
 				)
 			},
 		},
@@ -597,33 +508,30 @@ func TestSetWAFList(t *testing.T) {
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).
-						Return(items{
-							prefix6range1,
-							prefix4wrong2,
-							prefix6range2,
-							prefix6range3,
-							prefix4range2,
-							prefix4range3,
-							prefix6wrong2,
-							prefix6wrong3,
-							prefix4wrong3,
-							prefix4range1,
-							prefix4wrong1,
-							prefix6wrong1,
-						}, true, false, true),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
+						prefix6range1,
+						prefix4wrong2,
+						prefix6range2,
+						prefix6range3,
+						prefix4range2,
+						prefix4range3,
+						prefix6wrong2,
+						prefix6wrong3,
+						prefix4wrong3,
+						prefix4range1,
+						prefix4wrong1,
+						prefix6wrong1,
+					}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
-					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription,
-						gomock.InAnyOrder([]api.ID{
-							prefix4wrong2.ID,
-							prefix6wrong2.ID,
-							prefix6wrong3.ID,
-							prefix4wrong3.ID,
-							prefix4wrong1.ID,
-							prefix6wrong1.ID,
-						})).Return(false),
-					p.EXPECT().Noticef(pp.EmojiError,
-						"Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
+					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
+						prefix4wrong2.ID,
+						prefix6wrong2.ID,
+						prefix6wrong3.ID,
+						prefix4wrong3.ID,
+						prefix4wrong1.ID,
+						prefix6wrong1.ID,
+					})).Return(false),
+					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
 				)
 			},
 		},

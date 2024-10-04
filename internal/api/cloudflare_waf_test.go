@@ -1,3 +1,4 @@
+// vim: nowrap
 package api_test
 
 import (
@@ -156,11 +157,7 @@ func TestListWAFLists(t *testing.T) {
 			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
 
 			mockPP = mocks.NewMockPP(mockCtrl)
-			mockPP.EXPECT().Noticef(
-				pp.EmojiError,
-				"Failed to list existing lists: %v",
-				gomock.Any(),
-			)
+			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
 			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
 			require.False(t, ok)
 			require.Zero(t, lists)
@@ -195,10 +192,7 @@ func TestWAFListID(t *testing.T) {
 			"description",
 			false, false, "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s",
-					"list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s", "list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL)
 			},
 		},
 		"1ip1asn": {
@@ -219,15 +213,8 @@ func TestWAFListID(t *testing.T) {
 			true, true, mockID("list", 1),
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning,
-						"The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)",
-						"account456/list", mockID("list", 1), "mismatched description",
-					),
-					ppfmt.EXPECT().Hintf(pp.HintMismatchedWAFListAttributes,
-						"The updater will not overwrite WAF list descriptions; "+
-							"you can change them at https://dash.cloudflare.com/%s/configurations/lists",
-						mockAccountID,
-					),
+					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)", "account456/list", mockID("list", 1), "mismatched description"),
+					ppfmt.EXPECT().Hintf(pp.HintMismatchedWAFListAttributes, "The updater will not overwrite WAF list descriptions; "+"you can change them at https://dash.cloudflare.com/%s/configurations/lists", mockAccountID),
 				)
 			},
 		},
@@ -298,9 +285,7 @@ func TestListWAFListsHint(t *testing.T) {
 	mockPP = mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
-		mockPP.EXPECT().Hintf(pp.HintWAFListPermission,
-			"Double check your API token and account ID. "+
-				`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
+		mockPP.EXPECT().Hintf(pp.HintWAFListPermission, `Double check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
 	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
 	require.False(t, ok)
@@ -355,10 +340,7 @@ func TestFindWAFList(t *testing.T) {
 			false, "",
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s",
-						"list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL,
-					),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple lists named %q within the account %s (IDs: %s and %s); please report this at %s", "list", mockAccountID, mockID("list", 0), mockID("list", 2), pp.IssueReportingURL),
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find the list %s", "account456/list"),
 				)
 			},
@@ -494,9 +476,7 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			1, mockID("list", 0), 0, 1,
 			false, true,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to delete the list %s; clearing it instead: %v",
-					"account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any())
 			},
 		},
 		"delete-fail/clear-fail": {
@@ -504,12 +484,8 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			false, false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to delete the list %s; clearing it instead: %v",
-						"account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to start clearing the list %s: %v",
-						"account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start clearing the list %s: %v", "account456/list", gomock.Any()),
 				)
 			},
 		},
@@ -518,12 +494,8 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			false, false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to delete the list %s; clearing it instead: %v",
-						"account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError,
-						"Failed to start clearing the list %s: %v",
-						"account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start clearing the list %s: %v", "account456/list", gomock.Any()),
 				)
 			},
 		},
@@ -697,9 +669,7 @@ func TestListWAFListItems(t *testing.T) {
 			0,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to retrieve items in the list %s: %v",
-					"account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve items in the list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"invalid": {
@@ -712,13 +682,9 @@ func TestListWAFListItems(t *testing.T) {
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Found an invalid IP range/address %q in the list %s",
-						"invalid item", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s", "invalid item", "account456/list"),
 				)
 			},
 		},
@@ -893,9 +859,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to finish deleting items from the list %s: %v",
-					"account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish deleting items from the list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {
@@ -907,13 +871,9 @@ func TestDeleteWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Found an invalid IP range/address %q in the list %s",
-						"invalid item", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s", "invalid item", "account456/list"),
 				)
 			},
 		},
@@ -1073,8 +1033,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish adding items to the list %s: %v",
-					"account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish adding items to the list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {
@@ -1086,13 +1045,9 @@ func TestCreateWAFListItems(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-						"Found an invalid IP range/address %q in the list %s",
-						"invalid item", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", "invalid item", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s", "invalid item", "account456/list"),
 				)
 			},
 		},

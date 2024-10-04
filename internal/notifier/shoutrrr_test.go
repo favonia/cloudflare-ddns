@@ -1,3 +1,4 @@
+// vim: nowrap
 package notifier_test
 
 import (
@@ -29,9 +30,7 @@ func TestDescribeShoutrrrService(t *testing.T) {
 		"empty": {
 			"", "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unknown shoutrrr service name %q; please report it at %s",
-					"", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unknown shoutrrr service name %q; please report it at %s", "", pp.IssueReportingURL)
 			},
 		},
 	} {

@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -32,15 +33,15 @@ func TestReadDomains(t *testing.T) {
 		"star":      {true, "*", ds{}, ds{w("")}, true, nil},
 		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
 		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
-		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},                      //nolint:lll
-		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil}, //nolint:lll
+		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
+		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
 		"illformed1": {
 			true, "xn--:D.org,a.org",
 			ds{f("random.org")},
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
 			},
 		},
 		"illformed2": {
@@ -49,7 +50,7 @@ func TestReadDomains(t *testing.T) {
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any()) //nolint:lll
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
 			},
 		},
 		"illformed3": {
@@ -127,9 +128,7 @@ func TestReadDomainMap(t *testing.T) {
 		"ill-formed": {
 			" ", "   ", "*.*", nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"%s (%q) contains an ill-formed domain %q: %v",
-					"IP6_DOMAINS", "*.*", "*.*", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
 			},
 		},
 	} {

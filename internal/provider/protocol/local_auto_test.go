@@ -51,18 +51,14 @@ func TestExtractUDPAddr(t *testing.T) {
 			&net.UDPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: "", Port: 123},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Failed to parse UDP source address %q",
-					"?0102")
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse UDP source address %q", "?0102")
 			},
 		},
 		"dummy": {
 			&Dummy{},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unexpected UDP source address data %q of type %T",
-					"dummy/string", &Dummy{})
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unexpected UDP source address data %q of type %T", "dummy/string", &Dummy{})
 			},
 		},
 	} {
@@ -98,16 +94,14 @@ func TestLocalAuteGetIP(t *testing.T) {
 			"127.0.0.1:80", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
 			},
 		},
 		"loopback/6": {
 			"[::1]:80", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected %s address %s is a loopback address", "IPv6", "::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv6", "::1")
 			},
 		},
 		"empty/4": {

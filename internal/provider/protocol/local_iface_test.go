@@ -1,3 +1,4 @@
+// vim: nowrap
 //go:build linux
 
 package protocol_test
@@ -58,9 +59,7 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			&net.IPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: ""},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Failed to parse address %q assigned to interface %s",
-					"?0102", "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse address %q assigned to interface %s", "?0102", "iface")
 			},
 		},
 		"ipnet/4": {
@@ -72,18 +71,14 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			&net.IPNet{IP: net.IP([]byte{0x01, 0x02}), Mask: net.CIDRMask(10, 22)},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Failed to parse address %q assigned to interface %s",
-					"?0102", "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse address %q assigned to interface %s", "?0102", "iface")
 			},
 		},
 		"dummy": {
 			&Dummy{},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unexpected address data %q of type %T found in interface %s",
-					"dummy/string", &Dummy{}, "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unexpected address data %q of type %T found in interface %s", "dummy/string", &Dummy{}, "iface")
 			},
 		},
 	} {
@@ -132,10 +127,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""}, &net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""}},
 			false, protocol.MethodUnspecified, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %s",
-					"IPv4", "iface",
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
 			},
 		},
 		"ipaddr/4/loopback": {
@@ -143,10 +135,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
 			false, protocol.MethodUnspecified, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %s",
-					"IPv4", "iface",
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
 			},
 		},
 		"ipaddr/6/ff05::2": {
@@ -154,11 +143,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
 			true, protocol.MethodPrimary, netip.MustParseAddr("ff05::2%site"),
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
-					"Failed to find any global unicast %s address assigned to interface %s, "+
-						"but found an address %s with a scope larger than the link-local scope",
-					"IPv6", "iface", "ff05::2%site",
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiWarning, "Failed to find any global unicast %s address assigned to interface %s, but found an address %s with a scope larger than the link-local scope", "IPv6", "iface", "ff05::2%site")
 			},
 		},
 		"ipaddr/4/dummy": {
@@ -166,9 +151,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&Dummy{}},
 			false, protocol.MethodUnspecified, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
-					"Unexpected address data %q of type %T found in interface %s",
-					"dummy/string", &Dummy{}, "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unexpected address data %q of type %T found in interface %s", "dummy/string", &Dummy{}, "iface")
 			},
 		},
 	} {
@@ -203,28 +186,21 @@ func TestLocalWithInterfaceGetIP(t *testing.T) {
 			"lo", ipnet.IP4, false,
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %s",
-					"IPv4", "lo")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "lo")
 			},
 		},
 		"lo/6": {
 			"lo", ipnet.IP6, false,
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError,
-					"Failed to find any global unicast %s address assigned to interface %s",
-					"IPv6", "lo")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv6", "lo")
 			},
 		},
 		"non-existent": {
 			"non-existent-iface", ipnet.IP4, false,
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiUserError,
-					"Failed to find an interface named %q: %v",
-					"non-existent-iface", gomock.Any(),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", "non-existent-iface", gomock.Any())
 			},
 		},
 	} {

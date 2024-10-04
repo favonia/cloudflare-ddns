@@ -1,3 +1,4 @@
+// vim: nowrap
 package config_test
 
 import (
@@ -35,30 +36,21 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 		"example": {
 			true, "https://hi.org/1234",
 			nil,
-			monitor.NewComposed(monitor.Healthchecks{
-				BaseURL: urlMustParse(t, "https://hi.org/1234"),
-				Timeout: monitor.HealthchecksDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.Healthchecks{BaseURL: urlMustParse(t, "https://hi.org/1234"), Timeout: monitor.HealthchecksDefaultTimeout}),
 			true,
 			nil,
 		},
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			monitor.NewComposed(monitor.Healthchecks{
-				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
-				Timeout: monitor.HealthchecksDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.Healthchecks{BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"), Timeout: monitor.HealthchecksDefaultTimeout}),
 			true,
 			nil,
 		},
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			monitor.NewComposed(monitor.Healthchecks{
-				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
-				Timeout: monitor.HealthchecksDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.Healthchecks{BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"), Timeout: monitor.HealthchecksDefaultTimeout}),
 			true,
 			nil,
 		},
@@ -70,7 +62,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 				)
 			},
 		},
@@ -89,7 +81,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
-					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`), //nolint:lll
+					m.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 				)
 			},
 		},
@@ -142,35 +134,24 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 		"password": {
 			true, "https://me:pass@hi.org/1234",
 			nil,
-			monitor.NewComposed(monitor.UptimeKuma{
-				BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"),
-				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.UptimeKuma{BaseURL: urlMustParse(t, "https://me:pass@hi.org/1234"), Timeout: monitor.UptimeKumaDefaultTimeout}),
 			true,
 			nil,
 		},
 		"fragment": {
 			true, "https://hi.org/1234#fragment",
 			nil,
-			monitor.NewComposed(monitor.UptimeKuma{
-				BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"),
-				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.UptimeKuma{BaseURL: urlMustParse(t, "https://hi.org/1234#fragment"), Timeout: monitor.UptimeKumaDefaultTimeout}),
 			true,
 			nil,
 		},
 		"query": {
 			true, "https://hi.org/1234?hello=123",
 			nil,
-			monitor.NewComposed(monitor.UptimeKuma{
-				BaseURL: urlMustParse(t, "https://hi.org/1234"),
-				Timeout: monitor.UptimeKumaDefaultTimeout,
-			}),
+			monitor.NewComposed(monitor.UptimeKuma{BaseURL: urlMustParse(t, "https://hi.org/1234"), Timeout: monitor.UptimeKumaDefaultTimeout}),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
-					"hello")
+				m.EXPECT().Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`, "hello")
 			},
 		},
 		"illformed/not-url": {

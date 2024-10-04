@@ -1,3 +1,4 @@
+// vim: nowrap
 package ipnet_test
 
 import (
@@ -100,9 +101,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP4, invalidIP,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible,
-					`Detected IP address is not valid; this should not happen and please report it at %s`,
-					pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"4-1::2": {
@@ -117,8 +116,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP4, mustIP("0.0.0.0"),
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected %s address %s is an unspecified address", "IPv4", "0.0.0.0")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is an unspecified address", "IPv4", "0.0.0.0")
 			},
 		},
 		"4-127.0.0.1": {
@@ -139,9 +137,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP6, invalidIP,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible,
-					`Detected IP address is not valid; this should not happen and please report it at %s`,
-					pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"6-1::2": {ipnet.IP6, mustIP("1::2"), true, mustIP("1::2"), nil},
@@ -157,14 +153,8 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiError,
-						"Detected IP address %s is an IPv4-mapped IPv6 address",
-						"::ffff:10.10.10.10"),
-					m.EXPECT().Hintf(pp.HintIP4MappedIP6Address,
-						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
-							"It cannot be used for routing IPv6 traffic. "+
-							"If you need to use it for DNS, please open an issue at %s",
-						pp.IssueReportingURL),
+					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", "::ffff:10.10.10.10"),
+					m.EXPECT().Hintf(pp.HintIP4MappedIP6Address, "An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s", pp.IssueReportingURL),
 				)
 			},
 		},
@@ -179,18 +169,14 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP6, mustIP("ff01::1"),
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected %s address %s is an interface-local multicast address",
-					"IPv6", "ff01::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is an interface-local multicast address", "IPv6", "ff01::1")
 			},
 		},
 		"6-ff03::1": {
 			ipnet.IP6, mustIP("ff03::1"),
 			true, mustIP("ff03::1"),
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiWarning,
-					"Detected %s address %s does not look like a global unicast address",
-					"IPv6", "ff03::1")
+				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address", "IPv6", "ff03::1")
 			},
 		},
 		"100-10.10.10.10": {
