@@ -123,8 +123,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			return false
 		}
 		ppfmt.Hintf(pp.HintExperimentalLocalWithInterface,
-			`You are using the experimental provider "local.iface:%s" added in version 1.15.0`,
-			parts[1])
+			`You are using the experimental "local.iface" provider added in version 1.15.0`)
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
 	case len(parts) == 2 && parts[0] == "url":
@@ -136,6 +135,21 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 	case len(parts) == 1 && parts[0] == "none":
 		*field = nil
 		return true
+	case len(parts) == 2 && parts[0] == "debug.const":
+		ppfmt.Hintf(pp.HintDebugConstProvider, `You are using the undocumented "debug.const" provider`)
+		if parts[1] == "" {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				`%s=debug.const: must be followed by an IP address`,
+				key,
+			)
+			return false
+		}
+		p, ok := provider.NewDebugConst(ppfmt, parts[1])
+		if ok {
+			*field = p
+		}
+		return ok
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
 		return false

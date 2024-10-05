@@ -20,4 +20,5 @@ const (
 	HintExperimentalShoutrrr                       // New feature introduced in 1.12.0 on 2024/6/28
 	HintExperimentalWAF                            // New feature introduced in 1.14.0 on 2024/8/25
 	HintExperimentalLocalWithInterface             // New feature introduced in 1.15.0
+	HintDebugConstProvider                         // Undocumented feature
 )

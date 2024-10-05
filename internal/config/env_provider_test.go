@@ -27,6 +27,7 @@ func TestReadProvider(t *testing.T) {
 		localLoopback = provider.NewLocalWithInterface("lo")
 		ipify         = provider.NewIpify()
 		custom        = provider.MustNewCustomURL("https://url.io")
+		debugConst    = provider.MustNewDebugConst("1.1.1.1")
 	)
 
 	for name, tc := range map[string]struct {
@@ -118,7 +119,7 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental provider "local.iface:%s" added in version 1.15.0`, "lo")
+				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental "local.iface" provider added in version 1.15.0`)
 			},
 		},
 		"local.iface:": {
@@ -138,6 +139,21 @@ func TestReadProvider(t *testing.T) {
 			true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "something-else")
+			},
+		},
+		"debug.const:1.1.1.1": {
+			true, "   debug.const   :  1.1.1.1 ", false, "", trace, debugConst, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Hintf(pp.HintDebugConstProvider, `You are using the undocumented "debug.const" provider`)
+			},
+		},
+		"debug.const": {
+			true, "   debug.const: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Hintf(pp.HintDebugConstProvider, `You are using the undocumented "debug.const" provider`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s=debug.const: must be followed by an IP address`, key),
+				)
 			},
 		},
 	} {
