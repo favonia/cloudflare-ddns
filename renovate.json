@@ -5,7 +5,7 @@
     "group:allNonMajor",
     ":semanticCommitTypeAll(build)"
   ],
-  "schedule": ["on the 2nd and 4th day instance on friday after 9pm"],
+  "schedule": ["on the first day instance on friday after 9pm"],
   "packageRules": [
     {
       "matchPackageNames": ["github.com/cloudflare/cloudflare-go"],
