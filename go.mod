@@ -8,7 +8,7 @@ retract (
 )
 
 require (
-	github.com/cloudflare/cloudflare-go v0.106.0
+	github.com/cloudflare/cloudflare-go v0.107.0
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/google/go-querystring v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
@@ -16,8 +16,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
-	golang.org/x/net v0.29.0
-	golang.org/x/text v0.18.0
+	golang.org/x/net v0.30.0
+	golang.org/x/text v0.19.0
 )
 
 require (
@@ -29,7 +29,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/time v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
