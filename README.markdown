@@ -173,7 +173,7 @@ The updater, by default, will attempt to update DNS records for both IPv4 and IP
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
+<summary><em>Click to expand:</em> 📡 Use IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
 
 The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Do use newer versions of Docker that come with much better IPv6 support!
 
