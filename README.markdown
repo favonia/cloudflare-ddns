@@ -42,7 +42,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 ### 🛡️ Attention to Security
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/DESIGN.markdown#network-security-threat-model) for more information.
-- <details><summary>✍️ You can verify the Docker images were built from this repository using the cosign tool <em>(click to expand)</em></summary>
+- <details><summary><em>Click to expand:</em> ✍️ You can verify the Docker images were built from this repository using the cosign tool.</summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:latest \
@@ -52,7 +52,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
   Note: this only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
-- <details><summary>📚 The updater uses only established open-source Go libraries <em>(click to expand)</em></summary>
+- <details><summary><em>Click to expand:</em> 📚 The updater uses only established open-source Go libraries.</summary>
 
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of Cloudflare API v4.
@@ -75,9 +75,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 ## ⛷️ Quick Start
 
-_(Click to expand the following items.)_
-
-<details><summary>🐋 Directly run the Docker image.</summary>
+<details><summary><em>Click to expand:</em> 🐋 Directly run the Docker image</summary>
 
 ```bash
 docker run \
@@ -90,7 +88,7 @@ docker run \
 
 </details>
 
-<details><summary>🧬 Directly run the updater from its source.</summary>
+<details><summary><em>Click to expand:</em> 🧬 Directly run the updater from its source</summary>
 
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
@@ -144,10 +142,8 @@ services:
         # Tell Cloudflare to cache webpages and hide your IP (optional)
 ```
 
-_(Click to expand the following important tips.)_
-
 <details>
-<summary>🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
+<summary><em>Click to expand:</em> 🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
 
 The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
 
@@ -156,35 +152,35 @@ There is an optional feature (available since version 1.14.0) that lets you main
 </details>
 
 <details>
-<summary>📍 <code>DOMAINS</code> is the list of domains to update</summary>
+<summary><em>Click to expand:</em> 📍 <code>DOMAINS</code> is the list of domains to update</summary>
 
 The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to share the same DNS zone---the updater will take care of the DNS zones behind the scene.
 
 </details>
 
 <details>
-<summary>🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server</summary>
+<summary><em>Click to expand:</em> 🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server</summary>
 
 The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
 
 </details>
 
 <details>
-<summary>📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
+<summary><em>Click to expand:</em> 📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
 
 The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid seeing the detection errors), add `IP6_PROVIDER=none`.
 
 </details>
 
 <details>
-<summary>📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
+<summary><em>Click to expand:</em> 📡 Expand this if you want IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
 
 The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Do use newer versions of Docker that come with much better IPv6 support!
 
 </details>
 
 <details>
-<summary>🛡️ Change <code>user: "1000:1000"</code> to the user and group IDs you want to use</summary>
+<summary><em>Click to expand:</em> 🛡️ Change <code>user: "1000:1000"</code> to the user and group IDs you want to use</summary>
 
 Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
 
@@ -199,10 +195,8 @@ docker-compose up --detach --build cloudflare-ddns
 
 ## ❓ Frequently Asked Questions
 
-_(Click to expand the following items.)_
-
 <details>
-<summary>❔ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
+<summary><em>Click to expand:</em> ❔ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
 
 Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
@@ -216,7 +210,7 @@ If you really wish to test the updater with simulated IP changes in the DNS reco
 </details>
 
 <details>
-<summary>❔ How can I see the timestamps of the IP checks and/or updates?</summary>
+<summary><em>Click to expand:</em> ❔ How can I see the timestamps of the IP checks and/or updates?</summary>
 
 The updater does not itself add timestamps because all major systems already timestamp everything:
 
@@ -226,14 +220,14 @@ The updater does not itself add timestamps because all major systems already tim
 </details>
 
 <details>
-<summary>❔ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
+<summary><em>Click to expand:</em> ❔ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
 
 Is your “public” IP address on your router between `100.64.0.0` and `100.127.255.255`? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public IP address, nor does it allow you to forward IP packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) that can work around CGNAT.
 
 </details>
 
 <details>
-<summary>❔ How should I install this updater in ☸️ Kubernetes?</summary>
+<summary><em>Click to expand:</em> ❔ How should I install this updater in ☸️ Kubernetes?</summary>
 
 While the instructions for Kubernetes were removed due to high maintenance, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). Please note that only recent versions of Kompose support the `user: "UID:GID"` attribute with `GID`. (For more information, see [my pull request that adds this feature to Kompose](https://github.com/kubernetes/kompose/pull/1929).)
 
@@ -242,7 +236,7 @@ Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/w
 </details>
 
 <details>
-<summary>❔ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
+<summary><em>Click to expand:</em> ❔ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
 
 Certain Docker installations may have issues with the `no-new-privileges` security option. If you cannot run Docker images with this option (including this updater), removing it might be necessary. This will slightly compromise security, but it’s better than not running the updater at all. If _only_ this updater is affected, please [report this issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new).
 
@@ -254,10 +248,8 @@ Certain Docker installations may have issues with the `no-new-privileges` securi
 
 The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details.
 
-_(Click to expand the following items.)_
-
 <details>
-<summary>🔑 The Cloudflare API token</summary>
+<summary><em>Click to expand:</em> 🔑 The Cloudflare API token</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -277,7 +269,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📍 DNS domains and WAF lists to update</summary>
+<summary><em>Click to expand:</em> 📍 DNS domains and WAF lists to update</summary>
 
 > You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` (since version 1.14.0) for the updater to update.
 
@@ -300,7 +292,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>🔍 IP address providers</summary>
+<summary><em>Click to expand:</em> 🔍 IP address providers</summary>
 
 | Name           | Meaning                                                                                                                                                                                                                                                                       | Default Value      |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -309,21 +301,19 @@ _(Click to expand the following items.)_
 
 > 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
-> 📡 Available IP address providers:
->
-> | Provider Name                                                                            | Explanation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-> | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-> | `cloudflare.doh`                                                                         | Get the IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). 🤖 The updater will connect `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon). Since version 1.14.0, the blockage detection uses a variant of [the Happy Eyeballs algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to reduce delay. |
-> | `cloudflare.trace`                                                                       | Get the IP address by parsing the [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). **This is the default provider.** 🤖 The updater will connect `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon). Since version 1.14.0, the blockage detection uses a variant of [the Happy Eyeballs algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to reduce delay.                |
-> | `local`                                                                                  | <p>Get the IP address via local network interfaces and routing tables. The updater will use the local address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.)</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.</p>                                            |
-> | 🧪 `local.iface:<iface>` (available since version 1.15.0 but not finalized until 1.16.0) | <p>🧪 Get the IP address via the specific local network interface `iface`. The updater will choose the first global unicast IP address of the matching IP family (IPv4 or IPv6).</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater cannot access host network interfaces.</p>                                                                                                                                                                                                        |
-> | `url:<URL>`                                                                              | Fetch the IP address from a URL. The provider format is `url:` followed by the URL itself. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 address from <https://api4.ipify.org>. Since version 1.15.0, the updater will enforce the matching protocol (IPv4 or IPv6) when connecting to the provided URL. Currently, only HTTP(S) is supported.                                                                                                                                                                                                            |
-> | `none`                                                                                   | <p>Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed.</p><p>🧪 The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. As the support of WAF lists is still experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).</p>                                                      |
+| Provider Name                                                                            | Explanation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cloudflare.doh`                                                                         | Get the IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https). 🤖 The updater will connect `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon). Since version 1.14.0, the blockage detection uses a variant of [the Happy Eyeballs algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to reduce delay. |
+| `cloudflare.trace`                                                                       | Get the IP address by parsing the [Cloudflare debugging page](https://one.one.one.one/cdn-cgi/trace). **This is the default provider.** 🤖 The updater will connect `1.1.1.1` for IPv4 and `2606:4700:4700::1111` for IPv6. Since version 1.9.3, the updater will switch to `1.0.0.1` for IPv4 if `1.1.1.1` appears to be blocked or intercepted by your ISP or your router (which is still not uncommon). Since version 1.14.0, the blockage detection uses a variant of [the Happy Eyeballs algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to reduce delay.                |
+| `local`                                                                                  | <p>Get the IP address via local network interfaces and routing tables. The updater will use the local address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.)</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.</p>                                            |
+| 🧪 `local.iface:<iface>` (available since version 1.15.0 but not finalized until 1.16.0) | <p>🧪 Get the IP address via the specific local network interface `iface`. The updater will choose the first global unicast IP address of the matching IP family (IPv4 or IPv6).</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater cannot access host network interfaces.</p>                                                                                                                                                                                                        |
+| `url:<URL>`                                                                              | Fetch the IP address from a URL. The provider format is `url:` followed by the URL itself. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 address from <https://api4.ipify.org>. Since version 1.15.0, the updater will enforce the matching protocol (IPv4 or IPv6) when connecting to the provided URL. Currently, only HTTP(S) is supported.                                                                                                                                                                                                            |
+| `none`                                                                                   | <p>Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed.</p><p>🧪 The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. As the support of WAF lists is still experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).</p>                                                      |
 
 </details>
 
 <details>
-<summary>📅 Scheduling of IP detections and updates</summary>
+<summary><em>Click to expand:</em> 📅 Scheduling of IP detections and updates</summary>
 
 | Name               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Default Value                 |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
@@ -336,7 +326,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>⏳ Timeouts of various operations</summary>
+<summary><em>Click to expand:</em> ⏳ Timeouts of various operations</summary>
 
 | Name                | Meaning                                                                                                                                                                                                                                       | Default Value      |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -346,7 +336,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>🐣 Parameters of new DNS records and WAF lists</summary>
+<summary><em>Click to expand:</em> 🐣 Parameters of new DNS records and WAF lists (proxy status, TTL, and comments)</summary>
 
 > 👉 The updater will preserve existing parameters (TTL, proxy states, DNS record comments, etc.). Only when it creates new DNS records and new WAF lists, the following settings will apply. To change existing parameters, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). 🐞🧪 **KNOWN ISSUE: comments of stale WAF list items (not WAF lists themselves) will not be kept** because the Cloudflare API does not provide an easy way to update list items. The comments will be lost when the updater deletes stale list items and create new ones.
 
@@ -391,7 +381,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>👁️ Message logging options</summary>
+<summary><em>Click to expand:</em> 👁️ Message logging options</summary>
 
 | Name    | Meaning                                                                                                                                                                                       | Default Value |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -401,15 +391,15 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>📣 Notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+<summary><em>Click to expand:</em> 📣 Notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
 
 > 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to disable IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 
-| Name                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HEALTHCHECKS`                       | <p>The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>`</p><p>⚠️ The ping schedule should match the schedule specified by `UPDATE_CRON`.<br/>🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.</p> |
-| `UPTIMEKUMA`                         | <p>The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page.</p><p>⚠️ The “Heartbeat Interval” should match the update schedule specified by `UPDATE_CRON`.</p>                                                                                                                                                                                                                                                                                                                                                |
-| 🧪 `SHOUTRRR` (since version 1.12.0) | Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. Each shoutrrr URL represents a notification service, such as `discord://<token>@<id>` for Discord.                                                                                                                                                                                                                                                                                                                                                                              |
+| Name                                 | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HEALTHCHECKS`                       | <p>The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>`</p><p>⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`.<br/>🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.</p> |
+| `UPTIMEKUMA`                         | <p>The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page.</p><p>⚠️ The “Heartbeat Interval” should match the update schedule specified by `UPDATE_CRON`.</p>                                                                                                                                                                                                                                                                                                                                                       |
+| 🧪 `SHOUTRRR` (since version 1.12.0) | Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord.                                                                                                                                                                                                                                                                                                                                                          |
 
 </details>
 
@@ -419,10 +409,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 ## 🚵 Migration Guides
 
-_(Click to expand the following items.)_
-
 <details>
-<summary>I am migrating from oznu/cloudflare-ddns (now archived)</summary>
+<summary><em>Click to expand:</em> I am migrating from oznu/cloudflare-ddns (now archived)</summary>
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
@@ -442,7 +430,7 @@ _(Click to expand the following items.)_
 </details>
 
 <details>
-<summary>I am migrating from timothymiller/cloudflare-ddns</summary>
+<summary><em>Click to expand:</em> I am migrating from timothymiller/cloudflare-ddns</summary>
 
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
