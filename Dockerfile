@@ -16,6 +16,10 @@ RUN \
   go build -tags "timetzdata" -trimpath -ldflags="-w -s -X main.Version=${GIT_DESCRIBE} -buildid=" \
   -o /bin/ddns ./cmd/ddns
 
+# The "debug" stage can be used directly for debugging.
+FROM build AS debug
+ENTRYPOINT ["/bin/ddns"]
+
 # The minimal images contain only the program and the consolidated certificates.
 FROM scratch AS minimal
 COPY --from=build /bin/ddns /bin/
