@@ -59,9 +59,9 @@ jobs:
         with:
           images: ${{ github.repository }}
           tags: |
-            type=edge
-            type=semver,pattern={{major}}
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}
+            type=edge
           annotations: |
             io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
@@ -112,7 +112,7 @@ jobs:
           build-args: |
             ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: ${{ env.platforms }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
+          tags: ${{ steps.meta-debug.outputs.tags }}
+          labels: ${{ steps.meta-debug.outputs.labels }}
+          annotations: ${{ steps.meta-debug.outputs.annotations }}
           provenance: "mode=max"
