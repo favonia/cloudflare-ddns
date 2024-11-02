@@ -87,3 +87,31 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         run: |
           cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
+      - name: 📝 Calculate metadata for Docker images for debugging
+        if: ${{ github.event_name != 'release' }}
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+        id: meta-debug
+        with:
+          images: ${{ github.repository }}
+          tags: |
+            type=edge,suffix=debug
+          annotations: |
+            io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
+            io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+      - name: 🚀 Build and deploy Docker images for debugging
+        if: ${{ github.event_name != 'release' }}
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+        id: build-debug
+        with:
+          target: "debug"
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: |
+            ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
+          platforms: ${{ env.platforms }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: "mode=max"
