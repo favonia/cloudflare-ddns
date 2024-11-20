@@ -23,13 +23,13 @@ func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url str
 
 			matched := re.FindSubmatch(body)
 			if len(matched) < 2 {
-				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, url, body)
+				ppfmt.Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q (%q)`, url, body)
 				return invalidIP, false
 			}
 			ipString := string(matched[1])
 			ip, err := netip.ParseAddr(ipString)
 			if err != nil {
-				ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, url, ipString)
+				ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, url, ipString)
 				return invalidIP, false
 			}
 			return ip, true

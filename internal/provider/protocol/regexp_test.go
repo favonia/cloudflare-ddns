@@ -85,13 +85,13 @@ func TestRegexpGetIP(t *testing.T) {
 		"4/illformed": {
 			ipnet.IP4, illformed4.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, illformed4.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed4.URL, "hello")
 			},
 		},
 		"6/illformed": {
 			ipnet.IP6, illformed6.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q: %s`, illformed6.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed6.URL, "hello")
 			},
 		},
 		"4/request-fail": {
@@ -121,13 +121,13 @@ func TestRegexpGetIP(t *testing.T) {
 		"4/no-match": {
 			ipnet.IP4, illformed4.URL, regexp.MustCompile(`some random string`), ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, illformed4.URL, []byte("<<hello>>"))
+				m.EXPECT().Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q (%q)`, illformed4.URL, []byte("<<hello>>"))
 			},
 		},
 		"6/no-match": {
 			ipnet.IP6, illformed6.URL, regexp.MustCompile(`some random string`), ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q: %s`, illformed6.URL, []byte("<<hello>>"))
+				m.EXPECT().Noticef(pp.EmojiError, `Failed to find the IP address in the response of %q (%q)`, illformed6.URL, []byte("<<hello>>"))
 			},
 		},
 	} {
