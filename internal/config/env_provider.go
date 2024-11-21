@@ -99,6 +99,18 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 	case len(parts) == 1 && parts[0] == "cloudflare.trace":
 		*field = provider.NewCloudflareTrace()
 		return true
+	case len(parts) == 2 && parts[0] == "cloudflare.trace":
+		ppfmt.Hintf(pp.HintDebugConstProvider, `You are using the undocumented "cloudflare.trace:..." provider`)
+		if parts[1] == "" {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				`%s=cloudflare.trace: must be followed by a URL`,
+				key,
+			)
+			return false
+		}
+		*field = provider.NewCloudflareTraceCustom(parts[1])
+		return true
 	case len(parts) == 1 && parts[0] == "cloudflare.doh":
 		*field = provider.NewCloudflareDOH()
 		return true

@@ -36,7 +36,6 @@ issues:
       linters:
         - lll
         - dupl
-        - goconst
   include:
     - EXC0002
     - EXC0011
@@ -52,6 +51,7 @@ linters:
     - gomnd # deprecated
     - exportloopref # deprecated
 
+    - goconst # never leads to actual code changes
     - mnd # never leads to actual code changes
 
     - cyclop # can detect complicated code, but never leads to actual code changes
