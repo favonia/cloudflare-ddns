@@ -75,7 +75,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 ## ⛷️ Quick Start
 
-<details><summary><em>Click to expand:</em> 🐋 Directly run the Docker image</summary>
+### 🐋 Directly run the Docker image
 
 ```bash
 docker run \
@@ -86,9 +86,7 @@ docker run \
   favonia/cloudflare-ddns:latest
 ```
 
-</details>
-
-<details><summary><em>Click to expand:</em> 🧬 Directly run the updater from its source</summary>
+### 🧬 Directly run the updater from its source
 
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
@@ -98,8 +96,6 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
-
-</details>
 
 ## 🏁 Deployment as a System Service
 
@@ -147,7 +143,7 @@ services:
 
 The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
 
-There is an optional feature (available since version 1.14.0) that lets you maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission. If you only need to update WAF lists, not DNS records, you can remove the **Zone - DNS - Edit** permission. Refer to the detailed documentation below for information on updating WAF lists.
+Since version 1.14.0, the updater can also maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission. If you only need to update WAF lists, not DNS records, you can remove the **Zone - DNS - Edit** permission. Refer to the detailed documentation below for information on updating WAF lists.
 
 </details>
 
