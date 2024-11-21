@@ -242,6 +242,13 @@ Certain Docker installations may have issues with the `no-new-privileges` securi
 
 </details>
 
+<details>
+<summary><em>Click to expand:</em> ❔ I am getting <code>error code: 1034</code></summary>
+
+We have received reports that the default IP provider, `cloudflare.trace`, has recently begun returning an "error code: 1034." The current theory is that Cloudflare’s servers may be experiencing internal problems. We are tracking this issue at [GitHub Issue 985](https://github.com/favonia/cloudflare-ddns/issues/985). If IP detection fails, the updater will simply retry later. You can also switch to a different IP provider.
+
+</details>
+
 ## 🎛️ Further Customization
 
 ### ⚙️ All Settings
