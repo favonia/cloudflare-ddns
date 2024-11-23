@@ -1,5 +1,12 @@
 # Community Contributions
 
+## 🆗 systemd
+
+_(contributed by [Thomas @sumgryph](https://github.com/symgryph))_
+
+- See [cloudflare-ddns.service](./systemd/cloudflare-ddns.service) for a sample systemd service unit file.
+- See [cloudflare-ddns.service.env](./systemd/cloudflare-ddns.service.env) for a sample systemd environment file.
+
 ## 🐡 OpenBSD
 
 _(contributed by [Brandon @skarekrow](https://github.com/skarekrow))_
