@@ -8,6 +8,10 @@ ARG TARGETVARIANT
 
 # See .dockerignore for the list of files being copied.
 WORKDIR "/src/"
+# add a download step to leverage Docker layer caching
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY [".", "/src/"]
 
 # Compile the code.
