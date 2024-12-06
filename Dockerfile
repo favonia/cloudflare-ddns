@@ -12,7 +12,7 @@ WORKDIR "/src/"
 COPY ["go.mod", "go.sum", "/src/"]
 RUN go mod download
 
-COPY [".", "/src/"]
+COPY --exclude=go.mod --exclude=go.sum [".", "/src/"]
 
 # Compile the code.
 RUN \
