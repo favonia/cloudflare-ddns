@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7-labs
 # We use cross-compilation because QEMU is slow.
 FROM --platform=${BUILDPLATFORM} golang:1.23.4-alpine3.20@sha256:9a31ef0803e6afdf564edc8ba4b4e17caed22a0b1ecd2c55e3c8fdd8d8f68f98 AS build
 
@@ -8,7 +9,11 @@ ARG TARGETVARIANT
 
 # See .dockerignore for the list of files being copied.
 WORKDIR "/src/"
-COPY [".", "/src/"]
+# Add a download step to leverage Docker layer caching
+COPY ["go.mod", "go.sum", "/src/"]
+RUN go mod download
+
+COPY --exclude=go.mod --exclude=go.sum [".", "/src/"]
 
 # Compile the code.
 RUN \
