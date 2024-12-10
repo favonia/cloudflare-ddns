@@ -14,14 +14,11 @@ func NewCloudflareDOH() Provider {
 		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {
-				protocol.Switchable{
-					Primary:     "https://1.1.1.1/dns-query",
-					Alternative: "https://1.0.0.1/dns-query",
-				},
+				protocol.Constant("https://cloudflare-dns.com/dns-query"),
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 			ipnet.IP6: {
-				protocol.Constant("https://[2606:4700:4700::1111]/dns-query"),
+				protocol.Constant("https://cloudflare-dns.com/dns-query"),
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 		},
