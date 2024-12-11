@@ -34,7 +34,7 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url strin
 // HTTP represents a generic detection protocol to use an HTTP response directly.
 type HTTP struct {
 	ProviderName string                // name of the protocol
-	URL          map[ipnet.Type]Switch // URL of the page for detection
+	URL          map[ipnet.Type]string // URL of the page for detection
 }
 
 // Name of the detection protocol.
@@ -43,20 +43,17 @@ func (p HTTP) Name() string {
 }
 
 // GetIP detects the IP address by using the HTTP response directly.
-func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method Method) (netip.Addr, bool) {
+func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	url, found := p.URL[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url.Switch(method))
+	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url)
 	if !ok {
 		return netip.Addr{}, false
 	}
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
-
-// HasAlternative calls [Switch.HasAlternative].
-func (p HTTP) HasAlternative(ipNet ipnet.Type) bool { return p.URL[ipNet].HasAlternative() }

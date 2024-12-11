@@ -484,7 +484,6 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work", time.Nanosecond),
-					m.EXPECT().Hintf(pp.Hint1111Blockage, "%s", provider.Hint1111BlocakageText),
 				)
 			},
 		},

@@ -10,17 +10,17 @@ import (
 // NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
 // If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
 func NewCloudflareDOH() Provider {
-	return NewHappyEyeballs(protocol.DNSOverHTTPS{
+	return protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {
-				protocol.Constant("https://cloudflare-dns.com/dns-query"),
+				"https://cloudflare-dns.com/dns-query",
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 			ipnet.IP6: {
-				protocol.Constant("https://cloudflare-dns.com/dns-query"),
+				"https://cloudflare-dns.com/dns-query",
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 		},
-	})
+	}
 }

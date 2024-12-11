@@ -139,7 +139,7 @@ func TestRegexpGetIP(t *testing.T) {
 				ProviderName: "secret name",
 				Param: map[ipnet.Type]protocol.RegexpParam{
 					tc.urlKey: {
-						URL:    protocol.Constant(tc.url),
+						URL:    tc.url,
 						Regexp: tc.regexp,
 					},
 				},
@@ -153,23 +153,9 @@ func TestRegexpGetIP(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet, protocol.MethodPrimary)
+			ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
-}
-
-func TestRegexpHasAlternative(t *testing.T) {
-	t.Parallel()
-
-	require.True(t, (&protocol.Regexp{
-		ProviderName: "",
-		Param: map[ipnet.Type]protocol.RegexpParam{
-			ipnet.IP4: {
-				URL:    protocol.Switchable{}, //nolint:exhaustruct
-				Regexp: regexp.MustCompile(``),
-			},
-		},
-	}).HasAlternative(ipnet.IP4))
 }

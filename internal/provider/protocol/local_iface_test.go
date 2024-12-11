@@ -107,7 +107,6 @@ func TestSelectInterfaceIP(t *testing.T) {
 		ipNet         ipnet.Type
 		input         []net.Addr
 		ok            bool
-		method        protocol.Method
 		output        netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -119,13 +118,13 @@ func TestSelectInterfaceIP(t *testing.T) {
 				&net.IPAddr{IP: net.ParseIP("4.3.2.1"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""},
 			},
-			true, protocol.MethodPrimary, netip.MustParseAddr("1.2.3.4"),
+			true, netip.MustParseAddr("1.2.3.4"),
 			nil,
 		},
 		"ipaddr/4/none": {
 			ipnet.IP4,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""}, &net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""}},
-			false, protocol.MethodUnspecified, invalidIP,
+			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
 			},
@@ -133,7 +132,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 		"ipaddr/4/loopback": {
 			ipnet.IP4,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
-			false, protocol.MethodUnspecified, invalidIP,
+			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
 			},
@@ -141,7 +140,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 		"ipaddr/6/ff05::2": {
 			ipnet.IP6,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
-			true, protocol.MethodPrimary, netip.MustParseAddr("ff05::2%site"),
+			true, netip.MustParseAddr("ff05::2%site"),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiWarning, "Failed to find any global unicast %s address assigned to interface %s, but found an address %s with a scope larger than the link-local scope", "IPv6", "iface", "ff05::2%site")
 			},
@@ -149,7 +148,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 		"ipaddr/4/dummy": {
 			ipnet.IP6,
 			[]net.Addr{&Dummy{}},
-			false, protocol.MethodUnspecified, invalidIP,
+			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unexpected address data %q of type %T found in interface %s", "dummy/string", &Dummy{}, "iface")
 			},
@@ -164,9 +163,8 @@ func TestSelectInterfaceIP(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			output, method, ok := protocol.SelectInterfaceIP(mockPP, "iface", tc.ipNet, tc.input)
+			output, ok := protocol.SelectInterfaceIP(mockPP, "iface", tc.ipNet, tc.input)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.method, method)
 			require.Equal(t, tc.output, output)
 		})
 	}
@@ -217,9 +215,8 @@ func TestLocalWithInterfaceGetIP(t *testing.T) {
 				ProviderName:  "",
 				InterfaceName: tc.interfaceName,
 			}
-			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.ok, ok)
-			require.NotEqual(t, protocol.MethodAlternative, method)
 			require.Equal(t, tc.expected, ip)
 		})
 	}

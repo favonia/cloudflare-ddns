@@ -23,7 +23,7 @@ func (p Const) Name() string {
 }
 
 // GetIP returns the IP.
-func (p Const) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, Method, bool) {
+func (p Const) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, p.IP)
-	return normalizedIP, MethodPrimary, ok
+	return normalizedIP, ok
 }

@@ -41,7 +41,7 @@ func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url str
 
 // RegexpParam is the type of parameters for the Regexp provider for a specific IP network.
 type RegexpParam = struct {
-	URL    Switch         // URL of the detection page
+	URL    string         // URL of the detection page
 	Regexp *regexp.Regexp // regular expression to match the IP address
 }
 
@@ -55,20 +55,17 @@ type Regexp struct {
 func (p Regexp) Name() string { return p.ProviderName }
 
 // GetIP detects the IP address by parsing the HTTP response.
-func (p Regexp) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, method Method) (netip.Addr, bool) {
+func (p Regexp) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
 		return netip.Addr{}, false
 	}
 
-	ip, ok := getIPFromRegexp(ctx, ppfmt, ipNet, param.URL.Switch(method), param.Regexp)
+	ip, ok := getIPFromRegexp(ctx, ppfmt, ipNet, param.URL, param.Regexp)
 	if !ok {
 		return netip.Addr{}, false
 	}
 
 	return ipNet.NormalizeDetectedIP(ppfmt, ip)
 }
-
-// HasAlternative calls [Switch.HasAlternative].
-func (p Regexp) HasAlternative(ipNet ipnet.Type) bool { return p.Param[ipNet].URL.HasAlternative() }

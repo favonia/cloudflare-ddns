@@ -544,7 +544,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			provider := &protocol.DNSOverHTTPS{
 				ProviderName: "",
 				Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
-					tc.urlKey: {protocol.Constant(server.URL), tc.name, tc.class},
+					tc.urlKey: {server.URL, tc.name, tc.class},
 				},
 			}
 
@@ -552,24 +552,9 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet, protocol.MethodPrimary)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
 			require.Equal(t, tc.expected.IsValid(), ok)
 		})
 	}
-}
-
-func TestDOHHasAlternative(t *testing.T) {
-	t.Parallel()
-
-	require.True(t, (&protocol.DNSOverHTTPS{
-		ProviderName: "",
-		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
-			ipnet.IP4: {
-				Name:  "whoami.",
-				Class: dnsmessage.ClassANY,
-				URL:   protocol.Switchable{}, //nolint:exhaustruct
-			},
-		},
-	}).HasAlternative(ipnet.IP4))
 }
