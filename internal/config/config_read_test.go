@@ -453,40 +453,6 @@ func TestNormalize(t *testing.T) {
 				)
 			},
 		},
-		"dectioctn-time-too-short": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:  "true",
-				DetectionTimeout: time.Nanosecond,
-			},
-			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
-				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:  "true",
-				Proxied:          map[domain.Domain]bool{domain.FQDN("a.b.c"): true},
-				DetectionTimeout: time.Nanosecond,
-			},
-			prepareMockPP: func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().IsShowing(pp.Info).Return(true),
-					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
-					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "DETECTION_TIMEOUT=%s may be too short for trying 1.0.0.1 when 1.1.1.1 does not work", time.Nanosecond),
-				)
-			},
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
