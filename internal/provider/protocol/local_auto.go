@@ -45,19 +45,19 @@ func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 
 // GetIP detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p LocalAuto) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, Method, bool) {
+func (p LocalAuto) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	conn, err := net.Dial(ipNet.UDPNetwork(), p.RemoteUDPAddr)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
-		return netip.Addr{}, MethodUnspecified, false
+		return netip.Addr{}, false
 	}
 	defer conn.Close()
 
 	ip, ok := ExtractUDPAddr(ppfmt, conn.LocalAddr())
 	if !ok {
-		return netip.Addr{}, MethodUnspecified, false
+		return netip.Addr{}, false
 	}
 
 	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, ip)
-	return normalizedIP, MethodPrimary, ok
+	return normalizedIP, ok
 }

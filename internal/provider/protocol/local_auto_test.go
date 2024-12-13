@@ -131,9 +131,8 @@ func TestLocalAuteGetIP(t *testing.T) {
 				ProviderName:  "",
 				RemoteUDPAddr: tc.addr,
 			}
-			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected, ip)
-			require.NotEqual(t, protocol.MethodAlternative, method)
 			require.Equal(t, tc.ok, ok)
 		})
 	}

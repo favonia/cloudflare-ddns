@@ -25,16 +25,10 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	ip, method, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
+	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
 
 	if ok {
-		switch method {
-		case provider.MethodAlternative:
-			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v (using 1.0.0.1)", ipNet.Describe(), ip)
-			provider.Hint1111Blockage(ppfmt)
-		default:
-			ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
-		}
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
 		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
 	} else {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())

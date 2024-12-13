@@ -16,7 +16,6 @@ const (
 	HintWAFListPermission                          // Permissions to update WAF lists
 	HintMismatchedRecordAttributes                 // Attributes of DNS records have been changed
 	HintMismatchedWAFListAttributes                // Attributes of WAF lists have been changed
-	Hint1111Blockage                               // 1.1.1.1 is blocked
 	HintExperimentalShoutrrr                       // New feature introduced in 1.12.0 on 2024/6/28
 	HintExperimentalWAF                            // New feature introduced in 1.14.0 on 2024/8/25
 	HintExperimentalLocalWithInterface             // New feature introduced in 1.15.0

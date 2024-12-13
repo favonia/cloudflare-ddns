@@ -76,9 +76,8 @@ func TestConstGetIP(t *testing.T) {
 				ProviderName: "",
 				IP:           tc.savedIP,
 			}
-			ip, method, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.ok, ok)
-			require.NotEqual(t, protocol.MethodAlternative, method)
 			require.Equal(t, tc.expected, ip)
 		})
 	}
