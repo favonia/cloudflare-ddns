@@ -21,8 +21,11 @@ RUN \
   go build -tags "timetzdata" -trimpath -ldflags="-w -s -X main.Version=${GIT_DESCRIBE} -buildid=" \
   -o /bin/ddns ./cmd/ddns
 
-# The "debug" stage can be used directly for debugging.
-FROM build AS debug
+# The "debug" stage can be used directly for debugging network issues.
+FROM alpine AS debug
+RUN apk add --no-cache ca-certificates-bundle
+COPY --from=build /bin/ddns /bin/
+USER 1000:1000
 ENTRYPOINT ["/bin/ddns"]
 
 # The minimal images contain only the program and the consolidated certificates.
