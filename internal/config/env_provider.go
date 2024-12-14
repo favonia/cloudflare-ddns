@@ -100,7 +100,8 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		*field = provider.NewCloudflareTrace()
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
-		ppfmt.Hintf(pp.HintDebugConstProvider, `You are using the undocumented "cloudflare.trace:..." provider`)
+		ppfmt.Hintf(pp.HintUndocumentedCustomCloudflareTraceProvider,
+			`You are using the undocumented "cloudflare.trace" provider with custom URL`)
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
@@ -148,7 +149,8 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		*field = nil
 		return true
 	case len(parts) == 2 && parts[0] == "debug.const":
-		ppfmt.Hintf(pp.HintDebugConstProvider, `You are using the undocumented "debug.const" provider`)
+		ppfmt.Hintf(pp.HintUndocumentedDebugConstProvider,
+			`You are using the undocumented "debug.const" provider`)
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
