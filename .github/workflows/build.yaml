@@ -88,31 +88,31 @@ jobs:
         run: |
           cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
 
-      - name: 📝 Calculate metadata for Docker images for debugging
+      - name: 📝 Calculate metadata for Docker images with alpine
         if: ${{ github.event_name != 'release' }}
         uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-        id: meta-debug
+        id: meta-alpine
         with:
           images: ${{ github.repository }}
           tags: |
-            type=edge,suffix=-debug
+            type=edge,suffix=-alpine
           annotations: |
             io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
             io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
-      - name: 🚀 Build and deploy Docker images for debugging
+      - name: 🚀 Build and deploy Docker images with alpine
         if: ${{ github.event_name != 'release' }}
         uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-        id: build-debug
+        id: build-alpine
         with:
-          target: "debug"
+          target: "alpine"
           push: ${{ github.event_name != 'pull_request' }}
           build-args: |
             ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
           platforms: ${{ env.platforms }}
-          tags: ${{ steps.meta-debug.outputs.tags }}
-          labels: ${{ steps.meta-debug.outputs.labels }}
-          annotations: ${{ steps.meta-debug.outputs.annotations }}
+          tags: ${{ steps.meta-alpine.outputs.tags }}
+          labels: ${{ steps.meta-alpine.outputs.labels }}
+          annotations: ${{ steps.meta-alpine.outputs.annotations }}
           provenance: "mode=max"
