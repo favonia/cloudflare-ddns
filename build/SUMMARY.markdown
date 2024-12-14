@@ -13,7 +13,8 @@ A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full docume
 
 ## Supported Tags
 
-- `latest`: the latest stable version
-- `edge`: the development version
-- `X`: the latest stable version whose major version is `X` (e.g. `1`)
-- `X.Y.Z`: a specific stable version
+- `latest`: The latest stable version
+- `edge`: The development version
+- `edge-alpine`: A development build running on a non-minimal Alpine Linux distribution. This allows for easier network troubleshooting due to the availability of additional system tools and libraries.
+- `X`: The latest stable version whose major version is `X` (e.g. `1`)
+- `X.Y.Z`: A specific stable version
