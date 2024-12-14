@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    "config:best-practices",
     "group:allNonMajor",
     ":semanticCommitTypeAll(build)"
   ],
@@ -10,6 +10,11 @@
     {
       "matchPackageNames": ["github.com/cloudflare/cloudflare-go"],
       "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "matchDatasources": ["dockerfile"],
+      "matchPackageNames": ["docker/dockerfile"],
       "enabled": false
     }
   ],
