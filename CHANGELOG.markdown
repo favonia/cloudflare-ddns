@@ -1,6 +1,6 @@
 # [1.15.1](https://github.com/favonia/cloudflare-ddns/compare/v1.15.0...v1.15.1) (2024-12-16)
 
-This is a minor version that modifies the default URLs used by the IP providers `cloudflare.doh` (the default) and `cloudflare.trace`. To address recent mysterious 1034 errors from Cloudflare servers, we've updated `cloudflare.doh`. Additionally, both providers have been switched away from `1.1.1.1`, eliminating the need for a detection algorithm to determine whether `1.0.0.1` is a more suitable alternative. This simplification results in cleaner code and potentially lower resource usage.
+This is a minor release that modifies the Cloudflare URLs used by the IP providers `cloudflare.trace` (the default) and `cloudflare.doh`. The IP provider `cloudflare.trace` was updated to address [recent mysterious 1034 errors from Cloudflare servers.](https://github.com/favonia/cloudflare-ddns/issues/985) Additionally, both providers have been switched away from `1.1.1.1`, eliminating the need for a detection algorithm to determine whether `1.0.0.1` is a more suitable alternative. This simplification results in cleaner code and potentially lower resource usage.
 
 For enhanced debugging capabilities, we have introduced a new Docker tag, `edge-alpine`. This tag provides a full Alpine Linux environment, offering basic system tools and libraries. Please note that this image is larger than the standard development tag `edge` and is not minimal.
 
