@@ -267,7 +267,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 | `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
 | `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
 
-> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting to align with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
+> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
 > 🔑 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
 >
