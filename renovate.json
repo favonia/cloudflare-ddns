@@ -13,7 +13,7 @@
       "enabled": false
     },
     {
-      "matchDatasources": ["dockerfile"],
+      "matchDatasources": ["docker"],
       "matchPackageNames": ["docker/dockerfile"],
       "enabled": false
     }
