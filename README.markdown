@@ -245,7 +245,7 @@ Certain Docker installations may have issues with the `no-new-privileges` securi
 <details>
 <summary><em>Click to expand:</em> ❔ I am getting <code>error code: 1034</code></summary>
 
-We have received reports that the default IP provider, `cloudflare.trace`, has recently begun returning an "error code: 1034." The current theory is that Cloudflare’s servers may be experiencing internal problems. We are tracking this issue at [GitHub Issue 985](https://github.com/favonia/cloudflare-ddns/issues/985). If IP detection fails, the updater will simply retry later. You can also switch to a different IP provider.
+We have received reports of recent issues with the default IP provider, `cloudflare.trace`. Some users are encountering an "error code: 1034," likely due to internal problems with Cloudflare's servers. To work around this, please upgrade the updater to version 1.15.1 or later. Alternatively, you may switch to a different IP provider.
 
 </details>
 
@@ -267,7 +267,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 | `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
 | `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
 
-> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting to align with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
+> 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
 > 🔑 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
 >
