@@ -122,6 +122,12 @@ services:
     # - "1.x.y" to pin the specific version 1.x.y
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier (optional; see below)
+    #networks:
+    #  LAN0:
+    #    ipv4_address: 192.168.1.131 # A static IP within subnet (line can be removed for a random IP)
+    # Uncomment this 'networks' section to bind to the defined 'networks' section in
+    # this file. This enforces all requests from this service to go through mentioned
+    # network, e.g. 'LAN0'.
     restart: always
     # Restart the updater after reboot
     user: "1000:1000"
@@ -140,6 +146,13 @@ services:
         # Your domains (separated by commas)
       - PROXIED=true
         # Tell Cloudflare to cache webpages and hide your IP (optional)
+#networks:
+#  LAN0:
+#    external: true
+#    name: LAN0
+# Introduce custom Docker networks to the 'services' in this file. A common use case
+# for this is binding one of the 'services' to a specific network interface available at
+# Docker's host. This section is required for the 'networks' section of each 'services'.
 ```
 
 <details>
