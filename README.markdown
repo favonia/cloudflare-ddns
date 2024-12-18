@@ -193,6 +193,23 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 </details>
 
 <details>
+<summary><em>Click to expand:</em> 🛜 Use a specific network interface other than the default one in Docker and host</summary>
+
+See the definition of the two `networks` sections in the sample `docker-compose.yml` snippet. To be able to use a specific networks in the DDNS updates, the following Docker network needs to be created before running a Docker container with a custom network:
+
+```bash
+docker network create
+    -d macvlan
+    -o parent=eth0 # host network interface name to bind to
+    --subnet=192.168.1.0/24 # IP space for running containers within this network
+    --gateway=192.168.1.1 # IP address of the gateway/router
+    --ip-range=192.168.1.128/25 # communication IP range for containers in this network
+    LAN0 # name that will be used in the docker-compose.yml
+```
+
+</details>
+
+<details>
 <summary><em>Click to expand:</em> 🛡️ Change <code>user: "1000:1000"</code> to the user and group IDs you want to use</summary>
 
 Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
