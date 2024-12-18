@@ -229,7 +229,7 @@ Is your “public” IP address on your router between `100.64.0.0` and `100.127
 <details>
 <summary><em>Click to expand:</em> ❔ How should I install this updater in ☸️ Kubernetes?</summary>
 
-While the instructions for Kubernetes were removed due to high maintenance, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). Please note that only recent versions of Kompose support the `user: "UID:GID"` attribute with `GID`. (For more information, see [my pull request that adds this feature to Kompose](https://github.com/kubernetes/kompose/pull/1929).)
+Due to high maintenance costs, the Kubernetes instructions have been removed. However, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). **Important:** Only use Kompose version 1.35.0 or later, as these versions support the `user: "UID:GID"` attribute with `:GID`.
 
 Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) will suffice here. Since there’s no inbound network traffic, a [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/) isn’t required.
 
