@@ -122,12 +122,6 @@ services:
     # - "1.x.y" to pin the specific version 1.x.y
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier (optional; see below)
-    #networks:
-    #  LAN0:
-    #    ipv4_address: 192.168.1.131 # A static IP within subnet (line can be removed for a random IP)
-    # Uncomment this 'networks' section to bind to the defined 'networks' section in
-    # this file. This enforces all requests from this service to go through mentioned
-    # network, e.g. 'LAN0'.
     restart: always
     # Restart the updater after reboot
     user: "1000:1000"
@@ -193,9 +187,9 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🛜 Use a specific network interface other than the default one in Docker and host</summary>
+<summary><em>Click to expand:</em> 🛜 Bind to a specific network interface for updates</summary>
 
-See the definition of the two `networks` sections in the sample `docker-compose.yml` snippet. To be able to use a specific networks in the DDNS updates, the following Docker network needs to be created before running a Docker container with a custom network:
+To be able to use a specific network interface when detecting the IP in the DDNS updates, the following Docker network must be created before running a Docker container with a custom network:
 
 ```bash
 docker network create
@@ -206,6 +200,16 @@ docker network create
     --ip-range=192.168.1.128/25 # communication IP range for containers in this network
     LAN0 # name that will be used in the docker-compose.yml
 ```
+
+Once the new Docker network is created, add the following to the Docker Compose that will start the `cloudflare-ddns` service. This enforces all requests from this service to go through the mentioned network, e.g. 'LAN0'.
+
+```yaml
+networks:
+  LAN0:
+  #  ipv4_address: 192.168.1.131 # A static IP within subnet (line can be removed for a random IP)
+```
+
+If a static IP is preferred, an `ipv4_address` section like the example can be added. NOTE: this IP must be within the `--subnet` of the Docker network.
 
 </details>
 
