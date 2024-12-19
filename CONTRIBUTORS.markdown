@@ -3,7 +3,7 @@
 - Favonia @favonia contributed the majority of the code and its documentation.
 - Brandon @skarekrow provided a sample OpenBSD `rc.d` script.
 - @JvdMaat helped improve [`README`](./README.markdown).
-- @mohsenrezaeithe contributed to improvement ideas and documentation.
+- @mohsenrezaeithe contributed to improvements and documentation.
 
 # Past Contributors
 
