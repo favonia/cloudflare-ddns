@@ -189,7 +189,7 @@ The easiest way to enable IPv6 is to use `network_mode: host` so that the update
 <details>
 <summary><em>Click to expand:</em> 🛜 Bind to a specific network interface for updates</summary>
 
-📜 This method uses a MacVLAN sub-device to bind to a specific network interface and may interfere with your custom iptables and nftables configurations.
+📜 This method uses a MacVLAN sub-device to bind to a specific network interface and may bypass your custom `iptables` and `nftables` configurations.
 
 To be able to use a specific network interface when detecting the IP in the DDNS updates, the following Docker network must be created before running a Docker container with a custom network:
 
