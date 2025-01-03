@@ -8,7 +8,7 @@ retract (
 )
 
 require (
-	github.com/cloudflare/cloudflare-go v0.111.0
+	github.com/cloudflare/cloudflare-go v0.113.0
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/google/go-querystring v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
@@ -23,7 +23,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/goccy/go-json v0.10.3 // indirect
+	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
