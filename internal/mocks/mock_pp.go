@@ -74,47 +74,6 @@ func (c *PPBlankLineIfVerboseCall) DoAndReturn(f func()) *PPBlankLineIfVerboseCa
 	return c
 }
 
-// Hintf mocks base method.
-func (m *MockPP) Hintf(arg0 pp.Hint, arg1 string, arg2 ...any) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	m.ctrl.Call(m, "Hintf", varargs...)
-}
-
-// Hintf indicates an expected call of Hintf.
-func (mr *MockPPMockRecorder) Hintf(arg0, arg1 any, arg2 ...any) *PPHintfCall {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hintf", reflect.TypeOf((*MockPP)(nil).Hintf), varargs...)
-	return &PPHintfCall{Call: call}
-}
-
-// PPHintfCall wrap *gomock.Call
-type PPHintfCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *PPHintfCall) Return() *PPHintfCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *PPHintfCall) Do(f func(pp.Hint, string, ...any)) *PPHintfCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPHintfCall) DoAndReturn(f func(pp.Hint, string, ...any)) *PPHintfCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // Indent mocks base method.
 func (m *MockPP) Indent() pp.PP {
 	m.ctrl.T.Helper()
@@ -149,6 +108,47 @@ func (c *PPIndentCall) Do(f func() pp.PP) *PPIndentCall {
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *PPIndentCall) DoAndReturn(f func() pp.PP) *PPIndentCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// InfoOncef mocks base method.
+func (m *MockPP) InfoOncef(arg0 pp.ID, arg1 pp.Emoji, arg2 string, arg3 ...any) {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "InfoOncef", varargs...)
+}
+
+// InfoOncef indicates an expected call of InfoOncef.
+func (mr *MockPPMockRecorder) InfoOncef(arg0, arg1, arg2 any, arg3 ...any) *PPInfoOncefCall {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1, arg2}, arg3...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InfoOncef", reflect.TypeOf((*MockPP)(nil).InfoOncef), varargs...)
+	return &PPInfoOncefCall{Call: call}
+}
+
+// PPInfoOncefCall wrap *gomock.Call
+type PPInfoOncefCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPInfoOncefCall) Return() *PPInfoOncefCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPInfoOncefCall) Do(f func(pp.ID, pp.Emoji, string, ...any)) *PPInfoOncefCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPInfoOncefCall) DoAndReturn(f func(pp.ID, pp.Emoji, string, ...any)) *PPInfoOncefCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -232,6 +232,47 @@ func (c *PPIsShowingCall) DoAndReturn(f func(pp.Verbosity) bool) *PPIsShowingCal
 	return c
 }
 
+// NoticeOncef mocks base method.
+func (m *MockPP) NoticeOncef(arg0 pp.ID, arg1 pp.Emoji, arg2 string, arg3 ...any) {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "NoticeOncef", varargs...)
+}
+
+// NoticeOncef indicates an expected call of NoticeOncef.
+func (mr *MockPPMockRecorder) NoticeOncef(arg0, arg1, arg2 any, arg3 ...any) *PPNoticeOncefCall {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1, arg2}, arg3...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoticeOncef", reflect.TypeOf((*MockPP)(nil).NoticeOncef), varargs...)
+	return &PPNoticeOncefCall{Call: call}
+}
+
+// PPNoticeOncefCall wrap *gomock.Call
+type PPNoticeOncefCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *PPNoticeOncefCall) Return() *PPNoticeOncefCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *PPNoticeOncefCall) Do(f func(pp.ID, pp.Emoji, string, ...any)) *PPNoticeOncefCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *PPNoticeOncefCall) DoAndReturn(f func(pp.ID, pp.Emoji, string, ...any)) *PPNoticeOncefCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Noticef mocks base method.
 func (m *MockPP) Noticef(arg0 pp.Emoji, arg1 string, arg2 ...any) {
 	m.ctrl.T.Helper()
@@ -273,38 +314,38 @@ func (c *PPNoticefCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *PPNoticef
 	return c
 }
 
-// SuppressHint mocks base method.
-func (m *MockPP) SuppressHint(arg0 pp.Hint) {
+// Suppress mocks base method.
+func (m *MockPP) Suppress(arg0 pp.ID) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SuppressHint", arg0)
+	m.ctrl.Call(m, "Suppress", arg0)
 }
 
-// SuppressHint indicates an expected call of SuppressHint.
-func (mr *MockPPMockRecorder) SuppressHint(arg0 any) *PPSuppressHintCall {
+// Suppress indicates an expected call of Suppress.
+func (mr *MockPPMockRecorder) Suppress(arg0 any) *PPSuppressCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuppressHint", reflect.TypeOf((*MockPP)(nil).SuppressHint), arg0)
-	return &PPSuppressHintCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suppress", reflect.TypeOf((*MockPP)(nil).Suppress), arg0)
+	return &PPSuppressCall{Call: call}
 }
 
-// PPSuppressHintCall wrap *gomock.Call
-type PPSuppressHintCall struct {
+// PPSuppressCall wrap *gomock.Call
+type PPSuppressCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *PPSuppressHintCall) Return() *PPSuppressHintCall {
+func (c *PPSuppressCall) Return() *PPSuppressCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *PPSuppressHintCall) Do(f func(pp.Hint)) *PPSuppressHintCall {
+func (c *PPSuppressCall) Do(f func(pp.ID)) *PPSuppressCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *PPSuppressHintCall) DoAndReturn(f func(pp.Hint)) *PPSuppressHintCall {
+func (c *PPSuppressCall) DoAndReturn(f func(pp.ID)) *PPSuppressCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

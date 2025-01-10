@@ -12,7 +12,7 @@ func ReadAndAppendShoutrrrURL(ppfmt pp.PP, key string, field *notifier.Notifier)
 		return true
 	}
 
-	ppfmt.Hintf(pp.HintExperimentalShoutrrr,
+	ppfmt.InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint,
 		"You are using the experimental shoutrrr support added in version 1.12.0")
 
 	s, ok := notifier.NewShoutrrr(ppfmt, vals)

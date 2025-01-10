@@ -104,7 +104,7 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		}
 		if ip.Is4In6() {
 			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", ip.String())
-			ppfmt.Hintf(pp.HintIP4MappedIP6Address,
+			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 				"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
 					"It cannot be used for routing IPv6 traffic. "+
 					"If you need to use it for DNS, please open an issue at %s",

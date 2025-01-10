@@ -26,6 +26,6 @@ func CheckRoot(ppfmt pp.PP) {
 		useDeprecated = true
 	}
 	if useDeprecated {
-		ppfmt.Hintf(pp.HintUpdateDockerTemplate, "See %s for the new Docker template", pp.ManualURL)
+		ppfmt.InfoOncef(pp.MessageUpdateDockerTemplate, pp.EmojiHint, "See %s for the new Docker template", pp.ManualURL)
 	}
 }

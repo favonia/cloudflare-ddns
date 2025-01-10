@@ -17,10 +17,12 @@ linters-settings:
           - github.com/favonia/cloudflare-ddns/internal/message.NewNotifierMessagef
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Infof
           - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
-          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Hintf
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).InfoOncef
+          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).NoticeOncef
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Infof
           - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
-          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Hintf
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).InfoOncef
+          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).NoticeOncef
   revive:
     rules:
       - name: exported
@@ -47,8 +49,6 @@ issues:
 linters:
   enable-all: true
   disable:
-    - execinquery # deprecated
-    - gomnd # deprecated
     - exportloopref # deprecated
 
     - goconst # never leads to actual code changes

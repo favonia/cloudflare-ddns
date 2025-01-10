@@ -7,21 +7,21 @@ import (
 )
 
 type formatter struct {
-	writer    io.Writer
-	emoji     bool
-	indent    int
-	hintShown map[Hint]bool
-	verbosity Verbosity
+	writer       io.Writer
+	emoji        bool
+	indent       int
+	messageShown map[ID]bool
+	verbosity    Verbosity
 }
 
 // New creates a new pretty printer.
 func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	return formatter{
-		writer:    writer,
-		emoji:     emoji,
-		indent:    0,
-		hintShown: map[Hint]bool{},
-		verbosity: verbosity,
+		writer:       writer,
+		emoji:        emoji,
+		indent:       0,
+		messageShown: map[ID]bool{},
+		verbosity:    verbosity,
 	}
 }
 
@@ -82,15 +82,23 @@ func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
 }
 
-// SuppressHint sets the hint in the internal map to be "shown".
-func (f formatter) SuppressHint(hint Hint) {
-	f.hintShown[hint] = true
+// Suppress sets the hint in the internal map to be "shown".
+func (f formatter) Suppress(id ID) {
+	f.messageShown[id] = true
 }
 
-// Hintf calls [Infof] with the emoji [EmojiHint].
-func (f formatter) Hintf(hint Hint, format string, args ...any) {
-	if !f.hintShown[hint] {
-		f.Infof(EmojiHint, format, args...)
-		f.hintShown[hint] = true
+// InfoOncef calls [Infof] for if the message ID is new, and ignore it otherwise.
+func (f formatter) InfoOncef(id ID, emoji Emoji, format string, args ...any) {
+	if !f.messageShown[id] {
+		f.Infof(emoji, format, args...)
+		f.messageShown[id] = true
+	}
+}
+
+// NoticeOncef calls [Noticf] for if the message ID is new, and ignore it otherwise.
+func (f formatter) NoticeOncef(id ID, emoji Emoji, format string, args ...any) {
+	if !f.messageShown[id] {
+		f.Noticef(emoji, format, args...)
+		f.messageShown[id] = true
 	}
 }

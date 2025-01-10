@@ -18,14 +18,14 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	var authentication *cloudflare.AuthenticationError
 	var authorization *cloudflare.AuthorizationError
 	if errors.As(err, &authentication) || errors.As(err, &authorization) {
-		ppfmt.Hintf(pp.HintRecordPermission,
+		ppfmt.NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint,
 			"Double check your API token. "+
 				`Make sure you granted the "Edit" permission of "Zone - DNS"`)
 	}
 }
 
 func hintMismatchedRecordAttributes(ppfmt pp.PP) {
-	ppfmt.Hintf(pp.HintMismatchedRecordAttributes,
+	ppfmt.NoticeOncef(pp.MessageMismatchedRecordAttributes, pp.EmojiHint,
 		"The updater will not overwrite proxy statuses, TTLs, or record comments; "+
 			"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com",
 	)
