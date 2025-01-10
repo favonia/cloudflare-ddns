@@ -37,6 +37,9 @@ type Setter interface {
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
+		ttl api.TTL,
+		proxied bool,
+		recordComment string,
 	) ResponseCode
 
 	// SetWAFList keeps only IP ranges overlapping with detected IPs

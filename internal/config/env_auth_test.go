@@ -59,7 +59,7 @@ func TestReadAuth(t *testing.T) {
 			"", "token2", "", "", "",
 			true, "token2",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintAuthTokenNewPrefix, config.HintAuthTokenNewPrefix)
+				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, config.HintAuthTokenNewPrefix)
 			},
 		},
 		"old/same": {
@@ -130,7 +130,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "token.txt", "",
 			true, "hello",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintAuthTokenNewPrefix, config.HintAuthTokenNewPrefix)
+				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, config.HintAuthTokenNewPrefix)
 			},
 		},
 		"file/old/same": {

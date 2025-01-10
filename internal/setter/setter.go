@@ -43,7 +43,9 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain,
+		ttl, proxied, recordComment,
+	)
 	if !ok {
 		return ResponseFailed
 	}
@@ -150,11 +152,15 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 }
 
 // FinalDelete deletes all managed DNS records.
-func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain) ResponseCode {
+func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain,
+	ttl api.TTL, proxied bool, recordComment string,
+) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain,
+		ttl, proxied, recordComment,
+	)
 	if !ok {
 		return ResponseFailed
 	}

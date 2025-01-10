@@ -57,7 +57,9 @@ type Handle interface {
 	// ListRecords lists all matching DNS records.
 	//
 	// The second return value indicates whether the list was cached.
-	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain) ([]Record, bool, bool)
+	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+		expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
+	) ([]Record, bool, bool)
 
 	// UpdateRecord updates one DNS record.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,

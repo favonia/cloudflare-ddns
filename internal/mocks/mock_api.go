@@ -236,9 +236,9 @@ func (c *HandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Context, p
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain) ([]api.Record, bool, bool) {
+func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.TTL, arg5 bool, arg6 string) ([]api.Record, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].([]api.Record)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -246,9 +246,9 @@ func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Ty
 }
 
 // ListRecords indicates an expected call of ListRecords.
-func (mr *MockHandleMockRecorder) ListRecords(arg0, arg1, arg2, arg3 any) *HandleListRecordsCall {
+func (mr *MockHandleMockRecorder) ListRecords(arg0, arg1, arg2, arg3, arg4, arg5, arg6 any) *HandleListRecordsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), arg0, arg1, arg2, arg3)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	return &HandleListRecordsCall{Call: call}
 }
 
@@ -264,13 +264,13 @@ func (c *HandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *Hand
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.TTL, bool, string) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.TTL, bool, string) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

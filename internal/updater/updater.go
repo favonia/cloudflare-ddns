@@ -101,7 +101,7 @@ func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalDelete(ctx, ppfmt, ipNet, domain)
+				return s.FinalDelete(ctx, ppfmt, ipNet, domain, c.TTL, c.Proxied[domain], c.RecordComment)
 			}),
 		)
 	}
