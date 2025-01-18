@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/netip"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -85,7 +86,11 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, c.Proxied[domain], c.RecordComment)
+				return s.Set(ctx, ppfmt, ipNet, domain, ip, api.RecordParams{
+					TTL:     c.TTL,
+					Proxied: c.Proxied[domain],
+					Comment: c.RecordComment,
+				})
 			}),
 		)
 	}
@@ -101,7 +106,11 @@ func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalDelete(ctx, ppfmt, ipNet, domain, c.TTL, c.Proxied[domain], c.RecordComment)
+				return s.FinalDelete(ctx, ppfmt, ipNet, domain, api.RecordParams{
+					TTL:     c.TTL,
+					Proxied: c.Proxied[domain],
+					Comment: c.RecordComment,
+				})
 			}),
 		)
 	}

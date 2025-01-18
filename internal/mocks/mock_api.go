@@ -44,18 +44,18 @@ func (m *MockHandle) EXPECT() *MockHandleMockRecorder {
 }
 
 // CreateRecord mocks base method.
-func (m *MockHandle) CreateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 netip.Addr, arg5 api.TTL, arg6 bool, arg7 string) (api.ID, bool) {
+func (m *MockHandle) CreateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 netip.Addr, arg5 api.RecordParams) (api.ID, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRecord", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret := m.ctrl.Call(m, "CreateRecord", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(api.ID)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
 // CreateRecord indicates an expected call of CreateRecord.
-func (mr *MockHandleMockRecorder) CreateRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 any) *HandleCreateRecordCall {
+func (mr *MockHandleMockRecorder) CreateRecord(arg0, arg1, arg2, arg3, arg4, arg5 any) *HandleCreateRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockHandle)(nil).CreateRecord), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockHandle)(nil).CreateRecord), arg0, arg1, arg2, arg3, arg4, arg5)
 	return &HandleCreateRecordCall{Call: call}
 }
 
@@ -71,13 +71,13 @@ func (c *HandleCreateRecordCall) Return(arg0 api.ID, arg1 bool) *HandleCreateRec
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) (api.ID, bool)) *HandleCreateRecordCall {
+func (c *HandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *HandleCreateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.TTL, bool, string) (api.ID, bool)) *HandleCreateRecordCall {
+func (c *HandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *HandleCreateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -236,9 +236,9 @@ func (c *HandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Context, p
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.TTL, arg5 bool, arg6 string) ([]api.Record, bool, bool) {
+func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.RecordParams) ([]api.Record, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].([]api.Record)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -246,9 +246,9 @@ func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Ty
 }
 
 // ListRecords indicates an expected call of ListRecords.
-func (mr *MockHandleMockRecorder) ListRecords(arg0, arg1, arg2, arg3, arg4, arg5, arg6 any) *HandleListRecordsCall {
+func (mr *MockHandleMockRecorder) ListRecords(arg0, arg1, arg2, arg3, arg4 any) *HandleListRecordsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), arg0, arg1, arg2, arg3, arg4)
 	return &HandleListRecordsCall{Call: call}
 }
 
@@ -264,13 +264,13 @@ func (c *HandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *Hand
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.TTL, bool, string) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.TTL, bool, string) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *HandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -317,17 +317,17 @@ func (c *HandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, 
 }
 
 // UpdateRecord mocks base method.
-func (m *MockHandle) UpdateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID, arg5 netip.Addr, arg6 api.TTL, arg7 bool, arg8 string) bool {
+func (m *MockHandle) UpdateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID, arg5 netip.Addr, arg6, arg7 api.RecordParams) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateRecord", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+	ret := m.ctrl.Call(m, "UpdateRecord", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // UpdateRecord indicates an expected call of UpdateRecord.
-func (mr *MockHandleMockRecorder) UpdateRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8 any) *HandleUpdateRecordCall {
+func (mr *MockHandleMockRecorder) UpdateRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 any) *HandleUpdateRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecord", reflect.TypeOf((*MockHandle)(nil).UpdateRecord), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecord", reflect.TypeOf((*MockHandle)(nil).UpdateRecord), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	return &HandleUpdateRecordCall{Call: call}
 }
 
@@ -343,13 +343,13 @@ func (c *HandleUpdateRecordCall) Return(arg0 bool) *HandleUpdateRecordCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.TTL, bool, string) bool) *HandleUpdateRecordCall {
+func (c *HandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *HandleUpdateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.TTL, bool, string) bool) *HandleUpdateRecordCall {
+func (c *HandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *HandleUpdateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

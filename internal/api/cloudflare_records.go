@@ -115,7 +115,7 @@ zoneSearch:
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-	expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
+	expectedParams RecordParams,
 ) ([]Record, bool, bool) {
 	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
 		return *rmap.Value(), true, true
@@ -152,31 +152,39 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 			return nil, false, false
 		}
 
-		if TTL(r.TTL) != expectedTTL {
+		if TTL(r.TTL) != expectedParams.TTL {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"The TTL of the %s record of %s (ID: %s) differs from the value of TTL (%s) and will be kept",
-				ipNet.RecordType(), domain.Describe(), id, expectedTTL.Describe(),
+				ipNet.RecordType(), domain.Describe(), id, expectedParams.TTL.Describe(),
 			)
 			hintMismatchedRecordAttributes(ppfmt)
 		}
 		// by default, proxied = false
-		if r.Proxied == nil && expectedProxied ||
-			r.Proxied != nil && *r.Proxied != expectedProxied {
+		if r.Proxied == nil && expectedParams.Proxied ||
+			r.Proxied != nil && *r.Proxied != expectedParams.Proxied {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"The proxy status of the %s record of %s (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-				ipNet.RecordType(), domain.Describe(), id, expectedProxied,
+				ipNet.RecordType(), domain.Describe(), id, expectedParams.Proxied,
 			)
 			hintMismatchedRecordAttributes(ppfmt)
 		}
-		if r.Comment != expectedRecordComment {
+		if r.Comment != expectedParams.Comment {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
-				ipNet.RecordType(), domain.Describe(), id, expectedRecordComment,
+				"The comment of the %s record of %s (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
+				ipNet.RecordType(), domain.Describe(), id, expectedParams.Comment,
 			)
 			hintMismatchedRecordAttributes(ppfmt)
 		}
 
-		rs = append(rs, Record{ID: ID(r.ID), IP: ip})
+		rs = append(rs, Record{
+			ID: ID(r.ID),
+			IP: ip,
+			RecordParams: RecordParams{
+				TTL:     TTL(r.TTL),
+				Proxied: r.Proxied != nil && *r.Proxied,
+				Comment: r.Comment,
+			},
+		})
 	}
 
 	h.cache.listRecords[ipNet].DeleteExpired()
@@ -215,7 +223,7 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
 func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
-	expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
+	currentParams, expectedParams RecordParams,
 ) bool {
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -228,7 +236,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 	}
 
-	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
+	resp, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
@@ -239,26 +247,26 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if TTL(r.TTL) != expectedTTL {
+	if TTL(resp.TTL) != currentParams.TTL && TTL(resp.TTL) != expectedParams.TTL {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The TTL of the %s record of %s (ID: %s) to be updated differs from the value of TTL (%s) and will be kept",
-			ipNet.RecordType(), domain.Describe(), id, expectedTTL.Describe(),
+			"The TTL of the %s record of %s (ID: %s) differs from the value of TTL (%s) and will be kept",
+			ipNet.RecordType(), domain.Describe(), ip, expectedParams.TTL.Describe(),
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}
 	// by default, proxied = false
-	if r.Proxied == nil && expectedProxied ||
-		r.Proxied != nil && *r.Proxied != expectedProxied {
+	if resp.Proxied == nil && currentParams.Proxied && expectedParams.Proxied ||
+		resp.Proxied != nil && *resp.Proxied != currentParams.Proxied && *resp.Proxied != expectedParams.Proxied {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The proxy status of the %s record of %s (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-			ipNet.RecordType(), domain.Describe(), id, expectedProxied,
+			"The proxy status of the %s record of %s (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
+			ipNet.RecordType(), domain.Describe(), id, expectedParams.Proxied,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}
-	if r.Comment != expectedRecordComment {
+	if resp.Comment != currentParams.Comment && resp.Comment != expectedParams.Comment {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
-			ipNet.RecordType(), domain.Describe(), id, expectedRecordComment,
+			"The comment of the %s record of %s (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
+			ipNet.RecordType(), domain.Describe(), id, expectedParams.Comment,
 		)
 		hintMismatchedRecordAttributes(ppfmt)
 	}
@@ -266,7 +274,15 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
 		for i, r := range *rs.Value() {
 			if r.ID == id {
-				(*rs.Value())[i].IP = ip
+				(*rs.Value())[i] = Record{
+					ID: id,
+					IP: ip,
+					RecordParams: RecordParams{
+						TTL:     TTL(resp.TTL),
+						Proxied: resp.Proxied != nil && *resp.Proxied,
+						Comment: resp.Comment,
+					},
+				}
 			}
 		}
 	}
@@ -276,7 +292,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 // CreateRecord calls cloudflare.CreateDNSRecord.
 func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl TTL, proxied bool, recordComment string,
+	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, params RecordParams,
 ) (ID, bool) {
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
@@ -284,16 +300,16 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	//nolint:exhaustruct // Other fields are intentionally omitted
-	params := cloudflare.CreateDNSRecordParams{
+	ps := cloudflare.CreateDNSRecordParams{
 		Name:    domain.DNSNameASCII(),
 		Type:    ipNet.RecordType(),
 		Content: ip.String(),
-		TTL:     ttl.Int(),
-		Proxied: &proxied,
-		Comment: recordComment,
+		TTL:     params.TTL.Int(),
+		Proxied: &params.Proxied,
+		Comment: params.Comment,
 	}
 
-	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
+	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), ps)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)
@@ -305,7 +321,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
-		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip}}, *rs.Value()...)
+		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: params}}, *rs.Value()...)
 	}
 
 	return ID(res.ID), true
