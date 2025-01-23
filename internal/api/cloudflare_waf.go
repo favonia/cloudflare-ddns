@@ -36,11 +36,10 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedWAFListAttributes(ppfmt pp.PP, accountID ID) {
-	ppfmt.NoticeOncef(pp.MessageMismatchedWAFListAttributes, pp.EmojiHint,
-		"The updater will not overwrite WAF list descriptions; "+
-			"you can change them at https://dash.cloudflare.com/%s/configurations/lists",
-		accountID,
+func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, expected string) {
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
+		list.Describe(), m.ID, DescribeFreeFormString(m.Description), DescribeFreeFormString(expected), list.AccountID,
 	)
 }
 
@@ -101,11 +100,7 @@ func (h CloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFLi
 			}
 
 			if l.Description != expectedDescription {
-				ppfmt.Infof(pp.EmojiUserWarning,
-					"The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)",
-					list.Describe(), l.ID, expectedDescription,
-				)
-				hintMismatchedWAFListAttributes(ppfmt, list.AccountID)
+				hintMismatchedDescription(ppfmt, list, l, expectedDescription)
 			}
 
 			listID = l.ID

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -95,4 +96,12 @@ func (h CloudflareHandle) FlushCache() {
 	h.cache.listLists.DeleteAll()
 	h.cache.listID.DeleteAll()
 	h.cache.listListItems.DeleteAll()
+}
+
+// DescribeFreeFormString essentially quotes a string for printing.
+func DescribeFreeFormString(str string) string {
+	if str == "" {
+		return "empty"
+	}
+	return strconv.Quote(str)
 }

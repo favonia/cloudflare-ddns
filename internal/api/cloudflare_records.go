@@ -24,10 +24,35 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedRecordAttributes(ppfmt pp.PP) {
-	ppfmt.NoticeOncef(pp.MessageMismatchedRecordAttributes, pp.EmojiHint,
-		"The updater will not overwrite proxy statuses, TTLs, or record comments; "+
-			"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com",
+func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected TTL) {
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.", //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id,
+		current.Describe(), expected.Describe(), expected.Describe(), current.Int(),
+	)
+}
+
+func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected bool) {
+	descriptions := map[bool]string{
+		true:  "proxied",
+		false: "not proxied (DNS only)",
+	}
+	negation := map[bool]string{
+		true:  "",
+		false: "not ",
+	}
+
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id,
+		descriptions[current], negation[expected], descriptions[expected],
+	)
+}
+
+func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected string) {
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(expected),
 	)
 }
 
@@ -153,27 +178,14 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		}
 
 		if TTL(r.TTL) != expectedParams.TTL {
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"The TTL of the %s record of %s (ID: %s) differs from the value of TTL (%s) and will be kept",
-				ipNet.RecordType(), domain.Describe(), id, expectedParams.TTL.Describe(),
-			)
-			hintMismatchedRecordAttributes(ppfmt)
+			hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), expectedParams.TTL)
 		}
-		// by default, proxied = false
-		if r.Proxied == nil && expectedParams.Proxied ||
-			r.Proxied != nil && *r.Proxied != expectedParams.Proxied {
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"The proxy status of the %s record of %s (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-				ipNet.RecordType(), domain.Describe(), id, expectedParams.Proxied,
-			)
-			hintMismatchedRecordAttributes(ppfmt)
+		currentProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
+		if currentProxied != expectedParams.Proxied {
+			hintMismatchedProxied(ppfmt, ipNet, domain, id, currentProxied, expectedParams.Proxied)
 		}
 		if r.Comment != expectedParams.Comment {
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"The comment of the %s record of %s (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
-				ipNet.RecordType(), domain.Describe(), id, expectedParams.Comment,
-			)
-			hintMismatchedRecordAttributes(ppfmt)
+			hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, expectedParams.Comment)
 		}
 
 		rs = append(rs, Record{
@@ -236,7 +248,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		Content: ip.String(),
 	}
 
-	resp, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
+	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
@@ -247,41 +259,30 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if TTL(resp.TTL) != currentParams.TTL && TTL(resp.TTL) != expectedParams.TTL {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The TTL of the %s record of %s (ID: %s) differs from the value of TTL (%s) and will be kept",
-			ipNet.RecordType(), domain.Describe(), ip, expectedParams.TTL.Describe(),
-		)
-		hintMismatchedRecordAttributes(ppfmt)
+	if TTL(r.TTL) != currentParams.TTL && TTL(r.TTL) != expectedParams.TTL {
+		hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), expectedParams.TTL)
 	}
-	// by default, proxied = false
-	if resp.Proxied == nil && currentParams.Proxied && expectedParams.Proxied ||
-		resp.Proxied != nil && *resp.Proxied != currentParams.Proxied && *resp.Proxied != expectedParams.Proxied {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The proxy status of the %s record of %s (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", //nolint:lll
-			ipNet.RecordType(), domain.Describe(), id, expectedParams.Proxied,
-		)
-		hintMismatchedRecordAttributes(ppfmt)
+	updatedProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
+	if updatedProxied != currentParams.Proxied && updatedProxied != expectedParams.Proxied {
+		hintMismatchedProxied(ppfmt, ipNet, domain, id, updatedProxied, expectedParams.Proxied)
 	}
-	if resp.Comment != currentParams.Comment && resp.Comment != expectedParams.Comment {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The comment of the %s record of %s (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept", //nolint:lll
-			ipNet.RecordType(), domain.Describe(), id, expectedParams.Comment,
-		)
-		hintMismatchedRecordAttributes(ppfmt)
+	if r.Comment != currentParams.Comment && r.Comment != expectedParams.Comment {
+		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, expectedParams.Comment)
+	}
+
+	updatedParams := RecordParams{
+		TTL:     TTL(r.TTL),
+		Proxied: updatedProxied,
+		Comment: r.Comment,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
 		for i, r := range *rs.Value() {
 			if r.ID == id {
 				(*rs.Value())[i] = Record{
-					ID: id,
-					IP: ip,
-					RecordParams: RecordParams{
-						TTL:     TTL(resp.TTL),
-						Proxied: resp.Proxied != nil && *resp.Proxied,
-						Comment: resp.Comment,
-					},
+					ID:           id,
+					IP:           ip,
+					RecordParams: updatedParams,
 				}
 			}
 		}

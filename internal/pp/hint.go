@@ -14,8 +14,6 @@ const (
 	MessageUpdateTimeouts                                      // Longer update timeout
 	MessageRecordPermission                                    // Permissions to update DNS tokens
 	MessageWAFListPermission                                   // Permissions to update WAF lists
-	MessageMismatchedRecordAttributes                          // Attributes of DNS records have been changed
-	MessageMismatchedWAFListAttributes                         // Attributes of WAF lists have been changed
 	MessageExperimentalShoutrrr                                // New feature introduced in 1.12.0 on 2024/6/28
 	MessageExperimentalWAF                                     // New feature introduced in 1.14.0 on 2024/8/25
 	MessageExperimentalLocalWithInterface                      // New feature introduced in 1.15.0

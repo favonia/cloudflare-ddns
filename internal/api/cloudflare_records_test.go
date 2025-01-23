@@ -637,19 +637,20 @@ func TestUpdateRecord(t *testing.T) {
 		zoneRequestLimit   int
 		listRequestLimit   int
 		updateRequestLimit int
+		currentParams      api.RecordParams
 		expectedParams     api.RecordParams
 		ok                 bool
 		prepareMocks       func(*mocks.MockPP)
 	}{
 		"success": {
 			2, 0, 1,
-			params,
+			params, params,
 			true,
 			nil,
 		},
 		"zone-fails": {
 			0, 0, 0,
-			params,
+			params, params,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
@@ -657,7 +658,7 @@ func TestUpdateRecord(t *testing.T) {
 		},
 		"update-fails": {
 			2, 0, 0,
-			params,
+			params, params,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
@@ -666,21 +667,34 @@ func TestUpdateRecord(t *testing.T) {
 		"mismatch-attribute": {
 			2, 0, 1,
 			api.RecordParams{
-				TTL:     1,
+				TTL:     300,
+				Proxied: true,
+				Comment: "aloha",
+			},
+			api.RecordParams{
+				TTL:     200,
 				Proxied: true,
 				Comment: "hello",
 			},
 			true,
 			func(ppfmt *mocks.MockPP) {
-				const hintText = "The updater will not overwrite proxy statuses, TTLs, or record comments; " +
-					"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com"
-
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "The TTL of the %s record of %s (ID: %s) differs from the value of TTL (%s) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "1 (auto)").MaxTimes(1),
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "The proxy status of the %s record of %s (ID: %s) differs from the value of PROXIED (%v for this domain) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), true).MaxTimes(1),
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "The comment of the %s record of %s (ID: %s) differs from the value of RECORD_COMMENT (%q) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "hello").MaxTimes(1),
+					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+						"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+						"AAAA", "sub.test.org", api.ID("record1"),
+						"1 (auto)", "200", "200", 1,
+					).MaxTimes(1),
+					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+						`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+						"AAAA", "sub.test.org", api.ID("record1"),
+						"not proxied (DNS only)", "", "proxied",
+					).MaxTimes(1),
+					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+						`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+						"AAAA", "sub.test.org", api.ID("record1"),
+						"empty", `"hello"`,
+					).MaxTimes(1),
 				)
-				ppfmt.EXPECT().NoticeOncef(pp.MessageMismatchedRecordAttributes, pp.EmojiHint, hintText).MaxTimes(3)
 			},
 		},
 	} {
@@ -705,7 +719,7 @@ func TestUpdateRecord(t *testing.T) {
 			urh.setRequestLimit(tc.updateRequestLimit)
 
 			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", mustIP("::2"), params, tc.expectedParams)
+				"record1", mustIP("::2"), tc.currentParams, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, zh.isExhausted())
 			require.True(t, lrh.isExhausted())
