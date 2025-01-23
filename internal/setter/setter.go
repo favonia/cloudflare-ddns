@@ -21,6 +21,7 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
+// Record represents a DNS record in this package.
 type Record struct {
 	api.ID
 	api.RecordParams
