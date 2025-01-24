@@ -117,14 +117,14 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
 			true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintUndocumentedCustomCloudflareTraceProvider, `You are using the undocumented "cloudflare.trace" provider with custom URL`)
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`)
 			},
 		},
 		"cloudflare.trace:": {
 			true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Hintf(pp.HintUndocumentedCustomCloudflareTraceProvider, `You are using the undocumented "cloudflare.trace" provider with custom URL`),
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare.trace: must be followed by a URL`, key),
 				)
 			},
@@ -135,7 +135,7 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintExperimentalLocalWithInterface, `You are using the experimental "local.iface" provider added in version 1.15.0`)
+				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface" provider added in version 1.15.0`)
 			},
 		},
 		"local.iface:": {
@@ -160,14 +160,14 @@ func TestReadProvider(t *testing.T) {
 		"debug.const:1.1.1.1": {
 			true, "   debug.const   :  1.1.1.1 ", false, "", trace, debugConst, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Hintf(pp.HintUndocumentedDebugConstProvider, `You are using the undocumented "debug.const" provider`)
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`)
 			},
 		},
 		"debug.const": {
 			true, "   debug.const: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Hintf(pp.HintUndocumentedDebugConstProvider, `You are using the undocumented "debug.const" provider`),
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=debug.const: must be followed by an IP address`, key),
 				)
 			},

@@ -21,15 +21,21 @@ func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	}, true
 }
 
+// Record represents a DNS record in this package.
+type Record struct {
+	api.ID
+	api.RecordParams
+}
+
 // partitionRecords partitions record maps into matched and unmatched ones.
 //
 // The target IP is assumed to be non-zero.
-func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatchedIDs []api.ID) {
+func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatchedIDs []Record) {
 	for _, r := range rs {
 		if r.IP == target {
-			matchedIDs = append(matchedIDs, r.ID)
+			matchedIDs = append(matchedIDs, Record{ID: r.ID, RecordParams: r.RecordParams})
 		} else {
-			unmatchedIDs = append(unmatchedIDs, r.ID)
+			unmatchedIDs = append(unmatchedIDs, Record{ID: r.ID, RecordParams: r.RecordParams})
 		}
 	}
 
@@ -38,12 +44,13 @@ func partitionRecords(rs []api.Record, target netip.Addr) (matchedIDs, unmatched
 
 // Set updates the IP address of one domain to the given ip. The IP address (ip) must be non-zero.
 func (s setter) Set(ctx context.Context, ppfmt pp.PP,
-	ipnet ipnet.Type, domain domain.Domain, ip netip.Addr, ttl api.TTL, proxied bool, recordComment string,
+	ipnet ipnet.Type, domain domain.Domain, ip netip.Addr,
+	expectedParams api.RecordParams,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, expectedParams)
 	if !ok {
 		return ResponseFailed
 	}
@@ -82,8 +89,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// Again, we prefer updating stale records instead of creating new ones so that we can
 	// preserve the current TTL and proxy setting.
 	if !foundMatched && len(unprocessedUnmatched) > 0 {
-		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0], ip,
-			ttl, proxied, recordComment,
+		if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, unprocessedUnmatched[0].ID, ip,
+			unprocessedUnmatched[0].RecordParams, expectedParams,
 		); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %s; records might be inconsistent",
@@ -96,7 +103,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 		// Note that there can still be stale records at this point.
 		ppfmt.Noticef(pp.EmojiUpdate,
 			"Updated a stale %s record of %s (ID: %s)",
-			recordType, domainDescription, unprocessedUnmatched[0])
+			recordType, domainDescription, unprocessedUnmatched[0].ID)
 
 		// Now it's up to date! Note that unprocessedMatched must be empty
 		// otherwise foundMatched would have been true.
@@ -107,7 +114,7 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	// If it's still not up to date at this point, it means there are no stale records to update.
 	// This leaves us no choices---we have to create a new record with the correct IP.
 	if !foundMatched {
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, ttl, proxied, recordComment)
+		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, expectedParams)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %s; records might be inconsistent",
@@ -122,8 +129,8 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// Now, we should try to delete all remaining stale records.
-	for _, id := range unprocessedUnmatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); !ok {
+	for _, r := range unprocessedUnmatched {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Failed to properly update %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
@@ -131,15 +138,15 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 		}
 
 		ppfmt.Noticef(pp.EmojiDeletion,
-			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, id)
+			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 	}
 
 	// We should also delete all duplicate records even if they are up to date.
 	// This has lower priority than deleting the stale records.
-	for _, id := range unprocessedMatched {
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.RegularDelitionMode); ok {
+	for _, r := range unprocessedMatched {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, r.ID, api.RegularDelitionMode); ok {
 			ppfmt.Noticef(pp.EmojiDeletion,
-				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, id)
+				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 		}
 		if ctx.Err() != nil {
 			return ResponseUpdated
@@ -150,11 +157,13 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 }
 
 // FinalDelete deletes all managed DNS records.
-func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain) ResponseCode {
+func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain,
+	expectedParams api.RecordParams,
+) ResponseCode {
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, expectedParams)
 	if !ok {
 		return ResponseFailed
 	}

@@ -37,7 +37,7 @@ func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 	case token1 != "":
 		token, tokenKey = token1, TokenKey1
 	case token2 != "":
-		ppfmt.Hintf(pp.HintAuthTokenNewPrefix, HintAuthTokenNewPrefix)
+		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, HintAuthTokenNewPrefix)
 		token, tokenKey = token2, TokenKey2
 	}
 
@@ -88,7 +88,7 @@ func readAuthTokenFiles(ppfmt pp.PP) (string, string, bool) {
 	case token1 != "":
 		return token1, TokenFileKey1, true
 	case token2 != "":
-		ppfmt.Hintf(pp.HintAuthTokenNewPrefix, HintAuthTokenNewPrefix)
+		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, HintAuthTokenNewPrefix)
 		return token2, TokenFileKey2, true
 	default:
 		return "", "", true

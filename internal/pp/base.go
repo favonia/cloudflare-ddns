@@ -32,9 +32,13 @@ type PP interface {
 	// Noticef formats and prints a message at the notice level.
 	Noticef(emoji Emoji, format string, args ...any)
 
-	// SuppressHint suppresses all future calls to [Hintf] with the same hint ID.
-	SuppressHint(hint Hint)
+	// Suppress suppresses all future calls to [InfoOncef] and [NoticeOncef]
+	// with the same message ID.
+	Suppress(id ID)
 
-	// Hintf formats and prints a hint.
-	Hintf(hint Hint, format string, args ...any)
+	// InfoOncef formats and prints an info.
+	InfoOncef(id ID, emoji Emoji, format string, args ...any)
+
+	// NoticeOncef formats and prints a notice.
+	NoticeOncef(id ID, emoji Emoji, format string, args ...any)
 }

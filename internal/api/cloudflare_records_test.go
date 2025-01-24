@@ -286,7 +286,9 @@ func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudf
 		Type:    ipNet.RecordType(),
 		Name:    domain,
 		Content: ip,
-		TTL:     100,
+		TTL:     1,
+		Comment: "",
+		Proxied: nil,
 	}
 }
 
@@ -349,6 +351,8 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 func TestListRecords(t *testing.T) {
 	t.Parallel()
 
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+
 	for name, tc := range map[string]struct {
 		zones                 map[string][]string
 		zoneRequestLimit      int
@@ -356,6 +360,7 @@ func TestListRecords(t *testing.T) {
 		records               []formattedRecord
 		listRequestLimit      int
 		input                 domain.Domain
+		expectedParams        api.RecordParams
 		expected              []api.Record
 		ok                    bool
 		prepareMocks          func(*mocks.MockPP)
@@ -368,8 +373,8 @@ func TestListRecords(t *testing.T) {
 			"sub.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}},
 			1,
-			domain.FQDN("sub.test.org"),
-			[]api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}},
+			domain.FQDN("sub.test.org"), params,
+			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
 			true,
 			nil, true, nil,
 		},
@@ -379,8 +384,8 @@ func TestListRecords(t *testing.T) {
 			"*.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}},
 			1,
-			domain.Wildcard("test.org"),
-			[]api.Record{{"record1", mustIP("::1")}, {"record2", mustIP("::2")}},
+			domain.Wildcard("test.org"), params,
+			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
 			true,
 			nil, true, nil,
 		},
@@ -388,23 +393,23 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org", nil, 0,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 		},
 		"no-zone": {
 			nil, 0,
 			"sub.test.org", nil, 0,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -421,17 +426,51 @@ func TestListRecords(t *testing.T) {
 			"sub.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "not an ip"}},
 			1,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse the IP address in an %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", "record2", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse the IP address in an %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record2"), gomock.Any())
 			},
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
-				ppfmt.EXPECT().Hintf(pp.HintRecordPermission, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
+		},
+		"mismatched-attributes": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			"sub.test.org",
+			[]formattedRecord{{"record1", "::1"}},
+			1,
+			domain.FQDN("sub.test.org"),
+			api.RecordParams{
+				TTL:     100,
+				Proxied: true,
+				Comment: "hello",
+			},
+			[]api.Record{{"record1", mustIP("::1"), params}},
+			true,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"1 (auto)", "100", "100", 1,
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"not proxied (DNS only)", "", "proxied",
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"empty", `"hello"`,
+				)
+			},
+			true,
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -452,7 +491,7 @@ func TestListRecords(t *testing.T) {
 			lrh := newListRecordsHandler(t, mux, ipnet.IP6, tc.recordDomain, tc.records)
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input)
+			rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.expected, rs)
@@ -464,7 +503,7 @@ func TestListRecords(t *testing.T) {
 			if tc.prepareMocksForCached != nil {
 				tc.prepareMocksForCached(mockPP)
 			}
-			rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input)
+			rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.cached, cached)
 			require.Equal(t, tc.expected, rs)
@@ -511,6 +550,8 @@ func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 
 func TestDeleteRecord(t *testing.T) {
 	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -572,9 +613,9 @@ func TestDeleteRecord(t *testing.T) {
 				if tc.prepareMocks != nil {
 					tc.prepareMocks(mockPP)
 				}
-				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.Empty(t, rs)
@@ -625,55 +666,77 @@ func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 func TestUpdateRecord(t *testing.T) {
 	t.Parallel()
 
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+
 	for name, tc := range map[string]struct {
-		zoneRequestLimit   int
-		listRequestLimit   int
-		updateRequestLimit int
-		expectedTTL        api.TTL
-		expectedProxied    bool
-		expectedComment    string
-		ok                 bool
-		prepareMocks       func(*mocks.MockPP)
+		zoneRequestLimit      int
+		listRequestLimit      int
+		updateRequestLimit    int
+		currentParams         api.RecordParams
+		expectedParams        api.RecordParams
+		ok                    bool
+		prepareMocks          func(*mocks.MockPP)
+		prepareMocksForCached func(*mocks.MockPP)
 	}{
 		"success": {
 			2, 0, 1,
-			100, false, "",
+			params, params,
 			true,
-			nil,
+			nil, nil,
 		},
 		"zone-fails": {
 			0, 0, 0,
-			100, false, "",
+			params, params,
 			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"update-fails": {
 			2, 0, 0,
-			100, false, "",
+			params, params,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+			},
 		},
-		"mismatch-attribute": {
+		"mismatched-attributes": {
 			2, 0, 1,
-			1, true, "hello",
+			api.RecordParams{
+				TTL:     300,
+				Proxied: true,
+				Comment: "aloha",
+			},
+			api.RecordParams{
+				TTL:     200,
+				Proxied: true,
+				Comment: "hello",
+			},
 			true,
 			func(ppfmt *mocks.MockPP) {
-				const hintText = "The updater will not overwrite proxy statuses, TTLs, or record comments; " +
-					"you can change them in your Cloudflare dashboard at https://dash.cloudflare.com"
-
-				gomock.InOrder(
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The TTL of the %s record of %s (ID: %s) to be updated differs from the value of TTL (%s) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "1 (auto)"),
-					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The proxy status of the %s record of %s (ID: %s) to be updated differs from the value of PROXIED (%v for this domain) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), true),
-					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The comment of the %s record of %s (ID: %s) to be updated differs from the value of RECORD_COMMENT (%q) and will be kept", "AAAA", "sub.test.org", api.ID("record1"), "hello"),
-					ppfmt.EXPECT().Hintf(pp.HintMismatchedRecordAttributes, hintText),
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"1 (auto)", "200", "200", 1,
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"not proxied (DNS only)", "", "proxied",
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"empty", `"hello"`,
 				)
 			},
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -696,7 +759,8 @@ func TestUpdateRecord(t *testing.T) {
 			urh := newUpdateRecordHandler(t, mux, "record1", "::2")
 			urh.setRequestLimit(tc.updateRequestLimit)
 
-			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
+			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record1", mustIP("::2"), tc.currentParams, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, zh.isExhausted())
 			require.True(t, lrh.isExhausted())
@@ -706,16 +770,16 @@ func TestUpdateRecord(t *testing.T) {
 				lrh.setRequestLimit(1)
 				urh.setRequestLimit(1)
 				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMocks != nil {
-					tc.prepareMocks(mockPP)
+				if tc.prepareMocksForCached != nil {
+					tc.prepareMocksForCached(mockPP)
 				}
-				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-				_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"),
-					tc.expectedTTL, tc.expectedProxied, tc.expectedComment)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+					"record1", mustIP("::2"), params, tc.expectedParams)
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
-				require.Equal(t, []api.Record{{"record1", mustIP("::2")}}, rs)
+				require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
 				require.True(t, zh.isExhausted())
 				require.True(t, lrh.isExhausted())
 				require.True(t, urh.isExhausted())
@@ -750,9 +814,9 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 			if !assert.Equal(t, domain, record.Name) ||
 				!assert.Equal(t, ipNet.RecordType(), record.Type) ||
 				!assert.Equal(t, ip, record.Content) ||
-				!assert.Equal(t, 100, record.TTL) ||
+				!assert.Equal(t, 1, record.TTL) ||
 				!assert.False(t, *record.Proxied) ||
-				!assert.Equal(t, "hello", record.Comment) {
+				!assert.Equal(t, "", record.Comment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -768,6 +832,8 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 
 func TestCreateRecord(t *testing.T) {
 	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -816,15 +882,15 @@ func TestCreateRecord(t *testing.T) {
 			crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
 			crh.setRequestLimit(tc.createRequestLimit)
 
-			h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
-			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), 100, false, "hello")
+			h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.Equal(t, api.ID("record1"), actualID)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"))
+				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.True(t, ok)
 				require.True(t, cached)
-				require.Equal(t, []api.Record{{"record1", mustIP("::1")}}, rs)
+				require.Equal(t, []api.Record{{"record1", mustIP("::1"), params}}, rs)
 			} else {
 				require.Zero(t, actualID)
 			}

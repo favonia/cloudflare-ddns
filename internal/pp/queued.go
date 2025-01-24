@@ -51,18 +51,25 @@ func (b QueuedPP) Noticef(emoji Emoji, format string, args ...any) {
 	*b.queue = append(*b.queue, func() { upstream.Noticef(emoji, format, args...) })
 }
 
-// SuppressHint queues a call to [PP.SuppressHint] of the upstream.
-func (b QueuedPP) SuppressHint(hint Hint) {
+// Suppress queues a call to [PP.Suppress] of the upstream.
+func (b QueuedPP) Suppress(id ID) {
 	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
-	*b.queue = append(*b.queue, func() { upstream.SuppressHint(hint) })
+	*b.queue = append(*b.queue, func() { upstream.Suppress(id) })
 }
 
-// Hintf queues a call to [PP.Hintf] of the upstream.
-func (b QueuedPP) Hintf(hint Hint, format string, args ...any) {
+// InfoOncef queues a call to [PP.InfoOncef] of the upstream.
+func (b QueuedPP) InfoOncef(id ID, emoji Emoji, format string, args ...any) {
 	// It's important to save the current upstream because [Indent] may change it.
 	upstream := b.upstream
-	*b.queue = append(*b.queue, func() { upstream.Hintf(hint, format, args...) })
+	*b.queue = append(*b.queue, func() { upstream.InfoOncef(id, emoji, format, args...) })
+}
+
+// NoticeOncef queues a call to [PP.NoticeOncef] of the upstream.
+func (b QueuedPP) NoticeOncef(id ID, emoji Emoji, format string, args ...any) {
+	// It's important to save the current upstream because [Indent] may change it.
+	upstream := b.upstream
+	*b.queue = append(*b.queue, func() { upstream.NoticeOncef(id, emoji, format, args...) })
 }
 
 // Flush executes all queued function calls.

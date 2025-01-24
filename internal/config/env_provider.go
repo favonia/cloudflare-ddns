@@ -100,7 +100,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		*field = provider.NewCloudflareTrace()
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
-		ppfmt.Hintf(pp.HintUndocumentedCustomCloudflareTraceProvider,
+		ppfmt.InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint,
 			`You are using the undocumented "cloudflare.trace" provider with custom URL`)
 		if parts[1] == "" {
 			ppfmt.Noticef(
@@ -135,7 +135,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			)
 			return false
 		}
-		ppfmt.Hintf(pp.HintExperimentalLocalWithInterface,
+		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint,
 			`You are using the experimental "local.iface" provider added in version 1.15.0`)
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
@@ -149,7 +149,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 		*field = nil
 		return true
 	case len(parts) == 2 && parts[0] == "debug.const":
-		ppfmt.Hintf(pp.HintUndocumentedDebugConstProvider,
+		ppfmt.InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint,
 			`You are using the undocumented "debug.const" provider`)
 		if parts[1] == "" {
 			ppfmt.Noticef(

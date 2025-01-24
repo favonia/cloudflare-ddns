@@ -28,16 +28,24 @@ type WAFList struct {
 // Describe formats WAFList as a string.
 func (l WAFList) Describe() string { return fmt.Sprintf("%s/%s", string(l.AccountID), l.Name) }
 
-// Record bundles an ID and an IP address, representing a DNS record.
+// RecordParams bundles parameters of a DNS record.
+type RecordParams struct {
+	TTL
+	Proxied bool
+	Comment string
+}
+
+// Record represents a DNS record.
 type Record struct {
-	ID ID
+	ID
 	IP netip.Addr
+	RecordParams
 }
 
 // WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
 type WAFListItem struct {
-	ID     ID
-	Prefix netip.Prefix
+	ID
+	netip.Prefix
 }
 
 // DeletionMode tells the deletion updater whether a careful re-reading of lists
@@ -57,16 +65,18 @@ type Handle interface {
 	// ListRecords lists all matching DNS records.
 	//
 	// The second return value indicates whether the list was cached.
-	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain) ([]Record, bool, bool)
+	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+		expectedParams RecordParams,
+	) ([]Record, bool, bool)
 
 	// UpdateRecord updates one DNS record.
-	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
-		expectedTTL TTL, expectedProxied bool, expectedRecordComment string,
+	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+		id ID, ip netip.Addr, currentParams, expectedParams RecordParams,
 	) bool
 
 	// CreateRecord creates one DNS record. It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		ip netip.Addr, ttl TTL, proxied bool, recordComment string) (ID, bool)
+		ip netip.Addr, params RecordParams) (ID, bool)
 
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool

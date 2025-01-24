@@ -24,9 +24,10 @@ func TestQueued(t *testing.T) {
 					ppfmt = ppfmt.Indent()
 				}
 				ppfmt.Noticef(pp.EmojiNotify, "some message")
-				ppfmt.SuppressHint(pp.HintDetectionTimeouts)
+				ppfmt.Suppress(pp.MessageDetectionTimeouts)
 				ppfmt.BlankLineIfVerbose()
-				ppfmt.Hintf(pp.HintIP4DetectionFails, "cannot do IPv4")
+				ppfmt.InfoOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "cannot do IPv6")
+				ppfmt.NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "cannot do IPv4")
 
 				queued.Flush()
 			},
@@ -36,9 +37,10 @@ func TestQueued(t *testing.T) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Infof(pp.EmojiBullet, "Test"),
 					inner.EXPECT().Noticef(pp.EmojiNotify, "some message"),
-					inner.EXPECT().SuppressHint(pp.HintDetectionTimeouts),
+					inner.EXPECT().Suppress(pp.MessageDetectionTimeouts),
 					inner.EXPECT().BlankLineIfVerbose(),
-					inner.EXPECT().Hintf(pp.HintIP4DetectionFails, "cannot do IPv4"),
+					inner.EXPECT().InfoOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "cannot do IPv6"),
+					inner.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "cannot do IPv4"),
 				)
 			},
 		},

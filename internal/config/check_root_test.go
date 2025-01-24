@@ -38,7 +38,7 @@ func TestCheckRootWithOldConfigs(t *testing.T) {
 	calls = append(calls,
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "PUID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set user ID", "1000"),
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "PGID=%s is ignored since 1.13.0; use Docker's built-in mechanism to set group ID", "1000"),
-		mockPP.EXPECT().Hintf(pp.HintUpdateDockerTemplate, "See %s for the new Docker template", pp.ManualURL),
+		mockPP.EXPECT().InfoOncef(pp.MessageUpdateDockerTemplate, pp.EmojiHint, "See %s for the new Docker template", pp.ManualURL),
 	)
 	gomock.InOrder(calls...)
 

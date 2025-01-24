@@ -86,16 +86,17 @@ func TestPrint(t *testing.T) {
 	}
 }
 
-func TestSupressHint(t *testing.T) {
+func TestSupress(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
 	fmt := pp.New(&buf, true, pp.Info)
 
-	fmt.SuppressHint(pp.Hint(0))
-	fmt.Hintf(pp.Hint(0), "hello %s", "world")
-	fmt.Hintf(pp.Hint(1), "hello %s", "galaxy")
-	fmt.Hintf(pp.Hint(1), "hello %s", "universe")
+	fmt.Suppress(pp.ID(0))
+	fmt.NoticeOncef(pp.ID(0), pp.EmojiAlarm, "hello %s", "world")
+	fmt.InfoOncef(pp.ID(1), pp.EmojiHint, "hello %s", "galaxy")
+	fmt.NoticeOncef(pp.ID(1), pp.EmojiBullet, "hello %s", "universe")
+	fmt.NoticeOncef(pp.ID(2), pp.EmojiBye, "aloha")
 
-	require.Equal(t, "💡 hello galaxy\n", buf.String())
+	require.Equal(t, "💡 hello galaxy\n👋 aloha\n", buf.String())
 }

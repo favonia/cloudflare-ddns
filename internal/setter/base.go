@@ -26,9 +26,7 @@ type Setter interface {
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
 		IP netip.Addr,
-		ttl api.TTL,
-		proxied bool,
-		recordComment string,
+		expectedParams api.RecordParams,
 	) ResponseCode
 
 	// FinalDelete removes DNS records of a particular domain.
@@ -37,6 +35,7 @@ type Setter interface {
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
+		expectedParams api.RecordParams,
 	) ResponseCode
 
 	// SetWAFList keeps only IP ranges overlapping with detected IPs

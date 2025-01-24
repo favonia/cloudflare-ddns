@@ -213,8 +213,9 @@ func TestWAFListID(t *testing.T) {
 			true, true, mockID("list", 1),
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Infof(pp.EmojiUserWarning, "The description of the list %s (ID: %s) differs from the value of WAF_LIST_DESCRIPTION (%q)", "account456/list", mockID("list", 1), "mismatched description"),
-					ppfmt.EXPECT().Hintf(pp.HintMismatchedWAFListAttributes, "The updater will not overwrite WAF list descriptions; "+"you can change them at https://dash.cloudflare.com/%s/configurations/lists", mockAccountID),
+					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+						`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
+						"account456/list", mockID("list", 1), `"description"`, `"mismatched description"`, api.ID("account456")),
 				)
 			},
 		},
@@ -285,7 +286,7 @@ func TestListWAFListsHint(t *testing.T) {
 	mockPP = mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
-		mockPP.EXPECT().Hintf(pp.HintWAFListPermission, `Double check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
+		mockPP.EXPECT().NoticeOncef(pp.MessageWAFListPermission, pp.EmojiHint, `Double check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
 	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
 	require.False(t, ok)

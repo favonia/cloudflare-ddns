@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/netip"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -14,10 +15,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func getHintIDForDetection(ipNet ipnet.Type) pp.Hint {
-	return map[ipnet.Type]pp.Hint{
-		ipnet.IP4: pp.HintIP4DetectionFails,
-		ipnet.IP6: pp.HintIP6DetectionFails,
+func getMessageIDForDetection(ipNet ipnet.Type) pp.ID {
+	return map[ipnet.Type]pp.ID{
+		ipnet.IP4: pp.MessageIP4DetectionFails,
+		ipnet.IP6: pp.MessageIP6DetectionFails,
 	}[ipNet]
 }
 
@@ -29,24 +30,24 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 
 	if ok {
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
-		ppfmt.SuppressHint(getHintIDForDetection(ipNet))
+		ppfmt.Suppress(getMessageIDForDetection(ipNet))
 	} else {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
 		switch ipNet {
 		case ipnet.IP6:
-			ppfmt.Hintf(getHintIDForDetection(ipNet),
+			ppfmt.NoticeOncef(getMessageIDForDetection(ipNet), pp.EmojiHint,
 				"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. "+
 					"If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none",
 				pp.ManualURL)
 
 		case ipnet.IP4:
-			ppfmt.Hintf(getHintIDForDetection(ipNet),
+			ppfmt.NoticeOncef(getMessageIDForDetection(ipNet), pp.EmojiHint,
 				"If your network does not support IPv4, you can disable it with IP4_PROVIDER=none")
 		}
 
 		if errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Hintf(pp.HintDetectionTimeouts,
+			ppfmt.NoticeOncef(pp.MessageDetectionTimeouts, pp.EmojiHint,
 				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
 				c.DetectionTimeout,
 			)
@@ -66,7 +67,7 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
 	resp := f(ctx)
 	if resp == setter.ResponseFailed {
 		if errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.Hintf(pp.HintUpdateTimeouts,
+			ppfmt.NoticeOncef(pp.MessageUpdateTimeouts, pp.EmojiHint,
 				"If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v",
 				c.UpdateTimeout,
 			)
@@ -85,7 +86,11 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, ipNet, domain, ip, c.TTL, c.Proxied[domain], c.RecordComment)
+				return s.Set(ctx, ppfmt, ipNet, domain, ip, api.RecordParams{
+					TTL:     c.TTL,
+					Proxied: c.Proxied[domain],
+					Comment: c.RecordComment,
+				})
 			}),
 		)
 	}
@@ -101,7 +106,11 @@ func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalDelete(ctx, ppfmt, ipNet, domain)
+				return s.FinalDelete(ctx, ppfmt, ipNet, domain, api.RecordParams{
+					TTL:     c.TTL,
+					Proxied: c.Proxied[domain],
+					Comment: c.RecordComment,
+				})
 			}),
 		)
 	}

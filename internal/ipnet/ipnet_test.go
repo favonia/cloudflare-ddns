@@ -154,7 +154,7 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", "::ffff:10.10.10.10"),
-					m.EXPECT().Hintf(pp.HintIP4MappedIP6Address, "An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s", pp.IssueReportingURL),
+					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint, "An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s", pp.IssueReportingURL),
 				)
 			},
 		},
