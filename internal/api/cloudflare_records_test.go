@@ -360,6 +360,7 @@ func TestListRecords(t *testing.T) {
 		records               []formattedRecord
 		listRequestLimit      int
 		input                 domain.Domain
+		expectedParams        api.RecordParams
 		expected              []api.Record
 		ok                    bool
 		prepareMocks          func(*mocks.MockPP)
@@ -372,7 +373,7 @@ func TestListRecords(t *testing.T) {
 			"sub.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}},
 			1,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
 			true,
 			nil, true, nil,
@@ -383,7 +384,7 @@ func TestListRecords(t *testing.T) {
 			"*.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "::2"}},
 			1,
-			domain.Wildcard("test.org"),
+			domain.Wildcard("test.org"), params,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
 			true,
 			nil, true, nil,
@@ -392,7 +393,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org", nil, 0,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -408,7 +409,7 @@ func TestListRecords(t *testing.T) {
 		"no-zone": {
 			nil, 0,
 			"sub.test.org", nil, 0,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -425,7 +426,7 @@ func TestListRecords(t *testing.T) {
 			"sub.test.org",
 			[]formattedRecord{{"record1", "::1"}, {"record2", "not an ip"}},
 			1,
-			domain.FQDN("sub.test.org"),
+			domain.FQDN("sub.test.org"), params,
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -436,6 +437,40 @@ func TestListRecords(t *testing.T) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
 				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
+		},
+		"mismatched-attributes": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			"sub.test.org",
+			[]formattedRecord{{"record1", "::1"}},
+			1,
+			domain.FQDN("sub.test.org"),
+			api.RecordParams{
+				TTL:     100,
+				Proxied: true,
+				Comment: "hello",
+			},
+			[]api.Record{{"record1", mustIP("::1"), params}},
+			true,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"1 (auto)", "100", "100", 1,
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"not proxied (DNS only)", "", "proxied",
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"empty", `"hello"`,
+				)
+			},
+			true,
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -456,7 +491,7 @@ func TestListRecords(t *testing.T) {
 			lrh := newListRecordsHandler(t, mux, ipnet.IP6, tc.recordDomain, tc.records)
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, params)
+			rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.expected, rs)
@@ -468,7 +503,7 @@ func TestListRecords(t *testing.T) {
 			if tc.prepareMocksForCached != nil {
 				tc.prepareMocksForCached(mockPP)
 			}
-			rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, params)
+			rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.cached, cached)
 			require.Equal(t, tc.expected, rs)
@@ -634,24 +669,28 @@ func TestUpdateRecord(t *testing.T) {
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
 
 	for name, tc := range map[string]struct {
-		zoneRequestLimit   int
-		listRequestLimit   int
-		updateRequestLimit int
-		currentParams      api.RecordParams
-		expectedParams     api.RecordParams
-		ok                 bool
-		prepareMocks       func(*mocks.MockPP)
+		zoneRequestLimit      int
+		listRequestLimit      int
+		updateRequestLimit    int
+		currentParams         api.RecordParams
+		expectedParams        api.RecordParams
+		ok                    bool
+		prepareMocks          func(*mocks.MockPP)
+		prepareMocksForCached func(*mocks.MockPP)
 	}{
 		"success": {
 			2, 0, 1,
 			params, params,
 			true,
-			nil,
+			nil, nil,
 		},
 		"zone-fails": {
 			0, 0, 0,
 			params, params,
 			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
 			},
@@ -663,8 +702,11 @@ func TestUpdateRecord(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+			},
 		},
-		"mismatch-attribute": {
+		"mismatched-attributes": {
 			2, 0, 1,
 			api.RecordParams{
 				TTL:     300,
@@ -678,24 +720,23 @@ func TestUpdateRecord(t *testing.T) {
 			},
 			true,
 			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
-						"AAAA", "sub.test.org", api.ID("record1"),
-						"1 (auto)", "200", "200", 1,
-					).MaxTimes(1),
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
-						"AAAA", "sub.test.org", api.ID("record1"),
-						"not proxied (DNS only)", "", "proxied",
-					).MaxTimes(1),
-					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
-						"AAAA", "sub.test.org", api.ID("record1"),
-						"empty", `"hello"`,
-					).MaxTimes(1),
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"1 (auto)", "200", "200", 1,
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"not proxied (DNS only)", "", "proxied",
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"empty", `"hello"`,
 				)
 			},
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -729,8 +770,8 @@ func TestUpdateRecord(t *testing.T) {
 				lrh.setRequestLimit(1)
 				urh.setRequestLimit(1)
 				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMocks != nil {
-					tc.prepareMocks(mockPP)
+				if tc.prepareMocksForCached != nil {
+					tc.prepareMocksForCached(mockPP)
 				}
 				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
