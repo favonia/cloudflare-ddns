@@ -26,7 +26,7 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 
 func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected TTL) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The TTL for the %s record of %s (ID: %s) is %s. However, its TTL is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.", //nolint:lll
+		"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.", //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
 		current.Describe(), expected.Describe(), expected.Describe(), current.Int(),
 	)
@@ -51,7 +51,7 @@ func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, 
 
 func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The comment for %s record of %s (ID: %s) is %s. However, its comment is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(expected),
 	)
 }
