@@ -28,9 +28,17 @@ func TestReadDomains(t *testing.T) {
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"nil":       {false, "", ds{f("test.org")}, ds{}, true, nil},
-		"empty":     {true, "", ds{f("test.org")}, ds{}, true, nil},
-		"star":      {true, "*", ds{}, ds{w("")}, true, nil},
+		"nil":   {false, "", ds{f("test.org")}, ds{}, true, nil},
+		"empty": {true, "", ds{f("test.org")}, ds{}, true, nil},
+		"star": {
+			true, "*",
+			ds{},
+			ds{},
+			false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, key, "*", "*")
+			},
+		},
 		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
 		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
 		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
@@ -99,19 +107,19 @@ func TestReadDomainMap(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
-			"  a1, a2", "b1,  b2,b2", "c1,c2",
+			"  a1.com, a2.com", "b1.com,  b2.com,b2.com", "c1.com,c2.com",
 			map[ipnet.Type][]domain.Domain{
-				ipnet.IP4: {domain.FQDN("a1"), domain.FQDN("a2"), domain.FQDN("b1"), domain.FQDN("b2")},
-				ipnet.IP6: {domain.FQDN("a1"), domain.FQDN("a2"), domain.FQDN("c1"), domain.FQDN("c2")},
+				ipnet.IP4: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("b1.com"), domain.FQDN("b2.com")},
+				ipnet.IP6: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("c1.com"), domain.FQDN("c2.com")},
 			},
 			true,
 			nil,
 		},
 		"duplicate": {
-			"  a1, a1", "a1,  a1,a1", "*.a1,a1,*.a1,*.a1",
+			"  a1.com, a1.com", "a1.com,  a1.com,a1.com", "*.a1.com,a1.com,*.a1.com,*.a1.com",
 			map[ipnet.Type][]domain.Domain{
-				ipnet.IP4: {domain.FQDN("a1")},
-				ipnet.IP6: {domain.FQDN("a1"), domain.Wildcard("a1")},
+				ipnet.IP4: {domain.FQDN("a1.com")},
+				ipnet.IP6: {domain.FQDN("a1.com"), domain.Wildcard("a1.com")},
 			},
 			true,
 			nil,

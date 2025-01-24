@@ -31,8 +31,8 @@ func TestNew(t *testing.T) {
 		{"𑀓.com", f("xn--n00d.com"), true, ""},
 		{"\u0080.com", f("xn--a.com"), false, "idna: disallowed rune U+0080"},
 		{"xn--a.com", f("xn--a.com"), false, `idna: invalid label "\u0080"`},
-		{"a\u200Cb", f("xn--ab-j1t"), false, `idna: invalid label "a\u200cb"`},
-		{"xn--ab-j1t", f("xn--ab-j1t"), false, `idna: invalid label "a\u200cb"`},
+		{"a\u200Cb.org", f("xn--ab-j1t.org"), false, `idna: invalid label "a\u200cb"`},
+		{"xn--ab-j1t.org", f("xn--ab-j1t.org"), false, `idna: invalid label "a\u200cb"`},
 		{"\u00F6bb.at", f("xn--bb-eka.at"), true, ""},
 		{"o\u0308bb.at", f("xn--bb-eka.at"), true, ""},
 		{"\u00D6BB.at", f("xn--bb-eka.at"), true, ""},
@@ -94,8 +94,8 @@ func TestNew(t *testing.T) {
 		{"*.xn--a.xn--a.xn--a.com", w("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
 		{"*.a.com...｡", w("a.com"), true, ""},
 		{"*...｡..a.com", w(".....a.com"), true, ""},
-		{"*......", w(""), true, ""},
-		{"*｡｡｡｡｡｡", w(""), true, ""},
+		{"*......", w(""), false, "not fully qualified"},
+		{"*｡｡｡｡｡｡", w(""), false, "not fully qualified"},
 		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
 	} {
 		t.Run(tc.input, func(t *testing.T) {

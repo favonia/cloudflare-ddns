@@ -2,6 +2,7 @@
 package domainexp
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -46,14 +47,21 @@ func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]d
 	list, tokens := scanList(ppfmt, key, input, tokens)
 	domains := make([]domain.Domain, 0, len(list))
 	for _, raw := range list {
-		domain, err := domain.New(raw)
+		d, err := domain.New(raw)
 		if err != nil {
-			ppfmt.Noticef(pp.EmojiUserError,
-				"%s (%q) contains an ill-formed domain %q: %v",
-				key, input, domain.Describe(), err)
-			return nil, nil
+			if errors.Is(err, domain.ErrNotFQDN) {
+				ppfmt.Noticef(pp.EmojiUserError,
+					`%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
+					key, input, d.Describe())
+				return nil, nil
+			} else {
+				ppfmt.Noticef(pp.EmojiUserError,
+					"%s (%q) contains an ill-formed domain %q: %v",
+					key, input, d.Describe(), err)
+				return nil, nil
+			}
 		}
-		domains = append(domains, domain)
+		domains = append(domains, d)
 	}
 	return domains, tokens
 }
