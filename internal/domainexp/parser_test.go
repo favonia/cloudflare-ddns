@@ -26,18 +26,18 @@ func TestParseList(t *testing.T) {
 		expected      ds
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"a":        {"a", true, ds{f("a")}, nil},
-		"ab":       {" a ,  b ", true, ds{f("a"), f("b")}, nil},
-		"abc":      {" a ,  b ,,,,,, c ", true, ds{f("a"), f("b"), f("c")}, nil},
-		"wildcard": {" a ,  b ,,,,,, *.c ", true, ds{f("a"), f("b"), w("c")}, nil},
+		"a.a":         {"a.a", true, ds{f("a.a")}, nil},
+		"a.a,a.b":     {" a.a ,  a.b ", true, ds{f("a.a"), f("a.b")}, nil},
+		"a.a,a.b,a.c": {" a.a ,  a.b ,,,,,, a.c ", true, ds{f("a.a"), f("a.b"), f("a.c")}, nil},
+		"wildcard":    {" a.a ,  a.b ,,,,,, *.c ", true, ds{f("a.a"), f("a.b"), w("c")}, nil},
 		"missing-comma": {
-			" a b c d ", true,
-			ds{f("a"), f("b"), f("c"), f("d")},
+			" a.a a.b a.c a.d ", true,
+			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a b c d ", "b"),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a b c d ", "c"),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a b c d ", "d"),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.b"),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.c"),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.d"),
 				)
 			},
 		},
