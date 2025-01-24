@@ -26,6 +26,7 @@ func TestQueued(t *testing.T) {
 				ppfmt.Noticef(pp.EmojiNotify, "some message")
 				ppfmt.Suppress(pp.MessageDetectionTimeouts)
 				ppfmt.BlankLineIfVerbose()
+				ppfmt.InfoOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "cannot do IPv6")
 				ppfmt.NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "cannot do IPv4")
 
 				queued.Flush()
@@ -38,6 +39,7 @@ func TestQueued(t *testing.T) {
 					inner.EXPECT().Noticef(pp.EmojiNotify, "some message"),
 					inner.EXPECT().Suppress(pp.MessageDetectionTimeouts),
 					inner.EXPECT().BlankLineIfVerbose(),
+					inner.EXPECT().InfoOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "cannot do IPv6"),
 					inner.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "cannot do IPv4"),
 				)
 			},
