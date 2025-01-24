@@ -96,6 +96,7 @@ func TestSupress(t *testing.T) {
 	fmt.NoticeOncef(pp.ID(0), pp.EmojiAlarm, "hello %s", "world")
 	fmt.InfoOncef(pp.ID(1), pp.EmojiHint, "hello %s", "galaxy")
 	fmt.NoticeOncef(pp.ID(1), pp.EmojiBullet, "hello %s", "universe")
+	fmt.NoticeOncef(pp.ID(2), pp.EmojiBye, "aloha")
 
-	require.Equal(t, "💡 hello galaxy\n", buf.String())
+	require.Equal(t, "💡 hello galaxy\n👋 aloha\n", buf.String())
 }
