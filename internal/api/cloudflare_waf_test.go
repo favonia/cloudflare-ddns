@@ -532,21 +532,24 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 	}
 }
 
-type listItem = string
+type listItem struct {
+	IP      string
+	Comment string
+}
 
 func mockListItem(listItem listItem) cloudflare.ListItem {
 	var ip *string
-	if listItem != "" {
-		ip = &listItem
+	if listItem.IP != "" {
+		ip = &listItem.IP
 	}
 
 	return cloudflare.ListItem{
-		ID:         string(mockID(listItem, 0)),
+		ID:         string(mockID(listItem.IP, 0)),
 		IP:         ip,
 		Redirect:   nil,
 		Hostname:   nil,
 		ASN:        nil,
-		Comment:    "",
+		Comment:    listItem.Comment,
 		CreatedOn:  nil,
 		ModifiedOn: nil,
 	}
@@ -616,7 +619,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{"10.0.0.1", "2001:db8::/32", "10.0.0.0/20"},
+			[]listItem{{"10.0.0.1", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
 			1,
 			true, true,
 			[]api.WAFListItem{
@@ -666,7 +669,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{"10.0.0.1"},
+			[]listItem{{"10.0.0.1", ""}},
 			0,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
@@ -678,7 +681,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{"invalid item"},
+			[]listItem{{"invalid item", ""}},
 			1,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
@@ -694,13 +697,30 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{""},
+			[]listItem{{"", ""}},
 			1,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible,
 					"Found a non-IP in the list %s",
 					"account456/list")
+			},
+		},
+		"comment": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			1,
+			emptyListMeta,
+			0,
+			[]listItem{{"10.0.0.1", "hello"}},
+			1,
+			true, true,
+			[]api.WAFListItem{
+				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
+			},
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
+					"The IP range/address %q in the list %s has a non-empty comment %q; the comment might be lost during an IP update.",
+					"10.0.0.1", "account456/list", "hello")
 			},
 		},
 	} {
@@ -837,7 +857,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			1,
 			[]api.ID{"id1", "id2", "id3"},
 			1,
-			[]listItem{"10.0.0.1/32", "2001:db8::/32", "10.0.0.0/20"},
+			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
 			1, true,
 			nil,
 		},
@@ -867,7 +887,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			1,
 			[]api.ID{"id1", "id2", "id3"},
 			1,
-			[]listItem{"10.0.0.1/32", "2001:db8::/32", "invalid item"},
+			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"invalid item", ""}},
 			1,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -1010,7 +1030,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
 			1,
-			[]listItem{"10.0.0.1/32", "2001:db8::/32", "10.0.0.0/20"},
+			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
 			1,
 			true,
 			nil,
@@ -1041,7 +1061,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
 			1,
-			[]listItem{"10.0.0.1/32", "2001:db8::/32", "invalid item"},
+			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"invalid item", ""}},
 			1,
 			false,
 			func(ppfmt *mocks.MockPP) {
