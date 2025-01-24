@@ -308,6 +308,8 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 > 🔑 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
 >
 > 🔑 To manipulate WAF lists, the updater needs the **Account - Account Filter Lists - Edit** permission.
+>
+> 💡 `CLOUDFLARE_API_TOKEN_FILE` works well with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/) where secrets will be mounted as files at `/run/secrets/<SECRET NAME>`.
 
 </details>
 
