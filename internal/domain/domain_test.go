@@ -94,9 +94,13 @@ func TestNew(t *testing.T) {
 		{"*.xn--a.xn--a.xn--a.com", w("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
 		{"*.a.com...｡", w("a.com"), true, ""},
 		{"*...｡..a.com", w(".....a.com"), true, ""},
+		{"*.A......", w("a"), true, ""},
+		{"*｡A｡｡｡｡｡", w("a"), true, ""},
+		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
 		{"*......", w(""), false, "not fully qualified"},
 		{"*｡｡｡｡｡｡", w(""), false, "not fully qualified"},
-		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
+		{"......", f(""), false, "not fully qualified"},
+		{"｡｡｡｡｡｡", f(""), false, "not fully qualified"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
