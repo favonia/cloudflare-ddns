@@ -188,6 +188,10 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 				*rawItem.IP, list.Describe())
 			return nil, false
 		}
+		if rawItem.Comment != "" {
+			ppfmt.Noticef(pp.EmojiWarning, "The IP range/address %q in the list %s has a non-empty comment %q; the comment might be lost during an IP update.", //nolint:lll
+				*rawItem.IP, list.Describe(), rawItem.Comment)
+		}
 		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p})
 	}
 	return items, true
