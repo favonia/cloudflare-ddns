@@ -15,27 +15,27 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func TestParseList(t *testing.T) {
+func TestParseDomainHostIDList(t *testing.T) {
 	t.Parallel()
 	key := "key"
 	noHost := netip.Addr{}
 	type f = domain.FQDN
 	type w = domain.Wildcard
-	type ds = []domainexp.DomainWithHostID
+	type ds = []domainexp.DomainHostID
 	for name, tc := range map[string]struct {
 		input         string
 		ok            bool
 		expected      ds
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"a.a":         {"a.a", true, ds{{f("a.a"), noHost}}, nil},
-		"a.a,a.b":     {" a.a ,  a.b ", true, ds{{f("a.a"), noHost}, {f("a.b"), noHost}}, nil},
-		"a.a,a.b,a.c": {" a.a ,  a.b ,,,,,, a.c ", true, ds{{f("a.a"), noHost}, {f("a.b"), noHost}, {f("a.c"), noHost}}, nil},
-		"wildcard":    {" a.a ,  a.b ,,,,,, *.c ", true, ds{{f("a.a"), noHost}, {f("a.b"), noHost}, {w("c"), noHost}}, nil},
+		"a.a":         {"a.a", true, ds{{f("a.a"), nil}}, nil},
+		"a.a,a.b":     {" a.a ,  a.b ", true, ds{{f("a.a"), nil}, {f("a.b"), nil}}, nil},
+		"a.a,a.b,a.c": {" a.a ,  a.b ,,,,,, a.c ", true, ds{{f("a.a"), nil}, {f("a.b"), nil}, {f("a.c"), nil}}, nil},
+		"wildcard":    {" a.a ,  a.b ,,,,,, *.c ", true, ds{{f("a.a"), nil}, {f("a.b"), nil}, {w("c"), nil}}, nil},
 		"hosts": {
 			" a.a [ ::  ],,,,,, *.c [aa:bb:cc:dd:ee:ff] ", true,
 			ds{
-				{f("a.a"), netip.MustParseAddr("::")},
+				{f("a.a"), },
 				{w("c"), netip.MustParseAddr("::a8bb:ccff:fedd:eeff")},
 			},
 			nil,
@@ -67,7 +67,7 @@ func TestParseList(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			list, ok := domainexp.ParseList(mockPP, key, tc.input)
+			list, ok := domainexp.ParseDomainHostIDList(mockPP, key, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, list)
 		})
