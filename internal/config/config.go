@@ -19,6 +19,8 @@ type Config struct {
 	Auth               api.Auth
 	Provider           map[ipnet.Type]provider.Provider
 	Domains            map[ipnet.Type][]domain.Domain
+	IP6PrefixLen       int
+	IP6HostID          map[domain.Domain]ipnet.HostID
 	WAFLists           []api.WAFList
 	UpdateCron         cron.Schedule
 	UpdateOnStart      bool
@@ -47,6 +49,8 @@ func Default() *Config {
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
 		},
+		IP6PrefixLen:       128,
+		IP6HostID:          map[domain.Domain]ipnet.HostID{},
 		WAFLists:           nil,
 		UpdateCron:         cron.MustNew("@every 5m"),
 		UpdateOnStart:      true,
