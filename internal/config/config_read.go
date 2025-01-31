@@ -23,7 +23,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if !ReadAuth(ppfmt, &c.Auth) ||
 		!ReadProviderMap(ppfmt, &c.Provider) ||
 		!ReadIP6PrefixLen(ppfmt, "IP6_PREFIX_LEN", &c.IP6PrefixLen) ||
-		!ReadDomainMap(ppfmt, &c.Domains, &c.IP6HostID) ||
+		!ReadDomainMap(ppfmt, &c.Domains, &c.IP6HostID, c.IP6PrefixLen) ||
 		!ReadAndAppendWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||

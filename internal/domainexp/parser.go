@@ -125,6 +125,22 @@ func parseDomain(ppfmt pp.PP, key string, input string, s string) (domain.Domain
 	return d, true
 }
 
+func parseHost(ppfmt pp.PP, key string, input string, s string, prefixLen int) (ipnet.HostID, bool) {
+	if s == "" {
+		return nil, true
+	}
+
+	h, err := ipnet.ParseHost(s, prefixLen)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"%s (%q) contains an ill-formed host ID %q: %v",
+			key, input, s, err)
+		return nil, false
+	}
+
+	return h, true
+}
+
 func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]domain.Domain, []string) {
 	list, tokens := scanList(ppfmt, key, input, tokens)
 	domains := make([]domain.Domain, 0, len(list))
@@ -138,7 +154,7 @@ func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]d
 	return domains, tokens
 }
 
-func scanDomainHostIDList(ppfmt pp.PP, key string, input string, tokens []string) ([]DomainHostID, []string) {
+func scanDomainHostIDList(ppfmt pp.PP, key string, input string, tokens []string, prefixLen int) ([]DomainHostID, []string) {
 	list, tokens := scanTaggedList(ppfmt, key, input, tokens)
 	domains := make([]DomainHostID, 0, len(list))
 	for _, raw := range list {
@@ -146,11 +162,8 @@ func scanDomainHostIDList(ppfmt pp.PP, key string, input string, tokens []string
 		if !ok {
 			return nil, nil
 		}
-		h, err := ipnet.ParseHost(raw.Tag)
-		if err != nil {
-			ppfmt.Noticef(pp.EmojiUserError,
-				"%s (%q) contains an ill-formed host ID %q: %v",
-				key, input, raw.Tag, err)
+		h, ok := parseHost(ppfmt, key, input, raw.Tag, prefixLen)
+		if !ok {
 			return nil, nil
 		}
 		domains = append(domains, DomainHostID{Domain: d, HostID: h})
@@ -344,8 +357,10 @@ func Parse[T any](ppfmt pp.PP, key string, input string, scan func(pp.PP, string
 }
 
 // ParseDomainHostIDList parses a list of comma-separated domains. Internationalized domain names are fully supported.
-func ParseDomainHostIDList(ppfmt pp.PP, key string, input string) ([]DomainHostID, bool) {
-	return Parse(ppfmt, key, input, scanDomainHostIDList)
+func ParseDomainHostIDList(ppfmt pp.PP, key string, input string, prefixLen int) ([]DomainHostID, bool) {
+	return Parse(ppfmt, key, input, func(ppfmt pp.PP, key, input string, tokens []string) ([]DomainHostID, []string) {
+		return scanDomainHostIDList(ppfmt, key, input, tokens, prefixLen)
+	})
 }
 
 // ParseDomainList parses a list of comma-separated domains. Internationalized domain names are fully supported.
