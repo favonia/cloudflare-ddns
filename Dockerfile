@@ -22,7 +22,7 @@ RUN \
   -o /bin/ddns ./cmd/ddns
 
 # The "alpine" stage can be used directly for debugging network issues.
-FROM alpine AS alpine
+FROM alpine:3.21.2@sha256:56fa17d2a7e7f168a043a2712e63aed1f8543aeafdcee47c58dcffe38ed51099 AS alpine
 RUN apk add --no-cache ca-certificates-bundle
 COPY --from=build /bin/ddns /bin/
 USER 1000:1000
