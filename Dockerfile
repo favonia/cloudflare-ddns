@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7-labs
 # We use cross-compilation because QEMU is slow.
-FROM --platform=${BUILDPLATFORM} golang:1.23.4-alpine3.20@sha256:9a31ef0803e6afdf564edc8ba4b4e17caed22a0b1ecd2c55e3c8fdd8d8f68f98 AS build
+FROM --platform=${BUILDPLATFORM} golang:1.23.6-alpine3.20@sha256:22caeb4deced0138cb4ae154db260b22d1b2ef893dde7f84415b619beae90901 AS build
 
 ARG GIT_DESCRIBE
 ARG TARGETOS
