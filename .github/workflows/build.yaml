@@ -26,7 +26,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
+        uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
         with:
           egress-policy: audit
           disable-sudo: true
@@ -37,9 +37,9 @@ jobs:
         with:
           persist-credentials: false
       - name: 🤖 Set up QEMU
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+        uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
       - name: 🏗️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
         with:
           version: latest
       - name: 🔑 Log in to Docker
@@ -69,7 +69,7 @@ jobs:
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
         id: build
         with:
           target: "minimal"
@@ -82,7 +82,7 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           provenance: "mode=max"
       - name: ✍️ Install Cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
       - name: ✍️ Sign the minimal Docker images
         if: ${{ github.event_name == 'release' }}
         run: |
@@ -104,7 +104,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy Docker images with alpine
         if: ${{ github.event_name != 'release' }}
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
         id: build-alpine
         with:
           target: "alpine"
