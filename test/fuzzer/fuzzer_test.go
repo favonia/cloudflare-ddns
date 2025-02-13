@@ -27,8 +27,8 @@ func (m ErrorMatcher) String() string {
 
 const key string = "KEY"
 
-// FuzzParseList fuzz test [domainexp.ParseList].
-func FuzzParseList(f *testing.F) {
+// FuzzParseDomainList fuzz test [domainexp.ParseList].
+func FuzzParseDomainList(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input string) {
 		mockCtrl := gomock.NewController(t)
 		mockPP := mocks.NewMockPP(mockCtrl)
@@ -40,7 +40,7 @@ func FuzzParseList(f *testing.F) {
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, key, input, gomock.Any()).AnyTimes()
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, gomock.Any()).AnyTimes()
 
-		_, _ = domainexp.ParseList(mockPP, key, input)
+		_, _ = domainexp.ParseDomainList(mockPP, key, input)
 	})
 }
 

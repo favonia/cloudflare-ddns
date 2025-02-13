@@ -99,12 +99,13 @@ func TestReadDomains(t *testing.T) {
 //nolint:paralleltest // environment vars are global
 func TestReadDomainMap(t *testing.T) {
 	for name, tc := range map[string]struct {
-		domains       string
-		ip4Domains    string
-		ip6Domains    string
-		expected      map[ipnet.Type][]domain.Domain
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
+		domains        string
+		ip4Domains     string
+		ip6Domains     string
+		expectedDomain map[ipnet.Type][]domain.Domain
+		expectedHostID map[domain.Domain]ipnet.HostID
+		ok             bool
+		prepareMockPP  func(*mocks.MockPP)
 	}{
 		"full": {
 			"  a1.com, a2.com", "b1.com,  b2.com,b2.com", "c1.com,c2.com",
@@ -112,6 +113,7 @@ func TestReadDomainMap(t *testing.T) {
 				ipnet.IP4: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("b1.com"), domain.FQDN("b2.com")},
 				ipnet.IP6: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("c1.com"), domain.FQDN("c2.com")},
 			},
+			map[domain.Domain]ipnet.HostID{},
 			true,
 			nil,
 		},
@@ -121,6 +123,7 @@ func TestReadDomainMap(t *testing.T) {
 				ipnet.IP4: {domain.FQDN("a1.com")},
 				ipnet.IP6: {domain.FQDN("a1.com"), domain.Wildcard("a1.com")},
 			},
+			map[domain.Domain]ipnet.HostID{},
 			true,
 			nil,
 		},
@@ -130,11 +133,12 @@ func TestReadDomainMap(t *testing.T) {
 				ipnet.IP4: {},
 				ipnet.IP6: {},
 			},
+			map[domain.Domain]ipnet.HostID{},
 			true,
 			nil,
 		},
 		"ill-formed": {
-			" ", "   ", "*.*", nil, false,
+			" ", "   ", "*.*", nil, nil, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
 			},
@@ -147,15 +151,17 @@ func TestReadDomainMap(t *testing.T) {
 			store(t, "IP4_DOMAINS", tc.ip4Domains)
 			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
-			var field map[ipnet.Type][]domain.Domain
+			var fieldDomain map[ipnet.Type][]domain.Domain
+			var fieldHostID map[domain.Domain]ipnet.HostID
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadDomainMap(mockPP, &field)
+			ok := config.ReadDomainMap(mockPP, &fieldDomain, &fieldHostID, 64)
 			require.Equal(t, tc.ok, ok)
-			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
-			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])
+			require.ElementsMatch(t, tc.expectedDomain[ipnet.IP4], fieldDomain[ipnet.IP4])
+			require.ElementsMatch(t, tc.expectedDomain[ipnet.IP6], fieldDomain[ipnet.IP6])
+			require.Equal(t, tc.expectedHostID, fieldHostID)
 		})
 	}
 }
