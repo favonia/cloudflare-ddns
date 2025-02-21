@@ -120,7 +120,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `default (root)`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `default (root)`),
 				)
 			},
 		},
@@ -164,7 +164,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/fail"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `"/fail"`),
 				)
 			},
 		},
@@ -179,7 +179,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/start"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `"/start"`),
 				)
 			},
 		},
@@ -194,7 +194,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/0"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `"/0"`),
 				)
 			},
 		},
@@ -209,7 +209,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/log"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `"/log"`),
 				)
 			},
 		},
@@ -224,7 +224,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", `"/fail"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", `"/fail"`),
 				)
 			},
 		},

@@ -148,7 +148,7 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", endpointDescription)
+	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", endpointDescription)
 	return true
 }
 

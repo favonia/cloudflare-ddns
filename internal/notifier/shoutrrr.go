@@ -107,7 +107,7 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 	}
 	if allOK {
 		ppfmt.Infof(pp.EmojiNotify,
-			"Notified %s via shoutrrr",
+			"Notified %s via shoutrrr: the updater has started",
 			pp.EnglishJoin(s.ServiceDescriptions))
 	}
 	return allOK

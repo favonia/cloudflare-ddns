@@ -94,7 +94,7 @@ func TestShoutrrrSend(t *testing.T) {
 			notifier.NewMessagef("hello"),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", "Generic")
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr: the updater has started", "Generic")
 			},
 		},
 		"ill-formed url": {
