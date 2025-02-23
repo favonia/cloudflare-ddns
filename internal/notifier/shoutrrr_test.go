@@ -94,7 +94,7 @@ func TestShoutrrrSend(t *testing.T) {
 			notifier.NewMessagef("hello"),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr: %s", `Generic`, `the updater has started`)
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr: %s", `Generic`, `hello`)
 			},
 		},
 		"ill-formed url": {
@@ -103,7 +103,7 @@ func TestShoutrrrSend(t *testing.T) {
 			notifier.NewMessagef("hello"),
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v (attempted to send: %s)", gomock.Any(), `hello`)
 			},
 		},
 		"empty": {

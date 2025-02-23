@@ -97,11 +97,16 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 		return true
 	}
 
-	errs := s.Router.Send(msg.Format(), &types.Params{})
+	formattedMsg := msg.Format()
+	errs := s.Router.Send(formattedMsg, &types.Params{})
 	allOK := true
 	for _, err := range errs {
 		if err != nil {
-			ppfmt.Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", err)
+			ppfmt.Noticef(pp.EmojiError,
+				"Failed to notify shoutrrr service(s): %v (attempted to send: %s)",
+				err,
+				formattedMsg,
+			)
 			allOK = false
 		}
 	}
@@ -109,7 +114,8 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 		ppfmt.Infof(pp.EmojiNotify,
 			"Notified %s via shoutrrr: %s",
 			pp.EnglishJoin(s.ServiceDescriptions),
-			`the updater has started`)
+			formattedMsg,
+		)
 	}
 	return allOK
 }
