@@ -148,7 +148,22 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: the updater has started", endpointDescription)
+	var statusMessage string
+	switch endpoint {
+	case "/start":
+		statusMessage = `the updater has started`
+	case "/fail":
+		statusMessage = `failure reported`
+	case "/log":
+		statusMessage = `status logged`
+	case "/0":
+		statusMessage = `the updater has stopped`
+	default:
+		statusMessage = `ping successful` // Default case for root endpoint
+	}
+
+	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks: %s",
+		endpointDescription, statusMessage)
 	return true
 }
 
