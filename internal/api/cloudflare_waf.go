@@ -12,19 +12,21 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// WAFListMaxBitLen records the maximum number of bits of an IP range/address
-// Cloudflare can support in a WAF list.
+// WAFListMinPrefixLen and WAFListMaxPrefixLen record the minimum and maximum
+// numbers of bits of an IP range Cloudflare can support in a WAF list.
 //
 // According to the Cloudflare docs, an IP range/address in a list must be
 // in one of the following formats:
 // - An individual IPv4 address
 // - An IPv4 CIDR ranges with a prefix from /8 to /32
-// - An IPv6 CIDR ranges with a prefix from /4 to /64
+// - An IPv6 CIDR ranges with a prefix from /12 to /64
 // For this updater, only the maximum values matter.
-var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
-	ipnet.IP4: 32,
-	ipnet.IP6: 64,
-}
+//
+//nolint:gochecknoglobals
+var (
+	WAFListMinPrefixLen = map[ipnet.Type]int{ipnet.IP4: 8, ipnet.IP6: 12}
+	WAFListMaxPrefixLen = map[ipnet.Type]int{ipnet.IP4: 32, ipnet.IP6: 64}
+)
 
 func hintWAFListPermission(ppfmt pp.PP, err error) {
 	var authentication *cloudflare.AuthenticationError

@@ -27,8 +27,8 @@ func (m ErrorMatcher) String() string {
 
 const key string = "KEY"
 
-// FuzzParseList fuzz test [domainexp.ParseList].
-func FuzzParseList(f *testing.F) {
+// FuzzParseDomainList fuzz test [domainexp.ParseList].
+func FuzzParseDomainList(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input string) {
 		mockCtrl := gomock.NewController(t)
 		mockPP := mocks.NewMockPP(mockCtrl)
@@ -40,7 +40,28 @@ func FuzzParseList(f *testing.F) {
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, key, input, gomock.Any()).AnyTimes()
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, gomock.Any()).AnyTimes()
 
-		_, _ = domainexp.ParseList(mockPP, key, input)
+		_, _ = domainexp.ParseDomainList(mockPP, key, input)
+	})
+}
+
+// FuzzParseDomainHostIDList fuzz test [domainexp.ParseDomainHostIDList].
+func FuzzParseDomainHostIDList(f *testing.F) {
+	f.Fuzz(func(t *testing.T, input string) {
+		mockCtrl := gomock.NewController(t)
+		mockPP := mocks.NewMockPP(mockCtrl)
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleAnd).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is ill-formed: %v`, key, input, domainexp.ErrSingleOr).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, input, ErrorMatcher{domainexp.ErrUTF8}).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains an ill-formed domain %q: %v`, key, input, gomock.Any(), gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unclosed "[" at the end`, key, input).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a domain before the opening bracket %q`, key, input, gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q when %q is expected`, key, input, gomock.Any(), gomock.Any()).AnyTimes()
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q when a host ID is expected`, key, input, gomock.Any()).AnyTimes()
+
+		_, _ = domainexp.ParseDomainHostIDList(mockPP, key, input)
 	})
 }
 

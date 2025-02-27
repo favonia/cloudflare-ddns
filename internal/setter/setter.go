@@ -211,10 +211,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 // SetWAFList updates a WAF list.
 //
-// If detectedIP contains a zero (invalid) IP, it means the detection is attempted but failed
-// and all matching IP addresses should be preserved.
+// If detectedRange contains an invalid prefix, it means the detection is attempted but failed.
+// If an item is missing from detectedRange, it means it is not managed.
+//
+// and all matching ranges should be preserved.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
-	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
+	list api.WAFList, listDescription string, detectedRange map[ipnet.Type]netip.Prefix, itemComment string,
 ) ResponseCode {
 	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
 	if !ok {
@@ -227,23 +229,24 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	var itemsToDelete []api.WAFListItem
 	var itemsToCreate []netip.Prefix
 	for ipNet := range ipnet.All {
-		detectedIP, managed := detectedIP[ipNet]
+		detectedRange, managed := detectedRange[ipNet]
 		covered := false
 		for _, item := range items {
 			if ipNet.Matches(item.Prefix.Addr()) {
 				switch {
-				case item.Prefix.Contains(detectedIP):
+				case ipnet.ContainsPrefix(item.Prefix, detectedRange):
 					covered = true
-				case managed && !detectedIP.IsValid():
+				case ipnet.ContainsPrefix(detectedRange, item.Prefix):
+					// The range in the list is smaller; doesn't hurt to keep it
+				case managed && !detectedRange.IsValid():
 					// detection was attempted but failed; do nothing
 				default:
 					itemsToDelete = append(itemsToDelete, item)
 				}
 			}
 		}
-		if !covered && detectedIP.IsValid() {
-			itemsToCreate = append(itemsToCreate,
-				netip.PrefixFrom(detectedIP, api.WAFListMaxBitLen[ipNet]).Masked())
+		if !covered && detectedRange.IsValid() {
+			itemsToCreate = append(itemsToCreate, detectedRange.Masked())
 		}
 	}
 
