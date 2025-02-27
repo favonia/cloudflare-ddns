@@ -390,9 +390,9 @@ func TestSetWAFList(t *testing.T) {
 	var (
 		invalid     = netip.PrefixFrom(netip.Addr{}, -1)
 		prefix4     = netip.MustParsePrefix("10.0.0.1/32")
-		prefix6     = netip.MustParsePrefix("2001:0db8::/64")
+		prefix6     = netip.MustParsePrefix("2001:0db8::/56")
 		item4       = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.1/32"), ID: "pre4"}
-		item6       = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:0db8::/64"), ID: "pre6"}
+		item6       = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:0db8::/56"), ID: "pre6"}
 		item4range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/16"), ID: "ip4-16"}
 		item4range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/20"), ID: "ip4-20"}
 		item4range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/24"), ID: "ip4-24"}
@@ -402,6 +402,7 @@ func TestSetWAFList(t *testing.T) {
 		item6range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/32"), ID: "ip6-32"}
 		item6range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/40"), ID: "ip6-40"}
 		item6range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/48"), ID: "ip6-48"}
+		item6range4 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/64"), ID: "ip6-64"}
 		item6wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/32"), ID: "ip6-32"}
 		item6wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/40"), ID: "ip6-40"}
 		item6wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/48"), ID: "ip6-48"}
@@ -424,7 +425,7 @@ func TestSetWAFList(t *testing.T) {
 					p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", wafListDescribed),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{item4.Prefix, item6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/56", wafListDescribed),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, []api.ID{}).Return(true),
 				)
 			},
@@ -481,6 +482,7 @@ func TestSetWAFList(t *testing.T) {
 						item4wrong2,
 						item6range2,
 						item6range3,
+						item6range4,
 						item4range2,
 						item4range3,
 						item6wrong2,
@@ -523,7 +525,7 @@ func TestSetWAFList(t *testing.T) {
 					}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{item4.Prefix, item6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
-					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
+					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/56", wafListDescribed),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
 						item4wrong2.ID,
 						item6wrong2.ID,
@@ -562,6 +564,7 @@ func TestSetWAFList(t *testing.T) {
 						item4wrong2,
 						item6range2,
 						item6range3,
+						item6range4,
 						item4range2,
 						item4range3,
 						item6wrong2,
