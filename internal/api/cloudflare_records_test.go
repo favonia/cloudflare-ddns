@@ -115,18 +115,20 @@ func TestListZonesTwo(t *testing.T) {
 			mockPP := mocks.NewMockPP(mockCtrl)
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 			zh := newZonesHandler(t, mux, tc.zones)
 
 			zh.setRequestLimit(tc.requestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
-			output, ok := h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+			output, ok := ch.ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
 			require.True(t, zh.isExhausted())
 
 			zh.setRequestLimit(0)
 			mockPP = mocks.NewMockPP(mockCtrl)
-			output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+			output, ok = ch.ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
 			require.True(t, zh.isExhausted())
@@ -136,7 +138,7 @@ func TestListZonesTwo(t *testing.T) {
 
 				mockPP = mocks.NewMockPP(mockCtrl)
 				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "test.org", gomock.Any())
-				output, ok = h.(api.CloudflareHandle).ListZones(context.Background(), mockPP, tc.input)
+				output, ok = ch.ListZones(context.Background(), mockPP, tc.input)
 				require.False(t, ok)
 				require.Zero(t, output)
 				require.True(t, zh.isExhausted())
@@ -242,6 +244,8 @@ func TestZoneIDOfDomain(t *testing.T) {
 			mockPP := mocks.NewMockPP(mockCtrl)
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 			zh := newZonesHandler(t, mux, tc.zoneStatuses)
 
 			zh.setRequestLimit(tc.requestLimit)
@@ -249,7 +253,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			zoneID, ok := h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
+			zoneID, ok := ch.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, zoneID)
 			require.True(t, zh.isExhausted())
@@ -257,7 +261,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			if tc.ok {
 				zh.setRequestLimit(0)
 				mockPP = mocks.NewMockPP(mockCtrl) // there should be no messages
-				zoneID, ok = h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
+				zoneID, ok = ch.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
 				require.True(t, zh.isExhausted())
@@ -273,9 +277,11 @@ func TestZoneIDOfDomainInvalid(t *testing.T) {
 
 	_, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
+	ch, ok := h.(api.CloudflareHandle)
+	require.True(t, ok)
 
 	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
-	zoneID, ok := h.(api.CloudflareHandle).ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	zoneID, ok := ch.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
 }

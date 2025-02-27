@@ -49,7 +49,7 @@ issues:
 linters:
   enable-all: true
   disable:
-    - exportloopref # deprecated
+    - tenv # deprecated
 
     - goconst # never leads to actual code changes
     - mnd # never leads to actual code changes
