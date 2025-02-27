@@ -131,6 +131,8 @@ func TestListWAFLists(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, tc.lists)
 
@@ -139,7 +141,7 @@ func TestListWAFLists(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
+			lists, ok := ch.ListWAFLists(context.Background(), mockPP, mockAccountID)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, lists)
 			require.True(t, lh.isExhausted())
@@ -149,16 +151,16 @@ func TestListWAFLists(t *testing.T) {
 				if tc.prepareMocks != nil {
 					tc.prepareMocks(mockPP)
 				}
-				lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
+				lists, ok = ch.ListWAFLists(context.Background(), mockPP, mockAccountID)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.output, lists)
 			}
 
-			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
+			ch.FlushCache()
 
 			mockPP = mocks.NewMockPP(mockCtrl)
 			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
-			lists, ok = h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
+			lists, ok = ch.ListWAFLists(context.Background(), mockPP, mockAccountID)
 			require.False(t, ok)
 			require.Zero(t, lists)
 			require.True(t, lh.isExhausted())
@@ -228,6 +230,8 @@ func TestWAFListID(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, tc.lists)
 
@@ -236,8 +240,7 @@ func TestWAFListID(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			//nolint: forcetypeassert
-			id, found, ok := h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
+			id, found, ok := ch.WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.found, found)
 			require.Equal(t, tc.output, id)
@@ -245,19 +248,17 @@ func TestWAFListID(t *testing.T) {
 
 			if tc.ok {
 				mockPP = mocks.NewMockPP(mockCtrl)
-				//nolint: forcetypeassert
-				id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
+				id, found, ok = ch.WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.found, found)
 				require.Equal(t, tc.output, id)
 			}
 
-			h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
+			ch.FlushCache()
 
 			mockPP = mocks.NewMockPP(mockCtrl)
 			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
-			//nolint: forcetypeassert
-			id, found, ok = h.(api.CloudflareHandle).WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
+			id, found, ok = ch.WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 			require.False(t, ok)
 			require.Zero(t, found)
 			require.Zero(t, id)
@@ -274,6 +275,8 @@ func TestListWAFListsHint(t *testing.T) {
 
 	mux, h, ok := newHandle(t, mockPP)
 	require.True(t, ok)
+	ch, ok := h.(api.CloudflareHandle)
+	require.True(t, ok)
 
 	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists", mockAccountID),
 		func(w http.ResponseWriter, _ *http.Request) {
@@ -288,7 +291,7 @@ func TestListWAFListsHint(t *testing.T) {
 		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
 		mockPP.EXPECT().NoticeOncef(pp.MessageWAFListPermission, pp.EmojiHint, `Double check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
-	lists, ok := h.(api.CloudflareHandle).ListWAFLists(context.Background(), mockPP, mockAccountID)
+	lists, ok := ch.ListWAFLists(context.Background(), mockPP, mockAccountID)
 	require.False(t, ok)
 	require.Zero(t, lists)
 }
@@ -355,6 +358,8 @@ func TestFindWAFList(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, tc.lists)
 			lh.setRequestLimit(tc.listRequestLimit)
@@ -362,7 +367,7 @@ func TestFindWAFList(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			list, ok := h.(api.CloudflareHandle).FindWAFList(context.Background(), mockPP, mockWAFList, "description")
+			list, ok := ch.FindWAFList(context.Background(), mockPP, mockWAFList, "description")
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, list)
 			require.True(t, lh.isExhausted())
@@ -372,7 +377,7 @@ func TestFindWAFList(t *testing.T) {
 				if tc.prepareMocks != nil {
 					tc.prepareMocks(mockPP)
 				}
-				list, ok = h.(api.CloudflareHandle).FindWAFList(context.Background(), mockPP, mockWAFList, "description")
+				list, ok = ch.FindWAFList(context.Background(), mockPP, mockWAFList, "description")
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.output, list)
 			}
@@ -509,6 +514,8 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, mux, mockID("list", 0))
@@ -521,7 +528,7 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			deleted, ok := h.(api.CloudflareHandle).FinalClearWAFListAsync(context.Background(), mockPP,
+			deleted, ok := ch.FinalClearWAFListAsync(context.Background(), mockPP,
 				mockWAFList, "description")
 			require.Equal(t, tc.deleted, deleted)
 			require.Equal(t, tc.ok, ok)
@@ -719,7 +726,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
-					"The IP range/address %q in the list %s has a non-empty comment %q; the comment might be lost during an IP update.",
+					"The IP range/address %q in the list %s has a non-empty comment %q. The comment might be lost during an IP update.",
 					"10.0.0.1", "account456/list", "hello")
 			},
 		},
@@ -732,34 +739,32 @@ func TestListWAFListItems(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, tc.lists)
-			ch := newCreateListHandler(t, mux, tc.newList)
+			clh := newCreateListHandler(t, mux, tc.newList)
 			lih := newListListItemsHandler(t, mux, mockID("list", 0), tc.items)
 
 			lh.setRequestLimit(tc.listRequestLimit)
-			ch.setRequestLimit(tc.createRequestLimit)
+			clh.setRequestLimit(tc.createRequestLimit)
 			lih.setRequestLimit(tc.listItemsRequestLimit)
 			mockPP = mocks.NewMockPP(mockCtrl)
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			//nolint:forcetypeassert
-			output, alreadyExisting, cached, ok := h.(api.CloudflareHandle).
-				ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
+			output, alreadyExisting, cached, ok := ch.ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.alreadyExisting, alreadyExisting)
 			require.Equal(t, tc.output, output)
 			require.True(t, lh.isExhausted())
-			require.True(t, ch.isExhausted())
+			require.True(t, clh.isExhausted())
 			require.True(t, lih.isExhausted())
 
 			if tc.ok {
 				mockPP = mocks.NewMockPP(mockCtrl)
-				//nolint:forcetypeassert
-				output, alreadyExisting, cached, ok := h.(api.CloudflareHandle).
-					ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
+				output, alreadyExisting, cached, ok := ch.ListWAFListItems(context.Background(), mockPP, mockWAFList, "description")
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.True(t, alreadyExisting)
@@ -907,6 +912,8 @@ func TestDeleteWAFListItems(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dih := newDeleteListItemsHandler(t, mux, mockID("list", 0), mockID("op", 0))
@@ -919,9 +926,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			//nolint:forcetypeassert
-			ok = h.(api.CloudflareHandle).
-				DeleteWAFListItems(context.Background(), mockPP, mockWAFList, "description", tc.idsToDelete)
+			ok = ch.DeleteWAFListItems(context.Background(), mockPP, mockWAFList, "description", tc.idsToDelete)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, lh.isExhausted())
 			require.True(t, dih.isExhausted())
@@ -931,9 +936,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 				dih.setRequestLimit(tc.deleteRequestLimit)
 				lih.setRequestLimit(tc.listItemsRequestLimit)
 				mockPP = mocks.NewMockPP(mockCtrl)
-				//nolint:forcetypeassert
-				ok := h.(api.CloudflareHandle).
-					DeleteWAFListItems(context.Background(), mockPP, mockWAFList, "description", tc.idsToDelete)
+				ok := ch.DeleteWAFListItems(context.Background(), mockPP, mockWAFList, "description", tc.idsToDelete)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, lh.isExhausted())
 				require.True(t, dih.isExhausted())
@@ -1081,6 +1084,8 @@ func TestCreateWAFListItems(t *testing.T) {
 
 			mux, h, ok := newHandle(t, mockPP)
 			require.True(t, ok)
+			ch, ok := h.(api.CloudflareHandle)
+			require.True(t, ok)
 
 			lh := newListListsHandler(t, mux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			cih := newCreateListItemsHandler(t, mux, mockID("list", 0), mockID("op", 0))
@@ -1093,9 +1098,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			if tc.prepareMocks != nil {
 				tc.prepareMocks(mockPP)
 			}
-			//nolint:forcetypeassert
-			ok = h.(api.CloudflareHandle).CreateWAFListItems(context.Background(), mockPP,
-				mockWAFList, "description", tc.itemsToCreate, itemComment)
+			ok = ch.CreateWAFListItems(context.Background(), mockPP, mockWAFList, "description", tc.itemsToCreate, itemComment)
 			require.Equal(t, tc.ok, ok)
 			require.True(t, lh.isExhausted())
 			require.True(t, cih.isExhausted())
@@ -1105,8 +1108,7 @@ func TestCreateWAFListItems(t *testing.T) {
 				cih.setRequestLimit(tc.createRequestLimit)
 				lih.setRequestLimit(tc.listItemsRequestLimit)
 				mockPP = mocks.NewMockPP(mockCtrl)
-				//nolint:forcetypeassert
-				ok = h.(api.CloudflareHandle).CreateWAFListItems(context.Background(), mockPP,
+				ok = ch.CreateWAFListItems(context.Background(), mockPP,
 					mockWAFList, "description", tc.itemsToCreate, itemComment)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, lh.isExhausted())
