@@ -325,6 +325,70 @@ func TestReadTTL(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
+func TestReadIP6PrefixLen(t *testing.T) {
+	key := keyPrefix + "IP6_PREFIX_LEN"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		oldField      int
+		newField      int
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"nil": {
+			false, "", 96, 96, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 96)
+			},
+		},
+		"empty": {
+			true, "", 96, 96, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 96)
+			},
+		},
+		"zero": {
+			true, "0   ", 96, 96, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) must be in the range 1 to 127 (inclusive)", key, 0)
+			},
+		},
+		"128": {
+			true, "   128", 96, 96, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) must be in the range 1 to 127 (inclusive)", key, 128)
+			},
+		},
+		"48": {true, "   48   ", 100, 48, true, nil},
+		"1.0": {
+			true, "   1.0   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
+			},
+		},
+		"words": {
+			true, "   word   ", 100, 100, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadIP6PrefixLen(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadNonnegDuration(t *testing.T) {
 	key := keyPrefix + "DURATION"
 

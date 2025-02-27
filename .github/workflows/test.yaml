@@ -54,7 +54,7 @@ jobs:
       group: ${{ github.workflow }}-fuzz-${{ github.ref }}
       cancel-in-progress: true
     env:
-      FUZZTIME: "60s"
+      FUZZTIME: "45s"
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
@@ -73,7 +73,8 @@ jobs:
           go-version: stable
       - name: 🧪 Run `go test`
         run: |
-          go test ./test/fuzzer -fuzztime ${{ env.FUZZTIME }} -fuzz FuzzParseList
+          go test ./test/fuzzer -fuzztime ${{ env.FUZZTIME }} -fuzz FuzzParseDomainList
+          go test ./test/fuzzer -fuzztime ${{ env.FUZZTIME }} -fuzz FuzzParseDomainHostIDList
           go test ./test/fuzzer -fuzztime ${{ env.FUZZTIME }} -fuzz FuzzParseExpression
   regenerate:
     name: Regenerate

@@ -47,7 +47,7 @@ func TestExtractUDPAddr(t *testing.T) {
 			true, netip.MustParseAddr("::1%123"),
 			nil,
 		},
-		"udpaddr/illformed": {
+		"udpaddr/ill-formed": {
 			&net.UDPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: "", Port: 123},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {

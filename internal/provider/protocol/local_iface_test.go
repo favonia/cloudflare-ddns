@@ -55,7 +55,7 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			true, netip.MustParseAddr("::1%123"),
 			nil,
 		},
-		"ipaddr/illformed": {
+		"ipaddr/ill-formed": {
 			&net.IPAddr{IP: net.IP([]byte{0x01, 0x02}), Zone: ""},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
@@ -67,7 +67,7 @@ func TestExtractInterfaceAddr(t *testing.T) {
 			true, netip.MustParseAddr("1.2.3.4"),
 			nil,
 		},
-		"ipnet/illformed": {
+		"ipnet/ill-formed": {
 			&net.IPNet{IP: net.IP([]byte{0x01, 0x02}), Mask: net.CIDRMask(10, 22)},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {

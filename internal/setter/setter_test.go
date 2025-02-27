@@ -388,40 +388,41 @@ func TestSetWAFList(t *testing.T) {
 	wafListDescribed := "account/list"
 
 	var (
-		ip4           = netip.MustParseAddr("10.0.0.1")
-		ip6           = netip.MustParseAddr("2001:db8::1111")
-		prefix4       = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.1/32"), ID: "pre4"}
-		prefix6       = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:0db8::/64"), ID: "pre6"}
-		prefix4range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/16"), ID: "ip4-16"}
-		prefix4range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/20"), ID: "ip4-20"}
-		prefix4range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/24"), ID: "ip4-24"}
-		prefix4wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/16"), ID: "ip4-16"}
-		prefix4wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/20"), ID: "ip4-20"}
-		prefix4wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/24"), ID: "ip4-24"}
-		prefix6range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/32"), ID: "ip6-32"}
-		prefix6range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/40"), ID: "ip6-40"}
-		prefix6range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/48"), ID: "ip6-48"}
-		prefix6wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/32"), ID: "ip6-32"}
-		prefix6wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/40"), ID: "ip6-40"}
-		prefix6wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/48"), ID: "ip6-48"}
+		invalid     = netip.PrefixFrom(netip.Addr{}, -1)
+		prefix4     = netip.MustParsePrefix("10.0.0.1/32")
+		prefix6     = netip.MustParsePrefix("2001:0db8::/64")
+		item4       = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.1/32"), ID: "pre4"}
+		item6       = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:0db8::/64"), ID: "pre6"}
+		item4range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/16"), ID: "ip4-16"}
+		item4range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/20"), ID: "ip4-20"}
+		item4range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("10.0.0.0/24"), ID: "ip4-24"}
+		item4wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/16"), ID: "ip4-16"}
+		item4wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/20"), ID: "ip4-20"}
+		item4wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("20.0.0.0/24"), ID: "ip4-24"}
+		item6range1 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/32"), ID: "ip6-32"}
+		item6range2 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/40"), ID: "ip6-40"}
+		item6range3 = api.WAFListItem{Prefix: netip.MustParsePrefix("2001:db8::/48"), ID: "ip6-48"}
+		item6wrong1 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/32"), ID: "ip6-32"}
+		item6wrong2 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/40"), ID: "ip6-40"}
+		item6wrong3 = api.WAFListItem{Prefix: netip.MustParsePrefix("4001:db8::/48"), ID: "ip6-48"}
 	)
 
 	type items = []api.WAFListItem
-	type ipmap = map[ipnet.Type]netip.Addr
+	type prefixmap = map[ipnet.Type]netip.Prefix
 
 	for name, tc := range map[string]struct {
-		detected     ipmap
-		resp         setter.ResponseCode
-		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+		detectedPrefix prefixmap
+		resp           setter.ResponseCode
+		prepareMocks   func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
 	}{
 		"created": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, false, false, true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", wafListDescribed),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{item4.Prefix, item6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, []api.ID{}).Return(true),
@@ -429,74 +430,74 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		"list-fail": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(nil, false, false, false)
 			},
 		},
 		"skip-unknown": {
-			ipmap{ipnet.IP4: netip.Addr{}, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: invalid, ipnet.IP6: prefix6},
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
-						prefix4wrong2,
-						prefix6range1,
-						prefix4wrong1,
-						prefix4wrong3,
+						item4wrong2,
+						item6range1,
+						item4wrong1,
+						item4wrong3,
 					}, true, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", wafListDescribed),
 				)
 			},
 		},
 		"noop": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: invalid, ipnet.IP6: prefix6},
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{prefix4, prefix6}, true, false, true),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{item4, item6}, true, false, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date", wafListDescribed),
 				)
 			},
 		},
 		"noop/cached": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: invalid, ipnet.IP6: prefix6},
 			setter.ResponseNoop,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
-					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{prefix4, prefix6}, true, true, true),
+					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{item4, item6}, true, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", wafListDescribed),
 				)
 			},
 		},
 		"test1": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
-						prefix6range1,
-						prefix4wrong2,
-						prefix6range2,
-						prefix6range3,
-						prefix4range2,
-						prefix4range3,
-						prefix6wrong2,
-						prefix6wrong3,
-						prefix4wrong3,
-						prefix4range1,
-						prefix4wrong1,
-						prefix6wrong1,
+						item6range1,
+						item4wrong2,
+						item6range2,
+						item6range3,
+						item4range2,
+						item4range3,
+						item6wrong2,
+						item6wrong3,
+						item4wrong3,
+						item4range1,
+						item4wrong1,
+						item6wrong1,
 					}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
-						prefix4wrong2.ID,
-						prefix6wrong2.ID,
-						prefix6wrong3.ID,
-						prefix4wrong3.ID,
-						prefix4wrong1.ID,
-						prefix6wrong1.ID,
+						item4wrong2.ID,
+						item6wrong2.ID,
+						item6wrong3.ID,
+						item4wrong3.ID,
+						item4wrong1.ID,
+						item6wrong1.ID,
 					})).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
@@ -508,28 +509,28 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		"test2": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseUpdated,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
-						prefix4wrong2,
-						prefix6wrong2,
-						prefix6wrong3,
-						prefix4wrong3,
-						prefix4wrong1,
-						prefix6wrong1,
+						item4wrong2,
+						item6wrong2,
+						item6wrong3,
+						item4wrong3,
+						item4wrong1,
+						item6wrong1,
 					}, true, false, true),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(true),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{item4.Prefix, item6.Prefix}, "").Return(true),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "10.0.0.1", wafListDescribed),
 					p.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s", "2001:db8::/64", wafListDescribed),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
-						prefix4wrong2.ID,
-						prefix6wrong2.ID,
-						prefix6wrong3.ID,
-						prefix4wrong3.ID,
-						prefix4wrong1.ID,
-						prefix6wrong1.ID,
+						item4wrong2.ID,
+						item6wrong2.ID,
+						item6wrong3.ID,
+						item4wrong3.ID,
+						item4wrong1.ID,
+						item6wrong1.ID,
 					})).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/20", wafListDescribed),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "20.0.0.0/24", wafListDescribed),
@@ -541,43 +542,43 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		"create-fail": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{}, true, false, true),
-					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{prefix4.Prefix, prefix6.Prefix}, "").Return(false),
+					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, []netip.Prefix{item4.Prefix, item6.Prefix}, "").Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
 				)
 			},
 		},
 		"delete-fail": {
-			ipmap{ipnet.IP4: ip4, ipnet.IP6: ip6},
+			prefixmap{ipnet.IP4: prefix4, ipnet.IP6: prefix6},
 			setter.ResponseFailed,
 			func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
 					m.EXPECT().ListWAFListItems(ctx, p, wafList, listDescription).Return(items{
-						prefix6range1,
-						prefix4wrong2,
-						prefix6range2,
-						prefix6range3,
-						prefix4range2,
-						prefix4range3,
-						prefix6wrong2,
-						prefix6wrong3,
-						prefix4wrong3,
-						prefix4range1,
-						prefix4wrong1,
-						prefix6wrong1,
+						item6range1,
+						item4wrong2,
+						item6range2,
+						item6range3,
+						item4range2,
+						item4range3,
+						item6wrong2,
+						item6wrong3,
+						item4wrong3,
+						item4range1,
+						item4wrong1,
+						item6wrong1,
 					}, true, false, true),
 					m.EXPECT().CreateWAFListItems(ctx, p, wafList, listDescription, nil, "").Return(true),
 					m.EXPECT().DeleteWAFListItems(ctx, p, wafList, listDescription, gomock.InAnyOrder([]api.ID{
-						prefix4wrong2.ID,
-						prefix6wrong2.ID,
-						prefix6wrong3.ID,
-						prefix4wrong3.ID,
-						prefix4wrong1.ID,
-						prefix6wrong1.ID,
+						item4wrong2.ID,
+						item6wrong2.ID,
+						item6wrong3.ID,
+						item4wrong3.ID,
+						item4wrong1.ID,
+						item6wrong1.ID,
 					})).Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent", wafListDescribed),
 				)
@@ -600,7 +601,7 @@ func TestSetWAFList(t *testing.T) {
 			s, ok := setter.New(mockPP, mockHandle)
 			require.True(t, ok)
 
-			resp := s.SetWAFList(ctx, mockPP, wafList, listDescription, tc.detected, "")
+			resp := s.SetWAFList(ctx, mockPP, wafList, listDescription, tc.detectedPrefix, "")
 			require.Equal(t, tc.resp, resp)
 		})
 	}

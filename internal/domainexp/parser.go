@@ -6,30 +6,95 @@ import (
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func scanList(ppfmt pp.PP, key string, input string, tokens []string) ([]string, []string) {
 	var list []string
-	readyForNext := true
+	expectingElement := true
 	for len(tokens) > 0 {
 		switch tokens[0] {
 		case ",":
-			readyForNext = true
+			expectingElement = true
+			tokens = tokens[1:]
 		case ")":
 			return list, tokens
-		case "(", "&&", "||", "!":
+		case "[", "]", "(", "&&", "||", "!":
 			ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
 			return nil, nil
 		default:
-			if !readyForNext {
+			if !expectingElement {
 				ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, tokens[0])
 			}
 			list = append(list, tokens[0])
-			readyForNext = false
+			expectingElement = false
+			tokens = tokens[1:]
 		}
+	}
+	return list, tokens
+}
 
-		tokens = tokens[1:]
+type taggedItem struct {
+	Element string
+	Tag     string
+}
+
+func scanTaggedList(ppfmt pp.PP, key string, input string, tokens []string) ([]taggedItem, []string) {
+	var list []taggedItem
+	expectingElement := true
+	for len(tokens) > 0 {
+		switch tokens[0] {
+		case ",":
+			expectingElement = true
+			tokens = tokens[1:]
+		case ")":
+			return list, tokens
+		case "[":
+			ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing a domain before the opening bracket %q`, key, input, tokens[0])
+			return nil, nil
+		case "]", "(", "&&", "||", "!":
+			ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
+			return nil, nil
+		default:
+			if !expectingElement {
+				ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, input, tokens[0])
+			}
+			domain := tokens[0]
+
+			host := ""
+			switch {
+			case len(tokens) == 1, tokens[1] != "[":
+				tokens = tokens[1:]
+			case len(tokens) == 2: // 'domain', '['
+				ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unclosed "[" at the end`, key, input)
+				return nil, nil
+			default: // 'domain', '[', ?
+				switch tokens[2] {
+				case "]", ",", "(", ")", "&&", "||", "!":
+					ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q when a host ID is expected`,
+						key, input, tokens[0])
+					return nil, nil
+				default:
+					switch {
+					case len(tokens) == 3: // 'domain', '[', 'host'
+						ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unclosed "[" at the end`, key, input)
+						return nil, nil
+					case tokens[3] != "]":
+						ppfmt.Noticef(pp.EmojiUserError,
+							`%s (%q) has unexpected token %q when %q is expected`,
+							key, input, tokens[2], "]")
+						return nil, nil
+					default: // 'domain', '[', 'host', ']'
+						host = tokens[2]
+						tokens = tokens[4:]
+					}
+				}
+			}
+			list = append(list, taggedItem{Element: domain, Tag: host})
+
+			expectingElement = false
+		}
 	}
 	return list, tokens
 }
@@ -43,25 +108,67 @@ func scanASCIIDomainList(ppfmt pp.PP, key string, input string, tokens []string)
 	return domains, tokens
 }
 
+func parseDomain(ppfmt pp.PP, key string, input string, s string) (domain.Domain, bool) {
+	d, err := domain.New(s)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFQDN) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				`%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
+				key, input, d.Describe())
+			return nil, false
+		}
+		ppfmt.Noticef(pp.EmojiUserError,
+			"%s (%q) contains an ill-formed domain %q: %v",
+			key, input, d.Describe(), err)
+		return nil, false
+	}
+	return d, true
+}
+
+func parseHost(ppfmt pp.PP, key string, input string, s string) (ipnet.HostID, bool) {
+	if s == "" {
+		return nil, true
+	}
+
+	h, err := ipnet.ParseHost(s)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"%s (%q) contains an ill-formed host ID %q: %v",
+			key, input, s, err)
+		return nil, false
+	}
+
+	return h, true
+}
+
 func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]domain.Domain, []string) {
 	list, tokens := scanList(ppfmt, key, input, tokens)
 	domains := make([]domain.Domain, 0, len(list))
 	for _, raw := range list {
-		d, err := domain.New(raw)
-		if err != nil {
-			if errors.Is(err, domain.ErrNotFQDN) {
-				ppfmt.Noticef(pp.EmojiUserError,
-					`%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
-					key, input, d.Describe())
-				return nil, nil
-			} else {
-				ppfmt.Noticef(pp.EmojiUserError,
-					"%s (%q) contains an ill-formed domain %q: %v",
-					key, input, d.Describe(), err)
-				return nil, nil
-			}
+		d, ok := parseDomain(ppfmt, key, input, raw)
+		if !ok {
+			return nil, nil
 		}
 		domains = append(domains, d)
+	}
+	return domains, tokens
+}
+
+func scanDomainHostIDList(ppfmt pp.PP, key string, input string, tokens []string) (
+	[]DomainHostID, []string,
+) {
+	list, tokens := scanTaggedList(ppfmt, key, input, tokens)
+	domains := make([]DomainHostID, 0, len(list))
+	for _, raw := range list {
+		d, ok := parseDomain(ppfmt, key, input, raw.Element)
+		if !ok {
+			return nil, nil
+		}
+		h, ok := parseHost(ppfmt, key, input, raw.Tag)
+		if !ok {
+			return nil, nil
+		}
+		domains = append(domains, DomainHostID{Domain: d, HostID: h})
 	}
 	return domains, tokens
 }
@@ -231,22 +338,36 @@ func scanExpression(ppfmt pp.PP, key string, input string, tokens []string) (pre
 	return nil, nil
 }
 
-// ParseList parses a list of comma-separated domains. Internationalized domain names are fully supported.
-func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
+// Parse takes a scanner and return the result.
+func Parse[T any](ppfmt pp.PP, key string, input string,
+	scan func(pp.PP, string, string, []string) (T, []string),
+) (T, bool) {
+	var zero T
+
 	tokens, ok := tokenize(ppfmt, key, input)
 	if !ok {
-		return nil, false
+		return zero, false
 	}
 
-	list, tokens := scanDomainList(ppfmt, key, input, tokens)
+	result, tokens := scan(ppfmt, key, input, tokens)
 	if tokens == nil {
-		return nil, false
+		return zero, false
 	} else if len(tokens) > 0 {
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
-		return nil, false
+		return zero, false
 	}
 
-	return list, true
+	return result, true
+}
+
+// ParseDomainHostIDList parses a list of comma-separated domains. Internationalized domain names are fully supported.
+func ParseDomainHostIDList(ppfmt pp.PP, key string, input string) ([]DomainHostID, bool) {
+	return Parse(ppfmt, key, input, scanDomainHostIDList)
+}
+
+// ParseDomainList parses a list of comma-separated domains. Internationalized domain names are fully supported.
+func ParseDomainList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
+	return Parse(ppfmt, key, input, scanDomainList)
 }
 
 // ParseExpression parses a boolean expression containing domains. Internationalized domain names are fully supported.
@@ -264,18 +385,5 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 //
 // One can use parentheses to group expressions, such as !(is(hello.org) && (is(hello.io) || is(hello.me))).
 func ParseExpression(ppfmt pp.PP, key string, input string) (predicate, bool) {
-	tokens, ok := tokenize(ppfmt, key, input)
-	if !ok {
-		return nil, false
-	}
-
-	pred, tokens := scanExpression(ppfmt, key, input, tokens)
-	if tokens == nil {
-		return nil, false
-	} else if len(tokens) > 0 {
-		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, input, tokens[0])
-		return nil, false
-	}
-
-	return pred, true
+	return Parse(ppfmt, key, input, scanExpression)
 }

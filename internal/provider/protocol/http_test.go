@@ -89,14 +89,14 @@ func TestHTTPGetIP(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip6.String())
 			},
 		},
-		"4/illformed": {
+		"4/ill-formed": {
 			false,
 			ipnet.IP4, illformed4.URL, ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed4.URL, "hello")
 			},
 		},
-		"6/illformed": {
+		"6/ill-formed": {
 			false,
 			ipnet.IP6, illformed6.URL, ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
