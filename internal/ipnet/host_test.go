@@ -46,12 +46,30 @@ func TestNormalize(t *testing.T) {
 		expected     ipnet.HostID
 		prepareMocks func(*mocks.MockPP)
 	}{
+		"ip6suffix/-1": {
+			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			-1,
+			false,
+			nil,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "IP6_PREFIX_LEN (%d) should be in the range 0 to 128", -1)
+			},
+		},
 		"ip6suffix/0": {
 			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 			0,
 			true,
 			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 			nil,
+		},
+		"ip6suffix/22": {
+			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			22,
+			true,
+			ipnet.IP6Suffix{0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Infof(pp.EmojiTruncate, "The host ID %q of %q was truncated to %q (with %d higher bits removed)", "1:203:405:607:809:a0b:c0d:e0f", "a.b.c", "0:203:405:607:809:a0b:c0d:e0f", 22)
+			},
 		},
 		"ip6suffix/128": {
 			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
@@ -60,15 +78,6 @@ func TestNormalize(t *testing.T) {
 			ipnet.IP6Suffix{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Infof(pp.EmojiTruncate, "The host ID %q of %q was truncated to %q (with %d higher bits removed)", "1:203:405:607:809:a0b:c0d:e0f", "a.b.c", "::", 128)
-			},
-		},
-		"ip6suffix/-1": {
-			ipnet.IP6Suffix{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-			-1,
-			false,
-			nil,
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "IP6_PREFIX_LEN (%d) should be in the range 0 to 128", -1)
 			},
 		},
 		"ip6suffix/129": {
