@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7-labs
 # We use cross-compilation because QEMU is slow.
-FROM --platform=${BUILDPLATFORM} golang:1.23.6-alpine3.20@sha256:22caeb4deced0138cb4ae154db260b22d1b2ef893dde7f84415b619beae90901 AS build
+FROM --platform=${BUILDPLATFORM} golang:1.24.1-alpine3.20@sha256:3d9132b88a6317b846b55aa8e821821301906fe799932ecbc4f814468c6977a5 AS build
 
 ARG GIT_DESCRIBE
 ARG TARGETOS
@@ -22,7 +22,7 @@ RUN \
   -o /bin/ddns ./cmd/ddns
 
 # The "alpine" stage can be used directly for debugging network issues.
-FROM alpine:3.21.2@sha256:56fa17d2a7e7f168a043a2712e63aed1f8543aeafdcee47c58dcffe38ed51099 AS alpine
+FROM alpine:3.21.3@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c AS alpine
 RUN apk add --no-cache ca-certificates-bundle
 COPY --from=build /bin/ddns /bin/
 USER 1000:1000
