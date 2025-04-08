@@ -15,6 +15,7 @@ const (
 	EmojiDisabled     Emoji = "🚫" // feature is disabled
 	EmojiExperimental Emoji = "🧪" // experimental features
 	EmojiSwitch       Emoji = "🔀" // the happy eyeballs algorithm chose the alternative
+	EmojiTruncate     Emoji = "🪚" // Truncate IPv6 host IDs
 
 	EmojiCreation Emoji = "🐣" // adding new DNS records
 	EmojiDeletion Emoji = "💀" // deleting DNS records

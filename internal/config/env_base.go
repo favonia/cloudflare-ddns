@@ -116,6 +116,30 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	}
 }
 
+// ReadIP6PrefixLen reads a valid length of IPv6 prefixes (1 to 128).
+func ReadIP6PrefixLen(ppfmt pp.PP, key string, field *int) bool {
+	val := Getenv(key)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		return true
+	}
+
+	res, err := strconv.Atoi(val)
+	switch {
+	case err != nil:
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
+		return false
+
+	case res < 1 || res > 127:
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%d) must be in the range 1 to 127 (inclusive)", key, res)
+		return false
+
+	default:
+		*field = res
+		return true
+	}
+}
+
 // ReadNonnegDuration reads an environment variable and parses it as a time duration.
 func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	val := Getenv(key)

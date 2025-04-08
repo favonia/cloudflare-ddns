@@ -83,7 +83,14 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 ) Message {
 	resps := emptySetterResponses()
 
+	prefix := netip.PrefixFrom(ip, c.IP6PrefixLen)
+
 	for _, domain := range c.Domains[ipNet] {
+		ip := ip
+		if c.IP6HostID[domain] != nil {
+			ip = c.IP6HostID[domain].WithPrefix(prefix)
+		}
+
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
 				return s.Set(ctx, ppfmt, ipNet, domain, ip, api.RecordParams{
@@ -124,10 +131,15 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 ) Message {
 	resps := emptySetterWAFListResponses()
 
+	detectedPrefix := map[ipnet.Type]netip.Prefix{}
+	for ipNet, ip := range detectedIP {
+		detectedPrefix[ipNet] = netip.PrefixFrom(ip, c.WAFListPrefixLen[ipNet])
+	}
+
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIP, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedPrefix, "")
 			}),
 		)
 	}
