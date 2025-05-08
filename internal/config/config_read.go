@@ -22,7 +22,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
 		!ReadProviderMap(ppfmt, &c.Provider) ||
-		!ReadDomainMap(ppfmt, &c.Domains) ||
+		!ReadIP6PrefixLen(ppfmt, "IP6_PREFIX_LEN", &c.IP6PrefixLen) ||
+		!ReadDomainMap(ppfmt, &c.Domains, &c.IP6HostID) ||
 		!ReadAndAppendWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
@@ -73,11 +74,13 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// Step 3: normalize domains and providers
+	// Step 3: normalize domains, host IDs, and providers
 	//
 	// Step 3.1: fill in providerMap and activeDomainSet
 	providerMap := map[ipnet.Type]provider.Provider{}
+	hostIDMap := map[domain.Domain]ipnet.HostID{}
 	activeDomainSet := map[domain.Domain]bool{}
+	wafListPrefixLen := map[ipnet.Type]int{}
 	for ipNet, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
 			domains := c.Domains[ipNet]
@@ -104,19 +107,73 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		return false
 	}
 
-	// Step 3.3: check if some domains are unused
+	// Step 3.3: check about very small or large IP6PrefixLen used with WAF lists
+	// Prefix length ranges for WAF: 12 to 64
+	if len(c.WAFLists) > 0 {
+		if providerMap[ipnet.IP4] != nil {
+			wafListPrefixLen[ipnet.IP4] = 32
+		}
+
+		if providerMap[ipnet.IP6] != nil {
+			switch {
+			case c.IP6PrefixLen > 64: // 64
+				ppfmt.Noticef(pp.EmojiUserWarning, "The detected IPv6 range in WAF lists will be forced to have a prefix length of 64 (instead of IP6_PREFIX_LEN (%d)) due to Cloudflare's limitations", c.IP6PrefixLen) //nolint:lll
+				wafListPrefixLen[ipnet.IP6] = 64
+
+			case c.IP6PrefixLen < 12: // 12
+				ppfmt.Noticef(pp.EmojiUserError, "WAF lists do not support IPv6 ranges with a prefix length as small as IP6_PREFIX_LEN (%d); it must be at least 12", c.IP6PrefixLen) //nolint:lll
+				return false
+
+			default:
+				wafListPrefixLen[ipnet.IP6] = c.IP6PrefixLen
+			}
+		}
+	}
+
+	// Step 3.4: normalize host IDs
+	if providerMap[ipnet.IP6] != nil {
+		for domain, hostID := range c.IP6HostID {
+			if hostID == nil {
+				continue
+			}
+
+			normalized, ok := hostID.Normalize(ppfmt, domain, c.IP6PrefixLen)
+			if !ok {
+				return false
+			}
+
+			hostIDMap[domain] = normalized
+		}
+	}
+
+	// Step 3.5: check if some domains are unused
 	for ipNet, domains := range ipnet.Bindings(c.Domains) {
 		if providerMap[ipNet] == nil {
 			for _, domain := range domains {
-				if activeDomainSet[domain] {
-					continue
+				if !activeDomainSet[domain] {
+					ppfmt.Noticef(pp.EmojiUserWarning,
+						"The domain %q is ignored because it is only for %s but %s is disabled",
+						domain.Describe(), ipNet.Describe(), ipNet.Describe())
 				}
-
-				ppfmt.Noticef(pp.EmojiUserWarning,
-					"Domain %q is ignored because it is only for %s but %s is disabled",
-					domain.Describe(), ipNet.Describe(), ipNet.Describe())
 			}
 		}
+	}
+
+	// Step 3.6: check useless host IDs for IPv4-only domains
+	// (that is, the domains are active but their host IDs are not used)
+	if providerMap[ipnet.IP6] == nil {
+		for domain, host := range c.IP6HostID {
+			if activeDomainSet[domain] {
+				ppfmt.Noticef(pp.EmojiUserWarning,
+					"The host ID %q of %q is ignored because IPv6 is disabled",
+					host.Describe(), domain.Describe())
+			}
+		}
+	}
+
+	// Step 3.6: check useless IP6PrefixLen
+	if len(hostIDMap) == 0 && len(c.WAFLists) == 0 && c.IP6PrefixLen != 64 { // 64 is the default value
+		ppfmt.Noticef(pp.EmojiUserWarning, "IP6_PREFIX_LEN=%d is ignored because no domains use IPv6 host IDs", c.IP6PrefixLen) //nolint:lll
 	}
 
 	// Step 4: regenerate proxiedMap from [Config.Proxied]
@@ -135,7 +192,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	// Step 5: check if new parameters are unused
 	if len(activeDomainSet) == 0 { // We are only updating WAF lists
 		if c.TTL != api.TTLAuto {
-			ppfmt.Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", c.TTL)
+			ppfmt.Noticef(pp.EmojiUserWarning, "TTL=%d is ignored because no domains will be updated", c.TTL.Int())
 		}
 		if c.ProxiedTemplate != "false" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
@@ -155,6 +212,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 
 	// Final Part: override the old values
 	c.Provider = providerMap
+	c.IP6HostID = hostIDMap
+	c.WAFListPrefixLen = wafListPrefixLen
 	c.Proxied = proxiedMap
 
 	return true
