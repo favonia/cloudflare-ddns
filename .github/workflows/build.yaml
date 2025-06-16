@@ -26,7 +26,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        uses: step-security/harden-runner@002fdce3c6a235733a90a27c80493a3241e56863 # v2.12.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -39,7 +39,7 @@ jobs:
       - name: 🤖 Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
       - name: 🏗️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/setup-buildx-action@18ce135bb5112fa8ce4ed6c17ab05699d7f3a5e0 # v3.11.0
         with:
           version: latest
       - name: 🔑 Log in to Docker
@@ -69,7 +69,7 @@ jobs:
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: build
         with:
           target: "minimal"
@@ -104,7 +104,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy Docker images with alpine
         if: ${{ github.event_name != 'release' }}
-        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: build-alpine
         with:
           target: "alpine"
