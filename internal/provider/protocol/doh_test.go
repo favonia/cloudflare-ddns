@@ -133,7 +133,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			ip4,
 			nil,
 		},
-		"illformed-query": {
+		"ill-formed/query": {
 			ipnet.IP4, ipnet.IP4, "test",
 			dnsmessage.ClassCHAOS,
 			true,
@@ -415,7 +415,7 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			ip4,
 			nil,
 		},
-		"illformed-ip": {
+		"ill-formed/ip": {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,

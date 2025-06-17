@@ -66,7 +66,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 				)
 			},
 		},
-		"illformed/not-url": {
+		"ill-formed/not-url": {
 			true, "\001",
 			nil,
 			nil, false,
@@ -74,7 +74,7 @@ func TestReadAndAppendHealthchecksURL(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to parse the Healthchecks URL (redacted)`)
 			},
 		},
-		"illformed/not-abs": {
+		"ill-formed/not-abs": {
 			true, "/1234?hello=123",
 			nil,
 			nil, false,
@@ -154,7 +154,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`, "hello")
 			},
 		},
-		"illformed/not-url": {
+		"ill-formed/not-url": {
 			true, "\001",
 			nil,
 			nil, false,
@@ -162,7 +162,7 @@ func TestReadAndAppendUptimeKumaURL(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to parse the Uptime Kuma URL (redacted)`)
 			},
 		},
-		"illformed/not-abs": {
+		"ill-formed/not-abs": {
 			true, "/1234?hello=123",
 			nil,
 			nil, false,

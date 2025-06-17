@@ -23,6 +23,12 @@ func ParsePrefixOrIP(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 	return p, true
 }
 
+// ContainsPrefix checks whether a network represented by a prefix contains
+// another network (as a subnet) represented also represented by a prefix.
+func ContainsPrefix(large, small netip.Prefix) bool {
+	return large.Contains(small.Addr()) && large.Bits() <= small.Bits()
+}
+
 // DescribePrefixOrIP is similar to [netip.Prefix.String] but prints out
 // the IP directly if the input range only contains one IP.
 func DescribePrefixOrIP(p netip.Prefix) string {

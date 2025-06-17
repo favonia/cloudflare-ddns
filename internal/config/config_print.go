@@ -11,7 +11,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 const itemTitleWidth = 24
@@ -21,6 +20,15 @@ func describeComment(c string) string {
 		return "(empty)"
 	}
 	return strconv.Quote(c)
+}
+
+func describeDomainHost(hostID map[domain.Domain]ipnet.HostID) func(d domain.Domain) string {
+	return func(d domain.Domain) string {
+		if hostID[d] != nil {
+			return fmt.Sprintf("%s[%s]", d.Describe(), hostID[d].Describe())
+		}
+		return d.Describe()
+	}
 }
 
 func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
@@ -55,10 +63,18 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 
 	section("Domains, IP providers, and WAF lists:")
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
-		if p != nil {
-			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipNet]))
-			item(ipNet.Describe()+" provider:", "%s", provider.Name(p))
+	if c.Provider[ipnet.IP4] != nil {
+		item("IPv4-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipnet.IP4]))
+		item("IPv4 provider:", "%s", c.Provider[ipnet.IP4].Name())
+	}
+	if c.Provider[ipnet.IP6] != nil {
+		if len(c.IP6HostID) > 0 {
+			item("IPv6-enabled domains[hosts]:", "%s", pp.JoinMap(describeDomainHost(c.IP6HostID), c.Domains[ipnet.IP6]))
+			item("IPv6 provider:", "%s", c.Provider[ipnet.IP6].Name())
+			item("IPv6 prefix length for hosts:", "/%d", c.IP6PrefixLen)
+		} else {
+			item("IPv6-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipnet.IP6]))
+			item("IPv6 provider:", "%s", c.Provider[ipnet.IP6].Name())
 		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))

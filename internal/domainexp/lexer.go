@@ -59,7 +59,7 @@ func splitter(data []byte, atEOF bool) (int, []byte, error) {
 			switch {
 			case unicode.IsSpace(ch):
 				startIndex += size
-			case strings.ContainsRune("(),!", ch):
+			case strings.ContainsRune("()[],!", ch):
 				return returnToken()
 			case ch == '&':
 				state = StateAnd0
@@ -79,7 +79,7 @@ func splitter(data []byte, atEOF bool) (int, []byte, error) {
 			}
 			return returnToken()
 		case StateOther:
-			if unicode.IsSpace(ch) || strings.ContainsRune("(),!&|", ch) {
+			if unicode.IsSpace(ch) || strings.ContainsRune("()[],!&|", ch) {
 				if err = reader.UnreadRune(); err != nil {
 					return startIndex, nil, fmt.Errorf("reader.UnreadRune: %w", err)
 				}

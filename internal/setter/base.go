@@ -45,7 +45,7 @@ type Setter interface {
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
-		detected map[ipnet.Type]netip.Addr,
+		detectedRange map[ipnet.Type]netip.Prefix,
 		itemComment string,
 	) ResponseCode
 
