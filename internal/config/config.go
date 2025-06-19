@@ -18,6 +18,7 @@ import (
 type Config struct {
 	Auth               api.Auth
 	Provider           map[ipnet.Type]provider.Provider
+	StaticIPs          map[ipnet.Type][]string  // Static IP addresses for each IP version
 	Domains            map[ipnet.Type][]domain.Domain
 	WAFLists           []api.WAFList
 	UpdateCron         cron.Schedule
@@ -42,6 +43,10 @@ func Default() *Config {
 		Provider: map[ipnet.Type]provider.Provider{
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
+		},
+		StaticIPs: map[ipnet.Type][]string{
+			ipnet.IP4: nil,
+			ipnet.IP6: nil,
 		},
 		Domains: map[ipnet.Type][]domain.Domain{
 			ipnet.IP4: nil,

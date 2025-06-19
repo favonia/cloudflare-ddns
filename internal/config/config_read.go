@@ -22,6 +22,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
 		!ReadProviderMap(ppfmt, &c.Provider) ||
+		!ReadStaticIPMap(ppfmt, &c.StaticIPs) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
 		!ReadAndAppendWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
@@ -78,7 +79,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	// Step 3.1: fill in providerMap and activeDomainSet
 	providerMap := map[ipnet.Type]provider.Provider{}
 	activeDomainSet := map[domain.Domain]bool{}
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		p := c.Provider[ipNet]
 		if p != nil {
 			domains := c.Domains[ipNet]
 
@@ -90,7 +92,17 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 				continue
 			}
 
-			providerMap[ipNet] = p
+			// Create composite provider if static IPs are configured
+			if len(c.StaticIPs[ipNet]) > 0 {
+				compositeProvider, ok := provider.NewComposite(ppfmt, p, c.StaticIPs[ipNet])
+				if !ok {
+					return false
+				}
+				providerMap[ipNet] = compositeProvider
+			} else {
+				providerMap[ipNet] = p
+			}
+			
 			for _, domain := range domains {
 				activeDomainSet[domain] = true
 			}
@@ -105,7 +117,8 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	}
 
 	// Step 3.3: check if some domains are unused
-	for ipNet, domains := range ipnet.Bindings(c.Domains) {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		domains := c.Domains[ipNet]
 		if providerMap[ipNet] == nil {
 			for _, domain := range domains {
 				if activeDomainSet[domain] {

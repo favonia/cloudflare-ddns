@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -55,10 +56,14 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 
 	section("Domains, IP providers, and WAF lists:")
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		p := c.Provider[ipNet]
 		if p != nil {
 			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipNet]))
 			item(ipNet.Describe()+" provider:", "%s", provider.Name(p))
+			if len(c.StaticIPs[ipNet]) > 0 {
+				item(ipNet.Describe()+" static IPs:", "%s", strings.Join(c.StaticIPs[ipNet], ", "))
+			}
 		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))
@@ -85,24 +90,18 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Record/list updating:", "%v", c.UpdateTimeout)
 
 	if c.Monitor != nil {
-		count := 0
-		for name, params := range c.Monitor.Describe {
-			count++
-			if count == 1 {
-				section("Monitors:")
-			}
+		section("Monitors:")
+		c.Monitor.Describe(func(name, params string) bool {
 			item(name+":", "%s", params)
-		}
+			return true
+		})
 	}
 
 	if c.Notifier != nil {
-		count := 0
-		for name, params := range c.Notifier.Describe {
-			count++
-			if count == 1 {
-				section("Notification services (via shoutrrr):")
-			}
+		section("Notification services (via shoutrrr):")
+		c.Notifier.Describe(func(name, params string) bool {
 			item(name+":", "%s", params)
-		}
+			return true
+		})
 	}
 }

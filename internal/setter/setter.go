@@ -156,6 +156,115 @@ func (s setter) Set(ctx context.Context, ppfmt pp.PP,
 	return ResponseUpdated
 }
 
+// SetMultiple updates the DNS records of one domain to match the given list of IPs.
+// All IPs must be non-zero and of the same IP version as ipnet.
+func (s setter) SetMultiple(ctx context.Context, ppfmt pp.PP,
+	ipnet ipnet.Type, domain domain.Domain, ips []netip.Addr,
+	expectedParams api.RecordParams,
+) ResponseCode {
+	recordType := ipnet.RecordType()
+	domainDescription := domain.Describe()
+
+	if len(ips) == 0 {
+		return s.FinalDelete(ctx, ppfmt, ipnet, domain, expectedParams)
+	}
+
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, expectedParams)
+	if !ok {
+		return ResponseFailed
+	}
+
+	// Create sets for efficient lookup
+	targetIPs := make(map[netip.Addr]bool)
+	for _, ip := range ips {
+		targetIPs[ip] = true
+	}
+
+	var matchedRecords, unmatchedRecords []Record
+	for _, r := range rs {
+		if targetIPs[r.IP] {
+			matchedRecords = append(matchedRecords, Record{ID: r.ID, RecordParams: r.RecordParams})
+			delete(targetIPs, r.IP) // Remove from targetIPs so we know what's left to create
+		} else {
+			unmatchedRecords = append(unmatchedRecords, Record{ID: r.ID, RecordParams: r.RecordParams})
+		}
+	}
+
+	// Check if we already have all the records we need and no extra ones
+	if len(targetIPs) == 0 && len(unmatchedRecords) == 0 {
+		if cached {
+			ppfmt.Infof(pp.EmojiAlreadyDone,
+				"The %s records of %s are already up to date (cached)",
+				recordType, domainDescription)
+		} else {
+			ppfmt.Infof(pp.EmojiAlreadyDone,
+				"The %s records of %s are already up to date",
+				recordType, domainDescription)
+		}
+		return ResponseNoop
+	}
+
+	allOK := true
+
+	// Update existing records or create new ones for missing IPs
+	for ip := range targetIPs {
+		if len(unmatchedRecords) > 0 {
+			// Update an existing stale record
+			record := unmatchedRecords[0]
+			unmatchedRecords = unmatchedRecords[1:]
+			
+			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipnet, domain, record.ID, ip,
+				record.RecordParams, expectedParams,
+			); !ok {
+				allOK = false
+				if ctx.Err() != nil {
+					break
+				}
+				continue
+			}
+			ppfmt.Noticef(pp.EmojiUpdate,
+				"Updated %s record of %s to %s (ID: %s)",
+				recordType, domainDescription, ip, record.ID)
+		} else {
+			// Create a new record
+			id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipnet, domain, ip, expectedParams)
+			if !ok {
+				allOK = false
+				if ctx.Err() != nil {
+					break
+				}
+				continue
+			}
+			ppfmt.Noticef(pp.EmojiCreation,
+				"Created %s record of %s with %s (ID: %s)",
+				recordType, domainDescription, ip, id)
+		}
+	}
+
+	// Delete remaining stale records
+	for _, record := range unmatchedRecords {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, record.ID, api.RegularDelitionMode); !ok {
+			allOK = false
+			if ctx.Err() != nil {
+				break
+			}
+			continue
+		}
+		ppfmt.Noticef(pp.EmojiDeletion,
+			"Deleted stale %s record of %s (ID: %s)",
+			recordType, domainDescription, record.ID)
+	}
+
+	if !allOK {
+		ppfmt.Noticef(pp.EmojiError,
+			"Failed to properly update %s records of %s; records might be inconsistent",
+			recordType, domainDescription)
+		return ResponseFailed
+	}
+
+	return ResponseUpdated
+}
+
 // FinalDelete deletes all managed DNS records.
 func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain,
 	expectedParams api.RecordParams,
@@ -226,7 +335,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	var itemsToDelete []api.WAFListItem
 	var itemsToCreate []netip.Prefix
-	for ipNet := range ipnet.All {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
 		detectedIP, managed := detectedIP[ipNet]
 		covered := false
 		for _, item := range items {
