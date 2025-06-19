@@ -29,6 +29,16 @@ type Setter interface {
 		expectedParams api.RecordParams,
 	) ResponseCode
 
+	// SetMultiple sets a particular domain to multiple IP addresses.
+	SetMultiple(
+		ctx context.Context,
+		ppfmt pp.PP,
+		IPNetwork ipnet.Type,
+		Domain domain.Domain,
+		IPs []netip.Addr,
+		expectedParams api.RecordParams,
+	) ResponseCode
+
 	// FinalDelete removes DNS records of a particular domain.
 	FinalDelete(
 		ctx context.Context,
