@@ -159,7 +159,7 @@ func (c *SetterSetCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, d
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string, arg4 map[ipnet.Type]netip.Addr, arg5 string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string, arg4 map[ipnet.Type]netip.Prefix, arg5 string) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetWAFList", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -185,13 +185,13 @@ func (c *SetterSetWAFListCall) Return(arg0 setter.ResponseCode) *SetterSetWAFLis
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *SetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
+func (c *SetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Prefix, string) setter.ResponseCode) *SetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *SetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *SetterSetWAFListCall {
+func (c *SetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Prefix, string) setter.ResponseCode) *SetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
