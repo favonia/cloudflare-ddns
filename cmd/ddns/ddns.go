@@ -63,8 +63,48 @@ func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.S
 }
 
 func main() {
+	// Check for healthcheck flag
+	for _, arg := range os.Args[1:] {
+		if arg == "--healthcheck" {
+			os.Exit(healthcheckMain())
+			return
+		}
+	}
 	// This is to make os.Exit work with defer
 	os.Exit(realMain())
+}
+
+// healthcheckMain runs a healthcheck to verify DDNS records are being updated correctly.
+func healthcheckMain() int {
+	ctx := context.Background()
+	
+	// Set up pretty printer (suppress output for cleaner healthcheck)
+	ppfmt, ok := config.SetupPP(os.Stdout)
+	if !ok {
+		fmt.Fprintln(os.Stderr, "Healthcheck FAILED: Could not set up printer")
+		return 1
+	}
+
+	// Read the config and get the handler and the setter
+	c, s, configOK := initConfig(ppfmt)
+	if !configOK {
+		fmt.Fprintln(os.Stderr, "Healthcheck FAILED: Configuration errors")
+		return 1
+	}
+
+	// Run the update check
+	msg := updater.UpdateIPs(ctx, ppfmt, c, s)
+	
+	if msg.MonitorMessage.OK {
+		fmt.Println("Healthcheck OK: DDNS records updated successfully")
+		return 0
+	}
+	
+	fmt.Fprintln(os.Stderr, "Healthcheck FAILED: DDNS records update failed")
+	if len(msg.MonitorMessage.Lines) > 0 {
+		fmt.Fprintln(os.Stderr, msg.MonitorMessage.Format())
+	}
+	return 1
 }
 
 func realMain() int {
