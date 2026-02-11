@@ -1,5 +1,6 @@
-// vim: nowrap
 package api_test
+
+// vim: nowrap
 
 import (
 	"context"

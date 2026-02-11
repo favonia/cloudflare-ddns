@@ -1,56 +1,7 @@
-linters-settings:
-  exhaustive:
-    default-signifies-exhaustive: true
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/favonia/cloudflare-ddns)
-  gosec:
-    excludes:
-      - G101
-  govet:
-    settings:
-      printf:
-        funcs:
-          - github.com/favonia/cloudflare-ddns/internal/message.NewMonitorMessagef
-          - github.com/favonia/cloudflare-ddns/internal/message.NewNotifierMessagef
-          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Infof
-          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
-          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).InfoOncef
-          - (github.com/favonia/cloudflare-ddns/internal/pp.PP).NoticeOncef
-          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Infof
-          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
-          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).InfoOncef
-          - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).NoticeOncef
-  revive:
-    rules:
-      - name: exported
-        arguments:
-          - checkPrivateReceivers
-      - name: unused-parameter
-        arguments:
-          - allowRegex: "^_"
-
-issues:
-  exclude-rules:
-    - path: "_test.go"
-      linters:
-        - lll
-        - dupl
-  include:
-    - EXC0002
-    - EXC0011
-    - EXC0012
-    - EXC0013
-    - EXC0014
-    - EXC0015
-
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    - tenv # deprecated
-
     - goconst # never leads to actual code changes
     - mnd # never leads to actual code changes
 
@@ -67,6 +18,69 @@ linters:
     - nlreturn # I don't agree with the style enforced by nlreturn
     - varnamelen # I don't agree with the style enforced by varnamelen
     - wsl # I don't agree with the style enforced by wsl
+    - wsl_v5 # I don't agree with the style enforced by wsl_v5
+    - noinlineerr # I don't agree with the style enforced by noinlineerr; even good code explicitly recognized by Google will be flagged
 
     - ireturn # doesn't work for private struct types; see https://github.com/butuzov/ireturn/issues/31
     - nonamedreturns # named returns are needed in the internal setter package for partitioning records
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G101
+    govet:
+      settings:
+        printf:
+          funcs:
+            - github.com/favonia/cloudflare-ddns/internal/message.NewMonitorMessagef
+            - github.com/favonia/cloudflare-ddns/internal/message.NewNotifierMessagef
+            - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Infof
+            - (github.com/favonia/cloudflare-ddns/internal/pp.PP).Noticef
+            - (github.com/favonia/cloudflare-ddns/internal/pp.PP).InfoOncef
+            - (github.com/favonia/cloudflare-ddns/internal/pp.PP).NoticeOncef
+            - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Infof
+            - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).Noticef
+            - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).InfoOncef
+            - (*github.com/favonia/cloudflare-ddns/internal/mocks.MockPPMockRecorder).NoticeOncef
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+        - name: unused-parameter
+          arguments:
+            - allowRegex: ^_
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - lll
+        path: _test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/favonia/cloudflare-ddns)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -40,7 +40,7 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
-	if !(u.IsAbs() && u.Opaque == "" && u.Host != "" && u.RawQuery == "") {
+	if !u.IsAbs() || u.Host == "" || u.Opaque != "" || u.RawQuery != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
 		ppfmt.Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return Healthchecks{}, false //nolint:exhaustruct
@@ -70,6 +70,37 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 // Describe calls the callback with the service name "Healthchecks".
 func (h Healthchecks) Describe(yield func(service, params string) bool) {
 	yield("Healthchecks", "(URL redacted)")
+}
+
+// Ping formats and pings with a [Message].
+func (h Healthchecks) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	if msg.OK {
+		return h.ping(ctx, ppfmt, "", msg.Format())
+	} else {
+		return h.ping(ctx, ppfmt, "/fail", msg.Format())
+	}
+}
+
+// Start pings the /start endpoint.
+func (h Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
+	return h.ping(ctx, ppfmt, "/start", message)
+}
+
+// Exit pings the /0 endpoint.
+func (h Healthchecks) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
+	return h.ping(ctx, ppfmt, "/0", message)
+}
+
+// Log formats and logs a [Message].
+func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	switch {
+	case !msg.OK:
+		return h.ping(ctx, ppfmt, "/fail", msg.Format())
+	case !msg.IsEmpty():
+		return h.ping(ctx, ppfmt, "/log", msg.Format())
+	default:
+		return true
+	}
 }
 
 /*
@@ -150,35 +181,4 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 
 	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", endpointDescription)
 	return true
-}
-
-// Ping formats and pings with a [Message].
-func (h Healthchecks) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
-	if msg.OK {
-		return h.ping(ctx, ppfmt, "", msg.Format())
-	} else {
-		return h.ping(ctx, ppfmt, "/fail", msg.Format())
-	}
-}
-
-// Start pings the /start endpoint.
-func (h Healthchecks) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, "/start", message)
-}
-
-// Exit pings the /0 endpoint.
-func (h Healthchecks) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
-	return h.ping(ctx, ppfmt, "/0", message)
-}
-
-// Log formats and logs a [Message].
-func (h Healthchecks) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
-	switch {
-	case !msg.OK:
-		return h.ping(ctx, ppfmt, "/fail", msg.Format())
-	case !msg.IsEmpty():
-		return h.ping(ctx, ppfmt, "/log", msg.Format())
-	default:
-		return true
-	}
 }
