@@ -45,7 +45,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
-	if !(u.IsAbs() && u.Opaque == "" && u.Host != "") {
+	if !u.IsAbs() || u.Host == "" || u.Opaque != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
@@ -117,6 +117,28 @@ type UptimeKumaRequest struct {
 	Ping   string `url:"ping"`
 }
 
+// Ping pings the server with status=up/down depending on Message.OK.
+func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
+	if msg.OK {
+		// Pings the server with status=up. Messages are ignored and "OK" is used instead.
+		// The reason is that Uptime Kuma seems to show only the first success message
+		// and it could be misleading if an outdated message stays in the UI.
+		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
+	}
+
+	formatted := msg.Format()
+	if formatted == "" {
+		// If we do not send a non-empty message to Uptime Kuma, it seems to
+		// either keep the previous message (even if it was for success) or
+		// assume the message is "OK". Either is bad.
+		//
+		// We can send a non-empty message to overwrite it.
+		formatted = "Failing"
+	}
+	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: formatted, Ping: ""})
+}
+
+// ping implements the low-level details of Ping.
 func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequest) bool {
 	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 	defer cancel()
@@ -153,25 +175,4 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 
 	ppfmt.Infof(pp.EmojiPing, "Pinged Uptime Kuma")
 	return true
-}
-
-// Ping pings the server with status=up/down depending on Message.OK.
-func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
-	if msg.OK {
-		// Pings the server with status=up. Messages are ignored and "OK" is used instead.
-		// The reason is that Uptime Kuma seems to show only the first success message
-		// and it could be misleading if an outdated message stays in the UI.
-		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
-	}
-
-	formatted := msg.Format()
-	if formatted == "" {
-		// If we do not send a non-empty message to Uptime Kuma, it seems to
-		// either keep the previous message (even if it was for success) or
-		// assume the message is "OK". Either is bad.
-		//
-		// We can send a non-empty message to overwrite it.
-		formatted = "Failing"
-	}
-	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: formatted, Ping: ""})
 }

@@ -212,7 +212,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 // SetWAFList updates a WAF list.
 //
 // If detectedIP contains a zero (invalid) IP, it means the detection is attempted but failed
-// and all matching IP addresses should be preserved.
+// and all matching IP addresses should be preserved. On the other hand, if an entry is missing
+// from detectIP, it means the IP network was not managed and all addresses in that network
+// will be removed.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
 ) ResponseCode {
@@ -228,15 +230,15 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	var itemsToCreate []netip.Prefix
 	for ipNet := range ipnet.All {
 		detectedIP, managed := detectedIP[ipNet]
+		if managed && !detectedIP.IsValid() {
+			continue // detection was attempted but failed; do nothing
+		}
 		covered := false
 		for _, item := range items {
-			if ipNet.Matches(item.Prefix.Addr()) {
-				switch {
-				case item.Prefix.Contains(detectedIP):
+			if ipNet.Matches(item.Addr()) {
+				if item.Contains(detectedIP) {
 					covered = true
-				case managed && !detectedIP.IsValid():
-					// detection was attempted but failed; do nothing
-				default:
+				} else {
 					itemsToDelete = append(itemsToDelete, item)
 				}
 			}

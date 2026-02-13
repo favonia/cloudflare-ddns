@@ -1,5 +1,6 @@
-// vim: nowrap
 package protocol_test
+
+// vim: nowrap
 
 import (
 	"context"

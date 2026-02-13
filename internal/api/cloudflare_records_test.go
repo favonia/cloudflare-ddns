@@ -1,5 +1,6 @@
-// vim: nowrap
 package api_test
+
+// vim: nowrap
 
 import (
 	"context"
@@ -822,7 +823,7 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 				!assert.Equal(t, ip, record.Content) ||
 				!assert.Equal(t, 1, record.TTL) ||
 				!assert.False(t, *record.Proxied) ||
-				!assert.Equal(t, "", record.Comment) {
+				!assert.Empty(t, record.Comment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

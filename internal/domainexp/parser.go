@@ -3,6 +3,7 @@ package domainexp
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -70,10 +71,8 @@ func scanConstants(_ppfmt pp.PP, _key string, _input string, tokens []string, ex
 	if len(tokens) == 0 {
 		return "", nil
 	}
-	for _, expected := range expected {
-		if expected == tokens[0] {
-			return tokens[0], tokens[1:]
-		}
+	if slices.Contains(expected, tokens[0]) {
+		return tokens[0], tokens[1:]
 	}
 	return "", nil
 }
@@ -130,22 +129,14 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 
 			return map[string]predicate{
 				"is": func(d domain.Domain) bool {
-					asciiD := d.DNSNameASCII()
-					for _, pat := range ASCIIDomains {
-						if pat == asciiD {
-							return true
-						}
-					}
-					return false
+					return slices.Contains(ASCIIDomains, d.DNSNameASCII())
 				},
 				"sub": func(d domain.Domain) bool {
 					asciiD := d.DNSNameASCII()
-					for _, pat := range ASCIIDomains {
-						if hasStrictSuffix(asciiD, pat) {
-							return true
-						}
-					}
-					return false
+
+					return slices.ContainsFunc(ASCIIDomains, func(pat string) bool {
+						return hasStrictSuffix(asciiD, pat)
+					})
 				},
 			}[funName], newTokens
 		}

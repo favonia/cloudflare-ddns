@@ -1,4 +1,3 @@
-// Package config reads and parses configurations.
 package config
 
 import (

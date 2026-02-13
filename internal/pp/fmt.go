@@ -48,30 +48,6 @@ func (f formatter) BlankLineIfVerbose() {
 	}
 }
 
-func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
-	if !f.IsShowing(v) {
-		return
-	}
-
-	var line string
-	if f.emoji {
-		line = fmt.Sprintf("%s%s %s",
-			strings.Repeat(indentPrefix, f.indent),
-			string(emoji),
-			msg)
-	} else {
-		line = fmt.Sprintf("%s%s",
-			strings.Repeat(indentPrefix, f.indent),
-			msg)
-	}
-	line = strings.TrimSuffix(line, "\n")
-	fmt.Fprintln(f.writer, line)
-}
-
-func (f formatter) printf(v Verbosity, emoji Emoji, format string, args ...any) {
-	f.output(v, emoji, fmt.Sprintf(format, args...))
-}
-
 // Infof formats and sends a message at the level [Info].
 func (f formatter) Infof(emoji Emoji, format string, args ...any) {
 	f.printf(Info, emoji, format, args...)
@@ -101,4 +77,30 @@ func (f formatter) NoticeOncef(id ID, emoji Emoji, format string, args ...any) {
 		f.Noticef(emoji, format, args...)
 		f.messageShown[id] = true
 	}
+}
+
+// printf composes the message body and forwards it to [output].
+func (f formatter) printf(v Verbosity, emoji Emoji, format string, args ...any) {
+	f.output(v, emoji, fmt.Sprintf(format, args...))
+}
+
+// output prints the message string.
+func (f formatter) output(v Verbosity, emoji Emoji, msg string) {
+	if !f.IsShowing(v) {
+		return
+	}
+
+	var line string
+	if f.emoji {
+		line = fmt.Sprintf("%s%s %s",
+			strings.Repeat(indentPrefix, f.indent),
+			string(emoji),
+			msg)
+	} else {
+		line = fmt.Sprintf("%s%s",
+			strings.Repeat(indentPrefix, f.indent),
+			msg)
+	}
+	line = strings.TrimSuffix(line, "\n")
+	fmt.Fprintln(f.writer, line)
 }

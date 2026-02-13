@@ -1,4 +1,3 @@
-// Package cron handles anything related to time.
 package cron
 
 import (

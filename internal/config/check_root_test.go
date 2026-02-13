@@ -1,5 +1,6 @@
-// vim: nowrap
 package config_test
+
+// vim: nowrap
 
 import (
 	"syscall"

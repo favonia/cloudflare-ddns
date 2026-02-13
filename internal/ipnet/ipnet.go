@@ -18,6 +18,9 @@ const (
 
 	// IP6 is IP version 6.
 	IP6 Type = 6
+
+	// NetworkCount is the number of IP networks.
+	NetworkCount = 2
 )
 
 // Int returns the version of the IP networks. It is either 4 or 6.
