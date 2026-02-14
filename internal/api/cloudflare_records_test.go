@@ -112,37 +112,33 @@ func TestListZonesTwo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-			ch, ok := h.(api.CloudflareHandle)
-			require.True(t, ok)
-			zh := newZonesHandler(t, mux, tc.zones)
+
+			f := newCloudflareFixture(t)
+			zh := newZonesHandler(t, f.mux, tc.zones)
 
 			zh.setRequestLimit(tc.requestLimit)
-			mockPP = mocks.NewMockPP(mockCtrl)
-			output, ok := ch.ListZones(context.Background(), mockPP, tc.input)
+			mockPP := f.newPP()
+			output, ok := f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
-			require.True(t, zh.isExhausted())
+			assertHandlersExhausted(t, zh)
 
 			zh.setRequestLimit(0)
-			mockPP = mocks.NewMockPP(mockCtrl)
-			output, ok = ch.ListZones(context.Background(), mockPP, tc.input)
+			mockPP = f.newPP()
+			output, ok = f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
-			require.True(t, zh.isExhausted())
+			assertHandlersExhausted(t, zh)
 
 			if tc.requestLimit > 0 {
-				h.(api.CloudflareHandle).FlushCache() //nolint:forcetypeassert
+				f.cfHandle.FlushCache()
 
-				mockPP = mocks.NewMockPP(mockCtrl)
+				mockPP = f.newPP()
 				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "test.org", gomock.Any())
-				output, ok = ch.ListZones(context.Background(), mockPP, tc.input)
+				output, ok = f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
 				require.False(t, ok)
 				require.Zero(t, output)
-				require.True(t, zh.isExhausted())
+				assertHandlersExhausted(t, zh)
 			}
 		})
 	}
@@ -241,31 +237,25 @@ func TestZoneIDOfDomain(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-			ch, ok := h.(api.CloudflareHandle)
-			require.True(t, ok)
-			zh := newZonesHandler(t, mux, tc.zoneStatuses)
+
+			f := newCloudflareFixture(t)
+			zh := newZonesHandler(t, f.mux, tc.zoneStatuses)
 
 			zh.setRequestLimit(tc.requestLimit)
-			mockPP = mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-			zoneID, ok := ch.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
+			mockPP := f.newPP()
+			prepareMockPP(mockPP, tc.prepareMockPP)
+			zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, zoneID)
-			require.True(t, zh.isExhausted())
+			assertHandlersExhausted(t, zh)
 
 			if tc.ok {
 				zh.setRequestLimit(0)
-				mockPP = mocks.NewMockPP(mockCtrl) // there should be no messages
-				zoneID, ok = ch.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
+				mockPP = f.newPP() // there should be no messages
+				zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, tc.domain)
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.expected, zoneID)
-				require.True(t, zh.isExhausted())
+				assertHandlersExhausted(t, zh)
 			}
 		})
 	}
@@ -273,16 +263,12 @@ func TestZoneIDOfDomain(t *testing.T) {
 
 func TestZoneIDOfDomainInvalid(t *testing.T) {
 	t.Parallel()
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 
-	_, h, ok := newHandle(t, mockPP)
-	require.True(t, ok)
-	ch, ok := h.(api.CloudflareHandle)
-	require.True(t, ok)
+	f := newCloudflareFixture(t)
+	mockPP := f.newPP()
 
 	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
-	zoneID, ok := ch.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
 }
@@ -483,34 +469,26 @@ func TestListRecords(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
-			}
+			f := newCloudflareFixture(t)
+			mockPP := f.newPP()
+			prepareMockPP(mockPP, tc.prepareMocks)
 
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-
-			zh := newZonesHandler(t, mux, tc.zones)
+			zh := newZonesHandler(t, f.mux, tc.zones)
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, tc.recordDomain, tc.records)
+			lrh := newListRecordsHandler(t, f.mux, ipnet.IP6, tc.recordDomain, tc.records)
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
+			rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.expected, rs)
-			require.True(t, zh.isExhausted())
-			require.True(t, lrh.isExhausted())
+			assertHandlersExhausted(t, zh, lrh)
 
 			// testing the caching
-			mockPP = mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocksForCached != nil {
-				tc.prepareMocksForCached(mockPP)
-			}
-			rs, cached, ok = h.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
+			mockPP = f.newPP()
+			prepareMockPP(mockPP, tc.prepareMocksForCached)
+			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, tc.input, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.cached, cached)
 			require.Equal(t, tc.expected, rs)
@@ -589,46 +567,35 @@ func TestDeleteRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
-			}
+			f := newCloudflareFixture(t)
+			mockPP := f.newPP()
+			prepareMockPP(mockPP, tc.prepareMocks)
 
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-
-			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
+			zh := newZonesHandler(t, f.mux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
+			lrh := newListRecordsHandler(t, f.mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			drh := newDeleteRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			drh := newDeleteRecordHandler(t, f.mux, "record1", ipnet.IP6, "sub.test.org", "::1")
 			drh.setRequestLimit(tc.deleteRequestLimit)
 
-			ok = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+			ok := f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 			require.Equal(t, tc.ok, ok)
-			require.True(t, zh.isExhausted())
-			require.True(t, lrh.isExhausted())
-			require.True(t, drh.isExhausted())
+			assertHandlersExhausted(t, zh, lrh, drh)
 
 			if ok {
 				lrh.setRequestLimit(1)
 				drh.setRequestLimit(1)
-				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMocks != nil {
-					tc.prepareMocks(mockPP)
-				}
-				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				_ = h.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				mockPP = f.newPP()
+				prepareMockPP(mockPP, tc.prepareMocks)
+				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				_ = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.Empty(t, rs)
-				require.True(t, zh.isExhausted())
-				require.True(t, lrh.isExhausted())
-				require.True(t, drh.isExhausted())
+				assertHandlersExhausted(t, zh, lrh, drh)
 			}
 		})
 	}
@@ -748,48 +715,37 @@ func TestUpdateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
-			}
+			f := newCloudflareFixture(t)
+			mockPP := f.newPP()
+			prepareMockPP(mockPP, tc.prepareMocks)
 
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-
-			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
+			zh := newZonesHandler(t, f.mux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
+			lrh := newListRecordsHandler(t, f.mux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			urh := newUpdateRecordHandler(t, mux, "record1", "::2")
+			urh := newUpdateRecordHandler(t, f.mux, "record1", "::2")
 			urh.setRequestLimit(tc.updateRequestLimit)
 
-			ok = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
 				"record1", mustIP("::2"), tc.currentParams, tc.expectedParams)
 			require.Equal(t, tc.ok, ok)
-			require.True(t, zh.isExhausted())
-			require.True(t, lrh.isExhausted())
-			require.True(t, urh.isExhausted())
+			assertHandlersExhausted(t, zh, lrh, urh)
 
 			if ok {
 				lrh.setRequestLimit(1)
 				urh.setRequestLimit(1)
-				mockPP = mocks.NewMockPP(mockCtrl)
-				if tc.prepareMocksForCached != nil {
-					tc.prepareMocksForCached(mockPP)
-				}
-				h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				_ = h.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				mockPP = f.newPP()
+				prepareMockPP(mockPP, tc.prepareMocksForCached)
+				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				_ = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
 					"record1", mustIP("::2"), params, tc.expectedParams)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
-				require.True(t, zh.isExhausted())
-				require.True(t, lrh.isExhausted())
-				require.True(t, urh.isExhausted())
+				assertHandlersExhausted(t, zh, lrh, urh)
 			}
 		})
 	}
@@ -871,30 +827,25 @@ func TestCreateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP)
-			}
+			f := newCloudflareFixture(t)
+			mockPP := f.newPP()
+			prepareMockPP(mockPP, tc.prepareMocks)
 
-			mux, h, ok := newHandle(t, mockPP)
-			require.True(t, ok)
-
-			zh := newZonesHandler(t, mux, map[string][]string{"test.org": {"active"}})
+			zh := newZonesHandler(t, f.mux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+			lrh := newListRecordsHandler(t, f.mux, ipnet.IP6, "sub.test.org", []formattedRecord{})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			crh := newCreateRecordHandler(t, mux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			crh := newCreateRecordHandler(t, f.mux, "record1", ipnet.IP6, "sub.test.org", "::1")
 			crh.setRequestLimit(tc.createRequestLimit)
 
-			h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-			actualID, ok := h.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+			f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			actualID, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.Equal(t, api.ID("record1"), actualID)
-				rs, cached, ok := h.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.True(t, ok)
 				require.True(t, cached)
 				require.Equal(t, []api.Record{{"record1", mustIP("::1"), params}}, rs)

@@ -119,6 +119,52 @@ func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
 	return mux, h, ok
 }
 
+type cloudflareFixture struct {
+	t        *testing.T
+	mockCtrl *gomock.Controller
+
+	mux      *http.ServeMux
+	handle   api.Handle
+	cfHandle api.CloudflareHandle
+}
+
+func newCloudflareFixture(t *testing.T) *cloudflareFixture {
+	t.Helper()
+
+	f := &cloudflareFixture{
+		t:        t,
+		mockCtrl: gomock.NewController(t),
+	}
+
+	mux, h, ok := newHandle(t, mocks.NewMockPP(f.mockCtrl))
+	require.True(t, ok)
+	ch, ok := h.(api.CloudflareHandle)
+	require.True(t, ok)
+
+	f.mux = mux
+	f.handle = h
+	f.cfHandle = ch
+	return f
+}
+
+func (f *cloudflareFixture) newPP() *mocks.MockPP {
+	f.t.Helper()
+	return mocks.NewMockPP(f.mockCtrl)
+}
+
+func prepareMockPP(mockPP *mocks.MockPP, prepare func(*mocks.MockPP)) {
+	if prepare != nil {
+		prepare(mockPP)
+	}
+}
+
+func assertHandlersExhausted(t *testing.T, handlers ...httpHandler) {
+	t.Helper()
+	for _, h := range handlers {
+		require.True(t, h.isExhausted())
+	}
+}
+
 func TestNewValid(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
