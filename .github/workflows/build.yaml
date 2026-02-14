@@ -26,7 +26,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@002fdce3c6a235733a90a27c80493a3241e56863 # v2.12.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
           disable-sudo: true
@@ -37,13 +37,13 @@ jobs:
         with:
           persist-credentials: false
       - name: 🤖 Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       - name: 🏗️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@18ce135bb5112fa8ce4ed6c17ab05699d7f3a5e0 # v3.11.0
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           version: latest
       - name: 🔑 Log in to Docker
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         if: ${{ github.event_name != 'pull_request' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -54,7 +54,7 @@ jobs:
         run: echo 'GIT_DESCRIBE='`git describe --tags --always --long` >> $GITHUB_OUTPUT
         id: git-describe
       - name: 📝 Calculate metadata for minimal Docker images
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         id: meta
         with:
           images: ${{ github.repository }}
@@ -69,7 +69,7 @@ jobs:
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         id: build
         with:
           target: "minimal"
@@ -90,7 +90,7 @@ jobs:
 
       - name: 📝 Calculate metadata for Docker images with alpine
         if: ${{ github.event_name != 'release' }}
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         id: meta-alpine
         with:
           images: ${{ github.repository }}
@@ -104,7 +104,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy Docker images with alpine
         if: ${{ github.event_name != 'release' }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         id: build-alpine
         with:
           target: "alpine"

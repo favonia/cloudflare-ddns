@@ -1,6 +1,6 @@
 module github.com/favonia/cloudflare-ddns
 
-go 1.23.0 // with patch version to satisfy CodeQL
+go 1.24.0 // with patch version to satisfy CodeQL
 
 retract (
 	v1.14.1 // nil pointer bug
@@ -8,16 +8,16 @@ retract (
 )
 
 require (
-	github.com/cloudflare/cloudflare-go v0.115.0
+	github.com/cloudflare/cloudflare-go v0.116.0
 	github.com/containrrr/shoutrrr v0.8.0
-	github.com/google/go-querystring v1.1.0
-	github.com/hashicorp/go-retryablehttp v0.7.7
-	github.com/jellydator/ttlcache/v3 v3.3.0
+	github.com/google/go-querystring v1.2.0
+	github.com/hashicorp/go-retryablehttp v0.7.8
+	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.10.0
-	go.uber.org/mock v0.5.2
-	golang.org/x/net v0.41.0
-	golang.org/x/text v0.26.0
+	github.com/stretchr/testify v1.11.1
+	go.uber.org/mock v0.6.0
+	golang.org/x/net v0.50.0
+	golang.org/x/text v0.34.0
 )
 
 require (
@@ -28,8 +28,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
