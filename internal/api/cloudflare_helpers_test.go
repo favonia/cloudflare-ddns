@@ -77,8 +77,8 @@ const (
 func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth) {
 	t.Helper()
 
-	mux := http.NewServeMux()
-	ts := httptest.NewServer(mux)
+	serveMux := http.NewServeMux()
+	ts := httptest.NewServer(serveMux)
 	t.Cleanup(ts.Close)
 
 	auth := api.CloudflareAuth{
@@ -86,7 +86,7 @@ func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth) {
 		BaseURL: ts.URL,
 	}
 
-	return mux, auth
+	return serveMux, auth
 }
 
 type httpHandler struct{ requestLimit *int }
@@ -113,17 +113,16 @@ func checkToken(t *testing.T, r *http.Request) bool {
 func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
 	t.Helper()
 
-	mux, auth := newServerAuth(t)
+	serveMux, auth := newServerAuth(t)
+	h, ok := auth.New(ppfmt, time.Hour*24*365) // a year
 
-	h, ok := auth.New(ppfmt, 8760*time.Hour) // a year
-	return mux, h, ok
+	return serveMux, h, ok
 }
 
 type cloudflareFixture struct {
 	t        *testing.T
 	mockCtrl *gomock.Controller
-
-	mux      *http.ServeMux
+	serveMux *http.ServeMux
 	handle   api.Handle
 	cfHandle api.CloudflareHandle
 }
@@ -131,25 +130,34 @@ type cloudflareFixture struct {
 func newCloudflareFixture(t *testing.T) *cloudflareFixture {
 	t.Helper()
 
-	f := &cloudflareFixture{
-		t:        t,
-		mockCtrl: gomock.NewController(t),
-	}
+	mockCtrl := gomock.NewController(t)
 
-	mux, h, ok := newHandle(t, mocks.NewMockPP(f.mockCtrl))
+	// Rationale of new PP: unless we are testing the authorization step,
+	// there shouldn't be any errors/warnings.
+	serveMux, h, ok := newHandle(t, mocks.NewMockPP(mockCtrl))
 	require.True(t, ok)
 	ch, ok := h.(api.CloudflareHandle)
 	require.True(t, ok)
 
-	f.mux = mux
-	f.handle = h
-	f.cfHandle = ch
-	return f
+	return &cloudflareFixture{
+		t:        t,
+		mockCtrl: mockCtrl,
+		serveMux: serveMux,
+		handle:   h,
+		cfHandle: ch,
+	}
 }
 
 func (f *cloudflareFixture) newPP() *mocks.MockPP {
 	f.t.Helper()
 	return mocks.NewMockPP(f.mockCtrl)
+}
+
+func (f *cloudflareFixture) newPreparedPP(prepare func(*mocks.MockPP)) *mocks.MockPP {
+	f.t.Helper()
+	mockPP := f.newPP()
+	prepareMockPP(mockPP, prepare)
+	return mockPP
 }
 
 func prepareMockPP(mockPP *mocks.MockPP, prepare func(*mocks.MockPP)) {
