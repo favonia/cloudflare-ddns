@@ -42,7 +42,7 @@ func TestSet(t *testing.T) {
 		name         string
 		ip           netip.Addr
 		resp         setter.ResponseCode
-		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+		prepareMocks prepareSetterMocks
 	}{
 		{
 			name: "no-records/create-record/response-updated",
@@ -250,9 +250,7 @@ func TestSet(t *testing.T) {
 			t.Parallel()
 
 			ctx, h := newSetterHarness(t)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(ctx, h.cancel, h.mockPP, h.mockHandle)
-			}
+			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.Set(ctx, h.mockPP, ipNetwork, domain, tc.ip, params)
 			require.Equal(t, tc.resp, resp)

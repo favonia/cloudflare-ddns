@@ -41,7 +41,7 @@ func TestFinalDelete(t *testing.T) {
 	cases := []struct {
 		name         string
 		resp         setter.ResponseCode
-		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+		prepareMocks prepareSetterMocks
 	}{
 		{
 			name: "no-records/list-records/response-noop-cached",
@@ -132,9 +132,7 @@ func TestFinalDelete(t *testing.T) {
 			t.Parallel()
 
 			ctx, h := newSetterHarness(t)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(ctx, h.cancel, h.mockPP, h.mockHandle)
-			}
+			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.FinalDelete(ctx, h.mockPP, ipNetwork, domain, params)
 			require.Equal(t, tc.resp, resp)

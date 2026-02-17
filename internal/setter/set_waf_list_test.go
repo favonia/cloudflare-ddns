@@ -85,7 +85,7 @@ func TestSetWAFList(t *testing.T) {
 		name         string
 		detected     ipmap
 		resp         setter.ResponseCode
-		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
+		prepareMocks prepareSetterMocks
 	}{
 		{
 			name:     "list-missing/create-list-and-prefixes/response-updated",
@@ -211,9 +211,7 @@ func TestSetWAFList(t *testing.T) {
 			t.Parallel()
 
 			ctx, h := newSetterHarness(t)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(ctx, h.cancel, h.mockPP, h.mockHandle)
-			}
+			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, tc.detected, "")
 			require.Equal(t, tc.resp, resp)

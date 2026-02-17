@@ -22,6 +22,8 @@ type setterHarness struct {
 	setter     setter.Setter
 }
 
+type prepareSetterMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle)
+
 func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	t.Helper()
 
@@ -40,6 +42,12 @@ func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 		mockPP:     mockPP,
 		mockHandle: mockHandle,
 		setter:     s,
+	}
+}
+
+func (h setterHarness) prepare(ctx context.Context, prepare prepareSetterMocks) {
+	if prepare != nil {
+		prepare(ctx, h.cancel, h.mockPP, h.mockHandle)
 	}
 }
 
