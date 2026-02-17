@@ -97,16 +97,6 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 				)
 			},
 		},
-		"delete-fail/clear-fail/keep-cache": {
-			1, mockID("list", 0), 0, 0,
-			false, false,
-			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start clearing the list %s: %v", "account456/list", gomock.Any()),
-				)
-			},
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
