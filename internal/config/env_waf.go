@@ -13,15 +13,13 @@ import (
 //     A valid name satisfies this regular expression: ^[a-z0-9_]+$.
 var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 
-// ReadAndAppendWAFListNames reads an environment variable as
-// a comma-separated list of IP list names and append the list
-// to the field.
+// ReadWAFListNames reads an environment variable as a comma-separated list of IP list names.
 //
 // Note: the Free plan can only have one list, and even the Enterprise
 // plan can only have up to 10 custom lists at the time of writing
 // (July 2024)! Hard to believe anyone would want to update more than
 // one list in the same account.
-func ReadAndAppendWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
+func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	vals := GetenvAsList(key, ",")
 	if len(vals) == 0 {
 		return true
@@ -52,7 +50,6 @@ func ReadAndAppendWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bo
 		lists = append(lists, list)
 	}
 
-	// Append all the names after checking them
-	*field = append(*field, lists...)
+	*field = sortAndCompact(lists, api.CompareWAFList)
 	return true
 }

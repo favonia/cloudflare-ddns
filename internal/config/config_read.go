@@ -23,7 +23,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	if !ReadAuth(ppfmt, &c.Auth) ||
 		!ReadProviderMap(ppfmt, &c.Provider) ||
 		!ReadDomainMap(ppfmt, &c.Domains) ||
-		!ReadAndAppendWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
+		!ReadWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
 		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||

@@ -133,6 +133,9 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 
 // FinalClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
 //
+// This is intended for the final shutdown/deletion phase. The handle should not be reused for
+// subsequent updates after calling this method.
+//
 // We only deleted cached data in listListItems and listID, but not the cached lists
 // in listLists so that we do not have to re-query the lists under the same account.
 // Managing multiple lists under the same account makes little sense in practice,

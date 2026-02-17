@@ -15,7 +15,7 @@ import (
 )
 
 //nolint:paralleltest // paralleltest should not be used because environment vars are global
-func TestReadAndAppendWAFListNames(t *testing.T) {
+func TestReadWAFListNames(t *testing.T) {
 	key := keyPrefix + "WAF_LISTS"
 
 	for name, tc := range map[string]struct {
@@ -44,19 +44,30 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 		"two": {
 			true, "hey/hello,here/aloha",
 			nil,
-			[]api.WAFList{{AccountID: "hey", Name: "hello"}, {AccountID: "here", Name: "aloha"}},
+			[]api.WAFList{{AccountID: "here", Name: "aloha"}, {AccountID: "hey", Name: "hello"}},
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature added in version 1.14.0")
 			},
 		},
-		"one+two": {
+		"overwrite-old": {
 			true, "hey/hello,here/aloha",
 			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
 			[]api.WAFList{
-				{AccountID: "there", Name: "ciao"},
-				{AccountID: "hey", Name: "hello"},
 				{AccountID: "here", Name: "aloha"},
+				{AccountID: "hey", Name: "hello"},
+			},
+			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature added in version 1.14.0")
+			},
+		},
+		"duplicate": {
+			true, "here/aloha,hey/hello,here/aloha,hey/hello",
+			nil,
+			[]api.WAFList{
+				{AccountID: "here", Name: "aloha"},
+				{AccountID: "hey", Name: "hello"},
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -77,10 +88,9 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			true, "hey/hello,+++/!!!,here/aloha",
 			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
 			[]api.WAFList{
-				{AccountID: "there", Name: "ciao"},
-				{AccountID: "hey", Name: "hello"},
 				{AccountID: "+++", Name: "!!!"},
 				{AccountID: "here", Name: "aloha"},
+				{AccountID: "hey", Name: "hello"},
 			},
 			true,
 			func(m *mocks.MockPP) {
@@ -97,7 +107,7 @@ func TestReadAndAppendWAFListNames(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadAndAppendWAFListNames(mockPP, key, &field)
+			ok := config.ReadWAFListNames(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

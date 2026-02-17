@@ -1,8 +1,6 @@
 package config
 
 import (
-	"slices"
-
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -18,13 +16,6 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
 	return false
 }
 
-// deduplicate always sorts and deduplicates the input list,
-// returning true if elements are already distinct.
-func deduplicate(list []domain.Domain) []domain.Domain {
-	domain.SortDomains(list)
-	return slices.Compact(list)
-}
-
 // ReadDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
 // and consolidate the domains into a map.
 func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
@@ -36,8 +27,8 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 		return false
 	}
 
-	ip4Domains = deduplicate(append(ip4Domains, domains...))
-	ip6Domains = deduplicate(append(ip6Domains, domains...))
+	ip4Domains = sortAndCompact(append(ip4Domains, domains...), domain.CompareDomain)
+	ip6Domains = sortAndCompact(append(ip6Domains, domains...), domain.CompareDomain)
 
 	*field = map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: ip4Domains,

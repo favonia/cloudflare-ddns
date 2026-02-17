@@ -2,6 +2,7 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/netip"
@@ -27,6 +28,14 @@ type WAFList struct {
 
 // Describe formats WAFList as a string.
 func (l WAFList) Describe() string { return fmt.Sprintf("%s/%s", string(l.AccountID), l.Name) }
+
+// CompareWAFList compares two WAF lists first by account ID and then by list name.
+func CompareWAFList(l1, l2 WAFList) int {
+	return cmp.Or(
+		cmp.Compare(l1.AccountID, l2.AccountID),
+		cmp.Compare(l1.Name, l2.Name),
+	)
+}
 
 // RecordParams bundles parameters of a DNS record.
 type RecordParams struct {
@@ -91,6 +100,7 @@ type Handle interface {
 
 	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
 	// update or create the list.
+	// The handle should not be reused for any further update operations after calling this method.
 	//
 	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.
 	// If it's false, then it's being cleared asynchronously instead of being deleted.
