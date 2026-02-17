@@ -399,7 +399,9 @@ func mockListResponse(meta listMeta) cloudflare.ListResponse {
 	}
 }
 
-func newCreateListHandler(t *testing.T, mux *http.ServeMux, listMeta listMeta) httpHandler {
+func newCreateListHandler(t *testing.T, mux *http.ServeMux,
+	expected cloudflare.ListCreateRequest, listMeta listMeta,
+) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -412,6 +414,17 @@ func newCreateListHandler(t *testing.T, mux *http.ServeMux, listMeta listMeta) h
 			}
 
 			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			var createRequest cloudflare.ListCreateRequest
+			if err := json.NewDecoder(r.Body).Decode(&createRequest); !assert.NoError(t, err) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !assert.Equal(t, expected, createRequest) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

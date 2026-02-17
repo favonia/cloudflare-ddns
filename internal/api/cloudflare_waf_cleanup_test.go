@@ -104,7 +104,7 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			f := newCloudflareFixture(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
-			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0))
+			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil, "")
 
 			lh.setRequestLimit(tc.listRequestLimit)
 			dh.setRequestLimit(tc.deleteRequestLimit)

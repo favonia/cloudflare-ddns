@@ -17,6 +17,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -88,6 +89,36 @@ func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID api.ID, li
 		})
 
 	return httpHandler{requestLimit: &requestLimit}
+}
+
+// checkListItemCreateRequestPayload validates the request body format shared by
+// both create (POST) and replace (PUT) list-item APIs in cloudflare-go.
+// The operation differs, but the payload is the same: []ListItemCreateRequest.
+//
+// This helper runs inside HTTP handlers; require is unsafe in HTTP handler
+// goroutines.
+func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedItems []netip.Prefix, expectedComment string) bool {
+	t.Helper()
+
+	var createRequests []cloudflare.ListItemCreateRequest
+	if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&createRequests)) { //nolint:testifylint // require is unsafe in HTTP handler goroutines.
+		return false
+	}
+
+	actualItems := make([]string, 0, len(createRequests))
+	for _, item := range createRequests {
+		if !assert.NotNil(t, item.IP) || !assert.Equal(t, expectedComment, item.Comment) {
+			return false
+		}
+		actualItems = append(actualItems, *item.IP)
+	}
+
+	expectedRawItems := make([]string, 0, len(expectedItems))
+	for _, item := range expectedItems {
+		expectedRawItems = append(expectedRawItems, ipnet.DescribePrefixOrIP(item))
+	}
+
+	return assert.ElementsMatch(t, expectedRawItems, actualItems)
 }
 
 func TestListWAFListItems(t *testing.T) {
@@ -222,7 +253,14 @@ func TestListWAFListItems(t *testing.T) {
 
 			f := newCloudflareFixture(t)
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
-			clh := newCreateListHandler(t, f.serveMux, tc.newList)
+			clh := newCreateListHandler(t, f.serveMux,
+				cloudflare.ListCreateRequest{
+					Name:        mockWAFList.Name,
+					Description: "description",
+					Kind:        cloudflare.ListTypeIP,
+				},
+				tc.newList,
+			)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.items)
 
 			lh.setRequestLimit(tc.listRequestLimit)
@@ -316,7 +354,7 @@ func mockListItemDeleteResponse(id api.ID) cloudflare.ListItemDeleteResponse {
 	}
 }
 
-func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
+func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID, expectedIDs []api.ID) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -329,6 +367,22 @@ func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 			}
 
 			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			var deleteRequest cloudflare.ListItemDeleteRequest
+			if err := json.NewDecoder(r.Body).Decode(&deleteRequest); !assert.NoError(t, err) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			actualIDs := make([]api.ID, 0, len(deleteRequest.Items))
+			for _, item := range deleteRequest.Items {
+				actualIDs = append(actualIDs, api.ID(item.ID))
+			}
+
+			if !assert.ElementsMatch(t, expectedIDs, actualIDs) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -409,7 +463,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 
 			f := newCloudflareFixture(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
-			dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0))
+			dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.idsToDelete)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
 
 			lh.setRequestLimit(tc.listRequestLimit)
@@ -439,7 +493,9 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 	}
 }
 
-func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
+func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,
+	expectedItems []netip.Prefix, expectedComment string,
+) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -452,6 +508,11 @@ func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operat
 			}
 
 			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !checkListItemCreateRequestPayload(t, r, expectedItems, expectedComment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -469,7 +530,9 @@ func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operat
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID) httpHandler {
+func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,
+	expectedItems []netip.Prefix, expectedComment string,
+) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -482,6 +545,11 @@ func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 			}
 
 			if !assert.Empty(t, r.URL.Query()) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !checkListItemCreateRequestPayload(t, r, expectedItems, expectedComment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -565,7 +633,7 @@ func TestCreateWAFListItems(t *testing.T) {
 
 			f := newCloudflareFixture(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
-			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0))
+			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.itemsToCreate, itemComment)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
 
 			lh.setRequestLimit(tc.listRequestLimit)
