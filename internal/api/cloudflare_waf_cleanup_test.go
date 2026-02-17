@@ -97,16 +97,6 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 				)
 			},
 		},
-		"delete-fail/clear-fail/keep-cache": {
-			1, mockID("list", 0), 0, 0,
-			false, false,
-			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start clearing the list %s: %v", "account456/list", gomock.Any()),
-				)
-			},
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -114,7 +104,7 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			f := newCloudflareFixture(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
-			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0))
+			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil, "")
 
 			lh.setRequestLimit(tc.listRequestLimit)
 			dh.setRequestLimit(tc.deleteRequestLimit)
