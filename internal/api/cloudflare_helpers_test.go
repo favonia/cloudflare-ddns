@@ -119,7 +119,7 @@ func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
 	return serveMux, h, ok
 }
 
-type cloudflareFixture struct {
+type cloudflareHarness struct {
 	t        *testing.T
 	mockCtrl *gomock.Controller
 	serveMux *http.ServeMux
@@ -127,7 +127,7 @@ type cloudflareFixture struct {
 	cfHandle api.CloudflareHandle
 }
 
-func newCloudflareFixture(t *testing.T) *cloudflareFixture {
+func newCloudflareHarness(t *testing.T) *cloudflareHarness {
 	t.Helper()
 
 	mockCtrl := gomock.NewController(t)
@@ -139,7 +139,7 @@ func newCloudflareFixture(t *testing.T) *cloudflareFixture {
 	ch, ok := h.(api.CloudflareHandle)
 	require.True(t, ok)
 
-	return &cloudflareFixture{
+	return &cloudflareHarness{
 		t:        t,
 		mockCtrl: mockCtrl,
 		serveMux: serveMux,
@@ -148,12 +148,12 @@ func newCloudflareFixture(t *testing.T) *cloudflareFixture {
 	}
 }
 
-func (f *cloudflareFixture) newPP() *mocks.MockPP {
+func (f *cloudflareHarness) newPP() *mocks.MockPP {
 	f.t.Helper()
 	return mocks.NewMockPP(f.mockCtrl)
 }
 
-func (f *cloudflareFixture) newPreparedPP(prepare func(*mocks.MockPP)) *mocks.MockPP {
+func (f *cloudflareHarness) newPreparedPP(prepare func(*mocks.MockPP)) *mocks.MockPP {
 	f.t.Helper()
 	mockPP := f.newPP()
 	prepareMockPP(mockPP, prepare)

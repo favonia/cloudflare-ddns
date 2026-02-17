@@ -26,7 +26,7 @@ func TestFinalClearWAFList(t *testing.T) {
 		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
 	}{
 		{
-			name: "deleted",
+			name: "list-exists/delete-list/response-updated",
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -36,7 +36,7 @@ func TestFinalClearWAFList(t *testing.T) {
 			},
 		},
 		{
-			name: "cleared",
+			name: "list-exists/clear-list-async/response-updating",
 			resp: setter.ResponseUpdating,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				gomock.InOrder(
@@ -46,7 +46,7 @@ func TestFinalClearWAFList(t *testing.T) {
 			},
 		},
 		{
-			name: "delete-fail/clear-fail",
+			name: "list-exists/delete-and-clear/response-failed",
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				m.EXPECT().FinalClearWAFListAsync(ctx, p, wafList, listDescription).Return(false, false)
@@ -58,12 +58,12 @@ func TestFinalClearWAFList(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := newSetterHarness(t)
+			ctx, h := newSetterHarness(t)
 			if tc.prepareMocks != nil {
-				tc.prepareMocks(h.ctx, h.cancel, h.mockPP, h.mockHandle)
+				tc.prepareMocks(ctx, h.cancel, h.mockPP, h.mockHandle)
 			}
 
-			resp := h.setter.FinalClearWAFList(h.ctx, h.mockPP, wafList, listDescription)
+			resp := h.setter.FinalClearWAFList(ctx, h.mockPP, wafList, listDescription)
 			require.Equal(t, tc.resp, resp)
 		})
 	}

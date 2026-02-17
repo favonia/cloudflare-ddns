@@ -123,7 +123,7 @@ func TestListWAFLists(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			lh.setRequestLimit(1)
@@ -202,7 +202,7 @@ func TestWAFListID(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			lh.setRequestLimit(1)
@@ -229,7 +229,7 @@ func TestWAFListID(t *testing.T) {
 func TestListWAFListsCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{
 		{name: "list", size: 10, kind: cloudflare.ListTypeIP},
 		{name: "list", size: 11, kind: cloudflare.ListTypeASN},
@@ -258,7 +258,7 @@ func TestListWAFListsCache(t *testing.T) {
 func TestWAFListIDCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{
 		{name: "list", size: 11, kind: cloudflare.ListTypeASN},
 		{name: "list", size: 12, kind: cloudflare.ListTypeIP},
@@ -282,7 +282,7 @@ func TestWAFListIDCache(t *testing.T) {
 func TestListWAFListsHint(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 
 	f.serveMux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists", mockAccountID),
 		func(w http.ResponseWriter, _ *http.Request) {
@@ -359,7 +359,7 @@ func TestFindWAFList(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			lh.setRequestLimit(tc.listRequestLimit)
 			list, ok := f.cfHandle.FindWAFList(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description")
@@ -373,7 +373,7 @@ func TestFindWAFList(t *testing.T) {
 func TestFindWAFListCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{
 		{name: "list", size: 11, kind: cloudflare.ListTypeASN},
 		{name: "list", size: 12, kind: cloudflare.ListTypeIP},

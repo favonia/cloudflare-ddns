@@ -16,14 +16,13 @@ import (
 )
 
 type setterHarness struct {
-	ctx        context.Context
 	cancel     context.CancelFunc
 	mockPP     *mocks.MockPP
 	mockHandle *mocks.MockHandle
 	setter     setter.Setter
 }
 
-func newSetterHarness(t *testing.T) setterHarness {
+func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	t.Helper()
 
 	mockCtrl := gomock.NewController(t)
@@ -36,8 +35,7 @@ func newSetterHarness(t *testing.T) setterHarness {
 	s, ok := setter.New(mockPP, mockHandle)
 	require.True(t, ok)
 
-	return setterHarness{
-		ctx:        ctx,
+	return ctx, setterHarness{
 		cancel:     cancel,
 		mockPP:     mockPP,
 		mockHandle: mockHandle,

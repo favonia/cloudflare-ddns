@@ -101,7 +101,7 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
 			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil, "")

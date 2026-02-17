@@ -113,7 +113,7 @@ func TestListZonesTwo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			zh := newZonesHandler(t, f.serveMux, tc.zones)
 
 			zh.setRequestLimit(tc.requestLimit)
@@ -230,7 +230,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 
 			zh := newZonesHandler(t, f.serveMux, tc.zoneStatuses)
 			zh.setRequestLimit(tc.requestLimit)
@@ -246,7 +246,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 func TestListZonesTwoCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active", "active"}})
 
 	zh.setRequestLimit(1)
@@ -265,7 +265,7 @@ func TestListZonesTwoCache(t *testing.T) {
 func TestZoneIDOfDomainCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 
 	zh.setRequestLimit(2)
@@ -284,7 +284,7 @@ func TestZoneIDOfDomainCache(t *testing.T) {
 func TestZoneIDOfDomainInvalid(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	mockPP := f.newPP()
 
 	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())

@@ -45,7 +45,7 @@ func TestSet(t *testing.T) {
 		prepareMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, m *mocks.MockHandle)
 	}{
 		{
-			name: "0",
+			name: "no-records/create-record/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -57,7 +57,7 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "0/create-fail",
+			name: "no-records/create-record/response-failed",
 			ip:   ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -69,67 +69,67 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "1unmatched",
+			name: "single-stale-record/update-record/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).
-						Return([]api.Record{{ID: record1, IP: ip2, RecordParams: params}}, true, true),
+						Return([]api.Record{dnsRecord(record1, ip2, params)}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, params, params).Return(true),
 					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
 				)
 			},
 		},
 		{
-			name: "1unmatched/update-fail",
+			name: "single-stale-record/update-record/response-failed",
 			ip:   ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).
-						Return([]api.Record{{ID: record1, IP: ip2, RecordParams: params}}, true, true),
+						Return([]api.Record{dnsRecord(record1, ip2, params)}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, params, params).Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
 				)
 			},
 		},
 		{
-			name: "1matched",
+			name: "single-matching-record/keep-record/response-noop-cached",
 			ip:   ip1,
 			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).
-						Return([]api.Record{{ID: record1, IP: ip1, RecordParams: params}}, true, true),
+						Return([]api.Record{dnsRecord(record1, ip1, params)}, true, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone,
 						"The %s records of %s are already up to date (cached)", "AAAA", "sub.test.org"),
 				)
 			},
 		},
 		{
-			name: "1matched/not-cached",
+			name: "single-matching-record/keep-record/response-noop-uncached",
 			ip:   ip1,
 			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip1, RecordParams: params},
+						dnsRecord(record1, ip1, params),
 					}, false, true),
 					p.EXPECT().Infof(pp.EmojiAlreadyDone, "The %s records of %s are already up to date", "AAAA", "sub.test.org"),
 				)
 			},
 		},
 		{
-			name: "3matched",
+			name: "multiple-matching-records/delete-duplicates/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip1, RecordParams: params},
-						{ID: record2, IP: ip1, RecordParams: params},
-						{ID: record3, IP: ip1, RecordParams: params},
+						dnsRecord(record1, ip1, params),
+						dnsRecord(record2, ip1, params),
+						dnsRecord(record3, ip1, params),
 					}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
@@ -139,15 +139,15 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "3matched/delete-fail/1",
+			name: "multiple-matching-records/delete-first-duplicate/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip1, RecordParams: params},
-						{ID: record2, IP: ip1, RecordParams: params},
-						{ID: record3, IP: ip1, RecordParams: params},
+						dnsRecord(record1, ip1, params),
+						dnsRecord(record2, ip1, params),
+						dnsRecord(record3, ip1, params),
 					}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(false),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record3, api.RegularDelitionMode).Return(true),
@@ -156,15 +156,15 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "3matched/delete-fail/2",
+			name: "multiple-matching-records/delete-second-duplicate/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip1, RecordParams: params},
-						{ID: record2, IP: ip1, RecordParams: params},
-						{ID: record3, IP: ip1, RecordParams: params},
+						dnsRecord(record1, ip1, params),
+						dnsRecord(record2, ip1, params),
+						dnsRecord(record3, ip1, params),
 					}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Return(true),
 					p.EXPECT().Noticef(pp.EmojiDeletion, "Deleted a duplicate %s record of %s (ID: %s)", "AAAA", "sub.test.org", record2),
@@ -173,28 +173,28 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "3matched/delete-timeout",
+			name: "multiple-matching-records/delete-duplicate-timeout/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip1, RecordParams: params},
-						{ID: record2, IP: ip1, RecordParams: params},
+						dnsRecord(record1, ip1, params),
+						dnsRecord(record2, ip1, params),
 					}, true, true),
 					h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, record2, api.RegularDelitionMode).Do(wrapCancelAsDelete(cancel)).Return(false),
 				)
 			},
 		},
 		{
-			name: "2unmatched",
+			name: "multiple-stale-records/update-and-delete/response-updated",
 			ip:   ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip2, RecordParams: params},
-						{ID: record2, IP: ip2, RecordParams: params},
+						dnsRecord(record1, ip2, params),
+						dnsRecord(record2, ip2, params),
 					}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, params, params).Return(true),
 					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
@@ -204,14 +204,14 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "2unmatched/delete-timeout",
+			name: "multiple-stale-records/delete-after-update-timeout/response-failed",
 			ip:   ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip2, RecordParams: params},
-						{ID: record2, IP: ip2, RecordParams: params},
+						dnsRecord(record1, ip2, params),
+						dnsRecord(record2, ip2, params),
 					}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, params, params).Return(true),
 					p.EXPECT().Noticef(pp.EmojiUpdate, "Updated a stale %s record of %s (ID: %s)", "AAAA", "sub.test.org", record1),
@@ -221,14 +221,14 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "2unmatched/update-fail",
+			name: "multiple-stale-records/update-first-record/response-failed",
 			ip:   ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
 					h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return([]api.Record{
-						{ID: record1, IP: ip2, RecordParams: params},
-						{ID: record2, IP: ip2, RecordParams: params},
+						dnsRecord(record1, ip2, params),
+						dnsRecord(record2, ip2, params),
 					}, true, true),
 					h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, record1, ip1, params, params).Return(false),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to properly update %s records of %s; records might be inconsistent", "AAAA", "sub.test.org"),
@@ -236,7 +236,7 @@ func TestSet(t *testing.T) {
 			},
 		},
 		{
-			name: "list-fail",
+			name: "records-unknown/list-records/response-failed",
 			ip:   ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -249,12 +249,12 @@ func TestSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := newSetterHarness(t)
+			ctx, h := newSetterHarness(t)
 			if tc.prepareMocks != nil {
-				tc.prepareMocks(h.ctx, h.cancel, h.mockPP, h.mockHandle)
+				tc.prepareMocks(ctx, h.cancel, h.mockPP, h.mockHandle)
 			}
 
-			resp := h.setter.Set(h.ctx, h.mockPP, ipNetwork, domain, tc.ip, params)
+			resp := h.setter.Set(ctx, h.mockPP, ipNetwork, domain, tc.ip, params)
 			require.Equal(t, tc.resp, resp)
 		})
 	}
