@@ -84,7 +84,12 @@ func New(domain string) (Domain, error) {
 	return FQDN(normalized), err
 }
 
+// CompareDomain compares two domains by their ASCII representations.
+func CompareDomain(d1, d2 Domain) int {
+	return cmp.Compare(d1.DNSNameASCII(), d2.DNSNameASCII())
+}
+
 // SortDomains sorts a list of domains according to their ASCII representations.
 func SortDomains(s []Domain) {
-	slices.SortFunc(s, func(d1, d2 Domain) int { return cmp.Compare(d1.DNSNameASCII(), d2.DNSNameASCII()) })
+	slices.SortFunc(s, CompareDomain)
 }

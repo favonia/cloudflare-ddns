@@ -1,7 +1,6 @@
 package domain_test
 
 import (
-	"cmp"
 	"slices"
 	"testing"
 	"testing/quick"
@@ -135,10 +134,7 @@ func TestSortDomains(t *testing.T) {
 			domain.SortDomains(merged)
 
 			require.ElementsMatch(t, copied, merged)
-			require.True(t, slices.IsSortedFunc(merged,
-				func(d1, d2 domain.Domain) int {
-					return cmp.Compare(d1.DNSNameASCII(), d2.DNSNameASCII())
-				}))
+			require.True(t, slices.IsSortedFunc(merged, domain.CompareDomain))
 
 			return true
 		},
