@@ -100,8 +100,8 @@ func checkRequestLimit(t *testing.T, requestLimit *int) bool {
 	if *requestLimit <= 0 {
 		return false
 	}
-	*requestLimit--
 
+	*requestLimit--
 	return true
 }
 

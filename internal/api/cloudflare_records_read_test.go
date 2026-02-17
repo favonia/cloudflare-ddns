@@ -41,6 +41,8 @@ type formattedRecord struct {
 }
 
 func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
+	// Pagination is intentionally delegated to cloudflare-go (ListDNSRecords).
+	// These tests mock a single page only to focus on this package's logic.
 	if len(rs) > dnsRecordPageSize {
 		panic("mockDNSResponse got too many IPs")
 	}

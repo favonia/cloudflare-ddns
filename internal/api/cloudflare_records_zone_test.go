@@ -37,6 +37,8 @@ const (
 func mockZonesResponse(zoneName string, zoneStatuses []string) cloudflare.ZonesResponse {
 	numZones := len(zoneStatuses)
 
+	// Pagination is intentionally delegated to cloudflare-go (ListZonesContext).
+	// These tests mock a single page only to focus on this package's logic.
 	if numZones > zonePageSize {
 		panic("mockZonesResponse got too many zone names")
 	}

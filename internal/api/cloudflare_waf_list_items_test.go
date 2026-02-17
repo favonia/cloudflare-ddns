@@ -47,6 +47,8 @@ func mockListItem(listItem listItem) cloudflare.ListItem {
 }
 
 func mockListListItemsResponse(listItems []listItem) cloudflare.ListItemsListResponse {
+	// Pagination is intentionally delegated to cloudflare-go (ListListItems).
+	// These tests mock a single page only to focus on this package's logic.
 	if len(listItems) > listItemPageSize {
 		panic("mockListItemsResponse got too many items")
 	}
