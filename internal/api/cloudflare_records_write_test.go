@@ -80,7 +80,7 @@ func TestDeleteRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
@@ -225,7 +225,7 @@ func TestUpdateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			mockPP := f.newPreparedPP(tc.prepareMocks)
 
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
@@ -335,7 +335,7 @@ func TestCreateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			mockPP := f.newPreparedPP(tc.prepareMocks)
 
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})

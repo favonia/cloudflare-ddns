@@ -203,7 +203,7 @@ func TestListRecords(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 
 			zh := newZonesHandler(t, f.serveMux, tc.zones)
 			zh.setRequestLimit(tc.zoneRequestLimit)
@@ -225,7 +225,7 @@ func TestListRecordsCache(t *testing.T) {
 
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}, {"record2", "::2"}})
 

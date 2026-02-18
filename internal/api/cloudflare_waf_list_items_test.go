@@ -251,7 +251,7 @@ func TestListWAFListItems(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			clh := newCreateListHandler(t, f.serveMux,
 				cloudflare.ListCreateRequest{
@@ -279,7 +279,7 @@ func TestListWAFListItems(t *testing.T) {
 func TestListWAFListItemsCache(t *testing.T) {
 	t.Parallel()
 
-	f := newCloudflareFixture(t)
+	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 	lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), []listItem{
 		{"10.0.0.1", ""},
@@ -461,7 +461,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.idsToDelete)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
@@ -631,7 +631,7 @@ func TestCreateWAFListItems(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareFixture(t)
+			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.itemsToCreate, itemComment)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
