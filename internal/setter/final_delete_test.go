@@ -91,6 +91,10 @@ func TestFinalDelete(t *testing.T) {
 			name: "mixed-valid-and-invalid-records/delete-all-records/response-updated",
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
+				// InOrder is stricter than the API contract here: deleting these records in either
+				// order is valid. We intentionally pin FinalDelete's deterministic top-to-bottom
+				// traversal so this test can detect processing-order regressions; looser gomock
+				// checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
