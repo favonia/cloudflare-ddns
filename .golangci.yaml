@@ -62,6 +62,9 @@ linters:
           - dupl
           - lll
         path: _test.go
+      - linters: # See https://github.com/securego/gosec/issues/1500
+          - gosec
+        text: G704
     paths:
       - third_party$
       - builtin$
