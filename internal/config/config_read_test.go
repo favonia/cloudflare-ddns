@@ -92,6 +92,8 @@ func TestReadEnvEmpty(t *testing.T) {
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 
+	// Keep PROXIED coverage here minimal and integration-focused:
+	// parser behavior is tested comprehensively in internal/domainexp/parser_test.go.
 	keyProxied := "PROXIED"
 
 	for name, tc := range map[string]struct {
@@ -385,6 +387,42 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"proxied/empty-list": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: `is()`,
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: `is()`,
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): false,
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`%s (%q) has an empty domain list in %s(...), which always evaluates to false`,
+						keyProxied, `is()`, "is"),
 				)
 			},
 		},

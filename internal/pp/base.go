@@ -8,9 +8,8 @@ type Verbosity int
 
 // Pre-defined verbosity levels. A higher level means "more verbose".
 const (
-	Notice Verbosity = iota // useful additional info
-	Info                    // important messages
-
+	Notice Verbosity = iota // important notices
+	Info                    // useful but optional info
 )
 
 // Pre-defined verbosity level aliases.

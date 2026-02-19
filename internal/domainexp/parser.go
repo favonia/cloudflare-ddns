@@ -126,6 +126,11 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 			if newTokens == nil {
 				return nil, nil
 			}
+			if len(ASCIIDomains) == 0 {
+				ppfmt.Noticef(pp.EmojiUserWarning,
+					`%s (%q) has an empty domain list in %s(...), which always evaluates to false`,
+					key, input, funName)
+			}
 
 			return map[string]predicate{
 				"is": func(d domain.Domain) bool {

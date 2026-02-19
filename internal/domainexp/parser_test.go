@@ -79,6 +79,8 @@ func (m ErrorMatcher) String() string {
 
 func TestParseExpression(t *testing.T) {
 	t.Parallel()
+	// ParseExpression has comprehensive coverage for grammar, semantics, and parser-level notices.
+	// Config.Normalize only needs a few smoke tests to ensure these notices surface in config flow.
 	key := "key"
 	type f = domain.FQDN
 	type w = domain.Wildcard
@@ -135,9 +137,17 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "false |", domainexp.ErrSingleOr)
 			},
 		},
-		"is/1":          {"is(example.com)", true, f("example.com"), true, nil},
-		"is/2":          {"is(example.com)", true, f("sub.example.com"), false, nil},
-		"is/3":          {"is(example.org)", true, f("example.com"), false, nil},
+		"is/1": {"is(example.com)", true, f("example.com"), true, nil},
+		"is/2": {"is(example.com)", true, f("sub.example.com"), false, nil},
+		"is/3": {"is(example.org)", true, f("example.com"), false, nil},
+		"is/empty": {
+			"is()", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					`%s (%q) has an empty domain list in %s(...), which always evaluates to false`,
+					key, "is()", "is")
+			},
+		},
 		"is/wildcard/1": {"is(example.com)", true, w("example.com"), false, nil},
 		"is/wildcard/2": {"is(*.example.com)", true, w("example.com"), true, nil},
 		"is/wildcard/3": {"is(*.example.com)", true, f("example.com"), false, nil},
@@ -162,11 +172,19 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, "is", "(")
 			},
 		},
-		"sub/1":     {"sub(example.com)", true, f("example.com"), false, nil},
-		"sub/2":     {"sub(example.com)", true, w("example.com"), true, nil},
-		"sub/3":     {"sub(example.com)", true, f("sub.example.com"), true, nil},
-		"sub/4":     {"sub(example.com)", true, f("subexample.com"), false, nil},
-		"sub/5":     {"sub(example.com)", true, f("sub.sub.example.com"), true, nil},
+		"sub/1": {"sub(example.com)", true, f("example.com"), false, nil},
+		"sub/2": {"sub(example.com)", true, w("example.com"), true, nil},
+		"sub/3": {"sub(example.com)", true, f("sub.example.com"), true, nil},
+		"sub/4": {"sub(example.com)", true, f("subexample.com"), false, nil},
+		"sub/5": {"sub(example.com)", true, f("sub.sub.example.com"), true, nil},
+		"sub/empty": {
+			"sub()", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					`%s (%q) has an empty domain list in %s(...), which always evaluates to false`,
+					key, "sub()", "sub")
+			},
+		},
 		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/2": {"sub(Xn--53H.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/3": {"sub(Xn--53H.de)", true, w("xn--53h.de"), true, nil},
