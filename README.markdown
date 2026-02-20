@@ -53,7 +53,6 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
   Note: this only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
 - <details><summary><em>Click to expand:</em> 📚 The updater uses only established open-source Go libraries.</summary>
-
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of Cloudflare API v4.
   - [cron](https://github.com/robfig/cron):\
@@ -150,7 +149,7 @@ services:
 ```
 
 <details>
-<summary><em>Click to expand:</em> 🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
+<summary id="generate-scoped-api-token-minimal-setup"><em>Click to expand:</em> 🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
 
 The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
 
@@ -292,7 +291,7 @@ We have received reports of recent issues with the default IP provider, `cloudfl
 The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details.
 
 <details>
-<summary><em>Click to expand:</em> 🔑 The Cloudflare API token</summary>
+<summary id="generate-scoped-api-token-all-settings"><em>Click to expand:</em> 🔑 The Cloudflare API token</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -459,18 +458,18 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [design document](docs/DESIGN.markdown) for more information on security.
 
-| Old Parameter                          |     | Note                                                                                                                                                                                                                                          |
-| -------------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_KEY=key`                          | ✔️  | Use `CLOUDFLARE_API_TOKEN=key`                                                                                                                                                                                                                |
-| `API_KEY_FILE=file`                    | ✔️  | Use `CLOUDFLARE_API_TOKEN_FILE=file`                                                                                                                                                                                                          |
-| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                                                        |
-| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                                                         |
-| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                            |
-| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                            |
-| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                                                                                                                                                                                  |
-| `INTERFACE=name`                       | ✔️  | To automatically select the local address, use `IP4/6_PROVIDER=local`. 🧪 To select the first address of a specific network interface, use `IP4/6_PROVIDER=local.iface:name` (available since version 1.15.0 but not finalized until 1.16.0). |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                             |
-| `DNS_SERVER=server`                    | ❌  | The updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`.                                                                                             |
+| Old Parameter                          |     | Note                                                                                                                                                                                                                                                                     |
+| -------------------------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `API_KEY=key`                          | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup) and use `CLOUDFLARE_API_TOKEN=<TOKEN>`.                                                                                                         |
+| `API_KEY_FILE=file`                    | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                              |
+| `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                                                                                   |
+| `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                                                                                    |
+| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                                                       |
+| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                                                       |
+| `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                                                                                                                                                                                                             |
+| `INTERFACE=name`                       | ✔️  | To automatically select the local address, use `IP4/6_PROVIDER=local`. 🧪 To select the first address of a specific network interface, use `IP4/6_PROVIDER=local.iface:name` (available since version 1.15.0 but not finalized until 1.16.0).                            |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                        |
+| `DNS_SERVER=server`                    | ❌  | For DNS-based IP detection, the updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`. To detect IP addresses via HTTPS by querying other servers, use `IP4/6_PROVIDER=url:<URL>` |
 
 </details>
 
@@ -479,8 +478,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=key`                                                                                                                                                                                                           |
-| `cloudflare.authentication.api_key`   | ❌  | Please use the newer, more secure [API tokens](https://dash.cloudflare.com/profile/api-tokens)                                                                                                                                           |
+| `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=<TOKEN>`                                                                                                                                                                                                       |
+| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#generate-scoped-api-token-all-settings), then follow the row above.                                                                                             |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this advanced feature                                                                                               |
@@ -490,7 +489,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
 | `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
-> 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program always purged unmanaged DNS records back then and it was not configurable via environment variables. There were feature requests to address these issues but the author [timothymiller](https://github.com/timothymiller/) seemed to ignore them; I thus made my Go clone after unsuccessful communications. Understandably, [timothymiller](https://github.com/timothymiller/) did not seem happy with my cloning and my other critical comments towards other aspects of the Python updater. Eventually, an option `purgeUnknownRecords` was added to the Python program to disable the unwanted purging, and it became configurable via environment variables, but my Go clone already went on its way. I believe my Go clone is now a much better choice, but my opinions are biased and you should check the technical details by yourself. 😉
+> 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program purged unmanaged DNS records back then and it was not configurable via environment variables on its default branch. Eventually, an option `purgeUnknownRecords` was added to the Python program to disable purging, and it became configurable via environment variables, but my Go clone had already gone its own way. Beyond the migration points above, there were other issues and discussions that I prefer not to detail here, and some of that context is no longer publicly available. My opinions are biased, so please check the technical details by yourself. 😉
 
 </details>
 
