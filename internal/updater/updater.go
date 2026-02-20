@@ -98,6 +98,28 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 	return generateUpdateMessage(ipNet, ip, resps)
 }
 
+// setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetMultiple] with timeout.
+// All IPs must be non-zero.
+func setIPs(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, s setter.Setter, ipNet ipnet.Type, ips []netip.Addr,
+) Message {
+	resps := emptySetterResponses()
+
+	for _, domain := range c.Domains[ipNet] {
+		resps.register(domain,
+			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+				return s.SetMultiple(ctx, ppfmt, ipNet, domain, ips, api.RecordParams{
+					TTL:     c.TTL,
+					Proxied: c.Proxied[domain],
+					Comment: c.RecordComment,
+				})
+			}),
+		)
+	}
+
+	return generateUpdateMessage(ipNet, ips[0], resps) // Use first IP for message
+}
+
 // finalDeleteIP extracts relevant settings from the configuration
 // and calls [setter.Setter.FinalDelete] with a deadline.
 func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) Message {
@@ -157,18 +179,37 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	detectedIP := map[ipnet.Type]netip.Addr{}
 	numManagedNetworks := 0
 	numValidIPs := 0
-	for ipNet, provider := range ipnet.Bindings(c.Provider) {
-		if provider != nil {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		prov := c.Provider[ipNet]
+		if prov != nil {
 			numManagedNetworks++
-			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
-			detectedIP[ipNet] = ip
-			msgs = append(msgs, msg)
+			
+			// Check if this is a composite provider
+			if compositeProvider, ok := prov.(provider.CompositeProvider); ok {
+				// Use multiple IPs
+				ips, detected := compositeProvider.GetAllIPs(ctx, ppfmt, ipNet)
+				if detected && len(ips) > 0 {
+					detectedIP[ipNet] = ips[0] // Use first IP for traditional logic
+					numValidIPs++
+					ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %v", len(ips), ipNet.Describe(), ips)
+					msg := setIPs(ctx, ppfmt, c, s, ipNet, ips)
+					msgs = append(msgs, msg)
+				} else {
+					ppfmt.Noticef(pp.EmojiError, "Failed to detect %s addresses", ipNet.Describe())
+					msgs = append(msgs, generateDetectMessage(ipNet, false))
+				}
+			} else {
+				// Traditional single IP detection
+				ip, msg := detectIP(ctx, ppfmt, c, ipNet)
+				detectedIP[ipNet] = ip
+				msgs = append(msgs, msg)
 
-			// Note: If we can't detect the new IP address,
-			// it's probably better to leave existing records alone.
-			if msg.MonitorMessage.OK {
-				numValidIPs++
-				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
+				// Note: If we can't detect the new IP address,
+				// it's probably better to leave existing records alone.
+				if msg.MonitorMessage.OK {
+					numValidIPs++
+					msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
+				}
 			}
 		}
 	}
@@ -188,8 +229,9 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	var msgs []Message
 
-	for ipNet, provider := range ipnet.Bindings(c.Provider) {
-		if provider != nil {
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		prov := c.Provider[ipNet]
+		if prov != nil {
 			msgs = append(msgs, finalDeleteIP(ctx, ppfmt, c, s, ipNet))
 		}
 	}

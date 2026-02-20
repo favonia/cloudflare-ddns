@@ -21,6 +21,13 @@ type Provider interface {
 	// GetIP gets the IP.
 }
 
+// CompositeProvider extends Provider to support multiple IP addresses.
+type CompositeProvider interface {
+	Provider
+	GetAllIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool)
+	// GetAllIPs gets all IP addresses (dynamic + static).
+}
+
 // Name gets the protocol name. It returns "none" for nil.
 func Name(p Provider) string {
 	if p == nil {
