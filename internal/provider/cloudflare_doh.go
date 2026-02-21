@@ -7,8 +7,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-// NewCloudflareDOH creates a new provider that queries whoami.cloudflare. via Cloudflare DNS over HTTPS.
-// If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
+// NewCloudflareDOH creates a new provider that queries whoami.cloudflare.
+// via Cloudflare DNS over HTTPS at https://cloudflare-dns.com/dns-query.
 func NewCloudflareDOH() Provider {
 	return protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",

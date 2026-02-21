@@ -9,8 +9,8 @@ import (
 
 var fieldIP = regexp.MustCompile(`(?m:^ip=(.*)$)`)
 
-// NewCloudflareTrace creates a specialized CloudflareTrace provider that parses https://1.1.1.1/cdn-cgi/trace.
-// If use1001 is true, 1.0.0.1 is used instead of 1.1.1.1.
+// NewCloudflareTrace creates a specialized CloudflareTrace provider.
+// It parses https://api.cloudflare.com/cdn-cgi/trace.
 func NewCloudflareTrace() Provider {
 	return NewCloudflareTraceCustom("https://api.cloudflare.com/cdn-cgi/trace")
 }
