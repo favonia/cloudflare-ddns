@@ -5,6 +5,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
 // ReadDomains reads an environment variable as a comma-separated list of domains.
@@ -27,8 +28,8 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 		return false
 	}
 
-	ip4Domains = sortAndCompact(append(ip4Domains, domains...), domain.CompareDomain)
-	ip6Domains = sortAndCompact(append(ip6Domains, domains...), domain.CompareDomain)
+	ip4Domains = sliceutil.SortAndCompact(append(ip4Domains, domains...), domain.CompareDomain)
+	ip6Domains = sliceutil.SortAndCompact(append(ip6Domains, domains...), domain.CompareDomain)
 
 	*field = map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: ip4Domains,
