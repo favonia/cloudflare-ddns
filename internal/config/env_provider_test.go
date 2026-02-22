@@ -164,6 +164,19 @@ func TestReadProvider(t *testing.T) {
 				m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`)
 			},
 		},
+		"debug.const:1::1%eth0": {
+			true, "   debug.const   :  1::1%eth0 ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`),
+					m.EXPECT().Noticef(
+						pp.EmojiUserError,
+						`Failed to parse the IP address %q for "debug.const:": zoned IP addresses are not allowed`,
+						"1::1%eth0",
+					),
+				)
+			},
+		},
 		"debug.const": {
 			true, "   debug.const: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {

@@ -89,6 +89,13 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		)
 		return netip.Addr{}, false
 	}
+	if ip.Zone() != "" {
+		ppfmt.Noticef(pp.EmojiError,
+			"Detected IP address %s has a zone identifier and cannot be used as a target address",
+			ip.String(),
+		)
+		return netip.Addr{}, false
+	}
 
 	switch t {
 	case IP4:

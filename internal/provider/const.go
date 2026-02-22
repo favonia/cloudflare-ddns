@@ -12,7 +12,15 @@ import (
 func NewDebugConst(ppfmt pp.PP, raw string) (Provider, bool) {
 	ip, err := netip.ParseAddr(raw)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, `Failed to parse the IP address %q following "const:"`, raw)
+		ppfmt.Noticef(pp.EmojiUserError, `Failed to parse the IP address %q for "debug.const:"`, raw)
+		return nil, false
+	}
+	if ip.Zone() != "" {
+		ppfmt.Noticef(
+			pp.EmojiUserError,
+			`Failed to parse the IP address %q for "debug.const:": zoned IP addresses are not allowed`,
+			raw,
+		)
 		return nil, false
 	}
 

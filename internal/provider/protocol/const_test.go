@@ -45,8 +45,19 @@ func TestConstGetIP(t *testing.T) {
 			true, netip.MustParseAddr("1.1.1.1"), nil,
 		},
 		"valid/6": {
+			netip.MustParseAddr("1::1"), ipnet.IP6,
+			true, netip.MustParseAddr("1::1"), nil,
+		},
+		"error/zoned": {
 			netip.MustParseAddr("1::1%1"), ipnet.IP6,
-			true, netip.MustParseAddr("1::1%1"), nil,
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiError,
+					"Detected IP address %s has a zone identifier and cannot be used as a target address",
+					"1::1%1",
+				)
+			},
 		},
 		"error/invalid": {
 			invalidIP, ipnet.IP6,
@@ -56,10 +67,10 @@ func TestConstGetIP(t *testing.T) {
 			},
 		},
 		"error/6-as-4": {
-			netip.MustParseAddr("1::1%1"), ipnet.IP4,
+			netip.MustParseAddr("1::1"), ipnet.IP4,
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::1%1")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::1")
 			},
 		},
 	} {

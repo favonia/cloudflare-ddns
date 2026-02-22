@@ -129,6 +129,49 @@ func TestSelectInterfaceIP(t *testing.T) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
 			},
 		},
+		"ipaddr/6/ignore-zoned": {
+			ipnet.IP6,
+			[]net.Addr{
+				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: "eth0"},
+				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""},
+				&net.IPAddr{IP: net.ParseIP("3::3"), Zone: ""},
+			},
+			true, netip.MustParseAddr("2::2"),
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiWarning,
+					"Ignoring zoned address %s assigned to interface %s",
+					"1::1%eth0", "iface",
+				)
+			},
+		},
+		"ipaddr/6/all-zoned": {
+			ipnet.IP6,
+			[]net.Addr{
+				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: "eth0"},
+				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: "eth1"},
+			},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(
+						pp.EmojiWarning,
+						"Ignoring zoned address %s assigned to interface %s",
+						"1::1%eth0", "iface",
+					),
+					ppfmt.EXPECT().Noticef(
+						pp.EmojiWarning,
+						"Ignoring zoned address %s assigned to interface %s",
+						"2::2%eth1", "iface",
+					),
+					ppfmt.EXPECT().Noticef(
+						pp.EmojiError,
+						"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
+						"IPv6", "iface",
+					),
+				)
+			},
+		},
 		"ipaddr/4/loopback": {
 			ipnet.IP4,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
@@ -166,10 +209,17 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiImpossible,
-					"Found multicast address %s in net.Interface.Addrs for interface %s (expected unicast addresses only); please report this at %s",
-					"ff05::2%site", "iface", pp.IssueReportingURL,
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(
+						pp.EmojiWarning,
+						"Ignoring zoned address %s assigned to interface %s",
+						"ff05::2%site", "iface",
+					),
+					ppfmt.EXPECT().Noticef(
+						pp.EmojiError,
+						"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
+						"IPv6", "iface",
+					),
 				)
 			},
 		},
