@@ -18,11 +18,11 @@ func NewCloudflareTrace() Provider {
 // NewCloudflareTraceCustom creates a specialized CloudflareTrace provider
 // with a specific URL.
 func NewCloudflareTraceCustom(url string) Provider {
-	return protocol.Regexp{
+	return withMultiIPSupport(protocol.Regexp{
 		ProviderName: "cloudflare.trace",
 		Param: map[ipnet.Type]protocol.RegexpParam{
 			ipnet.IP4: {url, fieldIP},
 			ipnet.IP6: {url, fieldIP},
 		},
-	}
+	})
 }

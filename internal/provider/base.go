@@ -18,7 +18,13 @@ type Provider interface {
 	// Name gives the name of the protocol.
 
 	GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool)
-	// GetIP gets the IP.
+	// GetIP gets one detected IP for the requested network family.
+	// Existing provider/updater flows treat this as a singleton target.
+
+	GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool)
+	// GetIPs gets all detected IPs for the requested network family.
+	// Providers that only support one detected IP are temporarily adapted
+	// to return a singleton slice until migration is complete.
 }
 
 // Name gets the protocol name. It returns "none" for nil.

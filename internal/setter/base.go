@@ -40,6 +40,9 @@ type Setter interface {
 
 	// SetWAFList keeps only IP ranges overlapping with detected IPs
 	// and makes sure there will be ranges overlapping with detected ones.
+	// Each managed family currently carries at most one detected IP in detected.
+	// If an entry exists with an invalid IP, detection was attempted but failed.
+	// If an entry is missing, that family is unmanaged.
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
