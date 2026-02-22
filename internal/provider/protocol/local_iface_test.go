@@ -137,6 +137,18 @@ func TestSelectInterfaceIP(t *testing.T) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
 			},
 		},
+		"ipaddr/4/255.255.255.255": {
+			ipnet.IP4,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("255.255.255.255"), Zone: ""}},
+			true, netip.MustParseAddr("255.255.255.255"),
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiWarning,
+					"Failed to find any global unicast %s address among unicast addresses assigned to interface %s, but found a unicast address %s with a scope larger than the link-local scope",
+					"IPv4", "iface", "255.255.255.255",
+				)
+			},
+		},
 		"ipaddr/4/239.1.1.1": {
 			ipnet.IP4,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("239.1.1.1"), Zone: ""}},
