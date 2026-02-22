@@ -126,7 +126,7 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""}, &net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""}},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
 			},
 		},
 		"ipaddr/4/loopback": {
@@ -134,15 +134,31 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "iface")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
+			},
+		},
+		"ipaddr/4/239.1.1.1": {
+			ipnet.IP4,
+			[]net.Addr{&net.IPAddr{IP: net.ParseIP("239.1.1.1"), Zone: ""}},
+			false, invalidIP,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiImpossible,
+					"Found multicast address %s in net.Interface.Addrs for interface %s (expected unicast addresses only); please report this at %s",
+					"239.1.1.1", "iface", pp.IssueReportingURL,
+				)
 			},
 		},
 		"ipaddr/6/ff05::2": {
 			ipnet.IP6,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
-			true, netip.MustParseAddr("ff05::2%site"),
+			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiWarning, "Failed to find any global unicast %s address assigned to interface %s, but found an address %s with a scope larger than the link-local scope", "IPv6", "iface", "ff05::2%site")
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiImpossible,
+					"Found multicast address %s in net.Interface.Addrs for interface %s (expected unicast addresses only); please report this at %s",
+					"ff05::2%site", "iface", pp.IssueReportingURL,
+				)
 			},
 		},
 		"ipaddr/4/dummy": {
@@ -184,14 +200,14 @@ func TestLocalWithInterfaceGetIP(t *testing.T) {
 			"lo", ipnet.IP4, false,
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv4", "lo")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "lo")
 			},
 		},
 		"lo/6": {
 			"lo", ipnet.IP6, false,
 			netip.Addr{},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address assigned to interface %s", "IPv6", "lo")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv6", "lo")
 			},
 		},
 		"non-existent": {
