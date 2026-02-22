@@ -10,8 +10,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// LocalWithInterface detects the IP address by choosing the first "good" IP
-// address assigned to a network interface.
+// LocalWithInterface detects the IP address by choosing the first "good"
+// unicast IP address assigned to a network interface.
 type LocalWithInterface struct {
 	// Name of the detection protocol.
 	ProviderName string
@@ -51,13 +51,23 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 	}
 }
 
-// SelectInterfaceIP takes a list of [net.Addr] and choose the first reasonable IP (if any).
+// SelectInterfaceIP takes a list of unicast [net.Addr] and chooses the first reasonable IP (if any).
 func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) (netip.Addr, bool) {
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
 		if !ok {
 			return ip, false
+		}
+		// net.Interface.Addrs documents that it returns only unicast interface addresses.
+		// A multicast address here means this assumption is broken and should be reported.
+		if ip.IsMulticast() {
+			ppfmt.Noticef(pp.EmojiImpossible,
+				"Found multicast address %s in net.Interface.Addrs for interface %s "+
+					"(expected unicast addresses only); please report this at %s",
+				ip.String(), iface, pp.IssueReportingURL,
+			)
+			return netip.Addr{}, false
 		}
 		ips = append(ips, ip)
 	}
@@ -69,30 +79,29 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 		return ips[i], true
 	}
 
-	// Choose an IP that is above the link-local scope
+	// Choose a unicast IP that is above the link-local scope.
 	i = slices.IndexFunc(ips, func(ip netip.Addr) bool {
 		return ipNet.Matches(ip) &&
 			!ip.IsUnspecified() &&
 			!ip.IsLoopback() &&
-			!ip.IsInterfaceLocalMulticast() &&
-			!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast()
+			!ip.IsLinkLocalUnicast()
 	})
 	if i >= 0 {
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Failed to find any global unicast %s address assigned to interface %s, "+
-				"but found an address %s with a scope larger than the link-local scope",
+			"Failed to find any global unicast %s address among unicast addresses assigned to interface %s, "+
+				"but found a unicast address %s with a scope larger than the link-local scope",
 			ipNet.Describe(), iface, ips[i].String())
 		return ips[i], true
 	}
 
 	ppfmt.Noticef(pp.EmojiError,
-		"Failed to find any global unicast %s address assigned to interface %s",
+		"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
 		ipNet.Describe(), iface)
 	return netip.Addr{}, false
 }
 
-// GetIP detects the IP address by pretending to send an UDP packet.
-// (No actual UDP packets will be sent out.)
+// GetIP detects the IP address from unicast addresses assigned to a network
+// interface.
 func (p LocalWithInterface) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
 	iface, err := net.InterfaceByName(p.InterfaceName)
 	if err != nil {
@@ -102,7 +111,7 @@ func (p LocalWithInterface) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Ty
 
 	addrs, err := iface.Addrs()
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list addresses of interface %s: %v", p.InterfaceName, err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
 		return netip.Addr{}, false
 	}
 

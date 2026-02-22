@@ -130,7 +130,14 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP4, mustIP("224.0.0.1"),
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local address", "IPv4", "224.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv4", "224.0.0.1")
+			},
+		},
+		"4-239.1.1.1": {
+			ipnet.IP4, mustIP("239.1.1.1"),
+			false, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv4", "239.1.1.1")
 			},
 		},
 		"6-invalid": {
@@ -169,14 +176,21 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			ipnet.IP6, mustIP("ff01::1"),
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is an interface-local multicast address", "IPv6", "ff01::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff01::1")
 			},
 		},
-		"6-ff03::1": {
-			ipnet.IP6, mustIP("ff03::1"),
-			true, mustIP("ff03::1"),
+		"6-ff02::1": {
+			ipnet.IP6, mustIP("ff02::1"),
+			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address", "IPv6", "ff03::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv6", "ff02::1")
+			},
+		},
+		"6-ff05::2": {
+			ipnet.IP6, mustIP("ff05::2"),
+			false, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff05::2")
 			},
 		},
 		"100-10.10.10.10": {

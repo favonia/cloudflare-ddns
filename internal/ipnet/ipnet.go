@@ -132,13 +132,19 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 			t.Describe(), ip.String(),
 		)
 		return netip.Addr{}, false
-	case ip.IsInterfaceLocalMulticast():
+	case ip.IsLinkLocalMulticast():
 		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is an interface-local multicast address`,
+			`Detected %s address %s is a link-local multicast address`,
 			t.Describe(), ip.String(),
 		)
 		return netip.Addr{}, false
-	case ip.IsLinkLocalMulticast(), ip.IsLinkLocalUnicast():
+	case ip.IsMulticast():
+		ppfmt.Noticef(pp.EmojiError,
+			`Detected %s address %s is a multicast address`,
+			t.Describe(), ip.String(),
+		)
+		return netip.Addr{}, false
+	case ip.IsLinkLocalUnicast():
 		ppfmt.Noticef(pp.EmojiError,
 			`Detected %s address %s is a link-local address`,
 			t.Describe(), ip.String(),
