@@ -22,7 +22,7 @@ func TestMustDebugConst(t *testing.T) {
 		ok    bool
 	}{
 		{"1.1.1.1", true},
-		{"1::1%1", true},
+		{"1::1%1", false},
 		{"", false},
 		{"blah", false},
 	} {

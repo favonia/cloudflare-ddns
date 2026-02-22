@@ -162,6 +162,17 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			},
 		},
 		"6-1::2": {ipnet.IP6, mustIP("1::2"), true, mustIP("1::2"), nil},
+		"6-1::2%eth0": {
+			ipnet.IP6, mustIP("1::2%eth0"),
+			false, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiError,
+					"Detected IP address %s has a zone identifier and cannot be used as a target address",
+					"1::2%eth0",
+				)
+			},
+		},
 		"6-10.10.10.10": {
 			ipnet.IP6, mustIP("10.10.10.10"),
 			false, invalidIP,

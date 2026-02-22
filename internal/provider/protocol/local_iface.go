@@ -59,6 +59,10 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 		if !ok {
 			return ip, false
 		}
+		if ip.Zone() != "" {
+			ppfmt.Noticef(pp.EmojiWarning, "Ignoring zoned address %s assigned to interface %s", ip.String(), iface)
+			continue
+		}
 		// net.Interface.Addrs documents that it returns only unicast interface addresses.
 		// A multicast address here means this assumption is broken and should be reported.
 		if ip.IsMulticast() {
