@@ -126,6 +126,13 @@ func TestNormalizeDetectedIP(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
 			},
 		},
+		"4-169.254.1.1": {
+			ipnet.IP4, mustIP("169.254.1.1"),
+			false, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local address", "IPv4", "169.254.1.1")
+			},
+		},
 		"4-224.0.0.1": {
 			ipnet.IP4, mustIP("224.0.0.1"),
 			false, invalidIP,
@@ -138,6 +145,13 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			false, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv4", "239.1.1.1")
+			},
+		},
+		"4-255.255.255.255": {
+			ipnet.IP4, mustIP("255.255.255.255"),
+			true, mustIP("255.255.255.255"),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address", "IPv4", "255.255.255.255")
 			},
 		},
 		"6-invalid": {

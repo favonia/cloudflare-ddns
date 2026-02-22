@@ -152,6 +152,14 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		return netip.Addr{}, false
 	}
 
+	// Note that netip.IsGlobalUnicast is not equivalent to "public Internet-routable".
+	// For example, private/internal ranges can still be global unicast.
+	//
+	// Current exceptional case after the filters above: IPv4 limited broadcast
+	// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in IPv4 mode).
+	// In practice, the checks above and IsGlobalUnicast should cover all useful
+	// DDNS address classes; this warning path is kept as a future-proof guard in
+	// case Go or IP standards introduce new edge classes.
 	if !ip.IsGlobalUnicast() {
 		ppfmt.Noticef(
 			pp.EmojiWarning,

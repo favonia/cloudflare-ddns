@@ -79,7 +79,16 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 		return ips[i], true
 	}
 
-	// Choose a unicast IP that is above the link-local scope.
+	// Fallback for deployments that intentionally publish internal addresses.
+	// In practice, IsGlobalUnicast already covers almost all useful candidates for
+	// DDNS, even for private/internal deployments.
+	//
+	// Current exceptional case after the filters above: IPv4 limited broadcast
+	// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in
+	// ExtractInterfaceAddr). This fallback is kept as a future-proof guard for
+	// unusual address classes that are not link-local/loopback/unspecified yet
+	// also not classified as global unicast. Multicast addresses have already been
+	// rejected above.
 	i = slices.IndexFunc(ips, func(ip netip.Addr) bool {
 		return ipNet.Matches(ip) &&
 			!ip.IsUnspecified() &&
