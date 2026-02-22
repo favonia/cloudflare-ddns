@@ -160,6 +160,44 @@ func (c *MockSetterSetCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Typ
 	return c
 }
 
+// SetIPs mocks base method.
+func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IPs []netip.Addr, expectedParams api.RecordParams) setter.ResponseCode {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams)
+	ret0, _ := ret[0].(setter.ResponseCode)
+	return ret0
+}
+
+// SetIPs indicates an expected call of SetIPs.
+func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams any) *MockSetterSetIPsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams)
+	return &MockSetterSetIPsCall{Call: call}
+}
+
+// MockSetterSetIPsCall wrap *gomock.Call
+type MockSetterSetIPsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSetterSetIPsCall) Return(arg0 setter.ResponseCode) *MockSetterSetIPsCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSetterSetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // SetWAFList mocks base method.
 func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, detected map[ipnet.Type]netip.Addr, itemComment string) setter.ResponseCode {
 	m.ctrl.T.Helper()

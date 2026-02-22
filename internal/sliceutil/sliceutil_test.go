@@ -1,16 +1,18 @@
-package sliceutil
+package sliceutil_test
 
 import (
 	"cmp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
 func TestSortAndCompactInt(t *testing.T) {
 	t.Parallel()
 
-	got := SortAndCompact([]int{4, 3, 4, 2, 1, 3, 2}, cmp.Compare[int])
+	got := sliceutil.SortAndCompact([]int{4, 3, 4, 2, 1, 3, 2}, cmp.Compare[int])
 	require.Equal(t, []int{1, 2, 3, 4}, got)
 }
 
@@ -29,7 +31,7 @@ func TestSortAndCompactStruct(t *testing.T) {
 		)
 	}
 
-	got := SortAndCompact([]item{
+	got := sliceutil.SortAndCompact([]item{
 		{Priority: 2, Name: "beta"},
 		{Priority: 1, Name: "alpha"},
 		{Priority: 2, Name: "beta"},
@@ -48,6 +50,6 @@ func TestSortAndCompactNilAndEmpty(t *testing.T) {
 	t.Parallel()
 
 	var nilInput []int
-	require.Nil(t, SortAndCompact(nilInput, cmp.Compare[int]))
-	require.Empty(t, SortAndCompact([]int{}, cmp.Compare[int]))
+	require.Nil(t, sliceutil.SortAndCompact(nilInput, cmp.Compare[int]))
+	require.Empty(t, sliceutil.SortAndCompact([]int{}, cmp.Compare[int]))
 }

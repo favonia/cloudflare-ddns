@@ -20,12 +20,29 @@ import (
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
 	// Set sets a particular domain to the given IP address.
+	// This is a compatibility wrapper around [Setter.SetIPs].
+	//
+	// Invariant: IP must already be a valid canonical address for IPNetwork.
 	Set(
 		ctx context.Context,
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
 		IP netip.Addr,
+		expectedParams api.RecordParams,
+	) ResponseCode
+
+	// SetIPs sets a particular domain to the given IP addresses.
+	//
+	// Invariant: IPs must already be canonical and represent a deterministic set:
+	// - each IP is valid, unzoned, and matches IPNetwork
+	// - IPs are sorted by [netip.Addr.Compare] and deduplicated
+	SetIPs(
+		ctx context.Context,
+		ppfmt pp.PP,
+		IPNetwork ipnet.Type,
+		Domain domain.Domain,
+		IPs []netip.Addr,
 		expectedParams api.RecordParams,
 	) ResponseCode
 
