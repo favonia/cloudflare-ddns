@@ -13,7 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
+//go:generate go tool mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
 
 // ID is a new type representing identifiers to avoid programming mistakes.
 type ID string

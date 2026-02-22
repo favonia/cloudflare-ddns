@@ -7,7 +7,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . BasicMonitor,Monitor
+//go:generate go tool mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . BasicMonitor,Monitor
 
 // maxReadLength is the maximum number of bytes read from an HTTP response.
 const maxReadLength int64 = 102400

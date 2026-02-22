@@ -1,7 +1,7 @@
 // Package pp handles pretty-printing.
 package pp
 
-//go:generate mockgen -typed -destination=../mocks/mock_pp.go -package=mocks . PP
+//go:generate go tool mockgen -typed -destination=../mocks/mock_pp.go -package=mocks . PP
 
 // Verbosity is the type of message levels.
 type Verbosity int

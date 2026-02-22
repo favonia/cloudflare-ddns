@@ -5,6 +5,7 @@
 //
 //	mockgen -typed -destination=../mocks/mock_api.go -package=mocks . Handle
 //
+
 // Package mocks is a generated GoMock package.
 package mocks
 
@@ -24,6 +25,7 @@ import (
 type MockHandle struct {
 	ctrl     *gomock.Controller
 	recorder *MockHandleMockRecorder
+	isgomock struct{}
 }
 
 // MockHandleMockRecorder is the mock recorder for MockHandle.
@@ -44,201 +46,201 @@ func (m *MockHandle) EXPECT() *MockHandleMockRecorder {
 }
 
 // CreateRecord mocks base method.
-func (m *MockHandle) CreateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 netip.Addr, arg5 api.RecordParams) (api.ID, bool) {
+func (m *MockHandle) CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, ip netip.Addr, params api.RecordParams) (api.ID, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRecord", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "CreateRecord", ctx, ppfmt, ipNet, arg3, ip, params)
 	ret0, _ := ret[0].(api.ID)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
 // CreateRecord indicates an expected call of CreateRecord.
-func (mr *MockHandleMockRecorder) CreateRecord(arg0, arg1, arg2, arg3, arg4, arg5 any) *HandleCreateRecordCall {
+func (mr *MockHandleMockRecorder) CreateRecord(ctx, ppfmt, ipNet, arg3, ip, params any) *MockHandleCreateRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockHandle)(nil).CreateRecord), arg0, arg1, arg2, arg3, arg4, arg5)
-	return &HandleCreateRecordCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockHandle)(nil).CreateRecord), ctx, ppfmt, ipNet, arg3, ip, params)
+	return &MockHandleCreateRecordCall{Call: call}
 }
 
-// HandleCreateRecordCall wrap *gomock.Call
-type HandleCreateRecordCall struct {
+// MockHandleCreateRecordCall wrap *gomock.Call
+type MockHandleCreateRecordCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleCreateRecordCall) Return(arg0 api.ID, arg1 bool) *HandleCreateRecordCall {
+func (c *MockHandleCreateRecordCall) Return(arg0 api.ID, arg1 bool) *MockHandleCreateRecordCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *HandleCreateRecordCall {
+func (c *MockHandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *MockHandleCreateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *HandleCreateRecordCall {
+func (c *MockHandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *MockHandleCreateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateWAFListItems mocks base method.
-func (m *MockHandle) CreateWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string, arg4 []netip.Prefix, arg5 string) bool {
+func (m *MockHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string, items []netip.Prefix, comment string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateWAFListItems", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "CreateWAFListItems", ctx, ppfmt, list, expectedDescription, items, comment)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // CreateWAFListItems indicates an expected call of CreateWAFListItems.
-func (mr *MockHandleMockRecorder) CreateWAFListItems(arg0, arg1, arg2, arg3, arg4, arg5 any) *HandleCreateWAFListItemsCall {
+func (mr *MockHandleMockRecorder) CreateWAFListItems(ctx, ppfmt, list, expectedDescription, items, comment any) *MockHandleCreateWAFListItemsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWAFListItems", reflect.TypeOf((*MockHandle)(nil).CreateWAFListItems), arg0, arg1, arg2, arg3, arg4, arg5)
-	return &HandleCreateWAFListItemsCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWAFListItems", reflect.TypeOf((*MockHandle)(nil).CreateWAFListItems), ctx, ppfmt, list, expectedDescription, items, comment)
+	return &MockHandleCreateWAFListItemsCall{Call: call}
 }
 
-// HandleCreateWAFListItemsCall wrap *gomock.Call
-type HandleCreateWAFListItemsCall struct {
+// MockHandleCreateWAFListItemsCall wrap *gomock.Call
+type MockHandleCreateWAFListItemsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleCreateWAFListItemsCall) Return(arg0 bool) *HandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) Return(arg0 bool) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *HandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *HandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteRecord mocks base method.
-func (m *MockHandle) DeleteRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID, arg5 api.DeletionMode) bool {
+func (m *MockHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, id api.ID, mode api.DeletionMode) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRecord", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "DeleteRecord", ctx, ppfmt, ipNet, arg3, id, mode)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // DeleteRecord indicates an expected call of DeleteRecord.
-func (mr *MockHandleMockRecorder) DeleteRecord(arg0, arg1, arg2, arg3, arg4, arg5 any) *HandleDeleteRecordCall {
+func (mr *MockHandleMockRecorder) DeleteRecord(ctx, ppfmt, ipNet, arg3, id, mode any) *MockHandleDeleteRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecord", reflect.TypeOf((*MockHandle)(nil).DeleteRecord), arg0, arg1, arg2, arg3, arg4, arg5)
-	return &HandleDeleteRecordCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecord", reflect.TypeOf((*MockHandle)(nil).DeleteRecord), ctx, ppfmt, ipNet, arg3, id, mode)
+	return &MockHandleDeleteRecordCall{Call: call}
 }
 
-// HandleDeleteRecordCall wrap *gomock.Call
-type HandleDeleteRecordCall struct {
+// MockHandleDeleteRecordCall wrap *gomock.Call
+type MockHandleDeleteRecordCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleDeleteRecordCall) Return(arg0 bool) *HandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) Return(arg0 bool) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool) *HandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool) *HandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteWAFListItems mocks base method.
-func (m *MockHandle) DeleteWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string, arg4 []api.ID) bool {
+func (m *MockHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string, ids []api.ID) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteWAFListItems", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "DeleteWAFListItems", ctx, ppfmt, list, expectedDescription, ids)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // DeleteWAFListItems indicates an expected call of DeleteWAFListItems.
-func (mr *MockHandleMockRecorder) DeleteWAFListItems(arg0, arg1, arg2, arg3, arg4 any) *HandleDeleteWAFListItemsCall {
+func (mr *MockHandleMockRecorder) DeleteWAFListItems(ctx, ppfmt, list, expectedDescription, ids any) *MockHandleDeleteWAFListItemsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWAFListItems", reflect.TypeOf((*MockHandle)(nil).DeleteWAFListItems), arg0, arg1, arg2, arg3, arg4)
-	return &HandleDeleteWAFListItemsCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWAFListItems", reflect.TypeOf((*MockHandle)(nil).DeleteWAFListItems), ctx, ppfmt, list, expectedDescription, ids)
+	return &MockHandleDeleteWAFListItemsCall{Call: call}
 }
 
-// HandleDeleteWAFListItemsCall wrap *gomock.Call
-type HandleDeleteWAFListItemsCall struct {
+// MockHandleDeleteWAFListItemsCall wrap *gomock.Call
+type MockHandleDeleteWAFListItemsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleDeleteWAFListItemsCall) Return(arg0 bool) *HandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) Return(arg0 bool) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleDeleteWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *HandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *HandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // FinalClearWAFListAsync mocks base method.
-func (m *MockHandle) FinalClearWAFListAsync(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string) (bool, bool) {
+func (m *MockHandle) FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string) (bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalClearWAFListAsync", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "FinalClearWAFListAsync", ctx, ppfmt, list, expectedDescription)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
 // FinalClearWAFListAsync indicates an expected call of FinalClearWAFListAsync.
-func (mr *MockHandleMockRecorder) FinalClearWAFListAsync(arg0, arg1, arg2, arg3 any) *HandleFinalClearWAFListAsyncCall {
+func (mr *MockHandleMockRecorder) FinalClearWAFListAsync(ctx, ppfmt, list, expectedDescription any) *MockHandleFinalClearWAFListAsyncCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFListAsync", reflect.TypeOf((*MockHandle)(nil).FinalClearWAFListAsync), arg0, arg1, arg2, arg3)
-	return &HandleFinalClearWAFListAsyncCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFListAsync", reflect.TypeOf((*MockHandle)(nil).FinalClearWAFListAsync), ctx, ppfmt, list, expectedDescription)
+	return &MockHandleFinalClearWAFListAsyncCall{Call: call}
 }
 
-// HandleFinalClearWAFListAsyncCall wrap *gomock.Call
-type HandleFinalClearWAFListAsyncCall struct {
+// MockHandleFinalClearWAFListAsyncCall wrap *gomock.Call
+type MockHandleFinalClearWAFListAsyncCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleFinalClearWAFListAsyncCall) Return(arg0, arg1 bool) *HandleFinalClearWAFListAsyncCall {
+func (c *MockHandleFinalClearWAFListAsyncCall) Return(arg0, arg1 bool) *MockHandleFinalClearWAFListAsyncCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleFinalClearWAFListAsyncCall) Do(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *HandleFinalClearWAFListAsyncCall {
+func (c *MockHandleFinalClearWAFListAsyncCall) Do(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *MockHandleFinalClearWAFListAsyncCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *HandleFinalClearWAFListAsyncCall {
+func (c *MockHandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *MockHandleFinalClearWAFListAsyncCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.RecordParams) ([]api.Record, bool, bool) {
+func (m *MockHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, expectedParams api.RecordParams) ([]api.Record, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRecords", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "ListRecords", ctx, ppfmt, ipNet, arg3, expectedParams)
 	ret0, _ := ret[0].([]api.Record)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -246,39 +248,39 @@ func (m *MockHandle) ListRecords(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Ty
 }
 
 // ListRecords indicates an expected call of ListRecords.
-func (mr *MockHandleMockRecorder) ListRecords(arg0, arg1, arg2, arg3, arg4 any) *HandleListRecordsCall {
+func (mr *MockHandleMockRecorder) ListRecords(ctx, ppfmt, ipNet, arg3, expectedParams any) *MockHandleListRecordsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), arg0, arg1, arg2, arg3, arg4)
-	return &HandleListRecordsCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), ctx, ppfmt, ipNet, arg3, expectedParams)
+	return &MockHandleListRecordsCall{Call: call}
 }
 
-// HandleListRecordsCall wrap *gomock.Call
-type HandleListRecordsCall struct {
+// MockHandleListRecordsCall wrap *gomock.Call
+type MockHandleListRecordsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *HandleListRecordsCall {
+func (c *MockHandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *MockHandleListRecordsCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *MockHandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *HandleListRecordsCall {
+func (c *MockHandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListWAFListItems mocks base method.
-func (m *MockHandle) ListWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api.WAFList, arg3 string) ([]api.WAFListItem, bool, bool, bool) {
+func (m *MockHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string) ([]api.WAFListItem, bool, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListWAFListItems", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ListWAFListItems", ctx, ppfmt, list, expectedDescription)
 	ret0, _ := ret[0].([]api.WAFListItem)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -287,69 +289,69 @@ func (m *MockHandle) ListWAFListItems(arg0 context.Context, arg1 pp.PP, arg2 api
 }
 
 // ListWAFListItems indicates an expected call of ListWAFListItems.
-func (mr *MockHandleMockRecorder) ListWAFListItems(arg0, arg1, arg2, arg3 any) *HandleListWAFListItemsCall {
+func (mr *MockHandleMockRecorder) ListWAFListItems(ctx, ppfmt, list, expectedDescription any) *MockHandleListWAFListItemsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWAFListItems", reflect.TypeOf((*MockHandle)(nil).ListWAFListItems), arg0, arg1, arg2, arg3)
-	return &HandleListWAFListItemsCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWAFListItems", reflect.TypeOf((*MockHandle)(nil).ListWAFListItems), ctx, ppfmt, list, expectedDescription)
+	return &MockHandleListWAFListItemsCall{Call: call}
 }
 
-// HandleListWAFListItemsCall wrap *gomock.Call
-type HandleListWAFListItemsCall struct {
+// MockHandleListWAFListItemsCall wrap *gomock.Call
+type MockHandleListWAFListItemsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleListWAFListItemsCall) Return(arg0 []api.WAFListItem, arg1, arg2, arg3 bool) *HandleListWAFListItemsCall {
+func (c *MockHandleListWAFListItemsCall) Return(arg0 []api.WAFListItem, arg1, arg2, arg3 bool) *MockHandleListWAFListItemsCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2, arg3)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *HandleListWAFListItemsCall {
+func (c *MockHandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *HandleListWAFListItemsCall {
+func (c *MockHandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UpdateRecord mocks base method.
-func (m *MockHandle) UpdateRecord(arg0 context.Context, arg1 pp.PP, arg2 ipnet.Type, arg3 domain.Domain, arg4 api.ID, arg5 netip.Addr, arg6, arg7 api.RecordParams) bool {
+func (m *MockHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, id api.ID, ip netip.Addr, currentParams, expectedParams api.RecordParams) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateRecord", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret := m.ctrl.Call(m, "UpdateRecord", ctx, ppfmt, ipNet, arg3, id, ip, currentParams, expectedParams)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // UpdateRecord indicates an expected call of UpdateRecord.
-func (mr *MockHandleMockRecorder) UpdateRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 any) *HandleUpdateRecordCall {
+func (mr *MockHandleMockRecorder) UpdateRecord(ctx, ppfmt, ipNet, arg3, id, ip, currentParams, expectedParams any) *MockHandleUpdateRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecord", reflect.TypeOf((*MockHandle)(nil).UpdateRecord), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-	return &HandleUpdateRecordCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecord", reflect.TypeOf((*MockHandle)(nil).UpdateRecord), ctx, ppfmt, ipNet, arg3, id, ip, currentParams, expectedParams)
+	return &MockHandleUpdateRecordCall{Call: call}
 }
 
-// HandleUpdateRecordCall wrap *gomock.Call
-type HandleUpdateRecordCall struct {
+// MockHandleUpdateRecordCall wrap *gomock.Call
+type MockHandleUpdateRecordCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *HandleUpdateRecordCall) Return(arg0 bool) *HandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) Return(arg0 bool) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *HandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *HandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *HandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *HandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, netip.Addr, api.RecordParams, api.RecordParams) bool) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

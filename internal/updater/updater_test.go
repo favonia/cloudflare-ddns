@@ -61,7 +61,7 @@ func initConfig() *config.Config {
 	return conf
 }
 
-func hintIP6DetectionFails(p *mocks.MockPP) *mocks.PPNoticeOncefCall {
+func hintIP6DetectionFails(p *mocks.MockPP) *mocks.MockPPNoticeOncefCall {
 	return p.EXPECT().NoticeOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", pp.ManualURL)
 }
 
