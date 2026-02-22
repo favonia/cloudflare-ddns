@@ -106,8 +106,6 @@ jobs:
             echo "Please run 'go mod tidy'"
             exit 1
           fi
-      - name: 🎭 Install GoMock
-        run: go install go.uber.org/mock/mockgen@v0.3.0
       - name: 🧪 Run `go generate`
         run: |
           rm ./internal/mocks -rf

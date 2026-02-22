@@ -12,7 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func printItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.PPInfofCall {
+func printItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.MockPPInfofCall {
 	t.Helper()
 	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, key, value)
 }

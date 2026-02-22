@@ -5,6 +5,7 @@
 //
 //	mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . BasicMonitor,Monitor
 //
+
 // Package mocks is a generated GoMock package.
 package mocks
 
@@ -21,6 +22,7 @@ import (
 type MockBasicMonitor struct {
 	ctrl     *gomock.Controller
 	recorder *MockBasicMonitorMockRecorder
+	isgomock struct{}
 }
 
 // MockBasicMonitorMockRecorder is the mock recorder for MockBasicMonitor.
@@ -41,75 +43,75 @@ func (m *MockBasicMonitor) EXPECT() *MockBasicMonitorMockRecorder {
 }
 
 // Describe mocks base method.
-func (m *MockBasicMonitor) Describe(arg0 func(string, string) bool) {
+func (m *MockBasicMonitor) Describe(yield func(string, string) bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Describe", arg0)
+	m.ctrl.Call(m, "Describe", yield)
 }
 
 // Describe indicates an expected call of Describe.
-func (mr *MockBasicMonitorMockRecorder) Describe(arg0 any) *BasicMonitorDescribeCall {
+func (mr *MockBasicMonitorMockRecorder) Describe(yield any) *MockBasicMonitorDescribeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockBasicMonitor)(nil).Describe), arg0)
-	return &BasicMonitorDescribeCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockBasicMonitor)(nil).Describe), yield)
+	return &MockBasicMonitorDescribeCall{Call: call}
 }
 
-// BasicMonitorDescribeCall wrap *gomock.Call
-type BasicMonitorDescribeCall struct {
+// MockBasicMonitorDescribeCall wrap *gomock.Call
+type MockBasicMonitorDescribeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *BasicMonitorDescribeCall) Return() *BasicMonitorDescribeCall {
+func (c *MockBasicMonitorDescribeCall) Return() *MockBasicMonitorDescribeCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *BasicMonitorDescribeCall) Do(f func(func(string, string) bool)) *BasicMonitorDescribeCall {
+func (c *MockBasicMonitorDescribeCall) Do(f func(func(string, string) bool)) *MockBasicMonitorDescribeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *BasicMonitorDescribeCall) DoAndReturn(f func(func(string, string) bool)) *BasicMonitorDescribeCall {
+func (c *MockBasicMonitorDescribeCall) DoAndReturn(f func(func(string, string) bool)) *MockBasicMonitorDescribeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Ping mocks base method.
-func (m *MockBasicMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
+func (m *MockBasicMonitor) Ping(ctx context.Context, ppfmt pp.PP, msg monitor.Message) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Ping", ctx, ppfmt, msg)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockBasicMonitorMockRecorder) Ping(arg0, arg1, arg2 any) *BasicMonitorPingCall {
+func (mr *MockBasicMonitorMockRecorder) Ping(ctx, ppfmt, msg any) *MockBasicMonitorPingCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockBasicMonitor)(nil).Ping), arg0, arg1, arg2)
-	return &BasicMonitorPingCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockBasicMonitor)(nil).Ping), ctx, ppfmt, msg)
+	return &MockBasicMonitorPingCall{Call: call}
 }
 
-// BasicMonitorPingCall wrap *gomock.Call
-type BasicMonitorPingCall struct {
+// MockBasicMonitorPingCall wrap *gomock.Call
+type MockBasicMonitorPingCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *BasicMonitorPingCall) Return(arg0 bool) *BasicMonitorPingCall {
+func (c *MockBasicMonitorPingCall) Return(arg0 bool) *MockBasicMonitorPingCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *BasicMonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *BasicMonitorPingCall {
+func (c *MockBasicMonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MockBasicMonitorPingCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *BasicMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *BasicMonitorPingCall {
+func (c *MockBasicMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MockBasicMonitorPingCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -118,6 +120,7 @@ func (c *BasicMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monito
 type MockMonitor struct {
 	ctrl     *gomock.Controller
 	recorder *MockMonitorMockRecorder
+	isgomock struct{}
 }
 
 // MockMonitorMockRecorder is the mock recorder for MockMonitor.
@@ -138,189 +141,189 @@ func (m *MockMonitor) EXPECT() *MockMonitorMockRecorder {
 }
 
 // Describe mocks base method.
-func (m *MockMonitor) Describe(arg0 func(string, string) bool) {
+func (m *MockMonitor) Describe(yield func(string, string) bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Describe", arg0)
+	m.ctrl.Call(m, "Describe", yield)
 }
 
 // Describe indicates an expected call of Describe.
-func (mr *MockMonitorMockRecorder) Describe(arg0 any) *MonitorDescribeCall {
+func (mr *MockMonitorMockRecorder) Describe(yield any) *MockMonitorDescribeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockMonitor)(nil).Describe), arg0)
-	return &MonitorDescribeCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockMonitor)(nil).Describe), yield)
+	return &MockMonitorDescribeCall{Call: call}
 }
 
-// MonitorDescribeCall wrap *gomock.Call
-type MonitorDescribeCall struct {
+// MockMonitorDescribeCall wrap *gomock.Call
+type MockMonitorDescribeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MonitorDescribeCall) Return() *MonitorDescribeCall {
+func (c *MockMonitorDescribeCall) Return() *MockMonitorDescribeCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorDescribeCall) Do(f func(func(string, string) bool)) *MonitorDescribeCall {
+func (c *MockMonitorDescribeCall) Do(f func(func(string, string) bool)) *MockMonitorDescribeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorDescribeCall) DoAndReturn(f func(func(string, string) bool)) *MonitorDescribeCall {
+func (c *MockMonitorDescribeCall) DoAndReturn(f func(func(string, string) bool)) *MockMonitorDescribeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Exit mocks base method.
-func (m *MockMonitor) Exit(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
+func (m *MockMonitor) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exit", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Exit", ctx, ppfmt, message)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Exit indicates an expected call of Exit.
-func (mr *MockMonitorMockRecorder) Exit(arg0, arg1, arg2 any) *MonitorExitCall {
+func (mr *MockMonitorMockRecorder) Exit(ctx, ppfmt, message any) *MockMonitorExitCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exit", reflect.TypeOf((*MockMonitor)(nil).Exit), arg0, arg1, arg2)
-	return &MonitorExitCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exit", reflect.TypeOf((*MockMonitor)(nil).Exit), ctx, ppfmt, message)
+	return &MockMonitorExitCall{Call: call}
 }
 
-// MonitorExitCall wrap *gomock.Call
-type MonitorExitCall struct {
+// MockMonitorExitCall wrap *gomock.Call
+type MockMonitorExitCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MonitorExitCall) Return(arg0 bool) *MonitorExitCall {
+func (c *MockMonitorExitCall) Return(arg0 bool) *MockMonitorExitCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorExitCall) Do(f func(context.Context, pp.PP, string) bool) *MonitorExitCall {
+func (c *MockMonitorExitCall) Do(f func(context.Context, pp.PP, string) bool) *MockMonitorExitCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorExitCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *MonitorExitCall {
+func (c *MockMonitorExitCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *MockMonitorExitCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Log mocks base method.
-func (m *MockMonitor) Log(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
+func (m *MockMonitor) Log(ctx context.Context, ppfmt pp.PP, msg monitor.Message) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Log", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Log", ctx, ppfmt, msg)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Log indicates an expected call of Log.
-func (mr *MockMonitorMockRecorder) Log(arg0, arg1, arg2 any) *MonitorLogCall {
+func (mr *MockMonitorMockRecorder) Log(ctx, ppfmt, msg any) *MockMonitorLogCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockMonitor)(nil).Log), arg0, arg1, arg2)
-	return &MonitorLogCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockMonitor)(nil).Log), ctx, ppfmt, msg)
+	return &MockMonitorLogCall{Call: call}
 }
 
-// MonitorLogCall wrap *gomock.Call
-type MonitorLogCall struct {
+// MockMonitorLogCall wrap *gomock.Call
+type MockMonitorLogCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MonitorLogCall) Return(arg0 bool) *MonitorLogCall {
+func (c *MockMonitorLogCall) Return(arg0 bool) *MockMonitorLogCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorLogCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorLogCall {
+func (c *MockMonitorLogCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MockMonitorLogCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorLogCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorLogCall {
+func (c *MockMonitorLogCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MockMonitorLogCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Ping mocks base method.
-func (m *MockMonitor) Ping(arg0 context.Context, arg1 pp.PP, arg2 monitor.Message) bool {
+func (m *MockMonitor) Ping(ctx context.Context, ppfmt pp.PP, msg monitor.Message) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Ping", ctx, ppfmt, msg)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockMonitorMockRecorder) Ping(arg0, arg1, arg2 any) *MonitorPingCall {
+func (mr *MockMonitorMockRecorder) Ping(ctx, ppfmt, msg any) *MockMonitorPingCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockMonitor)(nil).Ping), arg0, arg1, arg2)
-	return &MonitorPingCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockMonitor)(nil).Ping), ctx, ppfmt, msg)
+	return &MockMonitorPingCall{Call: call}
 }
 
-// MonitorPingCall wrap *gomock.Call
-type MonitorPingCall struct {
+// MockMonitorPingCall wrap *gomock.Call
+type MockMonitorPingCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MonitorPingCall) Return(arg0 bool) *MonitorPingCall {
+func (c *MockMonitorPingCall) Return(arg0 bool) *MockMonitorPingCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorPingCall {
+func (c *MockMonitorPingCall) Do(f func(context.Context, pp.PP, monitor.Message) bool) *MockMonitorPingCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MonitorPingCall {
+func (c *MockMonitorPingCall) DoAndReturn(f func(context.Context, pp.PP, monitor.Message) bool) *MockMonitorPingCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Start mocks base method.
-func (m *MockMonitor) Start(arg0 context.Context, arg1 pp.PP, arg2 string) bool {
+func (m *MockMonitor) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Start", ctx, ppfmt, message)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockMonitorMockRecorder) Start(arg0, arg1, arg2 any) *MonitorStartCall {
+func (mr *MockMonitorMockRecorder) Start(ctx, ppfmt, message any) *MockMonitorStartCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockMonitor)(nil).Start), arg0, arg1, arg2)
-	return &MonitorStartCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockMonitor)(nil).Start), ctx, ppfmt, message)
+	return &MockMonitorStartCall{Call: call}
 }
 
-// MonitorStartCall wrap *gomock.Call
-type MonitorStartCall struct {
+// MockMonitorStartCall wrap *gomock.Call
+type MockMonitorStartCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MonitorStartCall) Return(arg0 bool) *MonitorStartCall {
+func (c *MockMonitorStartCall) Return(arg0 bool) *MockMonitorStartCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MonitorStartCall) Do(f func(context.Context, pp.PP, string) bool) *MonitorStartCall {
+func (c *MockMonitorStartCall) Do(f func(context.Context, pp.PP, string) bool) *MockMonitorStartCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MonitorStartCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *MonitorStartCall {
+func (c *MockMonitorStartCall) DoAndReturn(f func(context.Context, pp.PP, string) bool) *MockMonitorStartCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

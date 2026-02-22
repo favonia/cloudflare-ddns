@@ -7,7 +7,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate mockgen -typed -destination=../mocks/mock_notifier.go -package=mocks . Notifier
+//go:generate go tool mockgen -typed -destination=../mocks/mock_notifier.go -package=mocks . Notifier
 
 // Notifier is an abstract service for push notifications.
 type Notifier interface {
