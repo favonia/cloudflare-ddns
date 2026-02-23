@@ -168,8 +168,8 @@ func TestNormalizeDetectedIP(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiError,
-					"Detected IP address %s has a zone identifier and cannot be used as a target address",
-					"1::2%eth0",
+					"Detected %s address %s has a zone identifier and cannot be used as a target address",
+					"IPv6", "1::2%eth0",
 				)
 			},
 		},

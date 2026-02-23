@@ -89,13 +89,6 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		)
 		return netip.Addr{}, false
 	}
-	if ip.Zone() != "" {
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected IP address %s has a zone identifier and cannot be used as a target address",
-			ip.String(),
-		)
-		return netip.Addr{}, false
-	}
 
 	switch t {
 	case IP4:
@@ -107,7 +100,7 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 		ip = ip.Unmap()
 
 	case IP6:
-		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
+		// Accept only native IPv6 addresses and reject IPv4-mapped IPv6.
 		if !ip.Is6() {
 			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address", ip.String())
 			return netip.Addr{}, false
@@ -154,6 +147,18 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 	case ip.IsLinkLocalUnicast():
 		ppfmt.Noticef(pp.EmojiError,
 			`Detected %s address %s is a link-local address`,
+			t.Describe(), ip.String(),
+		)
+		return netip.Addr{}, false
+	}
+
+	// Special-use scoped addresses were rejected above. A remaining
+	// zone-qualified address is unusual and often indicates misconfiguration.
+	// Independently, Cloudflare DNS record content is validated as an
+	// IPv4/IPv6 address, so zone-qualified values must be rejected.
+	if ip.Zone() != "" {
+		ppfmt.Noticef(pp.EmojiError,
+			"Detected %s address %s has a zone identifier and cannot be used as a target address",
 			t.Describe(), ip.String(),
 		)
 		return netip.Addr{}, false
