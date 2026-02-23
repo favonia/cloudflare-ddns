@@ -22,8 +22,23 @@ func wafItem(cidr string, id api.ID) api.WAFListItem {
 	}
 }
 
-func detected(ip4, ip6 netip.Addr) map[ipnet.Type]netip.Addr {
-	return map[ipnet.Type]netip.Addr{
+func detected(ip4, ip6 netip.Addr) map[ipnet.Type][]netip.Addr {
+	var ip4s []netip.Addr
+	var ip6s []netip.Addr
+	if ip4.IsValid() {
+		ip4s = []netip.Addr{ip4}
+	}
+	if ip6.IsValid() {
+		ip6s = []netip.Addr{ip6}
+	}
+	return map[ipnet.Type][]netip.Addr{
+		ipnet.IP4: ip4s,
+		ipnet.IP6: ip6s,
+	}
+}
+
+func detectedSets(ip4, ip6 []netip.Addr) map[ipnet.Type][]netip.Addr {
+	return map[ipnet.Type][]netip.Addr{
 		ipnet.IP4: ip4,
 		ipnet.IP6: ip6,
 	}

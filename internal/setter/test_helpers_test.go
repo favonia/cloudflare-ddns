@@ -382,10 +382,7 @@ func expectWAFListDelete(
 	ids []api.ID,
 	ok bool,
 ) any {
-	if len(ids) == 0 {
-		return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, []api.ID{}).Return(ok)
-	}
-	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, gomock.InAnyOrder(ids)).Return(ok)
+	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, ids).Return(ok)
 }
 
 func wafItemIDs(items []api.WAFListItem) []api.ID {

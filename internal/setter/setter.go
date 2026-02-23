@@ -1,8 +1,10 @@
 package setter
 
 import (
+	"cmp"
 	"context"
 	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -228,12 +230,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 // SetWAFList updates a WAF list.
 //
-// If detectedIP contains a zero (invalid) IP, it means the detection is attempted but failed
-// and all matching IP addresses should be preserved. On the other hand, if an entry is missing
-// from detectIP, it means the IP network was not managed and all addresses in that network
-// will be removed.
+// For each IP family:
+// - managed + targets: keep ranges covering any target, add smallest prefixes for uncovered targets
+// - managed + empty target set: detection failed, preserve existing family ranges
+// - unmanaged: remove all family ranges.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
-	list api.WAFList, listDescription string, detectedIP map[ipnet.Type]netip.Addr, itemComment string,
+	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type][]netip.Addr, itemComment string,
 ) ResponseCode {
 	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
 	if !ok {
@@ -246,25 +248,46 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	var itemsToDelete []api.WAFListItem
 	var itemsToCreate []netip.Prefix
 	for ipNet := range ipnet.All {
-		detectedIP, managed := detectedIP[ipNet]
-		if managed && !detectedIP.IsValid() {
+		targets, managed := detectedIPs[ipNet]
+		if managed && len(targets) == 0 {
 			continue // detection was attempted but failed; do nothing
 		}
-		covered := false
+
+		coveredTargets := make(map[netip.Addr]struct{}, len(targets))
 		for _, item := range items {
-			if ipNet.Matches(item.Addr()) {
-				if item.Contains(detectedIP) {
+			if !ipNet.Matches(item.Addr()) {
+				continue
+			}
+			if !managed {
+				itemsToDelete = append(itemsToDelete, item)
+				continue
+			}
+
+			covered := false
+			for _, target := range targets {
+				if item.Contains(target) {
+					coveredTargets[target] = struct{}{}
 					covered = true
-				} else {
-					itemsToDelete = append(itemsToDelete, item)
 				}
 			}
+			if !covered {
+				itemsToDelete = append(itemsToDelete, item)
+			}
 		}
-		if !covered && detectedIP.IsValid() {
-			itemsToCreate = append(itemsToCreate,
-				netip.PrefixFrom(detectedIP, api.WAFListMaxBitLen[ipNet]).Masked())
+
+		for _, target := range targets {
+			if _, covered := coveredTargets[target]; !covered {
+				itemsToCreate = append(itemsToCreate,
+					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipNet]).Masked())
+			}
 		}
 	}
+
+	slices.SortFunc(itemsToCreate, netip.Prefix.Compare)
+	itemsToCreate = slices.Compact(itemsToCreate)
+	slices.SortFunc(itemsToDelete, func(i, j api.WAFListItem) int {
+		return cmp.Or(i.Compare(j.Prefix), cmp.Compare(i.ID, j.ID))
+	})
 
 	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
 		if cached {

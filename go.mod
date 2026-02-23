@@ -1,6 +1,6 @@
 module github.com/favonia/cloudflare-ddns
 
-go 1.24.0 // with patch version to satisfy CodeQL
+go 1.26.0 // with patch version to satisfy CodeQL
 
 retract (
 	v1.14.1 // nil pointer bug

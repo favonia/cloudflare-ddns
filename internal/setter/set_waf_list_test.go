@@ -14,7 +14,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -26,8 +25,10 @@ func TestSetWAFList(t *testing.T) {
 	wafList := api.WAFList{AccountID: "account", Name: listName}
 
 	var (
-		ip4 = netip.MustParseAddr("10.0.0.1")
-		ip6 = netip.MustParseAddr("2001:db8::1111")
+		ip4  = netip.MustParseAddr("10.0.0.1")
+		ip4b = netip.MustParseAddr("10.0.1.2")
+		ip6  = netip.MustParseAddr("2001:db8::1111")
+		ip6b = netip.MustParseAddr("2001:db9:1::2222")
 
 		prefix4 = wafItem("10.0.0.1/32", "pre4")
 		prefix6 = wafItem("2001:0db8::/64", "pre6")
@@ -39,16 +40,17 @@ func TestSetWAFList(t *testing.T) {
 		prefix4wrong2 = wafItem("20.0.0.0/20", "ip4-20")
 		prefix4wrong3 = wafItem("20.0.0.0/24", "ip4-24")
 
-		prefix6range1 = wafItem("2001:db8::/32", "ip6-32")
-		prefix6range2 = wafItem("2001:db8::/40", "ip6-40")
-		prefix6range3 = wafItem("2001:db8::/48", "ip6-48")
-		prefix6wrong1 = wafItem("4001:db8::/32", "ip6-32")
-		prefix6wrong2 = wafItem("4001:db8::/40", "ip6-40")
-		prefix6wrong3 = wafItem("4001:db8::/48", "ip6-48")
+		prefix6range1  = wafItem("2001:db8::/32", "ip6-32")
+		prefix6range2  = wafItem("2001:db8::/40", "ip6-40")
+		prefix6range3  = wafItem("2001:db8::/48", "ip6-48")
+		prefix6target2 = wafItem("2001:db9:1::/64", "ip6-target2")
+		prefix6wrong1  = wafItem("4001:db8::/32", "ip6-32")
+		prefix6wrong2  = wafItem("4001:db8::/40", "ip6-40")
+		prefix6wrong3  = wafItem("4001:db8::/48", "ip6-48")
 	)
 
 	type items = []api.WAFListItem
-	type ipmap = map[ipnet.Type]netip.Addr
+	type ipmap = map[ipnet.Type][]netip.Addr
 
 	targetPrefixes := []netip.Prefix{prefix4.Prefix, prefix6.Prefix}
 
@@ -79,6 +81,14 @@ func TestSetWAFList(t *testing.T) {
 		prefix6wrong2,
 		prefix6wrong3,
 		prefix6wrong1,
+	}
+	sortedWrongItems := items{
+		prefix4wrong1,
+		prefix4wrong2,
+		prefix4wrong3,
+		prefix6wrong1,
+		prefix6wrong2,
+		prefix6wrong3,
 	}
 
 	cases := []struct {
@@ -113,7 +123,7 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		{
-			name:     "ipv4-detection-invalid/skip-ipv4-updates/response-noop",
+			name:     "ipv4-detection-failed/skip-ipv4-updates/response-noop",
 			detected: detected(netip.Addr{}, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
@@ -148,7 +158,7 @@ func TestSetWAFList(t *testing.T) {
 					cached:          false,
 					createPrefixes:  nil,
 					createOK:        true,
-					deleteItems:     wrongItems,
+					deleteItems:     sortedWrongItems,
 					deleteOK:        true,
 				})
 			},
@@ -165,7 +175,7 @@ func TestSetWAFList(t *testing.T) {
 					cached:          false,
 					createPrefixes:  targetPrefixes,
 					createOK:        true,
-					deleteItems:     wrongItems,
+					deleteItems:     sortedWrongItems,
 					deleteOK:        true,
 				})
 			},
@@ -188,6 +198,31 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		{
+			name: "multi-target/keep-covering-prefixes-fill-uncovered-and-delete-unmatched/response-updated",
+			detected: detectedSets(
+				[]netip.Addr{ip4, ip4b},
+				[]netip.Addr{ip6, ip6b},
+			),
+			resp: setter.ResponseUpdated,
+			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				expectWAFListMutation(ctx, p, m, wafList, wafListMutationExpectation{
+					listDescription: listDescription,
+					items: items{
+						prefix6range1,
+						prefix4range2,
+						prefix4wrong2,
+						prefix6wrong1,
+					},
+					alreadyExisting: true,
+					cached:          false,
+					createPrefixes:  []netip.Prefix{prefix6target2.Prefix},
+					createOK:        true,
+					deleteItems:     []api.WAFListItem{prefix4wrong2, prefix6wrong1},
+					deleteOK:        true,
+				})
+			},
+		},
+		{
 			name:     "mixed-covered-and-wrong-prefixes/delete-wrong-prefixes/response-failed",
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseFailed,
@@ -199,7 +234,7 @@ func TestSetWAFList(t *testing.T) {
 					cached:          false,
 					createPrefixes:  nil,
 					createOK:        true,
-					deleteItems:     wrongItems,
+					deleteItems:     sortedWrongItems,
 					deleteOK:        false,
 				})
 			},
@@ -328,32 +363,22 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					permutedItems := itemOrder.order(scenario.items)
 					detectedIPs := detected(ip4, ip6)
 
-					var gotCreate []netip.Prefix
-					var gotDelete []api.ID
-
-					h.mockHandle.EXPECT().
+					readCall := h.mockHandle.EXPECT().
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription).
 						Return(permutedItems, true, false, true)
-					h.mockHandle.EXPECT().
-						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, gomock.Any(), "").
-						DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, prefixes []netip.Prefix, _ string) bool {
-							gotCreate = slices.Clone(prefixes)
-							return true
-						})
-					h.mockHandle.EXPECT().
-						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, ids []api.ID) bool {
-							gotDelete = slices.Clone(ids)
-							return true
-						})
+					createCall := h.mockHandle.EXPECT().
+						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, "").
+						Return(true)
+					deleteCall := h.mockHandle.EXPECT().
+						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
+						Return(true)
+					gomock.InOrder(readCall, createCall, deleteCall)
 
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 					resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detectedIPs, "")
 					require.Equal(t, setter.ResponseUpdated, resp)
-					require.ElementsMatch(t, scenario.wantCreate, gotCreate)
-					require.ElementsMatch(t, scenario.wantDeleteID, gotDelete)
 				})
 			}
 		})

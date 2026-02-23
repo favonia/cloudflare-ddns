@@ -130,14 +130,14 @@ func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, detectedIP map[ipnet.Type]netip.Addr,
+	c *config.Config, s setter.Setter, detectedIPs map[ipnet.Type][]netip.Addr,
 ) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIP, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, "")
 			}),
 		)
 	}
@@ -164,7 +164,7 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s se
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	var msgs []Message
-	detectedIPForWAF := map[ipnet.Type]netip.Addr{}
+	detectedIPsForWAF := map[ipnet.Type][]netip.Addr{}
 	numManagedNetworks := 0
 	numValidIPs := 0
 	for ipNet, p := range ipnet.Bindings(c.Provider) {
@@ -177,10 +177,10 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 			// it's probably better to leave existing records alone.
 			if msg.MonitorMessage.OK {
 				numValidIPs++
-				detectedIPForWAF[ipNet] = ips[0]
+				detectedIPsForWAF[ipNet] = ips
 				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))
 			} else {
-				detectedIPForWAF[ipNet] = netip.Addr{}
+				detectedIPsForWAF[ipNet] = nil
 			}
 		}
 	}
@@ -190,7 +190,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	// Update WAF lists
 	if numValidIPs > 0 || numManagedNetworks < ipnet.NetworkCount {
-		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPForWAF))
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPsForWAF))
 	}
 
 	return MergeMessages(msgs...)
