@@ -183,12 +183,12 @@ func TestSelectInterfaceIP(t *testing.T) {
 		"ipaddr/4/255.255.255.255": {
 			ipnet.IP4,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("255.255.255.255"), Zone: ""}},
-			true, netip.MustParseAddr("255.255.255.255"),
+			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
-					pp.EmojiWarning,
-					"Failed to find any global unicast %s address among unicast addresses assigned to interface %s, but found a unicast address %s with a scope larger than the link-local scope",
-					"IPv4", "iface", "255.255.255.255",
+					pp.EmojiError,
+					"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
+					"IPv4", "iface",
 				)
 			},
 		},
@@ -209,22 +209,15 @@ func TestSelectInterfaceIP(t *testing.T) {
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(
-						pp.EmojiWarning,
-						"Ignoring zoned address %s assigned to interface %s",
-						"ff05::2%site", "iface",
-					),
-					ppfmt.EXPECT().Noticef(
-						pp.EmojiError,
-						"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
-						"IPv6", "iface",
-					),
+				ppfmt.EXPECT().Noticef(
+					pp.EmojiImpossible,
+					"Found multicast address %s in net.Interface.Addrs for interface %s (expected unicast addresses only); please report this at %s",
+					"ff05::2%site", "iface", pp.IssueReportingURL,
 				)
 			},
 		},
 		"ipaddr/4/dummy": {
-			ipnet.IP6,
+			ipnet.IP4,
 			[]net.Addr{&Dummy{}},
 			false, invalidIP,
 			func(ppfmt *mocks.MockPP) {

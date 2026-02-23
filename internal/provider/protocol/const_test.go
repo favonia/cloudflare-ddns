@@ -54,8 +54,8 @@ func TestConstGetIP(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiError,
-					"Detected IP address %s has a zone identifier and cannot be used as a target address",
-					"1::1%1",
+					"Detected %s address %s has a zone identifier and cannot be used as a target address",
+					"IPv6", "1::1%1",
 				)
 			},
 		},

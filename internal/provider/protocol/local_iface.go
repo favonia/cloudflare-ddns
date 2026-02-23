@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/netip"
-	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -53,15 +52,10 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 
 // SelectInterfaceIP takes a list of unicast [net.Addr] and chooses the first reasonable IP (if any).
 func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) (netip.Addr, bool) {
-	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
 		if !ok {
-			return ip, false
-		}
-		if ip.Zone() != "" {
-			ppfmt.Noticef(pp.EmojiWarning, "Ignoring zoned address %s assigned to interface %s", ip.String(), iface)
-			continue
+			return netip.Addr{}, false
 		}
 		// net.Interface.Addrs documents that it returns only unicast interface addresses.
 		// A multicast address here means this assumption is broken and should be reported.
@@ -73,38 +67,23 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 			)
 			return netip.Addr{}, false
 		}
-		ips = append(ips, ip)
-	}
+		// Keep only addresses in the requested family that are usable as
+		// unicast targets. Note that IsGlobalUnicast still includes private
+		// and internal ranges.
+		if !ipNet.Matches(ip) || !ip.IsGlobalUnicast() {
+			continue
+		}
+		// By this point the address matches the requested family and is global
+		// unicast. A zone on a global address is unusual and often indicates a
+		// misconfigured setup. Independently, Cloudflare DNS record content is
+		// validated as an IPv4/IPv6 address, so zone-qualified values must be
+		// rejected.
+		if ip.Zone() != "" {
+			ppfmt.Noticef(pp.EmojiWarning, "Ignoring zoned address %s assigned to interface %s", ip.String(), iface)
+			continue
+		}
 
-	i := slices.IndexFunc(ips, func(ip netip.Addr) bool {
-		return ipNet.Matches(ip) && ip.IsGlobalUnicast()
-	})
-	if i >= 0 {
-		return ips[i], true
-	}
-
-	// Fallback for deployments that intentionally publish internal addresses.
-	// In practice, IsGlobalUnicast already covers almost all useful candidates for
-	// DDNS, even for private/internal deployments.
-	//
-	// Current exceptional case after the filters above: IPv4 limited broadcast
-	// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in
-	// ExtractInterfaceAddr). This fallback is kept as a future-proof guard for
-	// unusual address classes that are not link-local/loopback/unspecified yet
-	// also not classified as global unicast. Multicast addresses have already been
-	// rejected above.
-	i = slices.IndexFunc(ips, func(ip netip.Addr) bool {
-		return ipNet.Matches(ip) &&
-			!ip.IsUnspecified() &&
-			!ip.IsLoopback() &&
-			!ip.IsLinkLocalUnicast()
-	})
-	if i >= 0 {
-		ppfmt.Noticef(pp.EmojiWarning,
-			"Failed to find any global unicast %s address among unicast addresses assigned to interface %s, "+
-				"but found a unicast address %s with a scope larger than the link-local scope",
-			ipNet.Describe(), iface, ips[i].String())
-		return ips[i], true
+		return ip, true
 	}
 
 	ppfmt.Noticef(pp.EmojiError,
