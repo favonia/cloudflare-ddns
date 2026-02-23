@@ -22,16 +22,27 @@ func getMessageIDForDetection(ipNet ipnet.Type) pp.ID {
 	}[ipNet]
 }
 
-func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) (netip.Addr, Message) {
+func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) ([]netip.Addr, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	ip, ok := c.Provider[ipNet].GetIP(ctx, ppfmt, ipNet)
+	ips, ok := c.Provider[ipNet].GetIPs(ctx, ppfmt, ipNet)
 
-	if ok {
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ip)
+	switch {
+	// Fast path: one detected target.
+	case ok && len(ips) == 1:
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ips[0])
 		ppfmt.Suppress(getMessageIDForDetection(ipNet))
-	} else {
+
+	// Multi-target path: report the full deterministic set.
+	case ok && len(ips) > 1:
+		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
+			len(ips), ipNet.Describe(), pp.JoinMap(netip.Addr.String, ips))
+		ppfmt.Suppress(getMessageIDForDetection(ipNet))
+
+	// Failure path: emit hints and timeout guidance.
+	default:
+		ok = false
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
 
 		switch ipNet {
@@ -53,7 +64,7 @@ func detectIP(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Ty
 			)
 		}
 	}
-	return ip, generateDetectMessage(ipNet, ok)
+	return ips, generateDetectMessage(ipNet, ok)
 }
 
 var errTimeout = errors.New("timeout")
@@ -76,17 +87,16 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
 	return resp
 }
 
-// setIP extracts relevant settings from the configuration and calls [setter.Setter.Set] with timeout.
-// ip must be non-zero.
-func setIP(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, ipNet ipnet.Type, ip netip.Addr,
+// setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetIPs] with timeout.
+func setIPs(ctx context.Context, ppfmt pp.PP,
+	c *config.Config, s setter.Setter, ipNet ipnet.Type, ips []netip.Addr,
 ) Message {
 	resps := emptySetterResponses()
 
 	for _, domain := range c.Domains[ipNet] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.Set(ctx, ppfmt, ipNet, domain, ip, api.RecordParams{
+				return s.SetIPs(ctx, ppfmt, ipNet, domain, ips, api.RecordParams{
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
@@ -95,7 +105,7 @@ func setIP(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	return generateUpdateMessage(ipNet, ip, resps)
+	return generateUpdateMessage(ipNet, ips, resps)
 }
 
 // finalDeleteIP extracts relevant settings from the configuration
@@ -154,21 +164,23 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s se
 // UpdateIPs detect IP addresses and update DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
 	var msgs []Message
-	detectedIP := map[ipnet.Type]netip.Addr{}
+	detectedIPForWAF := map[ipnet.Type]netip.Addr{}
 	numManagedNetworks := 0
 	numValidIPs := 0
-	for ipNet, provider := range ipnet.Bindings(c.Provider) {
-		if provider != nil {
+	for ipNet, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
 			numManagedNetworks++
-			ip, msg := detectIP(ctx, ppfmt, c, ipNet)
-			detectedIP[ipNet] = ip
+			ips, msg := detectIPs(ctx, ppfmt, c, ipNet)
 			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.MonitorMessage.OK {
 				numValidIPs++
-				msgs = append(msgs, setIP(ctx, ppfmt, c, s, ipNet, ip))
+				detectedIPForWAF[ipNet] = ips[0]
+				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))
+			} else {
+				detectedIPForWAF[ipNet] = netip.Addr{}
 			}
 		}
 	}
@@ -178,7 +190,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 	// Update WAF lists
 	if numValidIPs > 0 || numManagedNetworks < ipnet.NetworkCount {
-		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIP))
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPForWAF))
 	}
 
 	return MergeMessages(msgs...)
