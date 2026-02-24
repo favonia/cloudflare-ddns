@@ -34,13 +34,13 @@ func NewCustomURL(ppfmt pp.PP, rawURL string) (Provider, bool) {
 		return nil, false
 	}
 
-	return withMultiIPSupport(protocol.HTTP{
+	return protocol.HTTP{
 		ProviderName: "url:(redacted)",
 		URL: map[ipnet.Type]string{
 			ipnet.IP4: rawURL,
 			ipnet.IP6: rawURL,
 		},
-	}), true
+	}, true
 }
 
 // MustNewCustomURL creates a HTTP provider and panics if it fails.

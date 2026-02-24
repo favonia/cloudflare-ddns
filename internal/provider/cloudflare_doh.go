@@ -10,7 +10,7 @@ import (
 // NewCloudflareDOH creates a new provider that queries whoami.cloudflare.
 // via Cloudflare DNS over HTTPS at https://cloudflare-dns.com/dns-query.
 func NewCloudflareDOH() Provider {
-	return withMultiIPSupport(protocol.DNSOverHTTPS{
+	return protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",
 		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {
@@ -22,5 +22,5 @@ func NewCloudflareDOH() Provider {
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 		},
-	})
+	}
 }

@@ -122,44 +122,6 @@ func (c *MockSetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, i
 	return c
 }
 
-// Set mocks base method.
-func (m *MockSetter) Set(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IP netip.Addr, expectedParams api.RecordParams) setter.ResponseCode {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", ctx, ppfmt, IPNetwork, Domain, IP, expectedParams)
-	ret0, _ := ret[0].(setter.ResponseCode)
-	return ret0
-}
-
-// Set indicates an expected call of Set.
-func (mr *MockSetterMockRecorder) Set(ctx, ppfmt, IPNetwork, Domain, IP, expectedParams any) *MockSetterSetCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSetter)(nil).Set), ctx, ppfmt, IPNetwork, Domain, IP, expectedParams)
-	return &MockSetterSetCall{Call: call}
-}
-
-// MockSetterSetCall wrap *gomock.Call
-type MockSetterSetCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockSetterSetCall) Return(arg0 setter.ResponseCode) *MockSetterSetCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockSetterSetCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // SetIPs mocks base method.
 func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IPs []netip.Addr, expectedParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()

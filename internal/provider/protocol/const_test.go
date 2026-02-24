@@ -28,7 +28,7 @@ func TestConstName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestConstGetIP(t *testing.T) {
+func TestConstGetIPs(t *testing.T) {
 	t.Parallel()
 
 	var invalidIP netip.Addr
@@ -87,9 +87,14 @@ func TestConstGetIP(t *testing.T) {
 				ProviderName: "",
 				IP:           tc.savedIP,
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
+			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, ip)
+			if tc.ok {
+				require.Len(t, ips, 1)
+				require.Equal(t, tc.expected, ips[0])
+			} else {
+				require.Empty(t, ips)
+			}
 		})
 	}
 }

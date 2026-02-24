@@ -61,16 +61,6 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 	return true
 }
 
-// Set updates the IP address of one domain to the given IP.
-// This is the compatibility wrapper around [setter.SetIPs].
-// IP is assumed to already satisfy SetIPs input invariants.
-func (s setter) Set(ctx context.Context, ppfmt pp.PP,
-	ipNetwork ipnet.Type, domain domain.Domain, ip netip.Addr,
-	expectedParams api.RecordParams,
-) ResponseCode {
-	return s.SetIPs(ctx, ppfmt, ipNetwork, domain, []netip.Addr{ip}, expectedParams)
-}
-
 // SetIPs updates the IP addresses of one domain to the given target set.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,

@@ -31,7 +31,7 @@ func TestRegexpName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestRegexpGetIP(t *testing.T) {
+func TestRegexpGetIPs(t *testing.T) {
 	t.Parallel()
 
 	ip4 := netip.MustParseAddr("1.2.3.4")
@@ -154,9 +154,14 @@ func TestRegexpGetIP(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			ip, ok := provider.GetIP(ctx, mockPP, tc.ipNet)
-			require.Equal(t, tc.expected, ip)
+			ips, ok := provider.GetIPs(ctx, mockPP, tc.ipNet)
 			require.Equal(t, tc.expected.IsValid(), ok)
+			if tc.expected.IsValid() {
+				require.Len(t, ips, 1)
+				require.Equal(t, tc.expected, ips[0])
+			} else {
+				require.Empty(t, ips)
+			}
 		})
 	}
 }

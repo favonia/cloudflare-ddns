@@ -95,7 +95,7 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 	}))
 }
 
-func TestDNSOverHTTPSGetIP(t *testing.T) {
+func TestDNSOverHTTPSGetIPs(t *testing.T) {
 	t.Parallel()
 
 	ip4 := netip.MustParseAddr("1.2.3.4")
@@ -553,9 +553,14 @@ func TestDNSOverHTTPSGetIP(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.expected, ip)
+			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.expected.IsValid(), ok)
+			if tc.expected.IsValid() {
+				require.Len(t, ips, 1)
+				require.Equal(t, tc.expected, ips[0])
+			} else {
+				require.Empty(t, ips)
+			}
 		})
 	}
 }

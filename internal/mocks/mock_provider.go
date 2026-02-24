@@ -43,45 +43,6 @@ func (m *MockProvider) EXPECT() *MockProviderMockRecorder {
 	return m.recorder
 }
 
-// GetIP mocks base method.
-func (m *MockProvider) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIP", ctx, ppfmt, ipNet)
-	ret0, _ := ret[0].(netip.Addr)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
-}
-
-// GetIP indicates an expected call of GetIP.
-func (mr *MockProviderMockRecorder) GetIP(ctx, ppfmt, ipNet any) *MockProviderGetIPCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIP", reflect.TypeOf((*MockProvider)(nil).GetIP), ctx, ppfmt, ipNet)
-	return &MockProviderGetIPCall{Call: call}
-}
-
-// MockProviderGetIPCall wrap *gomock.Call
-type MockProviderGetIPCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockProviderGetIPCall) Return(arg0 netip.Addr, arg1 bool) *MockProviderGetIPCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockProviderGetIPCall) Do(f func(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool)) *MockProviderGetIPCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockProviderGetIPCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type) (netip.Addr, bool)) *MockProviderGetIPCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetIPs mocks base method.
 func (m *MockProvider) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	m.ctrl.T.Helper()

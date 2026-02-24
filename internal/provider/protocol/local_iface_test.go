@@ -285,20 +285,6 @@ func TestSelectInterfaceIPs(t *testing.T) {
 	}
 }
 
-func TestSelectInterfaceIP(t *testing.T) {
-	t.Parallel()
-
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
-
-	output, ok := protocol.SelectInterfaceIP(mockPP, "iface", ipnet.IP4, []net.Addr{
-		&net.IPAddr{IP: net.ParseIP("4.3.2.1"), Zone: ""},
-		&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""},
-	})
-	require.True(t, ok)
-	require.Equal(t, netip.MustParseAddr("1.2.3.4"), output)
-}
-
 func TestLocalWithInterfaceGetIPs(t *testing.T) {
 	t.Parallel()
 
@@ -347,58 +333,6 @@ func TestLocalWithInterfaceGetIPs(t *testing.T) {
 			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, ips)
-		})
-	}
-}
-
-func TestLocalWithInterfaceGetIP(t *testing.T) {
-	t.Parallel()
-
-	for name, tc := range map[string]struct {
-		interfaceName string
-		ipNet         ipnet.Type
-		ok            bool
-		expected      netip.Addr
-		prepareMockPP func(*mocks.MockPP)
-	}{
-		"lo/4": {
-			"lo", ipnet.IP4, false,
-			netip.Addr{},
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "lo")
-			},
-		},
-		"lo/6": {
-			"lo", ipnet.IP6, false,
-			netip.Addr{},
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv6", "lo")
-			},
-		},
-		"non-existent": {
-			"non-existent-iface", ipnet.IP4, false,
-			netip.Addr{},
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", "non-existent-iface", gomock.Any())
-			},
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-
-			provider := &protocol.LocalWithInterface{
-				ProviderName:  "",
-				InterfaceName: tc.interfaceName,
-			}
-			ip, ok := provider.GetIP(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, ip)
 		})
 	}
 }

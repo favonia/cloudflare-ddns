@@ -24,10 +24,10 @@ func NewDebugConst(ppfmt pp.PP, raw string) (Provider, bool) {
 		return nil, false
 	}
 
-	return withMultiIPSupport(protocol.Const{
+	return protocol.Const{
 		ProviderName: "debug.const:" + ip.String(),
 		IP:           ip,
-	}), true
+	}, true
 }
 
 // MustNewDebugConst creates a [protocol.Const] provider and panics if it fails.

@@ -240,6 +240,16 @@ func TestReadProviderMap(t *testing.T) {
 			true,
 			nil,
 		},
+		"none/none": {
+			true,
+			"none", "none",
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: none,
+				ipnet.IP6: none,
+			},
+			true,
+			nil,
+		},
 		"4": {
 			true,
 			"local", "  ",

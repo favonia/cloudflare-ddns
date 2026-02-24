@@ -15,7 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func TestSet(t *testing.T) {
+func TestSetIPsSingleton(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
@@ -134,7 +134,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -157,7 +157,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -179,7 +179,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -217,7 +217,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either stale record can be recycled first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -249,7 +249,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either stale record can be recycled first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -282,7 +282,7 @@ func TestSet(t *testing.T) {
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				// InOrder is stricter than the API contract here: either stale record can be recycled first.
-				// We intentionally pin Set's deterministic top-to-bottom traversal so this test can
+				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
@@ -322,7 +322,7 @@ func TestSet(t *testing.T) {
 			ctx, h := newSetterHarness(t)
 			h.prepare(ctx, tc.prepareMocks)
 
-			resp := h.setter.Set(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, tc.ip, fixture.params)
+			resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{tc.ip}, fixture.params)
 			require.Equal(t, tc.resp, resp)
 		})
 	}

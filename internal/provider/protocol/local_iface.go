@@ -97,16 +97,6 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net
 	return sliceutil.SortAndCompact(ips, netip.Addr.Compare), true
 }
 
-// SelectInterfaceIP keeps compatibility with single-IP call sites by returning
-// the first IP from [SelectInterfaceIPs].
-func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) (netip.Addr, bool) {
-	ips, ok := SelectInterfaceIPs(ppfmt, iface, ipNet, addrs)
-	if !ok {
-		return netip.Addr{}, false
-	}
-	return ips[0], true
-}
-
 // GetIPs detects IP addresses from unicast addresses assigned to a network
 // interface.
 func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
@@ -123,14 +113,4 @@ func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.T
 	}
 
 	return SelectInterfaceIPs(ppfmt, p.InterfaceName, ipNet, addrs)
-}
-
-// GetIP keeps compatibility with single-IP call sites by returning the first
-// IP from [GetIPs].
-func (p LocalWithInterface) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
-	ips, ok := p.GetIPs(ctx, ppfmt, ipNet)
-	if !ok {
-		return netip.Addr{}, false
-	}
-	return ips[0], true
 }
