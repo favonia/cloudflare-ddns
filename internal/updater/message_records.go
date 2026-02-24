@@ -31,10 +31,10 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) Message {
 		return Message{
 			MonitorMessage: monitor.Message{
 				OK:    false,
-				Lines: []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
+				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipNet.Describe())},
 			},
 			NotifierMessage: notifier.Message{
-				fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe()),
+				fmt.Sprintf("Failed to detect any %s addresses.", ipNet.Describe()),
 			},
 		}
 	}

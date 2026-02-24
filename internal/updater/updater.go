@@ -43,7 +43,7 @@ func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.T
 	// Failure path: emit hints and timeout guidance.
 	default:
 		ok = false
-		ppfmt.Noticef(pp.EmojiError, "Failed to detect the %s address", ipNet.Describe())
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect any %s addresses", ipNet.Describe())
 
 		switch ipNet {
 		case ipnet.IP6:
