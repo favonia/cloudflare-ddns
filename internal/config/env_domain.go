@@ -28,6 +28,7 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 		return false
 	}
 
+	// DOMAINS applies to both families; merge, then sort/dedup for stable processing.
 	ip4Domains = sliceutil.SortAndCompact(append(ip4Domains, domains...), domain.CompareDomain)
 	ip6Domains = sliceutil.SortAndCompact(append(ip6Domains, domains...), domain.CompareDomain)
 

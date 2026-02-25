@@ -36,6 +36,8 @@ func partitionRecords(
 	matched = make(map[netip.Addr][]Record, len(targetSet))
 	stale = make([]Record, 0, len(rs))
 	for _, r := range rs {
+		// Unmap so IPv4-mapped IPv6 records match canonical IPv4 targets.
+		// Invalid or non-target records are intentionally treated as stale.
 		ip := r.IP.Unmap()
 		if ip.IsValid() {
 			if _, ok := targetSet[ip]; ok {
@@ -103,11 +105,13 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// 3. otherwise create a new record.
 	for _, target := range targets {
 		if matched := matchedByIP[target]; len(matched) > 0 {
+			// Reserve one matching record; remaining matches are duplicates cleaned up later.
 			matchedByIP[target] = matched[1:]
 			continue
 		}
 
 		if len(staleRecords) > 0 {
+			// Recycle a stale record before creating a new one to preserve record metadata.
 			recycled := staleRecords[0]
 			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, recycled.ID, target,
 				recycled.RecordParams, expectedParams,
@@ -243,20 +247,25 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			continue // detection was attempted but failed; do nothing
 		}
 
-		coveredTargets := make(map[netip.Addr]struct{}, len(targets))
+		// Track targets already covered by at least one kept item.
+		coveredTargets := make(map[netip.Addr]bool, len(targets))
 		for _, item := range items {
 			if !ipNet.Matches(item.Addr()) {
 				continue
 			}
+
+			// Unmanaged family: remove all existing items of this family.
 			if !managed {
 				itemsToDelete = append(itemsToDelete, item)
 				continue
 			}
 
+			// Managed family with targets: keep items that cover at least one
+			// target and remember which targets are already covered.
 			covered := false
 			for _, target := range targets {
 				if item.Contains(target) {
-					coveredTargets[target] = struct{}{}
+					coveredTargets[target] = true
 					covered = true
 				}
 			}
@@ -265,14 +274,17 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			}
 		}
 
+		// Add the smallest allowed prefix for each uncovered target so every
+		// managed target ends up covered by at least one list item.
 		for _, target := range targets {
-			if _, covered := coveredTargets[target]; !covered {
+			if !coveredTargets[target] {
 				itemsToCreate = append(itemsToCreate,
 					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipNet]).Masked())
 			}
 		}
 	}
 
+	// Canonicalize mutation order so WAF updates are deterministic across runs and tests.
 	slices.SortFunc(itemsToCreate, netip.Prefix.Compare)
 	itemsToCreate = slices.Compact(itemsToCreate)
 	slices.SortFunc(itemsToDelete, func(i, j api.WAFListItem) int {
@@ -288,6 +300,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		return ResponseNoop
 	}
 
+	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
 	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate, itemComment) {
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to properly update the list %s; its content may be inconsistent", list.Describe())

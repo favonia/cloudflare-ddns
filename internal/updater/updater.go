@@ -180,6 +180,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 				detectedIPsForWAF[ipNet] = ips
 				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))
 			} else {
+				// Keep a nil entry for managed-but-failed families.
+				// Missing keys represent unmanaged families.
 				detectedIPsForWAF[ipNet] = nil
 			}
 		}
@@ -188,7 +190,8 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 	// Close all idle connections after the IP detection
 	provider.CloseIdleConnections()
 
-	// Update WAF lists
+	// Update WAF lists when we have fresh targets, or when some families are unmanaged
+	// and stale ranges for those families should be removed.
 	if numValidIPs > 0 || numManagedNetworks < ipnet.NetworkCount {
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPsForWAF))
 	}

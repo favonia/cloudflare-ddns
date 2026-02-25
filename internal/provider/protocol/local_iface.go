@@ -56,6 +56,7 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
+		// Fail fast on malformed interface data instead of proceeding with a partial snapshot.
 		if !ok {
 			return nil, false
 		}
