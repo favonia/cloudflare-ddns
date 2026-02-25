@@ -29,7 +29,8 @@ func TestReadProvider(t *testing.T) {
 		localLoopback = provider.NewLocalWithInterface("lo")
 		ipify         = provider.NewIpify()
 		custom        = provider.MustNewCustomURL("https://url.io")
-		debugConst    = provider.MustNewDebugConst("1.1.1.1")
+		literal       = provider.MustNewLiteral("1.1.1.1")
+		literalMulti  = provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
 	)
 
 	for name, tc := range map[string]struct {
@@ -146,6 +147,30 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"custom": {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
+		"literal:1.1.1.1": {
+			true, "   literal   :  1.1.1.1 ", false, "", trace, literal, true,
+			nil,
+		},
+		"literal:2.2.2.2,1.1.1.1,2.2.2.2": {
+			true, "   literal   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, literalMulti, true,
+			nil,
+		},
+		"literal:1::1%eth0": {
+			true, "   literal   :  1::1%eth0 ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`Failed to parse the IP address %q for "literal:": zoned IP addresses are not allowed`,
+					"1::1%eth0",
+				)
+			},
+		},
+		"literal": {
+			true, "   literal: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=literal: must be followed by at least one IP address`, key)
+			},
+		},
 		"ipify": {
 			true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
@@ -159,31 +184,27 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"debug.const:1.1.1.1": {
-			true, "   debug.const   :  1.1.1.1 ", false, "", trace, debugConst, true,
+			true, "   debug.const   :  1.1.1.1 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  1.1.1.1")
+			},
+		},
+		"debug.const:2.2.2.2,1.1.1.1,2.2.2.2": {
+			true, "   debug.const   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  2.2.2.2, 1.1.1.1, 2.2.2.2")
 			},
 		},
 		"debug.const:1::1%eth0": {
 			true, "   debug.const   :  1::1%eth0 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`),
-					m.EXPECT().Noticef(
-						pp.EmojiUserError,
-						`Failed to parse the IP address %q for "debug.const:": zoned IP addresses are not allowed`,
-						"1::1%eth0",
-					),
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  1::1%eth0")
 			},
 		},
 		"debug.const": {
 			true, "   debug.const: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint, `You are using the undocumented "debug.const" provider`),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s=debug.const: must be followed by an IP address`, key),
-				)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const:")
 			},
 		},
 	} {

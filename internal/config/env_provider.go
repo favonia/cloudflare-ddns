@@ -145,25 +145,23 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			*field = p
 		}
 		return ok
-	case len(parts) == 1 && parts[0] == "none":
-		*field = nil
-		return true
-	case len(parts) == 2 && parts[0] == "debug.const":
-		ppfmt.InfoOncef(pp.MessageUndocumentedDebugConstProvider, pp.EmojiHint,
-			`You are using the undocumented "debug.const" provider`)
+	case len(parts) == 2 && parts[0] == "literal":
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				`%s=debug.const: must be followed by an IP address`,
+				`%s=literal: must be followed by at least one IP address`,
 				key,
 			)
 			return false
 		}
-		p, ok := provider.NewDebugConst(ppfmt, parts[1])
+		p, ok := provider.NewLiteral(ppfmt, parts[1])
 		if ok {
 			*field = p
 		}
 		return ok
+	case len(parts) == 1 && parts[0] == "none":
+		*field = nil
+		return true
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
 		return false
