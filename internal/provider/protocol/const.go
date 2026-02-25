@@ -24,10 +24,5 @@ func (p Const) Name() string {
 
 // GetIPs returns the IP in a singleton set.
 func (p Const) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
-	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, p.IP)
-	if !ok {
-		return nil, false
-	}
-
-	return []netip.Addr{normalizedIP}, true
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{p.IP})
 }

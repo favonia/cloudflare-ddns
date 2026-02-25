@@ -55,10 +55,5 @@ func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]neti
 		return nil, false
 	}
 
-	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, ip)
-	if !ok {
-		return nil, false
-	}
-
-	return []netip.Addr{normalizedIP}, true
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
 }

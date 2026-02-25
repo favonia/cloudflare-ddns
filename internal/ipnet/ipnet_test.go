@@ -85,86 +85,107 @@ func TestUDPNetwork(t *testing.T) {
 	}
 }
 
-func TestNormalizeDetectedIP(t *testing.T) {
+func TestNormalizeDetectedIPs(t *testing.T) {
 	t.Parallel()
 
 	var invalidIP netip.Addr
+	singleton := func(ip netip.Addr) []netip.Addr { return []netip.Addr{ip} }
 
 	for name, tc := range map[string]struct {
 		ipNet         ipnet.Type
-		ip            netip.Addr
+		input         []netip.Addr
 		ok            bool
-		expected      netip.Addr
+		expected      []netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
-		"4-invalid": {
-			ipnet.IP4, invalidIP,
-			false, invalidIP,
+		"4-empty-nil": {
+			ipnet.IP4, nil,
+			true, nil,
+			nil,
+		},
+		"4-empty-list": {
+			ipnet.IP4,
+			[]netip.Addr{},
+			true,
+			[]netip.Addr{},
+			nil,
+		},
+		"singleton/4-invalid": {
+			ipnet.IP4, singleton(invalidIP),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
-		"4-1::2": {
-			ipnet.IP4, mustIP("1::2"),
-			false, invalidIP,
+		"singleton/4-1::2": {
+			ipnet.IP4, singleton(mustIP("1::2")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::2")
 			},
 		},
-		"4-::ffff:0a0a:0a0a": {ipnet.IP4, mustIP("::ffff:0a0a:0a0a"), true, mustIP("10.10.10.10"), nil},
-		"4-0.0.0.0": {
-			ipnet.IP4, mustIP("0.0.0.0"),
-			false, invalidIP,
+		"singleton/4-::ffff:0a0a:0a0a": {
+			ipnet.IP4, singleton(mustIP("::ffff:0a0a:0a0a")),
+			true, singleton(mustIP("10.10.10.10")),
+			nil,
+		},
+		"singleton/4-0.0.0.0": {
+			ipnet.IP4, singleton(mustIP("0.0.0.0")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is an unspecified address", "IPv4", "0.0.0.0")
 			},
 		},
-		"4-127.0.0.1": {
-			ipnet.IP4, mustIP("127.0.0.1"),
-			false, invalidIP,
+		"singleton/4-127.0.0.1": {
+			ipnet.IP4, singleton(mustIP("127.0.0.1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
 			},
 		},
-		"4-169.254.1.1": {
-			ipnet.IP4, mustIP("169.254.1.1"),
-			false, invalidIP,
+		"singleton/4-169.254.1.1": {
+			ipnet.IP4, singleton(mustIP("169.254.1.1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local address", "IPv4", "169.254.1.1")
 			},
 		},
-		"4-224.0.0.1": {
-			ipnet.IP4, mustIP("224.0.0.1"),
-			false, invalidIP,
+		"singleton/4-224.0.0.1": {
+			ipnet.IP4, singleton(mustIP("224.0.0.1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv4", "224.0.0.1")
 			},
 		},
-		"4-239.1.1.1": {
-			ipnet.IP4, mustIP("239.1.1.1"),
-			false, invalidIP,
+		"singleton/4-239.1.1.1": {
+			ipnet.IP4, singleton(mustIP("239.1.1.1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv4", "239.1.1.1")
 			},
 		},
-		"4-255.255.255.255": {
-			ipnet.IP4, mustIP("255.255.255.255"),
-			true, mustIP("255.255.255.255"),
+		"singleton/4-255.255.255.255": {
+			ipnet.IP4, singleton(mustIP("255.255.255.255")),
+			true, singleton(mustIP("255.255.255.255")),
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address", "IPv4", "255.255.255.255")
 			},
 		},
-		"6-invalid": {
-			ipnet.IP6, invalidIP,
-			false, invalidIP,
+		"singleton/6-invalid": {
+			ipnet.IP6, singleton(invalidIP),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
-		"6-1::2": {ipnet.IP6, mustIP("1::2"), true, mustIP("1::2"), nil},
-		"6-1::2%eth0": {
-			ipnet.IP6, mustIP("1::2%eth0"),
-			false, invalidIP,
+		"singleton/6-1::2": {
+			ipnet.IP6, singleton(mustIP("1::2")),
+			true, singleton(mustIP("1::2")),
+			nil,
+		},
+		"singleton/6-1::2%eth0": {
+			ipnet.IP6, singleton(mustIP("1::2%eth0")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiError,
@@ -173,16 +194,16 @@ func TestNormalizeDetectedIP(t *testing.T) {
 				)
 			},
 		},
-		"6-10.10.10.10": {
-			ipnet.IP6, mustIP("10.10.10.10"),
-			false, invalidIP,
+		"singleton/6-10.10.10.10": {
+			ipnet.IP6, singleton(mustIP("10.10.10.10")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address", "10.10.10.10")
 			},
 		},
-		"6-::ffff:10.10.10.10": {
-			ipnet.IP6, mustIP("::ffff:10.10.10.10"),
-			false, invalidIP,
+		"singleton/6-::ffff:10.10.10.10": {
+			ipnet.IP6, singleton(mustIP("::ffff:10.10.10.10")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", "::ffff:10.10.10.10"),
@@ -190,50 +211,81 @@ func TestNormalizeDetectedIP(t *testing.T) {
 				)
 			},
 		},
-		"6-::1": {
-			ipnet.IP6, mustIP("::1"),
-			false, invalidIP,
+		"singleton/6-::1": {
+			ipnet.IP6, singleton(mustIP("::1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv6", "::1")
 			},
 		},
-		"6-ff01::1": {
-			ipnet.IP6, mustIP("ff01::1"),
-			false, invalidIP,
+		"singleton/6-ff01::1": {
+			ipnet.IP6, singleton(mustIP("ff01::1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff01::1")
 			},
 		},
-		"6-ff02::1": {
-			ipnet.IP6, mustIP("ff02::1"),
-			false, invalidIP,
+		"singleton/6-ff02::1": {
+			ipnet.IP6, singleton(mustIP("ff02::1")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv6", "ff02::1")
 			},
 		},
-		"6-ff05::2": {
-			ipnet.IP6, mustIP("ff05::2"),
-			false, invalidIP,
+		"singleton/6-ff05::2": {
+			ipnet.IP6, singleton(mustIP("ff05::2")),
+			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff05::2")
 			},
 		},
-		"100-10.10.10.10": {
-			100, mustIP("10.10.10.10"),
-			false, invalidIP,
+		"singleton/100-10.10.10.10": {
+			100, singleton(mustIP("10.10.10.10")),
+			false, nil,
 			nil,
+		},
+		"4-sort-dedup-unmap": {
+			ipnet.IP4,
+			[]netip.Addr{
+				mustIP("10.0.0.2"),
+				mustIP("::ffff:10.0.0.1"),
+				mustIP("10.0.0.2"),
+			},
+			true,
+			[]netip.Addr{
+				mustIP("10.0.0.1"),
+				mustIP("10.0.0.2"),
+			},
+			nil,
+		},
+		"list/4-fail-fast": {
+			ipnet.IP4,
+			[]netip.Addr{
+				invalidIP,
+				mustIP("1::2"),
+			},
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiImpossible,
+					`Detected IP address is not valid; this should not happen and please report it at %s`,
+					pp.IssueReportingURL,
+				)
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ip, ok := tc.ipNet.NormalizeDetectedIP(mockPP, tc.ip)
-			require.Equal(t, tc.expected, ip)
+
+			ips, ok := tc.ipNet.NormalizeDetectedIPs(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, ips)
 		})
 	}
 }

@@ -131,6 +131,25 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		{
+			name: "ipv4-unmanaged/delete-existing-ipv4-prefixes/response-updated",
+			detected: map[ipnet.Type][]netip.Addr{
+				ipnet.IP6: {ip6},
+			},
+			resp: setter.ResponseUpdated,
+			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				expectWAFListMutation(ctx, p, m, wafList, wafListMutationExpectation{
+					listDescription: listDescription,
+					items:           items{prefix4range1, prefix6},
+					alreadyExisting: true,
+					cached:          false,
+					createPrefixes:  nil,
+					createOK:        true,
+					deleteItems:     items{prefix4range1},
+					deleteOK:        true,
+				})
+			},
+		},
+		{
 			name:     "list-already-up-to-date/report-noop/response-noop",
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseNoop,
