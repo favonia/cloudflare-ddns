@@ -17,40 +17,61 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func TestConstName(t *testing.T) {
+func TestStaticName(t *testing.T) {
 	t.Parallel()
 
-	p := &protocol.Const{
+	p := &protocol.Static{
 		ProviderName: "very secret name",
-		IP:           netip.Addr{},
+		IPs:          nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestConstGetIPs(t *testing.T) {
+func TestStaticGetIPs(t *testing.T) {
 	t.Parallel()
 
 	var invalidIP netip.Addr
 
 	for name, tc := range map[string]struct {
-		savedIP       netip.Addr
+		savedIPs      []netip.Addr
 		ipNet         ipnet.Type
 		ok            bool
-		expected      netip.Addr
+		expected      []netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"valid/4": {
-			netip.MustParseAddr("1.1.1.1"), ipnet.IP4,
-			true, netip.MustParseAddr("1.1.1.1"), nil,
+			[]netip.Addr{netip.MustParseAddr("1.1.1.1")},
+			ipnet.IP4,
+			true,
+			[]netip.Addr{netip.MustParseAddr("1.1.1.1")},
+			nil,
 		},
 		"valid/6": {
-			netip.MustParseAddr("1::1"), ipnet.IP6,
-			true, netip.MustParseAddr("1::1"), nil,
+			[]netip.Addr{netip.MustParseAddr("1::1")},
+			ipnet.IP6,
+			true,
+			[]netip.Addr{netip.MustParseAddr("1::1")},
+			nil,
+		},
+		"valid/4/deduplicate-sort": {
+			[]netip.Addr{
+				netip.MustParseAddr("2.2.2.2"),
+				netip.MustParseAddr("1.1.1.1"),
+				netip.MustParseAddr("2.2.2.2"),
+			},
+			ipnet.IP4,
+			true,
+			[]netip.Addr{
+				netip.MustParseAddr("1.1.1.1"),
+				netip.MustParseAddr("2.2.2.2"),
+			},
+			nil,
 		},
 		"error/zoned": {
-			netip.MustParseAddr("1::1%1"), ipnet.IP6,
-			false, invalidIP,
+			[]netip.Addr{netip.MustParseAddr("1::1%1")},
+			ipnet.IP6,
+			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiError,
@@ -60,15 +81,17 @@ func TestConstGetIPs(t *testing.T) {
 			},
 		},
 		"error/invalid": {
-			invalidIP, ipnet.IP6,
-			false, invalidIP,
+			[]netip.Addr{invalidIP},
+			ipnet.IP6,
+			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected IP address is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
 			},
 		},
 		"error/6-as-4": {
-			netip.MustParseAddr("1::1"), ipnet.IP4,
-			false, invalidIP,
+			[]netip.Addr{netip.MustParseAddr("1::1")},
+			ipnet.IP4,
+			false, nil,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::1")
 			},
@@ -83,15 +106,14 @@ func TestConstGetIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			provider := &protocol.Const{
+			provider := &protocol.Static{
 				ProviderName: "",
-				IP:           tc.savedIP,
+				IPs:          tc.savedIPs,
 			}
 			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.Len(t, ips, 1)
-				require.Equal(t, tc.expected, ips[0])
+				require.Equal(t, tc.expected, ips)
 			} else {
 				require.Empty(t, ips)
 			}

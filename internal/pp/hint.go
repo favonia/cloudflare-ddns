@@ -17,6 +17,5 @@ const (
 	MessageExperimentalShoutrrr                                // New feature introduced in 1.12.0 on 2024/6/28
 	MessageExperimentalWAF                                     // New feature introduced in 1.14.0 on 2024/8/25
 	MessageExperimentalLocalWithInterface                      // New feature introduced in 1.15.0
-	MessageUndocumentedDebugConstProvider                      // Undocumented feature
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 )
