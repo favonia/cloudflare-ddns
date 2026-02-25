@@ -7,10 +7,10 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
-// LocalWithInterface detects the IP address by choosing the first "good"
-// unicast IP address assigned to a network interface.
+// LocalWithInterface detects IP addresses assigned to a network interface.
 type LocalWithInterface struct {
 	// Name of the detection protocol.
 	ProviderName string
@@ -50,12 +50,15 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 	}
 }
 
-// SelectInterfaceIP takes a list of unicast [net.Addr] and chooses the first reasonable IP (if any).
-func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) (netip.Addr, bool) {
+// SelectInterfaceIPs takes a list of unicast [net.Addr] and keeps all
+// matching global-unicast addresses in canonical sorted order.
+func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) ([]netip.Addr, bool) {
+	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
+		// Fail fast on malformed interface data instead of proceeding with a partial snapshot.
 		if !ok {
-			return netip.Addr{}, false
+			return nil, false
 		}
 		// net.Interface.Addrs documents that it returns only unicast interface addresses.
 		// A multicast address here means this assumption is broken and should be reported.
@@ -65,7 +68,7 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 					"(expected unicast addresses only); please report this at %s",
 				ip.String(), iface, pp.IssueReportingURL,
 			)
-			return netip.Addr{}, false
+			return nil, false
 		}
 		// Keep only addresses in the requested family that are usable as
 		// unicast targets. Note that IsGlobalUnicast still includes private
@@ -82,30 +85,33 @@ func SelectInterfaceIP(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.
 			ppfmt.Noticef(pp.EmojiWarning, "Ignoring zoned address %s assigned to interface %s", ip.String(), iface)
 			continue
 		}
-
-		return ip, true
+		ips = append(ips, ip)
 	}
 
-	ppfmt.Noticef(pp.EmojiError,
-		"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
-		ipNet.Describe(), iface)
-	return netip.Addr{}, false
+	if len(ips) == 0 {
+		ppfmt.Noticef(pp.EmojiError,
+			"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
+			ipNet.Describe(), iface)
+		return nil, false
+	}
+
+	return sliceutil.SortAndCompact(ips, netip.Addr.Compare), true
 }
 
-// GetIP detects the IP address from unicast addresses assigned to a network
+// GetIPs detects IP addresses from unicast addresses assigned to a network
 // interface.
-func (p LocalWithInterface) GetIP(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	iface, err := net.InterfaceByName(p.InterfaceName)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", p.InterfaceName, err)
-		return netip.Addr{}, false
+		return nil, false
 	}
 
 	addrs, err := iface.Addrs()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	return SelectInterfaceIP(ppfmt, p.InterfaceName, ipNet, addrs)
+	return SelectInterfaceIPs(ppfmt, p.InterfaceName, ipNet, addrs)
 }

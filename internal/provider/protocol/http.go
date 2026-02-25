@@ -42,18 +42,18 @@ func (p HTTP) Name() string {
 	return p.ProviderName
 }
 
-// GetIP detects the IP address by using the HTTP response directly.
-func (p HTTP) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+// GetIPs detects the IP address by using the HTTP response directly.
+func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	url, found := p.URL[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return netip.Addr{}, false
+		return nil, false
 	}
 
 	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url)
 	if !ok {
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	return ipNet.NormalizeDetectedIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
 }

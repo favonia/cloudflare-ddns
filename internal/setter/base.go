@@ -19,13 +19,17 @@ import (
 
 // Setter uses [api.Handle] to update DNS records.
 type Setter interface {
-	// Set sets a particular domain to the given IP address.
-	Set(
+	// SetIPs sets a particular domain to the given IP addresses.
+	//
+	// Invariant: IPs must already be canonical and represent a deterministic set:
+	// - each IP is valid, unzoned, and matches IPNetwork
+	// - IPs are sorted by [netip.Addr.Compare] and deduplicated
+	SetIPs(
 		ctx context.Context,
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
-		IP netip.Addr,
+		IPs []netip.Addr,
 		expectedParams api.RecordParams,
 	) ResponseCode
 
@@ -38,14 +42,21 @@ type Setter interface {
 		expectedParams api.RecordParams,
 	) ResponseCode
 
-	// SetWAFList keeps only IP ranges overlapping with detected IPs
-	// and makes sure there will be ranges overlapping with detected ones.
+	// SetWAFList keeps only IP ranges overlapping with detected target sets
+	// and ensures each detected target is covered by at least one range.
+	//
+	// Contract for detected:
+	// - if an entry exists with a non-empty slice, that family is managed and
+	//   the slice is a deterministic target set (sorted, deduplicated)
+	// - if an entry exists with an empty slice, detection was attempted but failed
+	//   and existing matching ranges are preserved
+	// - if an entry is missing, that family is unmanaged and matching ranges are removed
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
-		detected map[ipnet.Type]netip.Addr,
+		detected map[ipnet.Type][]netip.Addr,
 		itemComment string,
 	) ResponseCode
 

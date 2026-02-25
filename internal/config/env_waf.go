@@ -6,6 +6,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
 // According to the Cloudflare documentation:
@@ -50,6 +51,6 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 		lists = append(lists, list)
 	}
 
-	*field = sortAndCompact(lists, api.CompareWAFList)
+	*field = sliceutil.SortAndCompact(lists, api.CompareWAFList)
 	return true
 }

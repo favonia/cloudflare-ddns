@@ -183,18 +183,18 @@ func (p DNSOverHTTPS) Name() string {
 	return p.ProviderName
 }
 
-// GetIP detects the IP address by DNS over HTTPS.
-func (p DNSOverHTTPS) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+// GetIPs detects the IP address by DNS over HTTPS.
+func (p DNSOverHTTPS) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return netip.Addr{}, false
+		return nil, false
 	}
 
 	ip, ok := getIPFromDNS(ctx, ppfmt, ipNet, param.URL, param.Name, param.Class)
 	if !ok {
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	return ipNet.NormalizeDetectedIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
 }

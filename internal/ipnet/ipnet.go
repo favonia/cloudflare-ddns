@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -80,8 +81,8 @@ func (t Type) Matches(ip netip.Addr) bool {
 	}
 }
 
-// NormalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
-func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
+// normalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
+func normalizeDetectedIP(t Type, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
 			`Detected IP address is not valid; this should not happen and please report it at %s`,
@@ -181,6 +182,31 @@ func (t Type) NormalizeDetectedIP(ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool)
 	}
 
 	return ip, true
+}
+
+// NormalizeDetectedIPs normalizes a list of detected IPs.
+//
+// Behavior:
+// - fail-fast: return false on the first invalid IP
+// - preserve emptiness: empty input returns empty output
+// - canonicalize set semantics: output is sorted and deduplicated.
+func (t Type) NormalizeDetectedIPs(ppfmt pp.PP, ips []netip.Addr) ([]netip.Addr, bool) {
+	if len(ips) == 0 {
+		return ips, true
+	}
+
+	normalized := make([]netip.Addr, 0, len(ips))
+	for _, ip := range ips {
+		ip, ok := normalizeDetectedIP(t, ppfmt, ip)
+		if !ok {
+			return nil, false
+		}
+		normalized = append(normalized, ip)
+	}
+
+	slices.SortFunc(normalized, netip.Addr.Compare)
+	normalized = slices.Compact(normalized)
+	return normalized, true
 }
 
 // All enumerates [IP4] and then [IP6].

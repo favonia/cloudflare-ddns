@@ -21,7 +21,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
+func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip string) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -39,7 +39,7 @@ func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse(id, ipNet, domain, ip))
+			err := json.NewEncoder(w).Encode(mockDNSRecordResponse(id, ipnet.IP6, "sub.test.org", ip))
 			assert.NoError(t, err)
 		})
 
@@ -88,7 +88,7 @@ func TestDeleteRecord(t *testing.T) {
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{"record1", "::1"}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			drh := newDeleteRecordHandler(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
 			drh.setRequestLimit(tc.deleteRequestLimit)
 
 			ok := f.handle.DeleteRecord(context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
@@ -361,4 +361,139 @@ func TestCreateRecord(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+
+	t.Run("update+delete", func(t *testing.T) {
+		t.Parallel()
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
+			[]formattedRecord{{"record1", "::1"}, {"record2", "::3"}})
+		lrh.setRequestLimit(1)
+
+		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2")
+		urh.setRequestLimit(1)
+
+		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
+		drh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{
+			{"record1", mustIP("::1"), params},
+			{"record2", mustIP("::3"), params},
+		}, rs)
+
+		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record1", mustIP("::2"), params, params)
+		require.True(t, ok)
+
+		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record2", api.RegularDelitionMode)
+		require.True(t, ok)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
+		assertHandlersExhausted(t, zh, lrh, urh, drh)
+	})
+
+	t.Run("create+delete", func(t *testing.T) {
+		t.Parallel()
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+		lrh.setRequestLimit(1)
+
+		crh := newCreateRecordHandler(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1")
+		crh.setRequestLimit(1)
+
+		drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
+		drh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Empty(t, rs)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+
+		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record1", api.RegularDelitionMode)
+		require.True(t, ok)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Empty(t, rs)
+		assertHandlersExhausted(t, zh, lrh, crh, drh)
+	})
+
+	t.Run("mixed/update+create+delete", func(t *testing.T) {
+		t.Parallel()
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
+			[]formattedRecord{{"record1", "::1"}, {"record2", "::3"}})
+		lrh.setRequestLimit(1)
+
+		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2")
+		urh.setRequestLimit(1)
+
+		crh := newCreateRecordHandler(t, f.serveMux, "record3", ipnet.IP6, "sub.test.org", "::4")
+		crh.setRequestLimit(1)
+
+		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
+		drh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{
+			{"record1", mustIP("::1"), params},
+			{"record2", mustIP("::3"), params},
+		}, rs)
+
+		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record1", mustIP("::2"), params, params)
+		require.True(t, ok)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record3"), id)
+
+		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record2", api.RegularDelitionMode)
+		require.True(t, ok)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Equal(t, []api.Record{
+			{"record3", mustIP("::4"), params},
+			{"record1", mustIP("::2"), params},
+		}, rs)
+		assertHandlersExhausted(t, zh, lrh, urh, crh, drh)
+	})
 }

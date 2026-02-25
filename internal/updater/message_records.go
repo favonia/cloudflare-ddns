@@ -31,22 +31,32 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) Message {
 		return Message{
 			MonitorMessage: monitor.Message{
 				OK:    false,
-				Lines: []string{fmt.Sprintf("Failed to detect %s address", ipNet.Describe())},
+				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipNet.Describe())},
 			},
 			NotifierMessage: notifier.Message{
-				fmt.Sprintf("Failed to detect the %s address.", ipNet.Describe()),
+				fmt.Sprintf("Failed to detect any %s addresses.", ipNet.Describe()),
 			},
 		}
 	}
 }
 
-func generateUpdateMonitorMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) monitor.Message {
+func describeIPs(ips []netip.Addr) string {
+	return pp.JoinMap(netip.Addr.String, ips)
+}
+
+func describeIPsInEnglish(ips []netip.Addr) string {
+	return pp.EnglishJoinMap(netip.Addr.String, ips)
+}
+
+func generateUpdateMonitorMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) monitor.Message {
+	ipDescription := describeIPs(ips)
+
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return monitor.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Failed to set %s (%s) of %s",
-				ipNet.RecordType(), ip.String(), pp.Join(domains),
+				ipNet.RecordType(), ipDescription, pp.Join(domains),
 			)},
 		}
 	}
@@ -56,33 +66,34 @@ func generateUpdateMonitorMessage(ipNet ipnet.Type, ip netip.Addr, s setterRespo
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Setting %s (%s) of %s",
-			ipNet.RecordType(), ip.String(), pp.Join(domains),
+			ipNet.RecordType(), ipDescription, pp.Join(domains),
 		))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Set %s (%s) of %s",
-			ipNet.RecordType(), ip.String(), pp.Join(domains),
+			ipNet.RecordType(), ipDescription, pp.Join(domains),
 		))
 	}
 
 	return monitor.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) notifier.Message {
+func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) notifier.Message {
+	ipDescription := describeIPsInEnglish(ips)
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Failed to properly update ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ip.String(),
+			"Failed to properly update ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 		)
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Updating ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ip.String(),
+				"Updating ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 			)
 		} else {
 			fragments = append(fragments,
@@ -94,7 +105,7 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResp
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Updated ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ip.String(),
+				"Updated ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 			)
 		} else {
 			fragments = append(fragments,
@@ -111,10 +122,10 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ip netip.Addr, s setterResp
 	}
 }
 
-func generateUpdateMessage(ipNet ipnet.Type, ip netip.Addr, s setterResponses) Message {
+func generateUpdateMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) Message {
 	return Message{
-		MonitorMessage:  generateUpdateMonitorMessage(ipNet, ip, s),
-		NotifierMessage: generateUpdateNotifierMessage(ipNet, ip, s),
+		MonitorMessage:  generateUpdateMonitorMessage(ipNet, ips, s),
+		NotifierMessage: generateUpdateNotifierMessage(ipNet, ips, s),
 	}
 }
 

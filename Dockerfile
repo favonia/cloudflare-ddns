@@ -4,7 +4,7 @@
 # `TARGETOS`, `TARGETARCH`, and `TARGETVARIANT`). The legacy builder is
 # unsupported.
 # We use cross-compilation because QEMU is slow.
-FROM --platform=${BUILDPLATFORM} golang:1.24.3-alpine3.20@sha256:9f98e9893fbc798c710f3432baa1e0ac6127799127c3101d2c263c3a954f0abe AS build
+FROM --platform=${BUILDPLATFORM} golang:1.26.0-alpine3.22@sha256:169d3991a4f795124a88b33c73549955a3d856e26e8504b5530c30bd245f9f1b AS build
 
 ARG GIT_DESCRIBE
 ARG TARGETOS

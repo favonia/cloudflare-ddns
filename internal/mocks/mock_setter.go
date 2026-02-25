@@ -122,46 +122,46 @@ func (c *MockSetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, i
 	return c
 }
 
-// Set mocks base method.
-func (m *MockSetter) Set(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IP netip.Addr, expectedParams api.RecordParams) setter.ResponseCode {
+// SetIPs mocks base method.
+func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IPs []netip.Addr, expectedParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", ctx, ppfmt, IPNetwork, Domain, IP, expectedParams)
+	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
-// Set indicates an expected call of Set.
-func (mr *MockSetterMockRecorder) Set(ctx, ppfmt, IPNetwork, Domain, IP, expectedParams any) *MockSetterSetCall {
+// SetIPs indicates an expected call of SetIPs.
+func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams any) *MockSetterSetIPsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSetter)(nil).Set), ctx, ppfmt, IPNetwork, Domain, IP, expectedParams)
-	return &MockSetterSetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, IPNetwork, Domain, IPs, expectedParams)
+	return &MockSetterSetIPsCall{Call: call}
 }
 
-// MockSetterSetCall wrap *gomock.Call
-type MockSetterSetCall struct {
+// MockSetterSetIPsCall wrap *gomock.Call
+type MockSetterSetIPsCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSetterSetCall) Return(arg0 setter.ResponseCode) *MockSetterSetCall {
+func (c *MockSetterSetIPsCall) Return(arg0 setter.ResponseCode) *MockSetterSetIPsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetCall {
+func (c *MockSetterSetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetCall {
+func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, detected map[ipnet.Type]netip.Addr, itemComment string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, detected map[ipnet.Type][]netip.Addr, itemComment string) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, detected, itemComment)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -187,13 +187,13 @@ func (c *MockSetterSetWAFListCall) Return(arg0 setter.ResponseCode) *MockSetterS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type][]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type][]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -43,22 +43,21 @@ func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 	}
 }
 
-// GetIP detects the IP address by pretending to send an UDP packet.
+// GetIPs detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p LocalAuto) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	var dialer net.Dialer
 	conn, err := dialer.DialContext(ctx, ipNet.UDPNetwork(), p.RemoteUDPAddr)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
-		return netip.Addr{}, false
+		return nil, false
 	}
 	defer conn.Close()
 
 	ip, ok := ExtractUDPAddr(ppfmt, conn.LocalAddr())
 	if !ok {
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	normalizedIP, ok := ipNet.NormalizeDetectedIP(ppfmt, ip)
-	return normalizedIP, ok
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
 }

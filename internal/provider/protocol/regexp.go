@@ -54,18 +54,18 @@ type Regexp struct {
 // Name of the detection protocol.
 func (p Regexp) Name() string { return p.ProviderName }
 
-// GetIP detects the IP address by parsing the HTTP response.
-func (p Regexp) GetIP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) (netip.Addr, bool) {
+// GetIPs detects the IP address by parsing the HTTP response.
+func (p Regexp) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
 	param, found := p.Param[ipNet]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return netip.Addr{}, false
+		return nil, false
 	}
 
 	ip, ok := getIPFromRegexp(ctx, ppfmt, ipNet, param.URL, param.Regexp)
 	if !ok {
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	return ipNet.NormalizeDetectedIP(ppfmt, ip)
+	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
 }
