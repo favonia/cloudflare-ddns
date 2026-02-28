@@ -3,6 +3,7 @@ package config_test
 // vim: nowrap
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ func unsetAll(t *testing.T) {
 		"TTL",
 		"PROXIED",
 		"RECORD_COMMENT",
+		"MANAGED_RECORDS_COMMENT_REGEX",
 		"WAF_LIST_DESCRIPTION",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
@@ -93,6 +95,7 @@ func TestNormalize(t *testing.T) {
 	t.Parallel()
 
 	keyProxied := "PROXIED"
+	keyManagedRecordsCommentRegex := "MANAGED_RECORDS_COMMENT_REGEX"
 
 	for name, tc := range map[string]struct {
 		input         *config.Config
@@ -278,12 +281,13 @@ func TestNormalize(t *testing.T) {
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains:          map[ipnet.Type][]domain.Domain{},
-				WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
-				TTL:              10000,
-				ProxiedTemplate:  "true",
-				RecordComment:    "hello",
-				DetectionTimeout: 5 * time.Second,
+				Domains:                            map[ipnet.Type][]domain.Domain{},
+				WAFLists:                           []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                                10000,
+				ProxiedTemplate:                    "true",
+				RecordComment:                      "hello",
+				ManagedRecordsCommentRegexTemplate: "he",
+				DetectionTimeout:                   5 * time.Second,
 			},
 			ok: true,
 			expected: &config.Config{ //nolint:exhaustruct
@@ -291,13 +295,15 @@ func TestNormalize(t *testing.T) {
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains:          map[ipnet.Type][]domain.Domain{},
-				WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
-				TTL:              10000,
-				ProxiedTemplate:  "true",
-				Proxied:          map[domain.Domain]bool{},
-				RecordComment:    "hello",
-				DetectionTimeout: 5 * time.Second,
+				Domains:                            map[ipnet.Type][]domain.Domain{},
+				WAFLists:                           []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                                10000,
+				ProxiedTemplate:                    "true",
+				Proxied:                            map[domain.Domain]bool{},
+				RecordComment:                      "hello",
+				ManagedRecordsCommentRegexTemplate: "he",
+				ManagedRecordsCommentRegex:         regexp.MustCompile("he"),
+				DetectionTimeout:                   5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -307,6 +313,94 @@ func TestNormalize(t *testing.T) {
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", api.TTL(10000)),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED=%s is ignored because no domains will be updated", "true"),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT=%s is ignored because no domains will be updated", "hello"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "MANAGED_RECORDS_COMMENT_REGEX=%s is ignored because no domains will be updated", "he"),
+				)
+			},
+		},
+		"managed-record-regex/valid": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate:                    "false",
+				RecordComment:                      "hello-123",
+				ManagedRecordsCommentRegexTemplate: `^hello-[0-9]+$`,
+				DetectionTimeout:                   5 * time.Second,
+			},
+			ok: true,
+			expected: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate: "false",
+				Proxied: map[domain.Domain]bool{
+					domain.FQDN("a.b.c"): false,
+				},
+				RecordComment:                      "hello-123",
+				ManagedRecordsCommentRegexTemplate: `^hello-[0-9]+$`,
+				ManagedRecordsCommentRegex:         regexp.MustCompile(`^hello-[0-9]+$`),
+				DetectionTimeout:                   5 * time.Second,
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"managed-record-regex/invalid": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate:                    "false",
+				ManagedRecordsCommentRegexTemplate: "(",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, keyManagedRecordsCommentRegex+"=%q is invalid: %v", "(", gomock.Any()),
+				)
+			},
+		},
+		"managed-record-regex/mismatch": {
+			input: &config.Config{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				Domains: map[ipnet.Type][]domain.Domain{
+					ipnet.IP6: {domain.FQDN("a.b.c")},
+				},
+				ProxiedTemplate:                    "false",
+				RecordComment:                      "hello",
+				ManagedRecordsCommentRegexTemplate: "^world$",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q", "hello", "^world$"),
 				)
 			},
 		},
@@ -467,7 +561,14 @@ func TestNormalize(t *testing.T) {
 			ok := cfg.Normalize(mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.Equal(t, tc.expected, cfg)
+				require.NotNil(t, cfg.ManagedRecordsCommentRegex)
+				require.Equal(t, cfg.ManagedRecordsCommentRegexTemplate, cfg.ManagedRecordsCommentRegex.String())
+
+				expected := *tc.expected
+				if expected.ManagedRecordsCommentRegex == nil && expected.ManagedRecordsCommentRegexTemplate == "" {
+					expected.ManagedRecordsCommentRegex = regexp.MustCompile("")
+				}
+				require.Equal(t, &expected, cfg)
 			} else {
 				require.Nil(t, tc.expected) // check the test case itself is okay
 				require.Equal(t, tc.input, cfg)

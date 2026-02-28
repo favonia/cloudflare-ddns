@@ -14,7 +14,7 @@ import (
 
 func printItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.MockPPInfofCall {
 	t.Helper()
-	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 24, key, value)
+	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 28, key, value)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -74,6 +74,8 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "test6.org, *.test6.org"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
+		printItem(t, innerMockPP, "DNS record comment regex:", "^Created by Cloudflare DDNS$"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
 		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
 		printItem(t, innerMockPP, "Update schedule:", "@every 5m"),
@@ -109,6 +111,7 @@ func TestPrintValues(t *testing.T) {
 	c.Proxied[domain.FQDN("d")] = false
 
 	c.RecordComment = "Created by Cloudflare DDNS"
+	c.ManagedRecordsCommentRegexTemplate = "^Created by Cloudflare DDNS$"
 
 	m := mocks.NewMockMonitor(mockCtrl)
 	m.EXPECT().Describe(gomock.Any()).
@@ -123,6 +126,50 @@ func TestPrintValues(t *testing.T) {
 			f("Snake", "hissss")
 		}).AnyTimes()
 	c.Notifier = n
+
+	c.Print(mockPP)
+}
+
+//nolint:paralleltest // changing the environment variable TZ
+func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().Indent().Return(mockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Domains, IP providers, and WAF lists:"),
+		printItem(t, innerMockPP, "IPv4-enabled domains:", "(none)"),
+		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv6-enabled domains:", "(none)"),
+		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "WAF lists:", "(none)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
+		printItem(t, innerMockPP, "DNS record comment regex:", "\"^Created by\\tCloudflare DDNS$\""),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
+		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
+		printItem(t, innerMockPP, "Update schedule:", "@every 5m"),
+		printItem(t, innerMockPP, "Update on start?", "true"),
+		printItem(t, innerMockPP, "Delete on stop?", "false"),
+		printItem(t, innerMockPP, "Cache expiration:", "6h0m0s"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Parameters of new DNS records and WAF lists:"),
+		printItem(t, innerMockPP, "TTL:", "1 (auto)"),
+		printItem(t, innerMockPP, "Proxied domains:", "(none)"),
+		printItem(t, innerMockPP, "Unproxied domains:", "(none)"),
+		printItem(t, innerMockPP, "DNS record comment:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
+		printItem(t, innerMockPP, "IP detection:", "5s"),
+		printItem(t, innerMockPP, "Record/list updating:", "30s"),
+	)
+
+	c := config.Default()
+	c.ManagedRecordsCommentRegexTemplate = "^Created by\tCloudflare DDNS$"
 
 	c.Print(mockPP)
 }

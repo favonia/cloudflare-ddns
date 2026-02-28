@@ -1,6 +1,8 @@
 package config
 
 import (
+	"regexp"
+
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
@@ -31,6 +33,7 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadTTL(ppfmt, "TTL", &c.TTL) ||
 		!ReadString(ppfmt, "PROXIED", &c.ProxiedTemplate) ||
 		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
+		!ReadString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegexTemplate) ||
 		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
@@ -43,8 +46,13 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-// Normalize checks and normalizes the fields [Config.Provider], [Config.Proxied], and [Config.DeleteOnStop].
-// When any error is reported, the original configuration remain unchanged.
+// Normalize checks and normalizes configuration invariants, including:
+// - [Config.Provider] and [Config.Proxied] canonicalization
+// - [Config.ManagedRecordsCommentRegex] compilation
+// - scheduling consistency constraints such as [Config.DeleteOnStop]
+//
+// When any error is reported, the original configuration remains unchanged.
+// On success, [Config.ManagedRecordsCommentRegex] is guaranteed non-nil.
 func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
@@ -71,6 +79,21 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 				"DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once")
 			return false
 		}
+	}
+
+	// Step 2.5: compile regex for selecting managed records.
+	managedRecordsCommentRegex, err := regexp.Compile(c.ManagedRecordsCommentRegexTemplate)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"MANAGED_RECORDS_COMMENT_REGEX=%q is invalid: %v",
+			c.ManagedRecordsCommentRegexTemplate, err)
+		return false
+	}
+	if !managedRecordsCommentRegex.MatchString(c.RecordComment) {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
+			c.RecordComment, c.ManagedRecordsCommentRegexTemplate)
+		return false
 	}
 
 	// Step 3: normalize domains and providers
@@ -145,6 +168,11 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"RECORD_COMMENT=%s is ignored because no domains will be updated", c.RecordComment)
 		}
+		if c.ManagedRecordsCommentRegexTemplate != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"MANAGED_RECORDS_COMMENT_REGEX=%s is ignored because no domains will be updated",
+				c.ManagedRecordsCommentRegexTemplate)
+		}
 	}
 	if len(c.WAFLists) == 0 { // We are only updating domains
 		if c.WAFListDescription != "" {
@@ -156,6 +184,10 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 	// Final Part: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
+	// Decision: do not optimize the empty template into nil.
+	// Keep one canonical representation (a compiled match-all regex) to avoid
+	// nil-vs-empty special cases in behavior and tests.
+	c.ManagedRecordsCommentRegex = managedRecordsCommentRegex
 
 	return true
 }

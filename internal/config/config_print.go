@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
@@ -13,13 +15,47 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-const itemTitleWidth = 24
+// Keep titles aligned for the longest built-in key:
+// "DNS record comment regex:".
+const itemTitleWidth = 28
 
-func describeComment(c string) string {
-	if c == "" {
+// These helpers format values for the human-facing startup summary.
+// They are display helpers, not serialization helpers.
+// Show literal text as quoted text so humans can see exact boundaries and
+// escaping. The empty string gets a dedicated label because that is easier to
+// scan than two quote characters in logs.
+func describeLiteralText(s string) string {
+	if s == "" {
 		return "(empty)"
 	}
-	return strconv.Quote(c)
+	return strconv.Quote(s)
+}
+
+// MANAGED_RECORDS_COMMENT_REGEX is a RE2 template, not a literal comment.
+// Show regex filters in the form humans usually read them: raw RE2 syntax when
+// that stays readable on one line, and a quoted fallback when escaping or
+// whitespace would otherwise be ambiguous.
+func describeCommentRegexTemplate(template string) string {
+	if template == "" {
+		return "(empty; matches all comments)"
+	}
+	if isHumanReadableRegex(template) {
+		return template
+	}
+	return strconv.Quote(template)
+}
+
+func isHumanReadableRegex(template string) bool {
+	if strings.TrimSpace(template) != template {
+		return false
+	}
+	for _, r := range template {
+		if unicode.IsGraphic(r) || r == ' ' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
@@ -38,7 +74,7 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
-// Print prints the Config on the screen.
+// Print prints a human-facing summary of [Config].
 func (c *Config) Print(ppfmt pp.PP) {
 	if !ppfmt.IsShowing(pp.Info) {
 		return
@@ -62,6 +98,13 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))
 
+	// Hide inactive filters to keep the default output focused.
+	if c.ManagedRecordsCommentRegexTemplate != "" {
+		section("Ownership filters:")
+		// This regex selects which existing DNS records this instance considers managed.
+		item("DNS record comment regex:", "%s", describeCommentRegexTemplate(c.ManagedRecordsCommentRegexTemplate))
+	}
+
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
 	item("Update schedule:", "%s", cron.DescribeSchedule(c.UpdateCron))
@@ -70,14 +113,15 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Cache expiration:", "%v", c.CacheExpiration)
 
 	section("Parameters of new DNS records and WAF lists:")
+	// These settings are defaults/targets for managed objects when creating or updating.
 	item("TTL:", "%s", c.TTL.Describe())
 	{
 		_, inverseMap := computeInverseMap(c.Proxied)
 		item("Proxied domains:", "%s", pp.JoinMap(domain.Domain.Describe, inverseMap[true]))
 		item("Unproxied domains:", "%s", pp.JoinMap(domain.Domain.Describe, inverseMap[false]))
 	}
-	item("DNS record comment:", "%s", describeComment(c.RecordComment))
-	item("WAF list description:", "%s", describeComment(c.WAFListDescription))
+	item("DNS record comment:", "%s", describeLiteralText(c.RecordComment))
+	item("WAF list description:", "%s", describeLiteralText(c.WAFListDescription))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", c.DetectionTimeout)

@@ -140,10 +140,11 @@ zoneSearch:
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-	expectedParams RecordParams,
+	recordFilter ManagedRecordFilter, expectedParams RecordParams,
 ) ([]Record, bool, bool) {
-	if rmap := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rmap != nil {
-		return *rmap.Value(), true, true
+	if cachedManagedRecords := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); cachedManagedRecords != nil {
+		// Cache stores managed records only; this assumes a stable filter per handle.
+		return *cachedManagedRecords.Value(), true, true
 	}
 
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
@@ -166,10 +167,14 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		return nil, false, false
 	}
 
-	rs := make([]Record, 0, len(raw))
-	for _, r := range raw {
-		id := ID(r.ID)
-		ip, err := netip.ParseAddr(r.Content)
+	managedRecords := make([]Record, 0, len(raw))
+	for _, rawRecord := range raw {
+		if !recordFilter.MatchComment(rawRecord.Comment) {
+			continue
+		}
+
+		id := ID(rawRecord.ID)
+		ip, err := netip.ParseAddr(rawRecord.Content)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Failed to parse the IP address in an %s record of %s (ID: %s): %v",
@@ -177,32 +182,32 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 			return nil, false, false
 		}
 
-		if TTL(r.TTL) != expectedParams.TTL {
-			hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), expectedParams.TTL)
-		}
-		currentProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
-		if currentProxied != expectedParams.Proxied {
-			hintMismatchedProxied(ppfmt, ipNet, domain, id, currentProxied, expectedParams.Proxied)
-		}
-		if r.Comment != expectedParams.Comment {
-			hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, expectedParams.Comment)
-		}
-
-		rs = append(rs, Record{
-			ID: ID(r.ID),
+		record := Record{
+			ID: ID(rawRecord.ID),
 			IP: ip,
 			RecordParams: RecordParams{
-				TTL:     TTL(r.TTL),
-				Proxied: r.Proxied != nil && *r.Proxied,
-				Comment: r.Comment,
+				TTL:     TTL(rawRecord.TTL),
+				Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
+				Comment: rawRecord.Comment,
 			},
-		})
+		}
+		managedRecords = append(managedRecords, record)
+
+		if record.TTL != expectedParams.TTL {
+			hintMismatchedTTL(ppfmt, ipNet, domain, id, record.TTL, expectedParams.TTL)
+		}
+		if record.Proxied != expectedParams.Proxied {
+			hintMismatchedProxied(ppfmt, ipNet, domain, id, record.Proxied, expectedParams.Proxied)
+		}
+		if record.Comment != expectedParams.Comment {
+			hintMismatchedComment(ppfmt, ipNet, domain, id, record.Comment, expectedParams.Comment)
+		}
 	}
 
 	h.cache.listRecords[ipNet].DeleteExpired()
-	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), &rs, ttlcache.DefaultTTL)
+	h.cache.listRecords[ipNet].Set(domain.DNSNameASCII(), &managedRecords, ttlcache.DefaultTTL)
 
-	return rs, false, true
+	return managedRecords, false, true
 }
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
