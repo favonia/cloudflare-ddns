@@ -254,6 +254,7 @@ type wafListMutationExpectation struct {
 	alreadyExisting bool
 	cached          bool
 	createPrefixes  []netip.Prefix
+	createComment   string
 	createOK        bool
 	deleteItems     []api.WAFListItem
 	deleteOK        bool
@@ -308,7 +309,7 @@ func expectWAFListMutation(
 	}
 
 	calls = append(calls, m.EXPECT().
-		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, "").
+		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, want.createComment).
 		Return(want.createOK))
 	if !want.createOK {
 		calls = append(calls, expectWAFListErrorNotice(p, list))

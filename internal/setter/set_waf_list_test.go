@@ -22,6 +22,7 @@ func TestSetWAFList(t *testing.T) {
 
 	const listName = "list"
 	const listDescription = "My List"
+	const itemComment = ""
 	wafList := api.WAFList{AccountID: "account", Name: listName}
 
 	var (
@@ -30,23 +31,23 @@ func TestSetWAFList(t *testing.T) {
 		ip6  = netip.MustParseAddr("2001:db8::1111")
 		ip6b = netip.MustParseAddr("2001:db9:1::2222")
 
-		prefix4 = wafItem("10.0.0.1/32", "pre4")
-		prefix6 = wafItem("2001:0db8::/64", "pre6")
+		prefix4 = wafItem(wafItemFixture{prefix: "10.0.0.1/32", id: "pre4", comment: ""})
+		prefix6 = wafItem(wafItemFixture{prefix: "2001:0db8::/64", id: "pre6", comment: ""})
 
-		prefix4range1 = wafItem("10.0.0.0/16", "ip4-16")
-		prefix4range2 = wafItem("10.0.0.0/20", "ip4-20")
-		prefix4range3 = wafItem("10.0.0.0/24", "ip4-24")
-		prefix4wrong1 = wafItem("20.0.0.0/16", "ip4-16")
-		prefix4wrong2 = wafItem("20.0.0.0/20", "ip4-20")
-		prefix4wrong3 = wafItem("20.0.0.0/24", "ip4-24")
+		prefix4range1 = wafItem(wafItemFixture{prefix: "10.0.0.0/16", id: "ip4-16", comment: ""})
+		prefix4range2 = wafItem(wafItemFixture{prefix: "10.0.0.0/20", id: "ip4-20", comment: ""})
+		prefix4range3 = wafItem(wafItemFixture{prefix: "10.0.0.0/24", id: "ip4-24", comment: ""})
+		prefix4wrong1 = wafItem(wafItemFixture{prefix: "20.0.0.0/16", id: "ip4-16", comment: ""})
+		prefix4wrong2 = wafItem(wafItemFixture{prefix: "20.0.0.0/20", id: "ip4-20", comment: ""})
+		prefix4wrong3 = wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "ip4-24", comment: ""})
 
-		prefix6range1  = wafItem("2001:db8::/32", "ip6-32")
-		prefix6range2  = wafItem("2001:db8::/40", "ip6-40")
-		prefix6range3  = wafItem("2001:db8::/48", "ip6-48")
-		prefix6target2 = wafItem("2001:db9:1::/64", "ip6-target2")
-		prefix6wrong1  = wafItem("4001:db8::/32", "ip6-32")
-		prefix6wrong2  = wafItem("4001:db8::/40", "ip6-40")
-		prefix6wrong3  = wafItem("4001:db8::/48", "ip6-48")
+		prefix6range1  = wafItem(wafItemFixture{prefix: "2001:db8::/32", id: "ip6-32", comment: ""})
+		prefix6range2  = wafItem(wafItemFixture{prefix: "2001:db8::/40", id: "ip6-40", comment: ""})
+		prefix6range3  = wafItem(wafItemFixture{prefix: "2001:db8::/48", id: "ip6-48", comment: ""})
+		prefix6target2 = wafItem(wafItemFixture{prefix: "2001:db9:1::/64", id: "ip6-target2", comment: ""})
+		prefix6wrong1  = wafItem(wafItemFixture{prefix: "4001:db8::/32", id: "ip6-32", comment: ""})
+		prefix6wrong2  = wafItem(wafItemFixture{prefix: "4001:db8::/40", id: "ip6-40", comment: ""})
+		prefix6wrong3  = wafItem(wafItemFixture{prefix: "4001:db8::/48", id: "ip6-48", comment: ""})
 	)
 
 	type items = []api.WAFListItem
@@ -108,6 +109,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: false,
 					cached:          false,
 					createPrefixes:  targetPrefixes,
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     items{},
 					deleteOK:        true,
@@ -143,6 +145,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  nil,
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     items{prefix4range1},
 					deleteOK:        true,
@@ -176,6 +179,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  nil,
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     sortedWrongItems,
 					deleteOK:        true,
@@ -193,6 +197,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  targetPrefixes,
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     sortedWrongItems,
 					deleteOK:        true,
@@ -210,6 +215,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  targetPrefixes,
+					createComment:   itemComment,
 					createOK:        false,
 					deleteItems:     nil,
 					deleteOK:        false,
@@ -235,6 +241,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  []netip.Prefix{prefix6target2.Prefix},
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     []api.WAFListItem{prefix4wrong2, prefix6wrong1},
 					deleteOK:        true,
@@ -252,6 +259,7 @@ func TestSetWAFList(t *testing.T) {
 					alreadyExisting: true,
 					cached:          false,
 					createPrefixes:  nil,
+					createComment:   itemComment,
 					createOK:        true,
 					deleteItems:     sortedWrongItems,
 					deleteOK:        false,
@@ -267,7 +275,7 @@ func TestSetWAFList(t *testing.T) {
 			ctx, h := newSetterHarness(t)
 			h.prepare(ctx, tc.prepareMocks)
 
-			resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, tc.detected, "")
+			resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, tc.detected, itemComment)
 			require.Equal(t, tc.resp, resp)
 		})
 	}
@@ -278,22 +286,23 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 
 	const listName = "list"
 	const listDescription = "My List"
+	const itemComment = ""
 	wafList := api.WAFList{AccountID: "account", Name: listName}
 
 	var (
 		ip4 = netip.MustParseAddr("10.0.0.1")
 		ip6 = netip.MustParseAddr("2001:db8::1111")
 
-		target4 = wafItem("10.0.0.1/32", "target4")
-		target6 = wafItem("2001:0db8::/64", "target6")
+		target4 = wafItem(wafItemFixture{prefix: "10.0.0.1/32", id: "target4", comment: ""})
+		target6 = wafItem(wafItemFixture{prefix: "2001:0db8::/64", id: "target6", comment: ""})
 
-		cover4 = wafItem("10.0.0.0/20", "cover4")
-		cover6 = wafItem("2001:db8::/40", "cover6")
+		cover4 = wafItem(wafItemFixture{prefix: "10.0.0.0/20", id: "cover4", comment: ""})
+		cover6 = wafItem(wafItemFixture{prefix: "2001:db8::/40", id: "cover6", comment: ""})
 
-		wrong4a = wafItem("20.0.0.0/16", "wrong4a")
-		wrong4b = wafItem("20.0.0.0/24", "wrong4b")
-		wrong6a = wafItem("4001:db8::/32", "wrong6a")
-		wrong6b = wafItem("4001:db8::/48", "wrong6b")
+		wrong4a = wafItem(wafItemFixture{prefix: "20.0.0.0/16", id: "wrong4a", comment: ""})
+		wrong4b = wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "wrong4b", comment: ""})
+		wrong6a = wafItem(wafItemFixture{prefix: "4001:db8::/32", id: "wrong6a", comment: ""})
+		wrong6b = wafItem(wafItemFixture{prefix: "4001:db8::/48", id: "wrong6b", comment: ""})
 	)
 
 	type itemOrderer struct {
@@ -386,7 +395,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription).
 						Return(permutedItems, true, false, true)
 					createCall := h.mockHandle.EXPECT().
-						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, "").
+						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, itemComment).
 						Return(true)
 					deleteCall := h.mockHandle.EXPECT().
 						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
@@ -396,7 +405,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-					resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detectedIPs, "")
+					resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detectedIPs, itemComment)
 					require.Equal(t, setter.ResponseUpdated, resp)
 				})
 			}

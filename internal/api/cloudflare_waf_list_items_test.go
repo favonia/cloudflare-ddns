@@ -25,18 +25,24 @@ import (
 const listItemPageSize = 100
 
 type listItem struct {
-	IP      string
+	ID      api.ID
+	Prefix  string
 	Comment string
 }
 
 func mockListItem(listItem listItem) cloudflare.ListItem {
 	var ip *string
-	if listItem.IP != "" {
-		ip = &listItem.IP
+	if listItem.Prefix != "" {
+		ip = &listItem.Prefix
+	}
+
+	id := listItem.ID
+	if id == "" {
+		id = mockID(listItem.Prefix, 0)
 	}
 
 	return cloudflare.ListItem{
-		ID:         string(mockID(listItem.IP, 0)),
+		ID:         id.String(),
 		IP:         ip,
 		Redirect:   nil,
 		Hostname:   nil,
@@ -143,7 +149,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{{"10.0.0.1", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
 			1,
 			true, true,
 			[]api.WAFListItem{
@@ -193,7 +199,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{{"10.0.0.1", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1", Comment: ""}},
 			0,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
@@ -205,7 +211,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{{"invalid item", ""}},
+			[]listItem{{ID: "", Prefix: "invalid item", Comment: ""}},
 			1,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
@@ -221,7 +227,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{{"", ""}},
+			[]listItem{{ID: "", Prefix: "", Comment: ""}},
 			1,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
@@ -235,11 +241,11 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			emptyListMeta,
 			0,
-			[]listItem{{"10.0.0.1", "hello"}},
+			[]listItem{{ID: "item-with-comment", Prefix: "10.0.0.1", Comment: "hello"}},
 			1,
 			true, true,
 			[]api.WAFListItem{
-				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
+				{ID: "item-with-comment", Prefix: netip.MustParsePrefix("10.0.0.1/32")},
 			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
@@ -282,9 +288,9 @@ func TestListWAFListItemsCache(t *testing.T) {
 	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 	lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), []listItem{
-		{"10.0.0.1", ""},
-		{"2001:db8::/32", ""},
-		{"10.0.0.0/20", ""},
+		{ID: "", Prefix: "10.0.0.1", Comment: ""},
+		{ID: "", Prefix: "2001:db8::/32", Comment: ""},
+		{ID: "", Prefix: "10.0.0.0/20", Comment: ""},
 	})
 
 	lh.setRequestLimit(1)
@@ -416,7 +422,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			1,
 			[]api.ID{"id1", "id2", "id3"},
 			1,
-			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
 			1, true,
 			nil,
 		},
@@ -446,7 +452,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			1,
 			[]api.ID{"id1", "id2", "id3"},
 			1,
-			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"invalid item", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "invalid item", Comment: ""}},
 			1,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -585,7 +591,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
 			1,
-			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"10.0.0.0/20", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
 			1,
 			true,
 			nil,
@@ -616,7 +622,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
 			1,
-			[]listItem{{"10.0.0.1/32", ""}, {"2001:db8::/32", ""}, {"invalid item", ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "invalid item", Comment: ""}},
 			1,
 			false,
 			func(ppfmt *mocks.MockPP) {
