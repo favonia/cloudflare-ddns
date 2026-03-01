@@ -82,6 +82,8 @@ func (s ManagedRecordFilter) FilterRecords(records []Record) []Record {
 }
 
 // WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
+// The current model intentionally omits Cloudflare's per-item comment, so any
+// ownership scheme encoded only in WAF item comments is lost after reads.
 type WAFListItem struct {
 	ID
 	netip.Prefix
@@ -122,9 +124,13 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves a WAF list with IP rages.
+	// ListWAFListItems retrieves the current WAF-list view with IP ranges.
 	// It creates an empty WAF list with IP ranges if it does not already exist yet.
-	// The first return value is the ID of the list.
+	//
+	// Current implementations return one whole-list view per handle/list pair:
+	// they do not preserve per-item comments, and their cache keys need not
+	// distinguish different WAF ownership filters.
+	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
 	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
@@ -132,6 +138,8 @@ type Handle interface {
 
 	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
 	// update or create the list.
+	// Current implementations treat this as whole-list cleanup during shutdown;
+	// it is not scoped to a managed subset of items within a shared list.
 	// The handle should not be reused for any further update operations after calling this method.
 	//
 	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.

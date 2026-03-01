@@ -231,6 +231,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 // SetWAFList updates a WAF list.
 //
+// The current WAF API surface exposes one whole-list view, so this
+// reconciliation treats every listed item as belonging to this updater.
+//
 // For each IP family:
 // - managed + targets: keep ranges covering any target, add smallest prefixes for uncovered targets
 // - managed + empty target set: detection failed, preserve existing family ranges
@@ -336,6 +339,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 }
 
 // FinalClearWAFList calls [api.Handle.DeleteWAFList] or [api.Handle.ClearWAFList].
+// This is the whole-list shutdown path: it does not try to preserve foreign
+// items in a shared WAF list.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
 ) ResponseCode {
 	deleted, ok := s.Handle.FinalClearWAFListAsync(ctx, ppfmt, list, listDescription)

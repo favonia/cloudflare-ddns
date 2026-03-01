@@ -135,6 +135,8 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 //
 // This is intended for the final shutdown/deletion phase. The handle should not be reused for
 // subsequent updates after calling this method.
+// The current implementation assumes the updater owns the whole list: it tries
+// to delete the list, and if that fails, it starts clearing every item in it.
 //
 // We only deleted cached data in listListItems and listID, but not the cached lists
 // in listLists so that we do not have to re-query the lists under the same account.
@@ -192,6 +194,8 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 			return nil, false
 		}
 		if rawItem.Comment != "" {
+			// WAFListItem intentionally carries only IDs and prefixes today, so
+			// this ownership-relevant field would be dropped after the read.
 			ppfmt.Noticef(pp.EmojiWarning, "The IP range/address %q in the list %s has a non-empty comment %q. The comment might be lost during an IP update.", //nolint:lll
 				*rawItem.IP, list.Describe(), rawItem.Comment)
 		}
@@ -201,6 +205,7 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 }
 
 // ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
+// It caches one unfiltered list snapshot per handle/list pair.
 func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
 ) ([]WAFListItem, bool, bool, bool) {
