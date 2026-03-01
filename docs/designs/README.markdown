@@ -13,4 +13,5 @@ Start here for durable design decisions, constraints, and intended extension poi
 ## Feature-Specific Documents
 
 - [`managed-record-ownership.markdown`](managed-record-ownership.markdown): DNS record ownership and `MANAGED_RECORDS_COMMENT_REGEX`.
+- [`managed-waf-item-ownership.markdown`](managed-waf-item-ownership.markdown): WAF list item ownership, `WAF_LIST_ITEM_COMMENT`, and `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX`.
 - [`local-iface-multi-address.markdown`](local-iface-multi-address.markdown): multi-address handling for `local.iface`.
