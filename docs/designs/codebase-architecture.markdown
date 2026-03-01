@@ -44,3 +44,8 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
    - full WAF list references in the form `account/name`
 2. Do not pluralize a variable only because its type is `map[..]...`. For example, a mapping from IP families to detected IPs should be named `detectedIP`, not `detectedIPs`.
 3. In tests, keep an expected mocked call on one line in most cases, even if the line becomes long.
+4. For log messages, common existing patterns include:
+   - Keep a short primary message and emit follow-up hints or details with `NoticeOncef` or `InfoOncef` when helpful.
+   - Use `%q` for raw or untrusted inputs such as user-provided environment values or parser tokens, while continuing to use `%s` for the safe identifiers listed above.
+   - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
+   - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
