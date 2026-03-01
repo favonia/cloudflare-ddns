@@ -26,6 +26,10 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    We rely on the meta-linter `golangci-lint` to enforce coding styles. Whatever `golangci-lint` says is our coding style (unless the maintainer says otherwise). You can wait for GitHub Actions (usually very fast) or run `golangci-lint run` locally. Your must pass all automatic checks cleanly, possibly except the coverage checks, unless the maintainer says your code is okay.
 
+4. Keep design documentation durable.
+
+   If you edit `docs/designs/`, write for a future reader who needs to understand the current intended design rather than the current pull request. Describe present semantics directly, avoid vague rollout-relative wording such as "currently" or "first implementation", use explicit versions or changes when historical context matters, and move project-wide policy into the project-wide design notes instead of inventing a separate local policy in each feature note.
+
 Once you make the pull request, the maintainer will check your code and decide what to do. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and will update your pull request’s title. Don’t worry too much about commit messages as long as it’s clear what individual commits do.
 
 ## 🧑‍⚖️ Who’s in Charge

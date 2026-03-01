@@ -62,6 +62,25 @@ Cloudflare item-creation and item-deletion APIs return the whole list content. M
 
 The main reason is operator safety: the selector is about management scope, not the default comment for newly written list items. A name that is too close to `WAF_LIST_ITEM_COMMENT` increases the risk of copy-paste and scanning mistakes in environment-variable-heavy setups.
 
+## Ownership-Specific Warning Triggers
+
+Following the project-wide warning policy in [`codebase-architecture.markdown`](codebase-architecture.markdown), this ownership feature should warn only when the configuration or observed list content strongly suggests a shared-ownership mistake.
+
+### Recommended Warnings
+
+| Scope | Trigger | Proposed message |
+| --- | --- | --- |
+| config time | `WAF_LISTS` is non-empty, `MANAGED_RECORDS_COMMENT_REGEX` is non-empty, and `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX` is empty | `MANAGED_RECORDS_COMMENT_REGEX enables DNS ownership isolation, but MANAGED_WAF_LIST_ITEM_COMMENT_REGEX is empty for configured WAF lists. All items in WAF_LISTS will still be treated as managed.` |
+| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX` is empty | `WAF_LIST_ITEM_COMMENT=%q only affects newly created WAF list items. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEM_COMMENT_REGEX is empty.` |
+| config time | `DELETE_ON_STOP=true`, `WAF_LISTS` is non-empty, and `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX` is empty | `DELETE_ON_STOP=true with an empty MANAGED_WAF_LIST_ITEM_COMMENT_REGEX will delete all items in WAF_LISTS, including items created by other deployments.` |
+| runtime | `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX` is empty, and a listed WAF list contains multiple distinct non-empty item comments | `The list %s contains multiple distinct non-empty item comments, but MANAGED_WAF_LIST_ITEM_COMMENT_REGEX is empty. The list may be shared with other deployments.` |
+
+### Warnings to Avoid
+
+- Do not warn on every empty `MANAGED_WAF_LIST_ITEM_COMMENT_REGEX`. The empty default is valid and intentionally preserves pre-feature behavior.
+- Do not warn based only on heuristic regex style, such as missing `^...$` anchors.
+- Do not warn merely because DNS and WAF comment values differ. Different write-comments are often intentional.
+
 ## Scope Boundary
 
 This design applies only to WAF list item ownership based on WAF list item comments.

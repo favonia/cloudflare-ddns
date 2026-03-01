@@ -49,3 +49,17 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
    - Use `%q` for raw or untrusted inputs such as user-provided environment values or parser tokens, while continuing to use `%s` for the safe identifiers listed above.
    - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
    - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
+
+## User-Facing Reporting
+
+Warnings are a limited budget. Across the project, emit a warning only when accepted configuration or accepted remote state strongly suggests surprising behavior, unsafe behavior, partial ineffectiveness, or shared ownership that a user likely did not intend.
+
+In practice:
+
+- Use user errors for invalid configuration or unsupported input.
+- Use ordinary errors for failures to read, reconcile, create, update, or delete remote state.
+- Use warnings for valid-but-risky or valid-but-surprising states, such as deprecated configuration, partially ignored configuration, drift that may cause ineffective updates, or likely shared-resource interference.
+- Keep warnings actionable: identify the relevant setting or resource, describe the consequence, and make the corrective direction obvious.
+- Avoid warnings for intentional defaults that preserve established behavior, heuristic style preferences, or common configurations with many legitimate uses.
+
+Feature-specific design notes may define additional warning triggers, but they should apply this project-wide bar rather than inventing a separate warning philosophy.
