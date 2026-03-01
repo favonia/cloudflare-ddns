@@ -288,10 +288,10 @@ We have received reports of recent issues with the default IP provider, `cloudfl
 
 ### ⚙️ All Settings
 
-The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details.
+The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details that most users can safely ignore.
 
 <details>
-<summary id="generate-scoped-api-token-all-settings"><em>Click to expand:</em> 🔑 The Cloudflare API token</summary>
+<summary id="generate-scoped-api-token-all-settings"><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -313,22 +313,49 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📍 DNS domains and WAF lists to update</summary>
+<summary><em>Click to expand:</em> 📍 DNS and WAF Scope</summary>
 
 > You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` (since version 1.14.0) for the updater to update.
 
-| Name                                  | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DOMAINS`                             | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `IP4_DOMAINS`                         | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `IP6_DOMAINS`                         | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 🧪 `WAF_LISTS` (since version 1.14.0) | <p>🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `<account-id>/<list-name>` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. If the referenced WAF list does not exist, the updater will try to create it.</p><p>🔑 The API token needs the **Account - Account Filter Lists - Edit** permission.<br/>💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/).</p> |
+Managed DNS records:
+
+| Name                                                   | Meaning                                                                                                                                                                                                                                               | Default Value               |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `DOMAINS`                                              | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for both `A` and `AAAA` records. Listing a domain in `DOMAINS` is equivalent to listing the same domain in both `IP4_DOMAINS` and `IP6_DOMAINS`. | `""` (empty list)           |
+| `IP4_DOMAINS`                                          | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `A` records                                                                                                                                  | `""` (empty list)           |
+| `IP6_DOMAINS`                                          | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                               | `""` (empty list)           |
+| `MANAGED_RECORDS_COMMENT_REGEX` (since version 1.16.0) | A regular expression used to select which existing DNS records are managed by this updater instance. Only matched records are updated/deleted. The syntax is [RE2](https://github.com/google/re2/wiki/Syntax) (not Perl/PCRE).                        | `""` (matches all comments) |
+
+Managed WAF lists:
+
+| Name                                  | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Default Value     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 🧪 `WAF_LISTS` (since version 1.14.0) | <p>🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `<account-id>/<list-name>` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. If the referenced WAF list does not exist, the updater will try to create it.</p><p>🔑 The API token needs the **Account - Account Filter Lists - Edit** permission.<br/>💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/).</p> | `""` (empty list) |
+
+> 🤖 **Advanced setup for shared-domain multi-instance deployments**
+>
+> Use this setup when multiple updater instances may manage overlapping DNS domains across deployments/servers.
+>
+> 1. Give each instance a unique `RECORD_COMMENT`.
+> 2. Set `MANAGED_RECORDS_COMMENT_REGEX` to the exact same comment using `^...$`.
+> 3. Keep those values paired per instance.
+>
+> Example:
+>
+> - Instance A: `RECORD_COMMENT=managed-by-ddns-a` and `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
+> - Instance B: `RECORD_COMMENT=managed-by-ddns-b` and `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
+>
+> `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`; otherwise the updater fails at startup.
+>
+> `DELETE_ON_STOP=true` only deletes managed DNS records matched by `MANAGED_RECORDS_COMMENT_REGEX`.
+
+Other scope notes:
 
 > 🃏🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 
 > 🌐🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
-> 🤖 Technical notes on WAF lists:
+> 🤖 Behavior notes on WAF lists:
 >
 > 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), and thus the updater will use the smallest IP range allowed by Cloudflare that contains the detected IPv6 address.
 > 2. The updater will delete IP addresses belonging to unmanaged IP families from the specified WAF lists (_e.g.,_ if you disable IPv6 with `IP6_PROVIDER=none`, then existing IPv6 addresses or IPv6 ranges in the lists will be deleted). The idea is that the list should contain only detected IP addresses.
@@ -336,10 +363,10 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🔍 IP address providers</summary>
+<summary><em>Click to expand:</em> 🔍 IP Detection</summary>
 
-| Name           | Meaning                                                                                                                                                                                                                                                                       | Default Value      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Name           | Meaning                                                                                                                                                                                                                                                                                                  | Default Value      |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `literal:<ip1>,<ip2>,...`, and `none`. The special `none` provider disables IPv4 completely. See below for a detailed explanation. | `cloudflare.trace` |
 | `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `literal:<ip1>,<ip2>,...`, and `none`. The special `none` provider disables IPv6 completely. See below for a detailed explanation. | `cloudflare.trace` |
 
@@ -352,13 +379,13 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 | `local`                                                                                  | <p>Get the IP address via local network interfaces and routing tables. The updater will use the local address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.)</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/network/bridge/) instead of those in the host network.</p> |
 | 🧪 `local.iface:<iface>` (available since version 1.15.0 but not finalized until 1.16.0) | <p>🧪 Get IP addresses via the specific local network interface `iface`. The updater will collect all global unicast IP addresses of the matching IP family (IPv4 or IPv6), then reconcile DNS records and WAF lists against that full set.</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater cannot access host network interfaces.</p>                                                                                                  |
 | `url:<url>`                                                                              | Fetch the IP address from a URL. The provider format is `url:` followed by the URL itself. For example, `IP4_PROVIDER=url:https://api4.ipify.org` will fetch the IPv4 address from <https://api4.ipify.org>. Since version 1.15.0, the updater will enforce the matching protocol (IPv4 or IPv6) when connecting to the provided URL. Currently, only HTTP(S) is supported.                                                                                                                                                                 |
-| `literal:<ip1>,<ip2>,...` (available since version 1.16.0)                               | Use one or more explicit IP addresses for detection (handy for tests/debugging). The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.                                                                                                                                                                                                                                                                                                                                         |
+| `literal:<ip1>,<ip2>,...` (available since version 1.16.0)                               | Use one or more explicit IP addresses for detection (handy for tests/debugging). The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.                                                                                                                                                                                                                                                                                                      |
 | `none`                                                                                   | <p>Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed.</p><p>🧪 The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. As the support of WAF lists is still experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).</p>           |
 
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📅 Scheduling of IP detections and updates</summary>
+<summary><em>Click to expand:</em> 📅 Update Schedule and Lifecycle</summary>
 
 | Name               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Default Value                 |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
@@ -371,7 +398,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ⏳ Timeouts of various operations</summary>
+<summary><em>Click to expand:</em> ⏳ Operation Timeouts</summary>
 
 | Name                | Meaning                                                                                                                                                                                                                                       | Default Value      |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -381,7 +408,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🐣 Parameters of new DNS records and WAF lists (proxy status, TTL, and comments)</summary>
+<summary><em>Click to expand:</em> 🐣 DNS and WAF Creation Defaults</summary>
 
 > 👉 The updater will preserve existing parameters (TTL, proxy statuses, DNS record comments, etc.). Only when it creates new DNS records and new WAF lists, the following settings will apply. To change existing parameters, you can go to your [Cloudflare Dashboard](https://dash.cloudflare.com) and change them directly. If you think you have a use case where the updater should actively overwrite existing parameters in addition to IP addresses, please [let me know](https://github.com/favonia/cloudflare-ddns/issues/new). 🐞🧪 **KNOWN ISSUE: comments of stale WAF list items (not WAF lists themselves) will not be kept** because the Cloudflare API does not provide an easy way to update list items. The comments will be lost when the updater deletes stale list items and create new ones.
 
@@ -426,7 +453,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 👁️ Message logging options</summary>
+<summary><em>Click to expand:</em> 👁️ Logging</summary>
 
 | Name    | Meaning                                                                                                                                                                                       | Default Value |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -436,7 +463,7 @@ The emoji “🧪” indicates experimental features and the emoji “🤖” in
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📣 Notification services (Healthchecks, Uptime Kuma, and shoutrrr)</summary>
+<summary><em>Click to expand:</em> 📣 Notifications</summary>
 
 > 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to disable IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 

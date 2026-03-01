@@ -46,7 +46,8 @@ func initConfig(ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
 	}
 
 	// Get the setter
-	s, ok := setter.New(ppfmt, h)
+	// c.Normalize guarantees c.ManagedRecordsCommentRegex is non-nil.
+	s, ok := setter.New(ppfmt, h, c.ManagedRecordsCommentRegex)
 	if !ok {
 		return c, nil, false
 	}

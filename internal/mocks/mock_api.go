@@ -238,9 +238,9 @@ func (c *MockHandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Contex
 }
 
 // ListRecords mocks base method.
-func (m *MockHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, expectedParams api.RecordParams) ([]api.Record, bool, bool) {
+func (m *MockHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, arg3 domain.Domain, recordFilter api.ManagedRecordFilter, expectedParams api.RecordParams) ([]api.Record, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRecords", ctx, ppfmt, ipNet, arg3, expectedParams)
+	ret := m.ctrl.Call(m, "ListRecords", ctx, ppfmt, ipNet, arg3, recordFilter, expectedParams)
 	ret0, _ := ret[0].([]api.Record)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -248,9 +248,9 @@ func (m *MockHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.T
 }
 
 // ListRecords indicates an expected call of ListRecords.
-func (mr *MockHandleMockRecorder) ListRecords(ctx, ppfmt, ipNet, arg3, expectedParams any) *MockHandleListRecordsCall {
+func (mr *MockHandleMockRecorder) ListRecords(ctx, ppfmt, ipNet, arg3, recordFilter, expectedParams any) *MockHandleListRecordsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), ctx, ppfmt, ipNet, arg3, expectedParams)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecords", reflect.TypeOf((*MockHandle)(nil).ListRecords), ctx, ppfmt, ipNet, arg3, recordFilter, expectedParams)
 	return &MockHandleListRecordsCall{Call: call}
 }
 
@@ -266,13 +266,13 @@ func (c *MockHandleListRecordsCall) Return(arg0 []api.Record, arg1, arg2 bool) *
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
+func (c *MockHandleListRecordsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ManagedRecordFilter, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
+func (c *MockHandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ManagedRecordFilter, api.RecordParams) ([]api.Record, bool, bool)) *MockHandleListRecordsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

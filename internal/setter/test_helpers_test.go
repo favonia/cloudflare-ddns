@@ -65,7 +65,7 @@ func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s, ok := setter.New(mockPP, mockHandle)
+	s, ok := setter.New(mockPP, mockHandle, nil)
 	require.True(t, ok)
 
 	return ctx, setterHarness{
@@ -101,7 +101,7 @@ func expectRecordList(
 	cached bool,
 	ok bool,
 ) any {
-	return h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return(records, cached, ok)
+	return h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, api.ManagedRecordFilter{CommentRegex: nil}, params).Return(records, cached, ok)
 }
 
 func expectRecordCreate(

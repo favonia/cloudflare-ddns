@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"net/netip"
+	"regexp"
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -13,13 +14,19 @@ import (
 )
 
 type setter struct {
-	Handle api.Handle
+	Handle       api.Handle
+	RecordFilter api.ManagedRecordFilter
 }
 
-// New creates a new Setter.
-func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
+// New creates a new Setter and binds one managed-record filter for its lifetime.
+// The underlying [api.Handle] is expected to use this stable filter consistently.
+//
+// A nil regex is allowed and means match-all, consistent with [api.ManagedRecordFilter].
+// The normal runtime path still passes a compiled regex from [config.Config.Normalize].
+func New(_ppfmt pp.PP, handle api.Handle, managedRecordsCommentRegex *regexp.Regexp) (Setter, bool) {
 	return setter{
-		Handle: handle,
+		Handle:       handle,
+		RecordFilter: api.ManagedRecordFilter{CommentRegex: managedRecordsCommentRegex},
 	}, true
 }
 
@@ -73,7 +80,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	domainDescription := domain.Describe()
 	targets := ips
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipNetwork, domain, expectedParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipNetwork, domain, s.RecordFilter, expectedParams)
 	if !ok {
 		return ResponseFailed
 	}
@@ -176,7 +183,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 	recordType := ipnet.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, expectedParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, s.RecordFilter, expectedParams)
 	if !ok {
 		return ResponseFailed
 	}
