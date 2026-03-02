@@ -15,10 +15,18 @@ func dnsRecord(id api.ID, ip netip.Addr, params api.RecordParams) api.Record {
 	}
 }
 
-func wafItem(cidr string, id api.ID) api.WAFListItem {
+// wafItemFixture keeps WAF item comments explicit in tests.
+type wafItemFixture struct {
+	prefix  string
+	id      api.ID
+	comment string
+}
+
+func wafItem(fixture wafItemFixture) api.WAFListItem {
 	return api.WAFListItem{
-		ID:     id,
-		Prefix: netip.MustParsePrefix(cidr),
+		ID:      fixture.id,
+		Prefix:  netip.MustParsePrefix(fixture.prefix),
+		Comment: fixture.comment,
 	}
 }
 

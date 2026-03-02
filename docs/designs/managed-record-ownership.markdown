@@ -34,9 +34,14 @@ Only matched records participate in:
 - TTL, proxied, and comment drift warnings
 - stale-record detection
 - duplicate cleanup
-- `DELETE_ON_STOP`
 
 Unmatched records are invisible to DNS mutation logic. As a result, the updater may create a new managed record even if an unmanaged record already has the desired IP address.
+
+## Shutdown Deletion Semantics
+
+With `DELETE_ON_STOP`, shutdown cleanup deletes only managed DNS records matched by `MANAGED_RECORDS_COMMENT_REGEX`.
+
+The updater does not assume whole-domain ownership. Unmatched DNS records remain outside the deletion scope.
 
 ## Caching Contract
 
@@ -60,7 +65,7 @@ The main reason is operator safety: the selector is about management scope, not 
 
 This design applies only to DNS record ownership based on DNS record comments.
 
-It is not a general ownership abstraction for all managed resources. WAF list management remains separate, and DNS-less or WAF-only runs do not use this selector.
+It is not a general ownership abstraction for all managed resources. WAF list item ownership remains separate, and DNS-less or WAF-only runs do not use this selector.
 
 ## Future Development Notes
 

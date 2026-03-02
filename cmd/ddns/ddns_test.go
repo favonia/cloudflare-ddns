@@ -34,6 +34,8 @@ func resetInitConfigEnv(t *testing.T) {
 		"RECORD_COMMENT",
 		"MANAGED_RECORDS_COMMENT_REGEX",
 		"WAF_LIST_DESCRIPTION",
+		"WAF_LIST_ITEM_COMMENT",
+		"MANAGED_WAF_LIST_ITEM_COMMENT_REGEX",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
 		"HEALTHCHECKS",
@@ -44,7 +46,7 @@ func resetInitConfigEnv(t *testing.T) {
 	}
 }
 
-// TestInitConfigManagedRecordsCommentRegex exercises initConfig's successful
+// TestInitConfigManagedCommentOwnershipRegexes exercises initConfig's successful
 // entry-point path with a minimal valid environment.
 //
 // The assertions check the observable contract of that function: it reads env
@@ -54,12 +56,16 @@ func resetInitConfigEnv(t *testing.T) {
 // It stays at the boundary of initConfig by checking the returned config and
 // constructor success, leaving setter behavior and record-update logic to their
 // own package tests.
-func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
+func TestInitConfigManagedCommentOwnershipRegexes(t *testing.T) {
 	resetInitConfigEnv(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
 	t.Setenv("DOMAINS", "example.org")
+	t.Setenv("WAF_LISTS", "account/list")
 	t.Setenv("RECORD_COMMENT", "managed")
 	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "^managed$")
+	t.Setenv("WAF_LIST_DESCRIPTION", "shared list")
+	t.Setenv("WAF_LIST_ITEM_COMMENT", "managed-waf")
+	t.Setenv("MANAGED_WAF_LIST_ITEM_COMMENT_REGEX", "^managed-waf$")
 
 	// Run the production initialization path quietly; the assertions below define
 	// the successful return contract for initConfig.
@@ -77,7 +83,7 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 		ipnet.IP4: {domain.FQDN("example.org")},
 		ipnet.IP6: {domain.FQDN("example.org")},
 	}, cfg.Domains)
-	require.Empty(t, cfg.WAFLists)
+	require.Equal(t, []api.WAFList{{AccountID: "account", Name: "list"}}, cfg.WAFLists)
 	require.Equal(t, "@every 5m", cron.DescribeSchedule(cfg.UpdateCron))
 	require.True(t, cfg.UpdateOnStart)
 	require.False(t, cfg.DeleteOnStop)
@@ -90,10 +96,14 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	require.Equal(t, "managed", cfg.RecordComment)
 	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegexTemplate)
 	// initConfig exposes the normalized config, so this test checks the compiled
-	// form there without reaching into setter internals.
+	// ownership regexes there without reaching into setter internals.
 	require.NotNil(t, cfg.ManagedRecordsCommentRegex)
 	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegex.String())
-	require.Empty(t, cfg.WAFListDescription)
+	require.Equal(t, "shared list", cfg.WAFListDescription)
+	require.Equal(t, "managed-waf", cfg.WAFListItemComment)
+	require.Equal(t, "^managed-waf$", cfg.ManagedWAFListItemCommentRegexTemplate)
+	require.NotNil(t, cfg.ManagedWAFListItemCommentRegex)
+	require.Equal(t, "^managed-waf$", cfg.ManagedWAFListItemCommentRegex.String())
 	require.Equal(t, 5*time.Second, cfg.DetectionTimeout)
 	require.Equal(t, 30*time.Second, cfg.UpdateTimeout)
 	require.NotNil(t, cfg.Monitor)

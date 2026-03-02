@@ -18,6 +18,13 @@ type WAFListMeta struct {
 	Description string
 }
 
+// managedWAFListItemsView caches one filtered WAF-list view together with the
+// stable filter that produced it.
+type managedWAFListItemsView struct {
+	Filter ManagedWAFListItemFilter
+	Items  []WAFListItem
+}
+
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
 	// domains to zone IDs
@@ -29,7 +36,9 @@ type CloudflareCache = struct {
 	listLists *ttlcache.Cache[ID, *[]WAFListMeta] // account IDs to list names to list IDs and other meta information
 	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
 	//
-	listListItems *ttlcache.Cache[WAFList, *[]WAFListItem] // lists to list items
+	// This is one managed-item view per handle/list pair. It assumes the handle
+	// keeps using the same WAF item filter for that list.
+	listListItems *ttlcache.Cache[WAFList, managedWAFListItemsView] // lists to managed list-item views
 }
 
 func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cache[K, V] {
@@ -79,7 +88,7 @@ func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle,
 			},
 			listLists:     newCache[ID, *[]WAFListMeta](cacheExpiration),
 			listID:        newCache[WAFList, ID](cacheExpiration),
-			listListItems: newCache[WAFList, *[]WAFListItem](cacheExpiration),
+			listListItems: newCache[WAFList, managedWAFListItemsView](cacheExpiration),
 		},
 	}
 

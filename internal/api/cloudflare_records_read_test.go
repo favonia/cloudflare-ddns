@@ -64,7 +64,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 }
 
 func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
-	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint: unparam
+	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint:unparam // Keep the handler signature aligned with the test inputs.
 ) httpHandler {
 	t.Helper()
 

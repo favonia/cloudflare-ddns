@@ -278,9 +278,9 @@ func (c *MockHandleListRecordsCall) DoAndReturn(f func(context.Context, pp.PP, i
 }
 
 // ListWAFListItems mocks base method.
-func (m *MockHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string) ([]api.WAFListItem, bool, bool, bool) {
+func (m *MockHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, itemFilter api.ManagedWAFListItemFilter, expectedDescription string) ([]api.WAFListItem, bool, bool, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListWAFListItems", ctx, ppfmt, list, expectedDescription)
+	ret := m.ctrl.Call(m, "ListWAFListItems", ctx, ppfmt, list, itemFilter, expectedDescription)
 	ret0, _ := ret[0].([]api.WAFListItem)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(bool)
@@ -289,9 +289,9 @@ func (m *MockHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP, list api
 }
 
 // ListWAFListItems indicates an expected call of ListWAFListItems.
-func (mr *MockHandleMockRecorder) ListWAFListItems(ctx, ppfmt, list, expectedDescription any) *MockHandleListWAFListItemsCall {
+func (mr *MockHandleMockRecorder) ListWAFListItems(ctx, ppfmt, list, itemFilter, expectedDescription any) *MockHandleListWAFListItemsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWAFListItems", reflect.TypeOf((*MockHandle)(nil).ListWAFListItems), ctx, ppfmt, list, expectedDescription)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWAFListItems", reflect.TypeOf((*MockHandle)(nil).ListWAFListItems), ctx, ppfmt, list, itemFilter, expectedDescription)
 	return &MockHandleListWAFListItemsCall{Call: call}
 }
 
@@ -307,13 +307,13 @@ func (c *MockHandleListWAFListItemsCall) Return(arg0 []api.WAFListItem, arg1, ar
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
+func (c *MockHandleListWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, api.ManagedWAFListItemFilter, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
+func (c *MockHandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, api.ManagedWAFListItemFilter, string) ([]api.WAFListItem, bool, bool, bool)) *MockHandleListWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Shared fixture reused across WAF list tests.
 var mockWAFList = api.WAFList{AccountID: mockAccountID, Name: "list"}
 
 type listMeta struct {

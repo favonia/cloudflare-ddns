@@ -2,7 +2,7 @@
 
 `docs/designs/` contains design documents for future developers, including AI agents.
 
-Use it for durable design decisions, constraints, and intended extension points.
+Use it for the current intended design of the codebase, including durable constraints, invariants, and intended extension points.
 
 The `docs/designs/` collection should be self-contained. Documents there may refer to each other, but they should not depend on private planning documents outside this collection.
 

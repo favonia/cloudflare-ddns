@@ -35,6 +35,8 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
 		!ReadString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegexTemplate) ||
 		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
+		!ReadString(ppfmt, "WAF_LIST_ITEM_COMMENT", &c.WAFListItemComment) ||
+		!ReadString(ppfmt, "MANAGED_WAF_LIST_ITEM_COMMENT_REGEX", &c.ManagedWAFListItemCommentRegexTemplate) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
 		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitor) ||
@@ -48,11 +50,12 @@ func (c *Config) ReadEnv(ppfmt pp.PP) bool {
 
 // Normalize checks and normalizes configuration invariants, including:
 // - [Config.Provider] and [Config.Proxied] canonicalization
-// - [Config.ManagedRecordsCommentRegex] compilation
+// - [Config.ManagedRecordsCommentRegex] and [Config.ManagedWAFListItemCommentRegex] compilation
 // - scheduling consistency constraints such as [Config.DeleteOnStop]
 //
 // When any error is reported, the original configuration remains unchanged.
-// On success, [Config.ManagedRecordsCommentRegex] is guaranteed non-nil.
+// On success, [Config.ManagedRecordsCommentRegex] and [Config.ManagedWAFListItemCommentRegex]
+// are guaranteed non-nil.
 func (c *Config) Normalize(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
@@ -81,7 +84,7 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		}
 	}
 
-	// Step 2.5: compile regex for selecting managed records.
+	// Step 2.5: compile ownership regexes for DNS records and WAF list items.
 	managedRecordsCommentRegex, err := regexp.Compile(c.ManagedRecordsCommentRegexTemplate)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError,
@@ -93,6 +96,19 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 		ppfmt.Noticef(pp.EmojiUserError,
 			"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
 			c.RecordComment, c.ManagedRecordsCommentRegexTemplate)
+		return false
+	}
+	managedWAFListItemCommentRegex, err := regexp.Compile(c.ManagedWAFListItemCommentRegexTemplate)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"MANAGED_WAF_LIST_ITEM_COMMENT_REGEX=%q is invalid: %v",
+			c.ManagedWAFListItemCommentRegexTemplate, err)
+		return false
+	}
+	if !managedWAFListItemCommentRegex.MatchString(c.WAFListItemComment) {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEM_COMMENT_REGEX=%q",
+			c.WAFListItemComment, c.ManagedWAFListItemCommentRegexTemplate)
 		return false
 	}
 
@@ -179,15 +195,25 @@ func (c *Config) Normalize(ppfmt pp.PP) bool {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", c.WAFListDescription)
 		}
+		if c.WAFListItemComment != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"WAF_LIST_ITEM_COMMENT=%s is ignored because no WAF lists will be updated", c.WAFListItemComment)
+		}
+		if c.ManagedWAFListItemCommentRegexTemplate != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"MANAGED_WAF_LIST_ITEM_COMMENT_REGEX=%s is ignored because no WAF lists will be updated",
+				c.ManagedWAFListItemCommentRegexTemplate)
+		}
 	}
 
 	// Final Part: override the old values
 	c.Provider = providerMap
 	c.Proxied = proxiedMap
-	// Decision: do not optimize the empty template into nil.
-	// Keep one canonical representation (a compiled match-all regex) to avoid
+	// Decision: do not optimize empty ownership-regex templates into nil.
+	// Keep one canonical compiled representation (a match-all regex) to avoid
 	// nil-vs-empty special cases in behavior and tests.
 	c.ManagedRecordsCommentRegex = managedRecordsCommentRegex
+	c.ManagedWAFListItemCommentRegex = managedWAFListItemCommentRegex
 
 	return true
 }

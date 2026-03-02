@@ -3,6 +3,7 @@ package setter_test
 import (
 	"context"
 	"net/netip"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,13 +18,24 @@ import (
 )
 
 type setterHarness struct {
-	cancel     context.CancelFunc
-	mockPP     *mocks.MockPP
-	mockHandle *mocks.MockHandle
-	setter     setter.Setter
+	cancel       context.CancelFunc
+	mockPP       *mocks.MockPP
+	mockHandle   *mocks.MockHandle
+	recordFilter api.ManagedRecordFilter
+	setter       setter.Setter
 }
 
 type prepareSetterMocks func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle)
+
+// setterConfig mirrors setter.New inputs so tests do not depend on positional
+// constructor arguments.
+type setterConfig struct {
+	managedRecordCommentRegex *regexp.Regexp
+}
+
+func (c setterConfig) recordFilter() api.ManagedRecordFilter {
+	return api.ManagedRecordFilter{CommentRegex: c.managedRecordCommentRegex}
+}
 
 type dnsRecordFixture struct {
 	domain    domain.Domain
@@ -58,6 +70,12 @@ func newDNSRecordFixture() dnsRecordFixture {
 func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	t.Helper()
 
+	return newSetterHarnessWithConfig(t, setterConfig{}) //nolint:exhaustruct // Zero value means no managed-record filter in this helper.
+}
+
+func newSetterHarnessWithConfig(t *testing.T, config setterConfig) (context.Context, setterHarness) {
+	t.Helper()
+
 	mockCtrl := gomock.NewController(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -65,14 +83,15 @@ func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s, ok := setter.New(mockPP, mockHandle, nil)
+	s, ok := setter.New(mockPP, mockHandle, config.managedRecordCommentRegex)
 	require.True(t, ok)
 
 	return ctx, setterHarness{
-		cancel:     cancel,
-		mockPP:     mockPP,
-		mockHandle: mockHandle,
-		setter:     s,
+		cancel:       cancel,
+		mockPP:       mockPP,
+		mockHandle:   mockHandle,
+		recordFilter: config.recordFilter(),
+		setter:       s,
 	}
 }
 
@@ -101,7 +120,22 @@ func expectRecordList(
 	cached bool,
 	ok bool,
 ) any {
-	return h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, api.ManagedRecordFilter{CommentRegex: nil}, params).Return(records, cached, ok)
+	return expectRecordListWithFilter(ctx, p, h, ipNetwork, domain, api.ManagedRecordFilter{CommentRegex: nil}, params, records, cached, ok)
+}
+
+func expectRecordListWithFilter(
+	ctx context.Context,
+	p *mocks.MockPP,
+	h *mocks.MockHandle,
+	ipNetwork ipnet.Type,
+	domain domain.Domain,
+	recordFilter api.ManagedRecordFilter,
+	params api.RecordParams,
+	records []api.Record,
+	cached bool,
+	ok bool,
+) any {
+	return h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, recordFilter, params).Return(records, cached, ok)
 }
 
 func expectRecordCreate(
@@ -254,6 +288,7 @@ type wafListMutationExpectation struct {
 	alreadyExisting bool
 	cached          bool
 	createPrefixes  []netip.Prefix
+	createComment   string
 	createOK        bool
 	deleteItems     []api.WAFListItem
 	deleteOK        bool
@@ -270,7 +305,9 @@ func expectWAFListRead(
 	cached bool,
 	ok bool,
 ) any {
-	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription).Return(items, alreadyExisting, cached, ok)
+	return m.EXPECT().
+		ListWAFListItems(ctx, p, list, api.ManagedWAFListItemFilter{CommentRegex: nil}, listDescription).
+		Return(items, alreadyExisting, cached, ok)
 }
 
 func expectWAFListNoop(
@@ -308,7 +345,7 @@ func expectWAFListMutation(
 	}
 
 	calls = append(calls, m.EXPECT().
-		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, "").
+		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, want.createComment).
 		Return(want.createOK))
 	if !want.createOK {
 		calls = append(calls, expectWAFListErrorNotice(p, list))

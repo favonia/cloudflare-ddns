@@ -135,6 +135,8 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 //
 // This is intended for the final shutdown/deletion phase. The handle should not be reused for
 // subsequent updates after calling this method.
+// The current implementation assumes the updater owns the whole list: it tries
+// to delete the list, and if that fails, it starts clearing every item in it.
 //
 // We only deleted cached data in listListItems and listID, but not the cached lists
 // in listLists so that we do not have to re-query the lists under the same account.
@@ -191,21 +193,38 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 				*rawItem.IP, list.Describe())
 			return nil, false
 		}
-		if rawItem.Comment != "" {
-			ppfmt.Noticef(pp.EmojiWarning, "The IP range/address %q in the list %s has a non-empty comment %q. The comment might be lost during an IP update.", //nolint:lll
-				*rawItem.IP, list.Describe(), rawItem.Comment)
-		}
-		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p})
+		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p, Comment: rawItem.Comment})
 	}
 	return items, true
 }
 
+func (h CloudflareHandle) cacheManagedWAFListItems(
+	list WAFList, itemFilter ManagedWAFListItemFilter, items []WAFListItem,
+) []WAFListItem {
+	managedItems := itemFilter.FilterItems(items)
+	h.cache.listListItems.DeleteExpired()
+	h.cache.listListItems.Set(list, managedWAFListItemsView{
+		Filter: itemFilter,
+		Items:  managedItems,
+	}, ttlcache.DefaultTTL)
+	return managedItems
+}
+
+func (h CloudflareHandle) cachedWAFListItemFilter(list WAFList) ManagedWAFListItemFilter {
+	if cachedView := h.cache.listListItems.Get(list); cachedView != nil {
+		return cachedView.Value().Filter
+	}
+
+	return ManagedWAFListItemFilter{CommentRegex: nil}
+}
+
 // ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
+// It caches one filtered managed-item view per handle/list pair.
 func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
-	list WAFList, expectedDescription string,
+	list WAFList, itemFilter ManagedWAFListItemFilter, expectedDescription string,
 ) ([]WAFListItem, bool, bool, bool) {
-	if items := h.cache.listListItems.Get(list); items != nil {
-		return *items.Value(), true, true, true
+	if cachedView := h.cache.listListItems.Get(list); cachedView != nil {
+		return cachedView.Value().Items, true, true, true
 	}
 
 	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
@@ -237,9 +256,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		}
 		h.cache.listID.DeleteExpired()
 		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
-		h.cache.listListItems.DeleteExpired()
-		h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
-		return items, false, false, true
+		return h.cacheManagedWAFListItems(list, itemFilter, items), false, false, true
 	}
 
 	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -256,9 +273,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false, false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
-	return items, true, false, true
+	return h.cacheManagedWAFListItems(list, itemFilter, items), true, false, true
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
@@ -299,8 +314,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
+	h.cacheManagedWAFListItems(list, h.cachedWAFListItemFilter(list), items)
 	return true
 }
 
@@ -347,7 +361,6 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
+	h.cacheManagedWAFListItems(list, h.cachedWAFListItemFilter(list), items)
 	return true
 }
