@@ -19,13 +19,13 @@ import (
 func mustListen(ipNet ipnet.Type) net.Listener {
 	switch ipNet {
 	case ipnet.IP4:
-		l, err := net.Listen("tcp4", "127.0.0.1:0") //nolint:noctx
+		l, err := net.Listen("tcp4", "127.0.0.1:0") //nolint:noctx // net.Listen has no context-aware variant.
 		if err != nil {
 			panic(err)
 		}
 		return l
 	case ipnet.IP6:
-		l, err := net.Listen("tcp6", "[::1]:0") //nolint:noctx
+		l, err := net.Listen("tcp6", "[::1]:0") //nolint:noctx // net.Listen has no context-aware variant.
 		if err != nil {
 			panic(err)
 		}

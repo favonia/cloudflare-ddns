@@ -26,6 +26,8 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    We rely on the meta-linter `golangci-lint` to enforce coding styles. Whatever `golangci-lint` says is our coding style (unless the maintainer says otherwise). You can wait for GitHub Actions (usually very fast) or run `golangci-lint run` locally. Your must pass all automatic checks cleanly, possibly except the coverage checks, unless the maintainer says your code is okay.
 
+   If you need an inline `//nolint`, treat it as a local exception rather than a second lint policy. Broad lint policy belongs in [`.golangci.yaml`](../.golangci.yaml); repository-wide guidance for inline suppressions lives in [docs/designs/lint-suppressions.markdown](designs/lint-suppressions.markdown).
+
 4. Keep design documentation durable.
 
    If you edit `docs/designs/`, write for a future reader who needs to understand the current intended design rather than the current pull request. Describe present semantics directly, avoid vague rollout-relative wording such as "currently" or "first implementation", use explicit versions or changes when historical context matters, and move project-wide policy into the project-wide design notes instead of inventing a separate local policy in each feature note.

@@ -22,6 +22,7 @@ When writing or editing a design note:
 
 - [`project-principles.markdown`](project-principles.markdown): project priorities that guide design tradeoffs.
 - [`codebase-architecture.markdown`](codebase-architecture.markdown): the high-level code layout and coding conventions.
+- [`lint-suppressions.markdown`](lint-suppressions.markdown): how inline `//nolint` suppressions are used across the repository.
 - [`network-security-model.markdown`](network-security-model.markdown): the network threat model for public IP detection and its security boundaries.
 
 ## Feature-Specific Documents

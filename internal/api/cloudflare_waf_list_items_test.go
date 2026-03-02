@@ -354,7 +354,7 @@ func handleListBulkOperation(t *testing.T, operationID api.ID, w http.ResponseWr
 func mockListItemDeleteResponse(id api.ID) cloudflare.ListItemDeleteResponse {
 	return cloudflare.ListItemDeleteResponse{
 		Result: struct {
-			OperationID string `json:"operation_id"` //nolint:tagliatelle
+			OperationID string `json:"operation_id"` //nolint:tagliatelle // Cloudflare uses snake_case field names.
 		}{OperationID: string(id)},
 		Response: mockResponse(),
 	}
@@ -493,7 +493,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 	return cloudflare.ListItemCreateResponse{
 		Result: struct {
-			OperationID string `json:"operation_id"` //nolint:tagliatelle
+			OperationID string `json:"operation_id"` //nolint:tagliatelle // Cloudflare uses snake_case field names.
 		}{OperationID: string(id)},
 		Response: mockResponse(),
 	}

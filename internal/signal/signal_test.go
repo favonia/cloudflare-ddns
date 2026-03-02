@@ -15,7 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/signal"
 )
 
-//nolint:paralleltest //signals are global
+//nolint:paralleltest // signals are global
 func TestWaitForSignalsUntil(t *testing.T) {
 	for name, tc := range map[string]struct {
 		alarmDelay    time.Duration
@@ -66,7 +66,7 @@ func TestWaitForSignalsUntil(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest //signals are global
+//nolint:paralleltest // signals are global
 func TestNotifyContext(t *testing.T) {
 	delta := time.Second / 10
 	for name, tc := range map[string]struct {
