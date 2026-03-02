@@ -305,7 +305,9 @@ func expectWAFListRead(
 	cached bool,
 	ok bool,
 ) any {
-	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription).Return(items, alreadyExisting, cached, ok)
+	return m.EXPECT().
+		ListWAFListItems(ctx, p, list, api.ManagedWAFListItemFilter{CommentRegex: nil}, listDescription).
+		Return(items, alreadyExisting, cached, ok)
 }
 
 func expectWAFListNoop(

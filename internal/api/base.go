@@ -81,12 +81,42 @@ func (s ManagedRecordFilter) FilterRecords(records []Record) []Record {
 	return filtered
 }
 
-// WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
-// The current model intentionally omits Cloudflare's per-item comment, so any
-// ownership scheme encoded only in WAF item comments is lost after reads.
+// ManagedWAFListItemFilter applies managed-item filtering within one WAF list view.
+type ManagedWAFListItemFilter struct {
+	CommentRegex *regexp.Regexp
+}
+
+// MatchComment returns true when the WAF item comment passes this managed-item filter.
+func (s ManagedWAFListItemFilter) MatchComment(comment string) bool {
+	if s.CommentRegex == nil {
+		return true
+	}
+	return s.CommentRegex.MatchString(comment)
+}
+
+// FilterItems returns only managed WAF list items while preserving order.
+func (s ManagedWAFListItemFilter) FilterItems(items []WAFListItem) []WAFListItem {
+	if s.CommentRegex == nil {
+		return items
+	}
+
+	filtered := make([]WAFListItem, 0, len(items))
+	for _, item := range items {
+		if s.MatchComment(item.Comment) {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered
+}
+
+// WAFListItem bundles an ID, an IP range, and the original Cloudflare comment,
+// representing an item in a WAF list.
 type WAFListItem struct {
 	ID
 	netip.Prefix
+
+	Comment string
 }
 
 // DeletionMode tells the deletion updater whether a careful re-reading of lists
@@ -124,16 +154,16 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves the current WAF-list view with IP ranges.
+	// ListWAFListItems retrieves the current managed WAF-list view with IP ranges.
 	// It creates an empty WAF list with IP ranges if it does not already exist yet.
 	//
-	// Current implementations return one whole-list view per handle/list pair:
-	// they do not preserve per-item comments, and their cache keys need not
-	// distinguish different WAF ownership filters.
+	// The same handle should use a stable itemFilter because implementations may cache
+	// filtered items by WAF-list scope (i.e., cache keys need not include itemFilter).
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, itemFilter ManagedWAFListItemFilter,
+		expectedDescription string,
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not

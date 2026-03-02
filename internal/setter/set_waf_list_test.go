@@ -392,7 +392,9 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					detectedIPs := detected(ip4, ip6)
 
 					readCall := h.mockHandle.EXPECT().
-						ListWAFListItems(ctx, h.mockPP, wafList, listDescription).
+						ListWAFListItems(
+							ctx, h.mockPP, wafList, api.ManagedWAFListItemFilter{CommentRegex: nil}, listDescription,
+						).
 						Return(permutedItems, true, false, true)
 					createCall := h.mockHandle.EXPECT().
 						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, itemComment).
