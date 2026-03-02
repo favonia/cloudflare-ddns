@@ -33,12 +33,18 @@ type Config struct {
 	// ManagedRecordsCommentRegex may be nil before [Config.Normalize].
 	// After a successful [Config.Normalize], it is guaranteed to be non-nil
 	// (including the default empty template, which compiles to a match-all regex).
-	ManagedRecordsCommentRegex *regexp.Regexp
-	WAFListDescription         string
-	DetectionTimeout           time.Duration
-	UpdateTimeout              time.Duration
-	Monitor                    monitor.Monitor
-	Notifier                   notifier.Notifier
+	ManagedRecordsCommentRegex             *regexp.Regexp
+	WAFListDescription                     string
+	WAFListItemComment                     string
+	ManagedWAFListItemCommentRegexTemplate string
+	// ManagedWAFListItemCommentRegex may be nil before [Config.Normalize].
+	// After a successful [Config.Normalize], it is guaranteed to be non-nil
+	// (including the default empty template, which compiles to a match-all regex).
+	ManagedWAFListItemCommentRegex *regexp.Regexp
+	DetectionTimeout               time.Duration
+	UpdateTimeout                  time.Duration
+	Monitor                        monitor.Monitor
+	Notifier                       notifier.Notifier
 }
 
 // Default gives the default configuration.
@@ -53,21 +59,24 @@ func Default() *Config {
 			ipnet.IP4: nil,
 			ipnet.IP6: nil,
 		},
-		WAFLists:                           nil,
-		UpdateCron:                         cron.MustNew("@every 5m"),
-		UpdateOnStart:                      true,
-		DeleteOnStop:                       false,
-		CacheExpiration:                    time.Hour * 6,
-		TTL:                                api.TTLAuto,
-		ProxiedTemplate:                    "false",
-		Proxied:                            map[domain.Domain]bool{},
-		RecordComment:                      "",
-		ManagedRecordsCommentRegexTemplate: "",
-		ManagedRecordsCommentRegex:         nil,
-		WAFListDescription:                 "",
-		DetectionTimeout:                   time.Second * 5,
-		UpdateTimeout:                      time.Second * 30,
-		Monitor:                            monitor.NewComposed(),
-		Notifier:                           notifier.NewComposed(),
+		WAFLists:                               nil,
+		UpdateCron:                             cron.MustNew("@every 5m"),
+		UpdateOnStart:                          true,
+		DeleteOnStop:                           false,
+		CacheExpiration:                        time.Hour * 6,
+		TTL:                                    api.TTLAuto,
+		ProxiedTemplate:                        "false",
+		Proxied:                                map[domain.Domain]bool{},
+		RecordComment:                          "",
+		ManagedRecordsCommentRegexTemplate:     "",
+		ManagedRecordsCommentRegex:             nil,
+		WAFListDescription:                     "",
+		WAFListItemComment:                     "",
+		ManagedWAFListItemCommentRegexTemplate: "",
+		ManagedWAFListItemCommentRegex:         nil,
+		DetectionTimeout:                       time.Second * 5,
+		UpdateTimeout:                          time.Second * 30,
+		Monitor:                                monitor.NewComposed(),
+		Notifier:                               notifier.NewComposed(),
 	}
 }

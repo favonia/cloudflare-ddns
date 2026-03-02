@@ -16,7 +16,7 @@ import (
 )
 
 // Keep titles aligned for the longest built-in key:
-// "DNS record comment regex:".
+// "WAF list item comment regex:".
 const itemTitleWidth = 28
 
 // These helpers format values for the human-facing startup summary.
@@ -31,9 +31,9 @@ func describeLiteralText(s string) string {
 	return strconv.Quote(s)
 }
 
-// MANAGED_RECORDS_COMMENT_REGEX is a RE2 template, not a literal comment.
-// Show regex filters in the form humans usually read them: raw RE2 syntax when
-// that stays readable on one line, and a quoted fallback when escaping or
+// Ownership regex settings are RE2 templates, not literal comments.
+// Show them in the form humans usually read regexes: raw RE2 syntax when that
+// stays readable on one line, and a quoted fallback when escaping or
 // whitespace would otherwise be ambiguous.
 func describeCommentRegexTemplate(template string) string {
 	if template == "" {
@@ -99,10 +99,17 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))
 
 	// Hide inactive filters to keep the default output focused.
-	if c.ManagedRecordsCommentRegexTemplate != "" {
+	if c.ManagedRecordsCommentRegexTemplate != "" || c.ManagedWAFListItemCommentRegexTemplate != "" {
 		section("Ownership filters:")
-		// This regex selects which existing DNS records this instance considers managed.
-		item("DNS record comment regex:", "%s", describeCommentRegexTemplate(c.ManagedRecordsCommentRegexTemplate))
+		// These regexes select which existing DNS records and WAF list items this
+		// instance considers managed.
+		if c.ManagedRecordsCommentRegexTemplate != "" {
+			item("DNS record comment regex:", "%s", describeCommentRegexTemplate(c.ManagedRecordsCommentRegexTemplate))
+		}
+		if c.ManagedWAFListItemCommentRegexTemplate != "" {
+			item("WAF list item comment regex:", "%s",
+				describeCommentRegexTemplate(c.ManagedWAFListItemCommentRegexTemplate))
+		}
 	}
 
 	section("Scheduling:")
@@ -113,7 +120,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	item("Cache expiration:", "%v", c.CacheExpiration)
 
 	section("Parameters of new DNS records and WAF lists:")
-	// These settings are defaults/targets for managed objects when creating or updating.
+	// These settings are defaults or targets for managed objects when creating or updating.
 	item("TTL:", "%s", c.TTL.Describe())
 	{
 		_, inverseMap := computeInverseMap(c.Proxied)
@@ -122,6 +129,7 @@ func (c *Config) Print(ppfmt pp.PP) {
 	}
 	item("DNS record comment:", "%s", describeLiteralText(c.RecordComment))
 	item("WAF list description:", "%s", describeLiteralText(c.WAFListDescription))
+	item("WAF list item comment:", "%s", describeLiteralText(c.WAFListItemComment))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", c.DetectionTimeout)
