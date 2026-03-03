@@ -10,11 +10,44 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 func printItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.MockPPInfofCall {
 	t.Helper()
 	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 28, key, value)
+}
+
+func defaultPrintedConfigs(raw *config.RawConfig) (*config.HandleConfig, *config.LifecycleConfig, *config.UpdateConfig) {
+	handleConfig := &config.HandleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	handleConfig.Auth = raw.Auth
+	handleConfig.CacheExpiration = raw.CacheExpiration
+
+	lifecycleConfig := &config.LifecycleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	lifecycleConfig.UpdateCron = raw.UpdateCron
+	lifecycleConfig.UpdateOnStart = raw.UpdateOnStart
+	lifecycleConfig.DeleteOnStop = raw.DeleteOnStop
+	lifecycleConfig.Monitor = raw.Monitor
+	lifecycleConfig.Notifier = raw.Notifier
+
+	updateConfig := &config.UpdateConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	updateConfig.Provider = map[ipnet.Type]provider.Provider{
+		ipnet.IP4: raw.Provider[ipnet.IP4],
+		ipnet.IP6: raw.Provider[ipnet.IP6],
+	}
+	updateConfig.Domains = map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: nil,
+		ipnet.IP6: nil,
+	}
+	updateConfig.WAFLists = raw.WAFLists
+	updateConfig.TTL = raw.TTL
+	updateConfig.Proxied = map[domain.Domain]bool{}
+	updateConfig.RecordComment = raw.RecordComment
+	updateConfig.WAFListDescription = raw.WAFListDescription
+	updateConfig.DetectionTimeout = raw.DetectionTimeout
+	updateConfig.UpdateTimeout = raw.UpdateTimeout
+
+	return handleConfig, lifecycleConfig, updateConfig
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -52,7 +85,9 @@ func TestPrintDefault(t *testing.T) {
 		printItem(t, innerMockPP, "IP detection:", "5s"),
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
 	)
-	config.Default().Print(mockPP)
+	raw := config.DefaultRaw()
+	handleConfig, lifecycleConfig, updateConfig := defaultPrintedConfigs(raw)
+	raw.Print(mockPP, handleConfig, lifecycleConfig, updateConfig)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -97,37 +132,36 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "Snake:", "hissss"),
 	)
 
-	c := config.Default()
+	raw := config.DefaultRaw()
+	raw.RecordComment = "Created by Cloudflare DDNS"
+	raw.ManagedRecordsCommentRegexTemplate = "^Created by Cloudflare DDNS$"
 
-	c.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
-	c.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}
-
-	c.TTL = 30000
-
-	c.Proxied = map[domain.Domain]bool{}
-	c.Proxied[domain.FQDN("a")] = true
-	c.Proxied[domain.FQDN("b")] = true
-	c.Proxied[domain.FQDN("c")] = false
-	c.Proxied[domain.FQDN("d")] = false
-
-	c.RecordComment = "Created by Cloudflare DDNS"
-	c.ManagedRecordsCommentRegexTemplate = "^Created by Cloudflare DDNS$"
+	handleConfig, lifecycleConfig, updateConfig := defaultPrintedConfigs(raw)
+	updateConfig.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
+	updateConfig.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}
+	updateConfig.TTL = 30000
+	updateConfig.Proxied[domain.FQDN("a")] = true
+	updateConfig.Proxied[domain.FQDN("b")] = true
+	updateConfig.Proxied[domain.FQDN("c")] = false
+	updateConfig.Proxied[domain.FQDN("d")] = false
 
 	m := mocks.NewMockMonitor(mockCtrl)
 	m.EXPECT().Describe(gomock.Any()).
 		DoAndReturn(func(f func(string, string) bool) {
 			f("Meow", "purrrr")
 		}).AnyTimes()
-	c.Monitor = m
+	raw.Monitor = m
+	lifecycleConfig.Monitor = m
 
 	n := mocks.NewMockNotifier(mockCtrl)
 	n.EXPECT().Describe(gomock.Any()).
 		DoAndReturn(func(f func(string, string) bool) {
 			f("Snake", "hissss")
 		}).AnyTimes()
-	c.Notifier = n
+	raw.Notifier = n
+	lifecycleConfig.Notifier = n
 
-	c.Print(mockPP)
+	raw.Print(mockPP, handleConfig, lifecycleConfig, updateConfig)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -168,10 +202,11 @@ func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
 	)
 
-	c := config.Default()
-	c.ManagedRecordsCommentRegexTemplate = "^Created by\tCloudflare DDNS$"
+	raw := config.DefaultRaw()
+	raw.ManagedRecordsCommentRegexTemplate = "^Created by\tCloudflare DDNS$"
 
-	c.Print(mockPP)
+	handleConfig, lifecycleConfig, updateConfig := defaultPrintedConfigs(raw)
+	raw.Print(mockPP, handleConfig, lifecycleConfig, updateConfig)
 }
 
 //nolint:paralleltest // changing the environment variable TZ
@@ -205,8 +240,11 @@ func TestPrintEmpty(t *testing.T) {
 		printItem(t, innerMockPP, "IP detection:", "0s"),
 		printItem(t, innerMockPP, "Record/list updating:", "0s"),
 	)
-	var cfg config.Config
-	cfg.Print(mockPP)
+	var raw config.RawConfig
+	var handleConfig config.HandleConfig
+	var lifecycleConfig config.LifecycleConfig
+	var updateConfig config.UpdateConfig
+	raw.Print(mockPP, &handleConfig, &lifecycleConfig, &updateConfig)
 }
 
 //nolint:paralleltest // environment vars are global
@@ -218,6 +256,9 @@ func TestPrintHidden(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().IsShowing(pp.Info).Return(false)
 
-	var cfg config.Config
-	cfg.Print(mockPP)
+	var raw config.RawConfig
+	var handleConfig config.HandleConfig
+	var lifecycleConfig config.LifecycleConfig
+	var updateConfig config.UpdateConfig
+	raw.Print(mockPP, &handleConfig, &lifecycleConfig, &updateConfig)
 }

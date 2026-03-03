@@ -18,8 +18,8 @@ The empty default matches all comments, preserving pre-feature behavior. Ownersh
 
 ## Required Invariants
 
-- `MANAGED_RECORDS_COMMENT_REGEX` is compiled during configuration normalization and stored in canonical form.
-- After successful normalization, the compiled regex is always non-nil, including the default empty template.
+- `MANAGED_RECORDS_COMMENT_REGEX` is compiled during config building and stored in the handle-facing runtime config.
+- After successful config building, the compiled regex is always non-nil, including the default empty template.
 - `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`.
 
 The last rule prevents self-orphaning.

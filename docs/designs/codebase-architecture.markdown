@@ -21,7 +21,7 @@ The repository root also contains module metadata, top-level user documentation,
 
 The updater is split into small internal packages with explicit responsibilities instead of one large service layer.
 
-- `internal/config/` reads, validates, normalizes, and prints configuration.
+- `internal/config/` reads raw environment inputs, derives validated runtime config, and prints the resulting settings summary.
 - `internal/provider/` detects current IP addresses from different sources.
 - `internal/api/` talks to Cloudflare and applies caching around API-facing operations.
 - `internal/setter/` reconciles desired DNS and WAF state against current remote state.
@@ -35,6 +35,23 @@ The updater is split into small internal packages with explicit responsibilities
 This separation is intentional: keep domain logic, provider logic, Cloudflare API logic, reconciliation logic, and user-facing reporting decoupled enough that they can evolve independently.
 
 See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for package-level API structure.
+
+## Configuration Lifecycle
+
+Configuration is intentionally split into one raw phase and several runtime-facing phases.
+
+- `RawConfig` holds parsed environment inputs before cross-field validation and derivation.
+- `HandleConfig` holds validated settings needed to construct the Cloudflare API handle, including stable ownership selectors that affect handle-local cache correctness.
+- `LifecycleConfig` holds validated schedule, shutdown, monitor, and notifier settings used by the main process loop.
+- `UpdateConfig` holds validated provider, domain, WAF, timeout, and write-side settings used during reconciliation.
+
+This split keeps the composition root in `cmd/ddns/` honest:
+
+- handle construction consumes handle config
+- process orchestration consumes lifecycle config
+- update logic consumes update config
+
+The design goal is not to minimize field copying. The goal is to keep each runtime layer from silently depending on settings it does not own.
 
 ## Coding Conventions
 

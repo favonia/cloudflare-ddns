@@ -48,12 +48,13 @@ func resetInitConfigEnv(t *testing.T) {
 // entry-point path with a minimal valid environment.
 //
 // The assertions check the observable contract of that function: it reads env
-// vars, restores normalized config invariants, preserves defaults for untouched
-// settings, and returns the runtime objects needed by the command to proceed.
+// vars into RawConfig, builds the handle/lifecycle/update configs, preserves defaults
+// for untouched settings, and returns the runtime objects needed by the command
+// to proceed.
 //
-// It stays at the boundary of initConfig by checking the returned config and
-// constructor success, leaving setter behavior and record-update logic to their
-// own package tests.
+// It stays at the boundary of initConfig by checking the returned raw/runtime
+// configs and constructor success, leaving setter behavior and record-update
+// logic to their own package tests.
 func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	resetInitConfigEnv(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
@@ -63,39 +64,45 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 
 	// Run the production initialization path quietly; the assertions below define
 	// the successful return contract for initConfig.
-	cfg, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
 	require.True(t, ok)
-	require.NotNil(t, cfg)
+	require.NotNil(t, raw)
+	require.NotNil(t, handleConfig)
+	require.NotNil(t, lifecycleConfig)
+	require.NotNil(t, updateConfig)
 	require.NotNil(t, s)
-	auth, ok := cfg.Auth.(*api.CloudflareAuth)
+	auth, ok := handleConfig.Auth.(*api.CloudflareAuth)
 	require.True(t, ok)
 	require.Equal(t, "deadbeaf", auth.Token)
 	require.Empty(t, auth.BaseURL)
-	require.Equal(t, "cloudflare.trace", provider.Name(cfg.Provider[ipnet.IP4]))
-	require.Equal(t, "cloudflare.trace", provider.Name(cfg.Provider[ipnet.IP6]))
+	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP4]))
+	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP6]))
 	require.Equal(t, map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain.FQDN("example.org")},
 		ipnet.IP6: {domain.FQDN("example.org")},
-	}, cfg.Domains)
-	require.Empty(t, cfg.WAFLists)
-	require.Equal(t, "@every 5m", cron.DescribeSchedule(cfg.UpdateCron))
-	require.True(t, cfg.UpdateOnStart)
-	require.False(t, cfg.DeleteOnStop)
-	require.Equal(t, 6*time.Hour, cfg.CacheExpiration)
-	require.Equal(t, api.TTLAuto, cfg.TTL)
-	require.Equal(t, "false", cfg.ProxiedTemplate)
+	}, updateConfig.Domains)
+	require.Empty(t, updateConfig.WAFLists)
+	require.Equal(t, "@every 5m", cron.DescribeSchedule(lifecycleConfig.UpdateCron))
+	require.True(t, lifecycleConfig.UpdateOnStart)
+	require.False(t, lifecycleConfig.DeleteOnStop)
+	require.Equal(t, 6*time.Hour, handleConfig.CacheExpiration)
+	require.Equal(t, api.TTLAuto, updateConfig.TTL)
+	require.Equal(t, "false", raw.ProxiedTemplate)
+	require.Equal(t, []domain.Domain{domain.FQDN("example.org")}, raw.Domains)
+	require.Empty(t, raw.IP4Domains)
+	require.Empty(t, raw.IP6Domains)
 	require.Equal(t, map[domain.Domain]bool{
 		domain.FQDN("example.org"): false,
-	}, cfg.Proxied)
-	require.Equal(t, "managed", cfg.RecordComment)
-	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegexTemplate)
-	// initConfig exposes the normalized config, so this test checks the compiled
-	// form there without reaching into setter internals.
-	require.NotNil(t, cfg.ManagedRecordsCommentRegex)
-	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegex.String())
-	require.Empty(t, cfg.WAFListDescription)
-	require.Equal(t, 5*time.Second, cfg.DetectionTimeout)
-	require.Equal(t, 30*time.Second, cfg.UpdateTimeout)
-	require.NotNil(t, cfg.Monitor)
-	require.NotNil(t, cfg.Notifier)
+	}, updateConfig.Proxied)
+	require.Equal(t, "managed", updateConfig.RecordComment)
+	require.Equal(t, "^managed$", raw.ManagedRecordsCommentRegexTemplate)
+	// initConfig exposes both configs, so this test checks the raw template and
+	// compiled runtime form there without reaching into setter internals.
+	require.NotNil(t, handleConfig.ManagedRecordsCommentRegex)
+	require.Equal(t, "^managed$", handleConfig.ManagedRecordsCommentRegex.String())
+	require.Empty(t, updateConfig.WAFListDescription)
+	require.Equal(t, 5*time.Second, updateConfig.DetectionTimeout)
+	require.Equal(t, 30*time.Second, updateConfig.UpdateTimeout)
+	require.NotNil(t, lifecycleConfig.Monitor)
+	require.NotNil(t, lifecycleConfig.Notifier)
 }

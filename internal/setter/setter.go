@@ -22,7 +22,8 @@ type setter struct {
 // The underlying [api.Handle] is expected to use this stable filter consistently.
 //
 // A nil regex is allowed and means match-all, consistent with [api.ManagedRecordFilter].
-// The normal runtime path still passes a compiled regex from [config.Config.Normalize].
+// The normal runtime path still passes [config.HandleConfig.ManagedRecordsCommentRegex]
+// built from [config.RawConfig.Build].
 func New(_ppfmt pp.PP, handle api.Handle, managedRecordsCommentRegex *regexp.Regexp) (Setter, bool) {
 	return setter{
 		Handle:       handle,

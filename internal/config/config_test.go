@@ -11,17 +11,17 @@ import (
 func TestDefaultConfigNotNil(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, config.Default())
+	require.NotNil(t, config.DefaultRaw())
 }
 
 func TestDefaultConfigMonitorNotNil(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, config.Default().Monitor)
+	require.NotNil(t, config.DefaultRaw().Monitor)
 }
 
 func TestDefaultConfigoNotifierNotNil(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, config.Default().Notifier)
+	require.NotNil(t, config.DefaultRaw().Notifier)
 }
