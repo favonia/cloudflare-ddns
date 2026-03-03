@@ -1,18 +1,25 @@
 package main
 
 import (
+	"context"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
 // resetInitConfigEnv clears every environment variable read by initConfig so
@@ -105,4 +112,152 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	require.Equal(t, 30*time.Second, updateConfig.UpdateTimeout)
 	require.NotNil(t, lifecycleConfig.Monitor)
 	require.NotNil(t, lifecycleConfig.Notifier)
+}
+
+//nolint:paralleltest // environment variables are global
+func TestInitConfigReadFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+
+	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	require.False(t, ok)
+	require.NotNil(t, raw)
+	require.Nil(t, handleConfig)
+	require.Nil(t, lifecycleConfig)
+	require.Nil(t, updateConfig)
+	require.Nil(t, s)
+	require.Nil(t, raw.Auth)
+	require.Empty(t, raw.Domains)
+}
+
+func TestInitConfigBuildFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
+	t.Setenv("DOMAINS", "example.org")
+	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "(")
+
+	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	require.False(t, ok)
+	require.NotNil(t, raw)
+	require.Nil(t, handleConfig)
+	require.Nil(t, lifecycleConfig)
+	require.Nil(t, updateConfig)
+	require.Nil(t, s)
+	require.Equal(t, "(", raw.ManagedRecordsCommentRegexTemplate)
+}
+
+//nolint:paralleltest // Version is a global linker-injected variable
+func TestFormatName(t *testing.T) {
+	oldVersion := Version
+	t.Cleanup(func() {
+		Version = oldVersion
+	})
+
+	Version = ""
+	require.Equal(t, "Cloudflare DDNS", formatName())
+
+	Version = "v1.2.3"
+	require.Equal(t, "Cloudflare DDNS (v1.2.3)", formatName())
+}
+
+func TestRealMainConfigFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("QUIET", "true")
+
+	require.Equal(t, 1, realMain())
+}
+
+func TestStopUpdatingDeleteOnStop(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockMonitor := mocks.NewMockMonitor(mockCtrl)
+	mockNotifier := mocks.NewMockNotifier(mockCtrl)
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+	ppfmt := pp.New(io.Discard, false, pp.Quiet)
+
+	domain4 := domain.FQDN("example.org")
+	wafList := api.WAFList{AccountID: "acc", Name: "office"}
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+	}
+
+	lifecycleConfig := &config.LifecycleConfig{
+		UpdateCron:    nil,
+		UpdateOnStart: false,
+		DeleteOnStop:  true,
+		Monitor:       mockMonitor,
+		Notifier:      mockNotifier,
+	}
+	updateConfig := &config.UpdateConfig{
+		Provider: map[ipnet.Type]provider.Provider{
+			ipnet.IP4: provider.MustNewLiteral("192.0.2.1"),
+			ipnet.IP6: nil,
+		},
+		Domains: map[ipnet.Type][]domain.Domain{
+			ipnet.IP4: {domain4},
+			ipnet.IP6: nil,
+		},
+		WAFLists:           []api.WAFList{wafList},
+		TTL:                api.TTLAuto,
+		Proxied:            map[domain.Domain]bool{domain4: false},
+		RecordComment:      "managed",
+		WAFListDescription: "managed list",
+		DetectionTimeout:   time.Second,
+		UpdateTimeout:      time.Second,
+	}
+
+	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
+	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list").Return(setter.ResponseUpdated)
+	mockMonitor.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ pp.PP, msg monitor.Message) bool {
+			require.True(t, msg.OK)
+			require.Contains(t, msg.Format(), "Deleted A of example.org")
+			require.Contains(t, msg.Format(), "Cleared list(s) acc/office")
+			return true
+		},
+	)
+	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ pp.PP, msg notifier.Message) bool {
+			require.Contains(t, msg.Format(), "Deleted A records of example.org.")
+			require.Contains(t, msg.Format(), "Cleared WAF list(s) acc/office.")
+			return true
+		},
+	)
+
+	stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockSetter)
+}
+
+func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockMonitor := mocks.NewMockMonitor(mockCtrl)
+	mockNotifier := mocks.NewMockNotifier(mockCtrl)
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+
+	stopUpdating(
+		context.Background(),
+		pp.New(io.Discard, false, pp.Quiet),
+		&config.LifecycleConfig{
+			UpdateCron:    nil,
+			UpdateOnStart: false,
+			DeleteOnStop:  false,
+			Monitor:       mockMonitor,
+			Notifier:      mockNotifier,
+		},
+		&config.UpdateConfig{
+			Provider:           nil,
+			Domains:            nil,
+			WAFLists:           nil,
+			TTL:                0,
+			Proxied:            nil,
+			RecordComment:      "",
+			WAFListDescription: "",
+			DetectionTimeout:   0,
+			UpdateTimeout:      0,
+		},
+		mockSetter,
+	)
 }
