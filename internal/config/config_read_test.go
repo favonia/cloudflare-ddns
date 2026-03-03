@@ -50,7 +50,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 	unsetAll(t)
 	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 
-	var cfg config.Config
+	var cfg config.RawConfig
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
@@ -77,7 +77,7 @@ func TestReadEnvEmpty(t *testing.T) {
 
 	unsetAll(t)
 
-	var cfg config.Config
+	var cfg config.RawConfig
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
@@ -91,21 +91,26 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestNormalize(t *testing.T) {
+func TestBuild(t *testing.T) {
 	t.Parallel()
 
 	keyProxied := "PROXIED"
 	keyManagedRecordsCommentRegex := "MANAGED_RECORDS_COMMENT_REGEX"
 
+	type builtConfig struct {
+		handle    *config.HandleConfig
+		lifecycle *config.LifecycleConfig
+		update    *config.UpdateConfig
+	}
+
 	for name, tc := range map[string]struct {
-		input         *config.Config
+		input         *config.RawConfig
 		ok            bool
-		expected      *config.Config
+		expected      *builtConfig
 		prepareMockPP func(m *mocks.MockPP)
 	}{
 		"nothing-to-do": {
-			input: &config.Config{ //nolint:exhaustruct
-			},
+			input:    &config.RawConfig{}, //nolint:exhaustruct
 			ok:       false,
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -118,11 +123,9 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"once/update-on-start": {
-			input: &config.Config{ //nolint:exhaustruct
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: false,
+				IP4Domains:    []domain.Domain{domain.FQDN("a.b.c")},
 			},
 			ok:       false,
 			expected: nil,
@@ -136,12 +139,10 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop": {
-			input: &config.Config{ //nolint:exhaustruct
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
+			input: &config.RawConfig{ //nolint:exhaustruct
 				DeleteOnStop:  true,
 				UpdateOnStart: true,
+				IP4Domains:    []domain.Domain{domain.FQDN("a.b.c")},
 			},
 			ok:       false,
 			expected: nil,
@@ -155,16 +156,14 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"nilprovider": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate: "false",
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
 			},
 			ok:       false,
 			expected: nil,
@@ -178,32 +177,37 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"dns6empty": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:    true,
+				DetectionTimeout: 5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:  "false",
-				DetectionTimeout: 5 * time.Second,
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP4: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
 				},
-				ProxiedTemplate: "false",
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): false,
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP4: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
 				},
-				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -215,14 +219,12 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"dns6empty-ip4none": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c")},
-				},
+				IP4Domains: []domain.Domain{domain.FQDN("a.b.c")},
 			},
 			ok:       false,
 			expected: nil,
@@ -237,34 +239,38 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"ip4none": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:    true,
+				DetectionTimeout: 5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
-					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
-				},
-				ProxiedTemplate:  "false",
-				DetectionTimeout: 5 * time.Second,
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
+				ProxiedExpression: "false",
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
-					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
 				},
-				ProxiedTemplate: "false",
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): false,
-					domain.FQDN("g.h.i"): false,
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
+						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+						domain.FQDN("g.h.i"): false,
+					},
 				},
-				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -276,34 +282,43 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"ignored/dns": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:    true,
+				WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:              10000,
+				RecordComment:    "hello",
+				DetectionTimeout: 5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains:                            map[ipnet.Type][]domain.Domain{},
-				WAFLists:                           []api.WAFList{{AccountID: "account", Name: "list"}},
-				TTL:                                10000,
-				ProxiedTemplate:                    "true",
-				RecordComment:                      "hello",
-				ManagedRecordsCommentRegexTemplate: "he",
-				DetectionTimeout:                   5 * time.Second,
+				ProxiedExpression:          "true",
+				ManagedRecordsCommentRegex: "he",
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration:            0,
+						ManagedRecordsCommentRegex: regexp.MustCompile("he"),
+					},
 				},
-				Domains:                            map[ipnet.Type][]domain.Domain{},
-				WAFLists:                           []api.WAFList{{AccountID: "account", Name: "list"}},
-				TTL:                                10000,
-				ProxiedTemplate:                    "true",
-				Proxied:                            map[domain.Domain]bool{},
-				RecordComment:                      "hello",
-				ManagedRecordsCommentRegexTemplate: "he",
-				ManagedRecordsCommentRegex:         regexp.MustCompile("he"),
-				DetectionTimeout:                   5 * time.Second,
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
+					TTL:              10000,
+					RecordComment:    "hello",
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{},
+				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -318,36 +333,42 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"managed-record-regex/valid": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:    true,
+				RecordComment:    "hello-123",
+				DetectionTimeout: 5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:                    "false",
-				RecordComment:                      "hello-123",
-				ManagedRecordsCommentRegexTemplate: `^hello-[0-9]+$`,
-				DetectionTimeout:                   5 * time.Second,
+				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression:          "false",
+				ManagedRecordsCommentRegex: `^hello-[0-9]+$`,
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration:            0,
+						ManagedRecordsCommentRegex: regexp.MustCompile(`^hello-[0-9]+$`),
+					},
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
 				},
-				ProxiedTemplate: "false",
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): false,
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					RecordComment:    "hello-123",
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
 				},
-				RecordComment:                      "hello-123",
-				ManagedRecordsCommentRegexTemplate: `^hello-[0-9]+$`,
-				ManagedRecordsCommentRegex:         regexp.MustCompile(`^hello-[0-9]+$`),
-				DetectionTimeout:                   5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -358,16 +379,14 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"managed-record-regex/invalid": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:                    "false",
-				ManagedRecordsCommentRegexTemplate: "(",
+				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression:          "false",
+				ManagedRecordsCommentRegex: "(",
 			},
 			ok:       false,
 			expected: nil,
@@ -381,17 +400,15 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"managed-record-regex/mismatch": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
+				RecordComment: "hello",
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate:                    "false",
-				RecordComment:                      "hello",
-				ManagedRecordsCommentRegexTemplate: "^world$",
+				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression:          "false",
+				ManagedRecordsCommentRegex: "^world$",
 			},
 			ok:       false,
 			expected: nil,
@@ -405,36 +422,38 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"ignored/waf": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:      true,
+				WAFListDescription: "My list",
+				DetectionTimeout:   5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate: "true",
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
-				},
-				WAFListDescription: "My list",
-				DetectionTimeout:   5 * time.Second,
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "true",
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
 				},
-				ProxiedTemplate: "true",
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"): true,
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFListDescription: "My list",
+					DetectionTimeout:   5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): true,
+					},
 				},
-				WAFListDescription: "My list",
-				DetectionTimeout:   5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -446,33 +465,38 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"proxied": {
-			input: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:    true,
+				DetectionTimeout: 5 * time.Second,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
-				},
-				ProxiedTemplate:  ` true && !is(a.bb.c) `,
-				DetectionTimeout: 5 * time.Second,
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				ProxiedExpression: ` true && !is(a.bb.c) `,
 			},
 			ok: true,
-			expected: &config.Config{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
-					ipnet.IP6: provider.NewCloudflareTrace(),
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
 				},
-				ProxiedTemplate: ` true && !is(a.bb.c) `,
-				Proxied: map[domain.Domain]bool{
-					domain.FQDN("a.b.c"):   true,
-					domain.FQDN("a.bb.c"):  false,
-					domain.FQDN("a.d.e.f"): true,
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"):   true,
+						domain.FQDN("a.bb.c"):  false,
+						domain.FQDN("a.d.e.f"): true,
+					},
 				},
-				DetectionTimeout: 5 * time.Second,
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -483,15 +507,13 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"proxied/invalid/1": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
-				},
-				ProxiedTemplate: `range`,
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				ProxiedExpression: `range`,
 			},
 			ok:       false,
 			expected: nil,
@@ -505,15 +527,13 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"proxied/invalid/2": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate: `999`,
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: `999`,
 			},
 			ok:       false,
 			expected: nil,
@@ -527,15 +547,13 @@ func TestNormalize(t *testing.T) {
 			},
 		},
 		"proxied/invalid/3": {
-			input: &config.Config{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				Provider: map[ipnet.Type]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				Domains: map[ipnet.Type][]domain.Domain{
-					ipnet.IP6: {domain.FQDN("a.b.c")},
-				},
-				ProxiedTemplate: `is(12345`,
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: `is(12345`,
 			},
 			ok:       false,
 			expected: nil,
@@ -553,26 +571,35 @@ func TestNormalize(t *testing.T) {
 			t.Parallel()
 			mockCtrl := gomock.NewController(t)
 
-			cfg := tc.input
+			raw := tc.input
+			original := *raw
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := cfg.Normalize(mockPP)
+
+			handleConfig, lifecycleConfig, updateConfig, ok := raw.Build(mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.NotNil(t, cfg.ManagedRecordsCommentRegex)
-				require.Equal(t, cfg.ManagedRecordsCommentRegexTemplate, cfg.ManagedRecordsCommentRegex.String())
+				require.NotNil(t, handleConfig)
+				require.NotNil(t, lifecycleConfig)
+				require.NotNil(t, updateConfig)
+				require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
+				require.Equal(t, raw.ManagedRecordsCommentRegex, handleConfig.Options.ManagedRecordsCommentRegex.String())
 
-				expected := *tc.expected
-				if expected.ManagedRecordsCommentRegex == nil && expected.ManagedRecordsCommentRegexTemplate == "" {
-					expected.ManagedRecordsCommentRegex = regexp.MustCompile("")
+				expectedHandle := *tc.expected.handle
+				if expectedHandle.Options.ManagedRecordsCommentRegex == nil {
+					expectedHandle.Options.ManagedRecordsCommentRegex = regexp.MustCompile("")
 				}
-				require.Equal(t, &expected, cfg)
+				require.Equal(t, &expectedHandle, handleConfig)
+				require.Equal(t, tc.expected.lifecycle, lifecycleConfig)
+				require.Equal(t, tc.expected.update, updateConfig)
 			} else {
-				require.Nil(t, tc.expected) // check the test case itself is okay
-				require.Equal(t, tc.input, cfg)
+				require.Nil(t, handleConfig)
+				require.Nil(t, lifecycleConfig)
+				require.Nil(t, updateConfig)
 			}
+			require.Equal(t, original, *raw)
 		})
 	}
 }

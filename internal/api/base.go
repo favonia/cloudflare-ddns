@@ -1,4 +1,4 @@
-// Package api implements protocols to update DNS records.
+// Package api implements protocols to update DNS records and WAF lists.
 package api
 
 import (
@@ -52,35 +52,6 @@ type Record struct {
 	RecordParams //nolint:embeddedstructfieldcheck // parameters go last
 }
 
-// ManagedRecordFilter applies managed-record filtering within a domain/IP-family scope.
-type ManagedRecordFilter struct {
-	CommentRegex *regexp.Regexp
-}
-
-// MatchComment returns true when the DNS record comment passes this managed-record filter.
-func (s ManagedRecordFilter) MatchComment(comment string) bool {
-	if s.CommentRegex == nil {
-		return true
-	}
-	return s.CommentRegex.MatchString(comment)
-}
-
-// FilterRecords returns only managed records while preserving order.
-func (s ManagedRecordFilter) FilterRecords(records []Record) []Record {
-	if s.CommentRegex == nil {
-		return records
-	}
-
-	filtered := make([]Record, 0, len(records))
-	for _, record := range records {
-		if s.MatchComment(record.Comment) {
-			filtered = append(filtered, record)
-		}
-	}
-
-	return filtered
-}
-
 // WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
 type WAFListItem struct {
 	ID
@@ -98,16 +69,23 @@ const (
 	FinalDeletionMode DeletionMode = true
 )
 
+// HandleOptions bundles handle-scoped settings that affect cache correctness
+// and other per-handle behavior.
+type HandleOptions struct {
+	CacheExpiration            time.Duration
+	ManagedRecordsCommentRegex *regexp.Regexp
+}
+
 // A Handle represents a generic API to update DNS records and WAF lists.
 // Currently, the only implementation is Cloudflare.
 type Handle interface {
-	// ListRecords lists DNS records matching the given domain/IP-family scope and recordFilter.
-	// The same handle should use a stable recordFilter because implementations may cache
-	// filtered records by domain/IP-family scope (i.e., cache keys need not include recordFilter).
+	// ListRecords lists managed DNS records matching the given domain/IP-family scope.
+	// The managed-record selector is bound into the handle options because
+	// implementations may cache filtered records by domain/IP-family scope.
 	//
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		recordFilter ManagedRecordFilter, expectedParams RecordParams,
+		expectedParams RecordParams,
 	) ([]Record, bool, bool)
 
 	// UpdateRecord updates one DNS record.
@@ -122,7 +100,7 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves a WAF list with IP rages.
+	// ListWAFListItems retrieves a WAF list with IP ranges.
 	// It creates an empty WAF list with IP ranges if it does not already exist yet.
 	// The first return value is the ID of the list.
 	// The second return value indicates whether the list already exists.
@@ -153,5 +131,5 @@ type Handle interface {
 // An Auth contains authentication information.
 type Auth interface {
 	// New uses the authentication information to create a Handle.
-	New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool)
+	New(ppfmt pp.PP, options HandleOptions) (Handle, bool)
 }

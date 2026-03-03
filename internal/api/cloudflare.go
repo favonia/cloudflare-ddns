@@ -45,8 +45,9 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 
 // A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
 type CloudflareHandle struct {
-	cf    *cloudflare.API
-	cache CloudflareCache
+	cf      *cloudflare.API
+	options HandleOptions
+	cache   CloudflareCache
 }
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
@@ -55,8 +56,8 @@ type CloudflareAuth struct {
 	BaseURL string
 }
 
-// New creates a [CloudflareHandle] from the authentication data.
-func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle, bool) {
+// New creates a [CloudflareHandle] from the authentication data and handle options.
+func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
@@ -69,17 +70,18 @@ func (t CloudflareAuth) New(ppfmt pp.PP, cacheExpiration time.Duration) (Handle,
 	}
 
 	h := CloudflareHandle{
-		cf: handle,
+		cf:      handle,
+		options: options,
 		cache: CloudflareCache{
-			listZones:      newCache[string, []ID](cacheExpiration),
-			zoneIDOfDomain: newCache[string, ID](cacheExpiration),
+			listZones:      newCache[string, []ID](options.CacheExpiration),
+			zoneIDOfDomain: newCache[string, ID](options.CacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
-				ipnet.IP4: newCache[string, *[]Record](cacheExpiration),
-				ipnet.IP6: newCache[string, *[]Record](cacheExpiration),
+				ipnet.IP4: newCache[string, *[]Record](options.CacheExpiration),
+				ipnet.IP6: newCache[string, *[]Record](options.CacheExpiration),
 			},
-			listLists:     newCache[ID, *[]WAFListMeta](cacheExpiration),
-			listID:        newCache[WAFList, ID](cacheExpiration),
-			listListItems: newCache[WAFList, *[]WAFListItem](cacheExpiration),
+			listLists:     newCache[ID, *[]WAFListMeta](options.CacheExpiration),
+			listID:        newCache[WAFList, ID](options.CacheExpiration),
+			listListItems: newCache[WAFList, *[]WAFListItem](options.CacheExpiration),
 		},
 	}
 

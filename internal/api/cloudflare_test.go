@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -29,7 +28,7 @@ func TestNewEmptyToken(t *testing.T) {
 
 	auth.Token = ""
 	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
-	h, ok := auth.New(mockPP, time.Second)
+	h, ok := auth.New(mockPP, defaultHandleOptions())
 	require.False(t, ok)
 	require.Nil(t, h)
 }

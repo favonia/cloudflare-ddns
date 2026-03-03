@@ -110,11 +110,23 @@ func checkToken(t *testing.T, r *http.Request) bool {
 	return assert.Equal(t, []string{mockAuthString}, r.Header["Authorization"])
 }
 
+func defaultHandleOptions() api.HandleOptions {
+	return api.HandleOptions{
+		CacheExpiration:            time.Hour * 24 * 365, // a year
+		ManagedRecordsCommentRegex: nil,
+	}
+}
+
 func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
+	t.Helper()
+	return newHandleWithOptions(t, ppfmt, defaultHandleOptions())
+}
+
+func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) (*http.ServeMux, api.Handle, bool) {
 	t.Helper()
 
 	serveMux, auth := newServerAuth(t)
-	h, ok := auth.New(ppfmt, time.Hour*24*365) // a year
+	h, ok := auth.New(ppfmt, options)
 
 	return serveMux, h, ok
 }
@@ -129,12 +141,17 @@ type cloudflareHarness struct {
 
 func newCloudflareHarness(t *testing.T) *cloudflareHarness {
 	t.Helper()
+	return newCloudflareHarnessWithOptions(t, defaultHandleOptions())
+}
+
+func newCloudflareHarnessWithOptions(t *testing.T, options api.HandleOptions) *cloudflareHarness {
+	t.Helper()
 
 	mockCtrl := gomock.NewController(t)
 
 	// Rationale of new PP: unless we are testing the authorization step,
 	// there shouldn't be any errors/warnings.
-	serveMux, h, ok := newHandle(t, mocks.NewMockPP(mockCtrl))
+	serveMux, h, ok := newHandleWithOptions(t, mocks.NewMockPP(mockCtrl), options)
 	require.True(t, ok)
 	ch, ok := h.(api.CloudflareHandle)
 	require.True(t, ok)

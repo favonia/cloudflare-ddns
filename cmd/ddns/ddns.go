@@ -28,38 +28,47 @@ func formatName() string {
 	return fmt.Sprintf("Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ppfmt pp.PP) (*config.Config, setter.Setter, bool) {
-	c := config.Default()
+func initConfig(ppfmt pp.PP) (
+	*config.RawConfig, *config.HandleConfig, *config.LifecycleConfig, *config.UpdateConfig, setter.Setter, bool,
+) {
+	raw := config.DefaultRaw()
 
-	// Read the config
-	if !c.ReadEnv(ppfmt) || !c.Normalize(ppfmt) {
-		return c, nil, false
+	// Read and build the config.
+	if !raw.ReadEnv(ppfmt) {
+		return raw, nil, nil, nil, nil, false
 	}
-
-	// Print the config
-	c.Print(ppfmt)
-
-	// Get the handler
-	h, ok := c.Auth.New(ppfmt, c.CacheExpiration)
+	handleConfig, lifecycleConfig, updateConfig, ok := raw.Build(ppfmt)
 	if !ok {
-		return c, nil, false
+		return raw, nil, nil, nil, nil, false
 	}
 
-	// Get the setter
-	// c.Normalize guarantees c.ManagedRecordsCommentRegex is non-nil.
-	s, ok := setter.New(ppfmt, h, c.ManagedRecordsCommentRegex)
+	// Print the config.
+	config.Print(ppfmt, handleConfig, lifecycleConfig, updateConfig)
+
+	// Get the handle.
+	h, ok := handleConfig.Auth.New(ppfmt, handleConfig.Options)
 	if !ok {
-		return c, nil, false
+		return raw, nil, nil, nil, nil, false
 	}
 
-	return c, s, true
+	// Get the setter.
+	s, ok := setter.New(ppfmt, h)
+	if !ok {
+		return raw, nil, nil, nil, nil, false
+	}
+
+	return raw, handleConfig, lifecycleConfig, updateConfig, s, true
 }
 
-func stopUpdating(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) {
-	if c.DeleteOnStop {
-		msg := updater.FinalDeleteIPs(ctx, ppfmt, c, s)
-		c.Monitor.Log(ctx, ppfmt, msg.MonitorMessage)
-		c.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
+func stopUpdating(
+	ctx context.Context, ppfmt pp.PP,
+	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
+	s setter.Setter,
+) {
+	if lifecycleConfig.DeleteOnStop {
+		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s)
+		lifecycleConfig.Monitor.Log(ctx, ppfmt, msg.MonitorMessage)
+		lifecycleConfig.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
 	}
 }
 
@@ -87,21 +96,21 @@ func realMain() int {
 	// Warn about root privileges
 	config.CheckRoot(ppfmt)
 
-	// Read the config and get the handler and the setter
-	c, s, configOK := initConfig(ppfmt)
-	// Ping monitors regardless of whether initConfig succeeded
-	c.Monitor.Start(ctx, ppfmt, formatName())
+	// Read the config and get the handle and the setter.
+	raw, _, lifecycleConfig, updateConfig, s, configOK := initConfig(ppfmt)
+	// Ping monitors regardless of whether initConfig succeeded.
+	raw.Monitor.Start(ctx, ppfmt, formatName())
 	// Bail out now if initConfig failed
 	if !configOK {
-		c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "Configuration errors"))
-		c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef(
+		raw.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "Configuration errors"))
+		raw.Notifier.Send(ctx, ppfmt, notifier.NewMessagef(
 			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details."))
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
-	if c.UpdateCron != nil {
-		c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
+	if lifecycleConfig.UpdateCron != nil {
+		lifecycleConfig.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -111,7 +120,7 @@ func realMain() int {
 	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
 	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
 	// having the internal cron disabled.)
-	if c.UpdateCron != nil && !ppfmt.IsShowing(pp.Verbose) {
+	if lifecycleConfig.UpdateCron != nil && !ppfmt.IsShowing(pp.Verbose) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -119,18 +128,18 @@ func realMain() int {
 	for {
 		// The next time to run the updater.
 		// This is called before running the updater so that the timer would not be delayed by the updating.
-		next := cron.Next(c.UpdateCron)
+		next := cron.Next(lifecycleConfig.UpdateCron)
 
 		// Update the IP addresses
-		if first && !c.UpdateOnStart {
-			c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(true, "Started (no action)"))
+		if first && !lifecycleConfig.UpdateOnStart {
+			lifecycleConfig.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(true, "Started (no action)"))
 		} else {
 			// Improve readability of the logging by separating each round of checks with blank lines.
 			ppfmt.BlankLineIfVerbose()
 
-			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, c, s)
-			c.Monitor.Ping(ctx, ppfmt, msg.MonitorMessage)
-			c.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
+			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, updateConfig, s)
+			lifecycleConfig.Monitor.Ping(ctx, ppfmt, msg.MonitorMessage)
+			lifecycleConfig.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
 		}
 
 		if ctxWithSignals.Err() != nil {
@@ -138,7 +147,7 @@ func realMain() int {
 		}
 
 		// Check if cron was disabled
-		if c.UpdateCron == nil {
+		if lifecycleConfig.UpdateCron == nil {
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0
 		}
@@ -149,15 +158,15 @@ func realMain() int {
 		if next.IsZero() {
 			ppfmt.Noticef(pp.EmojiUserError,
 				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
-				cron.DescribeSchedule(c.UpdateCron),
+				cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 			)
-			stopUpdating(ctx, ppfmt, c, s)
-			c.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "No scheduled updates"))
-			c.Notifier.Send(ctx, ppfmt,
+			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
+			lifecycleConfig.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "No scheduled updates"))
+			lifecycleConfig.Notifier.Send(ctx, ppfmt,
 				notifier.NewMessagef(
 					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
 						"Consider changing the value of UPDATE_CRON (%s).",
-					cron.DescribeSchedule(c.UpdateCron),
+					cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 				),
 			)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
@@ -170,10 +179,10 @@ func realMain() int {
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
 		if sig.WaitForSignalsUntil(ppfmt, next) {
-			stopUpdating(ctx, ppfmt, c, s)
-			c.Monitor.Exit(ctx, ppfmt, "Stopped")
-			if c.UpdateCron != nil {
-				c.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
+			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
+			lifecycleConfig.Monitor.Exit(ctx, ppfmt, "Stopped")
+			if lifecycleConfig.UpdateCron != nil {
+				lifecycleConfig.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0

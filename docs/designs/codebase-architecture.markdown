@@ -21,7 +21,7 @@ The repository root also contains module metadata, top-level user documentation,
 
 The updater is split into small internal packages with explicit responsibilities instead of one large service layer.
 
-- `internal/config/` reads, validates, normalizes, and prints configuration.
+- `internal/config/` reads raw environment inputs, derives validated runtime configs, and prints the resulting settings summary.
 - `internal/provider/` detects current IP addresses from different sources.
 - `internal/api/` talks to Cloudflare and applies caching around API-facing operations.
 - `internal/setter/` reconciles desired DNS and WAF state against current remote state.
@@ -36,6 +36,23 @@ This separation is intentional: keep domain logic, provider logic, Cloudflare AP
 
 See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for package-level API structure.
 
+## Configuration Lifecycle
+
+Configuration is intentionally split into one raw phase and several runtime-facing phases.
+
+- `RawConfig` holds parsed environment inputs before cross-field validation and derivation.
+- `HandleConfig` holds validated settings needed to construct the Cloudflare API handle. In practice this is `Auth` plus handle-scoped `api.HandleOptions`, including stable ownership selectors that affect handle-local cache correctness.
+- `LifecycleConfig` holds validated schedule, shutdown, monitor, and notifier settings used by the main process loop.
+- `UpdateConfig` holds validated provider, domain, WAF, timeout, and write-side settings used during reconciliation.
+
+This split keeps the composition root in `cmd/ddns/` honest:
+
+- handle construction consumes handle config
+- process orchestration consumes lifecycle config
+- update logic consumes update config
+
+The design goal is not to minimize field copying. The goal is to keep each runtime layer from silently depending on settings it does not own.
+
 ## Coding Conventions
 
 1. Use `%s` instead of `%q` in logs for values that contain only safe characters and are unlikely to be misunderstood without quotes:
@@ -49,3 +66,6 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
    - Use `%q` for raw or untrusted inputs such as user-provided environment values or parser tokens, while continuing to use `%s` for the safe identifiers listed above.
    - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
    - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
+5. For user-facing setting names and config field names:
+   - keep write-side settings singular when they describe one value written to one managed object, such as `RECORD_COMMENT`
+   - keep ownership selectors plural when they scope a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX`

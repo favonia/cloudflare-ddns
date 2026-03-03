@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -50,7 +51,6 @@ func TestDeleteRecord(t *testing.T) {
 	t.Parallel()
 
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
-	recordFilter := api.ManagedRecordFilter{CommentRegex: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -100,9 +100,9 @@ func TestDeleteRecord(t *testing.T) {
 				lrh.setRequestLimit(1)
 				drh.setRequestLimit(1)
 				mockPP := f.newPreparedPP(tc.prepareMocks)
-				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				_ = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.Empty(t, rs)
@@ -113,6 +113,13 @@ func TestDeleteRecord(t *testing.T) {
 }
 
 func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip string) httpHandler {
+	t.Helper()
+	return newUpdateRecordHandlerWithComment(t, mux, id, ip, "::2", "")
+}
+
+func newUpdateRecordHandlerWithComment(
+	t *testing.T, mux *http.ServeMux, id string, requestIP string, responseIP string, responseComment string,
+) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -135,13 +142,16 @@ func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 				return
 			}
 
-			if !assert.Equal(t, ip, record.Content) {
+			if !assert.Equal(t, requestIP, record.Content) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
+			responseRecord := mockDNSRecord("record1", ipnet.IP6, "sub.test.org", responseIP)
+			responseRecord.Comment = responseComment
+
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSRecordResponse("record1", ipnet.IP6, "sub.test.org", "::2"))
+			err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(responseRecord))
 			assert.NoError(t, err)
 		})
 
@@ -152,7 +162,6 @@ func TestUpdateRecord(t *testing.T) {
 	t.Parallel()
 
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
-	recordFilter := api.ManagedRecordFilter{CommentRegex: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit      int
@@ -248,10 +257,10 @@ func TestUpdateRecord(t *testing.T) {
 				lrh.setRequestLimit(1)
 				urh.setRequestLimit(1)
 				mockPP = f.newPreparedPP(tc.prepareMocksForCached)
-				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				_ = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
 					"record1", mustIP("::2"), params, tc.expectedParams)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
 				require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
@@ -262,6 +271,13 @@ func TestUpdateRecord(t *testing.T) {
 }
 
 func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
+	t.Helper()
+	return newCreateRecordHandlerWithComment(t, mux, id, ipNet, domain, ip, "")
+}
+
+func newCreateRecordHandlerWithComment(
+	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string,
+) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -289,7 +305,7 @@ func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet i
 				!assert.Equal(t, ip, record.Content) ||
 				!assert.Equal(t, 1, record.TTL) ||
 				!assert.False(t, *record.Proxied) ||
-				!assert.Empty(t, record.Comment) {
+				!assert.Equal(t, comment, record.Comment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -307,7 +323,6 @@ func TestCreateRecord(t *testing.T) {
 	t.Parallel()
 
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
-	recordFilter := api.ManagedRecordFilter{CommentRegex: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -350,12 +365,12 @@ func TestCreateRecord(t *testing.T) {
 			crh := newCreateRecordHandler(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1")
 			crh.setRequestLimit(tc.createRequestLimit)
 
-			f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+			f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 			actualID, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.Equal(t, api.ID("record1"), actualID)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.True(t, ok)
 				require.True(t, cached)
 				require.Equal(t, []api.Record{{"record1", mustIP("::1"), params}}, rs)
@@ -366,11 +381,94 @@ func TestCreateRecord(t *testing.T) {
 	}
 }
 
+func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
+	t.Parallel()
+
+	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"}
+
+	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
+		CacheExpiration:            defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+	})
+	mockPP := f.newPP()
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+	lrh.setRequestLimit(1)
+
+	crh := newCreateRecordHandlerWithComment(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "unmanaged")
+	crh.setRequestLimit(1)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Empty(t, rs)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Empty(t, rs)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
+func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
+	t.Parallel()
+
+	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
+	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
+
+	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
+		CacheExpiration:            defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+	})
+	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+			`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+			"AAAA", "sub.test.org", api.ID("record1"),
+			`"unmanaged"`, `"managed"`,
+		)
+	})
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record1", IP: "::1", Comment: "managed"},
+	})
+	lrh.setRequestLimit(1)
+
+	urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "unmanaged")
+	urh.setRequestLimit(1)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), currentParams)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record1", IP: mustIP("::1"), RecordParams: currentParams},
+	}, rs)
+
+	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+		"record1", mustIP("::2"), currentParams, currentParams)
+	require.True(t, ok)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), currentParams)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Empty(t, rs)
+	assertHandlersExhausted(t, zh, lrh, urh)
+}
+
 func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 	t.Parallel()
 
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
-	recordFilter := api.ManagedRecordFilter{CommentRegex: nil}
 
 	t.Run("update+delete", func(t *testing.T) {
 		t.Parallel()
@@ -390,7 +488,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
 		drh.setRequestLimit(1)
 
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.False(t, cached)
 		require.Equal(t, []api.Record{
@@ -406,7 +504,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			"record2", api.RegularDelitionMode)
 		require.True(t, ok)
 
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.True(t, cached)
 		require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
@@ -430,7 +528,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
 		drh.setRequestLimit(1)
 
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.False(t, cached)
 		require.Empty(t, rs)
@@ -443,7 +541,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			"record1", api.RegularDelitionMode)
 		require.True(t, ok)
 
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.True(t, cached)
 		require.Empty(t, rs)
@@ -471,7 +569,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
 		drh.setRequestLimit(1)
 
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.False(t, cached)
 		require.Equal(t, []api.Record{
@@ -491,7 +589,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			"record2", api.RegularDelitionMode)
 		require.True(t, ok)
 
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), recordFilter, params)
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 		require.True(t, ok)
 		require.True(t, cached)
 		require.Equal(t, []api.Record{
