@@ -49,3 +49,6 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
    - Use `%q` for raw or untrusted inputs such as user-provided environment values or parser tokens, while continuing to use `%s` for the safe identifiers listed above.
    - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
    - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
+5. For user-facing setting names and config field names:
+   - keep write-side settings singular when they describe one value written to one managed object, such as `RECORD_COMMENT`
+   - keep ownership selectors plural when they scope a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX`

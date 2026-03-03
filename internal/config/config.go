@@ -33,6 +33,7 @@ type Config struct {
 	// ManagedRecordsCommentRegex may be nil before [Config.Normalize].
 	// After a successful [Config.Normalize], it is guaranteed to be non-nil
 	// (including the default empty template, which compiles to a match-all regex).
+	// This selector stays plural because it scopes a managed set of records.
 	ManagedRecordsCommentRegex *regexp.Regexp
 	WAFListDescription         string
 	DetectionTimeout           time.Duration

@@ -52,9 +52,9 @@ This relies on one handle and its bound setter using one stable managed-record f
 
 ## Naming Notes
 
-`MANAGED_RECORDS_COMMENT_REGEX` was kept instead of a name closer to `RECORD_COMMENT`.
+`MANAGED_RECORDS_COMMENT_REGEX` follows the shared naming convention in [`codebase-architecture.markdown`](codebase-architecture.markdown): write-side settings stay singular, while ownership selectors stay plural.
 
-The main reason is operator safety: the selector is about management scope, not the default comment for newly written records. A name that is too close to `RECORD_COMMENT` increases the risk of copy-paste and scanning mistakes in environment-variable-heavy setups.
+The main reason is operator safety: the selector is about management scope across a set of managed records, not the default comment for one newly written record. Keeping the write-side setting singular and the ownership selector plural makes that distinction easier to scan in environment-variable-heavy setups.
 
 ## Scope Boundary
 
