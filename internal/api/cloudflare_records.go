@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"regexp"
 	"slices"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -13,6 +14,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func matchManagedRecordComment(regex *regexp.Regexp, comment string) bool {
+	if regex == nil {
+		return true
+	}
+	return regex.MatchString(comment)
+}
 
 func hintRecordPermission(ppfmt pp.PP, err error) {
 	var authentication *cloudflare.AuthenticationError
@@ -140,10 +148,10 @@ zoneSearch:
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-	recordFilter ManagedRecordFilter, expectedParams RecordParams,
+	expectedParams RecordParams,
 ) ([]Record, bool, bool) {
 	if cachedManagedRecords := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); cachedManagedRecords != nil {
-		// Cache stores managed records only; this assumes a stable filter per handle.
+		// Cache stores managed records only; this assumes a stable selector per handle.
 		return *cachedManagedRecords.Value(), true, true
 	}
 
@@ -169,7 +177,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 
 	managedRecords := make([]Record, 0, len(raw))
 	for _, rawRecord := range raw {
-		if !recordFilter.MatchComment(rawRecord.Comment) {
+		if !matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, rawRecord.Comment) {
 			continue
 		}
 
@@ -282,15 +290,23 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
-		for i, r := range *rs.Value() {
-			if r.ID == id {
-				(*rs.Value())[i] = Record{
-					ID:           id,
-					IP:           ip,
-					RecordParams: updatedParams,
-				}
+		if !matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, updatedParams.Comment) {
+			*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
+			return true
+		}
+
+		updatedRecord := Record{
+			ID:           id,
+			IP:           ip,
+			RecordParams: updatedParams,
+		}
+		for i, record := range *rs.Value() {
+			if record.ID == id {
+				(*rs.Value())[i] = updatedRecord
+				return true
 			}
 		}
+		*rs.Value() = append([]Record{updatedRecord}, *rs.Value()...)
 	}
 
 	return true
@@ -326,7 +342,8 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
+	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil &&
+		matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, params.Comment) {
 		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: params}}, *rs.Value()...)
 	}
 

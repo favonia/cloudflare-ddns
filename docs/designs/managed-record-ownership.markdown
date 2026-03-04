@@ -4,7 +4,7 @@
 
 ## Goal
 
-Safely isolate ownership when multiple updater instances may touch overlapping DNS names. Ownership affects record discovery, updates, duplicate cleanup, and deletion.
+Safely isolate ownership when multiple updater instances may touch overlapping DNS names. Ownership determines record discovery, updates, duplicate cleanup, and deletion.
 
 ## Core Model
 
@@ -14,12 +14,12 @@ Safely isolate ownership when multiple updater instances may touch overlapping D
 
 The selector uses Go `regexp` RE2 syntax with `MatchString` semantics. It is not an implicit full-match pattern.
 
-The empty default matches all comments, preserving pre-feature behavior. Ownership isolation is opt-in.
+The empty default matches all comments, preserving pre-selector behavior. Ownership isolation is opt-in.
 
 ## Required Invariants
 
-- `MANAGED_RECORDS_COMMENT_REGEX` is compiled during configuration normalization and stored in canonical form.
-- After successful normalization, the compiled regex is always non-nil, including the default empty template.
+- `MANAGED_RECORDS_COMMENT_REGEX` is compiled during config building and stored in the handle-facing runtime config.
+- After successful config building, the compiled regex is always non-nil, including the default empty template.
 - `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`.
 
 The last rule prevents self-orphaning.
@@ -36,13 +36,13 @@ Only matched records participate in:
 - duplicate cleanup
 - `DELETE_ON_STOP`
 
-Unmatched records are invisible to DNS mutation logic. As a result, the updater may create a new managed record even if an unmanaged record already has the desired IP address.
+Unmatched records are invisible to DNS mutation logic, so the updater may create a new managed record even if an unmanaged record already has the desired IP address.
 
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.
 
-This relies on one handle and its bound setter using one stable managed-record filter for their lifetime. The current cache key does not include filter identity.
+This requires one handle and its bound setter to use one stable managed-record filter for their lifetime. The current cache key does not include filter identity.
 
 ## Tradeoffs
 
@@ -52,15 +52,13 @@ This relies on one handle and its bound setter using one stable managed-record f
 
 ## Naming Notes
 
-`MANAGED_RECORDS_COMMENT_REGEX` was kept instead of a name closer to `RECORD_COMMENT`.
+`MANAGED_RECORDS_COMMENT_REGEX` follows the shared naming convention in [`codebase-architecture.markdown`](codebase-architecture.markdown): write-side settings stay singular, while ownership selectors stay plural.
 
-The main reason is operator safety: the selector is about management scope, not the default comment for newly written records. A name that is too close to `RECORD_COMMENT` increases the risk of copy-paste and scanning mistakes in environment-variable-heavy setups.
+This is mainly about operator safety: the selector describes management scope across a set of records, not the default comment written to one record. The singular/plural contrast makes that easier to scan in environment-variable-heavy setups.
 
 ## Scope Boundary
 
-This design applies only to DNS record ownership based on DNS record comments.
-
-It is not a general ownership abstraction for all managed resources. WAF list management remains separate, and DNS-less or WAF-only runs do not use this selector.
+This design applies only to DNS record ownership based on DNS record comments. It is not a general ownership abstraction for all managed resources. WAF list management remains separate, and DNS-less or WAF-only runs do not use this selector.
 
 ## Future Development Notes
 

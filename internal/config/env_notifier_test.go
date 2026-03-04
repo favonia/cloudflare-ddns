@@ -9,102 +9,92 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//nolint:paralleltest // paralleltest should not be used because environment vars are global
-func TestReadAndAppendShoutrrrURL(t *testing.T) {
-	key := keyPrefix + "SHOUTRRR"
-
-	type not = notifier.Notifier
-
+//nolint:paralleltest // environment vars are global
+func TestSetupReportersNotifier(t *testing.T) {
 	for name, tc := range map[string]struct {
-		set           bool
-		val           string
-		oldField      not
-		newField      func(*testing.T, not)
+		shoutrrr      string
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
+		check         func(*testing.T, heartbeat.Heartbeat, notifier.Notifier)
 	}{
-		"unset": {
-			false, "", nil,
-			func(t *testing.T, n not) {
-				t.Helper()
-				require.Nil(t, n)
-			},
-			true,
-			nil,
-		},
 		"empty": {
-			true, "", nil,
-			func(t *testing.T, n not) {
+			shoutrrr:      "",
+			ok:            true,
+			prepareMockPP: nil,
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
-				require.Nil(t, n)
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
 			},
-			true,
-			nil,
 		},
-		"generic": {
-			true, "generic+https://example.com/api/v1/postStuff",
-			nil,
-			func(t *testing.T, n not) {
+		"single": {
+			shoutrrr: "generic+https://example.com/api/v1/postStuff",
+			ok:       true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
-				ns, ok := n.(notifier.Composed)
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				ns, ok := nt.(notifier.Composed)
 				require.True(t, ok)
 				require.Len(t, ns, 1)
 				s, ok := ns[0].(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
 			},
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
-			},
-		},
-		"ill-formed": {
-			true, "meow-meow-meow://cute",
-			nil,
-			func(t *testing.T, n not) {
-				t.Helper()
-				require.Nil(t, n)
-			},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
-				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
-			},
 		},
 		"multiple": {
-			true, "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
-			nil,
-			func(t *testing.T, n not) {
+			shoutrrr: "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
+			ok:       true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
-				ns, ok := n.(notifier.Composed)
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				ns, ok := nt.(notifier.Composed)
 				require.True(t, ok)
 				require.Len(t, ns, 1)
 				s, ok := ns[0].(notifier.Shoutrrr)
 				require.True(t, ok)
 				require.Equal(t, []string{"Generic", "Pushover"}, s.ServiceDescriptions)
 			},
-			true,
-			func(m *mocks.MockPP) {
+		},
+		"invalid": {
+			shoutrrr: "meow-meow-meow://cute",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
+				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
 			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			set(t, key, tc.set, tc.val)
-			field := tc.oldField
+			unset(t, "HEALTHCHECKS", "UPTIMEKUMA", "SHOUTRRR")
+			if tc.shoutrrr != "" {
+				store(t, "SHOUTRRR", tc.shoutrrr)
+			}
+
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadAndAppendShoutrrrURL(mockPP, key, &field)
+			hb, nt, ok := config.SetupReporters(mockPP)
 			require.Equal(t, tc.ok, ok)
-			tc.newField(t, field)
+			tc.check(t, hb, nt)
 		})
 	}
 }

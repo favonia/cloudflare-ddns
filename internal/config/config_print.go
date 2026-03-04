@@ -10,7 +10,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -31,25 +33,25 @@ func describeLiteralText(s string) string {
 	return strconv.Quote(s)
 }
 
-// MANAGED_RECORDS_COMMENT_REGEX is a RE2 template, not a literal comment.
-// Show regex filters in the form humans usually read them: raw RE2 syntax when
-// that stays readable on one line, and a quoted fallback when escaping or
-// whitespace would otherwise be ambiguous.
-func describeCommentRegexTemplate(template string) string {
-	if template == "" {
+// Ownership regex settings are RE2 regexes, not literal comments. Show them in
+// the form humans usually read regexes: raw RE2 syntax when that stays
+// readable on one line, and a quoted fallback when escaping or whitespace would
+// otherwise be ambiguous.
+func describeCommentRegex(regex string) string {
+	if regex == "" {
 		return "(empty; matches all comments)"
 	}
-	if isHumanReadableRegex(template) {
-		return template
+	if isHumanReadableRegex(regex) {
+		return regex
 	}
-	return strconv.Quote(template)
+	return strconv.Quote(regex)
 }
 
-func isHumanReadableRegex(template string) bool {
-	if strings.TrimSpace(template) != template {
+func isHumanReadableRegex(regex string) bool {
+	if strings.TrimSpace(regex) != regex {
 		return false
 	}
-	for _, r := range template {
+	for _, r := range regex {
 		if unicode.IsGraphic(r) || r == ' ' {
 			continue
 		}
@@ -74,8 +76,9 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
-// Print prints a human-facing summary of [Config].
-func (c *Config) Print(ppfmt pp.PP) {
+// Print prints a human-facing summary of the validated config and the reporting
+// services currently wired into the process.
+func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 	if !ppfmt.IsShowing(pp.Info) {
 		return
 	}
@@ -89,58 +92,67 @@ func (c *Config) Print(ppfmt pp.PP) {
 		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
 
+	handle := built.Handle
+	lifecycle := built.Lifecycle
+	update := built.Update
+
 	section("Domains, IP providers, and WAF lists:")
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
+	for ipNet, p := range ipnet.Bindings(update.Provider) {
 		if p != nil {
-			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, c.Domains[ipNet]))
+			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, update.Domains[ipNet]))
 			item(ipNet.Describe()+" provider:", "%s", provider.Name(p))
 		}
 	}
-	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, c.WAFLists))
+	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))
+
+	managedRecordsCommentRegex := ""
+	if handle.Options.ManagedRecordsCommentRegex != nil {
+		managedRecordsCommentRegex = handle.Options.ManagedRecordsCommentRegex.String()
+	}
 
 	// Hide inactive filters to keep the default output focused.
-	if c.ManagedRecordsCommentRegexTemplate != "" {
+	if managedRecordsCommentRegex != "" {
 		section("Ownership filters:")
 		// This regex selects which existing DNS records this instance considers managed.
-		item("DNS record comment regex:", "%s", describeCommentRegexTemplate(c.ManagedRecordsCommentRegexTemplate))
+		item("DNS record comment regex:", "%s", describeCommentRegex(managedRecordsCommentRegex))
 	}
 
 	section("Scheduling:")
 	item("Timezone:", "%s", cron.DescribeLocation(time.Local))
-	item("Update schedule:", "%s", cron.DescribeSchedule(c.UpdateCron))
-	item("Update on start?", "%t", c.UpdateOnStart)
-	item("Delete on stop?", "%t", c.DeleteOnStop)
-	item("Cache expiration:", "%v", c.CacheExpiration)
+	item("Update schedule:", "%s", cron.DescribeSchedule(lifecycle.UpdateCron))
+	item("Update on start?", "%t", lifecycle.UpdateOnStart)
+	item("Delete on stop?", "%t", lifecycle.DeleteOnStop)
+	item("Cache expiration:", "%v", handle.Options.CacheExpiration)
 
 	section("Parameters of new DNS records and WAF lists:")
-	// These settings are defaults/targets for managed objects when creating or updating.
-	item("TTL:", "%s", c.TTL.Describe())
+	// These settings are defaults or targets for managed objects when creating or updating.
+	item("TTL:", "%s", update.TTL.Describe())
 	{
-		_, inverseMap := computeInverseMap(c.Proxied)
+		_, inverseMap := computeInverseMap(update.Proxied)
 		item("Proxied domains:", "%s", pp.JoinMap(domain.Domain.Describe, inverseMap[true]))
 		item("Unproxied domains:", "%s", pp.JoinMap(domain.Domain.Describe, inverseMap[false]))
 	}
-	item("DNS record comment:", "%s", describeLiteralText(c.RecordComment))
-	item("WAF list description:", "%s", describeLiteralText(c.WAFListDescription))
+	item("DNS record comment:", "%s", describeLiteralText(update.RecordComment))
+	item("WAF list description:", "%s", describeLiteralText(update.WAFListDescription))
 
 	section("Timeouts:")
-	item("IP detection:", "%v", c.DetectionTimeout)
-	item("Record/list updating:", "%v", c.UpdateTimeout)
+	item("IP detection:", "%v", update.DetectionTimeout)
+	item("Record/list updating:", "%v", update.UpdateTimeout)
 
-	if c.Monitor != nil {
+	if hb != nil {
 		count := 0
-		for name, params := range c.Monitor.Describe {
+		for name, params := range hb.Describe {
 			count++
 			if count == 1 {
-				section("Monitors:")
+				section("Heartbeats:")
 			}
 			item(name+":", "%s", params)
 		}
 	}
 
-	if c.Notifier != nil {
+	if nt != nil {
 		count := 0
-		for name, params := range c.Notifier.Describe {
+		for name, params := range nt.Describe {
 			count++
 			if count == 1 {
 				section("Notification services (via shoutrrr):")

@@ -1,21 +1,28 @@
 package main
 
 import (
+	"context"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-// resetInitConfigEnv clears every environment variable read by initConfig so
+// resetInitConfigEnv clears every environment variable read during startup so
 // the test starts from the command's defaults instead of the caller's shell.
 func resetInitConfigEnv(t *testing.T) {
 	t.Helper()
@@ -47,13 +54,13 @@ func resetInitConfigEnv(t *testing.T) {
 // TestInitConfigManagedRecordsCommentRegex exercises initConfig's successful
 // entry-point path with a minimal valid environment.
 //
-// The assertions check the observable contract of that function: it reads env
-// vars, restores normalized config invariants, preserves defaults for untouched
-// settings, and returns the runtime objects needed by the command to proceed.
+// The assertions check the observable contract of that function: it builds the
+// handle/lifecycle/update configs, preserves defaults for untouched settings,
+// and returns the built config plus setter needed by the command to proceed.
 //
-// It stays at the boundary of initConfig by checking the returned config and
-// constructor success, leaving setter behavior and record-update logic to their
-// own package tests.
+// It stays at the boundary of initConfig by checking the returned raw/runtime
+// settings and constructor success, leaving setter behavior and record-update
+// logic to their own package tests.
 func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	resetInitConfigEnv(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
@@ -63,39 +70,199 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 
 	// Run the production initialization path quietly; the assertions below define
 	// the successful return contract for initConfig.
-	cfg, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
 	require.True(t, ok)
-	require.NotNil(t, cfg)
+	require.NotNil(t, builtConfig)
+	require.NotNil(t, builtConfig.Handle)
+	require.NotNil(t, builtConfig.Lifecycle)
+	require.NotNil(t, builtConfig.Update)
 	require.NotNil(t, s)
-	auth, ok := cfg.Auth.(*api.CloudflareAuth)
+	handleConfig := builtConfig.Handle
+	lifecycleConfig := builtConfig.Lifecycle
+	updateConfig := builtConfig.Update
+	auth, ok := handleConfig.Auth.(*api.CloudflareAuth)
 	require.True(t, ok)
 	require.Equal(t, "deadbeaf", auth.Token)
 	require.Empty(t, auth.BaseURL)
-	require.Equal(t, "cloudflare.trace", provider.Name(cfg.Provider[ipnet.IP4]))
-	require.Equal(t, "cloudflare.trace", provider.Name(cfg.Provider[ipnet.IP6]))
+	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP4]))
+	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP6]))
 	require.Equal(t, map[ipnet.Type][]domain.Domain{
 		ipnet.IP4: {domain.FQDN("example.org")},
 		ipnet.IP6: {domain.FQDN("example.org")},
-	}, cfg.Domains)
-	require.Empty(t, cfg.WAFLists)
-	require.Equal(t, "@every 5m", cron.DescribeSchedule(cfg.UpdateCron))
-	require.True(t, cfg.UpdateOnStart)
-	require.False(t, cfg.DeleteOnStop)
-	require.Equal(t, 6*time.Hour, cfg.CacheExpiration)
-	require.Equal(t, api.TTLAuto, cfg.TTL)
-	require.Equal(t, "false", cfg.ProxiedTemplate)
+	}, updateConfig.Domains)
+	require.Empty(t, updateConfig.WAFLists)
+	require.Equal(t, "@every 5m", cron.DescribeSchedule(lifecycleConfig.UpdateCron))
+	require.True(t, lifecycleConfig.UpdateOnStart)
+	require.False(t, lifecycleConfig.DeleteOnStop)
+	require.Equal(t, 6*time.Hour, handleConfig.Options.CacheExpiration)
+	require.Equal(t, api.TTLAuto, updateConfig.TTL)
 	require.Equal(t, map[domain.Domain]bool{
 		domain.FQDN("example.org"): false,
-	}, cfg.Proxied)
-	require.Equal(t, "managed", cfg.RecordComment)
-	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegexTemplate)
-	// initConfig exposes the normalized config, so this test checks the compiled
-	// form there without reaching into setter internals.
-	require.NotNil(t, cfg.ManagedRecordsCommentRegex)
-	require.Equal(t, "^managed$", cfg.ManagedRecordsCommentRegex.String())
-	require.Empty(t, cfg.WAFListDescription)
-	require.Equal(t, 5*time.Second, cfg.DetectionTimeout)
-	require.Equal(t, 30*time.Second, cfg.UpdateTimeout)
-	require.NotNil(t, cfg.Monitor)
-	require.NotNil(t, cfg.Notifier)
+	}, updateConfig.Proxied)
+	require.Equal(t, "managed", updateConfig.RecordComment)
+	// initConfig exposes the compiled handle-bound form without reaching into
+	// setter internals.
+	require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
+	require.Equal(t, "^managed$", handleConfig.Options.ManagedRecordsCommentRegex.String())
+	require.Empty(t, updateConfig.WAFListDescription)
+	require.Equal(t, 5*time.Second, updateConfig.DetectionTimeout)
+	require.Equal(t, 30*time.Second, updateConfig.UpdateTimeout)
+}
+
+//nolint:paralleltest // environment variables are global
+func TestInitConfigReadFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
+	require.False(t, ok)
+	require.Nil(t, builtConfig)
+	require.Nil(t, s)
+}
+
+func TestInitConfigBuildFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
+	t.Setenv("DOMAINS", "example.org")
+	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "(")
+
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
+	require.False(t, ok)
+	require.Nil(t, builtConfig)
+	require.Nil(t, s)
+}
+
+func TestRealMainReporterFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
+	t.Setenv("HEALTHCHECKS", "\001")
+	t.Setenv("QUIET", "true")
+
+	require.Equal(t, 1, realMain())
+}
+
+//nolint:paralleltest // Version is a global linker-injected variable
+func TestFormatName(t *testing.T) {
+	oldVersion := Version
+	t.Cleanup(func() {
+		Version = oldVersion
+	})
+
+	Version = ""
+	require.Equal(t, "Cloudflare DDNS", formatName())
+
+	Version = "v1.2.3"
+	require.Equal(t, "Cloudflare DDNS (v1.2.3)", formatName())
+}
+
+func TestRealMainConfigFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("QUIET", "true")
+
+	require.Equal(t, 1, realMain())
+}
+
+func TestStopUpdatingDeleteOnStop(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
+	mockNotifier := mocks.NewMockNotifier(mockCtrl)
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+	ppfmt := pp.New(io.Discard, false, pp.Quiet)
+
+	domain4 := domain.FQDN("example.org")
+	wafList := api.WAFList{AccountID: "acc", Name: "office"}
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+	}
+
+	lifecycleConfig := &config.LifecycleConfig{
+		UpdateCron:    nil,
+		UpdateOnStart: false,
+		DeleteOnStop:  true,
+	}
+	updateConfig := &config.UpdateConfig{
+		Provider: map[ipnet.Type]provider.Provider{
+			ipnet.IP4: provider.MustNewLiteral("192.0.2.1"),
+			ipnet.IP6: nil,
+		},
+		Domains: map[ipnet.Type][]domain.Domain{
+			ipnet.IP4: {domain4},
+			ipnet.IP6: nil,
+		},
+		WAFLists:           []api.WAFList{wafList},
+		TTL:                api.TTLAuto,
+		Proxied:            map[domain.Domain]bool{domain4: false},
+		RecordComment:      "managed",
+		WAFListDescription: "managed list",
+		DetectionTimeout:   time.Second,
+		UpdateTimeout:      time.Second,
+	}
+
+	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
+	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list").Return(setter.ResponseUpdated)
+	mockHeartbeat.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
+			require.True(t, msg.OK)
+			require.Contains(t, msg.Format(), "Deleted A of example.org")
+			require.Contains(t, msg.Format(), "Cleared list(s) acc/office")
+			return true
+		},
+	)
+	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ pp.PP, msg notifier.Message) bool {
+			require.Contains(t, msg.Format(), "Deleted A records of example.org.")
+			require.Contains(t, msg.Format(), "Cleared WAF list(s) acc/office.")
+			return true
+		},
+	)
+
+	stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockNotifier, mockSetter)
+}
+
+func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
+	mockNotifier := mocks.NewMockNotifier(mockCtrl)
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+
+	stopUpdating(
+		context.Background(),
+		pp.New(io.Discard, false, pp.Quiet),
+		&config.LifecycleConfig{
+			UpdateCron:    nil,
+			UpdateOnStart: false,
+			DeleteOnStop:  false,
+		},
+		&config.UpdateConfig{
+			Provider:           nil,
+			Domains:            nil,
+			WAFLists:           nil,
+			TTL:                0,
+			Proxied:            nil,
+			RecordComment:      "",
+			WAFListDescription: "",
+			DetectionTimeout:   0,
+			UpdateTimeout:      0,
+		},
+		mockHeartbeat,
+		mockNotifier,
+		mockSetter,
+	)
 }

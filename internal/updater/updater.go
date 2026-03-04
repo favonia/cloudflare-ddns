@@ -22,7 +22,7 @@ func getMessageIDForDetection(ipNet ipnet.Type) pp.ID {
 	}[ipNet]
 }
 
-func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.Type) ([]netip.Addr, Message) {
+func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipNet ipnet.Type) ([]netip.Addr, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
@@ -69,7 +69,7 @@ func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, ipNet ipnet.T
 
 var errTimeout = errors.New("timeout")
 
-func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
+func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig,
 	f func(context.Context) setter.ResponseCode,
 ) setter.ResponseCode {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
@@ -89,7 +89,7 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.Config,
 
 // setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetIPs] with timeout.
 func setIPs(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, ipNet ipnet.Type, ips []netip.Addr,
+	c *config.UpdateConfig, s setter.Setter, ipNet ipnet.Type, ips []netip.Addr,
 ) Message {
 	resps := emptySetterResponses()
 
@@ -110,7 +110,9 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 
 // finalDeleteIP extracts relevant settings from the configuration
 // and calls [setter.Setter.FinalDelete] with a deadline.
-func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter, ipNet ipnet.Type) Message {
+func finalDeleteIP(
+	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter, ipNet ipnet.Type,
+) Message {
 	resps := emptySetterResponses()
 
 	for _, domain := range c.Domains[ipNet] {
@@ -130,7 +132,7 @@ func finalDeleteIP(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.Config, s setter.Setter, detectedIPs map[ipnet.Type][]netip.Addr,
+	c *config.UpdateConfig, s setter.Setter, detectedIPs map[ipnet.Type][]netip.Addr,
 ) Message {
 	resps := emptySetterWAFListResponses()
 
@@ -146,8 +148,8 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 }
 
 // finalClearWAFLists extracts relevant settings from the configuration
-// and calls [setter.Setter.ClearWAFList] with a deadline.
-func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+// and calls [setter.Setter.FinalClearWAFList] with a deadline.
+func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
@@ -161,8 +163,8 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.Config, s se
 	return generateFinalClearWAFListsMessage(resps)
 }
 
-// UpdateIPs detect IP addresses and update DNS records of managed domains.
-func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+// UpdateIPs detects IP addresses and updates DNS records of managed domains.
+func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
 	detectedIPsForWAF := map[ipnet.Type][]netip.Addr{}
 	numManagedNetworks := 0
@@ -175,7 +177,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if msg.MonitorMessage.OK {
+			if msg.HeartbeatMessage.OK {
 				numValidIPs++
 				detectedIPsForWAF[ipNet] = ips
 				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))
@@ -200,7 +202,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Sett
 }
 
 // FinalDeleteIPs removes all DNS records of managed domains.
-func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.Config, s setter.Setter) Message {
+func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
 
 	for ipNet, provider := range ipnet.Bindings(c.Provider) {

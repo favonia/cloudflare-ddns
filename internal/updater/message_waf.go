@@ -3,7 +3,7 @@ package updater
 import (
 	"strings"
 
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -19,9 +19,9 @@ func (s setterWAFListResponses) register(name string, code setter.ResponseCode) 
 	s[code] = append(s[code], name)
 }
 
-func generateUpdateWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
+func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return monitor.Message{
+		return heartbeat.Message{
 			OK:    false,
 			Lines: []string{"Failed to set list(s) " + pp.Join(domains)},
 		}
@@ -37,7 +37,7 @@ func generateUpdateWAFListsMonitorMessage(s setterWAFListResponses) monitor.Mess
 		successLines = append(successLines, "Set list(s) "+pp.Join(domains))
 	}
 
-	return monitor.Message{OK: true, Lines: successLines}
+	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
 func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
@@ -73,14 +73,14 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 
 func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
-		MonitorMessage:  generateUpdateWAFListsMonitorMessage(s),
-		NotifierMessage: generateUpdateWAFListsNotifierMessage(s),
+		HeartbeatMessage: generateUpdateWAFListsHeartbeatMessage(s),
+		NotifierMessage:  generateUpdateWAFListsNotifierMessage(s),
 	}
 }
 
-func generateFinalClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.Message {
+func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return monitor.Message{
+		return heartbeat.Message{
 			OK:    false,
 			Lines: []string{"Failed to clear list(s) " + pp.Join(domains)},
 		}
@@ -96,7 +96,7 @@ func generateFinalClearWAFListsMonitorMessage(s setterWAFListResponses) monitor.
 		successLines = append(successLines, "Cleared list(s) "+pp.Join(domains))
 	}
 
-	return monitor.Message{OK: true, Lines: successLines}
+	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
 func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
@@ -132,7 +132,7 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 
 func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
-		MonitorMessage:  generateFinalClearWAFListsMonitorMessage(s),
-		NotifierMessage: generateFinalClearWAFListsNotifierMessage(s),
+		HeartbeatMessage: generateFinalClearWAFListsHeartbeatMessage(s),
+		NotifierMessage:  generateFinalClearWAFListsNotifierMessage(s),
 	}
 }

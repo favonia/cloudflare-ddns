@@ -12,7 +12,7 @@ type Message []string
 // NewMessage creates a new empty Message.
 func NewMessage() Message { return nil }
 
-// NewMessagef creates a new MonitorMessage containing one formatted string.
+// NewMessagef creates a new Message containing one formatted string.
 func NewMessagef(format string, args ...any) Message {
 	return Message{fmt.Sprintf(format, args...)}
 }

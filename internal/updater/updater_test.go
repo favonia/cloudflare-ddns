@@ -13,11 +13,12 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
@@ -42,10 +43,21 @@ const (
 	domain6   = domain.FQDN("ip6.hello")
 )
 
-func initConfig() *config.Config {
-	conf := config.Default()
-	conf.Provider[ipnet.IP4] = nil
-	conf.Provider[ipnet.IP6] = nil
+func initUpdateConfig() *config.UpdateConfig {
+	conf := &config.UpdateConfig{} //nolint:exhaustruct // Tests build only the runtime fields updater behavior depends on.
+	conf.TTL = api.TTLAuto
+	conf.RecordComment = recordComment
+	conf.WAFListDescription = wafListDescription
+	conf.DetectionTimeout = time.Second
+	conf.UpdateTimeout = time.Second
+	conf.Provider = map[ipnet.Type]provider.Provider{
+		ipnet.IP4: nil,
+		ipnet.IP6: nil,
+	}
+	conf.Domains = map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: nil,
+		ipnet.IP6: nil,
+	}
 	conf.Proxied = map[domain.Domain]bool{
 		domain4:   false,
 		domain4_1: false,
@@ -54,10 +66,6 @@ func initConfig() *config.Config {
 		domain4_4: false,
 		domain6:   false,
 	}
-	conf.RecordComment = recordComment
-	conf.WAFListDescription = wafListDescription
-	conf.DetectionTimeout = time.Second
-	conf.UpdateTimeout = time.Second
 	return conf
 }
 
@@ -158,7 +166,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
 
-			conf := initConfig()
+			conf := initUpdateConfig()
 			conf.Domains = domains
 			conf.WAFLists = lists
 
@@ -176,7 +184,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
-				MonitorMessage: monitor.Message{
+				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
@@ -264,7 +272,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
 
-			conf := initConfig()
+			conf := initUpdateConfig()
 			conf.Domains = domains
 			conf.WAFLists = lists
 
@@ -278,7 +286,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			}
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
-				MonitorMessage: monitor.Message{
+				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
@@ -580,7 +588,7 @@ func TestUpdateIPs(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
 
-			conf := initConfig()
+			conf := initUpdateConfig()
 			conf.Domains = domains
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.WAFLists = lists
@@ -598,7 +606,7 @@ func TestUpdateIPs(t *testing.T) {
 			}
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
-				MonitorMessage: monitor.Message{
+				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
@@ -801,7 +809,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ctx := context.Background()
 
-			conf := initConfig()
+			conf := initUpdateConfig()
 			conf.Domains = domains
 			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
 			conf.WAFLists = lists
@@ -823,7 +831,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, updater.Message{
-				MonitorMessage: monitor.Message{
+				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},

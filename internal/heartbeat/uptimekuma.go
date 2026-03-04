@@ -1,4 +1,4 @@
-package monitor
+package heartbeat
 
 import (
 	"context"
@@ -30,14 +30,14 @@ type UptimeKuma struct {
 	Timeout time.Duration
 }
 
-var _ BasicMonitor = UptimeKuma{} //nolint:exhaustruct
+var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct
 
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
 	UptimeKumaDefaultTimeout = 10 * time.Second
 )
 
-// NewUptimeKuma creates a new UptimeKuma monitor.
+// NewUptimeKuma creates a new Uptime Kuma heartbeat service.
 func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {

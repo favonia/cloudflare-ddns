@@ -1,7 +1,8 @@
-// Package setter implements the logic to update DNS records using [api.Handle].
+// Package setter implements reconciliation logic for DNS records and WAF lists
+// using [api.Handle].
 //
 // The idea is to reuse existing DNS records as much as possible, and only when
-// that fails, create new DNS records and remove stall ones. The complexity of
+// that fails, create new DNS records and remove stale ones. The complexity of
 // this package is due to the error handling of each API call.
 package setter
 
@@ -17,7 +18,7 @@ import (
 
 //go:generate go tool mockgen -typed -destination=../mocks/mock_setter.go -package=mocks . Setter
 
-// Setter uses [api.Handle] to update DNS records.
+// Setter uses [api.Handle] to reconcile DNS records and WAF lists.
 type Setter interface {
 	// SetIPs sets a particular domain to the given IP addresses.
 	//
@@ -60,7 +61,7 @@ type Setter interface {
 		itemComment string,
 	) ResponseCode
 
-	// FinalClearWAFList deletes or empties a list.
+	// FinalClearWAFList deletes a WAF list or starts clearing it asynchronously.
 	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,

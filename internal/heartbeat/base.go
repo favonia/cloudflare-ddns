@@ -1,5 +1,5 @@
-// Package monitor implements dead man's switches.
-package monitor
+// Package heartbeat implements dead-man's-switch services.
+package heartbeat
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-//go:generate go tool mockgen -typed -destination=../mocks/mock_monitor.go -package=mocks . BasicMonitor,Monitor
+//go:generate go tool mockgen -typed -destination=../mocks/mock_heartbeat.go -package=mocks . BasicHeartbeat,Heartbeat
 
 // maxReadLength is the maximum number of bytes read from an HTTP response.
 const maxReadLength int64 = 102400
 
-// BasicMonitor is a dead man's switch, meaning that the user will be notified when the updater fails to
+// BasicHeartbeat is a dead man's switch, meaning that the user will be notified when the updater fails to
 // detect and update the public IP address. No notifications for IP changes.
-type BasicMonitor interface {
-	// Describe a monitor as a service name and its parameters.
+type BasicHeartbeat interface {
+	// Describe a heartbeat service by its name and parameters.
 	Describe(yield func(service, params string) bool)
 
 	// Ping with OK=true prevent notifications.
@@ -23,14 +23,14 @@ type BasicMonitor interface {
 	Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool
 }
 
-// Monitor provides more advanced features.
-type Monitor interface {
-	BasicMonitor
+// Heartbeat provides more advanced dead-man's-switch features.
+type Heartbeat interface {
+	BasicHeartbeat
 
-	// Start pings the monitor with the start signal.
+	// Start pings the service with the start signal.
 	Start(ctx context.Context, ppfmt pp.PP, message string) bool
 
-	// Exit pings the monitor with the successful exiting signal.
+	// Exit pings the service with the successful exiting signal.
 	Exit(ctx context.Context, ppfmt pp.PP, message string) bool
 
 	// Log with OK=true provides additional information without changing the state.
