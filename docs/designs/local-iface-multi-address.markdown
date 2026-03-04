@@ -4,9 +4,7 @@
 
 ## Goal
 
-Support multi-address interfaces without changing behavior for non-`local.iface` providers.
-
-This affects DNS reconciliation, WAF reconciliation, and any code that previously assumed one target address per family.
+Support multi-address interfaces without changing behavior for non-`local.iface` providers. This affects DNS reconciliation, WAF reconciliation, and any code that previously assumed one target address per family.
 
 ## Core Model
 
@@ -25,9 +23,7 @@ This affects DNS reconciliation, WAF reconciliation, and any code that previousl
 
 ## Scope Boundary
 
-This design applies only to `local.iface`.
-
-It does not change:
+This design applies only to `local.iface`. It does not change:
 
 - provider syntax
 - behavior for non-`local.iface` providers

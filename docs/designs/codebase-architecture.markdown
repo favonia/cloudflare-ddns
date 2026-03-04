@@ -1,13 +1,13 @@
 # Design Note: Codebase Architecture
 
-This document records the high-level code organization and repository-wide coding conventions.
+This document records the high-level repository layout, internal package boundaries, configuration flow, and coding conventions.
 
 ## Repository Layout
 
 The codebase broadly follows the [standard Go project layout](https://github.com/golang-standards/project-layout), with a few repository-specific support directories:
 
-- `/cmd/` holds executable entry points. Today that is primarily `cmd/ddns/`.
-- `/internal/` holds the application logic and supporting packages.
+- `/cmd/` holds executable entry points. Today this is mainly `cmd/ddns/`.
+- `/internal/` holds the main application logic and supporting packages.
 - `/docs/` holds human-facing documentation.
   - `docs/designs/` holds durable design documents for future developers.
 - `/build/` holds release and packaging support files.
@@ -32,7 +32,7 @@ The updater is split into small internal packages with explicit responsibilities
 - `internal/mocks/` holds generated test doubles.
 - `internal/sliceutil/` holds small reusable helpers.
 
-This separation is intentional: keep domain logic, provider logic, Cloudflare API logic, reconciliation logic, and user-facing reporting decoupled enough that they can evolve independently.
+This separation is intentional: domain logic, provider logic, Cloudflare API logic, reconciliation logic, and user-facing reporting should stay decoupled enough to evolve independently.
 
 See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/) for package-level API structure.
 
@@ -48,7 +48,7 @@ Configuration is intentionally split into one raw phase and several runtime-faci
 
 Constructed heartbeat and notifier services are runtime services, not config slices. The current bootstrap path wires them separately from `BuiltConfig`.
 
-This split keeps the composition root in `cmd/ddns/` honest:
+This split keeps the composition root in `cmd/ddns/` honest about dependencies:
 
 - handle construction consumes handle config
 - process orchestration consumes lifecycle config
