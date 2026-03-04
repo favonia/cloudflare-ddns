@@ -1,4 +1,4 @@
-package monitor
+package heartbeat
 
 import (
 	"context"
@@ -24,14 +24,14 @@ type Healthchecks struct {
 	Timeout time.Duration
 }
 
-var _ Monitor = Healthchecks{} //nolint:exhaustruct
+var _ Heartbeat = Healthchecks{} //nolint:exhaustruct
 
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
 	HealthchecksDefaultTimeout = 10 * time.Second
 )
 
-// NewHealthchecks creates a new Healthchecks monitor.
+// NewHealthchecks creates a new Healthchecks heartbeat service.
 // See https://healthchecks.io/docs/http_api/ for more information.
 func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	u, err := url.Parse(rawURL)

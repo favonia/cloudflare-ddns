@@ -26,7 +26,7 @@ The updater is split into small internal packages with explicit responsibilities
 - `internal/api/` talks to Cloudflare and applies caching around API-facing operations.
 - `internal/setter/` reconciles desired DNS and WAF state against current remote state.
 - `internal/updater/` orchestrates a full update cycle.
-- `internal/monitor/` and `internal/notifier/` report outcomes to external systems.
+- `internal/heartbeat/` and `internal/notifier/` report outcomes to external systems.
 - `internal/domain/`, `internal/domainexp/`, and `internal/ipnet/` hold domain- and IP-related core types and parsing logic.
 - `internal/cron/`, `internal/signal/`, `internal/file/`, and `internal/pp/` provide cross-cutting runtime support.
 - `internal/mocks/` holds generated test doubles.
@@ -41,9 +41,12 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
 Configuration is intentionally split into one raw phase and several runtime-facing phases.
 
 - `RawConfig` holds parsed environment inputs before cross-field validation and derivation.
+- `BuiltConfig` groups the validated runtime config slices below so bootstrap code does not pass large config tuples around.
 - `HandleConfig` holds validated settings needed to construct the Cloudflare API handle. In practice this is `Auth` plus handle-scoped `api.HandleOptions`, including stable ownership selectors that affect handle-local cache correctness.
-- `LifecycleConfig` holds validated schedule, shutdown, monitor, and notifier settings used by the main process loop.
+- `LifecycleConfig` holds validated schedule and shutdown settings used by the main process loop.
 - `UpdateConfig` holds validated provider, domain, WAF, timeout, and write-side settings used during reconciliation.
+
+Constructed heartbeat and notifier services are runtime services, not config slices. The current bootstrap path wires them separately from `BuiltConfig`.
 
 This split keeps the composition root in `cmd/ddns/` honest:
 

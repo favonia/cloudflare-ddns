@@ -9,7 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -28,47 +28,52 @@ func formatName() string {
 	return fmt.Sprintf("Cloudflare DDNS (%s)", Version)
 }
 
-func initConfig(ppfmt pp.PP) (
-	*config.RawConfig, *config.HandleConfig, *config.LifecycleConfig, *config.UpdateConfig, setter.Setter, bool,
-) {
+// initConfig reads and builds updater config, prints the resulting settings,
+// and constructs the API handle and setter.
+//
+// It does not set up output formatting or reporter services; those are created
+// earlier in bootstrap and passed in so that config printing and later startup
+// failures use the same heartbeat/notifier instances.
+func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*config.BuiltConfig, setter.Setter, bool) {
 	raw := config.DefaultRaw()
 
 	// Read and build the config.
 	if !raw.ReadEnv(ppfmt) {
-		return raw, nil, nil, nil, nil, false
+		return nil, nil, false
 	}
-	handleConfig, lifecycleConfig, updateConfig, ok := raw.Build(ppfmt)
+	builtConfig, ok := raw.BuildConfig(ppfmt)
 	if !ok {
-		return raw, nil, nil, nil, nil, false
+		return nil, nil, false
 	}
 
 	// Print the config.
-	config.Print(ppfmt, handleConfig, lifecycleConfig, updateConfig)
+	config.Print(ppfmt, builtConfig, hb, nt)
 
 	// Get the handle.
-	h, ok := handleConfig.Auth.New(ppfmt, handleConfig.Options)
+	h, ok := builtConfig.Handle.Auth.New(ppfmt, builtConfig.Handle.Options)
 	if !ok {
-		return raw, nil, nil, nil, nil, false
+		return builtConfig, nil, false
 	}
 
 	// Get the setter.
 	s, ok := setter.New(ppfmt, h)
 	if !ok {
-		return raw, nil, nil, nil, nil, false
+		return builtConfig, nil, false
 	}
 
-	return raw, handleConfig, lifecycleConfig, updateConfig, s, true
+	return builtConfig, s, true
 }
 
 func stopUpdating(
 	ctx context.Context, ppfmt pp.PP,
 	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
+	hb heartbeat.Heartbeat, nt notifier.Notifier,
 	s setter.Setter,
 ) {
 	if lifecycleConfig.DeleteOnStop {
 		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s)
-		lifecycleConfig.Monitor.Log(ctx, ppfmt, msg.MonitorMessage)
-		lifecycleConfig.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
+		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
+		nt.Send(ctx, ppfmt, msg.NotifierMessage)
 	}
 }
 
@@ -96,21 +101,32 @@ func realMain() int {
 	// Warn about root privileges
 	config.CheckRoot(ppfmt)
 
+	// Set up reporting services before reading the updater config so startup
+	// failures during config/handle/setter setup can still be reported through
+	// the same heartbeat/notifier instances used after startup.
+	hb, nt, reportersOK := config.SetupReporters(ppfmt)
+	if !reportersOK {
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
+		return 1
+	}
+
 	// Read the config and get the handle and the setter.
-	raw, _, lifecycleConfig, updateConfig, s, configOK := initConfig(ppfmt)
-	// Ping monitors regardless of whether initConfig succeeded.
-	raw.Monitor.Start(ctx, ppfmt, formatName())
+	builtConfig, s, configOK := initConfig(ppfmt, hb, nt)
+	// Start heartbeats regardless of whether initConfig succeeded.
+	hb.Start(ctx, ppfmt, formatName())
 	// Bail out now if initConfig failed
 	if !configOK {
-		raw.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "Configuration errors"))
-		raw.Notifier.Send(ctx, ppfmt, notifier.NewMessagef(
+		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Configuration errors"))
+		nt.Send(ctx, ppfmt, notifier.NewMessagef(
 			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details."))
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
+	lifecycleConfig := builtConfig.Lifecycle
+	updateConfig := builtConfig.Update
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if lifecycleConfig.UpdateCron != nil {
-		lifecycleConfig.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
+		nt.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -132,14 +148,14 @@ func realMain() int {
 
 		// Update the IP addresses
 		if first && !lifecycleConfig.UpdateOnStart {
-			lifecycleConfig.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(true, "Started (no action)"))
+			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(true, "Started (no action)"))
 		} else {
 			// Improve readability of the logging by separating each round of checks with blank lines.
 			ppfmt.BlankLineIfVerbose()
 
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, updateConfig, s)
-			lifecycleConfig.Monitor.Ping(ctx, ppfmt, msg.MonitorMessage)
-			lifecycleConfig.Notifier.Send(ctx, ppfmt, msg.NotifierMessage)
+			hb.Ping(ctx, ppfmt, msg.HeartbeatMessage)
+			nt.Send(ctx, ppfmt, msg.NotifierMessage)
 		}
 
 		if ctxWithSignals.Err() != nil {
@@ -160,9 +176,9 @@ func realMain() int {
 				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
 				cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 			)
-			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
-			lifecycleConfig.Monitor.Ping(ctx, ppfmt, monitor.NewMessagef(false, "No scheduled updates"))
-			lifecycleConfig.Notifier.Send(ctx, ppfmt,
+			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
+			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "No scheduled updates"))
+			nt.Send(ctx, ppfmt,
 				notifier.NewMessagef(
 					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
 						"Consider changing the value of UPDATE_CRON (%s).",
@@ -179,10 +195,10 @@ func realMain() int {
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
 		if sig.WaitForSignalsUntil(ppfmt, next) {
-			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
-			lifecycleConfig.Monitor.Exit(ctx, ppfmt, "Stopped")
+			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
+			hb.Exit(ctx, ppfmt, "Stopped")
 			if lifecycleConfig.UpdateCron != nil {
-				lifecycleConfig.Notifier.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
+				nt.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0

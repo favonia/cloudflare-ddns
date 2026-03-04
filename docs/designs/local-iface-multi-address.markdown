@@ -21,7 +21,7 @@ This affects DNS reconciliation, WAF reconciliation, and any code that previousl
 - Empty detection for a configured family is treated as a failure.
 - Metadata drift remains warn-only. TTL, proxy, or comment mismatches do not trigger destructive correction by themselves.
 - WAF reconciliation uses keep-and-fill semantics to preserve coverage.
-- Monitor and notifier contracts remain unchanged.
+- Heartbeat and notifier contracts remain unchanged.
 
 ## Scope Boundary
 

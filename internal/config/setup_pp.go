@@ -8,6 +8,10 @@ import (
 )
 
 // SetupPP sets up a new PP according to the values of EMOJI and QUIET.
+//
+// It owns only output-formatting concerns. Reporter services are configured
+// separately by [SetupReporters], and updater settings are read separately into
+// [RawConfig].
 func SetupPP(output io.Writer) (pp.PP, bool) {
 	emoji, verbosity := true, pp.DefaultVerbosity
 

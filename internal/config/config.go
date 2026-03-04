@@ -1,6 +1,5 @@
 // Package config reads environment variables into [RawConfig] and builds the
-// validated [HandleConfig], [LifecycleConfig], and [UpdateConfig] values used
-// by the rest of the updater.
+// validated [BuiltConfig] value used by the rest of the updater.
 package config
 
 import (
@@ -10,13 +9,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-// RawConfig holds parsed environment values before cross-field validation and
+// RawConfig holds parsed updater settings before cross-field validation and
 // runtime-specific derivation.
+//
+// It intentionally excludes two bootstrap concerns that are handled elsewhere:
+// - [SetupPP] reads output-formatting controls such as EMOJI and QUIET.
+// - [SetupReporters] reads and constructs heartbeat/notifier services.
 type RawConfig struct {
 	Auth                       api.Auth
 	Provider                   map[ipnet.Type]provider.Provider
@@ -35,8 +36,14 @@ type RawConfig struct {
 	CacheExpiration            time.Duration
 	DetectionTimeout           time.Duration
 	UpdateTimeout              time.Duration
-	Monitor                    monitor.Monitor
-	Notifier                   notifier.Notifier
+}
+
+// BuiltConfig groups the validated updater runtime config slices.
+// Reporter services are kept separate and are not part of this structure.
+type BuiltConfig struct {
+	Handle    *HandleConfig
+	Lifecycle *LifecycleConfig
+	Update    *UpdateConfig
 }
 
 // HandleConfig holds the validated settings needed to construct an API handle.
@@ -48,15 +55,13 @@ type HandleConfig struct {
 	Options api.HandleOptions
 }
 
-// LifecycleConfig holds validated process-lifecycle settings such as scheduling,
-// shutdown behavior, and external reporting.
+// LifecycleConfig holds validated process-lifecycle settings such as scheduling
+// and shutdown behavior.
 // (The timezone is handled directly by the standard library reading the TZ environment variable.)
 type LifecycleConfig struct {
 	UpdateCron    cron.Schedule
 	UpdateOnStart bool
 	DeleteOnStop  bool
-	Monitor       monitor.Monitor
-	Notifier      notifier.Notifier
 }
 
 // UpdateConfig holds the validated settings used during IP detection and
@@ -73,7 +78,7 @@ type UpdateConfig struct {
 	UpdateTimeout      time.Duration
 }
 
-// DefaultRaw gives the default raw configuration used before reading
+// DefaultRaw gives the default raw updater configuration used before reading
 // environment variables.
 func DefaultRaw() *RawConfig {
 	return &RawConfig{
@@ -97,7 +102,5 @@ func DefaultRaw() *RawConfig {
 		CacheExpiration:            time.Hour * 6,
 		DetectionTimeout:           time.Second * 5,
 		UpdateTimeout:              time.Second * 30,
-		Monitor:                    monitor.NewComposed(),
-		Notifier:                   notifier.NewComposed(),
 	}
 }

@@ -10,7 +10,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -74,9 +76,9 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
-// Print prints a human-facing summary of the validated handle, lifecycle, and
-// update configs.
-func Print(ppfmt pp.PP, handle *HandleConfig, lifecycle *LifecycleConfig, update *UpdateConfig) {
+// Print prints a human-facing summary of the validated config and the reporting
+// services currently wired into the process.
+func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 	if !ppfmt.IsShowing(pp.Info) {
 		return
 	}
@@ -89,6 +91,10 @@ func Print(ppfmt pp.PP, handle *HandleConfig, lifecycle *LifecycleConfig, update
 	item := func(title string, format string, values ...any) {
 		inner.Infof(pp.EmojiBullet, "%-*s %s", itemTitleWidth, title, fmt.Sprintf(format, values...))
 	}
+
+	handle := built.Handle
+	lifecycle := built.Lifecycle
+	update := built.Update
 
 	section("Domains, IP providers, and WAF lists:")
 	for ipNet, p := range ipnet.Bindings(update.Provider) {
@@ -133,20 +139,20 @@ func Print(ppfmt pp.PP, handle *HandleConfig, lifecycle *LifecycleConfig, update
 	item("IP detection:", "%v", update.DetectionTimeout)
 	item("Record/list updating:", "%v", update.UpdateTimeout)
 
-	if lifecycle.Monitor != nil {
+	if hb != nil {
 		count := 0
-		for name, params := range lifecycle.Monitor.Describe {
+		for name, params := range hb.Describe {
 			count++
 			if count == 1 {
-				section("Monitors:")
+				section("Heartbeats:")
 			}
 			item(name+":", "%s", params)
 		}
 	}
 
-	if lifecycle.Notifier != nil {
+	if nt != nil {
 		count := 0
-		for name, params := range lifecycle.Notifier.Describe {
+		for name, params := range nt.Describe {
 			count++
 			if count == 1 {
 				section("Notification services (via shoutrrr):")

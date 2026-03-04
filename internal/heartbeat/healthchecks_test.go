@@ -1,5 +1,5 @@
 // vim: nowrap
-package monitor_test
+package heartbeat_test
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -27,10 +27,10 @@ func TestNewHealthchecks(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
-	m, ok := monitor.NewHealthchecks(mockPP, rawBaseURL)
-	require.Equal(t, monitor.Healthchecks{
+	m, ok := heartbeat.NewHealthchecks(mockPP, rawBaseURL)
+	require.Equal(t, heartbeat.Healthchecks{
 		BaseURL: parsedBaseURL,
-		Timeout: monitor.HealthchecksDefaultTimeout,
+		Timeout: heartbeat.HealthchecksDefaultTimeout,
 	}, m)
 	require.True(t, ok)
 }
@@ -44,7 +44,7 @@ func TestNewHealthchecksFail1(t *testing.T) {
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 	)
-	_, ok := monitor.NewHealthchecks(mockPP, "this is not a valid URL")
+	_, ok := heartbeat.NewHealthchecks(mockPP, "this is not a valid URL")
 	require.False(t, ok)
 }
 
@@ -57,7 +57,7 @@ func TestNewHealthchecksFail2(t *testing.T) {
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`),
 	)
-	_, ok := monitor.NewHealthchecks(mockPP, "ftp://example.org")
+	_, ok := heartbeat.NewHealthchecks(mockPP, "ftp://example.org")
 	require.False(t, ok)
 }
 
@@ -67,7 +67,7 @@ func TestNewHealthchecksFail3(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
-	_, ok := monitor.NewHealthchecks(mockPP, "://#?")
+	_, ok := heartbeat.NewHealthchecks(mockPP, "://#?")
 	require.False(t, ok)
 }
 
@@ -77,7 +77,7 @@ func TestHealthchecksDescribe(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	m, ok := monitor.NewHealthchecks(mockPP, "https://user:pass@host/path")
+	m, ok := heartbeat.NewHealthchecks(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
 
 	count := 0
@@ -100,7 +100,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 	)
 
 	for name, tc := range map[string]struct {
-		endpoint      func(pp.PP, monitor.Monitor) bool
+		endpoint      func(pp.PP, heartbeat.Heartbeat) bool
 		url           string
 		message       string
 		actions       []action
@@ -110,8 +110,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "hello"))
 			},
 			"/", "hello",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -125,8 +125,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"success/not-ok": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "aloha"))
 			},
 			"/", "aloha",
 			[]action{ActionAbort, ActionAbort, ActionNotOK},
@@ -140,8 +140,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"success/abort/all": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "stop now"))
 			},
 			"/", "stop now",
 			nil, ActionAbort, 0,
@@ -154,8 +154,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"failure": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(false, "something's wrong"))
 			},
 			"/fail", "something's wrong",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -169,7 +169,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"start": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
 				return m.Start(context.Background(), ppfmt, "starting now!")
 			},
 			"/start", "starting now!",
@@ -184,7 +184,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"exits": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
 				return m.Exit(context.Background(), ppfmt, "bye!")
 			},
 			"/0", "bye!",
@@ -199,8 +199,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"log": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(true, "message"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Log(context.Background(), ppfmt, heartbeat.NewMessagef(true, "message"))
 			},
 			"/log", "message",
 			[]action{ActionAbort, ActionAbort, ActionOK},
@@ -214,8 +214,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"log/not-ok": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, monitor.NewMessagef(false, "oops!"))
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Log(context.Background(), ppfmt, heartbeat.NewMessagef(false, "oops!"))
 			},
 			"/fail", "oops!",
 			[]action{ActionOK},
@@ -229,8 +229,8 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			},
 		},
 		"log/empty": {
-			func(ppfmt pp.PP, m monitor.Monitor) bool {
-				return m.Log(context.Background(), ppfmt, monitor.NewMessage())
+			func(ppfmt pp.PP, m heartbeat.Heartbeat) bool {
+				return m.Log(context.Background(), ppfmt, heartbeat.NewMessage())
 			},
 			"/log", "message",
 			[]action{},
@@ -289,7 +289,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				}
 			}))
 
-			m, ok := monitor.NewHealthchecks(mockPP, server.URL)
+			m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
 			require.True(t, ok)
 			ok = tc.endpoint(mockPP, m)
 			require.Equal(t, tc.ok, ok)

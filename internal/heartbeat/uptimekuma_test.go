@@ -1,4 +1,4 @@
-package monitor_test
+package heartbeat_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -60,12 +60,12 @@ func TestNewUptimeKuma(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			m, ok := monitor.NewUptimeKuma(mockPP, tc.input)
+			m, ok := heartbeat.NewUptimeKuma(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			if ok {
-				require.Equal(t, monitor.UptimeKuma{
+				require.Equal(t, heartbeat.UptimeKuma{
 					BaseURL: parsedBaseURL,
-					Timeout: monitor.UptimeKumaDefaultTimeout,
+					Timeout: heartbeat.UptimeKumaDefaultTimeout,
 				}, m)
 			} else {
 				require.Zero(t, m)
@@ -80,7 +80,7 @@ func TestUptimeKumaDescribe(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 
-	m, ok := monitor.NewUptimeKuma(mockPP, "https://user:pass@host/path")
+	m, ok := heartbeat.NewUptimeKuma(mockPP, "https://user:pass@host/path")
 	require.True(t, ok)
 
 	count := 0
@@ -111,7 +111,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	}
 
 	for name, tc := range map[string]struct {
-		endpoint      func(pp.PP, monitor.BasicMonitor) bool
+		endpoint      func(pp.PP, heartbeat.BasicHeartbeat) bool
 		url           string
 		status        string
 		msg           string
@@ -123,8 +123,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "hello"))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "hello"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionOK},
@@ -133,8 +133,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			successPP,
 		},
 		"success/not-ok": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionNotOK},
@@ -148,8 +148,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			},
 		},
 		"success/garbage-response": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "aloha"))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "aloha"))
 			},
 			"/", "up", "OK", "",
 			[]action{ActionGarbage},
@@ -163,8 +163,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			},
 		},
 		"success/abort/all": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(true, "stop now"))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "stop now"))
 			},
 			"/", "up", "OK", "",
 			nil, ActionAbort, false,
@@ -177,8 +177,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			},
 		},
 		"failure": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, "something's wrong"))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(false, "something's wrong"))
 			},
 			"/", "down", "something's wrong", "",
 			[]action{ActionOK},
@@ -187,8 +187,8 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			successPP,
 		},
 		"failure/empty": {
-			func(ppfmt pp.PP, m monitor.BasicMonitor) bool {
-				return m.Ping(context.Background(), ppfmt, monitor.NewMessagef(false, ""))
+			func(ppfmt pp.PP, m heartbeat.BasicHeartbeat) bool {
+				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(false, ""))
 			},
 			"/", "down", "Failing", "",
 			[]action{ActionOK},
@@ -258,7 +258,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				}
 			}))
 
-			m, ok := monitor.NewUptimeKuma(mockPP, server.URL)
+			m, ok := heartbeat.NewUptimeKuma(mockPP, server.URL)
 			require.True(t, ok)
 			ok = tc.endpoint(mockPP, m)
 			require.Equal(t, tc.ok, ok)

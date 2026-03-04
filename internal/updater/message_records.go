@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -29,7 +29,7 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) Message {
 		return NewMessage()
 	case !ok:
 		return Message{
-			MonitorMessage: monitor.Message{
+			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipNet.Describe())},
 			},
@@ -48,11 +48,11 @@ func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMap(netip.Addr.String, ips)
 }
 
-func generateUpdateMonitorMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) monitor.Message {
+func generateUpdateHeartbeatMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) heartbeat.Message {
 	ipDescription := describeIPs(ips)
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return monitor.Message{
+		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Failed to set %s (%s) of %s",
@@ -77,7 +77,7 @@ func generateUpdateMonitorMessage(ipNet ipnet.Type, ips []netip.Addr, s setterRe
 		))
 	}
 
-	return monitor.Message{OK: true, Lines: successLines}
+	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
 func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) notifier.Message {
@@ -124,14 +124,14 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterR
 
 func generateUpdateMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) Message {
 	return Message{
-		MonitorMessage:  generateUpdateMonitorMessage(ipNet, ips, s),
-		NotifierMessage: generateUpdateNotifierMessage(ipNet, ips, s),
+		HeartbeatMessage: generateUpdateHeartbeatMessage(ipNet, ips, s),
+		NotifierMessage:  generateUpdateNotifierMessage(ipNet, ips, s),
 	}
 }
 
-func generateFinalDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) monitor.Message {
+func generateFinalDeleteHeartbeatMessage(ipNet ipnet.Type, s setterResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		return monitor.Message{
+		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Failed to delete %s of %s",
@@ -156,7 +156,7 @@ func generateFinalDeleteMonitorMessage(ipNet ipnet.Type, s setterResponses) moni
 		))
 	}
 
-	return monitor.Message{OK: true, Lines: successLines}
+	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
 func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier.Message {
@@ -202,7 +202,7 @@ func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) not
 
 func generateFinalDeleteMessage(ipNet ipnet.Type, s setterResponses) Message {
 	return Message{
-		MonitorMessage:  generateFinalDeleteMonitorMessage(ipNet, s),
-		NotifierMessage: generateFinalDeleteNotifierMessage(ipNet, s),
+		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipNet, s),
+		NotifierMessage:  generateFinalDeleteNotifierMessage(ipNet, s),
 	}
 }

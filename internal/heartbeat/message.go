@@ -1,4 +1,4 @@
-package monitor
+package heartbeat
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Message holds the messages and success/failure status for monitors.
+// Message holds the messages and success/failure status for heartbeat services.
 type Message struct {
 	OK    bool
 	Lines []string

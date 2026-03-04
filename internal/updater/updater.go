@@ -177,7 +177,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if msg.MonitorMessage.OK {
+			if msg.HeartbeatMessage.OK {
 				numValidIPs++
 				detectedIPsForWAF[ipNet] = ips
 				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))

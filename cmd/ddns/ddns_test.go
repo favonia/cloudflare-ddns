@@ -13,16 +13,16 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/monitor"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-// resetInitConfigEnv clears every environment variable read by initConfig so
+// resetInitConfigEnv clears every environment variable read during startup so
 // the test starts from the command's defaults instead of the caller's shell.
 func resetInitConfigEnv(t *testing.T) {
 	t.Helper()
@@ -54,13 +54,12 @@ func resetInitConfigEnv(t *testing.T) {
 // TestInitConfigManagedRecordsCommentRegex exercises initConfig's successful
 // entry-point path with a minimal valid environment.
 //
-// The assertions check the observable contract of that function: it reads env
-// vars into RawConfig, builds the handle/lifecycle/update configs, preserves defaults
-// for untouched settings, and returns the runtime objects needed by the command
-// to proceed.
+// The assertions check the observable contract of that function: it builds the
+// handle/lifecycle/update configs, preserves defaults for untouched settings,
+// and returns the built config plus setter needed by the command to proceed.
 //
 // It stays at the boundary of initConfig by checking the returned raw/runtime
-// configs and constructor success, leaving setter behavior and record-update
+// settings and constructor success, leaving setter behavior and record-update
 // logic to their own package tests.
 func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	resetInitConfigEnv(t)
@@ -71,13 +70,20 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 
 	// Run the production initialization path quietly; the assertions below define
 	// the successful return contract for initConfig.
-	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
 	require.True(t, ok)
-	require.NotNil(t, raw)
-	require.NotNil(t, handleConfig)
-	require.NotNil(t, lifecycleConfig)
-	require.NotNil(t, updateConfig)
+	require.NotNil(t, builtConfig)
+	require.NotNil(t, builtConfig.Handle)
+	require.NotNil(t, builtConfig.Lifecycle)
+	require.NotNil(t, builtConfig.Update)
 	require.NotNil(t, s)
+	handleConfig := builtConfig.Handle
+	lifecycleConfig := builtConfig.Lifecycle
+	updateConfig := builtConfig.Update
 	auth, ok := handleConfig.Auth.(*api.CloudflareAuth)
 	require.True(t, ok)
 	require.Equal(t, "deadbeaf", auth.Token)
@@ -94,39 +100,31 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	require.False(t, lifecycleConfig.DeleteOnStop)
 	require.Equal(t, 6*time.Hour, handleConfig.Options.CacheExpiration)
 	require.Equal(t, api.TTLAuto, updateConfig.TTL)
-	require.Equal(t, "false", raw.ProxiedExpression)
-	require.Equal(t, []domain.Domain{domain.FQDN("example.org")}, raw.Domains)
-	require.Empty(t, raw.IP4Domains)
-	require.Empty(t, raw.IP6Domains)
 	require.Equal(t, map[domain.Domain]bool{
 		domain.FQDN("example.org"): false,
 	}, updateConfig.Proxied)
 	require.Equal(t, "managed", updateConfig.RecordComment)
-	require.Equal(t, "^managed$", raw.ManagedRecordsCommentRegex)
-	// initConfig exposes both configs, so this test checks the raw regex and the
-	// compiled handle-bound form without reaching into setter internals.
+	// initConfig exposes the compiled handle-bound form without reaching into
+	// setter internals.
 	require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
 	require.Equal(t, "^managed$", handleConfig.Options.ManagedRecordsCommentRegex.String())
 	require.Empty(t, updateConfig.WAFListDescription)
 	require.Equal(t, 5*time.Second, updateConfig.DetectionTimeout)
 	require.Equal(t, 30*time.Second, updateConfig.UpdateTimeout)
-	require.NotNil(t, lifecycleConfig.Monitor)
-	require.NotNil(t, lifecycleConfig.Notifier)
 }
 
 //nolint:paralleltest // environment variables are global
 func TestInitConfigReadFailure(t *testing.T) {
 	resetInitConfigEnv(t)
 
-	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
 	require.False(t, ok)
-	require.NotNil(t, raw)
-	require.Nil(t, handleConfig)
-	require.Nil(t, lifecycleConfig)
-	require.Nil(t, updateConfig)
+	require.Nil(t, builtConfig)
 	require.Nil(t, s)
-	require.Nil(t, raw.Auth)
-	require.Empty(t, raw.Domains)
 }
 
 func TestInitConfigBuildFailure(t *testing.T) {
@@ -135,14 +133,23 @@ func TestInitConfigBuildFailure(t *testing.T) {
 	t.Setenv("DOMAINS", "example.org")
 	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "(")
 
-	raw, handleConfig, lifecycleConfig, updateConfig, s, ok := initConfig(pp.New(io.Discard, false, pp.Quiet))
+	builtConfig, s, ok := initConfig(
+		pp.New(io.Discard, false, pp.Quiet),
+		heartbeat.NewComposed(),
+		notifier.NewComposed(),
+	)
 	require.False(t, ok)
-	require.NotNil(t, raw)
-	require.Nil(t, handleConfig)
-	require.Nil(t, lifecycleConfig)
-	require.Nil(t, updateConfig)
+	require.Nil(t, builtConfig)
 	require.Nil(t, s)
-	require.Equal(t, "(", raw.ManagedRecordsCommentRegex)
+}
+
+func TestRealMainReporterFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
+	t.Setenv("HEALTHCHECKS", "\001")
+	t.Setenv("QUIET", "true")
+
+	require.Equal(t, 1, realMain())
 }
 
 //nolint:paralleltest // Version is a global linker-injected variable
@@ -170,7 +177,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
-	mockMonitor := mocks.NewMockMonitor(mockCtrl)
+	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
 	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 	ppfmt := pp.New(io.Discard, false, pp.Quiet)
@@ -187,8 +194,6 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		UpdateCron:    nil,
 		UpdateOnStart: false,
 		DeleteOnStop:  true,
-		Monitor:       mockMonitor,
-		Notifier:      mockNotifier,
 	}
 	updateConfig := &config.UpdateConfig{
 		Provider: map[ipnet.Type]provider.Provider{
@@ -210,8 +215,8 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 
 	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
 	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list").Return(setter.ResponseUpdated)
-	mockMonitor.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ pp.PP, msg monitor.Message) bool {
+	mockHeartbeat.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
 			require.True(t, msg.OK)
 			require.Contains(t, msg.Format(), "Deleted A of example.org")
 			require.Contains(t, msg.Format(), "Cleared list(s) acc/office")
@@ -226,14 +231,14 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		},
 	)
 
-	stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockSetter)
+	stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockNotifier, mockSetter)
 }
 
 func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
-	mockMonitor := mocks.NewMockMonitor(mockCtrl)
+	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
 	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 
@@ -244,8 +249,6 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			UpdateCron:    nil,
 			UpdateOnStart: false,
 			DeleteOnStop:  false,
-			Monitor:       mockMonitor,
-			Notifier:      mockNotifier,
 		},
 		&config.UpdateConfig{
 			Provider:           nil,
@@ -258,6 +261,8 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			DetectionTimeout:   0,
 			UpdateTimeout:      0,
 		},
+		mockHeartbeat,
+		mockNotifier,
 		mockSetter,
 	)
 }

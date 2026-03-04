@@ -16,9 +16,11 @@ import (
 // - timezone (TZ)
 // - privileges-related ones (PGID and PUID)
 // - output-related ones (QUIET and EMOJI)
+// - reporter-related ones (HEALTHCHECKS, SHOUTRRR, and UPTIMEKUMA)
 //
-// It only parses fields into [RawConfig]. Call [RawConfig.Build] afterwards to
-// validate cross-field invariants and derive the runtime-specific configs.
+// It only parses updater settings into [RawConfig]. Call [RawConfig.BuildConfig] afterwards to
+// validate cross-field invariants and derive the updater runtime configs.
+// Reporter construction is handled separately by [SetupReporters].
 func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
@@ -41,10 +43,7 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegex) ||
 		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
-		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) ||
-		!ReadAndAppendHealthchecksURL(ppfmt, "HEALTHCHECKS", &c.Monitor) ||
-		!ReadAndAppendUptimeKumaURL(ppfmt, "UPTIMEKUMA", &c.Monitor) ||
-		!ReadAndAppendShoutrrrURL(ppfmt, "SHOUTRRR", &c.Notifier) {
+		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) {
 		return false
 	}
 
@@ -68,13 +67,16 @@ func normalizeDomainMap(raw *RawConfig) map[ipnet.Type][]domain.Domain {
 	}
 }
 
-// Build checks and derives configuration invariants, including:
+// BuildConfig checks and derives configuration invariants, including:
 // - provider and domain canonicalization
 // - [HandleConfig.Options]'s managed-record selector compilation
 // - scheduling consistency constraints such as [LifecycleConfig.DeleteOnStop]
 //
+// It is intentionally config-only: heartbeat and notifier services are built by
+// [SetupReporters], not by this method.
+//
 // When any error is reported, the original [RawConfig] remains unchanged.
-func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *UpdateConfig, bool) {
+func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Checking settings . . .")
 		ppfmt = ppfmt.Indent()
@@ -85,7 +87,7 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 	// Step 1: is there something to do?
 	if len(domains[ipnet.IP4]) == 0 && len(domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
 		ppfmt.Noticef(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
-		return nil, nil, nil, false
+		return nil, false
 	}
 
 	// Part 2: check DELETE_ON_STOP and UpdateOnStart
@@ -94,13 +96,13 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 			ppfmt.Noticef(
 				pp.EmojiUserError,
 				"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
-			return nil, nil, nil, false
+			return nil, false
 		}
 		if c.DeleteOnStop {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
 				"DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once")
-			return nil, nil, nil, false
+			return nil, false
 		}
 	}
 
@@ -110,13 +112,13 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 		ppfmt.Noticef(pp.EmojiUserError,
 			"MANAGED_RECORDS_COMMENT_REGEX=%q is invalid: %v",
 			c.ManagedRecordsCommentRegex, err)
-		return nil, nil, nil, false
+		return nil, false
 	}
 	if !managedRecordsCommentRegex.MatchString(c.RecordComment) {
 		ppfmt.Noticef(pp.EmojiUserError,
 			"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
 			c.RecordComment, c.ManagedRecordsCommentRegex)
-		return nil, nil, nil, false
+		return nil, false
 	}
 
 	// Step 3: normalize domains and providers.
@@ -145,7 +147,7 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
-		return nil, nil, nil, false
+		return nil, false
 	}
 
 	// Step 3.3: check if some domains are unused.
@@ -168,7 +170,7 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 	if len(activeDomainSet) > 0 {
 		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedExpression)
 		if !ok {
-			return nil, nil, nil, false
+			return nil, false
 		}
 
 		for dom := range activeDomainSet {
@@ -213,8 +215,6 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 		UpdateCron:    c.UpdateCron,
 		UpdateOnStart: c.UpdateOnStart,
 		DeleteOnStop:  c.DeleteOnStop,
-		Monitor:       c.Monitor,
-		Notifier:      c.Notifier,
 	}
 	updateConfig := &UpdateConfig{
 		Provider:           providerMap,
@@ -228,5 +228,9 @@ func (c *RawConfig) Build(ppfmt pp.PP) (*HandleConfig, *LifecycleConfig, *Update
 		UpdateTimeout:      c.UpdateTimeout,
 	}
 
-	return handleConfig, lifecycleConfig, updateConfig, true
+	return &BuiltConfig{
+		Handle:    handleConfig,
+		Lifecycle: lifecycleConfig,
+		Update:    updateConfig,
+	}, true
 }

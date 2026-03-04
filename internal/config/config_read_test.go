@@ -91,7 +91,7 @@ func TestReadEnvEmpty(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestBuild(t *testing.T) {
+func TestBuildConfig(t *testing.T) {
 	t.Parallel()
 
 	keyProxied := "PROXIED"
@@ -578,26 +578,25 @@ func TestBuild(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			handleConfig, lifecycleConfig, updateConfig, ok := raw.Build(mockPP)
+			builtConfig, ok := raw.BuildConfig(mockPP)
 			require.Equal(t, tc.ok, ok)
 			if tc.ok {
-				require.NotNil(t, handleConfig)
-				require.NotNil(t, lifecycleConfig)
-				require.NotNil(t, updateConfig)
-				require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
-				require.Equal(t, raw.ManagedRecordsCommentRegex, handleConfig.Options.ManagedRecordsCommentRegex.String())
+				require.NotNil(t, builtConfig)
+				require.NotNil(t, builtConfig.Handle)
+				require.NotNil(t, builtConfig.Lifecycle)
+				require.NotNil(t, builtConfig.Update)
+				require.NotNil(t, builtConfig.Handle.Options.ManagedRecordsCommentRegex)
+				require.Equal(t, raw.ManagedRecordsCommentRegex, builtConfig.Handle.Options.ManagedRecordsCommentRegex.String())
 
 				expectedHandle := *tc.expected.handle
 				if expectedHandle.Options.ManagedRecordsCommentRegex == nil {
 					expectedHandle.Options.ManagedRecordsCommentRegex = regexp.MustCompile("")
 				}
-				require.Equal(t, &expectedHandle, handleConfig)
-				require.Equal(t, tc.expected.lifecycle, lifecycleConfig)
-				require.Equal(t, tc.expected.update, updateConfig)
+				require.Equal(t, &expectedHandle, builtConfig.Handle)
+				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
+				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
-				require.Nil(t, handleConfig)
-				require.Nil(t, lifecycleConfig)
-				require.Nil(t, updateConfig)
+				require.Nil(t, builtConfig)
 			}
 			require.Equal(t, original, *raw)
 		})
