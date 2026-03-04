@@ -44,6 +44,27 @@ func TestComposedDescribe(t *testing.T) {
 	require.Equal(t, 3, count)
 }
 
+func TestNewComposed(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+
+	first := mocks.NewMockBasicHeartbeat(mockCtrl)
+	second := mocks.NewMockBasicHeartbeat(mockCtrl)
+	third := mocks.NewMockBasicHeartbeat(mockCtrl)
+
+	var missing heartbeat.BasicHeartbeat
+
+	composed := heartbeat.NewComposed(
+		missing,
+		first,
+		heartbeat.NewComposed(second, nil, third),
+		nil,
+	)
+
+	require.Equal(t, heartbeat.Composed{first, second, third}, composed)
+}
+
 func TestComposedPing(t *testing.T) {
 	t.Parallel()
 
