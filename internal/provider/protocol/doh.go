@@ -18,7 +18,7 @@ import (
 
 // randUint16 generates a random uint16, possibly not cryptographically secure.
 //
-//nolint:gosec
+//nolint:gosec // A weak fallback is acceptable only after secure randomness fails.
 func randUint16(ppfmt pp.PP) uint16 {
 	buf := make([]byte, binary.Size(uint16(0)))
 	if _, err := rand.Read(buf); err != nil {
@@ -73,7 +73,8 @@ func parseDNSAnswers(ppfmt pp.PP, answers []dnsmessage.Resource, name string, cl
 			continue
 		}
 
-		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT { //nolint:forcetypeassert
+		//nolint:forcetypeassert // The header type check above guarantees TXTResource.
+		for _, s := range ans.Body.(*dnsmessage.TXTResource).TXT {
 			s = strings.TrimSpace(s)
 			if s == "" {
 				continue
