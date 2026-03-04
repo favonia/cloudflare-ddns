@@ -58,7 +58,9 @@ This is mainly about operator safety: the selector describes management scope ac
 
 ## Scope Boundary
 
-This design applies only to DNS record ownership based on DNS record comments. It is not a general ownership abstraction for all managed resources. WAF list management remains separate, and DNS-less or WAF-only runs do not use this selector.
+This design applies only to DNS record ownership based on DNS record comments.
+
+It is not a general ownership abstraction for all managed resources. WAF list item ownership remains separate, and DNS-less or WAF-only runs do not use this selector.
 
 ## Future Development Notes
 
