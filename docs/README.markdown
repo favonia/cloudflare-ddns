@@ -1,9 +1,14 @@
 # Documentation
 
-This directory holds project documentation beyond the top-level `README.markdown`.
+This directory holds the public documentation set beyond the top-level `README.markdown`.
 
-- `docs/designs/` contains durable design documents for future developers, including AI agents.
-- `docs/CONTRIBUTING.markdown`, `docs/SECURITY.md`, and `docs/release-workflow.markdown` cover contributor and maintainer process.
+## Top-Level Documents
+
+- `docs/CONTRIBUTING.markdown`: contributor workflow and expectations.
+- `docs/CODE_OF_CONDUCT.markdown`: community conduct rules.
+- `docs/SECURITY.md`: supported versions and vulnerability reporting.
+- `docs/release-workflow.markdown`: maintainer release and feature-note conventions.
+- `docs/designs/`: durable design documents for future developers, including AI agents.
 
 Use `docs/designs/` for durable design decisions, constraints, and extension points.
 
