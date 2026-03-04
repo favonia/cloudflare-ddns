@@ -35,6 +35,8 @@ func unsetAll(t *testing.T) {
 		"RECORD_COMMENT",
 		"MANAGED_RECORDS_COMMENT_REGEX",
 		"WAF_LIST_DESCRIPTION",
+		"WAF_LIST_ITEM_COMMENT",
+		"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
 		"HEALTHCHECKS",
@@ -96,6 +98,7 @@ func TestBuildConfig(t *testing.T) {
 
 	keyProxied := "PROXIED"
 	keyManagedRecordsCommentRegex := "MANAGED_RECORDS_COMMENT_REGEX"
+	keyManagedWAFListItemsCommentRegex := "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX"
 
 	type builtConfig struct {
 		handle    *config.HandleConfig
@@ -421,6 +424,97 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"managed-waf-item-regex/valid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				WAFListItemComment:              "managed-123",
+				ManagedWAFListItemsCommentRegex: `^managed-[0-9]+$`,
+				DetectionTimeout:                5 * time.Second,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{ //nolint:exhaustruct
+						ManagedWAFListItemsCommentRegex: regexp.MustCompile(`^managed-[0-9]+$`),
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
+					TTL:                api.TTLAuto,
+					WAFListItemComment: "managed-123",
+					DetectionTimeout:   5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"managed-waf-item-regex/invalid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				ManagedWAFListItemsCommentRegex: "(",
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, keyManagedWAFListItemsCommentRegex+"=%q is invalid: %v", "(", gomock.Any()),
+				)
+			},
+		},
+		"managed-waf-item-regex/mismatch": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				WAFListItemComment:              "hello",
+				ManagedWAFListItemsCommentRegex: "^world$",
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q", "hello", "^world$"),
+				)
+			},
+		},
 		"ignored/waf": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:      true,
@@ -586,11 +680,16 @@ func TestBuildConfig(t *testing.T) {
 				require.NotNil(t, builtConfig.Lifecycle)
 				require.NotNil(t, builtConfig.Update)
 				require.NotNil(t, builtConfig.Handle.Options.ManagedRecordsCommentRegex)
+				require.NotNil(t, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex)
 				require.Equal(t, raw.ManagedRecordsCommentRegex, builtConfig.Handle.Options.ManagedRecordsCommentRegex.String())
+				require.Equal(t, raw.ManagedWAFListItemsCommentRegex, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex.String())
 
 				expectedHandle := *tc.expected.handle
 				if expectedHandle.Options.ManagedRecordsCommentRegex == nil {
 					expectedHandle.Options.ManagedRecordsCommentRegex = regexp.MustCompile("")
+				}
+				if expectedHandle.Options.ManagedWAFListItemsCommentRegex == nil {
+					expectedHandle.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("")
 				}
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)

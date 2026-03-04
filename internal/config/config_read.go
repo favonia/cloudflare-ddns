@@ -42,6 +42,8 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
 		!ReadString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegex) ||
 		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
+		!ReadString(ppfmt, "WAF_LIST_ITEM_COMMENT", &c.WAFListItemComment) ||
+		!ReadString(ppfmt, "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX", &c.ManagedWAFListItemsCommentRegex) ||
 		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
 		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) {
 		return false
@@ -106,7 +108,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		}
 	}
 
-	// Step 2.5: compile the ownership selector for managed DNS records.
+	// Step 2.5: compile the ownership selectors for managed DNS records and WAF list items.
 	managedRecordsCommentRegex, err := regexp.Compile(c.ManagedRecordsCommentRegex)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError,
@@ -118,6 +120,19 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		ppfmt.Noticef(pp.EmojiUserError,
 			"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
 			c.RecordComment, c.ManagedRecordsCommentRegex)
+		return nil, false
+	}
+	managedWAFListItemsCommentRegex, err := regexp.Compile(c.ManagedWAFListItemsCommentRegex)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q is invalid: %v",
+			c.ManagedWAFListItemsCommentRegex, err)
+		return nil, false
+	}
+	if !managedWAFListItemsCommentRegex.MatchString(c.WAFListItemComment) {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q",
+			c.WAFListItemComment, c.ManagedWAFListItemsCommentRegex)
 		return nil, false
 	}
 
@@ -202,13 +217,23 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", c.WAFListDescription)
 		}
+		if c.WAFListItemComment != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"WAF_LIST_ITEM_COMMENT=%s is ignored because no WAF lists will be updated", c.WAFListItemComment)
+		}
+		if c.ManagedWAFListItemsCommentRegex != "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%s is ignored because no WAF lists will be updated",
+				c.ManagedWAFListItemsCommentRegex)
+		}
 	}
 
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,
 		Options: api.HandleOptions{
-			CacheExpiration:            c.CacheExpiration,
-			ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+			CacheExpiration:                 c.CacheExpiration,
+			ManagedRecordsCommentRegex:      managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex: managedWAFListItemsCommentRegex,
 		},
 	}
 	lifecycleConfig := &LifecycleConfig{
@@ -224,6 +249,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		Proxied:            proxiedMap,
 		RecordComment:      c.RecordComment,
 		WAFListDescription: c.WAFListDescription,
+		WAFListItemComment: c.WAFListItemComment,
 		DetectionTimeout:   c.DetectionTimeout,
 		UpdateTimeout:      c.UpdateTimeout,
 	}

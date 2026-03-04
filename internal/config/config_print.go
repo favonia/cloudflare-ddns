@@ -18,7 +18,7 @@ import (
 )
 
 // Keep titles aligned for the longest built-in key:
-// "DNS record comment regex:".
+// "WAF list item comment regex:".
 const itemTitleWidth = 28
 
 // These helpers format values for the human-facing startup summary.
@@ -109,12 +109,22 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	if handle.Options.ManagedRecordsCommentRegex != nil {
 		managedRecordsCommentRegex = handle.Options.ManagedRecordsCommentRegex.String()
 	}
+	managedWAFListItemsCommentRegex := ""
+	if handle.Options.ManagedWAFListItemsCommentRegex != nil {
+		managedWAFListItemsCommentRegex = handle.Options.ManagedWAFListItemsCommentRegex.String()
+	}
 
 	// Hide inactive filters to keep the default output focused.
-	if managedRecordsCommentRegex != "" {
+	if managedRecordsCommentRegex != "" || managedWAFListItemsCommentRegex != "" {
 		section("Ownership filters:")
-		// This regex selects which existing DNS records this instance considers managed.
-		item("DNS record comment regex:", "%s", describeCommentRegex(managedRecordsCommentRegex))
+		// These regexes select which existing DNS records and WAF list items this
+		// instance considers managed.
+		if managedRecordsCommentRegex != "" {
+			item("DNS record comment regex:", "%s", describeCommentRegex(managedRecordsCommentRegex))
+		}
+		if managedWAFListItemsCommentRegex != "" {
+			item("WAF list item comment regex:", "%s", describeCommentRegex(managedWAFListItemsCommentRegex))
+		}
 	}
 
 	section("Scheduling:")
@@ -134,6 +144,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	}
 	item("DNS record comment:", "%s", describeLiteralText(update.RecordComment))
 	item("WAF list description:", "%s", describeLiteralText(update.WAFListDescription))
+	item("WAF list item comment:", "%s", describeLiteralText(update.WAFListItemComment))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", update.DetectionTimeout)

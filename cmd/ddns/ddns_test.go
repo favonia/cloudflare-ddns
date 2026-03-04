@@ -41,6 +41,8 @@ func resetInitConfigEnv(t *testing.T) {
 		"RECORD_COMMENT",
 		"MANAGED_RECORDS_COMMENT_REGEX",
 		"WAF_LIST_DESCRIPTION",
+		"WAF_LIST_ITEM_COMMENT",
+		"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
 		"HEALTHCHECKS",
@@ -67,6 +69,8 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	t.Setenv("DOMAINS", "example.org")
 	t.Setenv("RECORD_COMMENT", "managed")
 	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "^managed$")
+	t.Setenv("WAF_LIST_ITEM_COMMENT", "managed-waf")
+	t.Setenv("MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX", "^managed-waf$")
 
 	// Run the production initialization path quietly; the assertions below define
 	// the successful return contract for initConfig.
@@ -108,7 +112,10 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	// setter internals.
 	require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
 	require.Equal(t, "^managed$", handleConfig.Options.ManagedRecordsCommentRegex.String())
+	require.NotNil(t, handleConfig.Options.ManagedWAFListItemsCommentRegex)
+	require.Equal(t, "^managed-waf$", handleConfig.Options.ManagedWAFListItemsCommentRegex.String())
 	require.Empty(t, updateConfig.WAFListDescription)
+	require.Equal(t, "managed-waf", updateConfig.WAFListItemComment)
 	require.Equal(t, 5*time.Second, updateConfig.DetectionTimeout)
 	require.Equal(t, 30*time.Second, updateConfig.UpdateTimeout)
 }
@@ -209,6 +216,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		Proxied:            map[domain.Domain]bool{domain4: false},
 		RecordComment:      "managed",
 		WAFListDescription: "managed list",
+		WAFListItemComment: "",
 		DetectionTimeout:   time.Second,
 		UpdateTimeout:      time.Second,
 	}
@@ -258,6 +266,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			Proxied:            nil,
 			RecordComment:      "",
 			WAFListDescription: "",
+			WAFListItemComment: "",
 			DetectionTimeout:   0,
 			UpdateTimeout:      0,
 		},

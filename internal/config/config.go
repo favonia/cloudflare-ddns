@@ -19,23 +19,25 @@ import (
 // - [SetupPP] reads output-formatting controls such as EMOJI and QUIET.
 // - [SetupReporters] reads and constructs heartbeat/notifier services.
 type RawConfig struct {
-	Auth                       api.Auth
-	Provider                   map[ipnet.Type]provider.Provider
-	Domains                    []domain.Domain
-	IP4Domains                 []domain.Domain
-	IP6Domains                 []domain.Domain
-	WAFLists                   []api.WAFList
-	UpdateCron                 cron.Schedule
-	UpdateOnStart              bool
-	DeleteOnStop               bool
-	TTL                        api.TTL
-	ProxiedExpression          string
-	RecordComment              string
-	ManagedRecordsCommentRegex string
-	WAFListDescription         string
-	CacheExpiration            time.Duration
-	DetectionTimeout           time.Duration
-	UpdateTimeout              time.Duration
+	Auth                            api.Auth
+	Provider                        map[ipnet.Type]provider.Provider
+	Domains                         []domain.Domain
+	IP4Domains                      []domain.Domain
+	IP6Domains                      []domain.Domain
+	WAFLists                        []api.WAFList
+	UpdateCron                      cron.Schedule
+	UpdateOnStart                   bool
+	DeleteOnStop                    bool
+	TTL                             api.TTL
+	ProxiedExpression               string
+	RecordComment                   string
+	ManagedRecordsCommentRegex      string
+	WAFListDescription              string
+	WAFListItemComment              string
+	ManagedWAFListItemsCommentRegex string
+	CacheExpiration                 time.Duration
+	DetectionTimeout                time.Duration
+	UpdateTimeout                   time.Duration
 }
 
 // BuiltConfig groups the validated updater runtime config slices.
@@ -74,6 +76,7 @@ type UpdateConfig struct {
 	Proxied            map[domain.Domain]bool
 	RecordComment      string
 	WAFListDescription string
+	WAFListItemComment string
 	DetectionTimeout   time.Duration
 	UpdateTimeout      time.Duration
 }
@@ -87,20 +90,22 @@ func DefaultRaw() *RawConfig {
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},
-		Domains:                    nil,
-		IP4Domains:                 nil,
-		IP6Domains:                 nil,
-		WAFLists:                   nil,
-		UpdateCron:                 cron.MustNew("@every 5m"),
-		UpdateOnStart:              true,
-		DeleteOnStop:               false,
-		TTL:                        api.TTLAuto,
-		ProxiedExpression:          "false",
-		RecordComment:              "",
-		ManagedRecordsCommentRegex: "",
-		WAFListDescription:         "",
-		CacheExpiration:            time.Hour * 6,
-		DetectionTimeout:           time.Second * 5,
-		UpdateTimeout:              time.Second * 30,
+		Domains:                         nil,
+		IP4Domains:                      nil,
+		IP6Domains:                      nil,
+		WAFLists:                        nil,
+		UpdateCron:                      cron.MustNew("@every 5m"),
+		UpdateOnStart:                   true,
+		DeleteOnStop:                    false,
+		TTL:                             api.TTLAuto,
+		ProxiedExpression:               "false",
+		RecordComment:                   "",
+		ManagedRecordsCommentRegex:      "",
+		WAFListDescription:              "",
+		WAFListItemComment:              "",
+		ManagedWAFListItemsCommentRegex: "",
+		CacheExpiration:                 time.Hour * 6,
+		DetectionTimeout:                time.Second * 5,
+		UpdateTimeout:                   time.Second * 30,
 	}
 }

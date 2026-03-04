@@ -26,6 +26,7 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	handleConfig.Auth = raw.Auth
 	handleConfig.Options.CacheExpiration = raw.CacheExpiration
 	handleConfig.Options.ManagedRecordsCommentRegex = regexp.MustCompile(raw.ManagedRecordsCommentRegex)
+	handleConfig.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile(raw.ManagedWAFListItemsCommentRegex)
 
 	lifecycleConfig := &config.LifecycleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
 	lifecycleConfig.UpdateCron = raw.UpdateCron
@@ -46,6 +47,7 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	updateConfig.Proxied = map[domain.Domain]bool{}
 	updateConfig.RecordComment = raw.RecordComment
 	updateConfig.WAFListDescription = raw.WAFListDescription
+	updateConfig.WAFListItemComment = raw.WAFListItemComment
 	updateConfig.DetectionTimeout = raw.DetectionTimeout
 	updateConfig.UpdateTimeout = raw.UpdateTimeout
 
@@ -87,6 +89,7 @@ func TestPrintDefault(t *testing.T) {
 		printItem(t, innerMockPP, "Unproxied domains:", "(none)"),
 		printItem(t, innerMockPP, "DNS record comment:", "(empty)"),
 		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list item comment:", "(empty)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
 		printItem(t, innerMockPP, "IP detection:", "5s"),
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
@@ -117,6 +120,7 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "^Created by Cloudflare DDNS$"),
+		printItem(t, innerMockPP, "WAF list item comment regex:", "^managed-waf-item$"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
 		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
 		printItem(t, innerMockPP, "Update schedule:", "@every 5m"),
@@ -129,6 +133,7 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "Unproxied domains:", "c, d"),
 		printItem(t, innerMockPP, "DNS record comment:", "\"Created by Cloudflare DDNS\""),
 		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list item comment:", "\"managed-waf-item\""),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
 		printItem(t, innerMockPP, "IP detection:", "5s"),
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
@@ -141,6 +146,8 @@ func TestPrintValues(t *testing.T) {
 	raw := config.DefaultRaw()
 	raw.RecordComment = "Created by Cloudflare DDNS"
 	raw.ManagedRecordsCommentRegex = "^Created by Cloudflare DDNS$"
+	raw.WAFListItemComment = "managed-waf-item"
+	raw.ManagedWAFListItemsCommentRegex = "^managed-waf-item$"
 
 	builtConfig := defaultPrintedConfig(raw)
 	builtConfig.Update.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
@@ -187,6 +194,7 @@ func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "\"^Created by\\tCloudflare DDNS$\""),
+		printItem(t, innerMockPP, "WAF list item comment regex:", "\"^managed\\twaf$\""),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
 		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
 		printItem(t, innerMockPP, "Update schedule:", "@every 5m"),
@@ -199,6 +207,7 @@ func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
 		printItem(t, innerMockPP, "Unproxied domains:", "(none)"),
 		printItem(t, innerMockPP, "DNS record comment:", "(empty)"),
 		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list item comment:", "(empty)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
 		printItem(t, innerMockPP, "IP detection:", "5s"),
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
@@ -206,6 +215,7 @@ func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
 
 	raw := config.DefaultRaw()
 	raw.ManagedRecordsCommentRegex = "^Created by\tCloudflare DDNS$"
+	raw.ManagedWAFListItemsCommentRegex = "^managed\twaf$"
 
 	builtConfig := defaultPrintedConfig(raw)
 	config.Print(mockPP, builtConfig, heartbeat.NewComposed(), notifier.NewComposed())
@@ -238,6 +248,7 @@ func TestPrintEmpty(t *testing.T) {
 		printItem(t, innerMockPP, "Unproxied domains:", "(none)"),
 		printItem(t, innerMockPP, "DNS record comment:", "(empty)"),
 		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list item comment:", "(empty)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
 		printItem(t, innerMockPP, "IP detection:", "0s"),
 		printItem(t, innerMockPP, "Record/list updating:", "0s"),

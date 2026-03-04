@@ -74,8 +74,9 @@ const (
 // HandleOptions bundles handle-scoped settings that affect cache correctness
 // and other per-handle behavior.
 type HandleOptions struct {
-	CacheExpiration            time.Duration
-	ManagedRecordsCommentRegex *regexp.Regexp
+	CacheExpiration                 time.Duration
+	ManagedRecordsCommentRegex      *regexp.Regexp
+	ManagedWAFListItemsCommentRegex *regexp.Regexp
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.
