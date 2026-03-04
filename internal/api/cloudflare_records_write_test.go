@@ -112,11 +112,7 @@ func TestDeleteRecord(t *testing.T) {
 	}
 }
 
-func newUpdateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip string) httpHandler {
-	t.Helper()
-	return newUpdateRecordHandlerWithComment(t, mux, id, ip, "::2", "")
-}
-
+//nolint:unparam // Keep the record ID explicit so route and response coupling stays visible to callers.
 func newUpdateRecordHandlerWithComment(
 	t *testing.T, mux *http.ServeMux, id string, requestIP string, responseIP string, responseComment string,
 ) httpHandler {
@@ -147,7 +143,7 @@ func newUpdateRecordHandlerWithComment(
 				return
 			}
 
-			responseRecord := mockDNSRecord("record1", ipnet.IP6, "sub.test.org", responseIP)
+			responseRecord := mockDNSRecord(id, ipnet.IP6, "sub.test.org", responseIP)
 			responseRecord.Comment = responseComment
 
 			w.Header().Set("Content-Type", "application/json")
@@ -245,7 +241,7 @@ func TestUpdateRecord(t *testing.T) {
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: ""}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2")
+			urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
 			urh.setRequestLimit(tc.updateRequestLimit)
 
 			ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
@@ -465,6 +461,46 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	assertHandlersExhausted(t, zh, lrh, urh)
 }
 
+func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record2", IP: "::3", Comment: ""},
+	})
+	lrh.setRequestLimit(1)
+
+	urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
+	urh.setRequestLimit(1)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record2", IP: mustIP("::3"), RecordParams: params},
+	}, rs)
+
+	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+		"record1", mustIP("::2"), params, params)
+	require.True(t, ok)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record1", IP: mustIP("::2"), RecordParams: params},
+		{ID: "record2", IP: mustIP("::3"), RecordParams: params},
+	}, rs)
+	assertHandlersExhausted(t, zh, lrh, urh)
+}
+
 func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 	t.Parallel()
 
@@ -482,7 +518,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
 		lrh.setRequestLimit(1)
 
-		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2")
+		urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
 		urh.setRequestLimit(1)
 
 		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
@@ -560,7 +596,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
 		lrh.setRequestLimit(1)
 
-		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2")
+		urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
 		urh.setRequestLimit(1)
 
 		crh := newCreateRecordHandler(t, f.serveMux, "record3", ipnet.IP6, "sub.test.org", "::4")

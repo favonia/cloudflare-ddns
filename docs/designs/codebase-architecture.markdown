@@ -72,3 +72,7 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 5. For user-facing setting names and config field names:
    - keep write-side settings singular when they describe one value written to one managed object, such as `RECORD_COMMENT`
    - keep ownership selectors plural when they scope a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX`
+6. When addressing `unparam`, do not remove a parameter mechanically.
+   - First check whether the parameter is part of the helper's honest contract.
+   - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
+   - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
