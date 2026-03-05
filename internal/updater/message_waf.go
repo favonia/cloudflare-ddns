@@ -82,18 +82,18 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to clean list(s) " + pp.Join(domains)},
+			Lines: []string{"Failed to clean WAF list(s) " + pp.Join(domains)},
 		}
 	}
 
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, "Cleaning list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Cleaning WAF list(s) "+pp.Join(domains))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, "Cleaned list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Cleaned WAF list(s) "+pp.Join(domains))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}

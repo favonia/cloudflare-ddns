@@ -66,7 +66,10 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 3. In tests, keep an expected mocked call on one line in most cases, even if the line becomes long.
 4. For log messages, common existing patterns include:
    - Keep a short primary message and emit follow-up hints or details with `NoticeOncef` or `InfoOncef` when helpful.
-   - Use `%q` for raw or untrusted inputs such as user-provided environment values or parser tokens, while continuing to use `%s` for the safe identifiers listed above.
+   - Use `%q` for parser and validation diagnostics on raw or untrusted inputs, such as user-provided environment values or parser tokens.
+   - For advisory ignored-setting warnings, avoid assignment-like forms such as `KEY=%q`; prefer a display-only form such as `KEY (%s)` where `%s` is a quoted preview value (possibly truncated).
+   - Continue to use `%s` for safe identifiers listed above.
+   - Keep short operational `Noticef` and `Infof` messages without trailing periods.
    - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
    - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
 5. For user-facing setting names and config field names:
@@ -80,3 +83,7 @@ The design goal is not to minimize field copying. The goal is to keep each runti
    - use `unreleased` before the first release tag exists for that feature
    - use `since version X.Y.Z` (or `available since version X.Y.Z`) only after that release tag exists
    - do not use a planned next-release version as if it were already released
+8. For final cleanup flows:
+   - keep cleanup idempotent whenever possible; missing resources should usually be treated as already cleaned
+   - use warning-level notices for unexpected-but-tolerated cleanup drift instead of hard failures
+   - keep mode differences as explicit pre-steps over a shared cleanup pipeline, instead of duplicating cleanup logic

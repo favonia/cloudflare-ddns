@@ -4,6 +4,8 @@ package config_test
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +20,14 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
+
+func quotedIgnoredValuePreview(value string) string {
+	runes := []rune(value)
+	if len(runes) > 48 {
+		value = string(runes[:48]) + "..."
+	}
+	return strconv.Quote(value)
+}
 
 func unsetAll(t *testing.T) {
 	t.Helper()
@@ -554,7 +564,67 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", "My list"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_DESCRIPTION (%s) is ignored because no WAF lists will be updated", `"My list"`),
+				)
+			},
+		},
+		"ignored/waf/quoted-preview": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFListDescription:              strings.Repeat("a", 48),
+				WAFListItemComment:              strings.Repeat("b", 49),
+				ManagedWAFListItemsCommentRegex: strings.Repeat(".", 49),
+				DetectionTimeout:                5 * time.Second,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{ //nolint:exhaustruct
+						ManagedWAFListItemsCommentRegex: regexp.MustCompile(strings.Repeat(".", 49)),
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFListDescription: strings.Repeat("a", 48),
+					WAFListItemComment: strings.Repeat("b", 49),
+					DetectionTimeout:   5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				wafListDescription := strings.Repeat("a", 48)
+				wafListItemComment := strings.Repeat("b", 49)
+				managedWAFListItemsCommentRegex := strings.Repeat(".", 49)
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_DESCRIPTION (%s) is ignored because no WAF lists will be updated",
+						quotedIgnoredValuePreview(wafListDescription)),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_ITEM_COMMENT (%s) is ignored because no WAF lists will be updated",
+						quotedIgnoredValuePreview(wafListItemComment)),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because no WAF lists will be updated",
+						quotedIgnoredValuePreview(managedWAFListItemsCommentRegex)),
 				)
 			},
 		},
@@ -691,7 +761,7 @@ func TestBuildConfig(t *testing.T) {
 				if expectedHandle.Options.ManagedWAFListItemsCommentRegex == nil {
 					expectedHandle.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("")
 				}
-				expectedHandle.Options.DeleteWholeWAFListsOnShutdown =
+				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown =
 					expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)

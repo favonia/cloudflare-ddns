@@ -70,7 +70,7 @@ const (
 	// WAFListCleanupUpdated means the managed WAF content was removed synchronously.
 	WAFListCleanupUpdated
 
-	// WAFListCleanupUpdating means whole-list cleanup was started asynchronously.
+	// WAFListCleanupUpdating means WAF cleanup was started asynchronously.
 	WAFListCleanupUpdating
 
 	// WAFListCleanupFailed means shutdown cleanup did not finish successfully.
@@ -91,10 +91,10 @@ const (
 // HandleOptions bundles handle-scoped settings that affect cache correctness
 // and other per-handle behavior.
 type HandleOptions struct {
-	CacheExpiration                 time.Duration
-	ManagedRecordsCommentRegex      *regexp.Regexp
-	ManagedWAFListItemsCommentRegex *regexp.Regexp
-	DeleteWholeWAFListsOnShutdown  bool
+	CacheExpiration                   time.Duration
+	ManagedRecordsCommentRegex        *regexp.Regexp
+	ManagedWAFListItemsCommentRegex   *regexp.Regexp
+	AllowWholeWAFListDeleteOnShutdown bool
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.

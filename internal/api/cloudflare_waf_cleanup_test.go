@@ -58,47 +58,85 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		listRequestLimit    int
-		listID              api.ID
-		deleteRequestLimit  int
-		replaceRequestLimit int
-		code                api.WAFListCleanupCode
-		prepareMocks        func(*mocks.MockPP)
+		lists                []listMeta
+		listItems            []listItem
+		listRequestLimit     int
+		deleteListLimit      int
+		listItemsLimit       int
+		deleteListItemsLimit int
+		deleteListItemIDs    []api.ID
+		code                 api.WAFListCleanupCode
+		prepareMocks         func(*mocks.MockPP)
 	}{
 		"success": {
-			1, mockID("list", 0), 1, 0,
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			nil,
+			1, 1, 0, 0, nil,
 			api.WAFListCleanupUpdated,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "The list %s was deleted", "account456/list")
 			},
 		},
 		"list-fail": {
-			0, mockID("list", 0), 0, 0,
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			nil,
+			0, 0, 0, 0, nil,
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
-				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find the list %s", "account456/list"),
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
 			},
 		},
-		"delete-fail/clear": {
-			1, mockID("list", 0), 0, 1,
+		"list-not-found": {
+			nil,
+			nil,
+			1, 0, 0, 0, nil,
+			api.WAFListCleanupNoop,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
+					"The list %s was not found during final cleanup; "+
+						"it may have been removed or changed elsewhere, "+
+						"so continuing as already cleaned", "account456/list")
+			},
+		},
+		"delete-fail/delete-items-async": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			[]listItem{
+				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+				{ID: "item-v6", Prefix: "2001:db8::/64", Comment: "managed"},
+			},
+			1, 0, 1, 1, []api.ID{"item-v4", "item-v6"},
 			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; deleting its items instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiClear, "The items managed by this updater in the list %s are being deleted (asynchronously)", "account456/list"),
 				)
 			},
 		},
-		"delete-fail/clear-fail": {
-			1, mockID("list", 0), 0, 0,
+		"delete-fail/items-empty": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			nil,
+			1, 0, 1, 0, nil,
+			api.WAFListCleanupNoop,
+			func(ppfmt *mocks.MockPP) {
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; deleting its items instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone, "The items managed by this updater in the list %s were already deleted", "account456/list"),
+				)
+			},
+		},
+		"delete-fail/delete-items-fail": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			[]listItem{
+				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+			},
+			1, 0, 1, 0, []api.ID{"item-v4"},
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start clearing the list %s: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; deleting its items instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to start deleting items from the list %s: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to properly delete items managed by this updater from the list %s; its content may be inconsistent", "account456/list"),
 				)
 			},
 		},
@@ -107,16 +145,18 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			t.Parallel()
 
 			options := defaultHandleOptions()
-			options.DeleteWholeWAFListsOnShutdown = true
+			options.AllowWholeWAFListDeleteOnShutdown = true
 			f := newCloudflareHarnessWithOptions(t, options)
 
-			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
+			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
-			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil, "")
+			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
+			dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteListItemIDs)
 
 			lh.setRequestLimit(tc.listRequestLimit)
-			dh.setRequestLimit(tc.deleteRequestLimit)
-			rih.setRequestLimit(tc.replaceRequestLimit)
+			dh.setRequestLimit(tc.deleteListLimit)
+			lih.setRequestLimit(tc.listItemsLimit)
+			dih.setRequestLimit(tc.deleteListItemsLimit)
 			code := f.cfHandle.FinalCleanWAFList(
 				context.Background(),
 				f.newPreparedPP(tc.prepareMocks),
@@ -124,7 +164,7 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 				"description",
 			)
 			require.Equal(t, tc.code, code)
-			assertHandlersExhausted(t, lh, dh, rih)
+			assertHandlersExhausted(t, lh, dh, lih, dih)
 		})
 	}
 }
@@ -132,30 +172,96 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 	t.Parallel()
 
+	for name, tc := range map[string]struct {
+		lists            []listMeta
+		listItems        []listItem
+		listRequestLimit int
+		listItemsLimit   int
+		deleteItemsLimit int
+		deleteItemIDs    []api.ID
+		code             api.WAFListCleanupCode
+		prepareMocks     func(*mocks.MockPP)
+	}{
+		"delete-managed-items-async": {
+			[]listMeta{{name: "list", size: 2, kind: cloudflare.ListTypeIP}},
+			[]listItem{
+				{ID: "managed-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+				{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"},
+			},
+			1, 1, 1, []api.ID{"managed-v4"},
+			api.WAFListCleanupUpdating,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiClear,
+					"The items managed by this updater in the list %s are being deleted (asynchronously)", "account456/list")
+			},
+		},
+		"list-not-found": {
+			nil,
+			nil,
+			1, 0, 0, nil,
+			api.WAFListCleanupNoop,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone,
+					"The items managed by this updater in the list %s were already deleted", "account456/list")
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			options := defaultHandleOptions()
+			options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
+			options.AllowWholeWAFListDeleteOnShutdown = false
+			f := newCloudflareHarnessWithOptions(t, options)
+
+			listHandler := newListListsHandler(t, f.serveMux, tc.lists)
+			itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
+			deleteHandler := newDeleteListItemsHandler(
+				t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
+
+			listHandler.setRequestLimit(tc.listRequestLimit)
+			itemsHandler.setRequestLimit(tc.listItemsLimit)
+			deleteHandler.setRequestLimit(tc.deleteItemsLimit)
+			code := f.cfHandle.FinalCleanWAFList(
+				context.Background(),
+				f.newPreparedPP(tc.prepareMocks),
+				mockWAFList,
+				"description",
+			)
+			require.Equal(t, tc.code, code)
+			assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+		})
+	}
+}
+
+func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	newPP := mocks.NewMockPP(mockCtrl)
 	options := defaultHandleOptions()
 	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
-	options.DeleteWholeWAFListsOnShutdown = false
-	f := newCloudflareHarnessWithOptions(t, options)
+	options.AllowWholeWAFListDeleteOnShutdown = true
 
-	listItems := []listItem{
-		{ID: "managed-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
-		{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"},
-	}
-	listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 2, kind: cloudflare.ListTypeIP}})
-	itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), listItems)
-	deleteHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), []api.ID{"managed-v4"})
-
-	listHandler.setRequestLimit(1)
-	itemsHandler.setRequestLimit(2)
-	deleteHandler.setRequestLimit(1)
-	code := f.cfHandle.FinalCleanWAFList(
-		context.Background(),
-		f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-			ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "10.0.0.1", "account456/list")
-		}),
-		mockWAFList,
-		"description",
+	newPP.EXPECT().Noticef(pp.EmojiUserWarning,
+		"DELETE_ON_STOP is enabled, but "+
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%s is non-empty; "+
+			"the list may be shared, so the updater will keep the list "+
+			"and delete only items managed by this updater",
+		`"^managed$"`,
 	)
-	require.Equal(t, api.WAFListCleanupUpdated, code)
-	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+	serveMux, h, ok := newHandleWithOptions(t, newPP, options)
+	require.True(t, ok)
+	cfHandle, ok := h.(api.CloudflareHandle)
+	require.True(t, ok)
+
+	listHandler := newListListsHandler(t, serveMux, nil)
+	listHandler.setRequestLimit(1)
+
+	cleanupPP := mocks.NewMockPP(mockCtrl)
+	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+		"The items managed by this updater in the list %s were already deleted", "account456/list")
+	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	require.Equal(t, api.WAFListCleanupNoop, code)
+	assertHandlersExhausted(t, listHandler)
 }

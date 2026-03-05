@@ -42,9 +42,27 @@ Unmatched items are invisible to WAF mutation logic. As a result, the updater ma
 `DELETE_ON_STOP` has two WAF modes:
 
 - With a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`, shutdown cleanup deletes only matched managed WAF list items.
-- With the empty default selector, shutdown cleanup keeps the legacy whole-list behavior and may delete or clear the whole list.
+- With the empty default selector, shutdown cleanup first tries deleting the whole list.
 
 The empty default is intentionally preserved for backward compatibility, but it is ambiguous in shared-list deployments and should be documented and warned about carefully.
+
+### Final Cleanup Execution Model
+
+Both modes share one cleanup state machine after list discovery:
+
+1. Check whether the target list exists.
+2. If missing, treat cleanup as already complete (`Noop`).
+3. Select cleanup scope (managed items for shared ownership; all items for whole-list ownership fallback).
+4. Start asynchronous item deletion for that scope.
+
+The operational difference between the two modes is only one pre-step:
+
+- Whole-list ownership tries deleting the whole list first.
+- Shared ownership skips that pre-step.
+
+If whole-list ownership cannot find the list during final cleanup, it emits a warning notice and returns `Noop`. This keeps final cleanup idempotent while still surfacing possible drift.
+
+User-facing cleanup messages should prefer the operator-facing phrase "items managed by this updater" over internal shorthand such as "managed items."
 
 ## Caching Contract
 
@@ -75,7 +93,7 @@ Following the project-wide warning policy in [`codebase-architecture.markdown`](
 | Scope       | Trigger                                                                                                                     | Proposed message                                                                                                                                                                                      |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | config time | `WAF_LISTS` is non-empty, `MANAGED_RECORDS_COMMENT_REGEX` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty | `MANAGED_RECORDS_COMMENT_REGEX enables DNS ownership isolation, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty for configured WAF lists. All items in WAF_LISTS will still be treated as managed.` |
-| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty         | `WAF_LIST_ITEM_COMMENT=%q only affects newly created WAF list items. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty.`                        |
+| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty         | `WAF_LIST_ITEM_COMMENT (%s) only affects newly created WAF list items. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty.`                      |
 | config time | `DELETE_ON_STOP=true`, `WAF_LISTS` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty                        | `DELETE_ON_STOP=true with an empty MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX will delete all items in WAF_LISTS, including items created by other deployments.`                                            |
 | runtime     | `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty, and a listed WAF list contains multiple distinct non-empty item comments   | `The list %s contains multiple distinct non-empty item comments, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty. The list may be shared with other deployments.`                                   |
 

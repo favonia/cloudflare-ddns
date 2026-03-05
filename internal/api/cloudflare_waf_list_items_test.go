@@ -135,16 +135,16 @@ func TestListWAFListItems(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		managedWAFListItemsCommentRegex *regexp.Regexp
-		lists                 []listMeta
-		listRequestLimit      int
-		newList               listMeta
-		createRequestLimit    int
-		items                 []listItem
-		listItemsRequestLimit int
-		ok                    bool
-		alreadyExisting       bool
-		output                []api.WAFListItem
-		prepareMocks          func(*mocks.MockPP)
+		lists                           []listMeta
+		listRequestLimit                int
+		newList                         listMeta
+		createRequestLimit              int
+		items                           []listItem
+		listItemsRequestLimit           int
+		ok                              bool
+		alreadyExisting                 bool
+		output                          []api.WAFListItem
+		prepareMocks                    func(*mocks.MockPP)
 	}{
 		"existing": {
 			nil,
@@ -284,6 +284,8 @@ func TestListWAFListItems(t *testing.T) {
 
 			options := defaultHandleOptions()
 			options.ManagedWAFListItemsCommentRegex = tc.managedWAFListItemsCommentRegex
+			options.AllowWholeWAFListDeleteOnShutdown = tc.managedWAFListItemsCommentRegex == nil ||
+				tc.managedWAFListItemsCommentRegex.String() == ""
 			f := newCloudflareHarnessWithOptions(t, options)
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			clh := newCreateListHandler(t, f.serveMux,

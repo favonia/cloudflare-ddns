@@ -65,6 +65,8 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		return nil, false
 	}
 
+	options = sanitizeHandleOptions(ppfmt, options)
+
 	// set the base URL (mostly for testing)
 	if t.BaseURL != "" {
 		handle.BaseURL = t.BaseURL
@@ -87,6 +89,28 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	}
 
 	return h, true
+}
+
+func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
+	if !options.AllowWholeWAFListDeleteOnShutdown {
+		return options
+	}
+
+	// Whole-list final deletion is only allowed for the empty default selector.
+	// A nil selector is treated as the empty default for backward compatibility.
+	if options.ManagedWAFListItemsCommentRegex == nil || options.ManagedWAFListItemsCommentRegex.String() == "" {
+		return options
+	}
+
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"DELETE_ON_STOP is enabled, but "+
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%s is non-empty; "+
+			"the list may be shared, so the updater will keep the list "+
+			"and delete only items managed by this updater",
+		DescribeFreeFormString(options.ManagedWAFListItemsCommentRegex.String()),
+	)
+	options.AllowWholeWAFListDeleteOnShutdown = false
+	return options
 }
 
 // FlushCache flushes the API cache.

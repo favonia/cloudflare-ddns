@@ -2,6 +2,7 @@ package config
 
 import (
 	"regexp"
+	"strconv"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -11,6 +12,16 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
+
+const ignoredSettingValuePreviewLimit = 48
+
+func describeIgnoredSettingValuePreview(value string) string {
+	runes := []rune(value)
+	if len(runes) > ignoredSettingValuePreviewLimit {
+		value = string(runes[:ignoredSettingValuePreviewLimit]) + "..."
+	}
+	return strconv.Quote(value)
+}
 
 // ReadEnv calls the relevant readers to parse all relevant environment variables except
 // - timezone (TZ)
@@ -215,26 +226,28 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	if len(c.WAFLists) == 0 { // We are only updating domains.
 		if c.WAFListDescription != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", c.WAFListDescription)
+				"WAF_LIST_DESCRIPTION (%s) is ignored because no WAF lists will be updated",
+				describeIgnoredSettingValuePreview(c.WAFListDescription))
 		}
 		if c.WAFListItemComment != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"WAF_LIST_ITEM_COMMENT=%s is ignored because no WAF lists will be updated", c.WAFListItemComment)
+				"WAF_LIST_ITEM_COMMENT (%s) is ignored because no WAF lists will be updated",
+				describeIgnoredSettingValuePreview(c.WAFListItemComment))
 		}
 		if c.ManagedWAFListItemsCommentRegex != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%s is ignored because no WAF lists will be updated",
-				c.ManagedWAFListItemsCommentRegex)
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because no WAF lists will be updated",
+				describeIgnoredSettingValuePreview(c.ManagedWAFListItemsCommentRegex))
 		}
 	}
 
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,
 		Options: api.HandleOptions{
-			CacheExpiration:                 c.CacheExpiration,
-			ManagedRecordsCommentRegex:      managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex: managedWAFListItemsCommentRegex,
-			DeleteWholeWAFListsOnShutdown:   c.ManagedWAFListItemsCommentRegex == "",
+			CacheExpiration:                   c.CacheExpiration,
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   managedWAFListItemsCommentRegex,
+			AllowWholeWAFListDeleteOnShutdown: c.ManagedWAFListItemsCommentRegex == "",
 		},
 	}
 	lifecycleConfig := &LifecycleConfig{
