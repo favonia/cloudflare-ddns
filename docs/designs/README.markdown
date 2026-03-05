@@ -15,6 +15,7 @@ When writing or editing a design note:
 - mention future work only to mark a scope boundary or extension point, and say explicitly what is deferred or what would need to change
 - keep temporary staging plans, migration sequencing, and branch-local rationale out of `docs/designs/`
 - extract project-wide policy to project-wide documents such as `project-principles.markdown` or `codebase-architecture.markdown`
+- follow the shared feature-availability lifecycle in project-wide docs (`unreleased` before first release tag, then `since version X.Y.Z`)
 - keep feature-specific notes focused on the feature's own contract, while linking to shared project-wide rules instead of restating a separate local philosophy
 - if a feature note uncovers a general rule, move that rule upward rather than duplicating it across feature notes
 

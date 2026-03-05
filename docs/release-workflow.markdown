@@ -15,8 +15,8 @@ This note records maintainer-facing conventions for preparing releases, especial
 ## Feature-Note Lifecycle
 
 1. For each newly introduced user-facing feature, add a note in `README.markdown` when the feature needs extra rollout or stability context.
-2. Before the first release tag for that feature exists, avoid guessing a future version number. If a note is still useful, describe the current status without a version label.
-3. After the first release tag exists, switch to a concrete note such as `available since version X.Y.Z`.
+2. Before the first release tag for that feature exists, avoid guessing a future version number. If a note is still useful, label the feature as `unreleased`.
+3. After the first release tag exists, replace `unreleased` with a concrete note such as `available since version X.Y.Z`.
 4. Keep the availability note for about one year, or a similar release window, then remove it once the feature is no longer meaningfully new.
 5. Mark experimental features clearly as experimental and explicitly note that they are subject to change.
 6. After about one year, an experimental feature becomes eligible for graduation, but graduation remains an explicit maintainer decision.

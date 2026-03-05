@@ -76,3 +76,7 @@ The design goal is not to minimize field copying. The goal is to keep each runti
    - First check whether the parameter is part of the helper's honest contract.
    - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
    - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
+7. For user-facing feature availability notes:
+   - use `unreleased` before the first release tag exists for that feature
+   - use `since version X.Y.Z` (or `available since version X.Y.Z`) only after that release tag exists
+   - do not use a planned next-release version as if it were already released
