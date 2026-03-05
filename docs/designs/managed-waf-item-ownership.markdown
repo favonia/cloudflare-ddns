@@ -72,12 +72,12 @@ Following the project-wide warning policy in [`codebase-architecture.markdown`](
 
 ### Recommended Warnings
 
-| Scope | Trigger | Proposed message |
-| --- | --- | --- |
+| Scope       | Trigger                                                                                                                     | Proposed message                                                                                                                                                                                      |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | config time | `WAF_LISTS` is non-empty, `MANAGED_RECORDS_COMMENT_REGEX` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty | `MANAGED_RECORDS_COMMENT_REGEX enables DNS ownership isolation, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty for configured WAF lists. All items in WAF_LISTS will still be treated as managed.` |
-| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty | `WAF_LIST_ITEM_COMMENT=%q only affects newly created WAF list items. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty.` |
-| config time | `DELETE_ON_STOP=true`, `WAF_LISTS` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty | `DELETE_ON_STOP=true with an empty MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX will delete all items in WAF_LISTS, including items created by other deployments.` |
-| runtime | `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty, and a listed WAF list contains multiple distinct non-empty item comments | `The list %s contains multiple distinct non-empty item comments, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty. The list may be shared with other deployments.` |
+| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty         | `WAF_LIST_ITEM_COMMENT=%q only affects newly created WAF list items. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty.`                        |
+| config time | `DELETE_ON_STOP=true`, `WAF_LISTS` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty                        | `DELETE_ON_STOP=true with an empty MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX will delete all items in WAF_LISTS, including items created by other deployments.`                                            |
+| runtime     | `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty, and a listed WAF list contains multiple distinct non-empty item comments   | `The list %s contains multiple distinct non-empty item comments, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty. The list may be shared with other deployments.`                                   |
 
 ### Warnings to Avoid
 
