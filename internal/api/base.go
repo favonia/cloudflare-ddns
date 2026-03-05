@@ -60,6 +60,23 @@ type WAFListItem struct {
 	Comment string
 }
 
+// WAFListCleanupCode summarizes the final shutdown cleanup result for one WAF list.
+type WAFListCleanupCode int
+
+const (
+	// WAFListCleanupNoop means the managed WAF content was already gone.
+	WAFListCleanupNoop WAFListCleanupCode = iota
+
+	// WAFListCleanupUpdated means the managed WAF content was removed synchronously.
+	WAFListCleanupUpdated
+
+	// WAFListCleanupUpdating means whole-list cleanup was started asynchronously.
+	WAFListCleanupUpdating
+
+	// WAFListCleanupFailed means shutdown cleanup did not finish successfully.
+	WAFListCleanupFailed
+)
+
 // DeletionMode tells the deletion updater whether a careful re-reading of lists
 // must be enforced if an error happens.
 type DeletionMode bool
@@ -77,6 +94,7 @@ type HandleOptions struct {
 	CacheExpiration                 time.Duration
 	ManagedRecordsCommentRegex      *regexp.Regexp
 	ManagedWAFListItemsCommentRegex *regexp.Regexp
+	DeleteWholeWAFListsOnShutdown  bool
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.
@@ -114,18 +132,17 @@ type Handle interface {
 	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
 	) ([]WAFListItem, bool, bool, bool)
 
-	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
-	// update or create the list.
-	// Current implementations treat this as whole-list cleanup during shutdown;
-	// it is not scoped to a managed subset of items within a shared list.
-	// The handle should not be reused for any further update operations after calling this method.
+	// FinalCleanWAFList removes managed WAF content during shutdown.
 	//
-	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.
-	// If it's false, then it's being cleared asynchronously instead of being deleted.
+	// A handle may either own the whole list or only managed items within a
+	// shared list. Implementations use the handle's bound ownership policy to
+	// choose the correct cleanup path.
 	//
-	// The cache from list names to list IDs will not be cleared even if all deletion attempts fail.
-	FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-	) (bool, bool)
+	// The handle should not be reused for any further update operations after
+	// calling this method.
+	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+		expectedDescription string,
+	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes IP ranges from a WAF list.
 	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,

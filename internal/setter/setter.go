@@ -329,19 +329,18 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	return ResponseUpdated
 }
 
-// FinalClearWAFList delegates to [api.Handle.FinalClearWAFListAsync].
-// This is the whole-list shutdown path: it does not try to preserve foreign
-// items in a shared WAF list.
+// FinalClearWAFList removes managed WAF content during shutdown.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
 ) ResponseCode {
-	deleted, ok := s.Handle.FinalClearWAFListAsync(ctx, ppfmt, list, listDescription)
-	switch {
-	case ok && deleted:
-		ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
+	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription) {
+	case api.WAFListCleanupNoop:
+		return ResponseNoop
+	case api.WAFListCleanupUpdated:
 		return ResponseUpdated
-	case ok && !deleted:
-		ppfmt.Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", list.Describe())
+	case api.WAFListCleanupUpdating:
 		return ResponseUpdating
+	case api.WAFListCleanupFailed:
+		return ResponseFailed
 	default:
 		return ResponseFailed
 	}

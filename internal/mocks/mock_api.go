@@ -198,41 +198,40 @@ func (c *MockHandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, p
 	return c
 }
 
-// FinalClearWAFListAsync mocks base method.
-func (m *MockHandle) FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string) (bool, bool) {
+// FinalCleanWAFList mocks base method.
+func (m *MockHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string) api.WAFListCleanupCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalClearWAFListAsync", ctx, ppfmt, list, expectedDescription)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "FinalCleanWAFList", ctx, ppfmt, list, expectedDescription)
+	ret0, _ := ret[0].(api.WAFListCleanupCode)
+	return ret0
 }
 
-// FinalClearWAFListAsync indicates an expected call of FinalClearWAFListAsync.
-func (mr *MockHandleMockRecorder) FinalClearWAFListAsync(ctx, ppfmt, list, expectedDescription any) *MockHandleFinalClearWAFListAsyncCall {
+// FinalCleanWAFList indicates an expected call of FinalCleanWAFList.
+func (mr *MockHandleMockRecorder) FinalCleanWAFList(ctx, ppfmt, list, expectedDescription any) *MockHandleFinalCleanWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFListAsync", reflect.TypeOf((*MockHandle)(nil).FinalClearWAFListAsync), ctx, ppfmt, list, expectedDescription)
-	return &MockHandleFinalClearWAFListAsyncCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalCleanWAFList", reflect.TypeOf((*MockHandle)(nil).FinalCleanWAFList), ctx, ppfmt, list, expectedDescription)
+	return &MockHandleFinalCleanWAFListCall{Call: call}
 }
 
-// MockHandleFinalClearWAFListAsyncCall wrap *gomock.Call
-type MockHandleFinalClearWAFListAsyncCall struct {
+// MockHandleFinalCleanWAFListCall wrap *gomock.Call
+type MockHandleFinalCleanWAFListCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleFinalClearWAFListAsyncCall) Return(arg0, arg1 bool) *MockHandleFinalClearWAFListAsyncCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockHandleFinalCleanWAFListCall) Return(arg0 api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleFinalClearWAFListAsyncCall) Do(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *MockHandleFinalClearWAFListAsyncCall {
+func (c *MockHandleFinalCleanWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string) api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleFinalClearWAFListAsyncCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) (bool, bool)) *MockHandleFinalClearWAFListAsyncCall {
+func (c *MockHandleFinalCleanWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -227,14 +227,14 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
 			require.True(t, msg.OK)
 			require.Contains(t, msg.Format(), "Deleted A of example.org")
-			require.Contains(t, msg.Format(), "Cleared list(s) acc/office")
+			require.Contains(t, msg.Format(), "Cleaned list(s) acc/office")
 			return true
 		},
 	)
 	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ pp.PP, msg notifier.Message) bool {
 			require.Contains(t, msg.Format(), "Deleted A records of example.org.")
-			require.Contains(t, msg.Format(), "Cleared WAF list(s) acc/office.")
+			require.Contains(t, msg.Format(), "Cleaned WAF list(s) acc/office.")
 			return true
 		},
 	)

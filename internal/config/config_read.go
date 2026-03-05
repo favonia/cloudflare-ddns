@@ -103,7 +103,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		if c.DeleteOnStop {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once")
+				"DELETE_ON_STOP=true will immediately delete managed domains and WAF content when UPDATE_CRON=@once")
 			return nil, false
 		}
 	}
@@ -234,6 +234,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			CacheExpiration:                 c.CacheExpiration,
 			ManagedRecordsCommentRegex:      managedRecordsCommentRegex,
 			ManagedWAFListItemsCommentRegex: managedWAFListItemsCommentRegex,
+			DeleteWholeWAFListsOnShutdown:   c.ManagedWAFListItemsCommentRegex == "",
 		},
 	}
 	lifecycleConfig := &LifecycleConfig{

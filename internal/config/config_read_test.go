@@ -154,7 +154,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete managed domains and WAF content when UPDATE_CRON=@once"),
 				)
 			},
 		},
@@ -691,6 +691,8 @@ func TestBuildConfig(t *testing.T) {
 				if expectedHandle.Options.ManagedWAFListItemsCommentRegex == nil {
 					expectedHandle.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("")
 				}
+				expectedHandle.Options.DeleteWholeWAFListsOnShutdown =
+					expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
 				require.Equal(t, tc.expected.update, builtConfig.Update)

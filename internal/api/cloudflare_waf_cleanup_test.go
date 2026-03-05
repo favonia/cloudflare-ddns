@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -53,7 +54,7 @@ func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID api.ID) httpH
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func TestFinalClearWAFListAsync(t *testing.T) {
+func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -61,18 +62,19 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 		listID              api.ID
 		deleteRequestLimit  int
 		replaceRequestLimit int
-		deleted             bool
-		ok                  bool
+		code                api.WAFListCleanupCode
 		prepareMocks        func(*mocks.MockPP)
 	}{
 		"success": {
 			1, mockID("list", 0), 1, 0,
-			true, true,
-			nil,
+			api.WAFListCleanupUpdated,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "The list %s was deleted", "account456/list")
+			},
 		},
 		"list-fail": {
 			0, mockID("list", 0), 0, 0,
-			false, false,
+			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
@@ -82,14 +84,17 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 		},
 		"delete-fail/clear": {
 			1, mockID("list", 0), 0, 1,
-			false, true,
+			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any())
+				gomock.InOrder(
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", "account456/list"),
+				)
 			},
 		},
 		"delete-fail/clear-fail": {
 			1, mockID("list", 0), 0, 0,
-			false, false,
+			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete the list %s; clearing it instead: %v", "account456/list", gomock.Any()),
@@ -101,7 +106,10 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareHarness(t)
+			options := defaultHandleOptions()
+			options.DeleteWholeWAFListsOnShutdown = true
+			f := newCloudflareHarnessWithOptions(t, options)
+
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
 			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
 			rih := newReplaceListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil, "")
@@ -109,10 +117,45 @@ func TestFinalClearWAFListAsync(t *testing.T) {
 			lh.setRequestLimit(tc.listRequestLimit)
 			dh.setRequestLimit(tc.deleteRequestLimit)
 			rih.setRequestLimit(tc.replaceRequestLimit)
-			deleted, ok := f.cfHandle.FinalClearWAFListAsync(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description")
-			require.Equal(t, tc.deleted, deleted)
-			require.Equal(t, tc.ok, ok)
+			code := f.cfHandle.FinalCleanWAFList(
+				context.Background(),
+				f.newPreparedPP(tc.prepareMocks),
+				mockWAFList,
+				"description",
+			)
+			require.Equal(t, tc.code, code)
 			assertHandlersExhausted(t, lh, dh, rih)
 		})
 	}
+}
+
+func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
+	t.Parallel()
+
+	options := defaultHandleOptions()
+	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
+	options.DeleteWholeWAFListsOnShutdown = false
+	f := newCloudflareHarnessWithOptions(t, options)
+
+	listItems := []listItem{
+		{ID: "managed-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+		{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"},
+	}
+	listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 2, kind: cloudflare.ListTypeIP}})
+	itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), listItems)
+	deleteHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), []api.ID{"managed-v4"})
+
+	listHandler.setRequestLimit(1)
+	itemsHandler.setRequestLimit(2)
+	deleteHandler.setRequestLimit(1)
+	code := f.cfHandle.FinalCleanWAFList(
+		context.Background(),
+		f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+			ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s", "10.0.0.1", "account456/list")
+		}),
+		mockWAFList,
+		"description",
+	)
+	require.Equal(t, api.WAFListCleanupUpdated, code)
+	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 }

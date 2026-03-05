@@ -225,11 +225,11 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			false,
 			[]string{
 				"Failed to delete A of ip4.hello2",
-				"Failed to clear list(s) xxxxxxxx/list2",
+				"Failed to clean list(s) xxxxxxxx/list2",
 			},
 			[]string{
 				"Failed to properly delete A records of ip4.hello2; deleting those of ip4.hello1; deleted those of ip4.hello4.",
-				`Failed to properly clear WAF list(s) xxxxxxxx/list2; clearing 12341234/list1; cleared zzz/list4.`,
+				`Failed to properly clean WAF list(s) xxxxxxxx/list2; cleaning 12341234/list1; cleaned zzz/list4.`,
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -248,11 +248,11 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			true,
 			[]string{
 				"Deleted A of ip4.hello1, ip4.hello3, ip4.hello4",
-				"Cleared list(s) 12341234/list1, AAAAAAAA/list3, zzz/list4",
+				"Cleaned list(s) 12341234/list1, AAAAAAAA/list3, zzz/list4",
 			},
 			[]string{
 				"Deleted A records of ip4.hello1, ip4.hello3, and ip4.hello4.",
-				`Cleared WAF list(s) 12341234/list1, AAAAAAAA/list3, and zzz/list4.`,
+				`Cleaned WAF list(s) 12341234/list1, AAAAAAAA/list3, and zzz/list4.`,
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -645,8 +645,8 @@ func TestFinalDeleteIPs(t *testing.T) {
 	}{
 		"ip4-only": {
 			true,
-			[]string{"Deleted A of ip4.hello", "Cleared list(s) 12341234/list"},
-			[]string{"Deleted A records of ip4.hello.", `Cleared WAF list(s) 12341234/list.`},
+			[]string{"Deleted A of ip4.hello", "Cleaned list(s) 12341234/list"},
+			[]string{"Deleted A records of ip4.hello.", `Cleaned WAF list(s) 12341234/list.`},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -657,10 +657,10 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"ip4-only/fail": {
 			false,
-			[]string{"Failed to delete A of ip4.hello", "Failed to clear list(s) 12341234/list"},
+			[]string{"Failed to delete A of ip4.hello", "Failed to clean list(s) 12341234/list"},
 			[]string{
 				"Failed to properly delete A records of ip4.hello.",
-				`Failed to properly clear WAF list(s) 12341234/list.`,
+				`Failed to properly clean WAF list(s) 12341234/list.`,
 			},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
@@ -672,10 +672,10 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"ip4-only/deleting": {
 			true,
-			[]string{"Deleting A of ip4.hello", "Clearing list(s) 12341234/list"},
+			[]string{"Deleting A of ip4.hello", "Cleaning list(s) 12341234/list"},
 			[]string{
 				"Deleting A records of ip4.hello.",
-				`Clearing WAF list(s) 12341234/list.`,
+				`Cleaning WAF list(s) 12341234/list.`,
 			},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
@@ -687,10 +687,10 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"ip6-only": {
 			true,
-			[]string{"Deleted AAAA of ip6.hello", "Cleared list(s) 12341234/list"},
+			[]string{"Deleted AAAA of ip6.hello", "Cleaned list(s) 12341234/list"},
 			[]string{
 				"Deleted AAAA records of ip6.hello.",
-				`Cleared WAF list(s) 12341234/list.`,
+				`Cleaned WAF list(s) 12341234/list.`,
 			},
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
@@ -702,10 +702,10 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"ip6-only/fail": {
 			false,
-			[]string{"Failed to delete AAAA of ip6.hello", "Failed to clear list(s) 12341234/list"},
+			[]string{"Failed to delete AAAA of ip6.hello", "Failed to clean list(s) 12341234/list"},
 			[]string{
 				"Failed to properly delete AAAA records of ip6.hello.",
-				`Failed to properly clear WAF list(s) 12341234/list.`,
+				`Failed to properly clean WAF list(s) 12341234/list.`,
 			},
 			mockproviders{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
@@ -717,10 +717,10 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"dual": {
 			true,
-			[]string{"Deleted A of ip4.hello", "Deleted AAAA of ip6.hello", "Cleared list(s) 12341234/list"},
+			[]string{"Deleted A of ip4.hello", "Deleted AAAA of ip6.hello", "Cleaned list(s) 12341234/list"},
 			[]string{
 				"Deleted A records of ip4.hello.", "Deleted AAAA records of ip6.hello.",
-				`Cleared WAF list(s) 12341234/list.`,
+				`Cleaned WAF list(s) 12341234/list.`,
 			},
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
@@ -759,8 +759,8 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"dual/fail/3": {
 			false,
-			[]string{"Failed to clear list(s) 12341234/list"},
-			[]string{`Failed to properly clear WAF list(s) 12341234/list.`},
+			[]string{"Failed to clean list(s) 12341234/list"},
+			[]string{`Failed to properly clean WAF list(s) 12341234/list.`},
 			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -789,8 +789,8 @@ func TestFinalDeleteIPs(t *testing.T) {
 		},
 		"delete-list-timeout": {
 			false,
-			[]string{"Failed to clear list(s) 12341234/list"},
-			[]string{`Failed to properly clear WAF list(s) 12341234/list.`},
+			[]string{"Failed to clean list(s) 12341234/list"},
+			[]string{`Failed to properly clean WAF list(s) 12341234/list.`},
 			mockproviders{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(

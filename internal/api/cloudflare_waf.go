@@ -139,23 +139,63 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 	return listID, true
 }
 
-// FinalClearWAFListAsync calls cloudflare.DeleteList and cloudflare.ReplaceListItemsAsync.
+// FinalCleanWAFList removes managed WAF content during shutdown.
 //
-// This is intended for the final shutdown/deletion phase. The handle should not be reused for
-// subsequent updates after calling this method.
-// The current implementation assumes the updater owns the whole list: it tries
-// to delete the list, and if that fails, it starts clearing every item in it.
+// If the handle owns the whole list, it tries to delete the list and falls back
+// to clearing it asynchronously. If the list is shared, it deletes only managed
+// items selected by ManagedWAFListItemsCommentRegex.
 //
-// We only deleted cached data in listListItems and listID, but not the cached lists
-// in listLists so that we do not have to re-query the lists under the same account.
-// Managing multiple lists under the same account makes little sense in practice,
-// but the tool should still do the right thing even under rare circumstances.
-func (h CloudflareHandle) FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP,
+// We delete cached data in listListItems and listID when the underlying list
+// or its managed-item view may have changed, but we keep listLists so that we
+// do not have to re-query all lists under the same account.
+func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
-) (bool, bool) {
+) WAFListCleanupCode {
+	if !h.options.DeleteWholeWAFListsOnShutdown {
+		_, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
+		if !ok {
+			return WAFListCleanupFailed
+		}
+		if !found {
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The managed items in the list %s were already deleted", list.Describe())
+			return WAFListCleanupNoop
+		}
+
+		items, _, cached, ok := h.ListWAFListItems(ctx, ppfmt, list, expectedDescription)
+		if !ok {
+			return WAFListCleanupFailed
+		}
+		if len(items) == 0 {
+			if cached {
+				ppfmt.Infof(pp.EmojiAlreadyDone,
+					"The managed items in the list %s were already deleted (cached)", list.Describe())
+			} else {
+				ppfmt.Infof(pp.EmojiAlreadyDone,
+					"The managed items in the list %s were already deleted", list.Describe())
+			}
+			return WAFListCleanupNoop
+		}
+
+		ids := make([]ID, 0, len(items))
+		for _, item := range items {
+			ids = append(ids, item.ID)
+		}
+		if !h.DeleteWAFListItems(ctx, ppfmt, list, expectedDescription, ids) {
+			ppfmt.Noticef(pp.EmojiError,
+				"Failed to properly delete managed items from the list %s; its content may be inconsistent",
+				list.Describe())
+			return WAFListCleanupFailed
+		}
+		for _, item := range items {
+			ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				ipnet.DescribePrefixOrIP(item.Prefix), list.Describe())
+		}
+		return WAFListCleanupUpdated
+	}
+
 	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
-		return false, false
+		return WAFListCleanupFailed
 	}
 
 	if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)), string(listID)); err != nil {
@@ -175,17 +215,19 @@ func (h CloudflareHandle) FinalClearWAFListAsync(ctx context.Context, ppfmt pp.P
 
 			h.cache.listListItems.Delete(list)
 			h.cache.listID.Delete(list)
-			return false, false
+			return WAFListCleanupFailed
 		}
 
 		h.cache.listListItems.Delete(list)
 		h.cache.listID.Delete(list)
-		return false, true
+		ppfmt.Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", list.Describe())
+		return WAFListCleanupUpdating
 	}
 
 	h.cache.listListItems.Delete(list)
 	h.cache.listID.Delete(list)
-	return true, true
+	ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
+	return WAFListCleanupUpdated
 }
 
 func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem) ([]WAFListItem, bool) {
