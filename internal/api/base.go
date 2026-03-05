@@ -52,12 +52,12 @@ type Record struct {
 	RecordParams //nolint:embeddedstructfieldcheck // parameters go last
 }
 
-// WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
-// The current model intentionally omits Cloudflare's per-item comment, so any
-// ownership scheme encoded only in WAF item comments is lost after reads.
+// WAFListItem bundles an ID, an IP range, and the original Cloudflare comment,
+// representing an item in a WAF list.
 type WAFListItem struct {
 	ID
 	netip.Prefix
+	Comment string
 }
 
 // DeletionMode tells the deletion updater whether a careful re-reading of lists
@@ -103,12 +103,11 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves the current WAF-list view with IP ranges.
+	// ListWAFListItems retrieves the current managed WAF-list view with IP ranges.
 	// It creates an empty WAF list with IP ranges if it does not already exist yet.
 	//
-	// Current implementations return one whole-list view per handle/list pair:
-	// they do not preserve per-item comments, and their cache keys need not
-	// distinguish different WAF ownership filters.
+	// The managed-item selector is bound into the handle options because
+	// implementations may cache filtered items by WAF-list scope.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"regexp"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
@@ -41,6 +42,13 @@ func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, expecte
 		`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
 		list.Describe(), m.ID, DescribeFreeFormString(m.Description), DescribeFreeFormString(expected), list.AccountID,
 	)
+}
+
+func matchManagedWAFListItemComment(regex *regexp.Regexp, comment string) bool {
+	if regex == nil {
+		return true
+	}
+	return regex.MatchString(comment)
 }
 
 // ListWAFLists lists all IP lists of the given name.
@@ -193,19 +201,34 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 				*rawItem.IP, list.Describe())
 			return nil, false
 		}
-		if rawItem.Comment != "" {
-			// WAFListItem intentionally carries only IDs and prefixes today, so
-			// this ownership-relevant field would be dropped after the read.
-			ppfmt.Noticef(pp.EmojiWarning, "The IP range/address %q in the list %s has a non-empty comment %q. The comment might be lost during an IP update.", //nolint:lll
-				*rawItem.IP, list.Describe(), rawItem.Comment)
-		}
-		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p})
+		items = append(items, WAFListItem{ID: ID(rawItem.ID), Prefix: p, Comment: rawItem.Comment})
 	}
 	return items, true
 }
 
+func (h CloudflareHandle) filterManagedWAFListItems(items []WAFListItem) []WAFListItem {
+	if h.options.ManagedWAFListItemsCommentRegex == nil {
+		return items
+	}
+
+	managedItems := make([]WAFListItem, 0, len(items))
+	for _, item := range items {
+		if matchManagedWAFListItemComment(h.options.ManagedWAFListItemsCommentRegex, item.Comment) {
+			managedItems = append(managedItems, item)
+		}
+	}
+	return managedItems
+}
+
+func (h CloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFListItem) []WAFListItem {
+	managedItems := h.filterManagedWAFListItems(items)
+	h.cache.listListItems.DeleteExpired()
+	h.cache.listListItems.Set(list, &managedItems, ttlcache.DefaultTTL)
+	return managedItems
+}
+
 // ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
-// It caches one unfiltered list snapshot per handle/list pair.
+// It caches one managed-item view per handle/list pair.
 func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
 ) ([]WAFListItem, bool, bool, bool) {
@@ -242,9 +265,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		}
 		h.cache.listID.DeleteExpired()
 		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
-		h.cache.listListItems.DeleteExpired()
-		h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
-		return items, false, false, true
+		return h.cacheManagedWAFListItems(list, items), false, false, true
 	}
 
 	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -261,9 +282,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false, false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
-	return items, true, false, true
+	return h.cacheManagedWAFListItems(list, items), true, false, true
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
@@ -304,8 +323,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
+	h.cacheManagedWAFListItems(list, items)
 	return true
 }
 
@@ -352,7 +370,6 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cache.listListItems.DeleteExpired()
-	h.cache.listListItems.Set(list, &items, ttlcache.DefaultTTL)
+	h.cacheManagedWAFListItems(list, items)
 	return true
 }

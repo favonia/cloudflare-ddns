@@ -29,9 +29,7 @@ type CloudflareCache = struct {
 	listLists *ttlcache.Cache[ID, *[]WAFListMeta] // account IDs to list names to list IDs and other meta information
 	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
 	//
-	// This is one whole-list snapshot per handle/list pair. It does not preserve
-	// per-item comments, so it cannot distinguish multiple ownership-filtered
-	// views of the same Cloudflare list.
+	// This is one managed-item view per handle/list pair.
 	listListItems *ttlcache.Cache[WAFList, *[]WAFListItem] // lists to list items
 }
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/netip"
+	"regexp"
 	"testing"
 	"time"
 
@@ -133,6 +134,7 @@ func TestListWAFListItems(t *testing.T) {
 	emptyListMeta := listMeta{} //nolint:exhaustruct
 
 	for name, tc := range map[string]struct {
+		managedWAFListItemsCommentRegex *regexp.Regexp
 		lists                 []listMeta
 		listRequestLimit      int
 		newList               listMeta
@@ -145,6 +147,7 @@ func TestListWAFListItems(t *testing.T) {
 		prepareMocks          func(*mocks.MockPP)
 	}{
 		"existing": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
 			emptyListMeta,
@@ -160,6 +163,7 @@ func TestListWAFListItems(t *testing.T) {
 			nil,
 		},
 		"create": {
+			nil,
 			[]listMeta{},
 			1,
 			listMeta{name: "list", size: 5, kind: cloudflare.ListTypeIP},
@@ -170,6 +174,7 @@ func TestListWAFListItems(t *testing.T) {
 			nil,
 		},
 		"create-fail": {
+			nil,
 			[]listMeta{},
 			1,
 			emptyListMeta,
@@ -182,6 +187,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"list-fail": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			0,
 			emptyListMeta,
@@ -195,6 +201,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"list-item-fail": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
 			emptyListMeta,
@@ -207,6 +214,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"invalid": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
 			emptyListMeta,
@@ -223,6 +231,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"nil": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
 			emptyListMeta,
@@ -237,6 +246,7 @@ func TestListWAFListItems(t *testing.T) {
 			},
 		},
 		"comment": {
+			nil,
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			1,
 			emptyListMeta,
@@ -245,19 +255,36 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			true, true,
 			[]api.WAFListItem{
-				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
+				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "hello"},
 			},
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiWarning,
-					"The IP range/address %q in the list %s has a non-empty comment %q. The comment might be lost during an IP update.",
-					"10.0.0.1", "account456/list", "hello")
+			nil,
+		},
+		"managed-item-filter": {
+			regexp.MustCompile("^managed$"),
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			1,
+			emptyListMeta,
+			0,
+			[]listItem{
+				{ID: "managed-v4", Prefix: "10.0.0.1", Comment: "managed"},
+				{ID: "foreign-v4", Prefix: "10.0.0.2", Comment: "foreign"},
+				{ID: "managed-v6", Prefix: "2001:db8::/32", Comment: "managed"},
 			},
+			1,
+			true, true,
+			[]api.WAFListItem{
+				{ID: "managed-v4", Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "managed"},
+				{ID: "managed-v6", Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: "managed"},
+			},
+			nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			f := newCloudflareHarness(t)
+			options := defaultHandleOptions()
+			options.ManagedWAFListItemsCommentRegex = tc.managedWAFListItemsCommentRegex
+			f := newCloudflareHarnessWithOptions(t, options)
 			lh := newListListsHandler(t, f.serveMux, tc.lists)
 			clh := newCreateListHandler(t, f.serveMux,
 				cloudflare.ListCreateRequest{
