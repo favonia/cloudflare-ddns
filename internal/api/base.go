@@ -57,6 +57,7 @@ type Record struct {
 type WAFListItem struct {
 	ID
 	netip.Prefix
+
 	Comment string
 }
 

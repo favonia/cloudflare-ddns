@@ -384,8 +384,10 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:            defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPP()
 
@@ -421,8 +423,10 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:            defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,

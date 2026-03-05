@@ -114,6 +114,7 @@ func defaultHandleOptions() api.HandleOptions {
 	return api.HandleOptions{
 		CacheExpiration:                   time.Hour * 24 * 365, // a year
 		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   nil,
 		AllowWholeWAFListDeleteOnShutdown: true,
 	}
 }

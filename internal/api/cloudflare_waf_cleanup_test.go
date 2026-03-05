@@ -104,7 +104,8 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
 				{ID: "item-v6", Prefix: "2001:db8::/64", Comment: "managed"},
 			},
-			1, 0, 1, 1, []api.ID{"item-v4", "item-v6"},
+			1, 0, 1, 1,
+			[]api.ID{"item-v4", "item-v6"},
 			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
@@ -130,7 +131,8 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			[]listItem{
 				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
 			},
-			1, 0, 1, 0, []api.ID{"item-v4"},
+			1, 0, 1, 0,
+			[]api.ID{"item-v4"},
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
@@ -188,7 +190,8 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 				{ID: "managed-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
 				{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"},
 			},
-			1, 1, 1, []api.ID{"managed-v4"},
+			1, 1, 1,
+			[]api.ID{"managed-v4"},
 			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiClear,

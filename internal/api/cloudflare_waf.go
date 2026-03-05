@@ -159,10 +159,14 @@ func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 }
 
 const (
-	finalWAFListManagedItemsAlreadyDeletedMessage       = "The items managed by this updater in the list %s were already deleted"
-	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "The items managed by this updater in the list %s were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage         = "Failed to properly delete items managed by this updater from the list %s; its content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage             = "The items managed by this updater in the list %s are being deleted (asynchronously)"
+	finalWAFListManagedItemsAlreadyDeletedMessage = "The items managed by this updater in the list %s " +
+		"were already deleted"
+	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "The items managed by this updater in the list %s " +
+		"were already deleted (cached)"
+	finalWAFListManagedItemsDeleteFailedMessage = "Failed to properly delete items managed by this updater from " +
+		"the list %s; its content may be inconsistent"
+	finalWAFListManagedItemsDeletingMessage = "The items managed by this updater in the list %s " +
+		"are being deleted (asynchronously)"
 )
 
 func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt pp.PP,

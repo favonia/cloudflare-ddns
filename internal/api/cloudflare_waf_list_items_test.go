@@ -156,9 +156,9 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			true, true,
 			[]api.WAFListItem{
-				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
-				{ID: (mockID("2001:db8::/32", 0)), Prefix: netip.MustParsePrefix("2001:db8::/32")},
-				{ID: (mockID("10.0.0.0/20", 0)), Prefix: netip.MustParsePrefix("10.0.0.0/20")},
+				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: ""},
+				{ID: (mockID("2001:db8::/32", 0)), Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: ""},
+				{ID: (mockID("10.0.0.0/20", 0)), Prefix: netip.MustParsePrefix("10.0.0.0/20"), Comment: ""},
 			},
 			nil,
 		},
@@ -329,9 +329,9 @@ func TestListWAFListItemsCache(t *testing.T) {
 	require.False(t, cached)
 	require.True(t, alreadyExisting)
 	require.Equal(t, []api.WAFListItem{
-		{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
-		{ID: mockID("2001:db8::/32", 0), Prefix: netip.MustParsePrefix("2001:db8::/32")},
-		{ID: mockID("10.0.0.0/20", 0), Prefix: netip.MustParsePrefix("10.0.0.0/20")},
+		{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: ""},
+		{ID: mockID("2001:db8::/32", 0), Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: ""},
+		{ID: mockID("10.0.0.0/20", 0), Prefix: netip.MustParsePrefix("10.0.0.0/20"), Comment: ""},
 	}, output)
 	assertHandlersExhausted(t, lh, lih)
 
@@ -342,9 +342,9 @@ func TestListWAFListItemsCache(t *testing.T) {
 	require.True(t, cached)
 	require.True(t, alreadyExisting)
 	require.Equal(t, []api.WAFListItem{
-		{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32")},
-		{ID: mockID("2001:db8::/32", 0), Prefix: netip.MustParsePrefix("2001:db8::/32")},
-		{ID: mockID("10.0.0.0/20", 0), Prefix: netip.MustParsePrefix("10.0.0.0/20")},
+		{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: ""},
+		{ID: mockID("2001:db8::/32", 0), Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: ""},
+		{ID: mockID("10.0.0.0/20", 0), Prefix: netip.MustParsePrefix("10.0.0.0/20"), Comment: ""},
 	}, output)
 	assertHandlersExhausted(t, lh, lih)
 }
@@ -526,43 +526,6 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 		}{OperationID: string(id)},
 		Response: mockResponse(),
 	}
-}
-
-func newReplaceListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,
-	expectedItems []netip.Prefix, expectedComment string,
-) httpHandler {
-	t.Helper()
-
-	var requestLimit int
-
-	mux.HandleFunc(fmt.Sprintf("PUT /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
-		func(w http.ResponseWriter, r *http.Request) {
-			if !checkRequestLimit(t, &requestLimit) || !checkToken(t, r) {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			if !assert.Empty(t, r.URL.Query()) {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			if !checkListItemCreateRequestPayload(t, r, expectedItems, expectedComment) {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockListItemCreateResponse(operationID))
-			assert.NoError(t, err)
-		})
-
-	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
-		func(w http.ResponseWriter, r *http.Request) {
-			handleListBulkOperation(t, operationID, w, r)
-		})
-
-	return httpHandler{requestLimit: &requestLimit}
 }
 
 func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,

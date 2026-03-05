@@ -311,8 +311,10 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:            0,
-						ManagedRecordsCommentRegex: regexp.MustCompile("he"),
+						CacheExpiration:                   0,
+						ManagedRecordsCommentRegex:        regexp.MustCompile("he"),
+						ManagedWAFListItemsCommentRegex:   nil,
+						AllowWholeWAFListDeleteOnShutdown: false,
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -361,8 +363,10 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:            0,
-						ManagedRecordsCommentRegex: regexp.MustCompile(`^hello-[0-9]+$`),
+						CacheExpiration:                   0,
+						ManagedRecordsCommentRegex:        regexp.MustCompile(`^hello-[0-9]+$`),
+						ManagedWAFListItemsCommentRegex:   nil,
+						AllowWholeWAFListDeleteOnShutdown: false,
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -761,8 +765,7 @@ func TestBuildConfig(t *testing.T) {
 				if expectedHandle.Options.ManagedWAFListItemsCommentRegex == nil {
 					expectedHandle.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("")
 				}
-				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown =
-					expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
+				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown = expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
 				require.Equal(t, tc.expected.update, builtConfig.Update)
