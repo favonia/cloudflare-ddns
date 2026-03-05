@@ -87,3 +87,7 @@ The design goal is not to minimize field copying. The goal is to keep each runti
    - keep cleanup idempotent whenever possible; missing resources should usually be treated as already cleaned
    - use warning-level notices for unexpected-but-tolerated cleanup drift instead of hard failures
    - keep mode differences as explicit pre-steps over a shared cleanup pipeline, instead of duplicating cleanup logic
+9. For user-facing documentation of settings with default and opt-in modes:
+   - describe the common behavior first when there is a meaningful mode delta
+   - avoid forcing artificial default-versus-opt-in contrast when semantics are uniform by definition (for example, an empty regex naturally matching any string)
+   - emphasize operational deltas that affect safety or lifecycle behavior, such as shutdown cleanup scope

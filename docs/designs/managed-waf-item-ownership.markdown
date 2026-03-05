@@ -43,6 +43,8 @@ Unmatched items are invisible to WAF mutation logic. As a result, the updater ma
 
 - With a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`, shutdown cleanup deletes only matched managed WAF list items.
 - With the empty default selector, shutdown cleanup first tries deleting the whole list.
+- The mode switch uses only the configured selector template being empty or non-empty.
+- Do not infer "match-all" behavior from general regex semantics when selecting cleanup mode.
 
 The empty default is intentionally preserved for backward compatibility, but it is ambiguous in shared-list deployments and should be documented and warned about carefully.
 

@@ -11,6 +11,7 @@ This note records maintainer-facing conventions for preparing releases, especial
 5. For each release section, verify the version header, compare link, and release date.
 6. Before the release, verify that README availability notes and experimental-feature notes still match the actual feature state.
 7. Optional but preferred: add one line per user-visible change during pull requests to reduce release-day editing.
+8. For README sections that describe default and opt-in modes, verify that the text highlights meaningful operational deltas and keeps explanations natural, instead of forcing artificial contrasts for uniform semantics.
 
 ## Feature-Note Lifecycle
 
