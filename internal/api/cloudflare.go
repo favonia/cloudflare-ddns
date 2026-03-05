@@ -104,9 +104,8 @@ func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		"DELETE_ON_STOP is enabled, but "+
-			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%s is non-empty; "+
-			"the list may be shared, so the updater will keep the list "+
-			"and delete only items managed by this updater",
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
+			"the updater will keep the list and delete only items managed by this updater",
 		DescribeFreeFormString(options.ManagedWAFListItemsCommentRegex.String()),
 	)
 	options.AllowWholeWAFListDeleteOnShutdown = false

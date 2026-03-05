@@ -58,36 +58,59 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 
 ## Coding Conventions
 
-1. Use `%s` instead of `%q` in logs for values that contain only safe characters and are unlikely to be misunderstood without quotes:
-   - Cloudflare IDs such as zone, record, and WAF list IDs
-   - domain names
-   - full WAF list references in the form `account/name`
-2. Do not pluralize a variable only because its type is `map[..]...`. For example, a mapping from IP families to detected IPs should be named `detectedIP`, not `detectedIPs`.
-3. In tests, keep an expected mocked call on one line in most cases, even if the line becomes long.
-4. For log messages, common existing patterns include:
-   - Keep a short primary message and emit follow-up hints or details with `NoticeOncef` or `InfoOncef` when helpful.
-   - Use `%q` for parser and validation diagnostics on raw or untrusted inputs, such as user-provided environment values or parser tokens.
-   - For advisory ignored-setting warnings, avoid assignment-like forms such as `KEY=%q`; prefer a display-only form such as `KEY (%s)` where `%s` is a quoted preview value (possibly truncated).
-   - Continue to use `%s` for safe identifiers listed above.
-   - Keep short operational `Noticef` and `Infof` messages without trailing periods.
-   - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
-   - Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
-5. For user-facing setting names and config field names:
-   - keep write-side settings singular when they describe one value written to one managed object, such as `RECORD_COMMENT`
-   - keep ownership selectors plural when they scope a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX`
-6. When addressing `unparam`, do not remove a parameter mechanically.
-   - First check whether the parameter is part of the helper's honest contract.
-   - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
-   - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
-7. For user-facing feature availability notes:
-   - use `unreleased` before the first release tag exists for that feature
-   - use `since version X.Y.Z` (or `available since version X.Y.Z`) only after that release tag exists
-   - do not use a planned next-release version as if it were already released
-8. For final cleanup flows:
-   - keep cleanup idempotent whenever possible; missing resources should usually be treated as already cleaned
-   - use warning-level notices for unexpected-but-tolerated cleanup drift instead of hard failures
-   - keep mode differences as explicit pre-steps over a shared cleanup pipeline, instead of duplicating cleanup logic
-9. For user-facing documentation of settings with default and opt-in modes:
-   - describe the common behavior first when there is a meaningful mode delta
-   - avoid forcing artificial default-versus-opt-in contrast when semantics are uniform by definition (for example, an empty regex naturally matching any string)
-   - emphasize operational deltas that affect safety or lifecycle behavior, such as shutdown cleanup scope
+### Naming and Structure
+
+- Use `%s` instead of `%q` in logs for values that contain only safe characters and are unlikely to be misunderstood without quotes:
+  - Cloudflare IDs such as zone, record, and WAF list IDs
+  - domain names
+  - full WAF list references in the form `account/name`
+- Do not pluralize a variable only because its type is `map[..]...`. For example, a mapping from IP families to detected IPs should be named `detectedIP`, not `detectedIPs`.
+- In tests, keep an expected mocked call on one line in most cases, even if the line becomes long.
+- For user-facing setting names and config field names:
+  - keep write-side settings singular when they describe one value written to one managed object, such as `RECORD_COMMENT`
+  - keep ownership selectors plural when they scope a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX`
+
+### User-Facing Messages and Logs
+
+- Keep a short primary message and emit follow-up hints or details with `NoticeOncef` or `InfoOncef` when helpful.
+- Prefer a two-layer model: keep summary messages plain and compact, and put operational nuance (for example uncertainty or inconsistency risk) in follow-up details.
+- Keep summary and detail messages semantically aligned; details may add nuance but should not contradict summaries.
+- Use `%q` for parser and validation diagnostics on raw or untrusted inputs, such as environment values or parser tokens.
+- For advisory ignored-setting warnings, avoid assignment-like forms such as `KEY=%q`; prefer `KEY (%s)` where `%s` is a quoted preview value (possibly truncated).
+- Continue to use `%s` for safe identifiers listed above.
+- Keep short operational `Noticef` and `Infof` messages without trailing periods.
+- Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.
+- Factor repeated guidance into helper functions, such as permission or mismatch hints, instead of duplicating long messages.
+- For mutation failures against external APIs:
+  - if the outcome is ambiguous (for example, network timeout), prefer wording like `could not confirm ...`
+  - if the failure is definitive (for example, explicit API rejection), `failed to ...` is acceptable
+  - keep inconsistency hints explicit when relevant (`records might be inconsistent`, `content may be inconsistent`)
+  - future side task: add careful error case splitting so wording can distinguish definitive rejections from ambiguous transport failures
+
+### Refactoring and Linting
+
+- When addressing `unparam`, do not remove a parameter mechanically.
+  - First check whether the parameter is part of the helper's honest contract.
+  - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
+  - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
+- For final cleanup flows:
+  - keep cleanup idempotent where possible; missing resources should usually be treated as already cleaned
+  - use warning-level notices for unexpected but tolerated cleanup drift instead of hard failures
+  - keep mode differences as explicit pre-steps over a shared cleanup pipeline instead of duplicating logic
+
+### Documentation and Comments
+
+- For user-facing feature availability notes:
+  - use `unreleased` before the first release tag for that feature
+  - use `since version X.Y.Z` (or `available since version X.Y.Z`) only after the release tag exists
+  - do not label a planned next release as already released
+- For user-facing documentation of settings with default and opt-in modes:
+  - describe the common behavior first when there is a meaningful mode delta
+  - avoid forced default-versus-opt-in contrasts when semantics are uniform (for example, an empty regex naturally matches any string)
+  - emphasize operational deltas that affect safety or lifecycle behavior, such as shutdown cleanup scope
+- For design documents under `docs/designs/`, prefer tight and precise wording over broad tutorial-style narrative.
+- For `README.markdown`, prioritize readability for not-so-technical users; keep deep mapping details in setting tables or reference sections instead of dense introductory prose.
+- For code comments:
+  - prioritize tightening comments that describe contracts, invariants, ownership, safety boundaries, lifecycle guarantees, or other non-obvious behavior
+  - avoid churn on obvious local comments that only restate nearby code
+  - prefer deleting redundant comments over rewriting them with equivalent wording

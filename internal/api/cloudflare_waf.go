@@ -141,9 +141,9 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 
 // FinalCleanWAFList removes managed WAF content during shutdown.
 //
-// If the handle owns the whole list, it tries to delete the list and falls back
-// to deleting list items asynchronously. If the list is shared, it deletes only
-// managed items selected by ManagedWAFListItemsCommentRegex.
+// Whole-list ownership tries deleting the list first, then falls back to async
+// item deletion. Shared ownership deletes only items selected by
+// ManagedWAFListItemsCommentRegex.
 //
 // We delete cached data in listListItems and listID when the underlying list
 // or its managed-item view may have changed, but we keep listLists so that we
@@ -159,14 +159,10 @@ func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 }
 
 const (
-	finalWAFListManagedItemsAlreadyDeletedMessage = "The items managed by this updater in the list %s " +
-		"were already deleted"
-	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "The items managed by this updater in the list %s " +
-		"were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage = "Failed to properly delete items managed by this updater from " +
-		"the list %s; its content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage = "The items managed by this updater in the list %s " +
-		"are being deleted (asynchronously)"
+	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in list %s were already deleted"
+	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in list %s were already deleted (cached)"
+	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; list content may be inconsistent"
+	finalWAFListManagedItemsDeletingMessage             = "Deleting managed items in list %s asynchronously"
 )
 
 func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt pp.PP,
@@ -180,9 +176,8 @@ func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt 
 		if tryDeleteWholeListFirst {
 			h.invalidateWAFListCleanupCache(list)
 			ppfmt.Noticef(pp.EmojiWarning,
-				"The list %s was not found during final cleanup; "+
-					"it may have been removed or changed elsewhere, "+
-					"so continuing as already cleaned", list.Describe())
+				"The list %s was not found during final cleanup; treating it as already cleaned",
+				list.Describe())
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone, finalWAFListManagedItemsAlreadyDeletedMessage, list.Describe())
 		}
@@ -196,7 +191,7 @@ func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt 
 			return WAFListCleanupUpdated
 		} else {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to delete the list %s; deleting its items instead: %v", list.Describe(), err)
+				"Could not confirm deletion of list %s; falling back to item deletion: %v", list.Describe(), err)
 		}
 	}
 
@@ -296,7 +291,7 @@ func (h CloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, pp
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to start deleting items from the list %s: %v", list.Describe(), err)
+			"Could not confirm that item deletion started in list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -369,7 +364,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 				Kind:        cloudflare.ListTypeIP,
 			})
 		if err != nil {
-			ppfmt.Noticef(pp.EmojiError, "Failed to create the list %s: %v", list.Describe(), err)
+			ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of list %s: %v", list.Describe(), err)
 			hintWAFListPermission(ppfmt, err)
 			h.cache.listLists.Delete(list.AccountID)
 			return nil, false, false, false
@@ -421,7 +416,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to finish deleting items from the list %s: %v", list.Describe(), err)
+			"Could not confirm deletion of items from list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -467,7 +462,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(
-			pp.EmojiError, "Failed to finish adding items to the list %s: %v",
+			pp.EmojiError, "Could not confirm addition of items to list %s: %v",
 			list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)

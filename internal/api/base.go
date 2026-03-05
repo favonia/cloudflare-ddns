@@ -52,8 +52,7 @@ type Record struct {
 	RecordParams //nolint:embeddedstructfieldcheck // parameters go last
 }
 
-// WAFListItem bundles an ID, an IP range, and the original Cloudflare comment,
-// representing an item in a WAF list.
+// WAFListItem represents one WAF list item: ID, IP range, and original comment.
 type WAFListItem struct {
 	ID
 	netip.Prefix
@@ -61,7 +60,7 @@ type WAFListItem struct {
 	Comment string
 }
 
-// WAFListCleanupCode summarizes the final shutdown cleanup result for one WAF list.
+// WAFListCleanupCode summarizes final shutdown cleanup for one WAF list.
 type WAFListCleanupCode int
 
 const (
@@ -122,8 +121,8 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves the current managed WAF-list view with IP ranges.
-	// It creates an empty WAF list with IP ranges if it does not already exist yet.
+	// ListWAFListItems returns managed WAF list items with their IP ranges.
+	// It creates the list if it does not exist.
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.
@@ -134,10 +133,8 @@ type Handle interface {
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
-	//
-	// A handle may either own the whole list or only managed items within a
-	// shared list. Implementations use the handle's bound ownership policy to
-	// choose the correct cleanup path.
+	// Implementations choose whole-list or managed-item cleanup from the handle's
+	// bound ownership policy.
 	//
 	// The handle should not be reused for any further update operations after
 	// calling this method.

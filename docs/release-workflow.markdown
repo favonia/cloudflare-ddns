@@ -9,9 +9,8 @@ This note records maintainer-facing conventions for preparing releases, especial
 3. Explain user-visible changes in terms of actual behavior, scope, and current terminology. Do not rely only on pull request titles or commit subjects.
 4. Before the release, remove duplicates, tighten wording, and group entries by type.
 5. For each release section, verify the version header, compare link, and release date.
-6. Before the release, verify that README availability notes and experimental-feature notes still match the actual feature state.
+6. Before the release, review README notes and wording together: availability notes and experimental markers should match actual feature state; default/opt-in sections should emphasize meaningful operational deltas; wording should stay accessible to not-so-technical users; and intro paragraphs should avoid dense setting-to-setting mapping details (move those to setting tables or dedicated reference sections).
 7. Optional but preferred: add one line per user-visible change during pull requests to reduce release-day editing.
-8. For README sections that describe default and opt-in modes, verify that the text highlights meaningful operational deltas and keeps explanations natural, instead of forcing artificial contrasts for uniform semantics.
 
 ## Feature-Note Lifecycle
 

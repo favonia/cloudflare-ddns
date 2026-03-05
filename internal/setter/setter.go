@@ -115,7 +115,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				recycled.RecordParams, expectedParams,
 			); !ok {
 				ppfmt.Noticef(pp.EmojiError,
-					"Failed to properly update %s records of %s; records might be inconsistent",
+					"Could not confirm update of %s records of %s; records might be inconsistent",
 					recordType, domainDescription)
 				return ResponseFailed
 			}
@@ -129,7 +129,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, expectedParams)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -141,7 +141,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	for _, r := range staleRecords {
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -212,7 +212,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 	}
 	if !allOK {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to properly delete %s records of %s; records might be inconsistent",
+			"Could not confirm deletion of %s records of %s; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseFailed
 	}
@@ -222,8 +222,8 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 // SetWAFList updates a WAF list.
 //
-// The current WAF API surface exposes one whole-list view, so this
-// reconciliation treats every listed item as belonging to this updater.
+// The handle returns only items managed by this updater under its bound
+// ownership selector.
 //
 // For each IP family:
 // - managed + targets: keep ranges covering any target, add smallest prefixes for uncovered targets
@@ -304,7 +304,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
 	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate, itemComment) {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to properly update the list %s; its content may be inconsistent", list.Describe())
+			"Could not confirm update of the list %s; its content may be inconsistent", list.Describe())
 		return ResponseFailed
 	}
 	for _, item := range itemsToCreate {
@@ -317,7 +317,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		idsToDelete = append(idsToDelete, item.ID)
 	}
 	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete) {
-		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of the list %s; its content may be inconsistent",
 			list.Describe())
 		return ResponseFailed
 	}

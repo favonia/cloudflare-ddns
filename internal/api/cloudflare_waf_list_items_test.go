@@ -183,7 +183,7 @@ func TestListWAFListItems(t *testing.T) {
 			0,
 			false, false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to create the list %s: %v", "account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm creation of list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-fail": {
@@ -474,7 +474,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish deleting items from the list %s: %v", "account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of items from list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {
@@ -607,7 +607,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to finish adding items to the list %s: %v", "account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm addition of items to list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {

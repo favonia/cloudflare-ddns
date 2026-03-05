@@ -36,7 +36,7 @@ Choose the narrowest durable home for the rule:
 
 ## Accepted Recurring Categories
 
-The current tree shows a few recurring categories that are consistent with this policy.
+The current tree shows a few recurring categories consistent with this policy.
 
 ### `exhaustruct`
 
@@ -115,7 +115,7 @@ Examples include:
 - `forcetypeassert` after earlier checks establish the expected concrete type
 - `noctx` when a test helper must call an API that has no context-aware alternative
 
-These should remain rare and should usually carry an explicit local reason.
+Keep these rare and usually include an explicit local reason.
 
 ## Observed Repository Shape
 
@@ -126,7 +126,7 @@ The present tree is consistent with this policy in broad strokes:
 - `exhaustruct` and `paralleltest` dominate the current footprint
 - the remaining linters are sparse, local exceptions
 
-That observed shape is useful as a sanity check. A new suppression style that does not resemble these patterns should be treated as unusual and justified explicitly.
+Use this as a sanity check: a suppression style that does not resemble these patterns should be treated as unusual and justified explicitly.
 
 ## Review Heuristics
 

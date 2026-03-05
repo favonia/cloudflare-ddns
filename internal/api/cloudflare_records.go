@@ -229,7 +229,7 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 		if mode == RegularDelitionMode {
@@ -263,7 +263,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 
@@ -333,7 +333,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), ps)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to add a new %s record of %s: %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)
 		hintRecordPermission(ppfmt, err)
 

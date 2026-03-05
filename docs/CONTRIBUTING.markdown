@@ -28,9 +28,15 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    If you need an inline `//nolint`, treat it as a local exception rather than a second lint policy. Broad lint policy belongs in [`.golangci.yaml`](../.golangci.yaml); repository-wide guidance for inline suppressions lives in [docs/designs/lint-suppressions.markdown](designs/lint-suppressions.markdown).
 
+   For comments and user-facing messages, follow the shared conventions in [docs/designs/codebase-architecture.markdown](designs/codebase-architecture.markdown): tighten contract-level comments, keep obvious local comments low-churn, and use the two-layer message style (short summaries plus detailed follow-up when needed).
+
 4. Keep design documentation durable.
 
-   If you edit `docs/designs/`, write for a future reader who needs to understand the current intended design rather than the current pull request. Describe present semantics directly, avoid vague rollout-relative wording such as "currently" or "first implementation", use explicit versions or changes when historical context matters, and move project-wide policy into the project-wide design notes instead of inventing a separate local policy in each feature note.
+   If you edit `docs/designs/`, write for future readers who need the current intended design, not pull-request context. Describe present semantics directly, avoid rollout phrasing such as "currently" or "first implementation", anchor history to explicit versions or changes, move project-wide policy into shared design notes, and tighten wording to keep design notes high-signal and precise.
+
+5. Keep README reader-friendly.
+
+   `README.markdown` is for a broad user audience, including not-so-technical users. Prefer plain language, clear examples, and readable explanations over dense internal shorthand.
 
 Once you make the pull request, the maintainer will check your code and decide what to do. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and will update your pull request’s title. Don’t worry too much about commit messages as long as it’s clear what individual commits do.
 

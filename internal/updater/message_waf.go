@@ -23,7 +23,7 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to set list(s) " + pp.Join(domains)},
+			Lines: []string{"Could not confirm update of WAF list(s) " + pp.Join(domains)},
 		}
 	}
 
@@ -44,7 +44,7 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Failed to properly update WAF list(s) ", pp.EnglishJoin(domains))
+		fragments = append(fragments, "Could not confirm update of WAF list(s) ", pp.EnglishJoin(domains))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -82,7 +82,7 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to clean WAF list(s) " + pp.Join(domains)},
+			Lines: []string{"Could not confirm cleanup of WAF list(s) " + pp.Join(domains)},
 		}
 	}
 
@@ -103,7 +103,7 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Failed to properly clean WAF list(s) "+pp.EnglishJoin(domains))
+		fragments = append(fragments, "Could not confirm cleanup of WAF list(s) "+pp.EnglishJoin(domains))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {

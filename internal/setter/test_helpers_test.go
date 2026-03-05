@@ -223,7 +223,7 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
-		"Failed to properly update %s records of %s; records might be inconsistent",
+		"Could not confirm update of %s records of %s; records might be inconsistent",
 		ipNetwork.RecordType(),
 		domain.Describe(),
 	)
@@ -232,7 +232,7 @@ func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain d
 func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
-		"Failed to properly delete %s records of %s; records might be inconsistent",
+		"Could not confirm deletion of %s records of %s; records might be inconsistent",
 		ipNetwork.RecordType(),
 		domain.Describe(),
 	)
@@ -343,7 +343,7 @@ func expectWAFListNoopNotice(p *mocks.MockPP, list api.WAFList, cached bool) any
 func expectWAFListErrorNotice(p *mocks.MockPP, list api.WAFList) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
-		"Failed to properly update the list %s; its content may be inconsistent",
+		"Could not confirm update of the list %s; its content may be inconsistent",
 		list.Describe(),
 	)
 }

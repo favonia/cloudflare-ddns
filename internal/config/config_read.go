@@ -114,7 +114,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		if c.DeleteOnStop {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true will immediately delete managed domains and WAF content when UPDATE_CRON=@once")
+				"DELETE_ON_STOP=true with UPDATE_CRON=@once would immediately delete managed domains and WAF content")
 			return nil, false
 		}
 	}
@@ -226,17 +226,17 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	if len(c.WAFLists) == 0 { // We are only updating domains.
 		if c.WAFListDescription != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"WAF_LIST_DESCRIPTION (%s) is ignored because no WAF lists will be updated",
+				"WAF_LIST_DESCRIPTION (%s) is ignored because WAF_LISTS is empty",
 				describeIgnoredSettingValuePreview(c.WAFListDescription))
 		}
 		if c.WAFListItemComment != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"WAF_LIST_ITEM_COMMENT (%s) is ignored because no WAF lists will be updated",
+				"WAF_LIST_ITEM_COMMENT (%s) is ignored because WAF_LISTS is empty",
 				describeIgnoredSettingValuePreview(c.WAFListItemComment))
 		}
 		if c.ManagedWAFListItemsCommentRegex != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because no WAF lists will be updated",
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because WAF_LISTS is empty",
 				describeIgnoredSettingValuePreview(c.ManagedWAFListItemsCommentRegex))
 		}
 	}

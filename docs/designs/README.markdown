@@ -6,17 +6,18 @@ Start here for the current intended design of the codebase, including durable co
 
 ## Writing Design Notes
 
-Design notes in this directory are reference material for understanding the current intended design of the codebase. They should stay durable by describing present semantics, invariants, scope boundaries, and extension points directly, without depending on the pull request or release context that introduced them.
+Design notes here are reference material for the current intended design. Keep them durable by describing present semantics, invariants, scope boundaries, and extension points directly, without relying on pull-request or release context.
 
 When writing or editing a design note:
 
-- describe present intended behavior directly instead of using vague rollout phrasing such as "the first implementation", "currently", "for now", or "the latest version"
-- include historical rationale only when it helps explain why the current design is the way it is, and anchor that context to a concrete version, change, or migration
-- mention future work only to mark a scope boundary or extension point, and say explicitly what is deferred or what would need to change
+- tighten wording so the note stays high-signal, precise, and easy to scan as reference material
+- describe present intended behavior directly; avoid vague rollout phrasing such as "the first implementation", "currently", "for now", or "the latest version"
+- include historical rationale only when it explains the current design, and anchor it to a concrete version, change, or migration
+- mention future work only to mark scope boundaries or extension points, and state what is deferred or what must change
 - keep temporary staging plans, migration sequencing, and branch-local rationale out of `docs/designs/`
 - extract project-wide policy to project-wide documents such as `project-principles.markdown` or `codebase-architecture.markdown`
 - follow the shared feature-availability lifecycle in project-wide docs (`unreleased` before first release tag, then `since version X.Y.Z`)
-- keep feature-specific notes focused on the feature's own contract, while linking to shared project-wide rules instead of restating a separate local philosophy
+- keep feature-specific notes focused on the feature contract, and link to shared project-wide rules instead of restating local policy
 - if a feature note uncovers a general rule, move that rule upward rather than duplicating it across feature notes
 
 ## Project-Wide Documents
