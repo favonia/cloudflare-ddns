@@ -44,6 +44,96 @@ func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, expecte
 	)
 }
 
+func hintMismatchedWAFListItemComment(ppfmt pp.PP, list WAFList, managedItems []WAFListItem, expectedComment string) {
+	mismatchedCount := 0
+	var sampleID ID
+	sampleComment := ""
+
+	for _, item := range managedItems {
+		if item.Comment == expectedComment {
+			continue
+		}
+
+		mismatchedCount++
+		if mismatchedCount == 1 {
+			sampleID = item.ID
+			sampleComment = item.Comment
+		}
+	}
+
+	if mismatchedCount == 0 {
+		return
+	}
+
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. "+
+			"Found %d managed WAF list item(s) with mismatched comments. "+
+			"WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+		sampleID,
+		list.Describe(),
+		DescribeFreeFormString(sampleComment),
+		DescribeFreeFormString(expectedComment),
+		mismatchedCount,
+	)
+}
+
+func snapshotManagedWAFListItemCommentsByID(items []WAFListItem) map[ID]string {
+	commentsByID := make(map[ID]string, len(items))
+	for _, item := range items {
+		commentsByID[item.ID] = item.Comment
+	}
+	return commentsByID
+}
+
+func (h CloudflareHandle) cachedManagedWAFListItemCommentsByID(list WAFList) (map[ID]string, bool) {
+	cached := h.cache.listListItems.Get(list)
+	if cached == nil {
+		return nil, false
+	}
+
+	return snapshotManagedWAFListItemCommentsByID(*cached.Value()), true
+}
+
+func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
+	beforeCommentsByID map[ID]string, managedItems []WAFListItem, expectedComment string,
+) {
+	mismatchedCount := 0
+	var sampleID ID
+	sampleComment := ""
+
+	for _, item := range managedItems {
+		beforeComment, hadBefore := beforeCommentsByID[item.ID]
+		if hadBefore {
+			if item.Comment == beforeComment || item.Comment == expectedComment {
+				continue
+			}
+		} else if item.Comment == expectedComment {
+			continue
+		}
+
+		mismatchedCount++
+		if mismatchedCount == 1 {
+			sampleID = item.ID
+			sampleComment = item.Comment
+		}
+	}
+
+	if mismatchedCount == 0 {
+		return
+	}
+
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"After updating list %s, item ID %s has comment %s, which is unexpected given "+
+			"WAF_LIST_ITEM_COMMENT (%s) and pre-update cache state. "+
+			"Found %d managed WAF list item(s) with this anomaly.",
+		list.Describe(),
+		sampleID,
+		DescribeFreeFormString(sampleComment),
+		DescribeFreeFormString(expectedComment),
+		mismatchedCount,
+	)
+}
+
 func matchManagedWAFListItemComment(regex *regexp.Regexp, comment string) bool {
 	if regex == nil {
 		return true
@@ -332,7 +422,7 @@ func (h CloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFList
 // ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
 // It caches one managed-item view per handle/list pair.
 func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
-	list WAFList, expectedDescription string,
+	list WAFList, expectedDescription, expectedItemComment string,
 ) ([]WAFListItem, bool, bool, bool) {
 	if items := h.cache.listListItems.Get(list); items != nil {
 		return *items.Value(), true, true, true
@@ -367,7 +457,9 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		}
 		h.cache.listID.DeleteExpired()
 		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
-		return h.cacheManagedWAFListItems(list, items), false, false, true
+		managedItems := h.cacheManagedWAFListItems(list, items)
+		hintMismatchedWAFListItemComment(ppfmt, list, managedItems, expectedItemComment)
+		return managedItems, false, false, true
 	}
 
 	items, ok := h.listWAFListItemsByID(ctx, ppfmt, list, listID)
@@ -375,17 +467,22 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false, false
 	}
 
-	return h.cacheManagedWAFListItems(list, items), true, false, true
+	managedItems := h.cacheManagedWAFListItems(list, items)
+	hintMismatchedWAFListItemComment(ppfmt, list, managedItems, expectedItemComment)
+	return managedItems, true, false, true
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
 func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
+	expectedItemComment string,
 	ids []ID,
 ) bool {
 	if len(ids) == 0 {
 		return true
 	}
+
+	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
 	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
@@ -416,7 +513,16 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cacheManagedWAFListItems(list, items)
+	managedItems := h.cacheManagedWAFListItems(list, items)
+	if hasBeforeComments {
+		hintUnexpectedWAFListItemCommentAfterMutation(
+			ppfmt,
+			list,
+			beforeCommentsByID,
+			managedItems,
+			expectedItemComment,
+		)
+	}
 	return true
 }
 
@@ -428,6 +534,8 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	if len(itemsToCreate) == 0 {
 		return true
 	}
+
+	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
 	listID, ok := h.FindWAFList(ctx, ppfmt, list, expectedDescription)
 	if !ok {
@@ -463,6 +571,15 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	h.cacheManagedWAFListItems(list, items)
+	managedItems := h.cacheManagedWAFListItems(list, items)
+	if hasBeforeComments {
+		hintUnexpectedWAFListItemCommentAfterMutation(
+			ppfmt,
+			list,
+			beforeCommentsByID,
+			managedItems,
+			comment,
+		)
+	}
 	return true
 }

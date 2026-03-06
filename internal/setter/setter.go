@@ -232,7 +232,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type][]netip.Addr, itemComment string,
 ) ResponseCode {
-	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
+	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription, itemComment)
 	if !ok {
 		return ResponseFailed
 	}
@@ -316,7 +316,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	for _, item := range itemsToDelete {
 		idsToDelete = append(idsToDelete, item.ID)
 	}
-	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete) {
+	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, itemComment, idsToDelete) {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of the list %s; its content may be inconsistent",
 			list.Describe())
 		return ResponseFailed

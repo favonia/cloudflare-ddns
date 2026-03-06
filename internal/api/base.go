@@ -126,10 +126,12 @@ type Handle interface {
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.
+	// expectedItemComment is the configured comment target for newly created
+	// managed list items; implementations may use it for advisory mismatch hints.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription, expectedItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
@@ -144,7 +146,7 @@ type Handle interface {
 
 	// DeleteWAFListItems deletes IP ranges from a WAF list.
 	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		ids []ID) bool
+		expectedItemComment string, ids []ID) bool
 
 	// CreateWAFListItems adds IP ranges to a WAF list.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,

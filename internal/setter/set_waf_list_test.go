@@ -121,7 +121,7 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListRead(ctx, p, m, wafList, listDescription, nil, false, false, false)
+				expectWAFListRead(ctx, p, m, wafList, listDescription, itemComment, nil, false, false, false)
 			},
 		},
 		{
@@ -129,7 +129,7 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(netip.Addr{}, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, skipUnknownItems, true, true)
+				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, skipUnknownItems, true, true)
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, items{prefix4, prefix6}, true, false)
+				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4, prefix6}, true, false)
 			},
 		},
 		{
@@ -165,7 +165,7 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, items{prefix4, prefix6}, true, true)
+				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4, prefix6}, true, true)
 			},
 		},
 		{
@@ -391,13 +391,13 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					detectedIPs := detected(ip4, ip6)
 
 					readCall := h.mockHandle.EXPECT().
-						ListWAFListItems(ctx, h.mockPP, wafList, listDescription).
+						ListWAFListItems(ctx, h.mockPP, wafList, listDescription, "").
 						Return(permutedItems, true, false, true)
 					createCall := h.mockHandle.EXPECT().
 						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, "").
 						Return(true)
 					deleteCall := h.mockHandle.EXPECT().
-						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
+						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, "", scenario.wantDeleteID).
 						Return(true)
 					gomock.InOrder(readCall, createCall, deleteCall)
 

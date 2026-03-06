@@ -274,7 +274,7 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 	listHandler.setRequestLimit(1)
 	itemsHandler.setRequestLimit(1)
 	deleteHandler.setRequestLimit(0)
-	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description")
+	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
 	require.True(t, ok)
 	require.True(t, alreadyExisting)
 	require.False(t, cached)
@@ -306,7 +306,7 @@ func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresStaleCache(t *testing
 	itemsHandler.setRequestLimit(2)
 	deleteItemsHandler.setRequestLimit(0)
 
-	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description")
+	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
 	require.True(t, ok)
 	require.True(t, alreadyExisting)
 	require.False(t, cached)
