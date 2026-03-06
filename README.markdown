@@ -362,6 +362,7 @@ Other scope notes:
 >
 > 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), and thus the updater will use the smallest IP range allowed by Cloudflare that contains the detected IPv6 address.
 > 2. The updater removes addresses from disabled IP families only from items managed by this updater (_e.g.,_ if you set `IP6_PROVIDER=none`, existing IPv6 addresses or ranges in managed items are deleted). The managed set is selected by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`.
+> 3. WAF reconciliation commonly replaces items when target ranges change. The updater adds new items and deletes old items; it does not edit comments on existing items. Therefore WAF item comments commonly change as items are replaced.
 
 </details>
 
@@ -413,7 +414,7 @@ Other scope notes:
 <details>
 <summary><em>Click to expand:</em> 🐣 DNS and WAF Creation Defaults</summary>
 
-> 👉 The updater preserves existing parameters (TTL, proxy status, DNS record comments, etc.). These settings apply only when creating new DNS records, WAF lists, or WAF list items. To change existing parameters, use your [Cloudflare Dashboard](https://dash.cloudflare.com). If you want the updater to overwrite existing parameters (not just IP addresses), please [open an issue](https://github.com/favonia/cloudflare-ddns/issues/new).
+> 👉 The updater preserves existing parameters (TTL, proxy status, DNS record comments, etc.). These settings apply only when creating new DNS records, WAF lists, or WAF list items. DNS records are usually recycled when possible, so existing DNS metadata is often preserved. WAF list updates commonly replace items (add new ranges, then delete old ranges) when detected ranges change, so WAF item comments commonly change over time.
 
 | Name                                             | Meaning                                                                                                                                                                                                                                                                                                   | Default Value                              |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
@@ -421,7 +422,7 @@ Other scope notes:
 | `TTL`                                            | The time-to-live (TTL) (in seconds) of new DNS records.                                                                                                                                                                                                                                                   | `1` (This means “automatic” to Cloudflare) |
 | `RECORD_COMMENT`                                 | The [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) of new DNS records.                                                                                                                                                                           | `""`                                       |
 | 🧪 `WAF_LIST_DESCRIPTION` (since version 1.14.0) | 🧪 The text description of new WAF lists.                                                                                                                                                                                                                                                                 | `""`                                       |
-| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | The comment of newly created WAF list items.                                                                                                                                                                                                                                                              | `""`                                       |
+| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | The comment for newly created WAF list items. Existing items are not rewritten in place.                                                                                                                                                                                                                 | `""`                                       |
 
 > 🤖 For advanced users: the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
 >
