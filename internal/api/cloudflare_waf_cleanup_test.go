@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -337,6 +338,38 @@ func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
 			"the updater will keep the list and delete only items managed by this updater",
 		`"^managed$"`,
+	)
+	serveMux, h, ok := newHandleWithOptions(t, newPP, options)
+	require.True(t, ok)
+	cfHandle, ok := h.(api.CloudflareHandle)
+	require.True(t, ok)
+
+	listHandler := newListListsHandler(t, serveMux, nil)
+	listHandler.setRequestLimit(1)
+
+	cleanupPP := mocks.NewMockPP(mockCtrl)
+	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+		"Managed items in list %s were already deleted", "account456/list")
+	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	require.Equal(t, api.WAFListCleanupNoop, code)
+	assertHandlersExhausted(t, listHandler)
+}
+
+func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	newPP := mocks.NewMockPP(mockCtrl)
+	options := defaultHandleOptions()
+	regex := strings.Repeat("a", 49)
+	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile(regex)
+	options.AllowWholeWAFListDeleteOnShutdown = true
+
+	newPP.EXPECT().Noticef(pp.EmojiUserWarning,
+		"DELETE_ON_STOP is enabled, but "+
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
+			"the updater will keep the list and delete only items managed by this updater",
+		`"`+strings.Repeat("a", 48)+`..."`,
 	)
 	serveMux, h, ok := newHandleWithOptions(t, newPP, options)
 	require.True(t, ok)

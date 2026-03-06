@@ -76,7 +76,8 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 - Prefer a two-layer model: keep summary messages plain and compact, and put operational nuance (for example uncertainty or inconsistency risk) in follow-up details.
 - Keep summary and detail messages semantically aligned; details may add nuance but should not contradict summaries.
 - Use `%q` for parser and validation diagnostics on raw or untrusted inputs, such as environment values or parser tokens.
-- For advisory ignored-setting warnings, avoid assignment-like forms such as `KEY=%q`; prefer `KEY (%s)` where `%s` is a quoted preview value (possibly truncated).
+- For advisory values where exact text is not required for remediation (for example ignored or overridden settings), avoid assignment-like forms such as `KEY=%q`; prefer `KEY (%s)` where `%s` is a quoted preview value (truncated when long).
+- Keep exact non-truncated values in mismatch/validation diagnostics where full-fidelity strings are required for user remediation.
 - Continue to use `%s` for safe identifiers listed above.
 - Keep short operational `Noticef` and `Infof` messages without trailing periods.
 - Handle long fixed guidance text either by splitting string literals across lines or by using `//nolint:lll` when that keeps the message clearer.

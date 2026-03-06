@@ -1,7 +1,6 @@
 package api
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -17,6 +16,10 @@ type WAFListMeta struct {
 	Name        string
 	Description string
 }
+
+// Keep advisory value previews short in warning logs while preserving
+// full-fidelity values for mismatch diagnostics.
+const advisoryValuePreviewLimit = 48
 
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
@@ -106,7 +109,7 @@ func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
 		"DELETE_ON_STOP is enabled, but "+
 			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
 			"the updater will keep the list and delete only items managed by this updater",
-		DescribeFreeFormString(options.ManagedWAFListItemsCommentRegex.String()),
+		pp.QuotePreview(options.ManagedWAFListItemsCommentRegex.String(), advisoryValuePreviewLimit),
 	)
 	options.AllowWholeWAFListDeleteOnShutdown = false
 	return options
@@ -126,8 +129,5 @@ func (h CloudflareHandle) FlushCache() {
 
 // DescribeFreeFormString essentially quotes a string for printing.
 func DescribeFreeFormString(str string) string {
-	if str == "" {
-		return "empty"
-	}
-	return strconv.Quote(str)
+	return pp.QuoteOrEmptyLabel(str, "empty")
 }

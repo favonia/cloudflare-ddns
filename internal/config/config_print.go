@@ -2,10 +2,7 @@ package config
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
@@ -27,10 +24,7 @@ const itemTitleWidth = 28
 // escaping. The empty string gets a dedicated label because that is easier to
 // scan than two quote characters in logs.
 func describeLiteralText(s string) string {
-	if s == "" {
-		return "(empty)"
-	}
-	return strconv.Quote(s)
+	return pp.QuoteOrEmptyLabel(s, "(empty)")
 }
 
 // Ownership regex settings are RE2 regexes, not literal comments. Show non-empty
@@ -38,10 +32,7 @@ func describeLiteralText(s string) string {
 // readable on one line, and a quoted fallback when escaping or whitespace would
 // otherwise be ambiguous.
 func describeNonemptyCommentRegex(regex string) string {
-	if isHumanReadableRegex(regex) {
-		return regex
-	}
-	return strconv.Quote(regex)
+	return pp.QuoteIfNotHumanReadable(regex)
 }
 
 func describeDNSRecordCommentRegex(regex string) string {
@@ -56,19 +47,6 @@ func describeWAFListItemCommentRegex(regex string) string {
 		return "(empty regex; manages all WAF list items)"
 	}
 	return describeNonemptyCommentRegex(regex)
-}
-
-func isHumanReadableRegex(regex string) bool {
-	if strings.TrimSpace(regex) != regex {
-		return false
-	}
-	for _, r := range regex {
-		if unicode.IsGraphic(r) || r == ' ' {
-			continue
-		}
-		return false
-	}
-	return true
 }
 
 func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {

@@ -2,7 +2,6 @@ package config
 
 import (
 	"regexp"
-	"strconv"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -16,11 +15,7 @@ import (
 const ignoredSettingValuePreviewLimit = 48
 
 func describeIgnoredSettingValuePreview(value string) string {
-	runes := []rune(value)
-	if len(runes) > ignoredSettingValuePreviewLimit {
-		value = string(runes[:ignoredSettingValuePreviewLimit]) + "..."
-	}
-	return strconv.Quote(value)
+	return pp.QuotePreview(value, ignoredSettingValuePreviewLimit)
 }
 
 // ReadEnv calls the relevant readers to parse all relevant environment variables except
@@ -211,16 +206,18 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		}
 		if c.ProxiedExpression != "false" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"PROXIED=%s is ignored because no domains will be updated", c.ProxiedExpression)
+				"PROXIED (%s) is ignored because no domains will be updated",
+				describeIgnoredSettingValuePreview(c.ProxiedExpression))
 		}
 		if c.RecordComment != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"RECORD_COMMENT=%s is ignored because no domains will be updated", c.RecordComment)
+				"RECORD_COMMENT (%s) is ignored because no domains will be updated",
+				describeIgnoredSettingValuePreview(c.RecordComment))
 		}
 		if c.ManagedRecordsCommentRegex != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"MANAGED_RECORDS_COMMENT_REGEX=%s is ignored because no domains will be updated",
-				c.ManagedRecordsCommentRegex)
+				"MANAGED_RECORDS_COMMENT_REGEX (%s) is ignored because no domains will be updated",
+				describeIgnoredSettingValuePreview(c.ManagedRecordsCommentRegex))
 		}
 	}
 	if len(c.WAFLists) == 0 { // We are only updating domains.

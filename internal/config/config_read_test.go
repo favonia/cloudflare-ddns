@@ -341,9 +341,9 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", api.TTL(10000)),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED=%s is ignored because no domains will be updated", "true"),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT=%s is ignored because no domains will be updated", "hello"),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "MANAGED_RECORDS_COMMENT_REGEX=%s is ignored because no domains will be updated", "he"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("true")),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("hello")),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "MANAGED_RECORDS_COMMENT_REGEX (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("he")),
 				)
 			},
 		},
