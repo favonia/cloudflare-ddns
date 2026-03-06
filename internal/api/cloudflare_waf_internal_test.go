@@ -34,3 +34,19 @@ func TestStartDeletingWAFListItemsAsyncWithNoIDs(t *testing.T) {
 	)
 	require.True(t, ok)
 }
+
+func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, func() {
+		hintUnexpectedWAFListItemCommentAfterMutation(
+			pp.New(io.Discard, false, pp.Quiet),
+			WAFList{AccountID: "account", Name: "list"},
+			map[ID]string{},
+			[]WAFListItem{
+				{ID: "new-item", Comment: "expected"},
+			},
+			"expected",
+		)
+	})
+}
