@@ -148,27 +148,16 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 // We delete cached data in listListItems and listID when the underlying list
 // or its managed-item view may have changed, but we keep listLists so that we
 // do not have to re-query all lists under the same account.
+//
+// The flow is intentionally unified for both ownership modes. Whole-list mode
+// invalidates managed-item cache before fallback item deletion so fallback
+// never trusts stale managed-item views.
 func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
 ) WAFListCleanupCode {
-	if h.options.AllowWholeWAFListDeleteOnShutdown {
-		return h.finalCleanWAFListWithScope(ctx, ppfmt, list, expectedDescription, false, true)
-	}
+	tryDeleteWholeListFirst := h.options.AllowWholeWAFListDeleteOnShutdown
 
-	return h.finalCleanWAFListWithScope(ctx, ppfmt, list, expectedDescription, true, false)
-}
-
-const (
-	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in list %s were already deleted"
-	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in list %s were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; " +
-		"list content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
-)
-
-func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt pp.PP,
-	list WAFList, expectedDescription string, useManagedCache, tryDeleteWholeListFirst bool,
-) WAFListCleanupCode {
+	// Resolve list existence/ID first for both ownership modes.
 	listID, found, ok := h.WAFListID(ctx, ppfmt, list, expectedDescription)
 	if !ok {
 		return WAFListCleanupFailed
@@ -193,36 +182,27 @@ func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt 
 		} else {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm deletion of list %s; falling back to item deletion: %v", list.Describe(), err)
+			// Ensure fallback cleanup does not trust stale managed-item cache.
+			h.cache.listListItems.Delete(list)
 		}
 	}
 
-	return h.finalCleanWAFListItemsAsync(ctx, ppfmt, list, listID, useManagedCache)
-}
-
-func (h CloudflareHandle) finalCleanWAFListItemsAsync(ctx context.Context, ppfmt pp.PP,
-	list WAFList, listID ID, useManagedCache bool,
-) WAFListCleanupCode {
+	// Shared ownership always uses managed-item cache when present.
+	// Whole-list ownership reaches this block only after delete-list failure.
+	// In that case, cache was just invalidated above.
 	var items []WAFListItem
 	var cached bool
-	var ok bool
 
-	if useManagedCache {
-		if existing := h.cache.listListItems.Get(list); existing != nil {
-			items = *existing.Value()
-			cached = true
-		} else {
-			var allItems []WAFListItem
-			allItems, ok = h.listWAFListItemsByID(ctx, ppfmt, list, listID)
-			if !ok {
-				return WAFListCleanupFailed
-			}
-			items = h.cacheManagedWAFListItems(list, allItems)
-		}
+	if existing := h.cache.listListItems.Get(list); existing != nil {
+		items = *existing.Value()
+		cached = true
 	} else {
-		items, ok = h.listWAFListItemsByID(ctx, ppfmt, list, listID)
+		var allItems []WAFListItem
+		allItems, ok = h.listWAFListItemsByID(ctx, ppfmt, list, listID)
 		if !ok {
 			return WAFListCleanupFailed
 		}
+		items = h.cacheManagedWAFListItems(list, allItems)
 	}
 
 	if len(items) == 0 {
@@ -246,6 +226,14 @@ func (h CloudflareHandle) finalCleanWAFListItemsAsync(ctx context.Context, ppfmt
 	ppfmt.Noticef(pp.EmojiClear, finalWAFListManagedItemsDeletingMessage, list.Describe())
 	return WAFListCleanupUpdating
 }
+
+const (
+	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in list %s were already deleted"
+	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in list %s were already deleted (cached)"
+	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; " +
+		"list content may be inconsistent"
+	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
+)
 
 func (h CloudflareHandle) invalidateWAFListCleanupCache(list WAFList) {
 	h.cache.listListItems.Delete(list)

@@ -287,6 +287,42 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 }
 
+func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresStaleCache(t *testing.T) {
+	t.Parallel()
+
+	options := defaultHandleOptions()
+	options.AllowWholeWAFListDeleteOnShutdown = true
+	f := newCloudflareHarnessWithOptions(t, options)
+
+	listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
+	deleteListHandler := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
+	itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), nil)
+	deleteItemsHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil)
+
+	listHandler.setRequestLimit(1)
+	deleteListHandler.setRequestLimit(0)
+	// First ListListItems call primes cache; second call verifies fallback re-fetches.
+	itemsHandler.setRequestLimit(2)
+	deleteItemsHandler.setRequestLimit(0)
+
+	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description")
+	require.True(t, ok)
+	require.True(t, alreadyExisting)
+	require.False(t, cached)
+	require.Empty(t, items)
+
+	cleanupPP := f.newPP()
+	gomock.InOrder(
+		cleanupPP.EXPECT().Noticef(pp.EmojiError,
+			"Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+			"Managed items in list %s were already deleted", "account456/list"),
+	)
+	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	require.Equal(t, api.WAFListCleanupNoop, code)
+	assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
+}
+
 func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 	t.Parallel()
 
