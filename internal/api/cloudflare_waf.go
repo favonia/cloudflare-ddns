@@ -161,8 +161,9 @@ func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 const (
 	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in list %s were already deleted"
 	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in list %s were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; list content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage             = "Deleting managed items in list %s asynchronously"
+	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; " +
+		"list content may be inconsistent"
+	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
 )
 
 func (h CloudflareHandle) finalCleanWAFListWithScope(ctx context.Context, ppfmt pp.PP,

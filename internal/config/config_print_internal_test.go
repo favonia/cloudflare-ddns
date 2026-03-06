@@ -37,7 +37,25 @@ func TestDescribeLiteralText(t *testing.T) {
 	}
 }
 
-func TestDescribeCommentRegex(t *testing.T) {
+func TestDescribeDNSRecordCommentRegex(t *testing.T) {
+	t.Parallel()
+
+	const want = "(empty regex; manages all DNS records)"
+	if got := describeDNSRecordCommentRegex(""); got != want {
+		t.Fatalf("describeDNSRecordCommentRegex(\"\") = %q, want %q", got, want)
+	}
+}
+
+func TestDescribeWAFListItemCommentRegex(t *testing.T) {
+	t.Parallel()
+
+	const want = "(empty regex; manages all WAF list items)"
+	if got := describeWAFListItemCommentRegex(""); got != want {
+		t.Fatalf("describeWAFListItemCommentRegex(\"\") = %q, want %q", got, want)
+	}
+}
+
+func TestDescribeNonemptyCommentRegex(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -45,11 +63,6 @@ func TestDescribeCommentRegex(t *testing.T) {
 		regex string
 		want  string
 	}{
-		{
-			name:  "empty matches all comments",
-			regex: "",
-			want:  "(empty; matches all comments)",
-		},
 		{
 			name:  "readable regex stays raw",
 			regex: "^Created by Cloudflare DDNS$",
@@ -85,8 +98,8 @@ func TestDescribeCommentRegex(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if got := describeCommentRegex(test.regex); got != test.want {
-				t.Fatalf("describeCommentRegex(%q) = %q, want %q", test.regex, got, test.want)
+			if got := describeNonemptyCommentRegex(test.regex); got != test.want {
+				t.Fatalf("describeNonemptyCommentRegex(%q) = %q, want %q", test.regex, got, test.want)
 			}
 		})
 	}

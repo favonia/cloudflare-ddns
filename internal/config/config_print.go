@@ -33,18 +33,29 @@ func describeLiteralText(s string) string {
 	return strconv.Quote(s)
 }
 
-// Ownership regex settings are RE2 regexes, not literal comments. Show them in
-// the form humans usually read regexes: raw RE2 syntax when that stays
+// Ownership regex settings are RE2 regexes, not literal comments. Show non-empty
+// regexes in the form humans usually read regexes: raw RE2 syntax when that stays
 // readable on one line, and a quoted fallback when escaping or whitespace would
 // otherwise be ambiguous.
-func describeCommentRegex(regex string) string {
-	if regex == "" {
-		return "(empty; matches all comments)"
-	}
+func describeNonemptyCommentRegex(regex string) string {
 	if isHumanReadableRegex(regex) {
 		return regex
 	}
 	return strconv.Quote(regex)
+}
+
+func describeDNSRecordCommentRegex(regex string) string {
+	if regex == "" {
+		return "(empty regex; manages all DNS records)"
+	}
+	return describeNonemptyCommentRegex(regex)
+}
+
+func describeWAFListItemCommentRegex(regex string) string {
+	if regex == "" {
+		return "(empty regex; manages all WAF list items)"
+	}
+	return describeNonemptyCommentRegex(regex)
 }
 
 func isHumanReadableRegex(regex string) bool {
@@ -120,10 +131,10 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 		// These regexes select which existing DNS records and WAF list items this
 		// instance considers managed.
 		if managedRecordsCommentRegex != "" {
-			item("DNS record comment regex:", "%s", describeCommentRegex(managedRecordsCommentRegex))
+			item("DNS record comment regex:", "%s", describeDNSRecordCommentRegex(managedRecordsCommentRegex))
 		}
 		if managedWAFListItemsCommentRegex != "" {
-			item("WAF list item comment regex:", "%s", describeCommentRegex(managedWAFListItemsCommentRegex))
+			item("WAF list item comment regex:", "%s", describeWAFListItemCommentRegex(managedWAFListItemsCommentRegex))
 		}
 	}
 
