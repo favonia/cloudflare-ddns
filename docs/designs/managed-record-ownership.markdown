@@ -38,6 +38,22 @@ Only matched records participate in:
 
 Unmatched records are invisible to DNS mutation logic, so the updater may create a new managed record even if an unmanaged record already has the desired IP address.
 
+### Metadata Reconciliation for New Creates
+
+When DNS reconciliation needs to create new managed records, metadata is resolved per `(domain, record type)` unit from records that are about to be deleted in the same unit.
+
+- Scalar fields (`TTL`, `PROXIED`, `RECORD_COMMENT`):
+  - empty source set: use configured value
+  - unanimous source value: inherit source value
+  - non-unanimous source values: use configured value and emit one ambiguity warning per field
+- Tag field (`TAGS`):
+  - tag name is compared case-insensitively
+  - tag value is compared case-sensitively
+  - configured-default tags are sticky unless all sources omit them
+  - non-default tags require unanimity across sources to be inherited
+
+Duplicate records with the target IP are reduced deterministically: select one keeper, then delete the rest.
+
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.
