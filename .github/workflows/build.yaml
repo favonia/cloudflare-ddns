@@ -69,7 +69,7 @@ jobs:
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         id: build
         with:
           target: "minimal"
@@ -104,7 +104,7 @@ jobs:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
       - name: 🚀 Build and deploy Docker images with alpine
         if: ${{ github.event_name != 'release' }}
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         id: build-alpine
         with:
           target: "alpine"
