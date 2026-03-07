@@ -84,7 +84,8 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 func sameDNSRecordParams(left, right api.RecordParams) bool {
 	return left.TTL == right.TTL &&
 		left.Proxied == right.Proxied &&
-		left.Comment == right.Comment
+		left.Comment == right.Comment &&
+		sameTagsByPolicy(left.Tags, right.Tags)
 }
 
 func selectLowestRecordID(records []Record) int {
@@ -148,10 +149,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				ttlValues := make([]api.TTL, 0, len(matched))
 				proxiedValues := make([]bool, 0, len(matched))
 				commentValues := make([]string, 0, len(matched))
+				tagSets := make([][]string, 0, len(matched))
 				for _, candidate := range matched {
 					ttlValues = append(ttlValues, candidate.TTL)
 					proxiedValues = append(proxiedValues, candidate.Proxied)
 					commentValues = append(commentValues, candidate.Comment)
+					tagSets = append(tagSets, candidate.Tags)
 				}
 
 				resolvedTTL, ttlAmbiguous := resolveScalarValue(expectedParams.TTL, ttlValues)
@@ -171,6 +174,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 					TTL:     resolvedTTL,
 					Proxied: resolvedProxied,
 					Comment: resolvedComment,
+					Tags:    commonTags(tagSets),
 				}
 
 				matchingCandidates := make([]Record, 0, len(matched))
@@ -231,10 +235,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ttlValues := make([]api.TTL, 0, len(sourceRecords))
 	proxiedValues := make([]bool, 0, len(sourceRecords))
 	commentValues := make([]string, 0, len(sourceRecords))
+	tagSets := make([][]string, 0, len(sourceRecords))
 	for _, source := range sourceRecords {
 		ttlValues = append(ttlValues, source.TTL)
 		proxiedValues = append(proxiedValues, source.Proxied)
 		commentValues = append(commentValues, source.Comment)
+		tagSets = append(tagSets, source.Tags)
 	}
 	createTTL, ttlAmbiguous := resolveScalarValue(expectedParams.TTL, ttlValues)
 	createProxied, proxiedAmbiguous := resolveScalarValue(expectedParams.Proxied, proxiedValues)
@@ -252,6 +258,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		TTL:     createTTL,
 		Proxied: createProxied,
 		Comment: createComment,
+		Tags:    commonTags(tagSets),
 	}
 
 	for _, target := range targetsToCreate {

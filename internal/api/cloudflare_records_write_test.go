@@ -268,11 +268,18 @@ func TestUpdateRecord(t *testing.T) {
 
 func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithComment(t, mux, id, ipNet, domain, ip, "")
+	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, "", nil)
 }
 
 func newCreateRecordHandlerWithComment(
 	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string,
+) httpHandler {
+	t.Helper()
+	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, comment, nil)
+}
+
+func newCreateRecordHandlerWithCommentAndTags(
+	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string, tags []string,
 ) httpHandler {
 	t.Helper()
 
@@ -301,7 +308,8 @@ func newCreateRecordHandlerWithComment(
 				!assert.Equal(t, ip, record.Content) ||
 				!assert.Equal(t, 1, record.TTL) ||
 				!assert.False(t, *record.Proxied) ||
-				!assert.Equal(t, comment, record.Comment) {
+				!assert.Equal(t, comment, record.Comment) ||
+				!assert.Equal(t, tags, record.Tags) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -375,6 +383,32 @@ func TestCreateRecord(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateRecordWithTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+		Tags:    []string{"team:ddns", "Env:Prod"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+	lrh.setRequestLimit(0)
+	crh := newCreateRecordHandlerWithCommentAndTags(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "managed",
+		[]string{"team:ddns", "Env:Prod"})
+	crh.setRequestLimit(1)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+	assertHandlersExhausted(t, zh, lrh, crh)
 }
 
 func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {

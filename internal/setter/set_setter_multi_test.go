@@ -189,6 +189,7 @@ func TestSetIPsCreateInheritsMetadataFromDeletedDuplicate(t *testing.T) {
 		TTL:     300,
 		Proxied: true,
 		Comment: "from-duplicate",
+		Tags:    []string{"env:prod", "Team:Alpha"},
 	}
 
 	ctx, h := newSetterHarness(t)

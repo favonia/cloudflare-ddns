@@ -43,6 +43,7 @@ type RecordParams struct {
 	TTL     TTL
 	Proxied bool
 	Comment string
+	Tags    []string
 }
 
 // Record represents a DNS record.

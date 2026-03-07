@@ -197,6 +197,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 				TTL:     TTL(rawRecord.TTL),
 				Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
 				Comment: rawRecord.Comment,
+				Tags:    rawRecord.Tags,
 			},
 		}
 		managedRecords = append(managedRecords, record)
@@ -287,6 +288,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		TTL:     TTL(r.TTL),
 		Proxied: updatedProxied,
 		Comment: r.Comment,
+		Tags:    r.Tags,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
@@ -329,6 +331,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		TTL:     params.TTL.Int(),
 		Proxied: &params.Proxied,
 		Comment: params.Comment,
+		Tags:    params.Tags,
 	}
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), ps)
