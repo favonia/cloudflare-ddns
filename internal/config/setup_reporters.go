@@ -36,7 +36,7 @@ func classifyShoutrrrURLSpace(rawURL string) shoutrrrSpaceClassification {
 	urlLikeCount := 0
 	isFirstToken := true
 
-	for _, token := range strings.Split(rawURL, " ") {
+	for token := range strings.SplitSeq(rawURL, " ") {
 		token = strings.TrimSpace(token)
 		if token == "" {
 			continue
@@ -70,6 +70,8 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 
 	for _, rawURL := range urls {
 		switch classifyShoutrrrURLSpace(rawURL) {
+		case shoutrrrSpaceClean:
+			// No suspicious spaces detected.
 		case shoutrrrSpaceWarn:
 			sawWarning = true
 		case shoutrrrSpaceFail:
