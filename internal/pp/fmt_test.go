@@ -86,19 +86,23 @@ func TestPrint(t *testing.T) {
 	}
 }
 
-func TestSupress(t *testing.T) {
+func TestOnceAndSuppress(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
 	fmt := pp.New(&buf, true, pp.Info)
 
-	fmt.Suppress(pp.ID(0))
 	fmt.NoticeOncef(pp.ID(0), pp.EmojiAlarm, "hello %s", "world")
-	fmt.InfoOncef(pp.ID(1), pp.EmojiHint, "hello %s", "galaxy")
-	fmt.NoticeOncef(pp.ID(1), pp.EmojiBullet, "hello %s", "universe")
-	fmt.NoticeOncef(pp.ID(2), pp.EmojiBye, "aloha")
+	fmt.NoticeOncef(pp.ID(0), pp.EmojiAlarm, "hello %s", "do not print")
 
-	require.Equal(t, "💡 hello galaxy\n👋 aloha\n", buf.String())
+	fmt.Suppress(pp.ID(1))
+	fmt.InfoOncef(pp.ID(1), pp.EmojiHint, "hello %s", "do not print")
+
+	fmt.InfoOncef(pp.ID(2), pp.EmojiHint, "hello %s", "galaxy")
+	fmt.NoticeOncef(pp.ID(2), pp.EmojiBullet, "hello %s", "universe")
+	fmt.NoticeOncef(pp.ID(3), pp.EmojiBye, "aloha")
+
+	require.Equal(t, "⏰ hello world\n💡 hello galaxy\n👋 aloha\n", buf.String())
 }
 
 func TestNewDefault(t *testing.T) {

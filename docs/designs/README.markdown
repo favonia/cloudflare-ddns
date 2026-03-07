@@ -32,3 +32,4 @@ When writing or editing a design note:
 - [`managed-record-ownership.markdown`](managed-record-ownership.markdown): DNS record ownership and `MANAGED_RECORDS_COMMENT_REGEX`.
 - [`managed-waf-item-ownership.markdown`](managed-waf-item-ownership.markdown): WAF list item ownership, `WAF_LIST_ITEM_COMMENT`, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`.
 - [`local-iface-multi-address.markdown`](local-iface-multi-address.markdown): `local.iface` multi-address semantics.
+- [`shoutrrr-input-format.markdown`](shoutrrr-input-format.markdown): `SHOUTRRR` parsing and suspicious single-line space handling.

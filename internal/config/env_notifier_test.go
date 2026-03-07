@@ -67,12 +67,155 @@ func TestSetupReportersNotifier(t *testing.T) {
 				require.Equal(t, []string{"Generic", "Pushover"}, s.ServiceDescriptions)
 			},
 		},
+		"multiple folded by compose": {
+			shoutrrr: "generic+https://example.com/api/v1/postStuff pushover://shoutrrr:token@userKey",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
+		"mixed newline and folded": {
+			shoutrrr: "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey ifttt://hey/?events=1",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
+		"single URL with raw space": {
+			shoutrrr: "generic+https://example.com/hook?title=hello world",
+			ok:       true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserWarning,
+					"SHOUTRRR contains space characters")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"Percent-encode spaces to suppress this warning")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				ns, ok := nt.(notifier.Composed)
+				require.True(t, ok)
+				require.Len(t, ns, 1)
+				s, ok := ns[0].(notifier.Shoutrrr)
+				require.True(t, ok)
+				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
+			},
+		},
+		"one URL-like token plus trailing junk": {
+			shoutrrr: "pushover://shoutrrr:token@userKey not-a-url",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
+		"first token not URL-like": {
+			shoutrrr: "not-a-url generic+https://example.com/api/v1/postStuff",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
 		"invalid": {
 			shoutrrr: "meow-meow-meow://cute",
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support added in version 1.12.0")
 				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
+		"warn line plus fail line": {
+			shoutrrr: "generic+https://example.com/hook?title=hello world\npushover://shoutrrr:token@userKey not-a-url",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
+		"repeated spaces": {
+			shoutrrr: "generic+https://example.com/api/v1/postStuff  pushover://shoutrrr:token@userKey",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
