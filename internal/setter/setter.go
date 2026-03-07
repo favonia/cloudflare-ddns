@@ -81,6 +81,22 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 	return true
 }
 
+func sameDNSRecordParams(left, right api.RecordParams) bool {
+	return left.TTL == right.TTL &&
+		left.Proxied == right.Proxied &&
+		left.Comment == right.Comment
+}
+
+func selectLowestRecordID(records []Record) int {
+	selected := 0
+	for i := 1; i < len(records); i++ {
+		if records[i].ID < records[selected].ID {
+			selected = i
+		}
+	}
+	return selected
+}
+
 // SetIPs updates the IP addresses of one domain to the given target set.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
@@ -121,10 +137,69 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// 1. keep one matched record if available,
 	// 2. otherwise recycle one stale record via update,
 	// 3. otherwise create a new record.
+	warnings := newAmbiguityWarnings()
+	unit := recordType + " records of " + domainDescription
+	duplicateMatchedRecords := make([]Record, 0)
+	targetsToCreate := make([]netip.Addr, 0)
 	for _, target := range targets {
 		if matched := matchedByIP[target]; len(matched) > 0 {
-			// Reserve one matching record; remaining matches are duplicates cleaned up later.
-			matchedByIP[target] = matched[1:]
+			keepIndex := 0
+			if len(matched) > 1 {
+				ttlValues := make([]api.TTL, 0, len(matched))
+				proxiedValues := make([]bool, 0, len(matched))
+				commentValues := make([]string, 0, len(matched))
+				for _, candidate := range matched {
+					ttlValues = append(ttlValues, candidate.TTL)
+					proxiedValues = append(proxiedValues, candidate.Proxied)
+					commentValues = append(commentValues, candidate.Comment)
+				}
+
+				resolvedTTL, ttlAmbiguous := resolveScalarValue(expectedParams.TTL, ttlValues)
+				resolvedProxied, proxiedAmbiguous := resolveScalarValue(expectedParams.Proxied, proxiedValues)
+				resolvedComment, commentAmbiguous := resolveScalarValue(expectedParams.Comment, commentValues)
+				if ttlAmbiguous {
+					warnings.warn(ppfmt, unit, "ttl", len(ttlValues), "configured value")
+				}
+				if proxiedAmbiguous {
+					warnings.warn(ppfmt, unit, "proxied", len(proxiedValues), "configured value")
+				}
+				if commentAmbiguous {
+					warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured value")
+				}
+
+				resolvedParams := api.RecordParams{
+					TTL:     resolvedTTL,
+					Proxied: resolvedProxied,
+					Comment: resolvedComment,
+				}
+
+				matchingCandidates := make([]Record, 0, len(matched))
+				for _, candidate := range matched {
+					if sameDNSRecordParams(candidate.RecordParams, resolvedParams) {
+						matchingCandidates = append(matchingCandidates, candidate)
+					}
+				}
+
+				if len(matchingCandidates) > 0 {
+					keepID := matchingCandidates[selectLowestRecordID(matchingCandidates)].ID
+					for i, candidate := range matched {
+						if candidate.ID == keepID {
+							keepIndex = i
+							break
+						}
+					}
+				} else {
+					keepIndex = selectLowestRecordID(matched)
+				}
+			}
+
+			for i, record := range matched {
+				if i == keepIndex {
+					continue
+				}
+				duplicateMatchedRecords = append(duplicateMatchedRecords, record)
+			}
+			matchedByIP[target] = nil
 			continue
 		}
 
@@ -146,7 +221,41 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			continue
 		}
 
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, expectedParams)
+		targetsToCreate = append(targetsToCreate, target)
+	}
+
+	sourceRecords := make([]Record, 0, len(staleRecords)+len(duplicateMatchedRecords))
+	sourceRecords = append(sourceRecords, staleRecords...)
+	sourceRecords = append(sourceRecords, duplicateMatchedRecords...)
+
+	ttlValues := make([]api.TTL, 0, len(sourceRecords))
+	proxiedValues := make([]bool, 0, len(sourceRecords))
+	commentValues := make([]string, 0, len(sourceRecords))
+	for _, source := range sourceRecords {
+		ttlValues = append(ttlValues, source.TTL)
+		proxiedValues = append(proxiedValues, source.Proxied)
+		commentValues = append(commentValues, source.Comment)
+	}
+	createTTL, ttlAmbiguous := resolveScalarValue(expectedParams.TTL, ttlValues)
+	createProxied, proxiedAmbiguous := resolveScalarValue(expectedParams.Proxied, proxiedValues)
+	createComment, commentAmbiguous := resolveScalarValue(expectedParams.Comment, commentValues)
+	if ttlAmbiguous {
+		warnings.warn(ppfmt, unit, "ttl", len(ttlValues), "configured value")
+	}
+	if proxiedAmbiguous {
+		warnings.warn(ppfmt, unit, "proxied", len(proxiedValues), "configured value")
+	}
+	if commentAmbiguous {
+		warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured value")
+	}
+	createParams := api.RecordParams{
+		TTL:     createTTL,
+		Proxied: createProxied,
+		Comment: createComment,
+	}
+
+	for _, target := range targetsToCreate {
+		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, createParams)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -172,15 +281,13 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 
 	// Delete all duplicate matched records even if they are up to date.
 	// This has lower priority than deleting the stale records.
-	for _, target := range targets {
-		for _, r := range matchedByIP[target] {
-			if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
-				ppfmt.Noticef(pp.EmojiDeletion,
-					"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
-			}
-			if ctx.Err() != nil {
-				return ResponseUpdated
-			}
+	for _, r := range duplicateMatchedRecords {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
+			ppfmt.Noticef(pp.EmojiDeletion,
+				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
+		}
+		if ctx.Err() != nil {
+			return ResponseUpdated
 		}
 	}
 

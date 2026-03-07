@@ -12,6 +12,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -176,4 +177,67 @@ func TestSetIPs(t *testing.T) {
 			require.Equal(t, tc.resp, resp)
 		})
 	}
+}
+
+func TestSetIPsCreateInheritsMetadataFromDeletedDuplicate(t *testing.T) {
+	t.Parallel()
+
+	fixture := newDNSRecordFixture()
+	targetCreate := netip.MustParseAddr("::3")
+	record4 := api.ID("record4")
+	inherited := api.RecordParams{
+		TTL:     300,
+		Proxied: true,
+		Comment: "from-duplicate",
+	}
+
+	ctx, h := newSetterHarness(t)
+
+	gomock.InOrder(
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
+			dnsRecord(fixture.record2, fixture.ip1, inherited),
+		}, true, true),
+		h.mockPP.EXPECT().Noticef(
+			pp.EmojiWarning,
+			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"AAAA records of sub.test.org", "ttl", 2, "configured value",
+		),
+		h.mockPP.EXPECT().Noticef(
+			pp.EmojiWarning,
+			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"AAAA records of sub.test.org", "proxied", 2, "configured value",
+		),
+		h.mockPP.EXPECT().Noticef(
+			pp.EmojiWarning,
+			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"AAAA records of sub.test.org", "comment", 2, "configured value",
+		),
+		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, targetCreate, inherited, record4, true),
+		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
+		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
+	)
+
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
+	require.Equal(t, setter.ResponseUpdated, resp)
+}
+
+func TestSetIPsDuplicateKeeperUsesLowestID(t *testing.T) {
+	t.Parallel()
+
+	fixture := newDNSRecordFixture()
+	ctx, h := newSetterHarness(t)
+
+	gomock.InOrder(
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
+			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
+		}, true, true),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
+		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
+	)
+
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	require.Equal(t, setter.ResponseUpdated, resp)
 }
