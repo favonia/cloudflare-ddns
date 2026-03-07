@@ -48,6 +48,8 @@ Configuration is intentionally split into one raw phase and several runtime-faci
 
 Constructed heartbeat and notifier services are runtime services, not config slices. The current bootstrap path wires them separately from `BuiltConfig`.
 
+A key lifecycle invariant is that reporter services are initialized before config or handle setup failure paths, so startup-failure reporting uses the same heartbeat/notifier instances as normal runtime reporting.
+
 This split keeps the composition root in `cmd/ddns/` honest about dependencies:
 
 - handle construction consumes handle config
