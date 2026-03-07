@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"io"
+	"net/netip"
 	"regexp"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(
 			WAFList{AccountID: "account", Name: "list"},
 			map[ID]string{},
 			[]WAFListItem{
-				{ID: "new-item", Comment: "expected"},
+				{ID: "new-item", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "expected"},
 			},
 			"expected",
 		)
