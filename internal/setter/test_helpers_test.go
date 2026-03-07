@@ -310,16 +310,17 @@ func expectWAFListMutation(
 		calls = append(calls, expectWAFListCreatedNotice(p, list))
 	}
 
-	calls = append(calls, m.EXPECT().
-		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, want.createComment).
-		Return(want.createOK))
-	if !want.createOK {
-		calls = append(calls, expectWAFListErrorNotice(p, list))
-		gomock.InOrder(calls...)
-		return
+	if len(want.createPrefixes) > 0 || !want.createOK {
+		calls = append(calls, m.EXPECT().
+			CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, want.createComment).
+			Return(want.createOK))
+		if !want.createOK {
+			calls = append(calls, expectWAFListErrorNotice(p, list))
+			gomock.InOrder(calls...)
+			return
+		}
+		calls = append(calls, expectWAFCreateNotices(p, list, want.createPrefixes)...)
 	}
-
-	calls = append(calls, expectWAFCreateNotices(p, list, want.createPrefixes)...)
 	calls = append(calls, expectWAFListDelete(ctx, p, m, list, want.listDescription, want.createComment, wafItemIDs(want.deleteItems), want.deleteOK))
 	if !want.deleteOK {
 		calls = append(calls, expectWAFListErrorNotice(p, list))
