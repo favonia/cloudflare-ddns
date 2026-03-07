@@ -55,7 +55,7 @@ func generateUpdateHeartbeatMessage(ipNet ipnet.Type, ips []netip.Addr, s setter
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
-				"Failed to set %s (%s) of %s",
+				"Could not confirm update of %s (%s) for %s",
 				ipNet.RecordType(), ipDescription, pp.Join(domains),
 			)},
 		}
@@ -86,7 +86,7 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterR
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Failed to properly update ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+			"Could not confirm update of ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 		)
 	}
 
@@ -134,7 +134,7 @@ func generateFinalDeleteHeartbeatMessage(ipNet ipnet.Type, s setterResponses) he
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
-				"Failed to delete %s of %s",
+				"Could not confirm deletion of %s of %s",
 				ipNet.RecordType(), pp.Join(domains),
 			)},
 		}
@@ -164,7 +164,7 @@ func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) not
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Failed to properly delete ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains),
+			"Could not confirm deletion of ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains),
 		)
 	}
 

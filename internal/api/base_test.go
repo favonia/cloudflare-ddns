@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"net/netip"
 	"slices"
 	"testing"
 	"testing/quick"
@@ -9,6 +10,21 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 )
+
+func TestIDString(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "record123", api.ID("record123").String())
+}
+
+func TestWAFListDescribe(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "account456/list-name", api.WAFList{
+		AccountID: "account456",
+		Name:      "list-name",
+	}.Describe())
+}
 
 func TestCompareWAFList(t *testing.T) {
 	t.Parallel()
@@ -27,4 +43,18 @@ func TestCompareWAFList(t *testing.T) {
 		},
 		nil,
 	))
+}
+
+func TestWAFListItemKeepsComment(t *testing.T) {
+	t.Parallel()
+
+	item := api.WAFListItem{
+		ID:      "item1",
+		Prefix:  netip.MustParsePrefix("10.0.0.1/32"),
+		Comment: "managed",
+	}
+
+	require.Equal(t, api.ID("item1"), item.ID)
+	require.Equal(t, netip.MustParsePrefix("10.0.0.1/32"), item.Prefix)
+	require.Equal(t, "managed", item.Comment)
 }

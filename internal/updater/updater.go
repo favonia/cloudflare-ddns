@@ -139,7 +139,7 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, "")
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, c.WAFListItemComment)
 			}),
 		)
 	}

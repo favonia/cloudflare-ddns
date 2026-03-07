@@ -4,6 +4,8 @@ package config_test
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +20,14 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
+
+func quotedIgnoredValuePreview(value string) string {
+	runes := []rune(value)
+	if len(runes) > 48 {
+		value = string(runes[:48]) + "..."
+	}
+	return strconv.Quote(value)
+}
 
 func unsetAll(t *testing.T) {
 	t.Helper()
@@ -35,6 +45,8 @@ func unsetAll(t *testing.T) {
 		"RECORD_COMMENT",
 		"MANAGED_RECORDS_COMMENT_REGEX",
 		"WAF_LIST_DESCRIPTION",
+		"WAF_LIST_ITEM_COMMENT",
+		"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX",
 		"DETECTION_TIMEOUT",
 		"UPDATE_TIMEOUT",
 		"HEALTHCHECKS",
@@ -96,6 +108,7 @@ func TestBuildConfig(t *testing.T) {
 
 	keyProxied := "PROXIED"
 	keyManagedRecordsCommentRegex := "MANAGED_RECORDS_COMMENT_REGEX"
+	keyManagedWAFListItemsCommentRegex := "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX"
 
 	type builtConfig struct {
 		handle    *config.HandleConfig
@@ -151,7 +164,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true will immediately delete all domains and WAF lists when UPDATE_CRON=@once"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once would immediately delete managed domains and WAF content"),
 				)
 			},
 		},
@@ -298,8 +311,10 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:            0,
-						ManagedRecordsCommentRegex: regexp.MustCompile("he"),
+						CacheExpiration:                   0,
+						ManagedRecordsCommentRegex:        regexp.MustCompile("he"),
+						ManagedWAFListItemsCommentRegex:   nil,
+						AllowWholeWAFListDeleteOnShutdown: false,
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -326,9 +341,9 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", api.TTL(10000)),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED=%s is ignored because no domains will be updated", "true"),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT=%s is ignored because no domains will be updated", "hello"),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "MANAGED_RECORDS_COMMENT_REGEX=%s is ignored because no domains will be updated", "he"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "PROXIED (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("true")),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "RECORD_COMMENT (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("hello")),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "MANAGED_RECORDS_COMMENT_REGEX (%s) is ignored because no domains will be updated", quotedIgnoredValuePreview("he")),
 				)
 			},
 		},
@@ -348,8 +363,10 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:            0,
-						ManagedRecordsCommentRegex: regexp.MustCompile(`^hello-[0-9]+$`),
+						CacheExpiration:                   0,
+						ManagedRecordsCommentRegex:        regexp.MustCompile(`^hello-[0-9]+$`),
+						ManagedWAFListItemsCommentRegex:   nil,
+						AllowWholeWAFListDeleteOnShutdown: false,
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -421,6 +438,97 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"managed-waf-item-regex/valid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				WAFListItemComment:              "managed-123",
+				ManagedWAFListItemsCommentRegex: `^managed-[0-9]+$`,
+				DetectionTimeout:                5 * time.Second,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{ //nolint:exhaustruct
+						ManagedWAFListItemsCommentRegex: regexp.MustCompile(`^managed-[0-9]+$`),
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
+					TTL:                api.TTLAuto,
+					WAFListItemComment: "managed-123",
+					DetectionTimeout:   5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"managed-waf-item-regex/invalid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				ManagedWAFListItemsCommentRegex: "(",
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, keyManagedWAFListItemsCommentRegex+"=%q is invalid: %v", "(", gomock.Any()),
+				)
+			},
+		},
+		"managed-waf-item-regex/mismatch": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                             api.TTLAuto,
+				ProxiedExpression:               "false",
+				WAFListItemComment:              "hello",
+				ManagedWAFListItemsCommentRegex: "^world$",
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q", "hello", "^world$"),
+				)
+			},
+		},
 		"ignored/waf": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:      true,
@@ -460,7 +568,67 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "WAF_LIST_DESCRIPTION=%s is ignored because no WAF lists will be updated", "My list"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_DESCRIPTION (%s) is ignored because WAF_LISTS is empty", `"My list"`),
+				)
+			},
+		},
+		"ignored/waf/quoted-preview": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart:                   true,
+				WAFListDescription:              strings.Repeat("a", 48),
+				WAFListItemComment:              strings.Repeat("b", 49),
+				ManagedWAFListItemsCommentRegex: strings.Repeat(".", 49),
+				DetectionTimeout:                5 * time.Second,
+				Provider: map[ipnet.Type]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{ //nolint:exhaustruct
+						ManagedWAFListItemsCommentRegex: regexp.MustCompile(strings.Repeat(".", 49)),
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					WAFListDescription: strings.Repeat("a", 48),
+					WAFListItemComment: strings.Repeat("b", 49),
+					DetectionTimeout:   5 * time.Second,
+					Provider: map[ipnet.Type]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Type][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				wafListDescription := strings.Repeat("a", 48)
+				wafListItemComment := strings.Repeat("b", 49)
+				managedWAFListItemsCommentRegex := strings.Repeat(".", 49)
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_DESCRIPTION (%s) is ignored because WAF_LISTS is empty",
+						quotedIgnoredValuePreview(wafListDescription)),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF_LIST_ITEM_COMMENT (%s) is ignored because WAF_LISTS is empty",
+						quotedIgnoredValuePreview(wafListItemComment)),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because WAF_LISTS is empty",
+						quotedIgnoredValuePreview(managedWAFListItemsCommentRegex)),
 				)
 			},
 		},
@@ -586,12 +754,18 @@ func TestBuildConfig(t *testing.T) {
 				require.NotNil(t, builtConfig.Lifecycle)
 				require.NotNil(t, builtConfig.Update)
 				require.NotNil(t, builtConfig.Handle.Options.ManagedRecordsCommentRegex)
+				require.NotNil(t, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex)
 				require.Equal(t, raw.ManagedRecordsCommentRegex, builtConfig.Handle.Options.ManagedRecordsCommentRegex.String())
+				require.Equal(t, raw.ManagedWAFListItemsCommentRegex, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex.String())
 
 				expectedHandle := *tc.expected.handle
 				if expectedHandle.Options.ManagedRecordsCommentRegex == nil {
 					expectedHandle.Options.ManagedRecordsCommentRegex = regexp.MustCompile("")
 				}
+				if expectedHandle.Options.ManagedWAFListItemsCommentRegex == nil {
+					expectedHandle.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("")
+				}
+				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown = expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
 				require.Equal(t, tc.expected.update, builtConfig.Update)

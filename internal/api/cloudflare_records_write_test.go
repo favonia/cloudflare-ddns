@@ -75,7 +75,7 @@ func TestDeleteRecord(t *testing.T) {
 			2, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to delete a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 	} {
@@ -191,10 +191,10 @@ func TestUpdateRecord(t *testing.T) {
 			params, params,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to update a stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatched-attributes": {
@@ -343,7 +343,7 @@ func TestCreateRecord(t *testing.T) {
 			2, 1, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to add a new %s record of %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v", "AAAA", "sub.test.org", gomock.Any())
 			},
 		},
 	} {
@@ -384,8 +384,10 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:            defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPP()
 
@@ -421,8 +423,10 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:            defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,

@@ -100,3 +100,15 @@ func TestSupress(t *testing.T) {
 
 	require.Equal(t, "💡 hello galaxy\n👋 aloha\n", buf.String())
 }
+
+func TestNewDefault(t *testing.T) {
+	t.Parallel()
+
+	var buf strings.Builder
+	fmt := pp.NewDefault(&buf)
+
+	fmt.Infof(pp.EmojiStar, "hello")
+	fmt.Noticef(pp.EmojiStar, "world")
+
+	require.Equal(t, "🌟 hello\n🌟 world\n", buf.String())
+}

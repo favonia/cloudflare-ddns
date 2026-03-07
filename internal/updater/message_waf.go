@@ -23,7 +23,7 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to set list(s) " + pp.Join(domains)},
+			Lines: []string{"Could not confirm update of WAF list(s) " + pp.Join(domains)},
 		}
 	}
 
@@ -44,7 +44,7 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Failed to properly update WAF list(s) ", pp.EnglishJoin(domains))
+		fragments = append(fragments, "Could not confirm update of WAF list(s) ", pp.EnglishJoin(domains))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -82,18 +82,18 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to clear list(s) " + pp.Join(domains)},
+			Lines: []string{"Could not confirm cleanup of WAF list(s) " + pp.Join(domains)},
 		}
 	}
 
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, "Clearing list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Cleaning WAF list(s) "+pp.Join(domains))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, "Cleared list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Cleaned WAF list(s) "+pp.Join(domains))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
@@ -103,22 +103,22 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Failed to properly clear WAF list(s) "+pp.EnglishJoin(domains))
+		fragments = append(fragments, "Could not confirm cleanup of WAF list(s) "+pp.EnglishJoin(domains))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments, "Clearing WAF list(s) ", pp.EnglishJoin(domains))
+			fragments = append(fragments, "Cleaning WAF list(s) ", pp.EnglishJoin(domains))
 		} else {
-			fragments = append(fragments, "; clearing ", pp.EnglishJoin(domains))
+			fragments = append(fragments, "; cleaning ", pp.EnglishJoin(domains))
 		}
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments, "Cleared WAF list(s) "+pp.EnglishJoin(domains))
+			fragments = append(fragments, "Cleaned WAF list(s) "+pp.EnglishJoin(domains))
 		} else {
-			fragments = append(fragments, "; cleared ", pp.EnglishJoin(domains))
+			fragments = append(fragments, "; cleaned ", pp.EnglishJoin(domains))
 		}
 	}
 

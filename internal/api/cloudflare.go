@@ -1,7 +1,6 @@
 package api
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -18,6 +17,10 @@ type WAFListMeta struct {
 	Description string
 }
 
+// Keep advisory value previews short in warning logs while preserving
+// full-fidelity values for mismatch diagnostics.
+const advisoryValuePreviewLimit = 48
+
 // CloudflareCache holds the previous repsonses from the Cloudflare API.
 type CloudflareCache = struct {
 	// domains to zone IDs
@@ -29,6 +32,7 @@ type CloudflareCache = struct {
 	listLists *ttlcache.Cache[ID, *[]WAFListMeta] // account IDs to list names to list IDs and other meta information
 	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
 	//
+	// This is one managed-item view per handle/list pair.
 	listListItems *ttlcache.Cache[WAFList, *[]WAFListItem] // lists to list items
 }
 
@@ -64,6 +68,8 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		return nil, false
 	}
 
+	options = sanitizeHandleOptions(ppfmt, options)
+
 	// set the base URL (mostly for testing)
 	if t.BaseURL != "" {
 		handle.BaseURL = t.BaseURL
@@ -88,6 +94,27 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	return h, true
 }
 
+func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
+	if !options.AllowWholeWAFListDeleteOnShutdown {
+		return options
+	}
+
+	// Whole-list final deletion is only allowed for the empty default selector.
+	// A nil selector is treated as the empty default for backward compatibility.
+	if options.ManagedWAFListItemsCommentRegex == nil || options.ManagedWAFListItemsCommentRegex.String() == "" {
+		return options
+	}
+
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"DELETE_ON_STOP is enabled, but "+
+			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
+			"the updater will keep the list and delete only items managed by this updater",
+		pp.QuotePreview(options.ManagedWAFListItemsCommentRegex.String(), advisoryValuePreviewLimit),
+	)
+	options.AllowWholeWAFListDeleteOnShutdown = false
+	return options
+}
+
 // FlushCache flushes the API cache.
 func (h CloudflareHandle) FlushCache() {
 	h.cache.listZones.DeleteAll()
@@ -102,8 +129,5 @@ func (h CloudflareHandle) FlushCache() {
 
 // DescribeFreeFormString essentially quotes a string for printing.
 func DescribeFreeFormString(str string) string {
-	if str == "" {
-		return "empty"
-	}
-	return strconv.Quote(str)
+	return pp.QuoteOrEmptyLabel(str, "empty")
 }

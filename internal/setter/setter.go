@@ -115,7 +115,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				recycled.RecordParams, expectedParams,
 			); !ok {
 				ppfmt.Noticef(pp.EmojiError,
-					"Failed to properly update %s records of %s; records might be inconsistent",
+					"Could not confirm update of %s records of %s; records might be inconsistent",
 					recordType, domainDescription)
 				return ResponseFailed
 			}
@@ -129,7 +129,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, expectedParams)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -141,7 +141,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	for _, r := range staleRecords {
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to properly update %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
@@ -212,7 +212,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 	}
 	if !allOK {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to properly delete %s records of %s; records might be inconsistent",
+			"Could not confirm deletion of %s records of %s; records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseFailed
 	}
@@ -222,6 +222,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 
 // SetWAFList updates a WAF list.
 //
+// The handle returns only items managed by this updater under its bound
+// ownership selector.
+//
 // For each IP family:
 // - managed + targets: keep ranges covering any target, add smallest prefixes for uncovered targets
 // - managed + empty target set: detection failed, preserve existing family ranges
@@ -229,7 +232,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type][]netip.Addr, itemComment string,
 ) ResponseCode {
-	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription)
+	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription, itemComment)
 	if !ok {
 		return ResponseFailed
 	}
@@ -301,7 +304,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
 	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate, itemComment) {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to properly update the list %s; its content may be inconsistent", list.Describe())
+			"Could not confirm update of the list %s; its content may be inconsistent", list.Describe())
 		return ResponseFailed
 	}
 	for _, item := range itemsToCreate {
@@ -313,8 +316,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	for _, item := range itemsToDelete {
 		idsToDelete = append(idsToDelete, item.ID)
 	}
-	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete) {
-		ppfmt.Noticef(pp.EmojiError, "Failed to properly update the list %s; its content may be inconsistent",
+	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, itemComment, idsToDelete) {
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of the list %s; its content may be inconsistent",
 			list.Describe())
 		return ResponseFailed
 	}
@@ -326,17 +329,18 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	return ResponseUpdated
 }
 
-// FinalClearWAFList delegates to [api.Handle.FinalClearWAFListAsync].
+// FinalClearWAFList removes managed WAF content during shutdown.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
 ) ResponseCode {
-	deleted, ok := s.Handle.FinalClearWAFListAsync(ctx, ppfmt, list, listDescription)
-	switch {
-	case ok && deleted:
-		ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
+	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription) {
+	case api.WAFListCleanupNoop:
+		return ResponseNoop
+	case api.WAFListCleanupUpdated:
 		return ResponseUpdated
-	case ok && !deleted:
-		ppfmt.Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", list.Describe())
+	case api.WAFListCleanupUpdating:
 		return ResponseUpdating
+	case api.WAFListCleanupFailed:
+		return ResponseFailed
 	default:
 		return ResponseFailed
 	}

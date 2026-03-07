@@ -2,10 +2,7 @@ package config
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
@@ -18,7 +15,7 @@ import (
 )
 
 // Keep titles aligned for the longest built-in key:
-// "DNS record comment regex:".
+// "WAF list item comment regex:".
 const itemTitleWidth = 28
 
 // These helpers format values for the human-facing startup summary.
@@ -27,37 +24,29 @@ const itemTitleWidth = 28
 // escaping. The empty string gets a dedicated label because that is easier to
 // scan than two quote characters in logs.
 func describeLiteralText(s string) string {
-	if s == "" {
-		return "(empty)"
-	}
-	return strconv.Quote(s)
+	return pp.QuoteOrEmptyLabel(s, "(empty)")
 }
 
-// Ownership regex settings are RE2 regexes, not literal comments. Show them in
-// the form humans usually read regexes: raw RE2 syntax when that stays
+// Ownership regex settings are RE2 regexes, not literal comments. Show non-empty
+// regexes in the form humans usually read regexes: raw RE2 syntax when that stays
 // readable on one line, and a quoted fallback when escaping or whitespace would
 // otherwise be ambiguous.
-func describeCommentRegex(regex string) string {
-	if regex == "" {
-		return "(empty; matches all comments)"
-	}
-	if isHumanReadableRegex(regex) {
-		return regex
-	}
-	return strconv.Quote(regex)
+func describeNonemptyCommentRegex(regex string) string {
+	return pp.QuoteIfNotHumanReadable(regex)
 }
 
-func isHumanReadableRegex(regex string) bool {
-	if strings.TrimSpace(regex) != regex {
-		return false
+func describeDNSRecordCommentRegex(regex string) string {
+	if regex == "" {
+		return "(empty regex; manages all DNS records)"
 	}
-	for _, r := range regex {
-		if unicode.IsGraphic(r) || r == ' ' {
-			continue
-		}
-		return false
+	return describeNonemptyCommentRegex(regex)
+}
+
+func describeWAFListItemCommentRegex(regex string) string {
+	if regex == "" {
+		return "(empty regex; manages all WAF list items)"
 	}
-	return true
+	return describeNonemptyCommentRegex(regex)
 }
 
 func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain.Domain) {
@@ -109,12 +98,22 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	if handle.Options.ManagedRecordsCommentRegex != nil {
 		managedRecordsCommentRegex = handle.Options.ManagedRecordsCommentRegex.String()
 	}
+	managedWAFListItemsCommentRegex := ""
+	if handle.Options.ManagedWAFListItemsCommentRegex != nil {
+		managedWAFListItemsCommentRegex = handle.Options.ManagedWAFListItemsCommentRegex.String()
+	}
 
 	// Hide inactive filters to keep the default output focused.
-	if managedRecordsCommentRegex != "" {
+	if managedRecordsCommentRegex != "" || managedWAFListItemsCommentRegex != "" {
 		section("Ownership filters:")
-		// This regex selects which existing DNS records this instance considers managed.
-		item("DNS record comment regex:", "%s", describeCommentRegex(managedRecordsCommentRegex))
+		// These regexes select which existing DNS records and WAF list items this
+		// instance considers managed.
+		if managedRecordsCommentRegex != "" {
+			item("DNS record comment regex:", "%s", describeDNSRecordCommentRegex(managedRecordsCommentRegex))
+		}
+		if managedWAFListItemsCommentRegex != "" {
+			item("WAF list item comment regex:", "%s", describeWAFListItemCommentRegex(managedWAFListItemsCommentRegex))
+		}
 	}
 
 	section("Scheduling:")
@@ -134,6 +133,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	}
 	item("DNS record comment:", "%s", describeLiteralText(update.RecordComment))
 	item("WAF list description:", "%s", describeLiteralText(update.WAFListDescription))
+	item("WAF list item comment:", "%s", describeLiteralText(update.WAFListItemComment))
 
 	section("Timeouts:")
 	item("IP detection:", "%v", update.DetectionTimeout)

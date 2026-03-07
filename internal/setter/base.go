@@ -61,7 +61,7 @@ type Setter interface {
 		itemComment string,
 	) ResponseCode
 
-	// FinalClearWAFList deletes a WAF list or starts clearing it asynchronously.
+	// FinalClearWAFList removes managed WAF content during shutdown.
 	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,

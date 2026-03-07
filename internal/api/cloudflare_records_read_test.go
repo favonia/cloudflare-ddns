@@ -64,7 +64,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 }
 
 func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
-	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint: unparam
+	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint:unparam // Keep the handler signature aligned with the test inputs.
 ) httpHandler {
 	t.Helper()
 
@@ -275,8 +275,10 @@ func TestListRecords(t *testing.T) {
 			t.Parallel()
 
 			f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-				CacheExpiration:            defaultHandleOptions().CacheExpiration,
-				ManagedRecordsCommentRegex: tc.managedRecordsCommentRegex,
+				CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+				ManagedRecordsCommentRegex:        tc.managedRecordsCommentRegex,
+				ManagedWAFListItemsCommentRegex:   nil,
+				AllowWholeWAFListDeleteOnShutdown: true,
 			})
 
 			zh := newZonesHandler(t, f.serveMux, tc.zones)
@@ -331,8 +333,10 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:            defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex: managedRecordsCommentRegex,
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{

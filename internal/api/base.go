@@ -52,11 +52,30 @@ type Record struct {
 	RecordParams //nolint:embeddedstructfieldcheck // parameters go last
 }
 
-// WAFListItem bundles an ID and an IP range, representing an item in a WAF list.
+// WAFListItem represents one WAF list item: ID, IP range, and original comment.
 type WAFListItem struct {
 	ID
 	netip.Prefix
+
+	Comment string
 }
+
+// WAFListCleanupCode summarizes final shutdown cleanup for one WAF list.
+type WAFListCleanupCode int
+
+const (
+	// WAFListCleanupNoop means the managed WAF content was already gone.
+	WAFListCleanupNoop WAFListCleanupCode = iota
+
+	// WAFListCleanupUpdated means the managed WAF content was removed synchronously.
+	WAFListCleanupUpdated
+
+	// WAFListCleanupUpdating means WAF cleanup was started asynchronously.
+	WAFListCleanupUpdating
+
+	// WAFListCleanupFailed means shutdown cleanup did not finish successfully.
+	WAFListCleanupFailed
+)
 
 // DeletionMode tells the deletion updater whether a careful re-reading of lists
 // must be enforced if an error happens.
@@ -72,8 +91,10 @@ const (
 // HandleOptions bundles handle-scoped settings that affect cache correctness
 // and other per-handle behavior.
 type HandleOptions struct {
-	CacheExpiration            time.Duration
-	ManagedRecordsCommentRegex *regexp.Regexp
+	CacheExpiration                   time.Duration
+	ManagedRecordsCommentRegex        *regexp.Regexp
+	ManagedWAFListItemsCommentRegex   *regexp.Regexp
+	AllowWholeWAFListDeleteOnShutdown bool
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.
@@ -100,28 +121,32 @@ type Handle interface {
 	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
-	// ListWAFListItems retrieves a WAF list with IP ranges.
-	// It creates an empty WAF list with IP ranges if it does not already exist yet.
-	// The first return value is the ID of the list.
+	// ListWAFListItems returns managed WAF list items with their IP ranges.
+	// It creates the list if it does not exist.
+	//
+	// The managed-item selector is bound into the handle options because
+	// implementations may cache filtered items by WAF-list scope.
+	// expectedItemComment is the configured comment target for newly created
+	// managed list items; implementations may use it for advisory mismatch hints.
+	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription, expectedItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
-	// FinalClearWAFListAsync deletes or clears a WAF list with IP ranges, assuming we will not
-	// update or create the list.
-	// The handle should not be reused for any further update operations after calling this method.
+	// FinalCleanWAFList removes managed WAF content during shutdown.
+	// Implementations choose whole-list or managed-item cleanup from the handle's
+	// bound ownership policy.
 	//
-	// The first return value indicates whether the list was deleted: If it's true, then it's deleted.
-	// If it's false, then it's being cleared asynchronously instead of being deleted.
-	//
-	// The cache from list names to list IDs will not be cleared even if all deletion attempts fail.
-	FinalClearWAFListAsync(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-	) (bool, bool)
+	// The handle should not be reused for any further update operations after
+	// calling this method.
+	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+		expectedDescription string,
+	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes IP ranges from a WAF list.
 	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		ids []ID) bool
+		expectedItemComment string, ids []ID) bool
 
 	// CreateWAFListItems adds IP ranges to a WAF list.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,

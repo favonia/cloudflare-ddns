@@ -5,11 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -26,30 +24,31 @@ func TestFinalClearWAFList(t *testing.T) {
 		prepareMocks prepareSetterMocks
 	}{
 		{
+			name: "already-cleaned/response-noop",
+			resp: setter.ResponseNoop,
+			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupNoop)
+			},
+		},
+		{
 			name: "list-exists/delete-list/response-updated",
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				gomock.InOrder(
-					m.EXPECT().FinalClearWAFListAsync(ctx, p, wafList, listDescription).Return(true, true),
-					p.EXPECT().Noticef(pp.EmojiDeletion, "The list %s was deleted", wafList.Describe()),
-				)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupUpdated)
 			},
 		},
 		{
 			name: "list-exists/clear-list-async/response-updating",
 			resp: setter.ResponseUpdating,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				gomock.InOrder(
-					m.EXPECT().FinalClearWAFListAsync(ctx, p, wafList, listDescription).Return(false, true),
-					p.EXPECT().Noticef(pp.EmojiClear, "The list %s is being cleared (asynchronously)", wafList.Describe()),
-				)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupUpdating)
 			},
 		},
 		{
 			name: "list-exists/delete-and-clear/response-failed",
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalClearWAFListAsync(ctx, p, wafList, listDescription).Return(false, false)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupFailed)
 			},
 		},
 	}
