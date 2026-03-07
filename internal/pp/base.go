@@ -37,13 +37,18 @@ type PP interface {
 	// Noticef formats and prints a message at the notice level.
 	Noticef(emoji Emoji, format string, args ...any)
 
-	// Suppress suppresses all future calls to [InfoOncef] and [NoticeOncef]
-	// with the same message ID.
+	// Suppress marks a message ID as seen.
+	//
+	// The seen-state is shared with [InfoOncef] and [NoticeOncef].
 	Suppress(id ID)
 
-	// InfoOncef formats and prints an info.
+	// InfoOncef formats and prints an info at most once for a message ID.
+	//
+	// The once-state is shared with [NoticeOncef] and [Suppress].
 	InfoOncef(id ID, emoji Emoji, format string, args ...any)
 
-	// NoticeOncef formats and prints a notice.
+	// NoticeOncef formats and prints a notice at most once for a message ID.
+	//
+	// The once-state is shared with [InfoOncef] and [Suppress].
 	NoticeOncef(id ID, emoji Emoji, format string, args ...any)
 }

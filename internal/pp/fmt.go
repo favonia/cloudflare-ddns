@@ -58,25 +58,32 @@ func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 	f.printf(Notice, emoji, format, args...)
 }
 
-// Suppress sets the hint in the internal map to be "shown".
+// Suppress marks the message ID in the internal map to be "shown".
 func (f formatter) Suppress(id ID) {
-	f.messageShown[id] = true
+	_ = f.markIfUnseen(id)
 }
 
-// InfoOncef calls [Infof] for if the message ID is new, and ignore it otherwise.
+// InfoOncef calls [Infof] if the message ID is new, and ignores it otherwise.
 func (f formatter) InfoOncef(id ID, emoji Emoji, format string, args ...any) {
-	if !f.messageShown[id] {
+	if f.markIfUnseen(id) {
 		f.Infof(emoji, format, args...)
-		f.messageShown[id] = true
 	}
 }
 
-// NoticeOncef calls [Noticf] for if the message ID is new, and ignore it otherwise.
+// NoticeOncef calls [Noticef] if the message ID is new, and ignores it otherwise.
 func (f formatter) NoticeOncef(id ID, emoji Emoji, format string, args ...any) {
-	if !f.messageShown[id] {
+	if f.markIfUnseen(id) {
 		f.Noticef(emoji, format, args...)
-		f.messageShown[id] = true
 	}
+}
+
+// markIfUnseen marks the message ID in the internal map as seen if it is new.
+func (f formatter) markIfUnseen(id ID) bool {
+	if f.messageShown[id] {
+		return false
+	}
+	f.messageShown[id] = true
+	return true
 }
 
 // printf composes the message body and forwards it to [output].
