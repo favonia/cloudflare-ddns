@@ -38,6 +38,72 @@ Only matched records participate in:
 
 Unmatched records are invisible to DNS mutation logic, so the updater may create a new managed record even if an unmanaged record already has the desired IP address.
 
+### Metadata Reconciliation for New Creates
+
+When DNS reconciliation needs to satisfy unmatched targets, metadata is resolved per `(domain, record type)` unit from stale records only.
+
+The flow is intentionally split into two independent paths:
+
+1. Matched-path reconciliation: reduce multiple matched records for one target to one keeper.
+2. Stale-to-new reconciliation: derive metadata from stale records, then satisfy unmatched targets.
+
+In stale-to-new reconciliation, recycling a stale record is only an optimization of delete+create to reduce downtime; the target metadata is always the reconciled stale-source metadata.
+
+- Scalar fields (`TTL`, `PROXIED`, `RECORD_COMMENT`):
+  - empty source set: use configured value
+  - unanimous source value: inherit source value
+  - non-unanimous source values: use configured value and emit one ambiguity warning per field
+- Tag field (`TAGS`):
+  - tag name is compared case-insensitively
+  - tag value is compared case-sensitively
+  - configured-default tags are sticky unless all sources omit them
+  - non-default tags require unanimity across sources to be inherited
+
+Duplicate records with the target IP are reduced deterministically: select one keeper, then delete the rest.
+
+### Interruption Risk Tiers
+
+For timeout-sensitive mutation ordering, DNS reconciliation uses the following risk tiers:
+
+- `R0`: missing target coverage
+- `R1`: wrong-IP exposure (managed records on non-target IPs)
+- `R2a`: proxied mismatch (expected `PROXIED=false`, actual `true`)
+- `R2b`: proxied mismatch (expected `PROXIED=true`, actual `false`)
+- `R2c`: TTL drift
+- `R2d`: comment/tags drift
+- `R3`: duplicate-hygiene residual risk
+
+Runtime ordering intentionally stays coarse for maintainability. The implementation
+does not schedule separate sub-stages for each `R2*` subtype.
+
+### Timeout-Aware Mutation Ordering
+
+DNS reconciliation follows interruption-aware ordering so partial execution under timeout/failure is still useful:
+
+1. Satisfy unmatched targets first (recycle stale records, then create if needed).
+2. Delete stale leftovers.
+3. Update kept matched records if metadata reconciliation requires it.
+4. Delete duplicate matched records that do not match resolved metadata.
+5. Delete duplicate matched records that already match resolved metadata.
+
+This ordering prioritizes higher-impact prefix improvements (`R0`, then `R1`)
+before lower-tier metadata and hygiene risks.
+
+### API Contract Boundary
+
+`setter` and `api.Handle` use the following DNS mutation contract:
+
+- `UpdateRecord` reconciles one managed record to desired state for both:
+  - content/IP
+  - metadata in scope (`TTL`, `PROXIED`, `RECORD_COMMENT`, `TAGS`)
+- `currentParams` in `UpdateRecord` is diagnostic context only.
+- desired-state mutation source is `expectedParams`.
+
+This contract is intentionally explicit because historical versions used an
+IP-only update path that preserved metadata. Any future contract change here
+must update interface comments, implementation comments, and API write tests
+together.
+
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.

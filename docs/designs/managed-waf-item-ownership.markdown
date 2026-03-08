@@ -37,6 +37,25 @@ Only matched items participate in:
 
 Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the target IP address.
 
+### Metadata Reconciliation for New Creates
+
+WAF reconciliation resolves create metadata independently per `(list, IP family)` unit.
+
+- In this scope, the only managed metadata field is item `comment`.
+- Create comment resolution uses family-local items scheduled for deletion:
+  - empty source set: use configured `WAF_LIST_ITEM_COMMENT`
+  - unanimous source comment: inherit source comment
+  - non-unanimous source comments: use configured comment and emit one ambiguity warning for that family field
+
+Execution order remains create-before-delete to reduce temporary coverage gaps.
+
+This ordering is intentional for interruption resilience:
+
+1. create missing coverage first,
+2. then delete stale items.
+
+Under timeouts or ambiguous network failures, partial execution therefore favors coverage over cleanup.
+
 ## Shutdown Deletion Semantics
 
 `DELETE_ON_STOP` has two WAF modes:
