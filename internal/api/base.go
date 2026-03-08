@@ -43,6 +43,7 @@ type RecordParams struct {
 	TTL     TTL
 	Proxied bool
 	Comment string
+	Tags    []string
 }
 
 // Record represents a DNS record.
@@ -55,6 +56,12 @@ type Record struct {
 // WAFListItem represents one WAF list item: ID, IP range, and original comment.
 type WAFListItem struct {
 	ID      ID
+	Prefix  netip.Prefix
+	Comment string
+}
+
+// WAFListCreateItem represents one WAF list item to create.
+type WAFListCreateItem struct {
 	Prefix  netip.Prefix
 	Comment string
 }
@@ -149,7 +156,7 @@ type Handle interface {
 
 	// CreateWAFListItems adds IP ranges to a WAF list.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		items []netip.Prefix, comment string) bool
+		items []WAFListCreateItem) bool
 }
 
 // An Auth contains authentication information.

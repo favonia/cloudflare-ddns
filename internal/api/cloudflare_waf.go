@@ -3,8 +3,9 @@ package api
 import (
 	"context"
 	"errors"
-	"net/netip"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
@@ -94,8 +95,33 @@ func (h CloudflareHandle) cachedManagedWAFListItemCommentsByID(list WAFList) (ma
 	return snapshotManagedWAFListItemCommentsByID(*cached.Value()), true
 }
 
+func asExpectedWAFListItemCommentsSet(comments []string) map[string]bool {
+	result := make(map[string]bool, len(comments))
+	for _, comment := range comments {
+		result[comment] = true
+	}
+	return result
+}
+
+func expectedWAFListItemCommentsSetFromCreateItems(items []WAFListCreateItem) map[string]bool {
+	comments := make([]string, 0, len(items))
+	for _, item := range items {
+		comments = append(comments, item.Comment)
+	}
+	return asExpectedWAFListItemCommentsSet(comments)
+}
+
+func describeExpectedWAFListItemComments(expectedComments map[string]bool) string {
+	comments := make([]string, 0, len(expectedComments))
+	for comment := range expectedComments {
+		comments = append(comments, DescribeFreeFormString(comment))
+	}
+	slices.Sort(comments)
+	return strings.Join(comments, ", ")
+}
+
 func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
-	beforeCommentsByID map[ID]string, managedItems []WAFListItem, expectedComment string,
+	beforeCommentsByID map[ID]string, managedItems []WAFListItem, expectedComments map[string]bool,
 ) {
 	mismatchedCount := 0
 	var sampleID ID
@@ -104,10 +130,10 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 	for _, item := range managedItems {
 		beforeComment, hadBefore := beforeCommentsByID[item.ID]
 		if hadBefore {
-			if item.Comment == beforeComment || item.Comment == expectedComment {
+			if item.Comment == beforeComment || expectedComments[item.Comment] {
 				continue
 			}
-		} else if item.Comment == expectedComment {
+		} else if expectedComments[item.Comment] {
 			continue
 		}
 
@@ -124,12 +150,12 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		"After updating list %s, item ID %s has comment %s, which is unexpected given "+
-			"WAF_LIST_ITEM_COMMENT (%s) and pre-update cache state. "+
+			"expected item comments (%s) and pre-update cache state. "+
 			"Found %d managed WAF list item(s) with this anomaly.",
 		list.Describe(),
 		sampleID,
 		DescribeFreeFormString(sampleComment),
-		DescribeFreeFormString(expectedComment),
+		describeExpectedWAFListItemComments(expectedComments),
 		mismatchedCount,
 	)
 }
@@ -334,7 +360,12 @@ func (h CloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	list WAFList, listID ID,
 ) ([]WAFListItem, bool) {
 	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
-		cloudflare.ListListItemsParams{ID: string(listID)}, //nolint:exhaustruct
+		cloudflare.ListListItemsParams{
+			ID:      string(listID),
+			Search:  "",
+			PerPage: 0,
+			Cursor:  "",
+		},
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve items in the list %s: %v", list.Describe(), err)
@@ -520,7 +551,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 			list,
 			beforeCommentsByID,
 			managedItems,
-			expectedItemComment,
+			asExpectedWAFListItemCommentsSet([]string{expectedItemComment}),
 		)
 	}
 	return true
@@ -529,7 +560,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 // CreateWAFListItems calls cloudflare.CreateListItems.
 func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, expectedDescription string,
-	itemsToCreate []netip.Prefix, comment string,
+	itemsToCreate []WAFListCreateItem,
 ) bool {
 	if len(itemsToCreate) == 0 {
 		return true
@@ -544,10 +575,13 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	rawItemsToCreate := make([]cloudflare.ListItemCreateRequest, 0, len(itemsToCreate))
 	for _, item := range itemsToCreate {
-		formattedPrefix := ipnet.DescribePrefixOrIP(item)
-		rawItemsToCreate = append(rawItemsToCreate, cloudflare.ListItemCreateRequest{ //nolint:exhaustruct
-			IP:      &formattedPrefix,
-			Comment: comment,
+		formattedPrefix := ipnet.DescribePrefixOrIP(item.Prefix)
+		rawItemsToCreate = append(rawItemsToCreate, cloudflare.ListItemCreateRequest{
+			IP:       &formattedPrefix,
+			Redirect: nil,
+			Hostname: nil,
+			ASN:      nil,
+			Comment:  item.Comment,
 		})
 	}
 
@@ -578,7 +612,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 			list,
 			beforeCommentsByID,
 			managedItems,
-			comment,
+			expectedWAFListItemCommentsSetFromCreateItems(itemsToCreate),
 		)
 	}
 	return true

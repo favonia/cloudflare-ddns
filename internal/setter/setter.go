@@ -16,6 +16,32 @@ type setter struct {
 	Handle api.Handle
 }
 
+type warningKey struct {
+	unit   string
+	field  string
+	reason string
+}
+
+type ambiguityWarnings struct {
+	emitted map[warningKey]bool
+}
+
+func newAmbiguityWarnings() ambiguityWarnings {
+	return ambiguityWarnings{emitted: make(map[warningKey]bool)}
+}
+
+func (w ambiguityWarnings) warn(ppfmt pp.PP, unit, field string, count int, fallback string) {
+	key := warningKey{unit: unit, field: field, reason: "ambiguous"}
+	if w.emitted[key] {
+		return
+	}
+	w.emitted[key] = true
+	ppfmt.Noticef(pp.EmojiWarning,
+		"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+		unit, field, count, fallback,
+	)
+}
+
 // New creates a new Setter against one handle-bound ownership scope.
 func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	return setter{Handle: handle}, true
@@ -232,6 +258,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string, detectedIPs map[ipnet.Type][]netip.Addr, itemComment string,
 ) ResponseCode {
+	type wafFamilyPlan struct {
+		createPrefixes []netip.Prefix
+		createComment  string
+		deleteItems    []api.WAFListItem
+	}
+
 	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(ctx, ppfmt, list, listDescription, itemComment)
 	if !ok {
 		return ResponseFailed
@@ -240,9 +272,11 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 	}
 
-	var itemsToDelete []api.WAFListItem
-	var itemsToCreate []netip.Prefix
+	warnings := newAmbiguityWarnings()
+	// Plan each family independently, then consume plans in a fixed family order.
+	plans := make(map[ipnet.Type]wafFamilyPlan, ipnet.NetworkCount)
 	for ipNet := range ipnet.All {
+		var plan wafFamilyPlan
 		targets, managed := detectedIPs[ipNet]
 		if managed && len(targets) == 0 {
 			continue // detection was attempted but failed; do nothing
@@ -257,7 +291,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 			// Unmanaged family: remove all existing items of this family.
 			if !managed {
-				itemsToDelete = append(itemsToDelete, item)
+				plan.deleteItems = append(plan.deleteItems, item)
 				continue
 			}
 
@@ -271,7 +305,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 				}
 			}
 			if !covered {
-				itemsToDelete = append(itemsToDelete, item)
+				plan.deleteItems = append(plan.deleteItems, item)
 			}
 		}
 
@@ -279,20 +313,38 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		// managed target ends up covered by at least one list item.
 		for _, target := range targets {
 			if !coveredTargets[target] {
-				itemsToCreate = append(itemsToCreate,
+				plan.createPrefixes = append(plan.createPrefixes,
 					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipNet]).Masked())
 			}
 		}
+
+		slices.SortFunc(plan.createPrefixes, netip.Prefix.Compare)
+		plan.createPrefixes = slices.Compact(plan.createPrefixes)
+
+		commentValues := make([]string, 0, len(plan.deleteItems))
+		for _, item := range plan.deleteItems {
+			commentValues = append(commentValues, item.Comment)
+		}
+		resolvedComment, ambiguousComment := resolveScalarValue(itemComment, commentValues)
+		if ambiguousComment {
+			unit := "WAF list " + list.Describe() + " " + ipNet.Describe()
+			warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured comment")
+		}
+		plan.createComment = resolvedComment
+		plans[ipNet] = plan
 	}
 
-	// Canonicalize mutation order so WAF updates are deterministic across runs and tests.
-	slices.SortFunc(itemsToCreate, netip.Prefix.Compare)
-	itemsToCreate = slices.Compact(itemsToCreate)
+	var itemsToDelete []api.WAFListItem
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		itemsToDelete = append(itemsToDelete, plans[ipNet].deleteItems...)
+	}
 	slices.SortFunc(itemsToDelete, func(i, j api.WAFListItem) int {
 		return cmp.Or(i.Prefix.Compare(j.Prefix), cmp.Compare(i.ID, j.ID))
 	})
 
-	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
+	itemsToCreateCount := len(plans[ipnet.IP4].createPrefixes) + len(plans[ipnet.IP6].createPrefixes)
+
+	if itemsToCreateCount == 0 && len(itemsToDelete) == 0 {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", list.Describe())
 		} else {
@@ -302,14 +354,30 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
-	if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate, itemComment) {
-		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm update of the list %s; its content may be inconsistent", list.Describe())
-		return ResponseFailed
+	itemsToCreate := make([]api.WAFListCreateItem, 0, itemsToCreateCount)
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		plan := plans[ipNet]
+		for _, prefix := range plan.createPrefixes {
+			itemsToCreate = append(itemsToCreate, api.WAFListCreateItem{
+				Prefix:  prefix,
+				Comment: plan.createComment,
+			})
+		}
 	}
-	for _, item := range itemsToCreate {
-		ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %s",
-			ipnet.DescribePrefixOrIP(item), list.Describe())
+	slices.SortFunc(itemsToCreate, func(left, right api.WAFListCreateItem) int {
+		return cmp.Or(left.Prefix.Compare(right.Prefix), cmp.Compare(left.Comment, right.Comment))
+	})
+
+	if len(itemsToCreate) > 0 {
+		if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate) {
+			ppfmt.Noticef(pp.EmojiError,
+				"Could not confirm update of the list %s; its content may be inconsistent", list.Describe())
+			return ResponseFailed
+		}
+		for _, item := range itemsToCreate {
+			ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				ipnet.DescribePrefixOrIP(item.Prefix), list.Describe())
+		}
 	}
 
 	idsToDelete := make([]api.ID, 0, len(itemsToDelete))

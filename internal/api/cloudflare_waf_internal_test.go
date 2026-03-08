@@ -47,7 +47,7 @@ func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(
 			[]WAFListItem{
 				{ID: "new-item", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "expected"},
 			},
-			"expected",
+			map[string]bool{"expected": true},
 		)
 	})
 }

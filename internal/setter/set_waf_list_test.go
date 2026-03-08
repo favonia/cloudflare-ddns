@@ -14,6 +14,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -393,13 +394,21 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					readCall := h.mockHandle.EXPECT().
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription, "").
 						Return(permutedItems, true, false, true)
-					createCall := h.mockHandle.EXPECT().
-						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, "").
-						Return(true)
 					deleteCall := h.mockHandle.EXPECT().
 						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, "", scenario.wantDeleteID).
 						Return(true)
-					gomock.InOrder(readCall, createCall, deleteCall)
+					if len(scenario.wantCreate) == 0 {
+						gomock.InOrder(readCall, deleteCall)
+					} else {
+						expectedCreateItems := make([]api.WAFListCreateItem, 0, len(scenario.wantCreate))
+						for _, prefix := range scenario.wantCreate {
+							expectedCreateItems = append(expectedCreateItems, api.WAFListCreateItem{Prefix: prefix, Comment: ""})
+						}
+						createCall := h.mockHandle.EXPECT().
+							CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, expectedCreateItems).
+							Return(true)
+						gomock.InOrder(readCall, createCall, deleteCall)
+					}
 
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -426,4 +435,110 @@ func rotateItems[T any](items []T, shift int) []T {
 	rotated = append(rotated, items[shift:]...)
 	rotated = append(rotated, items[:shift]...)
 	return rotated
+}
+
+func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
+	t.Parallel()
+
+	const listDescription = "My List"
+	const configuredComment = "configured"
+	wafList := api.WAFList{AccountID: "account", Name: "list"}
+
+	ip4 := netip.MustParseAddr("10.0.0.1")
+	stale4 := wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "stale-ip4", comment: "inherit-me"})
+
+	t.Run("unanimous-stale-comment-is-inherited", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4}, true, false, true),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
+
+	t.Run("non-unanimous-stale-comments-fallback-to-configured-and-warn-once", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		stale4b := wafItem(wafItemFixture{prefix: "30.0.0.0/24", id: "stale-ip4b", comment: "different"})
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4, stale4b}, true, false, true),
+			h.mockPP.EXPECT().Noticef(
+				pp.EmojiWarning,
+				"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+				"WAF list "+wafList.Describe()+" IPv4", "comment", 2, "configured comment",
+			),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: configuredComment},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID, stale4b.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"30.0.0.0/24", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
+
+	t.Run("mixed-family-stale-comments-use-single-create-call-with-structured-items", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		ip6 := netip.MustParseAddr("2001:db8::1")
+		stale6 := wafItem(wafItemFixture{prefix: "2001:db8:ffff::/48", id: "stale-ip6", comment: "inherit-v6"})
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4, stale6}, true, false, true),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
+					{Prefix: netip.MustParsePrefix("2001:db8::/64"), Comment: "inherit-v6"},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"2001:db8::/64", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID, stale6.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"2001:db8:ffff::/48", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, ip6), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
 }

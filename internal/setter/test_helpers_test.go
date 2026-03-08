@@ -3,6 +3,7 @@ package setter_test
 import (
 	"context"
 	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -253,6 +254,7 @@ type wafListMutationExpectation struct {
 	items           []api.WAFListItem
 	alreadyExisting bool
 	cached          bool
+	createItems     []api.WAFListCreateItem
 	createPrefixes  []netip.Prefix
 	createComment   string
 	createOK        bool
@@ -303,6 +305,16 @@ func expectWAFListMutation(
 	list api.WAFList,
 	want wafListMutationExpectation,
 ) {
+	createItems := slices.Clone(want.createItems)
+	if len(createItems) == 0 {
+		for _, prefix := range want.createPrefixes {
+			createItems = append(createItems, api.WAFListCreateItem{
+				Prefix:  prefix,
+				Comment: want.createComment,
+			})
+		}
+	}
+
 	calls := []any{
 		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, want.items, want.alreadyExisting, want.cached, true),
 	}
@@ -310,16 +322,17 @@ func expectWAFListMutation(
 		calls = append(calls, expectWAFListCreatedNotice(p, list))
 	}
 
-	calls = append(calls, m.EXPECT().
-		CreateWAFListItems(ctx, p, list, want.listDescription, want.createPrefixes, want.createComment).
-		Return(want.createOK))
-	if !want.createOK {
-		calls = append(calls, expectWAFListErrorNotice(p, list))
-		gomock.InOrder(calls...)
-		return
+	if len(createItems) > 0 || !want.createOK {
+		calls = append(calls, m.EXPECT().
+			CreateWAFListItems(ctx, p, list, want.listDescription, createItems).
+			Return(want.createOK))
+		if !want.createOK {
+			calls = append(calls, expectWAFListErrorNotice(p, list))
+			gomock.InOrder(calls...)
+			return
+		}
+		calls = append(calls, expectWAFCreateNotices(p, list, wafListCreatePrefixes(createItems))...)
 	}
-
-	calls = append(calls, expectWAFCreateNotices(p, list, want.createPrefixes)...)
 	calls = append(calls, expectWAFListDelete(ctx, p, m, list, want.listDescription, want.createComment, wafItemIDs(want.deleteItems), want.deleteOK))
 	if !want.deleteOK {
 		calls = append(calls, expectWAFListErrorNotice(p, list))
@@ -329,6 +342,14 @@ func expectWAFListMutation(
 
 	calls = append(calls, expectWAFDeleteNotices(p, list, want.deleteItems)...)
 	gomock.InOrder(calls...)
+}
+
+func wafListCreatePrefixes(items []api.WAFListCreateItem) []netip.Prefix {
+	prefixes := make([]netip.Prefix, 0, len(items))
+	for _, item := range items {
+		prefixes = append(prefixes, item.Prefix)
+	}
+	return prefixes
 }
 
 func expectWAFListCreatedNotice(p *mocks.MockPP, list api.WAFList) any {

@@ -85,17 +85,17 @@ func (c *MockHandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, 
 }
 
 // CreateWAFListItems mocks base method.
-func (m *MockHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string, items []netip.Prefix, comment string) bool {
+func (m *MockHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, expectedDescription string, items []api.WAFListCreateItem) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateWAFListItems", ctx, ppfmt, list, expectedDescription, items, comment)
+	ret := m.ctrl.Call(m, "CreateWAFListItems", ctx, ppfmt, list, expectedDescription, items)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // CreateWAFListItems indicates an expected call of CreateWAFListItems.
-func (mr *MockHandleMockRecorder) CreateWAFListItems(ctx, ppfmt, list, expectedDescription, items, comment any) *MockHandleCreateWAFListItemsCall {
+func (mr *MockHandleMockRecorder) CreateWAFListItems(ctx, ppfmt, list, expectedDescription, items any) *MockHandleCreateWAFListItemsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWAFListItems", reflect.TypeOf((*MockHandle)(nil).CreateWAFListItems), ctx, ppfmt, list, expectedDescription, items, comment)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWAFListItems", reflect.TypeOf((*MockHandle)(nil).CreateWAFListItems), ctx, ppfmt, list, expectedDescription, items)
 	return &MockHandleCreateWAFListItemsCall{Call: call}
 }
 
@@ -111,13 +111,13 @@ func (c *MockHandleCreateWAFListItemsCall) Return(arg0 bool) *MockHandleCreateWA
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *MockHandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) bool) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []netip.Prefix, string) bool) *MockHandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) bool) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
