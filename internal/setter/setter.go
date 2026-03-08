@@ -42,6 +42,14 @@ func (w ambiguityWarnings) warn(ppfmt pp.PP, unit, field string, count int, fall
 	)
 }
 
+func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit, field string) {
+	ppfmt.Noticef(pp.EmojiImpossible,
+		"Found duplicate canonical tags in metadata reconciliation for %s field %q; "+
+			"this should not happen and please report it at %s",
+		unit, field, pp.IssueReportingURL,
+	)
+}
+
 // New creates a new Setter against one handle-bound ownership scope.
 func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
 	return setter{Handle: handle}, true
@@ -54,9 +62,15 @@ type Record struct {
 }
 
 // partitionRecords partitions records into desired-target buckets and stale ones.
+// matched contains only keys that have at least one matched record.
+// unmatched keeps the original target order.
 func partitionRecords(
-	rs []api.Record, targetSet map[netip.Addr]struct{},
-) (matched map[netip.Addr][]Record, stale []Record) {
+	targets []netip.Addr, rs []api.Record,
+) (matched map[netip.Addr][]Record, unmatched []netip.Addr, stale []Record) {
+	targetSet := make(map[netip.Addr]struct{}, len(targets))
+	for _, target := range targets {
+		targetSet[target] = struct{}{}
+	}
 	matched = make(map[netip.Addr][]Record, len(targetSet))
 	stale = make([]Record, 0, len(rs))
 	for _, r := range rs {
@@ -72,7 +86,14 @@ func partitionRecords(
 		stale = append(stale, Record{ID: r.ID, RecordParams: r.RecordParams})
 	}
 
-	return matched, stale
+	unmatched = make([]netip.Addr, 0, len(targets))
+	for _, target := range targets {
+		if len(matched[target]) == 0 {
+			unmatched = append(unmatched, target)
+		}
+	}
+
+	return matched, unmatched, stale
 }
 
 func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Record, stale []Record) bool {
@@ -85,6 +106,77 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 		}
 	}
 	return true
+}
+
+func sameDNSRecordParams(left, right api.RecordParams) bool {
+	return left.TTL == right.TTL &&
+		left.Proxied == right.Proxied &&
+		left.Comment == right.Comment &&
+		sameTagsByPolicy(left.Tags, right.Tags)
+}
+
+func sortRecordsByID(records []Record) {
+	slices.SortFunc(records, func(left, right Record) int {
+		return cmp.Compare(left.ID, right.ID)
+	})
+}
+
+func reconcileAndPartitionRecords(
+	configured api.RecordParams,
+	records []Record,
+	ppfmt pp.PP,
+	warnings ambiguityWarnings,
+	unit string,
+) (resolved api.RecordParams, matching []Record, nonMatching []Record) {
+	ttlValues := make([]api.TTL, 0, len(records))
+	proxiedValues := make([]bool, 0, len(records))
+	commentValues := make([]string, 0, len(records))
+	tagSets := make([][]string, 0, len(records))
+	for _, record := range records {
+		ttlValues = append(ttlValues, record.TTL)
+		proxiedValues = append(proxiedValues, record.Proxied)
+		commentValues = append(commentValues, record.Comment)
+		tagSets = append(tagSets, record.Tags)
+	}
+	tagSummary := summarizeTagSets(tagSets)
+	if tagSummary.hasDuplicateCanonical {
+		warnings.warnDuplicateCanonicalTags(ppfmt, unit, "tags")
+	}
+	if tagSummary.hasAmbiguousCanonical {
+		warnings.warn(ppfmt, unit, "tags", len(tagSets), "common subset")
+	}
+
+	resolvedTTL, ttlAmbiguous := resolveScalarValue(configured.TTL, ttlValues)
+	resolvedProxied, proxiedAmbiguous := resolveScalarValue(configured.Proxied, proxiedValues)
+	resolvedComment, commentAmbiguous := resolveScalarValue(configured.Comment, commentValues)
+	if ttlAmbiguous {
+		warnings.warn(ppfmt, unit, "ttl", len(ttlValues), "configured value")
+	}
+	if proxiedAmbiguous {
+		warnings.warn(ppfmt, unit, "proxied", len(proxiedValues), "configured value")
+	}
+	if commentAmbiguous {
+		warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured value")
+	}
+
+	resolved = api.RecordParams{
+		TTL:     resolvedTTL,
+		Proxied: resolvedProxied,
+		Comment: resolvedComment,
+		Tags:    commonTags(tagSets),
+	}
+	matching = make([]Record, 0, len(records))
+	nonMatching = make([]Record, 0, len(records))
+	for _, record := range records {
+		if sameDNSRecordParams(record.RecordParams, resolved) {
+			matching = append(matching, record)
+			continue
+		}
+		nonMatching = append(nonMatching, record)
+	}
+	sortRecordsByID(matching)
+	sortRecordsByID(nonMatching)
+	return resolved, matching, nonMatching
 }
 
 // SetIPs updates the IP addresses of one domain to the given target set.
@@ -102,11 +194,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		return ResponseFailed
 	}
 
-	targetSet := make(map[netip.Addr]struct{}, len(targets))
-	for _, target := range targets {
-		targetSet[target] = struct{}{}
-	}
-	matchedByIP, staleRecords := partitionRecords(rs, targetSet)
+	matchedByIP, unmatchedTargets, staleRecords := partitionRecords(targets, rs)
 
 	// If records already match all desired targets (one record per target, with no
 	// stale or duplicate leftovers), we are done.
@@ -127,18 +215,34 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// 1. keep one matched record if available,
 	// 2. otherwise recycle one stale record via update,
 	// 3. otherwise create a new record.
+	warnings := newAmbiguityWarnings()
+	unit := recordType + " records of " + domainDescription
+	matchedTargets := make([]netip.Addr, 0, len(targets)-len(unmatchedTargets))
+	targetsToCreate := unmatchedTargets
 	for _, target := range targets {
-		if matched := matchedByIP[target]; len(matched) > 0 {
-			// Reserve one matching record; remaining matches are duplicates cleaned up later.
-			matchedByIP[target] = matched[1:]
-			continue
+		if len(matchedByIP[target]) > 0 {
+			matchedTargets = append(matchedTargets, target)
 		}
+	}
 
-		if len(staleRecords) > 0 {
-			// Recycle a stale record before creating a new one to preserve record metadata.
-			recycled := staleRecords[0]
+	// Stage 1: stale-first operations for unmatched targets.
+	createParams, staleMatchingRecords, staleNonMatchingRecords := reconcileAndPartitionRecords(
+		expectedParams, staleRecords, ppfmt, warnings, unit,
+	)
+	// After partitioning, staleRecords is consumed and should not be read again.
+	staleRecords = nil
+	staleQueue := slices.Concat(staleMatchingRecords, staleNonMatchingRecords)
+
+	mutated := false
+	for _, target := range targetsToCreate {
+		if len(staleQueue) > 0 {
+			// Recycle is an optimization of delete+create after metadata reconciliation.
+			// UpdateRecord contract: apply target IP and createParams metadata.
+			recycled := staleQueue[0]
+			staleQueue = staleQueue[1:]
+			mutated = true
 			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, recycled.ID, target,
-				recycled.RecordParams, expectedParams,
+				recycled.RecordParams, createParams,
 			); !ok {
 				ppfmt.Noticef(pp.EmojiError,
 					"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -148,11 +252,11 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			ppfmt.Noticef(pp.EmojiUpdate,
 				"Updated a stale %s record of %s (ID: %s)",
 				recordType, domainDescription, recycled.ID)
-			staleRecords = staleRecords[1:]
 			continue
 		}
 
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, expectedParams)
+		mutated = true
+		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, createParams)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -163,8 +267,9 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			"Added a new %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 
-	// Delete all remaining stale/out-of-target records.
-	for _, r := range staleRecords {
+	// Stage 2: delete stale/out-of-target leftovers.
+	for _, r := range staleQueue {
+		mutated = true
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -176,18 +281,89 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 	}
 
-	// Delete all duplicate matched records even if they are up to date.
-	// This has lower priority than deleting the stale records.
-	for _, target := range targets {
-		for _, r := range matchedByIP[target] {
-			if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
-				ppfmt.Noticef(pp.EmojiDeletion,
-					"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
-			}
-			if ctx.Err() != nil {
-				return ResponseUpdated
+	// Stage 3: update kept matched records if metadata reconciliation changes them.
+	duplicateMatchedNonMatchingRecords := make([]Record, 0)
+	duplicateMatchedMatchingRecords := make([]Record, 0)
+	for _, target := range matchedTargets {
+		matched := matchedByIP[target]
+		// Consume this target bucket exactly once.
+		matchedByIP[target] = nil
+
+		resolvedParams, matchingCandidates, nonMatchingCandidates := reconcileAndPartitionRecords(
+			expectedParams, matched, ppfmt, warnings, unit,
+		)
+		var keptRecord Record
+		if len(matchingCandidates) > 0 {
+			keptRecord = matchingCandidates[0]
+			matchingCandidates = matchingCandidates[1:]
+		} else {
+			keptRecord = nonMatchingCandidates[0]
+			nonMatchingCandidates = nonMatchingCandidates[1:]
+		}
+
+		collectDuplicates := func(candidates []Record, targetBucket *[]Record) {
+			for _, record := range candidates {
+				if record.ID == keptRecord.ID {
+					ppfmt.Noticef(pp.EmojiImpossible,
+						"Found repeated managed record ID %s among %s records of %s; skipping duplicate deletion for this impossible case",
+						keptRecord.ID, recordType, domainDescription,
+					)
+					continue
+				}
+				*targetBucket = append(*targetBucket, record)
 			}
 		}
+		collectDuplicates(matchingCandidates, &duplicateMatchedMatchingRecords)
+		collectDuplicates(nonMatchingCandidates, &duplicateMatchedNonMatchingRecords)
+
+		if !sameDNSRecordParams(keptRecord.RecordParams, resolvedParams) {
+			mutated = true
+			// Same-IP update is intentional here: reconcile metadata on the kept record.
+			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, keptRecord.ID, target,
+				keptRecord.RecordParams, resolvedParams,
+			); !ok {
+				ppfmt.Noticef(pp.EmojiError,
+					"Could not confirm update of %s records of %s; records might be inconsistent",
+					recordType, domainDescription)
+				return ResponseFailed
+			}
+			ppfmt.Noticef(pp.EmojiUpdate,
+				"Updated a matched %s record of %s (ID: %s)",
+				recordType, domainDescription, keptRecord.ID)
+		}
+	}
+
+	// Stage 4: delete duplicate matched records that do not match resolved metadata.
+	for _, r := range duplicateMatchedNonMatchingRecords {
+		mutated = true
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
+			ppfmt.Noticef(pp.EmojiDeletion,
+				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
+		}
+		if ctx.Err() != nil {
+			if !mutated {
+				return ResponseNoop
+			}
+			return ResponseUpdated
+		}
+	}
+	// Stage 5: delete duplicate matched records that already match resolved metadata.
+	for _, r := range duplicateMatchedMatchingRecords {
+		mutated = true
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
+			ppfmt.Noticef(pp.EmojiDeletion,
+				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
+		}
+		if ctx.Err() != nil {
+			if !mutated {
+				return ResponseNoop
+			}
+			return ResponseUpdated
+		}
+	}
+
+	if !mutated {
+		return ResponseNoop
 	}
 
 	return ResponseUpdated

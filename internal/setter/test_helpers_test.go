@@ -167,6 +167,16 @@ func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain dom
 	)
 }
 
+func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+	return p.EXPECT().Noticef(
+		pp.EmojiUpdate,
+		"Updated a matched %s record of %s (ID: %s)",
+		ipNetwork.RecordType(),
+		domain.Describe(),
+		id,
+	)
+}
+
 func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
