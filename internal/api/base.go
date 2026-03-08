@@ -54,9 +54,8 @@ type Record struct {
 
 // WAFListItem represents one WAF list item: ID, IP range, and original comment.
 type WAFListItem struct {
-	ID
-	netip.Prefix
-
+	ID      ID
+	Prefix  netip.Prefix
 	Comment string
 }
 
