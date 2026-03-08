@@ -40,6 +40,7 @@ type formattedRecord struct {
 	ID      string
 	IP      string
 	Comment string
+	Tags    []string
 }
 
 func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
@@ -53,6 +54,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 	for _, r := range rs {
 		record := mockDNSRecord(r.ID, ipNet, domain, r.IP)
 		record.Comment = r.Comment
+		record.Tags = r.Tags
 		raw = append(raw, record)
 	}
 
@@ -124,6 +126,22 @@ func TestListRecords(t *testing.T) {
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
+			true,
+			nil,
+		},
+		"success/tags-are-preserved": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			"sub.test.org",
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: []string{"Team:Alpha", "env:prod"}}},
+			1,
+			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
+			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "",
+				Tags:    []string{"Team:Alpha", "env:prod"},
+			}}},
 			true,
 			nil,
 		},

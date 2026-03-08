@@ -52,6 +52,9 @@ Guidance:
 
 - In tests, omitting irrelevant fields is usually acceptable.
 - In non-test code, prefer a short reason when the intentional omission is not obvious.
+- For third-party API request structs:
+  - query/list parameter literals may stay intentionally partial with a local reason
+  - mutating request literals should remain exhaustive to surface new upstream fields during review
 
 ### `paralleltest`
 

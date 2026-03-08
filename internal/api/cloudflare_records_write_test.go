@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -113,8 +114,14 @@ func TestDeleteRecord(t *testing.T) {
 }
 
 //nolint:unparam // Keep the record ID explicit so route and response coupling stays visible to callers.
-func newUpdateRecordHandlerWithComment(
-	t *testing.T, mux *http.ServeMux, id string, requestIP string, responseIP string, responseComment string,
+func newUpdateRecordHandler(
+	t *testing.T,
+	mux *http.ServeMux,
+	id string,
+	requestIP string,
+	responseIP string,
+	requestParams api.RecordParams,
+	responseParams api.RecordParams,
 ) httpHandler {
 	t.Helper()
 
@@ -132,19 +139,37 @@ func newUpdateRecordHandlerWithComment(
 				return
 			}
 
-			var record cloudflare.DNSRecord
+			var record cloudflare.UpdateDNSRecordParams
 			if err := json.NewDecoder(r.Body).Decode(&record); !assert.NoError(t, err) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
-			if !assert.Equal(t, requestIP, record.Content) {
+			expectedTags := slices.Clone(requestParams.Tags)
+			if expectedTags == nil {
+				expectedTags = []string{}
+			}
+			if !assert.Equal(t, "AAAA", record.Type) ||
+				!assert.Equal(t, "sub.test.org", record.Name) ||
+				!assert.Equal(t, requestIP, record.Content) ||
+				!assert.Equal(t, requestParams.TTL.Int(), record.TTL) ||
+				!assert.NotNil(t, record.Proxied) ||
+				!assert.NotNil(t, record.Comment) ||
+				!assert.Equal(t, expectedTags, record.Tags) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if !assert.Equal(t, requestParams.Proxied, *record.Proxied) ||
+				!assert.Equal(t, requestParams.Comment, *record.Comment) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
 			responseRecord := mockDNSRecord(id, ipnet.IP6, "sub.test.org", responseIP)
-			responseRecord.Comment = responseComment
+			responseRecord.TTL = responseParams.TTL.Int()
+			responseRecord.Proxied = &responseParams.Proxied
+			responseRecord.Comment = responseParams.Comment
+			responseRecord.Tags = responseParams.Tags
 
 			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(responseRecord))
@@ -227,7 +252,55 @@ func TestUpdateRecord(t *testing.T) {
 					"empty", `"hello"`,
 				)
 			},
-			nil,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"1 (auto)", "200", "200", 1,
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"not proxied (DNS only)", "", "proxied",
+				)
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					"AAAA", "sub.test.org", api.ID("record1"),
+					"empty", `"hello"`,
+				)
+			},
+		},
+		"mismatched-tags": {
+			2, 0, 1,
+			api.RecordParams{
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "",
+				Tags:    []string{"team:ddns"},
+			},
+			api.RecordParams{
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "",
+				Tags:    []string{"team:ops"},
+			},
+			true,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					[]string{"team:ddns"},
+					[]string{"team:ops"},
+				)
+			},
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+					"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.",
+					"AAAA", "sub.test.org", api.ID("record1"),
+					[]string{"team:ddns"},
+					[]string{"team:ops"},
+				)
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -241,7 +314,19 @@ func TestUpdateRecord(t *testing.T) {
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: ""}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
+			responseParams := tc.expectedParams
+			if name == "mismatched-attributes" {
+				responseParams = api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+			}
+			if name == "mismatched-tags" {
+				responseParams = api.RecordParams{
+					TTL:     tc.expectedParams.TTL,
+					Proxied: tc.expectedParams.Proxied,
+					Comment: tc.expectedParams.Comment,
+					Tags:    []string{"team:ddns"},
+				}
+			}
+			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.expectedParams, responseParams)
 			urh.setRequestLimit(tc.updateRequestLimit)
 
 			ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
@@ -259,7 +344,7 @@ func TestUpdateRecord(t *testing.T) {
 				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
-				require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
+				require.Equal(t, []api.Record{{"record1", mustIP("::2"), responseParams}}, rs)
 				assertHandlersExhausted(t, zh, lrh, urh)
 			}
 		})
@@ -268,11 +353,18 @@ func TestUpdateRecord(t *testing.T) {
 
 func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithComment(t, mux, id, ipNet, domain, ip, "")
+	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, "", nil)
 }
 
 func newCreateRecordHandlerWithComment(
 	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string,
+) httpHandler {
+	t.Helper()
+	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, comment, nil)
+}
+
+func newCreateRecordHandlerWithCommentAndTags(
+	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string, tags []string,
 ) httpHandler {
 	t.Helper()
 
@@ -301,7 +393,8 @@ func newCreateRecordHandlerWithComment(
 				!assert.Equal(t, ip, record.Content) ||
 				!assert.Equal(t, 1, record.TTL) ||
 				!assert.False(t, *record.Proxied) ||
-				!assert.Equal(t, comment, record.Comment) {
+				!assert.Equal(t, comment, record.Comment) ||
+				!assert.Equal(t, tags, record.Tags) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -377,6 +470,32 @@ func TestCreateRecord(t *testing.T) {
 	}
 }
 
+func TestCreateRecordWithTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+		Tags:    []string{"team:ddns", "Env:Prod"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+	lrh.setRequestLimit(0)
+	crh := newCreateRecordHandlerWithCommentAndTags(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "managed",
+		[]string{"team:ddns", "Env:Prod"})
+	crh.setRequestLimit(1)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
 func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	t.Parallel()
 
@@ -444,7 +563,15 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	})
 	lrh.setRequestLimit(1)
 
-	urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "unmanaged")
+	urh := newUpdateRecordHandler(
+		t,
+		f.serveMux,
+		"record1",
+		"::2",
+		"::2",
+		currentParams,
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"},
+	)
 	urh.setRequestLimit(1)
 
 	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), currentParams)
@@ -481,7 +608,15 @@ func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 	})
 	lrh.setRequestLimit(1)
 
-	urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
+	urh := newUpdateRecordHandler(
+		t,
+		f.serveMux,
+		"record1",
+		"::2",
+		"::2",
+		params,
+		params,
+	)
 	urh.setRequestLimit(1)
 
 	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -522,7 +657,15 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
 		lrh.setRequestLimit(1)
 
-		urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
+		urh := newUpdateRecordHandler(
+			t,
+			f.serveMux,
+			"record1",
+			"::2",
+			"::2",
+			params,
+			params,
+		)
 		urh.setRequestLimit(1)
 
 		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
@@ -600,7 +743,15 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
 		lrh.setRequestLimit(1)
 
-		urh := newUpdateRecordHandlerWithComment(t, f.serveMux, "record1", "::2", "::2", "")
+		urh := newUpdateRecordHandler(
+			t,
+			f.serveMux,
+			"record1",
+			"::2",
+			"::2",
+			params,
+			params,
+		)
 		urh.setRequestLimit(1)
 
 		crh := newCreateRecordHandler(t, f.serveMux, "record3", ipnet.IP6, "sub.test.org", "::4")

@@ -115,16 +115,27 @@ type Handle interface {
 		expectedParams RecordParams,
 	) ([]Record, bool, bool)
 
-	// UpdateRecord updates one DNS record.
+	// UpdateRecord reconciles one managed DNS record to the desired state.
+	//
+	// Implementations must apply the desired DNS content and metadata in
+	// expectedParams for this record:
+	// - content/IP: ip
+	// - ttl/proxied/comment/tags: expectedParams
+	//
+	// currentParams describes the caller's pre-update view and is advisory
+	// context for diagnostics or conflict reporting.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
 		id ID, ip netip.Addr, currentParams, expectedParams RecordParams,
 	) bool
 
-	// CreateRecord creates one DNS record. It returns the ID of the new record.
+	// CreateRecord creates one managed DNS record with the given desired metadata.
+	// It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
 		ip netip.Addr, params RecordParams) (ID, bool)
 
-	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
+	// DeleteRecord deletes one managed DNS record by ID.
+	//
+	// mode controls cache invalidation behavior for failure handling.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
@@ -150,11 +161,13 @@ type Handle interface {
 		expectedDescription string,
 	) WAFListCleanupCode
 
-	// DeleteWAFListItems deletes IP ranges from a WAF list.
+	// DeleteWAFListItems deletes managed WAF list items by item IDs.
+	// expectedItemComment is advisory context for diagnostics.
 	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
 		expectedItemComment string, ids []ID) bool
 
-	// CreateWAFListItems adds IP ranges to a WAF list.
+	// CreateWAFListItems creates managed WAF list items with the given prefixes
+	// and per-item comments.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
 		items []WAFListCreateItem) bool
 }

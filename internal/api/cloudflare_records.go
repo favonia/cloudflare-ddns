@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"regexp"
 	"slices"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
@@ -61,6 +62,13 @@ func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, 
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(expected),
+	)
+}
+
+func hintMismatchedTags(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected []string) {
+	ppfmt.Noticef(pp.EmojiUserWarning,
+		"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.", //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id, current, expected,
 	)
 }
 
@@ -160,12 +168,11 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		return nil, false, false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally unspecified
 	raw, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(string(zone)),
-		cloudflare.ListDNSRecordsParams{
-			Name: domain.DNSNameASCII(),
+		cloudflare.ListDNSRecordsParams{ //nolint:exhaustruct // Query params intentionally set only fields used by the selector.
 			Type: ipNet.RecordType(),
+			Name: domain.DNSNameASCII(),
 		})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
@@ -197,6 +204,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 				TTL:     TTL(rawRecord.TTL),
 				Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
 				Comment: rawRecord.Comment,
+				Tags:    rawRecord.Tags,
 			},
 		}
 		managedRecords = append(managedRecords, record)
@@ -250,15 +258,42 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
 	currentParams, expectedParams RecordParams,
 ) bool {
+	// currentParams is kept in the interface as diagnostic context.
+	// Desired-state mutation must come from expectedParams.
+	_ = currentParams
+
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally omitted
+	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct):
+	// - Reconciled-on-update fields: type/name/content + expected metadata
+	//   (ttl/proxied/comment/tags).
+	// - For Cloudflare's UpdateDNSRecord API, nil comment means "keep current".
+	//   To reconcile comments (including empty), we must always pass a pointer.
+	// - Tags are always sent so tag clearing can be expressed explicitly.
+	// - Other fields are server-managed or out of this reconciler's scope.
+	// Exhaustiveness ensures upstream API field additions are reviewed explicitly.
+	expectedComment := expectedParams.Comment
+	expectedTags := slices.Clone(expectedParams.Tags)
+	if expectedTags == nil {
+		expectedTags = []string{}
+	}
 	params := cloudflare.UpdateDNSRecordParams{
-		ID:      string(id),
-		Content: ip.String(),
+		Type:     ipNet.RecordType(),
+		Name:     domain.DNSNameASCII(),
+		Content:  ip.String(),
+		Data:     nil,
+		ID:       string(id),
+		Priority: nil,
+		TTL:      expectedParams.TTL.Int(),
+		Proxied:  &expectedParams.Proxied,
+		Comment:  &expectedComment,
+		Tags:     expectedTags,
+		Settings: cloudflare.DNSRecordSettings{
+			FlattenCNAME: nil,
+		},
 	}
 
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
@@ -272,21 +307,25 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if TTL(r.TTL) != currentParams.TTL && TTL(r.TTL) != expectedParams.TTL {
+	if TTL(r.TTL) != expectedParams.TTL {
 		hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), expectedParams.TTL)
 	}
 	updatedProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
-	if updatedProxied != currentParams.Proxied && updatedProxied != expectedParams.Proxied {
+	if updatedProxied != expectedParams.Proxied {
 		hintMismatchedProxied(ppfmt, ipNet, domain, id, updatedProxied, expectedParams.Proxied)
 	}
-	if r.Comment != currentParams.Comment && r.Comment != expectedParams.Comment {
+	if r.Comment != expectedParams.Comment {
 		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, expectedParams.Comment)
+	}
+	if !slices.Equal(r.Tags, expectedParams.Tags) {
+		hintMismatchedTags(ppfmt, ipNet, domain, id, r.Tags, expectedParams.Tags)
 	}
 
 	updatedParams := RecordParams{
 		TTL:     TTL(r.TTL),
 		Proxied: updatedProxied,
 		Comment: r.Comment,
+		Tags:    r.Tags,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
@@ -321,14 +360,24 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		return "", false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally omitted
 	ps := cloudflare.CreateDNSRecordParams{
-		Name:    domain.DNSNameASCII(),
-		Type:    ipNet.RecordType(),
-		Content: ip.String(),
-		TTL:     params.TTL.Int(),
-		Proxied: &params.Proxied,
-		Comment: params.Comment,
+		CreatedOn:  time.Time{},
+		ModifiedOn: time.Time{},
+		Type:       ipNet.RecordType(),
+		Name:       domain.DNSNameASCII(),
+		Content:    ip.String(),
+		Meta:       nil,
+		Data:       nil,
+		ID:         "",
+		Priority:   nil,
+		TTL:        params.TTL.Int(),
+		Proxied:    &params.Proxied,
+		Proxiable:  false,
+		Comment:    params.Comment,
+		Tags:       params.Tags,
+		Settings: cloudflare.DNSRecordSettings{
+			FlattenCNAME: nil,
+		},
 	}
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), ps)

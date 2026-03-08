@@ -38,6 +38,18 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    `README.markdown` is for a broad user audience, including not-so-technical users. Prefer plain language, clear examples, and readable explanations over dense internal shorthand.
 
+6. Prefer explicit doc scopes in commit titles.
+
+   Use `docs(README)` for README-only documentation changes and `docs(CHANGELOG)` for changelog-only updates. Keep these scopes uppercase to make release-relevant doc commits easy to scan.
+
+7. Be selective with exhaustive third-party struct literals.
+
+   For API query/list parameter structs (for example, record listing filters), set only the fields that are part of the intended selector and use a tight local `//nolint:exhaustruct` if needed.
+
+   For mutating API parameter structs (create/update/delete style requests), keep literals exhaustive so newly added upstream fields are surfaced and reviewed intentionally.
+
+   Exhaustive literals are not a substitute for contract mapping. For mutating calls, always map each in-scope desired-state field explicitly from the method contract instead of relying on zero values. If a mutator intentionally preserves some remote fields, document that preserve-vs-mutate contract in comments at the interface and implementation entry points.
+
 Once you make the pull request, the maintainer will check your code and decide what to do. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and will update your pull request’s title. Don’t worry too much about commit messages as long as it’s clear what individual commits do.
 
 ## 🧑‍⚖️ Who’s in Charge
