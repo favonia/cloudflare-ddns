@@ -251,7 +251,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		// Track targets already covered by at least one kept item.
 		coveredTargets := make(map[netip.Addr]bool, len(targets))
 		for _, item := range items {
-			if !ipNet.Matches(item.Addr()) {
+			if !ipNet.Matches(item.Prefix.Addr()) {
 				continue
 			}
 
@@ -265,7 +265,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			// target and remember which targets are already covered.
 			covered := false
 			for _, target := range targets {
-				if item.Contains(target) {
+				if item.Prefix.Contains(target) {
 					coveredTargets[target] = true
 					covered = true
 				}
@@ -289,7 +289,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	slices.SortFunc(itemsToCreate, netip.Prefix.Compare)
 	itemsToCreate = slices.Compact(itemsToCreate)
 	slices.SortFunc(itemsToDelete, func(i, j api.WAFListItem) int {
-		return cmp.Or(i.Compare(j.Prefix), cmp.Compare(i.ID, j.ID))
+		return cmp.Or(i.Prefix.Compare(j.Prefix), cmp.Compare(i.ID, j.ID))
 	})
 
 	if len(itemsToCreate) == 0 && len(itemsToDelete) == 0 {
