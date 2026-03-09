@@ -2,6 +2,7 @@ package setter
 
 import (
 	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,17 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
-
-type noopPP struct{}
-
-func (noopPP) IsShowing(pp.Verbosity) bool                 { return false }
-func (noopPP) Indent() pp.PP                               { return noopPP{} }
-func (noopPP) BlankLineIfVerbose()                         {}
-func (noopPP) Infof(pp.Emoji, string, ...any)              {}
-func (noopPP) Noticef(pp.Emoji, string, ...any)            {}
-func (noopPP) Suppress(pp.ID)                              {}
-func (noopPP) InfoOncef(pp.ID, pp.Emoji, string, ...any)   {}
-func (noopPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any) {}
 
 func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	t.Parallel()
@@ -42,6 +32,36 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	require.Equal(t, api.ID("record4"), stale[0].ID)
 }
 
+func TestResolveScalarValue(t *testing.T) {
+	t.Parallel()
+
+	value, ambiguous := resolveScalarValue("default", nil)
+	require.Equal(t, "default", value)
+	require.False(t, ambiguous)
+
+	value, ambiguous = resolveScalarValue("default", []string{"same", "same", "same"})
+	require.Equal(t, "same", value)
+	require.False(t, ambiguous)
+
+	value, ambiguous = resolveScalarValue("default", []string{"a", "b"})
+	require.Equal(t, "default", value)
+	require.True(t, ambiguous)
+}
+
+func TestResolveScalarValueOrderInvariant(t *testing.T) {
+	t.Parallel()
+
+	configured := "configured"
+	input := []string{"z", "a", "z", "z"}
+
+	valueA, ambiguousA := resolveScalarValue(configured, input)
+	slices.Reverse(input)
+	valueB, ambiguousB := resolveScalarValue(configured, input)
+
+	require.Equal(t, valueA, valueB)
+	require.Equal(t, ambiguousA, ambiguousB)
+}
+
 func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	t.Parallel()
 
@@ -55,7 +75,7 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	resolved, matching, nonMatching := reconcileAndPartitionRecords(
 		configured,
 		records,
-		noopPP{},
+		pp.NewSilent(),
 		newAmbiguityWarnings(),
 		"AAAA records of sub.test.org",
 	)

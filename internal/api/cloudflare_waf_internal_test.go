@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"io"
 	"net/netip"
 	"regexp"
 	"testing"
@@ -28,7 +27,7 @@ func TestStartDeletingWAFListItemsAsyncWithNoIDs(t *testing.T) {
 	var h CloudflareHandle
 	ok := h.startDeletingWAFListItemsAsync(
 		context.Background(),
-		pp.New(io.Discard, false, pp.Quiet),
+		pp.NewSilent(),
 		WAFList{AccountID: "", Name: ""},
 		"",
 		nil,
@@ -41,7 +40,7 @@ func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(
 
 	require.NotPanics(t, func() {
 		hintUnexpectedWAFListItemCommentAfterMutation(
-			pp.New(io.Discard, false, pp.Quiet),
+			pp.NewSilent(),
 			WAFList{AccountID: "account", Name: "list"},
 			map[ID]string{},
 			[]WAFListItem{
