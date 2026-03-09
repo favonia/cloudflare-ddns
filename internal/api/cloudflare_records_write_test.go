@@ -290,6 +290,17 @@ func TestUpdateRecord(t *testing.T) {
 				)
 			},
 		},
+		"policy-equivalent-tags": {
+			2, 0, 1,
+			api.RecordParams{
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "",
+				Tags:    []string{"name:value", "X:Two"},
+			},
+			true,
+			nil, nil,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -312,6 +323,14 @@ func TestUpdateRecord(t *testing.T) {
 					Proxied: tc.desiredParams.Proxied,
 					Comment: tc.desiredParams.Comment,
 					Tags:    []string{"team:ddns"},
+				}
+			}
+			if name == "policy-equivalent-tags" {
+				responseParams = api.RecordParams{
+					TTL:     tc.desiredParams.TTL,
+					Proxied: tc.desiredParams.Proxied,
+					Comment: tc.desiredParams.Comment,
+					Tags:    []string{"x:Two", "NAME:value", "name:value"},
 				}
 			}
 			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, responseParams)

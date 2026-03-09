@@ -11,6 +11,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
 
+	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -323,7 +324,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	if r.Comment != desiredParams.Comment {
 		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, desiredParams.Comment)
 	}
-	if !slices.Equal(r.Tags, desiredParams.Tags) {
+	if !apitags.Equal(r.Tags, desiredParams.Tags) {
 		hintMismatchedTags(ppfmt, ipNet, domain, id, r.Tags, desiredParams.Tags)
 	}
 

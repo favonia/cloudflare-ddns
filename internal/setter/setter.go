@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -112,7 +113,7 @@ func sameDNSRecordParams(left, right api.RecordParams) bool {
 	return left.TTL == right.TTL &&
 		left.Proxied == right.Proxied &&
 		left.Comment == right.Comment &&
-		sameTagsByPolicy(left.Tags, right.Tags)
+		apitags.Equal(left.Tags, right.Tags)
 }
 
 func sortRecordsByID(records []Record) {
@@ -138,11 +139,11 @@ func reconcileAndPartitionRecords(
 		commentValues = append(commentValues, record.Comment)
 		tagSets = append(tagSets, record.Tags)
 	}
-	tagSummary := summarizeTagSets(tagSets)
-	if tagSummary.hasDuplicateCanonical {
+	tagSummary := apitags.SummarizeSets(tagSets)
+	if tagSummary.HasDuplicateCanonical {
 		warnings.warnDuplicateCanonicalTags(ppfmt, unit, "tags")
 	}
-	if tagSummary.hasAmbiguousCanonical {
+	if tagSummary.HasAmbiguousCanonical {
 		warnings.warn(ppfmt, unit, "tags", len(tagSets), "common subset")
 	}
 
@@ -163,7 +164,7 @@ func reconcileAndPartitionRecords(
 		TTL:     resolvedTTL,
 		Proxied: resolvedProxied,
 		Comment: resolvedComment,
-		Tags:    commonTags(tagSets),
+		Tags:    apitags.CommonSubset(tagSets),
 	}
 	matching = make([]Record, 0, len(records))
 	nonMatching = make([]Record, 0, len(records))

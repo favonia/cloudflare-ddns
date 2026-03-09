@@ -41,11 +41,15 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, configuredDescription string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
-		list.Describe(), m.ID, DescribeFreeFormString(m.Description), DescribeFreeFormString(configuredDescription), list.AccountID,
+		list.Describe(), m.ID,
+		DescribeFreeFormString(m.Description), DescribeFreeFormString(configuredDescription),
+		list.AccountID,
 	)
 }
 
-func hintMismatchedWAFListItemComment(ppfmt pp.PP, list WAFList, managedItems []WAFListItem, configuredItemComment string) {
+func hintMismatchedWAFListItemComment(
+	ppfmt pp.PP, list WAFList, managedItems []WAFListItem, configuredItemComment string,
+) {
 	mismatchedCount := 0
 	var sampleID ID
 	sampleComment := ""
@@ -488,7 +492,11 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		var items []WAFListItem
 
 		if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
-			*ls.Value() = append([]WAFListMeta{{ID: listID, Description: configuredDescription, Name: list.Name}}, *ls.Value()...)
+			*ls.Value() = append([]WAFListMeta{{
+				ID:          listID,
+				Description: configuredDescription,
+				Name:        list.Name,
+			}}, *ls.Value()...)
 		}
 		h.cache.listID.DeleteExpired()
 		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
