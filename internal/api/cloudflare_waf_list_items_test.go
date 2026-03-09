@@ -574,8 +574,6 @@ func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 func TestDeleteWAFListItems(t *testing.T) {
 	t.Parallel()
 
-	const expectedItemComment = ""
-
 	for name, tc := range map[string]struct {
 		listRequestLimit      int
 		idsToDelete           []api.ID
@@ -647,7 +645,6 @@ func TestDeleteWAFListItems(t *testing.T) {
 				f.newPreparedPP(tc.prepareMocks),
 				mockWAFList,
 				"description",
-				expectedItemComment,
 				tc.idsToDelete,
 			)
 			require.Equal(t, tc.ok, ok)
@@ -661,7 +658,6 @@ func TestDeleteWAFListItems(t *testing.T) {
 					f.newPP(),
 					mockWAFList,
 					"description",
-					expectedItemComment,
 					tc.idsToDelete,
 				)
 				require.Equal(t, tc.ok, ok)
@@ -850,7 +846,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	ppfmt := f.newPP()
 	ppfmt.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"After updating list %s, item ID %s has comment %s, which is unexpected given expected item comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
+		"After updating list %s, item ID %s has comment %s, which is unexpected given allowed post-mutation comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
 		"account456/list",
 		api.ID("new-item"),
 		`"unexpected"`,
@@ -865,8 +861,6 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 
 func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	t.Parallel()
-
-	const expectedComment = "expected"
 
 	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
@@ -892,11 +886,11 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	ppfmt := f.newPP()
 	ppfmt.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"After updating list %s, item ID %s has comment %s, which is unexpected given expected item comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
+		"After updating list %s, item ID %s has comment %s, which is unexpected given allowed post-mutation comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
 		"account456/list",
 		api.ID("managed-1"),
 		`"unexpected"`,
-		`"expected"`,
+		"none",
 		1,
 	)
 
@@ -905,7 +899,6 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		ppfmt,
 		mockWAFList,
 		"description",
-		expectedComment,
 		[]api.ID{"id1"},
 	)
 	require.True(t, ok)

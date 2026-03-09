@@ -31,7 +31,7 @@ type Setter interface {
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
 		IPs []netip.Addr,
-		expectedParams api.RecordParams,
+		configuredParams api.RecordParams,
 	) ResponseCode
 
 	// FinalDelete removes DNS records of a particular domain.
@@ -40,7 +40,7 @@ type Setter interface {
 		ppfmt pp.PP,
 		IPNetwork ipnet.Type,
 		Domain domain.Domain,
-		expectedParams api.RecordParams,
+		configuredParams api.RecordParams,
 	) ResponseCode
 
 	// SetWAFList keeps only IP ranges overlapping with detected target sets
@@ -58,7 +58,7 @@ type Setter interface {
 		list api.WAFList,
 		listDescription string,
 		detected map[ipnet.Type][]netip.Addr,
-		itemComment string,
+		configuredItemComment string,
 	) ResponseCode
 
 	// FinalClearWAFList removes managed WAF content during shutdown.

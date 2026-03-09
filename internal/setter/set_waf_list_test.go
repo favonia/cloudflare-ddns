@@ -402,7 +402,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription, "").
 						Return(permutedItems, true, false, true)
 					deleteCall := h.mockHandle.EXPECT().
-						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, "", scenario.wantDeleteID).
+						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
 						Return(true)
 					if len(scenario.wantCreate) == 0 {
 						gomock.InOrder(readCall, deleteCall)
@@ -470,7 +470,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
@@ -503,7 +503,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID, stale4b.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale4b.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
@@ -537,7 +537,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"2001:db8::/64", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment, []api.ID{stale4.ID, stale6.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale6.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
@@ -582,7 +582,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 					return true
 				}),
 			twoStep.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "", []api.ID{initialStale1.ID, initialStale2.ID}).
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
 				Return(true),
 			twoStep.mockHandle.EXPECT().
 				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
@@ -595,7 +595,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 					return true
 				}),
 			twoStep.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "", []api.ID{midItem.ID}).
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{midItem.ID}).
 				Return(true),
 		)
 
@@ -622,7 +622,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 					return true
 				}),
 			direct.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, "", []api.ID{initialStale1.ID, initialStale2.ID}).
+				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
 				Return(true),
 		)
 

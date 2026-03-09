@@ -112,7 +112,7 @@ func TestListRecords(t *testing.T) {
 		records                    []formattedRecord
 		listRequestLimit           int
 		input                      domain.Domain
-		expectedParams             api.RecordParams
+		configuredParams           api.RecordParams
 		managedRecordsCommentRegex *regexp.Regexp
 		expected                   []api.Record
 		ok                         bool
@@ -311,7 +311,7 @@ func TestListRecords(t *testing.T) {
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			rs, cached, ok := f.handle.ListRecords(
-				context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, tc.input, tc.expectedParams)
+				context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, tc.input, tc.configuredParams)
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.expected, rs)

@@ -112,26 +112,23 @@ type Handle interface {
 	//
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		expectedParams RecordParams,
+		configuredParams RecordParams,
 	) ([]Record, bool, bool)
 
 	// UpdateRecord reconciles one managed DNS record to the desired state.
 	//
 	// Implementations must apply the desired DNS content and metadata in
-	// expectedParams for this record:
+	// desiredParams for this record:
 	// - content/IP: ip
-	// - ttl/proxied/comment/tags: expectedParams
-	//
-	// currentParams describes the caller's pre-update view and is advisory
-	// context for diagnostics or conflict reporting.
+	// - ttl/proxied/comment/tags: desiredParams
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		id ID, ip netip.Addr, currentParams, expectedParams RecordParams,
+		id ID, ip netip.Addr, desiredParams RecordParams,
 	) bool
 
 	// CreateRecord creates one managed DNS record with the given desired metadata.
 	// It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		ip netip.Addr, params RecordParams) (ID, bool)
+		ip netip.Addr, desiredParams RecordParams) (ID, bool)
 
 	// DeleteRecord deletes one managed DNS record by ID.
 	//
@@ -143,12 +140,12 @@ type Handle interface {
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.
-	// expectedItemComment is the configured comment target for newly created
+	// configuredItemComment is the configured comment target for newly created
 	// managed list items; implementations may use it for advisory mismatch hints.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription, expectedItemComment string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription, configuredItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
@@ -158,17 +155,15 @@ type Handle interface {
 	// The handle should not be reused for any further update operations after
 	// calling this method.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-		expectedDescription string,
+		configuredDescription string,
 	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.
-	// expectedItemComment is advisory context for diagnostics.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		expectedItemComment string, ids []ID) bool
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string, ids []ID) bool
 
 	// CreateWAFListItems creates managed WAF list items with the given prefixes
 	// and per-item comments.
-	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
+	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string,
 		items []WAFListCreateItem) bool
 }
 

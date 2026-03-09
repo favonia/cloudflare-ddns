@@ -128,11 +128,10 @@ func expectRecordUpdate(
 	domain domain.Domain,
 	id api.ID,
 	ip netip.Addr,
-	currentParams api.RecordParams,
-	expectedParams api.RecordParams,
+	desiredParams api.RecordParams,
 	ok bool,
 ) any {
-	return h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, id, ip, currentParams, expectedParams).Return(ok)
+	return h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, id, ip, desiredParams).Return(ok)
 }
 
 func expectRecordDelete(
@@ -279,13 +278,13 @@ func expectWAFListRead(
 	m *mocks.MockHandle,
 	list api.WAFList,
 	listDescription string,
-	expectedItemComment string,
+	configuredItemComment string,
 	items []api.WAFListItem,
 	alreadyExisting bool,
 	cached bool,
 	ok bool,
 ) any {
-	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription, expectedItemComment).Return(items, alreadyExisting, cached, ok)
+	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription, configuredItemComment).Return(items, alreadyExisting, cached, ok)
 }
 
 func expectWAFListNoop(
@@ -294,13 +293,13 @@ func expectWAFListNoop(
 	m *mocks.MockHandle,
 	list api.WAFList,
 	listDescription string,
-	expectedItemComment string,
+	configuredItemComment string,
 	items []api.WAFListItem,
 	alreadyExisting bool,
 	cached bool,
 ) {
 	calls := []any{
-		expectWAFListRead(ctx, p, m, list, listDescription, expectedItemComment, items, alreadyExisting, cached, true),
+		expectWAFListRead(ctx, p, m, list, listDescription, configuredItemComment, items, alreadyExisting, cached, true),
 	}
 	if !alreadyExisting {
 		calls = append(calls, expectWAFListCreatedNotice(p, list))
@@ -344,7 +343,7 @@ func expectWAFListMutation(
 		}
 		calls = append(calls, expectWAFCreateNotices(p, list, wafListCreatePrefixes(createItems))...)
 	}
-	calls = append(calls, expectWAFListDelete(ctx, p, m, list, want.listDescription, want.createComment, wafItemIDs(want.deleteItems), want.deleteOK))
+	calls = append(calls, expectWAFListDelete(ctx, p, m, list, want.listDescription, wafItemIDs(want.deleteItems), want.deleteOK))
 	if !want.deleteOK {
 		calls = append(calls, expectWAFListErrorNotice(p, list))
 		gomock.InOrder(calls...)
@@ -414,11 +413,10 @@ func expectWAFListDelete(
 	m *mocks.MockHandle,
 	list api.WAFList,
 	listDescription string,
-	expectedItemComment string,
 	ids []api.ID,
 	ok bool,
 ) any {
-	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, expectedItemComment, ids).Return(ok)
+	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, ids).Return(ok)
 }
 
 func wafItemIDs(items []api.WAFListItem) []api.ID {

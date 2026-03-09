@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"slices"
 	"testing"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -145,7 +144,7 @@ func newUpdateRecordHandler(
 				return
 			}
 
-			expectedTags := slices.Clone(requestParams.Tags)
+			expectedTags := requestParams.Tags
 			if expectedTags == nil {
 				expectedTags = []string{}
 			}
@@ -188,21 +187,20 @@ func TestUpdateRecord(t *testing.T) {
 		zoneRequestLimit      int
 		listRequestLimit      int
 		updateRequestLimit    int
-		currentParams         api.RecordParams
-		expectedParams        api.RecordParams
+		desiredParams         api.RecordParams
 		ok                    bool
 		prepareMocks          func(*mocks.MockPP)
 		prepareMocksForCached func(*mocks.MockPP)
 	}{
 		"success": {
 			2, 0, 1,
-			params, params,
+			params,
 			true,
 			nil, nil,
 		},
 		"zone-fails": {
 			0, 0, 0,
-			params, params,
+			params,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
@@ -213,7 +211,7 @@ func TestUpdateRecord(t *testing.T) {
 		},
 		"update-fails": {
 			2, 0, 0,
-			params, params,
+			params,
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
@@ -224,12 +222,6 @@ func TestUpdateRecord(t *testing.T) {
 		},
 		"mismatched-attributes": {
 			2, 0, 1,
-			api.RecordParams{
-				TTL:     300,
-				Proxied: true,
-				Comment: "aloha",
-				Tags:    nil,
-			},
 			api.RecordParams{
 				TTL:     200,
 				Proxied: true,
@@ -278,12 +270,6 @@ func TestUpdateRecord(t *testing.T) {
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "",
-				Tags:    []string{"team:ddns"},
-			},
-			api.RecordParams{
-				TTL:     api.TTLAuto,
-				Proxied: false,
-				Comment: "",
 				Tags:    []string{"team:ops"},
 			},
 			true,
@@ -316,23 +302,23 @@ func TestUpdateRecord(t *testing.T) {
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			responseParams := tc.expectedParams
+			responseParams := tc.desiredParams
 			if name == "mismatched-attributes" {
 				responseParams = api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 			}
 			if name == "mismatched-tags" {
 				responseParams = api.RecordParams{
-					TTL:     tc.expectedParams.TTL,
-					Proxied: tc.expectedParams.Proxied,
-					Comment: tc.expectedParams.Comment,
+					TTL:     tc.desiredParams.TTL,
+					Proxied: tc.desiredParams.Proxied,
+					Comment: tc.desiredParams.Comment,
 					Tags:    []string{"team:ddns"},
 				}
 			}
-			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.expectedParams, responseParams)
+			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, responseParams)
 			urh.setRequestLimit(tc.updateRequestLimit)
 
 			ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", mustIP("::2"), tc.currentParams, tc.expectedParams)
+				"record1", mustIP("::2"), tc.desiredParams)
 			require.Equal(t, tc.ok, ok)
 			assertHandlersExhausted(t, zh, lrh, urh)
 
@@ -342,7 +328,7 @@ func TestUpdateRecord(t *testing.T) {
 				mockPP = f.newPreparedPP(tc.prepareMocksForCached)
 				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				_ = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-					"record1", mustIP("::2"), params, tc.expectedParams)
+					"record1", mustIP("::2"), tc.desiredParams)
 				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
 				require.True(t, cached)
@@ -541,7 +527,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	t.Parallel()
 
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
-	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
+	managedParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
 		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
@@ -571,23 +557,23 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 		"record1",
 		"::2",
 		"::2",
-		currentParams,
+		managedParams,
 		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil},
 	)
 	urh.setRequestLimit(1)
 
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), currentParams)
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: currentParams},
+		{ID: "record1", IP: mustIP("::1"), RecordParams: managedParams},
 	}, rs)
 
 	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-		"record1", mustIP("::2"), currentParams, currentParams)
+		"record1", mustIP("::2"), managedParams)
 	require.True(t, ok)
 
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), currentParams)
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Empty(t, rs)
@@ -629,7 +615,7 @@ func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 	}, rs)
 
 	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-		"record1", mustIP("::2"), params, params)
+		"record1", mustIP("::2"), params)
 	require.True(t, ok)
 
 	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -682,7 +668,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		}, rs)
 
 		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", mustIP("::2"), params, params)
+			"record1", mustIP("::2"), params)
 		require.True(t, ok)
 
 		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
@@ -771,7 +757,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		}, rs)
 
 		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", mustIP("::2"), params, params)
+			"record1", mustIP("::2"), params)
 		require.True(t, ok)
 
 		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params)

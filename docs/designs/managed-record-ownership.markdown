@@ -96,8 +96,7 @@ before lower-tier metadata and hygiene risks.
 - `UpdateRecord` reconciles one managed record to desired state for both:
   - content/IP
   - metadata in scope (`TTL`, `PROXIED`, `RECORD_COMMENT`, `TAGS`)
-- `currentParams` in `UpdateRecord` is diagnostic context only.
-- desired-state mutation source is `expectedParams`.
+- desired-state mutation source is `desiredParams`.
 
 This contract is intentionally explicit because historical versions used an
 IP-only update path that preserved metadata. Any future contract change here
