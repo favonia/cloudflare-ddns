@@ -104,6 +104,51 @@ IP-only update path that preserved metadata. Any future contract change here
 must update interface comments, implementation comments, and API write tests
 together.
 
+### Cloudflare Field Ownership (A/AAAA Reconciler)
+
+For Cloudflare DNS create/update payloads used by this reconciler, each field
+is classified as either managed desired state or server-determined.
+
+References (deep links):
+- Cloudflare API DNS record edit (update): <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/>
+- Cloudflare API DNS record create: <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/>
+
+`UpdateDNSRecordParams`:
+
+| Field | Ownership | Why |
+| --- | --- | --- |
+| `ID` | managed | identifies the record being reconciled |
+| `Type` | managed | desired record identity for this reconciler unit (`A`/`AAAA`) |
+| `Name` | managed | desired fqdn identity for this reconciler unit |
+| `Content` | managed | desired IP address |
+| `TTL` | managed | desired metadata |
+| `Proxied` | managed | desired metadata |
+| `Comment` | managed | desired metadata (`nil` would mean “keep current”, so we pass explicit pointer) |
+| `Tags` | managed | desired metadata (always sent so clearing is explicit) |
+| `Data` | server-determined (for this reconciler) | Cloudflare uses it for non-`A/AAAA` record kinds (for example SRV/LOC) |
+| `Priority` | server-determined (for this reconciler) | relevant to non-`A/AAAA` kinds (for example MX/SRV/URI) |
+| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting, not managed for `A/AAAA` |
+
+`CreateDNSRecordParams`:
+
+| Field | Ownership | Why |
+| --- | --- | --- |
+| `Type` | managed | desired record identity (`A`/`AAAA`) |
+| `Name` | managed | desired fqdn |
+| `Content` | managed | desired IP address |
+| `TTL` | managed | desired metadata |
+| `Proxied` | managed | desired metadata |
+| `Comment` | managed | desired metadata |
+| `Tags` | managed | desired metadata |
+| `CreatedOn` | server-determined | timestamp assigned by Cloudflare |
+| `ModifiedOn` | server-determined | timestamp assigned by Cloudflare |
+| `Meta` | server-determined | Cloudflare-owned response metadata |
+| `Data` | server-determined (for this reconciler) | non-`A/AAAA` record-kind payload |
+| `ID` | server-determined | record ID allocated by Cloudflare |
+| `Priority` | server-determined (for this reconciler) | non-`A/AAAA` record-kind field |
+| `Proxiable` | server-determined | capability flag returned by Cloudflare |
+| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting |
+
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.

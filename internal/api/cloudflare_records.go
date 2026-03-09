@@ -270,10 +270,13 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct):
 	// - Reconciled-on-update fields: type/name/content + expected metadata
 	//   (ttl/proxied/comment/tags).
+	// - Cloudflare API docs (edit DNS record):
+	//   https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/
 	// - For Cloudflare's UpdateDNSRecord API, nil comment means "keep current".
 	//   To reconcile comments (including empty), we must always pass a pointer.
 	// - Tags are always sent so tag clearing can be expressed explicitly.
-	// - Other fields are server-managed or out of this reconciler's scope.
+	// - Remaining request fields are server-determined for the record kinds
+	//   handled here and are intentionally set to their zero forms.
 	// Exhaustiveness ensures upstream API field additions are reviewed explicitly.
 	expectedComment := expectedParams.Comment
 	expectedTags := slices.Clone(expectedParams.Tags)
@@ -281,17 +284,23 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		expectedTags = []string{}
 	}
 	params := cloudflare.UpdateDNSRecordParams{
-		Type:     ipNet.RecordType(),
-		Name:     domain.DNSNameASCII(),
-		Content:  ip.String(),
-		Data:     nil,
-		ID:       string(id),
+		Type:    ipNet.RecordType(),    // managed: A/AAAA type is part of desired record identity.
+		Name:    domain.DNSNameASCII(), // managed: canonical fqdn identity for this reconciler unit.
+		Content: ip.String(),           // managed: desired IP address.
+		// server-determined for this reconciler: we only manage A/AAAA records here.
+		// Cloudflare uses Data for other record kinds (for example SRV/LOC), so we keep nil.
+		Data: nil,
+		ID:   string(id), // managed: target record identifier in API route/body.
+		// server-determined for this reconciler: Priority applies to other record kinds
+		// (for example MX/SRV/URI), not A/AAAA.
 		Priority: nil,
-		TTL:      expectedParams.TTL.Int(),
-		Proxied:  &expectedParams.Proxied,
-		Comment:  &expectedComment,
-		Tags:     expectedTags,
+		TTL:      expectedParams.TTL.Int(), // managed: desired TTL.
+		Proxied:  &expectedParams.Proxied,  // managed: desired proxy mode.
+		Comment:  &expectedComment,         // managed: desired comment (including explicit empty).
+		Tags:     expectedTags,             // managed: desired tags (always sent to allow clearing).
 		Settings: cloudflare.DNSRecordSettings{
+			// server-determined for this reconciler: per-record CNAME flattening is
+			// CNAME-specific and not managed for A/AAAA.
 			FlattenCNAME: nil,
 		},
 	}
@@ -361,21 +370,32 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	ps := cloudflare.CreateDNSRecordParams{
-		CreatedOn:  time.Time{},
+		// Cloudflare API docs (create DNS record):
+		// https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/
+		// server-determined: create timestamp is assigned by Cloudflare.
+		CreatedOn: time.Time{},
+		// server-determined: modified timestamp is assigned by Cloudflare.
 		ModifiedOn: time.Time{},
-		Type:       ipNet.RecordType(),
-		Name:       domain.DNSNameASCII(),
-		Content:    ip.String(),
-		Meta:       nil,
-		Data:       nil,
-		ID:         "",
-		Priority:   nil,
-		TTL:        params.TTL.Int(),
-		Proxied:    &params.Proxied,
-		Proxiable:  false,
-		Comment:    params.Comment,
-		Tags:       params.Tags,
+		Type:       ipNet.RecordType(),    // managed: A/AAAA type in desired identity.
+		Name:       domain.DNSNameASCII(), // managed: canonical fqdn.
+		Content:    ip.String(),           // managed: desired IP address.
+		// server-determined: Meta is Cloudflare-owned metadata in responses.
+		Meta: nil,
+		// server-determined for this reconciler: Data is for non-A/AAAA record kinds.
+		Data: nil,
+		// server-determined: record ID is allocated by Cloudflare on create.
+		ID: "",
+		// server-determined for this reconciler: Priority is for non-A/AAAA kinds.
+		Priority: nil,
+		TTL:      params.TTL.Int(), // managed: desired TTL.
+		Proxied:  &params.Proxied,  // managed: desired proxy mode.
+		// server-determined: capability flag returned by Cloudflare, not a desired input.
+		Proxiable: false,
+		Comment:   params.Comment, // managed: desired comment.
+		Tags:      params.Tags,    // managed: desired tags.
 		Settings: cloudflare.DNSRecordSettings{
+			// server-determined for this reconciler: per-record CNAME flattening is
+			// not managed for A/AAAA.
 			FlattenCNAME: nil,
 		},
 	}
