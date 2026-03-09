@@ -51,6 +51,13 @@ func TestFinalClearWAFList(t *testing.T) {
 				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupFailed)
 			},
 		},
+		{
+			name: "unknown-cleanup-code/response-failed",
+			resp: setter.ResponseFailed,
+			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription).Return(api.WAFListCleanupCode(99))
+			},
+		},
 	}
 
 	for _, tc := range cases {

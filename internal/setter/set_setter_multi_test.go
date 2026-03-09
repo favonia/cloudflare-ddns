@@ -279,6 +279,46 @@ func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testin
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
+func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
+	t.Parallel()
+
+	fixture := newDNSRecordFixture()
+	ctx, h := newSetterHarness(t)
+
+	firstNonMatching := fixture.params
+	firstNonMatching.TTL = fixture.params.TTL + 30
+	secondNonMatching := fixture.params
+	secondNonMatching.TTL = fixture.params.TTL + 60
+
+	gomock.InOrder(
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+			dnsRecord(fixture.record1, fixture.ip1, firstNonMatching),
+			dnsRecord(fixture.record2, fixture.ip1, secondNonMatching),
+		}, true, true),
+		h.mockPP.EXPECT().Noticef(
+			pp.EmojiWarning,
+			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"AAAA records of sub.test.org", "ttl", 2, "configured value",
+		),
+		expectRecordUpdate(
+			ctx,
+			h.mockPP,
+			h.mockHandle,
+			fixture.ipNetwork,
+			fixture.domain,
+			fixture.record1,
+			fixture.ip1,
+			firstNonMatching,
+			fixture.params,
+			false,
+		),
+		expectRecordSetFailedNotice(h.mockPP, fixture.ipNetwork, fixture.domain),
+	)
+
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	require.Equal(t, setter.ResponseFailed, resp)
+}
+
 func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 	t.Parallel()
 

@@ -37,6 +37,23 @@ func TestResolveScalarValueOrderInvariant(t *testing.T) {
 	require.Equal(t, ambiguousA, ambiguousB)
 }
 
+func TestCanonicalTagKeyNoValue(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "team", canonicalTagKey("Team"))
+}
+
+func TestCanonicalizeTagSetDuplicateKeepsLexicographicallySmallest(t *testing.T) {
+	t.Parallel()
+
+	canonical := canonicalizeTagSet([]string{"name:value", "Name:value", "x:two"})
+
+	require.True(t, canonical.hasDuplicateCanonical)
+	require.Equal(t, []string{"name:value", "x:two"}, canonical.keys)
+	require.Equal(t, "Name:value", canonical.representative["name:value"])
+	require.Equal(t, "x:two", canonical.representative["x:two"])
+}
+
 func TestCommonTags(t *testing.T) {
 	t.Parallel()
 
