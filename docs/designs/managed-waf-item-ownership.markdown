@@ -47,6 +47,14 @@ WAF reconciliation resolves create metadata independently per `(list, IP family)
   - unanimous source comment: inherit source comment
   - non-unanimous source comments: use configured comment and emit one ambiguity warning for that family field
 
+### Path-Independence Boundary
+
+Path-independence is a secondary stability goal for comment reconciliation, after coverage safety and ownership isolation.
+
+For successful create-then-delete rounds, when a drift step creates managed items and a later drift step makes those items stale, the resolved create comment should match the direct one-step transition outcome from the earlier stale source.
+
+This is intentionally narrower than full state canonicalization. Keep-and-fill still preserves any managed ranges that cover current targets, so retained range sets can remain history-dependent even when create-comment resolution is path-stable under the drift pattern above.
+
 Execution order remains create-before-delete to reduce temporary coverage gaps.
 
 This ordering is intentional for interruption resilience:

@@ -549,3 +549,85 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 		require.Equal(t, setter.ResponseUpdated, resp)
 	})
 }
+
+func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
+	t.Parallel()
+
+	const listDescription = "My List"
+	wafList := api.WAFList{AccountID: "account", Name: "list"}
+
+	initialStale1 := wafItem(wafItemFixture{prefix: "20.0.0.1/32", id: "stale-1", comment: "carry"})
+	initialStale2 := wafItem(wafItemFixture{prefix: "30.0.0.1/32", id: "stale-2", comment: "carry"})
+	midItem := wafItem(wafItemFixture{prefix: "40.0.0.1/32", id: "mid-item", comment: "carry"})
+
+	midIP := netip.MustParseAddr("40.0.0.1")
+	finalIP := netip.MustParseAddr("50.0.0.1")
+
+	t.Run("two-step-and-direct-drift-resolve-the-same-create-comment", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, twoStep := newSetterHarness(t)
+		twoStep.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+		var twoStepCreateComments []string
+		gomock.InOrder(
+			twoStep.mockHandle.EXPECT().
+				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+			twoStep.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
+					return true
+				}),
+			twoStep.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "", []api.ID{initialStale1.ID, initialStale2.ID}).
+				Return(true),
+			twoStep.mockHandle.EXPECT().
+				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{midItem}, true, false, true),
+			twoStep.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
+					return true
+				}),
+			twoStep.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "", []api.ID{midItem.ID}).
+				Return(true),
+		)
+
+		resp := twoStep.setter.SetWAFList(ctx, twoStep.mockPP, wafList, listDescription, detected(midIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		resp = twoStep.setter.SetWAFList(ctx, twoStep.mockPP, wafList, listDescription, detected(finalIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		require.Len(t, twoStepCreateComments, 2)
+		require.Equal(t, twoStepCreateComments[0], twoStepCreateComments[1])
+
+		ctx, direct := newSetterHarness(t)
+		direct.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+		var directCreateComment string
+		gomock.InOrder(
+			direct.mockHandle.EXPECT().
+				ListWAFListItems(ctx, direct.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+			direct.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, direct.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					directCreateComment = items[0].Comment
+					return true
+				}),
+			direct.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, "", []api.ID{initialStale1.ID, initialStale2.ID}).
+				Return(true),
+		)
+
+		resp = direct.setter.SetWAFList(ctx, direct.mockPP, wafList, listDescription, detected(finalIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		require.Equal(t, twoStepCreateComments[1], directCreateComment)
+	})
+}

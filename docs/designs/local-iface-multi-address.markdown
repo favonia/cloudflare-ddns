@@ -18,7 +18,7 @@ Support multi-address interfaces without changing behavior for non-`local.iface`
 - Zoned addresses remain rejected.
 - Empty detection for a configured family is treated as a failure.
 - Metadata drift remains warn-only. TTL, proxy, or comment mismatches do not trigger destructive correction by themselves.
-- WAF reconciliation uses keep-and-fill semantics to preserve coverage.
+- WAF reconciliation uses keep-and-fill semantics to preserve coverage. Path-independence discussion for WAF create-comment reconciliation is documented in `managed-waf-item-ownership.markdown`.
 - Heartbeat and notifier contracts remain unchanged.
 
 ## Scope Boundary
