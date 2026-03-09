@@ -352,9 +352,6 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 		}
 		if ctx.Err() != nil {
-			if !mutated {
-				return ResponseNoop
-			}
 			return ResponseUpdated
 		}
 	}
@@ -366,9 +363,6 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 		}
 		if ctx.Err() != nil {
-			if !mutated {
-				return ResponseNoop
-			}
 			return ResponseUpdated
 		}
 	}
