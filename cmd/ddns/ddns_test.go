@@ -195,6 +195,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: "managed",
+		Tags:    nil,
 	}
 
 	lifecycleConfig := &config.LifecycleConfig{

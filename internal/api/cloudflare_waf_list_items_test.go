@@ -155,9 +155,7 @@ func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedIt
 				return false
 			}
 			addr, addrErr := netip.ParseAddr(rawPrefix)
-			if !assert.NoError(t, addrErr) {
-				return false
-			}
+			require.NoError(t, addrErr)
 			prefix = netip.PrefixFrom(addr, addr.BitLen())
 		}
 		actualItems = append(actualItems, api.WAFListCreateItem{

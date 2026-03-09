@@ -12,14 +12,14 @@ import (
 
 type noopPP struct{}
 
-func (noopPP) IsShowing(pp.Verbosity) bool                  { return false }
-func (noopPP) Indent() pp.PP                                { return noopPP{} }
-func (noopPP) BlankLineIfVerbose()                          {}
-func (noopPP) Infof(pp.Emoji, string, ...any)               {}
-func (noopPP) Noticef(pp.Emoji, string, ...any)             {}
-func (noopPP) Suppress(pp.ID)                               {}
-func (noopPP) InfoOncef(pp.ID, pp.Emoji, string, ...any)    {}
-func (noopPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any)  {}
+func (noopPP) IsShowing(pp.Verbosity) bool                 { return false }
+func (noopPP) Indent() pp.PP                               { return noopPP{} }
+func (noopPP) BlankLineIfVerbose()                         {}
+func (noopPP) Infof(pp.Emoji, string, ...any)              {}
+func (noopPP) Noticef(pp.Emoji, string, ...any)            {}
+func (noopPP) Suppress(pp.ID)                              {}
+func (noopPP) InfoOncef(pp.ID, pp.Emoji, string, ...any)   {}
+func (noopPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any) {}
 
 func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	t.Parallel()
@@ -30,8 +30,8 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	ip4 := netip.MustParseAddr("::4")
 	targets := []netip.Addr{ip1, ip2, ip3}
 	records := []api.Record{
-		{ID: "record2", IP: ip2},
-		{ID: "record4", IP: ip4},
+		{ID: "record2", IP: ip2, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
+		{ID: "record4", IP: ip4, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
 	}
 
 	matched, unmatched, stale := partitionRecords(targets, records)
@@ -45,11 +45,11 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	t.Parallel()
 
-	configured := api.RecordParams{TTL: api.TTLAuto, Comment: "hello"}
+	configured := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "hello", Tags: nil}
 	records := []Record{
 		{ID: "record3", RecordParams: configured},
 		{ID: "record1", RecordParams: configured},
-		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Comment: "other"}},
+		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
 	}
 
 	resolved, matching, nonMatching := reconcileAndPartitionRecords(
@@ -66,7 +66,6 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 		{ID: "record3", RecordParams: configured},
 	}, matching)
 	require.Equal(t, []Record{
-		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Comment: "other"}},
+		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
 	}, nonMatching)
 }
-

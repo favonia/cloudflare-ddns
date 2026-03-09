@@ -315,7 +315,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			for _, record := range candidates {
 				if record.ID == keptRecord.ID {
 					ppfmt.Noticef(pp.EmojiImpossible,
-						"Found repeated managed record ID %s among %s records of %s; skipping duplicate deletion for this impossible case",
+						"Found repeated managed record ID %s among %s records of %s; "+
+							"skipping duplicate deletion for this impossible case",
 						keptRecord.ID, recordType, domainDescription,
 					)
 					continue

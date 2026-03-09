@@ -100,6 +100,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
+					Tags:    nil,
 				})
 			}),
 		)
@@ -122,6 +123,7 @@ func finalDeleteIP(
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
+					Tags:    nil,
 				})
 			}),
 		)

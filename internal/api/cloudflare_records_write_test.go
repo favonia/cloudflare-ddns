@@ -51,7 +51,7 @@ func newDeleteRecordHandler(t *testing.T, mux *http.ServeMux, id string, ip stri
 func TestDeleteRecord(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -87,7 +87,7 @@ func TestDeleteRecord(t *testing.T) {
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: ""}})
+			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
@@ -182,7 +182,7 @@ func newUpdateRecordHandler(
 func TestUpdateRecord(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit      int
@@ -228,11 +228,13 @@ func TestUpdateRecord(t *testing.T) {
 				TTL:     300,
 				Proxied: true,
 				Comment: "aloha",
+				Tags:    nil,
 			},
 			api.RecordParams{
 				TTL:     200,
 				Proxied: true,
 				Comment: "hello",
+				Tags:    nil,
 			},
 			true,
 			func(ppfmt *mocks.MockPP) {
@@ -311,7 +313,7 @@ func TestUpdateRecord(t *testing.T) {
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 			zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: ""}})
+			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			responseParams := tc.expectedParams
@@ -411,7 +413,7 @@ func newCreateRecordHandlerWithCommentAndTags(
 func TestCreateRecord(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	for name, tc := range map[string]struct {
 		zoneRequestLimit   int
@@ -500,7 +502,7 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	t.Parallel()
 
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
 		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
@@ -539,7 +541,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	t.Parallel()
 
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
-	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
+	currentParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
 		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
@@ -559,7 +561,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: "managed"},
+		{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
 	})
 	lrh.setRequestLimit(1)
 
@@ -570,7 +572,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 		"::2",
 		"::2",
 		currentParams,
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged"},
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil},
 	)
 	urh.setRequestLimit(1)
 
@@ -595,7 +597,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	f := newCloudflareHarness(t)
 	mockPP := f.newPP()
@@ -604,7 +606,7 @@ func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 	zh.setRequestLimit(2)
 
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record2", IP: "::3", Comment: ""},
+		{ID: "record2", IP: "::3", Comment: "", Tags: nil},
 	})
 	lrh.setRequestLimit(1)
 
@@ -643,7 +645,7 @@ func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	t.Run("update+delete", func(t *testing.T) {
 		t.Parallel()
@@ -654,7 +656,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		zh.setRequestLimit(2)
 
 		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
 		lrh.setRequestLimit(1)
 
 		urh := newUpdateRecordHandler(
@@ -740,7 +742,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		zh.setRequestLimit(2)
 
 		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::3", Comment: ""}})
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
 		lrh.setRequestLimit(1)
 
 		urh := newUpdateRecordHandler(

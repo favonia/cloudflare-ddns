@@ -170,7 +170,8 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 
 	raw, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(string(zone)),
-		cloudflare.ListDNSRecordsParams{ //nolint:exhaustruct // Query params intentionally set only fields used by the selector.
+		//nolint:exhaustruct // Query params intentionally set only fields used by the selector.
+		cloudflare.ListDNSRecordsParams{
 			Type: ipNet.RecordType(),
 			Name: domain.DNSNameASCII(),
 		})

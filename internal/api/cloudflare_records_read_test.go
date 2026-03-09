@@ -102,7 +102,7 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 func TestListRecords(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 	var managedRecordsCommentRegex *regexp.Regexp
 
 	for name, tc := range map[string]struct {
@@ -122,7 +122,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::2", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::2", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
@@ -149,7 +149,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			1,
 			"*.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::2", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::2", Comment: "", Tags: nil}},
 			1,
 			domain.Wildcard("test.org"), params, managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
@@ -182,7 +182,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "not an ip", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "not an ip", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
 			nil,
@@ -196,8 +196,8 @@ func TestListRecords(t *testing.T) {
 			2,
 			"sub.test.org",
 			[]formattedRecord{
-				{ID: "record1", IP: "::1", Comment: "managed"},
-				{ID: "record2", IP: "not an ip", Comment: "unmanaged"},
+				{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+				{ID: "record2", IP: "not an ip", Comment: "unmanaged", Tags: nil},
 			},
 			1,
 			domain.FQDN("sub.test.org"),
@@ -205,12 +205,14 @@ func TestListRecords(t *testing.T) {
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			},
 			regexp.MustCompile("^managed$"),
 			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			}}},
 			true,
 			nil,
@@ -219,13 +221,14 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"),
 			api.RecordParams{
 				TTL:     100,
 				Proxied: true,
 				Comment: "hello",
+				Tags:    nil,
 			},
 			managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}},
@@ -253,8 +256,8 @@ func TestListRecords(t *testing.T) {
 			2,
 			"sub.test.org",
 			[]formattedRecord{
-				{ID: "record1", IP: "::1", Comment: "managed"},
-				{ID: "record2", IP: "::2", Comment: "unmanaged"},
+				{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+				{ID: "record2", IP: "::2", Comment: "unmanaged", Tags: nil},
 			},
 			1,
 			domain.FQDN("sub.test.org"),
@@ -262,12 +265,14 @@ func TestListRecords(t *testing.T) {
 				TTL:     100,
 				Proxied: true,
 				Comment: "expected",
+				Tags:    nil,
 			},
 			regexp.MustCompile("^managed$"),
 			[]api.Record{{"record1", mustIP("::1"), api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			}}},
 			true,
 			func(ppfmt *mocks.MockPP) {
@@ -318,13 +323,13 @@ func TestListRecords(t *testing.T) {
 func TestListRecordsCache(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	f := newCloudflareHarness(t)
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: ""},
-		{ID: "record2", IP: "::2", Comment: ""},
+		{ID: "record1", IP: "::1", Comment: "", Tags: nil},
+		{ID: "record2", IP: "::2", Comment: "", Tags: nil},
 	})
 
 	zh.setRequestLimit(2)
@@ -347,7 +352,7 @@ func TestListRecordsCache(t *testing.T) {
 func TestListRecordsCacheManagedRecords(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
@@ -358,8 +363,8 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: "managed"},
-		{ID: "record2", IP: "::2", Comment: "unmanaged"},
+		{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+		{ID: "record2", IP: "::2", Comment: "unmanaged", Tags: nil},
 	})
 
 	zh.setRequestLimit(2)
@@ -369,7 +374,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}},
+		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 
@@ -380,7 +385,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}},
+		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 }

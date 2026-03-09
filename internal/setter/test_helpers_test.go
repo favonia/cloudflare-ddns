@@ -52,6 +52,7 @@ func newDNSRecordFixture() dnsRecordFixture {
 			TTL:     api.TTLAuto,
 			Proxied: false,
 			Comment: "hello",
+			Tags:    nil,
 		},
 	}
 }

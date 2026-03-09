@@ -1,4 +1,4 @@
-package setter
+package setter //nolint:testpackage // Tests intentionally access unexported reconciliation helpers.
 
 import (
 	"slices"
