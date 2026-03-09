@@ -179,6 +179,19 @@ func reconcileAndPartitionRecords(
 	return resolved, matching, nonMatching
 }
 
+func reconcileAndSortRecords(
+	configured api.RecordParams,
+	records []Record,
+	ppfmt pp.PP,
+	warnings ambiguityWarnings,
+	unit string,
+) (resolved api.RecordParams, sorted []Record) {
+	resolved, matching, nonMatching := reconcileAndPartitionRecords(
+		configured, records, ppfmt, warnings, unit,
+	)
+	return resolved, slices.Concat(matching, nonMatching)
+}
+
 // SetIPs updates the IP addresses of one domain to the given target set.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
@@ -226,20 +239,17 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// Stage 1: stale-first operations for unmatched targets.
-	createParams, staleMatchingRecords, staleNonMatchingRecords := reconcileAndPartitionRecords(
+	createParams, staleRecords := reconcileAndSortRecords(
 		expectedParams, staleRecords, ppfmt, warnings, unit,
 	)
-	// After partitioning, staleRecords is consumed and should not be read again.
-	staleRecords = nil
-	staleQueue := slices.Concat(staleMatchingRecords, staleNonMatchingRecords)
 
 	mutated := false
 	for _, target := range targetsToCreate {
-		if len(staleQueue) > 0 {
+		if len(staleRecords) > 0 {
 			// Recycle is an optimization of delete+create after metadata reconciliation.
 			// UpdateRecord contract: apply target IP and createParams metadata.
-			recycled := staleQueue[0]
-			staleQueue = staleQueue[1:]
+			recycled := staleRecords[0]
+			staleRecords = staleRecords[1:]
 			mutated = true
 			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, recycled.ID, target,
 				recycled.RecordParams, createParams,
@@ -268,7 +278,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// Stage 2: delete stale/out-of-target leftovers.
-	for _, r := range staleQueue {
+	for _, r := range staleRecords {
 		mutated = true
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
