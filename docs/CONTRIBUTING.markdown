@@ -36,7 +36,13 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
 5. Keep README reader-friendly.
 
-   `README.markdown` is for a broad user audience, including not-so-technical users. Prefer plain language, clear examples, and readable explanations over dense internal shorthand.
+   `README.markdown` is for a broad user audience, including not-so-technical users. Use these principles, in order:
+
+   1. Put beginners first: prefer plain language, clear examples, and visible user outcomes over dense internal shorthand.
+   2. Optimize for first adoption: in snippets and nearby prose, explain what happens when users start using the updater for domains, records, or lists that may already exist in Cloudflare.
+   3. Use two layers when needed: keep beginner-facing snippets and nearby prose simple, and move exact reconciliation rules or edge cases into tables, advanced notes, or clearly marked technical paragraphs. If a caveat materially affects first adoption and a beginner may reasonably stop reading after the example, keep a short warning in the example itself instead of moving it only to later prose.
+   4. Avoid internal terms unless they are necessary for accuracy: words such as "managed", "matching", or "configured value" belong mainly in technical sections.
+   5. Keep words stable in meaning: for example, in the README, "optional" should describe whether a setting is required to configure the updater, not whether changing existing resources is optional.
 
 6. Prefer explicit doc scopes in commit titles.
 

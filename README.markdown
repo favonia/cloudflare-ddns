@@ -77,6 +77,9 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 <details><summary><em>Click to expand:</em> 🐋 Directly run the Docker image</summary>
 
 ```bash
+# Use Cloudflare's proxy for these domains (optional).
+# Existing DNS records in Cloudflare may keep their current proxy setting.
+# Change them once manually if you want to switch them.
 docker run \
   --network host \
   -e CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
@@ -92,6 +95,9 @@ docker run \
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
 ```bash
+# Use Cloudflare's proxy for these domains (optional).
+# Existing DNS records in Cloudflare may keep their current proxy setting.
+# Change them once manually if you want to switch them.
 CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
@@ -138,7 +144,9 @@ services:
       - DOMAINS=example.org,www.example.org,example.io
         # Your domains (separated by commas)
       - PROXIED=true
-        # Tell Cloudflare to cache webpages and hide your IP (optional)
+        # Use Cloudflare's proxy for these domains (optional)
+        # Existing DNS records in Cloudflare may keep their current proxy setting
+        # Change them once manually if you want to switch them
 #networks:
 #  LAN0:
 #    external: true
@@ -165,9 +173,9 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server</summary>
+<summary><em>Click to expand:</em> 🚨 Remove the optional <code>PROXIED=true</code> line if you are <em>not</em> running a web server</summary>
 
-The setting `PROXIED=true` instructs Cloudflare to cache webpages and hide your IP addresses. If you wish to bypass that and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably turn off the proxying by removing `PROXIED=true`. The default value of `PROXIED` is `false`.
+The setting `PROXIED=true` makes this updater use Cloudflare's proxy for these domains, which lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they may keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare's proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
 
 </details>
 
@@ -414,15 +422,15 @@ Other scope notes:
 <details>
 <summary><em>Click to expand:</em> 🐣 DNS and WAF Defaults</summary>
 
-> 👉 These settings are the configured defaults for managed DNS records and WAF content. Some are used only when something new must be created, such as `WAF_LIST_DESCRIPTION`. For DNS record metadata and WAF item comments, the updater reuses existing managed values when they clearly agree; otherwise it uses the default value below.
+> 🤖 These settings tell the updater what values to use for DNS records and WAF content. Some, such as `WAF_LIST_DESCRIPTION`, are used only when something new must be created. For DNS record metadata and WAF item comments, the updater may keep the value already used by matching managed items when they all use the same one; otherwise it uses the value below.
 
 | Name                                             | Meaning                                                                                                                                                                                                                                                                                                   | Default Value                              |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `PROXIED`                                        | <p>Default proxy setting for DNS records managed by the updater. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`.</p><p>🤖 Advanced usage: it can also be a domain-dependent boolean expression as described below.</p> | `false`                                    |
-| `TTL`                                            | Default TTL (in seconds) for DNS records managed by the updater.                                                                                                                                                                                                                                                                                | `1` (This means “automatic” to Cloudflare) |
-| `RECORD_COMMENT`                                 | Default [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.                                                                                                                                                                                                      | `""`                                       |
-| 🧪 `WAF_LIST_DESCRIPTION` (since version 1.14.0) | 🧪 Default description for new WAF lists.                                                                                                                                                                                                                                                         | `""`                                       |
-| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | 🧪 Default comment for new WAF list items.                                                                                                                                                                                                                                                        | `""`                                       |
+| `PROXIED`                                        | <p>Preferred proxy setting for DNS records managed by the updater. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0` or `1`.</p><p>🤖 If this updater already manages matching records and they already use the same proxy setting, it may keep that setting instead of switching to the configured value.</p><p>🤖 Advanced usage: it can also be a domain-dependent boolean expression as described below.</p> | `false`                                    |
+| `TTL`                                            | <p>Preferred TTL (in seconds) for DNS records managed by the updater.</p><p>🤖 If this updater already manages matching records and they already use the same TTL, it may keep that TTL instead of switching to the configured value.</p>                                                                                                                                          | `1` (This means “automatic” to Cloudflare) |
+| `RECORD_COMMENT`                                 | <p>Preferred [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.</p><p>🤖 If this updater already manages matching records and they already use the same comment, it may keep that comment instead of switching to the configured value.</p>                                                                                 | `""`                                       |
+| 🧪 `WAF_LIST_DESCRIPTION` (since version 1.14.0) | <p>🧪 Preferred description for WAF lists managed by the updater.</p><p>🤖 This matters only when the updater needs to create a new WAF list, because a WAF list has only one description.</p>                                                                                                                                               | `""`                                       |
+| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | <p>🧪 Preferred comment for new WAF list items managed by the updater.</p><p>🤖 If this updater already manages matching WAF list items and they already use the same comment, newly created items may keep that comment instead of switching to the configured value.</p>                                                                                                       | `""`                                       |
 
 > 🤖 For advanced users: the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
 >
