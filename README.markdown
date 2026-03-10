@@ -11,7 +11,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small footprint. The pr
 
 ## 📜 Highlights
 
-### ⚡ Efficiency
+### ⚡️ Efficiency
 
 - 🤏 The Docker image takes less than 5 MB after compression.
 - 🔁 The Go runtime re-uses existing HTTP connections.
@@ -236,10 +236,10 @@ docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-## ❓ Frequently Asked Questions
+## ❓️ Frequently Asked Questions
 
 <details>
-<summary><em>Click to expand:</em> ❔ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
+<summary><em>Click to expand:</em> ❔️ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
 
 Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
 
@@ -253,7 +253,7 @@ If you really wish to test the updater with simulated IP changes in the DNS reco
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ❔ How can I see the timestamps of the IP checks and/or updates?</summary>
+<summary><em>Click to expand:</em> ❔️ How can I see the timestamps of the IP checks and/or updates?</summary>
 
 The updater does not itself add timestamps because all major systems already timestamp everything:
 
@@ -263,14 +263,14 @@ The updater does not itself add timestamps because all major systems already tim
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ❔ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
+<summary><em>Click to expand:</em> ❔️ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
 
 Is your “public” IP address on your router between `100.64.0.0` and `100.127.255.255`? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public IP address, nor does it allow you to forward IP packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) that can work around CGNAT.
 
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ❔ How should I install this updater in ☸️ Kubernetes?</summary>
+<summary><em>Click to expand:</em> ❔️ How should I install this updater in ☸️ Kubernetes?</summary>
 
 Due to high maintenance costs, the Kubernetes instructions have been removed. However, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). **Important:** Only use Kompose version 1.35.0 or later, as these versions support the `user: "UID:GID"` attribute with `:GID`.
 
@@ -279,14 +279,14 @@ Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/w
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ❔ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
+<summary><em>Click to expand:</em> ❔️ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
 
 Certain Docker installations may have issues with the `no-new-privileges` security option. If you cannot run Docker images with this option (including this updater), removing it might be necessary. This will slightly compromise security, but it’s better than not running the updater at all. If _only_ this updater is affected, please [report this issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new).
 
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ❔ I am getting <code>error code: 1034</code></summary>
+<summary><em>Click to expand:</em> ❔️ I am getting <code>error code: 1034</code></summary>
 
 We have received reports of recent issues with the default IP provider, `cloudflare.trace`. Some users are encountering an "error code: 1034," likely due to internal problems with Cloudflare's servers. To work around this, please upgrade the updater to version 1.15.1 or later. Alternatively, you may switch to a different IP provider.
 
@@ -511,8 +511,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                                                                                                                              |
 | `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                                                                                                                                                                                                                                                                                    |
 | `INTERFACE=<iface>`                    | ✔️  | To automatically select the local address, use `IP4/6_PROVIDER=local`. 🧪 To select addresses of a specific network interface, use `IP4/6_PROVIDER=local.iface:<iface>` (available since version 1.15.0). Since the unreleased version, the updater collects all matching global unicast addresses instead of just the first one, then reconciles DNS records and WAF lists against that full detected set. |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                                                                                               |
-| `DNS_SERVER=server`                    | ❌  | For DNS-based IP detection, the updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`. To detect IP addresses via HTTPS by querying other servers, use `IP4/6_PROVIDER=url:<url>`                                                                        |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌️  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                                                                                               |
+| `DNS_SERVER=server`                    | ❌️  | For DNS-based IP detection, the updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`. To detect IP addresses via HTTPS by querying other servers, use `IP4/6_PROVIDER=url:<url>`                                                                        |
 
 </details>
 
@@ -526,11 +526,11 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this advanced feature                                                                                               |
-| `load_balancer`                       | ❌  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
+| `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
-| `purgeUnknownRecords`                 | ❌  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
+| `purgeUnknownRecords`                 | ❌️  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 
 > 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program purged unmanaged DNS records back then and it was not configurable via environment variables on its default branch. Eventually, an option `purgeUnknownRecords` was added to the Python program to disable purging, and it became configurable via environment variables, but my Go clone had already gone its own way. Beyond the migration points above, there were other issues and discussions that I prefer not to detail here, and some of that context is no longer publicly available. My opinions are biased, so please check the technical details by yourself. 😉
 

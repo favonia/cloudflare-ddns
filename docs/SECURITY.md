@@ -4,9 +4,9 @@
 
 | Version                              | Supported |
 | ------------------------------------ | --------- |
-| edge                                 | ✅        |
-| latest (or the version it points to) | ✅        |
-| others                               | ❌        |
+| edge                                 | ✅️        |
+| latest (or the version it points to) | ✅️        |
+| others                               | ❌️        |
 
 ## Reporting a Vulnerability
 
