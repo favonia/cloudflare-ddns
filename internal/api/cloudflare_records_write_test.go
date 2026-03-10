@@ -360,18 +360,41 @@ func TestUpdateRecord(t *testing.T) {
 
 func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, "", nil)
+	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+	)
 }
 
 func newCreateRecordHandlerWithComment(
 	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string,
 ) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithCommentAndTags(t, mux, id, ipNet, domain, ip, comment, nil)
+	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: nil},
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: nil},
+	)
 }
 
 func newCreateRecordHandlerWithCommentAndTags(
 	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string, tags []string,
+) httpHandler {
+	t.Helper()
+	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: tags},
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: tags},
+	)
+}
+
+func newCreateRecordHandlerWithParams(
+	t *testing.T,
+	mux *http.ServeMux,
+	id string,
+	ipNet ipnet.Type,
+	domain string,
+	ip string,
+	requestParams api.RecordParams,
+	responseParams api.RecordParams,
 ) httpHandler {
 	t.Helper()
 
@@ -398,14 +421,22 @@ func newCreateRecordHandlerWithCommentAndTags(
 			if !assert.Equal(t, domain, record.Name) ||
 				!assert.Equal(t, ipNet.RecordType(), record.Type) ||
 				!assert.Equal(t, ip, record.Content) ||
-				!assert.Equal(t, 1, record.TTL) ||
-				!assert.False(t, *record.Proxied) ||
-				!assert.Equal(t, comment, record.Comment) ||
-				!assert.Equal(t, tags, record.Tags) {
+				!assert.Equal(t, requestParams.TTL.Int(), record.TTL) ||
+				!assert.NotNil(t, record.Proxied) ||
+				!assert.Equal(t, requestParams.Comment, record.Comment) ||
+				!assert.Equal(t, requestParams.Tags, record.Tags) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if !assert.Equal(t, requestParams.Proxied, *record.Proxied) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			record.ID = id
+			record.TTL = responseParams.TTL.Int()
+			record.Proxied = &responseParams.Proxied
+			record.Comment = responseParams.Comment
+			record.Tags = responseParams.Tags
 
 			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(envelopDNSRecordResponse(record))
@@ -539,6 +570,160 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Empty(t, rs)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
+func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
+	t.Parallel()
+
+	listParams := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+		Tags:    nil,
+	}
+	createParams := api.RecordParams{
+		TTL:     300,
+		Proxied: true,
+		Comment: "managed",
+		Tags:    []string{"team:ddns"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record2", IP: "::3", Comment: "managed", Tags: []string{"env:prod"}},
+	})
+	lrh.setRequestLimit(1)
+
+	crh := newCreateRecordHandlerWithParams(
+		t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", createParams, createParams,
+	)
+	crh.setRequestLimit(1)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    []string{"env:prod"},
+		}},
+	}, rs)
+
+	id, ok := f.handle.CreateRecord(
+		context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), createParams,
+	)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record1", IP: mustIP("::1"), RecordParams: createParams},
+		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    []string{"env:prod"},
+		}},
+	}, rs)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
+func TestCreateRecordManagedCacheUsesDesiredMetadataEvenIfCreateResponseDiffers(t *testing.T) {
+	t.Parallel()
+
+	requestParams := api.RecordParams{
+		TTL:     300,
+		Proxied: true,
+		Comment: "managed",
+		Tags:    []string{"Team:Alpha", "env:prod"},
+	}
+	responseParams := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "",
+		Tags:    []string{"env:prod", "team:alpha"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+	lrh.setRequestLimit(1)
+
+	crh := newCreateRecordHandlerWithParams(
+		t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", requestParams, responseParams,
+	)
+	crh.setRequestLimit(1)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Empty(t, rs)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), requestParams)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Equal(t, []api.Record{
+		{ID: "record1", IP: mustIP("::1"), RecordParams: requestParams},
+	}, rs)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
+func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(
+			pp.EmojiError,
+			"Could not confirm creation of new %s record of %s: %v",
+			"AAAA", "sub.test.org", gomock.Any(),
+		)
+	})
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record1", IP: "::2", Comment: "", Tags: nil},
+	})
+	lrh.setRequestLimit(2)
+
+	crh := newCreateRecordHandler(t, f.serveMux, "record2", ipnet.IP6, "sub.test.org", "::1")
+	crh.setRequestLimit(0)
+
+	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.False(t, ok)
+	require.Zero(t, id)
+
+	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
 	assertHandlersExhausted(t, zh, lrh, crh)
 }
 
