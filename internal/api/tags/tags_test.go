@@ -53,6 +53,15 @@ func TestCommonSubset(t *testing.T) {
 		require.NotContains(t, resolved, "hi:Sigma")
 		require.NotContains(t, resolved, "HI:sigma")
 	})
+
+	t.Run("returns-empty-when-no-canonical-tag-is-unanimous", func(t *testing.T) {
+		t.Parallel()
+		stale := [][]string{
+			{"env:prod"},
+			{"team:alpha"},
+		}
+		require.Nil(t, apitags.CommonSubset(stale))
+	})
 }
 
 func TestCommonSubsetOrderInvariant(t *testing.T) {
@@ -126,6 +135,19 @@ func TestSummarizeSetsAmbiguousCanonical(t *testing.T) {
 			{"team:alpha", "env:prod"},
 		})
 		require.False(t, summary.HasAmbiguousCanonical)
+	})
+
+	t.Run("supports-tags-without-values", func(t *testing.T) {
+		t.Parallel()
+		summary := apitags.SummarizeSets([][]string{
+			{"FeatureFlag", "env:prod"},
+			{"featureflag", "Env:prod"},
+		})
+		require.False(t, summary.HasAmbiguousCanonical)
+		require.False(t, summary.HasDuplicateCanonical)
+		require.Equal(t, 2, summary.Occurrence["featureflag"])
+		require.Equal(t, "FeatureFlag", summary.Representative["featureflag"])
+		require.Equal(t, 2, summary.Occurrence["env:prod"])
 	})
 }
 

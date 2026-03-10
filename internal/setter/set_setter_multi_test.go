@@ -695,6 +695,37 @@ func TestSetIPsRepeatedKeeperIDWarnsAndReturnsNoop(t *testing.T) {
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
+func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
+	t.Parallel()
+
+	fixture := newDNSRecordFixture()
+	nonMatching := api.RecordParams{
+		TTL:     fixture.params.TTL,
+		Proxied: fixture.params.Proxied,
+		Comment: fixture.params.Comment,
+		Tags:    []string{"env:stale"},
+	}
+	ctx, h := newSetterHarness(t)
+
+	gomock.InOrder(
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
+			dnsRecord(fixture.record2, fixture.ip1, nonMatching),
+		}, true, true),
+		h.mockPP.EXPECT().Noticef(
+			pp.EmojiWarning,
+			"The %q values for %s disagree across %d managed candidates; using %s",
+			"AAAA records of sub.test.org", "tags", 2, "common subset",
+		),
+		h.mockHandle.EXPECT().DeleteRecord(
+			ctx, h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode).
+			Do(wrapCancelAsDelete(h.cancel)).Return(false),
+	)
+
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	require.Equal(t, setter.ResponseUpdated, resp)
+}
+
 func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 	t.Parallel()
 
