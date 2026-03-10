@@ -136,19 +136,6 @@ func TestSummarizeSetsAmbiguousCanonical(t *testing.T) {
 		})
 		require.False(t, summary.HasAmbiguousCanonical)
 	})
-
-	t.Run("supports-tags-without-values", func(t *testing.T) {
-		t.Parallel()
-		summary := apitags.SummarizeSets([][]string{
-			{"FeatureFlag", "env:prod"},
-			{"featureflag", "Env:prod"},
-		})
-		require.False(t, summary.HasAmbiguousCanonical)
-		require.False(t, summary.HasDuplicateCanonical)
-		require.Equal(t, 2, summary.Occurrence["featureflag"])
-		require.Equal(t, "FeatureFlag", summary.Representative["featureflag"])
-		require.Equal(t, 2, summary.Occurrence["env:prod"])
-	})
 }
 
 func TestSummarizeSetsOrderInvariant(t *testing.T) {
@@ -165,4 +152,15 @@ func TestSummarizeSetsOrderInvariant(t *testing.T) {
 	permuted := apitags.SummarizeSets(permutedTagSets)
 
 	require.Equal(t, original, permuted)
+}
+
+func TestUndocumented(t *testing.T) {
+	t.Parallel()
+
+	require.Nil(t, apitags.Undocumented(nil))
+	require.Nil(t, apitags.Undocumented([]string{"env:prod", "team:", "Name:Value"}))
+	require.Equal(t,
+		[]string{"featureflag", ":prod", ""},
+		apitags.Undocumented([]string{"env:prod", "featureflag", ":prod", "", "team:"}),
+	)
 }

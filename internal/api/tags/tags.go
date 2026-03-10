@@ -22,6 +22,20 @@ func canonicalKey(tag string) string {
 	return strings.ToLower(name) + ":" + value
 }
 
+// Undocumented returns tags that are not in Cloudflare's documented stored
+// name:value form. Empty values are allowed, but missing separators and empty
+// names are treated as undocumented.
+func Undocumented(tags []string) []string {
+	var undocumented []string
+	for _, tag := range tags {
+		name, _, hasValue := strings.Cut(tag, ":")
+		if !hasValue || name == "" {
+			undocumented = append(undocumented, tag)
+		}
+	}
+	return undocumented
+}
+
 type canonicalSet struct {
 	keys                  []string
 	representative        map[string]string

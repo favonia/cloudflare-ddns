@@ -6,11 +6,13 @@ import (
 	"net/netip"
 	"regexp"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
 
+	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -59,6 +61,27 @@ func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, 
 		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(target),
 	)
+}
+
+func hintUndocumentedTags(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, tags []string) {
+	if len(tags) == 0 {
+		return
+	}
+	ppfmt.Noticef(pp.EmojiImpossible,
+		"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s", //nolint:lll
+		pp.EnglishJoinMap(strconv.Quote, tags), ipNet.RecordType(), domain.Describe(), id, pp.IssueReportingURL,
+	)
+}
+
+func newUndocumentedTags(returned, requested []string) []string {
+	newUndocumented := make([]string, 0)
+	for _, tag := range apitags.Undocumented(returned) {
+		if slices.Contains(requested, tag) {
+			continue
+		}
+		newUndocumented = append(newUndocumented, tag)
+	}
+	return newUndocumented
 }
 
 // ListZones returns a list of zone IDs with the zone name.
@@ -197,6 +220,7 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 				Tags:    rawRecord.Tags,
 			},
 		}
+		hintUndocumentedTags(ppfmt, ipNet, domain, id, apitags.Undocumented(record.Tags))
 		managedRecords = append(managedRecords, record)
 
 		if record.TTL != configuredParams.TTL {
@@ -319,6 +343,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		Comment: r.Comment,
 		Tags:    r.Tags,
 	}
+	hintUndocumentedTags(ppfmt, ipNet, domain, id, newUndocumentedTags(currentParams.Tags, desiredParams.Tags))
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
 		if !matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, currentParams.Comment) {
@@ -398,6 +423,8 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, desiredParams.Comment) {
 		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: desiredParams}}, *rs.Value()...)
 	}
+
+	hintUndocumentedTags(ppfmt, ipNet, domain, ID(res.ID), newUndocumentedTags(res.Tags, desiredParams.Tags))
 
 	return ID(res.ID), true
 }

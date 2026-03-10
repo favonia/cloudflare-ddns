@@ -509,6 +509,72 @@ func TestCreateRecordWithTags(t *testing.T) {
 	assertHandlersExhausted(t, zh, lrh, crh)
 }
 
+func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+		Tags:    []string{"team:ddns"},
+	}
+	responseParams := api.RecordParams{
+		TTL:     params.TTL,
+		Proxied: params.Proxied,
+		Comment: params.Comment,
+		Tags:    []string{"team:ddns", "featureflag", ":prod"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(
+			pp.EmojiImpossible,
+			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			`"featureflag" and ":prod"`,
+			"AAAA",
+			"sub.test.org",
+			api.ID("record1"),
+			pp.IssueReportingURL,
+		)
+	})
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+	lrh.setRequestLimit(0)
+	crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, responseParams)
+	crh.setRequestLimit(1)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
+func TestCreateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "managed",
+		Tags:    []string{"featureflag", "team:ddns"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+	lrh.setRequestLimit(0)
+	crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, params)
+	crh.setRequestLimit(1)
+
+	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+	require.True(t, ok)
+	require.Equal(t, api.ID("record1"), id)
+	assertHandlersExhausted(t, zh, lrh, crh)
+}
+
 func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	t.Parallel()
 
@@ -766,6 +832,68 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	require.True(t, cached)
 	require.Empty(t, rs)
 	assertHandlersExhausted(t, zh, lrh, urh)
+}
+
+func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "",
+		Tags:    []string{"team:ddns"},
+	}
+	responseParams := api.RecordParams{
+		TTL:     params.TTL,
+		Proxied: params.Proxied,
+		Comment: params.Comment,
+		Tags:    []string{"team:ddns", "featureflag"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(
+			pp.EmojiImpossible,
+			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			`"featureflag"`,
+			"AAAA",
+			"sub.test.org",
+			api.ID("record1"),
+			pp.IssueReportingURL,
+		)
+	})
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, responseParams)
+	urh.setRequestLimit(1)
+
+	ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+	require.True(t, ok)
+	assertHandlersExhausted(t, zh, urh)
+}
+
+func TestUpdateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "",
+		Tags:    []string{"featureflag", "team:ddns"},
+	}
+
+	f := newCloudflareHarness(t)
+	mockPP := f.newPP()
+
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	zh.setRequestLimit(2)
+	urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, params)
+	urh.setRequestLimit(1)
+
+	ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+	require.True(t, ok)
+	assertHandlersExhausted(t, zh, urh)
 }
 
 func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {

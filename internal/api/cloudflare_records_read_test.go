@@ -320,6 +320,63 @@ func TestListRecords(t *testing.T) {
 	}
 }
 
+func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+	f := newCloudflareHarness(t)
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record1", IP: "::1", Comment: "", Tags: []string{"env", ":prod", "team:"}},
+	})
+
+	zh.setRequestLimit(2)
+	lrh.setRequestLimit(1)
+	ppfmt := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(
+			pp.EmojiImpossible,
+			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			`"env" and ":prod"`,
+			"AAAA",
+			"sub.test.org",
+			api.ID("record1"),
+			pp.IssueReportingURL,
+		)
+	})
+	rs, cached, ok := f.handle.ListRecords(context.Background(), ppfmt, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{{
+		ID: "record1",
+		IP: mustIP("::1"),
+		RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"env", ":prod", "team:"},
+		},
+	}}, rs)
+	assertHandlersExhausted(t, zh, lrh)
+
+	zh.setRequestLimit(0)
+	lrh.setRequestLimit(0)
+	rs, cached, ok = f.handle.ListRecords(context.Background(), f.newPP(), ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Equal(t, []api.Record{{
+		ID: "record1",
+		IP: mustIP("::1"),
+		RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"env", ":prod", "team:"},
+		},
+	}}, rs)
+	assertHandlersExhausted(t, zh, lrh)
+}
+
 func TestListRecordsCache(t *testing.T) {
 	t.Parallel()
 
