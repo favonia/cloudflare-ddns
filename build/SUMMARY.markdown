@@ -9,7 +9,7 @@
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://securityscorecards.dev/viewer/?uri=github.com/favonia/cloudflare-ddns)
 
-A small, feature-rich, and robust Cloudflare DDNS updater. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)
+A feature-rich and robust Cloudflare DDNS updater with a small Docker image. The badge above shows its current published size. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)
 
 ## Supported Tags
 
