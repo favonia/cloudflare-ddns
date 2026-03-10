@@ -200,22 +200,22 @@ func TestSetIPsCreateDoesNotInheritMetadataFromDeletedDuplicate(t *testing.T) {
 		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "tags", 2, "common subset",
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "ttl", 2, "configured value",
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "proxied", 2, "configured value",
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "comment", 2, "configured value",
 		),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
@@ -263,7 +263,7 @@ func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testin
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "comment", 3, "configured value",
 		),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, record0, api.RegularDelitionMode, true),
@@ -294,7 +294,7 @@ func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "ttl", 2, "configured value",
 		),
 		expectRecordUpdate(
@@ -351,12 +351,12 @@ func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "ttl", 2, "configured value",
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "comment", 2, "configured value",
 		),
 		expectRecordUpdate(
@@ -410,12 +410,12 @@ func TestSetIPsStaleDeleteBeforeMatchedUpdate(t *testing.T) {
 		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "ttl", 2, "configured value",
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "comment", 2, "configured value",
 		),
 		expectRecordUpdate(
@@ -468,7 +468,7 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "comment", 3, "configured value",
 		),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
@@ -587,12 +587,12 @@ func TestSetIPsDuplicateCanonicalTagsWarnOnImpossibleCases(t *testing.T) {
 		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found duplicate canonical tags in metadata reconciliation for %s field %q; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", "tags", pp.IssueReportingURL,
+			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
+			"AAAA records of sub.test.org", pp.IssueReportingURL,
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "tags", 2, "common subset",
 		),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
@@ -637,8 +637,8 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found duplicate canonical tags in metadata reconciliation for %s field %q; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", "tags", pp.IssueReportingURL,
+			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
+			"AAAA records of sub.test.org", pp.IssueReportingURL,
 		),
 		expectRecordUpdate(
 			ctx,
@@ -654,12 +654,12 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found duplicate canonical tags in metadata reconciliation for %s field %q; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", "tags", pp.IssueReportingURL,
+			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
+			"AAAA records of sub.test.org", pp.IssueReportingURL,
 		),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "tags", 2, "common subset",
 		),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
@@ -723,7 +723,7 @@ func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+			"The %q values for %s disagree across %d managed candidates; using %s",
 			"AAAA records of sub.test.org", "tags", 2, "common subset",
 		),
 		expectRecordUpdate(

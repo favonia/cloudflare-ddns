@@ -231,62 +231,36 @@ func TestUpdateRecord(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "200", "200", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`,
 				)
 			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "200", "200", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`,
-				)
-			},
-		},
-		"mismatched-tags": {
-			2, 0, 1,
-			api.RecordParams{
-				TTL:     api.TTLAuto,
-				Proxied: false,
-				Comment: "",
-				Tags:    []string{"team:ops"},
-			},
-			true,
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.",
-					"AAAA", "sub.test.org", api.ID("record1"),
-					[]string{"team:ddns"},
-					[]string{"team:ops"},
-				)
-			},
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.",
-					"AAAA", "sub.test.org", api.ID("record1"),
-					[]string{"team:ddns"},
-					[]string{"team:ops"},
 				)
 			},
 		},
@@ -356,14 +330,6 @@ func TestUpdateRecord(t *testing.T) {
 			}
 		})
 	}
-}
-
-func newCreateRecordHandler(t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string) httpHandler {
-	t.Helper()
-	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-	)
 }
 
 func newCreateRecordHandlerWithComment(
@@ -489,7 +455,16 @@ func TestCreateRecord(t *testing.T) {
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
 			lrh.setRequestLimit(tc.listRequestLimit)
 
-			crh := newCreateRecordHandler(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1")
+			crh := newCreateRecordHandlerWithParams(
+				t,
+				f.serveMux,
+				"record1",
+				ipnet.IP6,
+				"sub.test.org",
+				"::1",
+				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+			)
 			crh.setRequestLimit(tc.createRequestLimit)
 
 			f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -708,7 +683,16 @@ func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
 	})
 	lrh.setRequestLimit(2)
 
-	crh := newCreateRecordHandler(t, f.serveMux, "record2", ipnet.IP6, "sub.test.org", "::1")
+	crh := newCreateRecordHandlerWithParams(
+		t,
+		f.serveMux,
+		"record2",
+		ipnet.IP6,
+		"sub.test.org",
+		"::1",
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+	)
 	crh.setRequestLimit(0)
 
 	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -741,7 +725,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-			`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+			`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 			"AAAA", "sub.test.org", api.ID("record1"),
 			`"unmanaged"`, `"managed"`,
 		)
@@ -897,7 +881,16 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
 		lrh.setRequestLimit(1)
 
-		crh := newCreateRecordHandler(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1")
+		crh := newCreateRecordHandlerWithParams(
+			t,
+			f.serveMux,
+			"record1",
+			ipnet.IP6,
+			"sub.test.org",
+			"::1",
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+		)
 		crh.setRequestLimit(1)
 
 		drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
@@ -946,7 +939,16 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		)
 		urh.setRequestLimit(1)
 
-		crh := newCreateRecordHandler(t, f.serveMux, "record3", ipnet.IP6, "sub.test.org", "::4")
+		crh := newCreateRecordHandlerWithParams(
+			t,
+			f.serveMux,
+			"record3",
+			ipnet.IP6,
+			"sub.test.org",
+			"::4",
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+		)
 		crh.setRequestLimit(1)
 
 		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")

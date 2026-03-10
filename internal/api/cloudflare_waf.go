@@ -40,7 +40,7 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 
 func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, configuredDescription string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
+		`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
 		list.Describe(), m.ID,
 		DescribeFreeFormString(m.Description), DescribeFreeFormString(configuredDescription),
 		list.AccountID,
@@ -70,10 +70,14 @@ func hintMismatchedWAFListItemComment(
 		return
 	}
 
+	// This is intentionally a warn-only drift notice. Comment mismatches for
+	// already managed WAF list items may come from pre-existing state, and they
+	// are not corrected by reconciliation. Keep the message focused on that
+	// observable behavior rather than on internal mutation mechanics.
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. "+
+		"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. "+
 			"Found %d managed WAF list item(s) with mismatched comments. "+
-			"WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+			"These mismatches are reported but not corrected.",
 		sampleID,
 		list.Describe(),
 		DescribeFreeFormString(sampleComment),

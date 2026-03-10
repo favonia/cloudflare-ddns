@@ -38,16 +38,16 @@ func (w ambiguityWarnings) warn(ppfmt pp.PP, unit, field string, count int, fall
 	}
 	w.emitted[key] = true
 	ppfmt.Noticef(pp.EmojiWarning,
-		"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+		"The %q values for %s disagree across %d managed candidates; using %s",
 		unit, field, count, fallback,
 	)
 }
 
-func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit, field string) {
+func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit string) {
 	ppfmt.Noticef(pp.EmojiImpossible,
-		"Found duplicate canonical tags in metadata reconciliation for %s field %q; "+
+		"The tags for %s contain duplicates that differ only by letter case; "+
 			"this should not happen and please report it at %s",
-		unit, field, pp.IssueReportingURL,
+		unit, pp.IssueReportingURL,
 	)
 }
 
@@ -165,7 +165,7 @@ func reconcileAndPartitionRecords(
 	}
 	tagSummary := apitags.SummarizeSets(tagSets)
 	if tagSummary.HasDuplicateCanonical {
-		warnings.warnDuplicateCanonicalTags(ppfmt, unit, "tags")
+		warnings.warnDuplicateCanonicalTags(ppfmt, unit)
 	}
 	if tagSummary.HasAmbiguousCanonical {
 		warnings.warn(ppfmt, unit, "tags", len(tagSets), "common subset")

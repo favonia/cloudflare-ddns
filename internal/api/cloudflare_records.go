@@ -11,7 +11,6 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
 
-	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -36,7 +35,7 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 
 func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target TTL) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.", //nolint:lll
+		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.", //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
 		current.Describe(), target.Describe(), target.Describe(), current.Int(),
 	)
@@ -47,29 +46,18 @@ func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, 
 		true:  "proxied",
 		false: "not proxied (DNS only)",
 	}
-	negation := map[bool]string{
-		true:  "",
-		false: "not ",
-	}
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
+		`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
-		descriptions[current], negation[target], descriptions[target],
+		descriptions[current], descriptions[target], descriptions[target],
 	)
 }
 
 func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(target),
-	)
-}
-
-func hintMismatchedTags(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target []string) {
-	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The tags for the %s record of %s (ID: %s) are %q. However, they are expected to be %q. You can either change the tags in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of TAGS to match the current tags.", //nolint:lll
-		ipNet.RecordType(), domain.Describe(), id, current, target,
 	)
 }
 
@@ -323,9 +311,6 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 	if r.Comment != desiredParams.Comment {
 		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, desiredParams.Comment)
-	}
-	if !apitags.Equal(r.Tags, desiredParams.Tags) {
-		hintMismatchedTags(ppfmt, ipNet, domain, id, r.Tags, desiredParams.Tags)
 	}
 
 	currentParams := RecordParams{

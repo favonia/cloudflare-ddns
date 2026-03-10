@@ -335,7 +335,7 @@ func TestListWAFListItems(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. Found %d managed WAF list item(s) with mismatched comments. WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+					"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. Found %d managed WAF list item(s) with mismatched comments. These mismatches are reported but not corrected.",
 					api.ID("item-1"),
 					"account456/list",
 					`"current-1"`,
@@ -455,7 +455,7 @@ func TestListWAFListItemsCommentMismatchWarningCacheMissOnly(t *testing.T) {
 	firstPP := f.newPP()
 	firstPP.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. Found %d managed WAF list item(s) with mismatched comments. WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+		"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. Found %d managed WAF list item(s) with mismatched comments. These mismatches are reported but not corrected.",
 		api.ID("item-1"),
 		"account456/list",
 		`"current"`,

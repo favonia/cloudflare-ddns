@@ -235,17 +235,17 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "100", "100", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`,
 				)
@@ -277,17 +277,17 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "100", "100", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					`"managed"`, `"expected"`,
 				)

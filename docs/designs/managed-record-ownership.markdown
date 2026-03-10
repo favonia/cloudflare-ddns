@@ -175,5 +175,5 @@ It is not a general ownership abstraction for all managed resources. WAF list it
 ## Future Development Notes
 
 - If one process ever needs multiple ownership scopes for the same domain and IP family, the cache design must change so filter identity becomes part of the caching model.
-- Future configuration and UI work should continue to keep ownership selection separate from the parameters of newly created DNS records.
+- Future configuration and UI work should continue to keep ownership selection separate from the parameters written to DNS records.
 - If future work needs ownership semantics beyond DNS comments, or shared ownership rules across DNS and WAF resources, that should be designed as a new abstraction instead of extending this selector implicitly.

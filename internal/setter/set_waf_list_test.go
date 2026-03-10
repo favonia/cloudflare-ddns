@@ -492,7 +492,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				Return([]api.WAFListItem{stale4, stale4b}, true, false, true),
 			h.mockPP.EXPECT().Noticef(
 				pp.EmojiWarning,
-				"Metadata reconciliation for %s field %q is ambiguous across %d candidates; using %s",
+				"The %q values for %s disagree across %d managed candidates; using %s",
 				"WAF list "+wafList.Describe()+" IPv4", "comment", 2, "configured comment",
 			),
 			h.mockHandle.EXPECT().

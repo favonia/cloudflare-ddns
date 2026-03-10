@@ -370,7 +370,7 @@ Other scope notes:
 >
 > 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), and thus the updater will use the smallest IP range allowed by Cloudflare that contains the detected IPv6 address.
 > 2. The updater removes addresses from disabled IP families only from items managed by this updater (_e.g.,_ if you set `IP6_PROVIDER=none`, existing IPv6 addresses or ranges in managed items are deleted). The managed set is selected by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`.
-> 3. Cloudflare does not provide an API to edit a single WAF list item in place. When the desired IP/range set changes, reconciliation adds missing items and removes stale items. For newly created items, the updater inherits stale managed comments when they agree; otherwise it uses `WAF_LIST_ITEM_COMMENT`.
+> 3. Managed WAF list item comments are not corrected in place. 🤖 When reconciliation needs to add managed items, the updater inherits a unanimous stale managed comment when there is one; otherwise it uses `WAF_LIST_ITEM_COMMENT`.
 
 </details>
 
@@ -422,7 +422,9 @@ Other scope notes:
 <details>
 <summary><em>Click to expand:</em> 🐣 DNS and WAF Defaults</summary>
 
-> 🤖 These settings tell the updater what values to use for DNS records and WAF content. Some, such as `WAF_LIST_DESCRIPTION`, are used only when something new must be created. For DNS record metadata and WAF item comments, the updater may keep the value already used by matching managed items when they all use the same one; otherwise it uses the value below.
+> These settings help the updater decide which TTLs, comments, proxy settings, and similar values to use. It often keeps the value already used by matching managed records or WAF items, but when it cannot decide, it uses the value below.
+>
+> 🤖 Some settings, such as `WAF_LIST_DESCRIPTION`, matter only when a WAF list must be created. For DNS record metadata and WAF item comments, the updater may keep the unanimous value already used by matching managed items; otherwise it uses the value below.
 
 | Name                                             | Meaning                                                                                                                                                                                                                                                                                                   | Default Value                              |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
@@ -430,7 +432,7 @@ Other scope notes:
 | `TTL`                                            | <p>Preferred TTL (in seconds) for DNS records managed by the updater.</p><p>🤖 If this updater already manages matching records and they already use the same TTL, it may keep that TTL instead of switching to the configured value.</p>                                                                                                                                          | `1` (This means “automatic” to Cloudflare) |
 | `RECORD_COMMENT`                                 | <p>Preferred [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.</p><p>🤖 If this updater already manages matching records and they already use the same comment, it may keep that comment instead of switching to the configured value.</p>                                                                                 | `""`                                       |
 | 🧪 `WAF_LIST_DESCRIPTION` (since version 1.14.0) | <p>🧪 Preferred description for WAF lists managed by the updater.</p><p>🤖 This matters only when the updater needs to create a new WAF list, because a WAF list has only one description.</p>                                                                                                                                               | `""`                                       |
-| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | <p>🧪 Preferred comment for new WAF list items managed by the updater.</p><p>🤖 If this updater already manages matching WAF list items and they already use the same comment, newly created items may keep that comment instead of switching to the configured value.</p>                                                                                                       | `""`                                       |
+| 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)          | <p>🧪 Preferred comment for WAF list items managed by the updater.</p><p>🤖 If this updater already manages matching WAF list items and they already use the same comment, it may keep that comment instead of switching to the configured value.</p>                                                                                                                            | `""`                                       |
 
 > 🤖 For advanced users: the `PROXIED` can be a boolean expression involving domains! This allows you to enable Cloudflare proxying for some domains but not the others. Here are some example expressions:
 >
