@@ -1,4 +1,4 @@
-# ✨ Contributing to `cloudflare-ddns`
+# ✨️ Contributing to `cloudflare-ddns`
 
 First of all, thank you for your contribution! 🤗
 
