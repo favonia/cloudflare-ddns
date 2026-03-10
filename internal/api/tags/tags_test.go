@@ -97,6 +97,10 @@ func TestEqual(t *testing.T) {
 		[]string{"name:Value"},
 		[]string{"name:value"},
 	))
+	require.True(t, apitags.Equal(
+		[]string{"FeatureFlag", "NAME:value"},
+		[]string{"featureflag", "name:value"},
+	))
 }
 
 func TestSummarizeSets(t *testing.T) {
@@ -152,6 +156,23 @@ func TestSummarizeSetsOrderInvariant(t *testing.T) {
 	permuted := apitags.SummarizeSets(permutedTagSets)
 
 	require.Equal(t, original, permuted)
+}
+
+func TestSummarizeSetsUndocumentedTags(t *testing.T) {
+	t.Parallel()
+
+	summary := apitags.SummarizeSets([][]string{
+		{"FeatureFlag", "NAME:value"},
+		{"featureflag", "name:value"},
+	})
+
+	require.Equal(t, 2, summary.SetCount)
+	require.Equal(t, 2, summary.Occurrence["featureflag"])
+	require.Equal(t, 2, summary.Occurrence["name:value"])
+	require.Equal(t, "FeatureFlag", summary.Representative["featureflag"])
+	require.Equal(t, "NAME:value", summary.Representative["name:value"])
+	require.False(t, summary.HasAmbiguousCanonical)
+	require.False(t, summary.HasDuplicateCanonical)
 }
 
 func TestUndocumented(t *testing.T) {
