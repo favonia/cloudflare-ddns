@@ -52,6 +52,9 @@ Guidance:
 
 - In tests, omitting irrelevant fields is usually acceptable.
 - In non-test code, prefer a short reason when the intentional omission is not obvious.
+- For third-party API request structs:
+  - query/list parameter literals may stay intentionally partial with a local reason
+  - mutating request literals should remain exhaustive to surface new upstream fields during review
 
 ### `paralleltest`
 
@@ -111,6 +114,7 @@ Examples include:
 - `testifylint` when `require` would be unsafe inside an HTTP handler goroutine
 - `embeddedstructfieldcheck` when embedding preserves the intended public model shape
 - `unparam` when a helper signature stays intentionally symmetric with its callers
+  and would become misleading if made less explicit
 - `gosec` when a weak fallback is used only after a stronger mechanism fails and the risk is understood
 - `forcetypeassert` after earlier checks establish the expected concrete type
 - `noctx` when a test helper must call an API that has no context-aware alternative

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io"
 	"testing"
 	"time"
 
@@ -72,10 +71,10 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	t.Setenv("WAF_LIST_ITEM_COMMENT", "managed-waf")
 	t.Setenv("MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX", "^managed-waf$")
 
-	// Run the production initialization path quietly; the assertions below define
+	// Run the production initialization path silently; the assertions below define
 	// the successful return contract for initConfig.
 	builtConfig, s, ok := initConfig(
-		pp.New(io.Discard, false, pp.Quiet),
+		pp.NewSilent(),
 		heartbeat.NewComposed(),
 		notifier.NewComposed(),
 	)
@@ -125,7 +124,7 @@ func TestInitConfigReadFailure(t *testing.T) {
 	resetInitConfigEnv(t)
 
 	builtConfig, s, ok := initConfig(
-		pp.New(io.Discard, false, pp.Quiet),
+		pp.NewSilent(),
 		heartbeat.NewComposed(),
 		notifier.NewComposed(),
 	)
@@ -141,7 +140,7 @@ func TestInitConfigBuildFailure(t *testing.T) {
 	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "(")
 
 	builtConfig, s, ok := initConfig(
-		pp.New(io.Discard, false, pp.Quiet),
+		pp.NewSilent(),
 		heartbeat.NewComposed(),
 		notifier.NewComposed(),
 	)
@@ -187,7 +186,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
 	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
-	ppfmt := pp.New(io.Discard, false, pp.Quiet)
+	ppfmt := pp.NewSilent()
 
 	domain4 := domain.FQDN("example.org")
 	wafList := api.WAFList{AccountID: "acc", Name: "office"}
@@ -195,6 +194,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: "managed",
+		Tags:    nil,
 	}
 
 	lifecycleConfig := &config.LifecycleConfig{
@@ -252,7 +252,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 
 	stopUpdating(
 		context.Background(),
-		pp.New(io.Discard, false, pp.Quiet),
+		pp.NewSilent(),
 		&config.LifecycleConfig{
 			UpdateCron:    nil,
 			UpdateOnStart: false,

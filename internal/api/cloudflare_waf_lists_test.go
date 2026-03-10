@@ -193,7 +193,7 @@ func TestWAFListID(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						`The description for the list %s (ID: %s) is %s. However, its description is expected to be %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
+						`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
 						"account456/list", mockID("list", 1), `"description"`, `"mismatched description"`, api.ID("account456")),
 				)
 			},

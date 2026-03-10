@@ -38,6 +38,116 @@ Only matched records participate in:
 
 Unmatched records are invisible to DNS mutation logic, so the updater may create a new managed record even if an unmanaged record already has the desired IP address.
 
+### Metadata Reconciliation for New Creates
+
+When DNS reconciliation needs to satisfy unmatched targets, metadata is resolved per `(domain, record type)` unit from stale records only.
+
+The flow is intentionally split into two independent paths:
+
+1. Matched-path reconciliation: reduce multiple matched records for one target to one keeper.
+2. Stale-to-new reconciliation: derive metadata from stale records, then satisfy unmatched targets.
+
+In stale-to-new reconciliation, recycling a stale record is only an optimization of delete+create to reduce downtime; the target metadata is always the reconciled stale-source metadata.
+
+- Scalar fields (`TTL`, `PROXIED`, `RECORD_COMMENT`):
+  - empty source set: use configured value
+  - unanimous source value: inherit source value
+  - non-unanimous source values: use configured value and emit one ambiguity warning per field
+- Tag field (`TAGS`):
+  - tag name is compared case-insensitively
+  - tag value is compared case-sensitively
+  - configured-default tags are sticky unless all sources omit them
+  - non-default tags require unanimity across sources to be inherited
+
+Duplicate records with the target IP are reduced deterministically: select one keeper, then delete the rest.
+
+### Interruption Risk Tiers
+
+For timeout-sensitive mutation ordering, DNS reconciliation uses the following risk tiers:
+
+- `R0`: missing target coverage
+- `R1`: wrong-IP exposure (managed records on non-target IPs)
+- `R2a`: proxied mismatch (expected `PROXIED=false`, actual `true`)
+- `R2b`: proxied mismatch (expected `PROXIED=true`, actual `false`)
+- `R2c`: TTL drift
+- `R2d`: comment/tags drift
+- `R3`: duplicate-hygiene residual risk
+
+Runtime ordering intentionally stays coarse for maintainability. The implementation
+does not schedule separate sub-stages for each `R2*` subtype.
+
+### Timeout-Aware Mutation Ordering
+
+DNS reconciliation follows interruption-aware ordering so partial execution under timeout/failure is still useful:
+
+1. Satisfy unmatched targets first (recycle stale records, then create if needed).
+2. Delete stale leftovers.
+3. Update kept matched records if metadata reconciliation requires it.
+4. Delete duplicate matched records that do not match resolved metadata.
+5. Delete duplicate matched records that already match resolved metadata.
+
+This ordering prioritizes higher-impact prefix improvements (`R0`, then `R1`)
+before lower-tier metadata and hygiene risks.
+
+### API Contract Boundary
+
+`setter` and `api.Handle` use the following DNS mutation contract:
+
+- `UpdateRecord` reconciles one managed record to desired state for both:
+  - content/IP
+  - metadata in scope (`TTL`, `PROXIED`, `RECORD_COMMENT`, `TAGS`)
+- desired-state mutation source is `desiredParams`.
+
+This contract is intentionally explicit because historical versions used an
+IP-only update path that preserved metadata. Any future contract change here
+must update interface comments, implementation comments, and API write tests
+together.
+
+### Cloudflare Field Ownership (A/AAAA Reconciler)
+
+For Cloudflare DNS create/update payloads used by this reconciler, each field
+is classified as either managed desired state or server-determined.
+
+References (deep links):
+- Cloudflare API DNS record edit (update): <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/>
+- Cloudflare API DNS record create: <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/>
+
+`UpdateDNSRecordParams`:
+
+| Field | Ownership | Why |
+| --- | --- | --- |
+| `ID` | managed | identifies the record being reconciled |
+| `Type` | managed | desired record identity for this reconciler unit (`A`/`AAAA`) |
+| `Name` | managed | desired fqdn identity for this reconciler unit |
+| `Content` | managed | desired IP address |
+| `TTL` | managed | desired metadata |
+| `Proxied` | managed | desired metadata |
+| `Comment` | managed | desired metadata (`nil` would mean “keep current”, so we pass explicit pointer) |
+| `Tags` | managed | desired metadata (always sent so clearing is explicit) |
+| `Data` | server-determined (for this reconciler) | Cloudflare uses it for non-`A/AAAA` record kinds (for example SRV/LOC) |
+| `Priority` | server-determined (for this reconciler) | relevant to non-`A/AAAA` kinds (for example MX/SRV/URI) |
+| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting, not managed for `A/AAAA` |
+
+`CreateDNSRecordParams`:
+
+| Field | Ownership | Why |
+| --- | --- | --- |
+| `Type` | managed | desired record identity (`A`/`AAAA`) |
+| `Name` | managed | desired fqdn |
+| `Content` | managed | desired IP address |
+| `TTL` | managed | desired metadata |
+| `Proxied` | managed | desired metadata |
+| `Comment` | managed | desired metadata |
+| `Tags` | managed | desired metadata |
+| `CreatedOn` | server-determined | timestamp assigned by Cloudflare |
+| `ModifiedOn` | server-determined | timestamp assigned by Cloudflare |
+| `Meta` | server-determined | Cloudflare-owned response metadata |
+| `Data` | server-determined (for this reconciler) | non-`A/AAAA` record-kind payload |
+| `ID` | server-determined | record ID allocated by Cloudflare |
+| `Priority` | server-determined (for this reconciler) | non-`A/AAAA` record-kind field |
+| `Proxiable` | server-determined | capability flag returned by Cloudflare |
+| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting |
+
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.
@@ -65,5 +175,5 @@ It is not a general ownership abstraction for all managed resources. WAF list it
 ## Future Development Notes
 
 - If one process ever needs multiple ownership scopes for the same domain and IP family, the cache design must change so filter identity becomes part of the caching model.
-- Future configuration and UI work should continue to keep ownership selection separate from the parameters of newly created DNS records.
+- Future configuration and UI work should continue to keep ownership selection separate from the parameters written to DNS records.
 - If future work needs ownership semantics beyond DNS comments, or shared ownership rules across DNS and WAF resources, that should be designed as a new abstraction instead of extending this selector implicitly.

@@ -6,10 +6,13 @@ import (
 	"net/netip"
 	"regexp"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
 
+	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -32,36 +35,53 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected TTL) {
+func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target TTL) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.", //nolint:lll
+		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.", //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
-		current.Describe(), expected.Describe(), expected.Describe(), current.Int(),
+		current.Describe(), target.Describe(), target.Describe(), current.Int(),
 	)
 }
 
-func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected bool) {
+func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target bool) {
 	descriptions := map[bool]string{
 		true:  "proxied",
 		false: "not proxied (DNS only)",
 	}
-	negation := map[bool]string{
-		true:  "",
-		false: "not ",
-	}
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
+		`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
-		descriptions[current], negation[expected], descriptions[expected],
+		descriptions[current], descriptions[target], descriptions[target],
 	)
 }
 
-func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, expected string) {
+func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
-		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(expected),
+		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(target),
 	)
+}
+
+func hintUndocumentedTags(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, tags []string) {
+	if len(tags) == 0 {
+		return
+	}
+	ppfmt.Noticef(pp.EmojiImpossible,
+		"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s", //nolint:lll
+		pp.EnglishJoinMap(strconv.Quote, tags), ipNet.RecordType(), domain.Describe(), id, pp.IssueReportingURL,
+	)
+}
+
+func newUndocumentedTags(returned, requested []string) []string {
+	newUndocumented := make([]string, 0)
+	for _, tag := range apitags.Undocumented(returned) {
+		if slices.Contains(requested, tag) {
+			continue
+		}
+		newUndocumented = append(newUndocumented, tag)
+	}
+	return newUndocumented
 }
 
 // ListZones returns a list of zone IDs with the zone name.
@@ -148,7 +168,7 @@ zoneSearch:
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-	expectedParams RecordParams,
+	configuredParams RecordParams,
 ) ([]Record, bool, bool) {
 	if cachedManagedRecords := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); cachedManagedRecords != nil {
 		// Cache stores managed records only; this assumes a stable selector per handle.
@@ -160,12 +180,12 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		return nil, false, false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally unspecified
 	raw, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(string(zone)),
+		//nolint:exhaustruct // Query params intentionally set only fields used by the selector.
 		cloudflare.ListDNSRecordsParams{
-			Name: domain.DNSNameASCII(),
 			Type: ipNet.RecordType(),
+			Name: domain.DNSNameASCII(),
 		})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
@@ -197,18 +217,20 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 				TTL:     TTL(rawRecord.TTL),
 				Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
 				Comment: rawRecord.Comment,
+				Tags:    rawRecord.Tags,
 			},
 		}
+		hintUndocumentedTags(ppfmt, ipNet, domain, id, apitags.Undocumented(record.Tags))
 		managedRecords = append(managedRecords, record)
 
-		if record.TTL != expectedParams.TTL {
-			hintMismatchedTTL(ppfmt, ipNet, domain, id, record.TTL, expectedParams.TTL)
+		if record.TTL != configuredParams.TTL {
+			hintMismatchedTTL(ppfmt, ipNet, domain, id, record.TTL, configuredParams.TTL)
 		}
-		if record.Proxied != expectedParams.Proxied {
-			hintMismatchedProxied(ppfmt, ipNet, domain, id, record.Proxied, expectedParams.Proxied)
+		if record.Proxied != configuredParams.Proxied {
+			hintMismatchedProxied(ppfmt, ipNet, domain, id, record.Proxied, configuredParams.Proxied)
 		}
-		if record.Comment != expectedParams.Comment {
-			hintMismatchedComment(ppfmt, ipNet, domain, id, record.Comment, expectedParams.Comment)
+		if record.Comment != configuredParams.Comment {
+			hintMismatchedComment(ppfmt, ipNet, domain, id, record.Comment, configuredParams.Comment)
 		}
 	}
 
@@ -248,20 +270,52 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
 func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
-	currentParams, expectedParams RecordParams,
+	desiredParams RecordParams,
 ) bool {
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally omitted
-	params := cloudflare.UpdateDNSRecordParams{
-		ID:      string(id),
-		Content: ip.String(),
+	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct):
+	// - Reconciled-on-update fields: type/name/content + desired metadata
+	//   (ttl/proxied/comment/tags).
+	// - Cloudflare API docs (edit DNS record):
+	//   https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/
+	// - For Cloudflare's UpdateDNSRecord API, nil comment means "keep current".
+	//   To reconcile comments (including empty), we must always pass a pointer.
+	// - Tags are always sent so tag clearing can be expressed explicitly.
+	// - Remaining request fields are server-determined for the record kinds
+	//   handled here and are intentionally set to their zero forms.
+	// Exhaustiveness ensures upstream API field additions are reviewed explicitly.
+	desiredComment := desiredParams.Comment
+	desiredTags := slices.Clone(desiredParams.Tags)
+	if desiredTags == nil {
+		desiredTags = []string{}
+	}
+	updateRequestParams := cloudflare.UpdateDNSRecordParams{
+		Type:    ipNet.RecordType(),    // managed: A/AAAA type is part of desired record identity.
+		Name:    domain.DNSNameASCII(), // managed: canonical fqdn identity for this reconciler unit.
+		Content: ip.String(),           // managed: desired IP address.
+		// server-determined for this reconciler: we only manage A/AAAA records here.
+		// Cloudflare uses Data for other record kinds (for example SRV/LOC), so we keep nil.
+		Data: nil,
+		ID:   string(id), // managed: target record identifier in API route/body.
+		// server-determined for this reconciler: Priority applies to other record kinds
+		// (for example MX/SRV/URI), not A/AAAA.
+		Priority: nil,
+		TTL:      desiredParams.TTL.Int(), // managed: desired TTL.
+		Proxied:  &desiredParams.Proxied,  // managed: desired proxy mode.
+		Comment:  &desiredComment,         // managed: desired comment (including explicit empty).
+		Tags:     desiredTags,             // managed: desired tags (always sent to allow clearing).
+		Settings: cloudflare.DNSRecordSettings{
+			// server-determined for this reconciler: per-record CNAME flattening is
+			// CNAME-specific and not managed for A/AAAA.
+			FlattenCNAME: nil,
+		},
 	}
 
-	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), params)
+	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), updateRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
@@ -272,25 +326,27 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		return false
 	}
 
-	if TTL(r.TTL) != currentParams.TTL && TTL(r.TTL) != expectedParams.TTL {
-		hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), expectedParams.TTL)
+	if TTL(r.TTL) != desiredParams.TTL {
+		hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), desiredParams.TTL)
 	}
 	updatedProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
-	if updatedProxied != currentParams.Proxied && updatedProxied != expectedParams.Proxied {
-		hintMismatchedProxied(ppfmt, ipNet, domain, id, updatedProxied, expectedParams.Proxied)
+	if updatedProxied != desiredParams.Proxied {
+		hintMismatchedProxied(ppfmt, ipNet, domain, id, updatedProxied, desiredParams.Proxied)
 	}
-	if r.Comment != currentParams.Comment && r.Comment != expectedParams.Comment {
-		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, expectedParams.Comment)
+	if r.Comment != desiredParams.Comment {
+		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, desiredParams.Comment)
 	}
 
-	updatedParams := RecordParams{
+	currentParams := RecordParams{
 		TTL:     TTL(r.TTL),
 		Proxied: updatedProxied,
 		Comment: r.Comment,
+		Tags:    r.Tags,
 	}
+	hintUndocumentedTags(ppfmt, ipNet, domain, id, newUndocumentedTags(currentParams.Tags, desiredParams.Tags))
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil {
-		if !matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, updatedParams.Comment) {
+		if !matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, currentParams.Comment) {
 			*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
 			return true
 		}
@@ -298,7 +354,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		updatedRecord := Record{
 			ID:           id,
 			IP:           ip,
-			RecordParams: updatedParams,
+			RecordParams: currentParams,
 		}
 		for i, record := range *rs.Value() {
 			if record.ID == id {
@@ -314,24 +370,45 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 // CreateRecord calls cloudflare.CreateDNSRecord.
 func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
-	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, params RecordParams,
+	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, desiredParams RecordParams,
 ) (ID, bool) {
 	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
 	}
 
-	//nolint:exhaustruct // Other fields are intentionally omitted
-	ps := cloudflare.CreateDNSRecordParams{
-		Name:    domain.DNSNameASCII(),
-		Type:    ipNet.RecordType(),
-		Content: ip.String(),
-		TTL:     params.TTL.Int(),
-		Proxied: &params.Proxied,
-		Comment: params.Comment,
+	createRequestParams := cloudflare.CreateDNSRecordParams{
+		// Cloudflare API docs (create DNS record):
+		// https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/
+		// server-determined: create timestamp is assigned by Cloudflare.
+		CreatedOn: time.Time{},
+		// server-determined: modified timestamp is assigned by Cloudflare.
+		ModifiedOn: time.Time{},
+		Type:       ipNet.RecordType(),    // managed: A/AAAA type in desired identity.
+		Name:       domain.DNSNameASCII(), // managed: canonical fqdn.
+		Content:    ip.String(),           // managed: desired IP address.
+		// server-determined: Meta is Cloudflare-owned metadata in responses.
+		Meta: nil,
+		// server-determined for this reconciler: Data is for non-A/AAAA record kinds.
+		Data: nil,
+		// server-determined: record ID is allocated by Cloudflare on create.
+		ID: "",
+		// server-determined for this reconciler: Priority is for non-A/AAAA kinds.
+		Priority: nil,
+		TTL:      desiredParams.TTL.Int(), // managed: desired TTL.
+		Proxied:  &desiredParams.Proxied,  // managed: desired proxy mode.
+		// server-determined: capability flag returned by Cloudflare, not a desired input.
+		Proxiable: false,
+		Comment:   desiredParams.Comment, // managed: desired comment.
+		Tags:      desiredParams.Tags,    // managed: desired tags.
+		Settings: cloudflare.DNSRecordSettings{
+			// server-determined for this reconciler: per-record CNAME flattening is
+			// not managed for A/AAAA.
+			FlattenCNAME: nil,
+		},
 	}
 
-	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), ps)
+	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), createRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)
@@ -343,9 +420,11 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if rs := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); rs != nil &&
-		matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, params.Comment) {
-		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: params}}, *rs.Value()...)
+		matchManagedRecordComment(h.options.ManagedRecordsCommentRegex, desiredParams.Comment) {
+		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: desiredParams}}, *rs.Value()...)
 	}
+
+	hintUndocumentedTags(ppfmt, ipNet, domain, ID(res.ID), newUndocumentedTags(res.Tags, desiredParams.Tags))
 
 	return ID(res.ID), true
 }

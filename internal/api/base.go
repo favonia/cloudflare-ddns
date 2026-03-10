@@ -43,6 +43,7 @@ type RecordParams struct {
 	TTL     TTL
 	Proxied bool
 	Comment string
+	Tags    []string
 }
 
 // Record represents a DNS record.
@@ -55,6 +56,12 @@ type Record struct {
 // WAFListItem represents one WAF list item: ID, IP range, and original comment.
 type WAFListItem struct {
 	ID      ID
+	Prefix  netip.Prefix
+	Comment string
+}
+
+// WAFListCreateItem represents one WAF list item to create.
+type WAFListCreateItem struct {
 	Prefix  netip.Prefix
 	Comment string
 }
@@ -105,19 +112,27 @@ type Handle interface {
 	//
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		expectedParams RecordParams,
+		configuredParams RecordParams,
 	) ([]Record, bool, bool)
 
-	// UpdateRecord updates one DNS record.
+	// UpdateRecord reconciles one managed DNS record to the desired state.
+	//
+	// Implementations must apply the desired DNS content and metadata in
+	// desiredParams for this record:
+	// - content/IP: ip
+	// - ttl/proxied/comment/tags: desiredParams
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		id ID, ip netip.Addr, currentParams, expectedParams RecordParams,
+		id ID, ip netip.Addr, desiredParams RecordParams,
 	) bool
 
-	// CreateRecord creates one DNS record. It returns the ID of the new record.
+	// CreateRecord creates one managed DNS record with the given desired metadata.
+	// It returns the ID of the new record.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
-		ip netip.Addr, params RecordParams) (ID, bool)
+		ip netip.Addr, desiredParams RecordParams) (ID, bool)
 
-	// DeleteRecord deletes one DNS record, assuming we will not update or create any DNS records.
+	// DeleteRecord deletes one managed DNS record by ID.
+	//
+	// mode controls cache invalidation behavior for failure handling.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
@@ -125,12 +140,12 @@ type Handle interface {
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.
-	// expectedItemComment is the configured comment target for newly created
+	// configuredItemComment is the configured comment target for newly created
 	// managed list items; implementations may use it for advisory mismatch hints.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription, expectedItemComment string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription, configuredItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
@@ -140,16 +155,16 @@ type Handle interface {
 	// The handle should not be reused for any further update operations after
 	// calling this method.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-		expectedDescription string,
+		configuredDescription string,
 	) WAFListCleanupCode
 
-	// DeleteWAFListItems deletes IP ranges from a WAF list.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		expectedItemComment string, ids []ID) bool
+	// DeleteWAFListItems deletes managed WAF list items by item IDs.
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string, ids []ID) bool
 
-	// CreateWAFListItems adds IP ranges to a WAF list.
-	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, expectedDescription string,
-		items []netip.Prefix, comment string) bool
+	// CreateWAFListItems creates managed WAF list items with the given prefixes
+	// and per-item comments.
+	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string,
+		items []WAFListCreateItem) bool
 }
 
 // An Auth contains authentication information.

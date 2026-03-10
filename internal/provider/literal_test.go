@@ -2,7 +2,6 @@ package provider_test
 
 import (
 	"context"
-	"io"
 	"net/netip"
 	"testing"
 
@@ -49,7 +48,7 @@ func TestLiteralGetIPs(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
-	ips, ok := p.GetIPs(context.Background(), pp.NewDefault(io.Discard), ipnet.IP4)
+	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
 	require.True(t, ok)
 	require.Equal(t, []netip.Addr{
@@ -62,7 +61,7 @@ func TestLiteralGetIPsFailure(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("1.1.1.1,1::1")
-	ips, ok := p.GetIPs(context.Background(), pp.NewDefault(io.Discard), ipnet.IP6)
+	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP6)
 
 	require.False(t, ok)
 	require.Nil(t, ips)
@@ -72,7 +71,7 @@ func TestLiteralGetIPsBoundaryFailure(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("127.0.0.1")
-	ips, ok := p.GetIPs(context.Background(), pp.NewDefault(io.Discard), ipnet.IP4)
+	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
 	require.False(t, ok)
 	require.Nil(t, ips)

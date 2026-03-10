@@ -30,6 +30,13 @@ func NewDefault(writer io.Writer) PP {
 	return New(writer, true, DefaultVerbosity)
 }
 
+// NewSilent creates a pretty printer that never emits output.
+//
+// Unlike [Quiet], this suppresses all message levels.
+func NewSilent() PP {
+	return New(io.Discard, false, minimumVerbosity)
+}
+
 // IsShowing compares the internal verbosity level against the given level.
 func (f formatter) IsShowing(v Verbosity) bool {
 	return f.verbosity >= v

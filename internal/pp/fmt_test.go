@@ -116,3 +116,19 @@ func TestNewDefault(t *testing.T) {
 
 	require.Equal(t, "🌟 hello\n🌟 world\n", buf.String())
 }
+
+func TestNewSilent(t *testing.T) {
+	t.Parallel()
+
+	fmt := pp.NewSilent()
+
+	require.False(t, fmt.IsShowing(pp.Notice))
+	require.False(t, fmt.IsShowing(pp.Info))
+	require.False(t, fmt.Indent().IsShowing(pp.Notice))
+	require.NotPanics(t, func() { fmt.Infof(pp.EmojiStar, "hello") })
+	require.NotPanics(t, func() { fmt.Noticef(pp.EmojiStar, "world") })
+	require.NotPanics(t, fmt.BlankLineIfVerbose)
+	require.NotPanics(t, func() { fmt.Suppress(pp.ID(0)) })
+	require.NotPanics(t, func() { fmt.InfoOncef(pp.ID(1), pp.EmojiHint, "once") })
+	require.NotPanics(t, func() { fmt.NoticeOncef(pp.ID(2), pp.EmojiAlarm, "once") })
+}

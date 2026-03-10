@@ -36,7 +36,25 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
 5. Keep README reader-friendly.
 
-   `README.markdown` is for a broad user audience, including not-so-technical users. Prefer plain language, clear examples, and readable explanations over dense internal shorthand.
+   `README.markdown` is for a broad user audience, including not-so-technical users. Use these principles, in order:
+
+   1. Put beginners first: prefer plain language, clear examples, and visible user outcomes over dense internal shorthand.
+   2. Optimize for first adoption: in snippets and nearby prose, explain what happens when users start using the updater for domains, records, or lists that may already exist in Cloudflare.
+   3. Use two layers when needed: keep beginner-facing snippets and nearby prose simple, and move exact reconciliation rules or edge cases into tables, advanced notes, or clearly marked technical paragraphs. If a caveat materially affects first adoption and a beginner may reasonably stop reading after the example, keep a short warning in the example itself instead of moving it only to later prose.
+   4. Avoid internal terms unless they are necessary for accuracy: words such as "managed", "matching", or "configured value" belong mainly in technical sections.
+   5. Keep words stable in meaning: for example, in the README, "optional" should describe whether a setting is required to configure the updater, not whether changing existing resources is optional.
+
+6. Prefer explicit doc scopes in commit titles.
+
+   Use `docs(README)` for README-only documentation changes and `docs(CHANGELOG)` for changelog-only updates. Keep these scopes uppercase to make release-relevant doc commits easy to scan.
+
+7. Be selective with exhaustive third-party struct literals.
+
+   For API query/list parameter structs (for example, record listing filters), set only the fields that are part of the intended selector and use a tight local `//nolint:exhaustruct` if needed.
+
+   For mutating API parameter structs (create/update/delete style requests), keep literals exhaustive so newly added upstream fields are surfaced and reviewed intentionally.
+
+   Exhaustive literals are not a substitute for contract mapping. For mutating calls, always map each in-scope desired-state field explicitly from the method contract instead of relying on zero values. If a mutator intentionally preserves some remote fields, document that preserve-vs-mutate contract in comments at the interface and implementation entry points.
 
 Once you make the pull request, the maintainer will check your code and decide what to do. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and will update your pull request’s title. Don’t worry too much about commit messages as long as it’s clear what individual commits do.
 

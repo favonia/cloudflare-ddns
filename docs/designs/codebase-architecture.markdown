@@ -77,6 +77,8 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 - Keep a short primary message and emit follow-up hints or details with `NoticeOncef` or `InfoOncef` when helpful.
 - Prefer a two-layer model: keep summary messages plain and compact, and put operational nuance (for example uncertainty or inconsistency risk) in follow-up details.
 - Keep summary and detail messages semantically aligned; details may add nuance but should not contradict summaries.
+- For user-facing warnings and hints, describe observable behavior and user-action boundaries first.
+- Mention mechanism only when it changes what the operator should do; otherwise prefer outcome wording such as `reported but not corrected` or `does not change management scope`.
 - Use `%q` for parser and validation diagnostics on raw or untrusted inputs, such as environment values or parser tokens.
 - For advisory values where exact text is not required for remediation (for example ignored or overridden settings), avoid assignment-like forms such as `KEY=%q`; prefer `KEY (%s)` where `%s` is a quoted preview value (truncated when long).
 - Keep exact non-truncated values in mismatch/validation diagnostics where full-fidelity strings are required for user remediation.
@@ -88,13 +90,14 @@ The design goal is not to minimize field copying. The goal is to keep each runti
   - if the outcome is ambiguous (for example, network timeout), prefer wording like `could not confirm ...`
   - if the failure is definitive (for example, explicit API rejection), `failed to ...` is acceptable
   - keep inconsistency hints explicit when relevant (`records might be inconsistent`, `content may be inconsistent`)
-  - future side task: add careful error case splitting so wording can distinguish definitive rejections from ambiguous transport failures
+  - future work may add finer error splitting so wording can distinguish definitive rejections from ambiguous transport failures
 
 ### Refactoring and Linting
 
 - When addressing `unparam`, do not remove a parameter mechanically.
   - First check whether the parameter is part of the helper's honest contract.
   - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
+  - If a wrapper intentionally stays specialized, make that specialization explicit in the helper name instead of hiding it behind a generic-looking signature.
   - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
 - For final cleanup flows:
   - keep cleanup idempotent where possible; missing resources should usually be treated as already cleaned

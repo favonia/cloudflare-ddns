@@ -82,6 +82,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: recordComment,
+		Tags:    nil,
 	}
 
 	domains := map[ipnet.Type][]domain.Domain{
@@ -203,6 +204,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: recordComment,
+		Tags:    nil,
 	}
 
 	domains := map[ipnet.Type][]domain.Domain{
@@ -305,6 +307,7 @@ func TestUpdateIPs(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: recordComment,
+		Tags:    nil,
 	}
 
 	domains := map[ipnet.Type][]domain.Domain{
@@ -625,6 +628,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 		TTL:     api.TTLAuto,
 		Proxied: false,
 		Comment: recordComment,
+		Tags:    nil,
 	}
 
 	domains := map[ipnet.Type][]domain.Domain{

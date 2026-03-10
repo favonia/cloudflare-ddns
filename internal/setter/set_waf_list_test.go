@@ -14,6 +14,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -108,6 +109,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           items{},
 					alreadyExisting: false,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  targetPrefixes,
 					createComment:   itemComment,
 					createOK:        true,
@@ -144,6 +146,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           items{prefix4range1, prefix6},
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  nil,
 					createComment:   itemComment,
 					createOK:        true,
@@ -178,6 +181,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           mixedItems,
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  nil,
 					createComment:   itemComment,
 					createOK:        true,
@@ -196,6 +200,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           wrongItems,
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  targetPrefixes,
 					createComment:   itemComment,
 					createOK:        true,
@@ -214,6 +219,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           items{},
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  targetPrefixes,
 					createComment:   itemComment,
 					createOK:        false,
@@ -240,6 +246,7 @@ func TestSetWAFList(t *testing.T) {
 					},
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  []netip.Prefix{prefix6target2.Prefix},
 					createComment:   itemComment,
 					createOK:        true,
@@ -258,6 +265,7 @@ func TestSetWAFList(t *testing.T) {
 					items:           mixedItems,
 					alreadyExisting: true,
 					cached:          false,
+					createItems:     nil,
 					createPrefixes:  nil,
 					createComment:   itemComment,
 					createOK:        true,
@@ -393,13 +401,21 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					readCall := h.mockHandle.EXPECT().
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription, "").
 						Return(permutedItems, true, false, true)
-					createCall := h.mockHandle.EXPECT().
-						CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantCreate, "").
-						Return(true)
 					deleteCall := h.mockHandle.EXPECT().
-						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, "", scenario.wantDeleteID).
+						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
 						Return(true)
-					gomock.InOrder(readCall, createCall, deleteCall)
+					if len(scenario.wantCreate) == 0 {
+						gomock.InOrder(readCall, deleteCall)
+					} else {
+						expectedCreateItems := make([]api.WAFListCreateItem, 0, len(scenario.wantCreate))
+						for _, prefix := range scenario.wantCreate {
+							expectedCreateItems = append(expectedCreateItems, api.WAFListCreateItem{Prefix: prefix, Comment: ""})
+						}
+						createCall := h.mockHandle.EXPECT().
+							CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, expectedCreateItems).
+							Return(true)
+						gomock.InOrder(readCall, createCall, deleteCall)
+					}
 
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -426,4 +442,192 @@ func rotateItems[T any](items []T, shift int) []T {
 	rotated = append(rotated, items[shift:]...)
 	rotated = append(rotated, items[:shift]...)
 	return rotated
+}
+
+func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
+	t.Parallel()
+
+	const listDescription = "My List"
+	const configuredComment = "configured"
+	wafList := api.WAFList{AccountID: "account", Name: "list"}
+
+	ip4 := netip.MustParseAddr("10.0.0.1")
+	stale4 := wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "stale-ip4", comment: "inherit-me"})
+
+	t.Run("unanimous-stale-comment-is-inherited", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4}, true, false, true),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
+
+	t.Run("non-unanimous-stale-comments-fallback-to-configured-and-warn-once", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		stale4b := wafItem(wafItemFixture{prefix: "30.0.0.0/24", id: "stale-ip4b", comment: "different"})
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4, stale4b}, true, false, true),
+			h.mockPP.EXPECT().Noticef(
+				pp.EmojiWarning,
+				"The %q values for %s disagree across %d managed candidates; using %s",
+				"WAF list "+wafList.Describe()+" IPv4", "comment", 2, "configured comment",
+			),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: configuredComment},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale4b.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"30.0.0.0/24", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
+
+	t.Run("mixed-family-stale-comments-use-single-create-call-with-structured-items", func(t *testing.T) {
+		t.Parallel()
+		ctx, h := newSetterHarness(t)
+
+		ip6 := netip.MustParseAddr("2001:db8::1")
+		stale6 := wafItem(wafItemFixture{prefix: "2001:db8:ffff::/48", id: "stale-ip6", comment: "inherit-v6"})
+
+		gomock.InOrder(
+			h.mockHandle.EXPECT().
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
+				Return([]api.WAFListItem{stale4, stale6}, true, false, true),
+			h.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
+					{Prefix: netip.MustParsePrefix("2001:db8::/64"), Comment: "inherit-v6"},
+				}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"10.0.0.1", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
+				"2001:db8::/64", wafList.Describe()),
+			h.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale6.ID}).
+				Return(true),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"20.0.0.0/24", wafList.Describe()),
+			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
+				"2001:db8:ffff::/48", wafList.Describe()),
+		)
+
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, ip6), configuredComment)
+		require.Equal(t, setter.ResponseUpdated, resp)
+	})
+}
+
+func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
+	t.Parallel()
+
+	const listDescription = "My List"
+	wafList := api.WAFList{AccountID: "account", Name: "list"}
+
+	initialStale1 := wafItem(wafItemFixture{prefix: "20.0.0.1/32", id: "stale-1", comment: "carry"})
+	initialStale2 := wafItem(wafItemFixture{prefix: "30.0.0.1/32", id: "stale-2", comment: "carry"})
+	midItem := wafItem(wafItemFixture{prefix: "40.0.0.1/32", id: "mid-item", comment: "carry"})
+
+	midIP := netip.MustParseAddr("40.0.0.1")
+	finalIP := netip.MustParseAddr("50.0.0.1")
+
+	t.Run("two-step-and-direct-drift-resolve-the-same-create-comment", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, twoStep := newSetterHarness(t)
+		twoStep.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+		var twoStepCreateComments []string
+		gomock.InOrder(
+			twoStep.mockHandle.EXPECT().
+				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+			twoStep.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
+					return true
+				}),
+			twoStep.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
+				Return(true),
+			twoStep.mockHandle.EXPECT().
+				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{midItem}, true, false, true),
+			twoStep.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
+					return true
+				}),
+			twoStep.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{midItem.ID}).
+				Return(true),
+		)
+
+		resp := twoStep.setter.SetWAFList(ctx, twoStep.mockPP, wafList, listDescription, detected(midIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		resp = twoStep.setter.SetWAFList(ctx, twoStep.mockPP, wafList, listDescription, detected(finalIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		require.Len(t, twoStepCreateComments, 2)
+		require.Equal(t, twoStepCreateComments[0], twoStepCreateComments[1])
+
+		ctx, direct := newSetterHarness(t)
+		direct.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+		var directCreateComment string
+		gomock.InOrder(
+			direct.mockHandle.EXPECT().
+				ListWAFListItems(ctx, direct.mockPP, wafList, listDescription, "").
+				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+			direct.mockHandle.EXPECT().
+				CreateWAFListItems(ctx, direct.mockPP, wafList, listDescription, gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
+					require.Len(t, items, 1)
+					directCreateComment = items[0].Comment
+					return true
+				}),
+			direct.mockHandle.EXPECT().
+				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
+				Return(true),
+		)
+
+		resp = direct.setter.SetWAFList(ctx, direct.mockPP, wafList, listDescription, detected(finalIP, netip.Addr{}), "")
+		require.Equal(t, setter.ResponseUpdated, resp)
+		require.Equal(t, twoStepCreateComments[1], directCreateComment)
+	})
 }

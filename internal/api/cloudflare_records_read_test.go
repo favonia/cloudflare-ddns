@@ -40,6 +40,7 @@ type formattedRecord struct {
 	ID      string
 	IP      string
 	Comment string
+	Tags    []string
 }
 
 func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
@@ -53,6 +54,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 	for _, r := range rs {
 		record := mockDNSRecord(r.ID, ipNet, domain, r.IP)
 		record.Comment = r.Comment
+		record.Tags = r.Tags
 		raw = append(raw, record)
 	}
 
@@ -100,7 +102,7 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 func TestListRecords(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 	var managedRecordsCommentRegex *regexp.Regexp
 
 	for name, tc := range map[string]struct {
@@ -110,7 +112,7 @@ func TestListRecords(t *testing.T) {
 		records                    []formattedRecord
 		listRequestLimit           int
 		input                      domain.Domain
-		expectedParams             api.RecordParams
+		configuredParams           api.RecordParams
 		managedRecordsCommentRegex *regexp.Regexp
 		expected                   []api.Record
 		ok                         bool
@@ -120,10 +122,26 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::2", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::2", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
+			true,
+			nil,
+		},
+		"success/tags-are-preserved": {
+			map[string][]string{"test.org": {"active"}},
+			2,
+			"sub.test.org",
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: []string{"Team:Alpha", "env:prod"}}},
+			1,
+			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
+			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "",
+				Tags:    []string{"Team:Alpha", "env:prod"},
+			}}},
 			true,
 			nil,
 		},
@@ -131,7 +149,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			1,
 			"*.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "::2", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::2", Comment: "", Tags: nil}},
 			1,
 			domain.Wildcard("test.org"), params, managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}, {"record2", mustIP("::2"), params}},
@@ -164,7 +182,7 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}, {ID: "record2", IP: "not an ip", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "not an ip", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
 			nil,
@@ -178,8 +196,8 @@ func TestListRecords(t *testing.T) {
 			2,
 			"sub.test.org",
 			[]formattedRecord{
-				{ID: "record1", IP: "::1", Comment: "managed"},
-				{ID: "record2", IP: "not an ip", Comment: "unmanaged"},
+				{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+				{ID: "record2", IP: "not an ip", Comment: "unmanaged", Tags: nil},
 			},
 			1,
 			domain.FQDN("sub.test.org"),
@@ -187,12 +205,14 @@ func TestListRecords(t *testing.T) {
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			},
 			regexp.MustCompile("^managed$"),
 			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			}}},
 			true,
 			nil,
@@ -201,30 +221,31 @@ func TestListRecords(t *testing.T) {
 			map[string][]string{"test.org": {"active"}},
 			2,
 			"sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: ""}},
+			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}},
 			1,
 			domain.FQDN("sub.test.org"),
 			api.RecordParams{
 				TTL:     100,
 				Proxied: true,
 				Comment: "hello",
+				Tags:    nil,
 			},
 			managedRecordsCommentRegex,
 			[]api.Record{{"record1", mustIP("::1"), params}},
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "100", "100", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`,
 				)
@@ -235,8 +256,8 @@ func TestListRecords(t *testing.T) {
 			2,
 			"sub.test.org",
 			[]formattedRecord{
-				{ID: "record1", IP: "::1", Comment: "managed"},
-				{ID: "record2", IP: "::2", Comment: "unmanaged"},
+				{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+				{ID: "record2", IP: "::2", Comment: "unmanaged", Tags: nil},
 			},
 			1,
 			domain.FQDN("sub.test.org"),
@@ -244,27 +265,29 @@ func TestListRecords(t *testing.T) {
 				TTL:     100,
 				Proxied: true,
 				Comment: "expected",
+				Tags:    nil,
 			},
 			regexp.MustCompile("^managed$"),
 			[]api.Record{{"record1", mustIP("::1"), api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
+				Tags:    nil,
 			}}},
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the expected TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"1 (auto)", "100", "100", 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, it is %sexpected to be proxied. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied",
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, it is expected to be %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					`"managed"`, `"expected"`,
 				)
@@ -288,7 +311,7 @@ func TestListRecords(t *testing.T) {
 			lrh.setRequestLimit(tc.listRequestLimit)
 
 			rs, cached, ok := f.handle.ListRecords(
-				context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, tc.input, tc.expectedParams)
+				context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, tc.input, tc.configuredParams)
 			require.Equal(t, tc.ok, ok)
 			require.False(t, cached)
 			require.Equal(t, tc.expected, rs)
@@ -297,16 +320,73 @@ func TestListRecords(t *testing.T) {
 	}
 }
 
-func TestListRecordsCache(t *testing.T) {
+func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: ""}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 
 	f := newCloudflareHarness(t)
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: ""},
-		{ID: "record2", IP: "::2", Comment: ""},
+		{ID: "record1", IP: "::1", Comment: "", Tags: []string{"env", ":prod", "team:"}},
+	})
+
+	zh.setRequestLimit(2)
+	lrh.setRequestLimit(1)
+	ppfmt := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+		ppfmt.EXPECT().Noticef(
+			pp.EmojiImpossible,
+			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			`"env" and ":prod"`,
+			"AAAA",
+			"sub.test.org",
+			api.ID("record1"),
+			pp.IssueReportingURL,
+		)
+	})
+	rs, cached, ok := f.handle.ListRecords(context.Background(), ppfmt, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.False(t, cached)
+	require.Equal(t, []api.Record{{
+		ID: "record1",
+		IP: mustIP("::1"),
+		RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"env", ":prod", "team:"},
+		},
+	}}, rs)
+	assertHandlersExhausted(t, zh, lrh)
+
+	zh.setRequestLimit(0)
+	lrh.setRequestLimit(0)
+	rs, cached, ok = f.handle.ListRecords(context.Background(), f.newPP(), ipnet.IP6, domain.FQDN("sub.test.org"), params)
+	require.True(t, ok)
+	require.True(t, cached)
+	require.Equal(t, []api.Record{{
+		ID: "record1",
+		IP: mustIP("::1"),
+		RecordParams: api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"env", ":prod", "team:"},
+		},
+	}}, rs)
+	assertHandlersExhausted(t, zh, lrh)
+}
+
+func TestListRecordsCache(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+	f := newCloudflareHarness(t)
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+		{ID: "record1", IP: "::1", Comment: "", Tags: nil},
+		{ID: "record2", IP: "::2", Comment: "", Tags: nil},
 	})
 
 	zh.setRequestLimit(2)
@@ -329,7 +409,7 @@ func TestListRecordsCache(t *testing.T) {
 func TestListRecordsCacheManagedRecords(t *testing.T) {
 	t.Parallel()
 
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
@@ -340,8 +420,8 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: "managed"},
-		{ID: "record2", IP: "::2", Comment: "unmanaged"},
+		{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+		{ID: "record2", IP: "::2", Comment: "unmanaged", Tags: nil},
 	})
 
 	zh.setRequestLimit(2)
@@ -351,7 +431,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}},
+		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 
@@ -362,7 +442,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed"}},
+		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 }

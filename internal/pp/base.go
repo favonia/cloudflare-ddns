@@ -8,9 +8,11 @@ type Verbosity int
 
 // Pre-defined verbosity levels. A higher level means "more verbose".
 const (
-	Notice Verbosity = iota // useful additional info
-	Info                    // important messages
+	// minimumVerbosity is the internal lower bound for fully silent printers.
+	minimumVerbosity Verbosity = iota - 1
 
+	Notice // important notices
+	Info   // useful additional info
 )
 
 // Pre-defined verbosity level aliases.

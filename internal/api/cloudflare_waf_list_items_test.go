@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/netip"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
-	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -134,7 +134,7 @@ func newListListItemsHandlerSequence(t *testing.T, mux *http.ServeMux, listID ap
 //
 // This helper runs inside HTTP handlers; require is unsafe in HTTP handler
 // goroutines.
-func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedItems []netip.Prefix, expectedComment string) bool {
+func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedItems []api.WAFListCreateItem) bool {
 	t.Helper()
 
 	var createRequests []cloudflare.ListItemCreateRequest
@@ -142,20 +142,37 @@ func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedIt
 		return false
 	}
 
-	actualItems := make([]string, 0, len(createRequests))
+	actualItems := make([]api.WAFListCreateItem, 0, len(createRequests))
 	for _, item := range createRequests {
-		if !assert.NotNil(t, item.IP) || !assert.Equal(t, expectedComment, item.Comment) {
+		if !assert.NotNil(t, item.IP) {
 			return false
 		}
-		actualItems = append(actualItems, *item.IP)
+		rawPrefix := *item.IP
+		prefix, err := netip.ParsePrefix(rawPrefix)
+		if err != nil {
+			if strings.Contains(rawPrefix, "/") {
+				assert.NoError(t, err)
+				return false
+			}
+			addr, addrErr := netip.ParseAddr(rawPrefix)
+			require.NoError(t, addrErr)
+			prefix = netip.PrefixFrom(addr, addr.BitLen())
+		}
+		actualItems = append(actualItems, api.WAFListCreateItem{
+			Prefix:  prefix.Masked(),
+			Comment: item.Comment,
+		})
 	}
 
-	expectedRawItems := make([]string, 0, len(expectedItems))
+	expectedNormalizedItems := make([]api.WAFListCreateItem, 0, len(expectedItems))
 	for _, item := range expectedItems {
-		expectedRawItems = append(expectedRawItems, ipnet.DescribePrefixOrIP(item))
+		expectedNormalizedItems = append(expectedNormalizedItems, api.WAFListCreateItem{
+			Prefix:  item.Prefix.Masked(),
+			Comment: item.Comment,
+		})
 	}
 
-	return assert.ElementsMatch(t, expectedRawItems, actualItems)
+	return assert.ElementsMatch(t, expectedNormalizedItems, actualItems)
 }
 
 func TestListWAFListItems(t *testing.T) {
@@ -318,7 +335,7 @@ func TestListWAFListItems(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. Found %d managed WAF list item(s) with mismatched comments. WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+					"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. Found %d managed WAF list item(s) with mismatched comments. These mismatches are reported but not corrected.",
 					api.ID("item-1"),
 					"account456/list",
 					`"current-1"`,
@@ -438,7 +455,7 @@ func TestListWAFListItemsCommentMismatchWarningCacheMissOnly(t *testing.T) {
 	firstPP := f.newPP()
 	firstPP.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"The comment for item ID %s in list %s is %s. However, WAF_LIST_ITEM_COMMENT is %s. Found %d managed WAF list item(s) with mismatched comments. WAF_LIST_ITEM_COMMENT only affects newly created WAF list items.",
+		"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. Found %d managed WAF list item(s) with mismatched comments. These mismatches are reported but not corrected.",
 		api.ID("item-1"),
 		"account456/list",
 		`"current"`,
@@ -557,8 +574,6 @@ func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 func TestDeleteWAFListItems(t *testing.T) {
 	t.Parallel()
 
-	const expectedItemComment = ""
-
 	for name, tc := range map[string]struct {
 		listRequestLimit      int
 		idsToDelete           []api.ID
@@ -630,7 +645,6 @@ func TestDeleteWAFListItems(t *testing.T) {
 				f.newPreparedPP(tc.prepareMocks),
 				mockWAFList,
 				"description",
-				expectedItemComment,
 				tc.idsToDelete,
 			)
 			require.Equal(t, tc.ok, ok)
@@ -644,7 +658,6 @@ func TestDeleteWAFListItems(t *testing.T) {
 					f.newPP(),
 					mockWAFList,
 					"description",
-					expectedItemComment,
 					tc.idsToDelete,
 				)
 				require.Equal(t, tc.ok, ok)
@@ -664,7 +677,7 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 }
 
 func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,
-	expectedItems []netip.Prefix, expectedComment string,
+	expectedItems []api.WAFListCreateItem,
 ) httpHandler {
 	t.Helper()
 
@@ -682,7 +695,7 @@ func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 				return
 			}
 
-			if !checkListItemCreateRequestPayload(t, r, expectedItems, expectedComment) {
+			if !checkListItemCreateRequestPayload(t, r, expectedItems) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -703,11 +716,9 @@ func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 func TestCreateWAFListItems(t *testing.T) {
 	t.Parallel()
 
-	itemComment := "item comment"
-
 	for name, tc := range map[string]struct {
 		listRequestLimit      int
-		itemsToCreate         []netip.Prefix
+		itemsToCreate         []api.WAFListCreateItem
 		createRequestLimit    int
 		listItemsResponse     []listItem
 		listItemsRequestLimit int
@@ -716,7 +727,10 @@ func TestCreateWAFListItems(t *testing.T) {
 	}{
 		"success": {
 			1,
-			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+			},
 			1,
 			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
 			1,
@@ -726,7 +740,10 @@ func TestCreateWAFListItems(t *testing.T) {
 		"empty": {0, nil, 0, nil, 0, true, nil},
 		"list-fail": {
 			0,
-			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+			},
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -738,7 +755,10 @@ func TestCreateWAFListItems(t *testing.T) {
 		},
 		"create-fail": {
 			1,
-			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+			},
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
@@ -747,7 +767,10 @@ func TestCreateWAFListItems(t *testing.T) {
 		},
 		"list-items-invalid": {
 			1,
-			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/16"), netip.MustParsePrefix("2001:db8::/50")},
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+			},
 			1,
 			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "invalid item", Comment: ""}},
 			1,
@@ -766,20 +789,20 @@ func TestCreateWAFListItems(t *testing.T) {
 
 			f := newCloudflareHarness(t)
 			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
-			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.itemsToCreate, itemComment)
+			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.itemsToCreate)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
 
 			lh.setRequestLimit(tc.listRequestLimit)
 			cih.setRequestLimit(tc.createRequestLimit)
 			lih.setRequestLimit(tc.listItemsRequestLimit)
-			ok := f.cfHandle.CreateWAFListItems(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description", tc.itemsToCreate, itemComment)
+			ok := f.cfHandle.CreateWAFListItems(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description", tc.itemsToCreate)
 			require.Equal(t, tc.ok, ok)
 			assertHandlersExhausted(t, lh, cih, lih)
 
 			if tc.ok {
 				cih.setRequestLimit(tc.createRequestLimit)
 				lih.setRequestLimit(tc.listItemsRequestLimit)
-				ok = f.cfHandle.CreateWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", tc.itemsToCreate, itemComment)
+				ok = f.cfHandle.CreateWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", tc.itemsToCreate)
 				require.Equal(t, tc.ok, ok)
 				assertHandlersExhausted(t, lh, cih, lih)
 			}
@@ -791,7 +814,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	t.Parallel()
 
 	const expectedComment = "expected"
-	itemsToCreate := []netip.Prefix{netip.MustParsePrefix("10.0.0.1/32")}
+	itemsToCreate := []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: expectedComment}}
 
 	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, nil)
@@ -803,7 +826,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		},
 		listMeta{name: "list", size: 0, kind: cloudflare.ListTypeIP},
 	)
-	cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), itemsToCreate, expectedComment)
+	cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), itemsToCreate)
 	lih := newListListItemsHandlerSequence(t, f.serveMux, mockID("list", 0), [][]listItem{
 		{{ID: "new-item", Prefix: "10.0.0.1/32", Comment: "unexpected"}},
 	})
@@ -823,7 +846,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	ppfmt := f.newPP()
 	ppfmt.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"After updating list %s, item ID %s has comment %s, which is unexpected given WAF_LIST_ITEM_COMMENT (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
+		"After updating list %s, item ID %s has comment %s, which is unexpected given allowed post-mutation comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
 		"account456/list",
 		api.ID("new-item"),
 		`"unexpected"`,
@@ -831,15 +854,13 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		1,
 	)
 
-	ok = f.cfHandle.CreateWAFListItems(context.Background(), ppfmt, mockWAFList, "description", itemsToCreate, expectedComment)
+	ok = f.cfHandle.CreateWAFListItems(context.Background(), ppfmt, mockWAFList, "description", itemsToCreate)
 	require.True(t, ok)
 	assertHandlersExhausted(t, lh, clh, cih, lih)
 }
 
 func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	t.Parallel()
-
-	const expectedComment = "expected"
 
 	f := newCloudflareHarness(t)
 	lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
@@ -865,11 +886,11 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	ppfmt := f.newPP()
 	ppfmt.EXPECT().Noticef(
 		pp.EmojiUserWarning,
-		"After updating list %s, item ID %s has comment %s, which is unexpected given WAF_LIST_ITEM_COMMENT (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
+		"After updating list %s, item ID %s has comment %s, which is unexpected given allowed post-mutation comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
 		"account456/list",
 		api.ID("managed-1"),
 		`"unexpected"`,
-		`"expected"`,
+		"none",
 		1,
 	)
 
@@ -878,7 +899,6 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		ppfmt,
 		mockWAFList,
 		"description",
-		expectedComment,
 		[]api.ID{"id1"},
 	)
 	require.True(t, ok)
