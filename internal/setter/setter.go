@@ -102,6 +102,14 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 		return false
 	}
 	for _, target := range targets {
+		// Intentionally treat one matched record per target as already settled
+		// even if its metadata differs from configuredParams.
+		//
+		// This branch's reconciliation policy uses configured DNS metadata as
+		// preferred values, not forced values: unanimous metadata already present
+		// on matched managed records may be kept. Metadata reconciliation below is
+		// therefore for duplicates and stale-to-new recycling, not for forcing a
+		// same-IP singleton record back to the configured values.
 		if len(matched[target]) != 1 {
 			return false
 		}
@@ -228,6 +236,10 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 
 	// If records already match all desired targets (one record per target, with no
 	// stale or duplicate leftovers), we are done.
+	//
+	// Do not add metadata equality checks here unless the documented policy
+	// changes. A singleton matched record with unanimous metadata is allowed to
+	// keep that metadata as an already-reconciled outcome.
 	if recordsAlreadyUpToDate(targets, matchedByIP, staleRecords) {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
