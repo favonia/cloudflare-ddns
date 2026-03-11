@@ -150,7 +150,7 @@ services:
 
 The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
 
-There is an optional feature (available since version 1.14.0) that lets you maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission. If you only need to update WAF lists, not DNS records, you can remove the **Zone - DNS - Edit** permission. Refer to the detailed documentation below for information on updating WAF lists.
+There is an optional feature (available since version 1.14.0) that lets you maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission.
 
 </details>
 
@@ -168,7 +168,7 @@ The setting `PROXIED=true` makes this updater use Cloudflare's proxy for these d
 
 </details>
 
-If you need a non-default Docker Compose deployment such as Docker secrets, IPv6 without `network_mode: host`, a custom Docker network for a specific egress path, shared ownership across multiple updater instances, WAF-list-only mode, or a safe testing setup, see the [`Docker Compose Special Setups`](#-docker-compose-special-setups) section below. Change `user: "1000:1000"` to the user and group IDs you want to use; the `cap_drop`, `read_only`, and `no-new-privileges` lines provide additional protection, especially when you run the container as a non-superuser.
+If you need a non-default Docker Compose deployment such as Docker secrets, IPv6 without `network_mode: host`, a custom Docker network for a specific egress path, shared ownership across multiple updater instances, or a safe testing setup, see the [`Docker Compose Special Setups`](#-docker-compose-special-setups) section below. Change `user: "1000:1000"` to the user and group IDs you want to use; the `cap_drop`, `read_only`, and `no-new-privileges` lines provide additional protection, especially when you run the container as a non-superuser.
 
 ### 🚀 Step 2: Building and Running the Container
 
@@ -289,7 +289,7 @@ environment:
   # Do not set DOMAINS, IP4_DOMAINS, or IP6_DOMAINS
 ```
 
-For this setup, the API token needs the **Account - Account Filter Lists - Edit** permission. If you are not updating DNS records, you can remove **Zone - DNS - Edit** from the token.
+Use a token with the **Account - Account Filter Lists - Edit** permission.
 
 IPv6 entries are stored as the smallest allowed range that contains the detected address, because Cloudflare does not allow single IPv6 addresses in WAF lists.
 
@@ -313,9 +313,9 @@ Example:
 
 ⚠️ `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and `WAF_LIST_ITEM_COMMENT` must match `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`; otherwise the updater fails at startup.
 
-### 🧪 Validation and Testing
+### ✅ Validation and Testing
 
-#### 🧪 Test a new setup safely with explicit IPs
+#### ✅ Test a new setup safely with explicit IPs
 
 Use this when you want to validate the updater without waiting for a real IP change.
 
@@ -328,7 +328,9 @@ environment:
   - IP6_PROVIDER=literal:2001:db8::10
 ```
 
-After the updater creates or reconciles the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values. `literal:<ip1>,<ip2>,...` is currently experimental and intended for tests or debugging. If you edit DNS records manually and expect the updater to notice, see `Troubleshooting` below instead.
+After the updater creates or reconciles the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
+
+⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
 
 ## 🚚 Non-Docker Setups
 
@@ -600,7 +602,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#generate-scoped-api-token-all-settings), then follow the row above.                                                                                             |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this advanced feature                                                                                               |
+| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                     |
 | `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
