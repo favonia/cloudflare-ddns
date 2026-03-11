@@ -269,9 +269,7 @@ networks:
 
 #### 🧪 Read addresses from one host interface
 
-Use this when you are already using `network_mode: host` and want the updater to read addresses from one specific host interface.
-
-This changes which host interface addresses are read, not which network the container uses for outbound requests.
+Use this when you are already using `network_mode: host` and want the updater to read addresses from one specific host interface instead of choosing from all host interfaces.
 
 ```yaml
 environment:
@@ -347,9 +345,9 @@ If instances also touch the same WAF list, give each instance its own WAF list i
 
 These setups are for runtimes that are not additive changes on top of the Docker Compose template above.
 
-### 🏁 Deploy as a system service
+### ⚙️ Deploy as a system service
 
-The repository currently includes [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD only. It does not currently include first-party `systemd`, `launchd`, or `OpenRC` units.
+The repository currently includes [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD. Additional service-manager examples, such as `systemd`, may be added there over time.
 
 ### 🦭 Run the container with Podman
 
@@ -361,20 +359,20 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🛠️ Troubleshooting
 
-### ❔️ How can I see the timestamps of the IP checks and/or updates?
+### 🤔 How can I see the timestamps of the IP checks and/or updates?
 
 The updater does not add timestamps itself because most runtimes already do:
 
 - If you are using Docker Compose, Kubernetes, or Docker directly, add `--timestamps` when viewing the logs.
 - If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
 
-### ❔️ Why did the updater detect a public IP address different from the WAN IP address on my router?
+### 🤔 Why did the updater detect a public IP address different from the WAN IP address on my router?
 
 If your router shows an address between `100.64.0.0` and `100.127.255.255`, you are likely behind [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In that case, your ISP is not giving you a real public IP address, so ordinary DDNS cannot make your home network directly reachable from the Internet.
 
 Your options are usually to switch to an ISP that gives you a real public IP address or to use a different approach such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
 
-### ❔️ Help! I got <code>exec /bin/ddns: operation not permitted</code>
+### 🤔 Help! I got <code>exec /bin/ddns: operation not permitted</code>
 
 Some Docker, kernel, and virtualization combinations do not work well with [`security_opt: [no-new-privileges:true]`](https://docs.docker.com/reference/cli/docker/container/run/). If this happens, try removing that one hardening option and start the container again. This slightly reduces security, so keep the other hardening options if possible.
 
@@ -384,7 +382,7 @@ If removing `no-new-privileges` does not help, try a minimal image such as `alpi
 
 If none of these applies, please [open an issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new) and include your compose file with secrets redacted, `docker version`, `uname -a`, your host OS and virtualization platform (if any), and whether a minimal image such as `alpine` shows the same error.
 
-### ❔️ I am getting <code>error code: 1034</code>
+### 🤔 I am getting <code>error code: 1034</code>
 
 There have been reports of intermittent issues with the default provider `cloudflare.trace`. If you see `error code: 1034`, upgrade to version 1.15.1 or later, or switch to another provider such as `cloudflare.doh` or `url:<url>`.
 
