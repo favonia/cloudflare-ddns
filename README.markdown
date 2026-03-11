@@ -42,7 +42,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 ### 🛡️ Attention to Security
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/network-security-model.markdown) for more information.
-- <details><summary><em>Click to expand:</em> ✍️ You can verify the Docker images were built from this repository using the cosign tool.</summary>
+- <details><summary><em>Click to expand:</em> ✍️ Verify with cosign that the Docker images were built from this repository.</summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:latest \
@@ -50,7 +50,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   ```
 
-  Note: this only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
+  This only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
 - <details><summary><em>Click to expand:</em> 📚 The updater uses only established open-source Go libraries.</summary>
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
@@ -106,10 +106,6 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 </details>
 
-## 🏁 Deployment as a System Service
-
-See [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD.
-
 ## 🐋 Deployment with Docker Compose
 
 ### 📦 Step 1: Updating the Compose File
@@ -147,23 +143,11 @@ services:
         # Use Cloudflare's proxy for these domains (optional)
         # Existing DNS records in Cloudflare may keep their current proxy setting
         # Change them once manually if you want to switch them
-#networks:
-#  LAN0:
-#    external: true
-#    name: LAN0
-# Introduce custom Docker networks to the 'services' in this file. A common use case
-# for this is binding one of the 'services' to a specific network interface available at
-# Docker's host. This section is required for the 'networks' section of each 'services'.
 ```
 
-<details>
-<summary id="generate-scoped-api-token-minimal-setup"><em>Click to expand:</em> 🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
+<p id="cloudflare-api-token"><code>CLOUDFLARE_API_TOKEN</code> should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the <a href="https://dash.cloudflare.com/profile/api-tokens">API Tokens page</a>, typically using the <strong>Edit zone DNS</strong> template. If you also use <a href="https://developers.cloudflare.com/waf/tools/lists/custom-lists/">WAF lists</a>, add the <strong>Account - Account Filter Lists - Edit</strong> permission.</p>
 
-The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
-
-There is an optional feature (available since version 1.14.0) that lets you maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission. If you only need to update WAF lists, not DNS records, you can remove the **Zone - DNS - Edit** permission. Refer to the detailed documentation below for information on updating WAF lists.
-
-</details>
+The `user: "1000:1000"` line sets the user and group IDs that the container runs as, and you can change those two numbers to match your system. The `cap_drop`, `read_only`, and `no-new-privileges` lines add extra protection, especially when you run the container as a non-superuser.
 
 <details>
 <summary><em>Click to expand:</em> 📍 <code>DOMAINS</code> is the list of domains to update</summary>
@@ -179,55 +163,7 @@ The setting `PROXIED=true` makes this updater use Cloudflare's proxy for these d
 
 </details>
 
-<details>
-<summary><em>Click to expand:</em> 📴 Add <code>IP6_PROVIDER=none</code> if you want to disable IPv6 completely</summary>
-
-The updater, by default, will attempt to update DNS records for both IPv4 and IPv6, and there is no harm in leaving the automatic detection on even if your network does not work for one of them. However, if you want to disable IPv6 entirely (perhaps to avoid seeing the detection errors), add `IP6_PROVIDER=none`.
-
-</details>
-
-<details>
-<summary><em>Click to expand:</em> 📡 Use IPv6 without bypassing network isolation (without <code>network_mode: host</code>)</summary>
-
-The easiest way to enable IPv6 is to use `network_mode: host` so that the updater can access the host IPv6 network directly. This has the downside of bypassing the network isolation. If you wish to keep the updater isolated from the host network, remove `network_mode: host` and follow the steps in the [official Docker documentation to enable IPv6](https://docs.docker.com/config/daemon/ipv6/). Do use newer versions of Docker that come with much better IPv6 support!
-
-</details>
-
-<details>
-<summary><em>Click to expand:</em> 🛜 Bind to a specific network interface for updates</summary>
-
-📜 This method uses a MacVLAN sub-device to bind to a specific network interface and may bypass your custom `iptables` and `nftables` configurations.
-
-To be able to use a specific network interface when detecting the IP in the DDNS updates, the following Docker network must be created before running a Docker container with a custom network:
-
-```bash
-docker network create
-    -d macvlan
-    -o parent=eth0 # host network interface name to bind to
-    --subnet=192.168.1.0/24 # IP space for running containers within this network
-    --gateway=192.168.1.1 # IP address of the gateway/router
-    --ip-range=192.168.1.128/25 # communication IP range for containers in this network
-    LAN0 # name that will be used in the docker-compose.yml
-```
-
-Once the new Docker network is created, add the following to the Docker Compose that will start the `cloudflare-ddns` service. This enforces all requests from this service to go through the mentioned network, e.g. 'LAN0'.
-
-```yaml
-networks:
-  LAN0:
-  #  ipv4_address: 192.168.1.131 # A static IP within subnet (line can be removed for a random IP)
-```
-
-If a static IP is preferred, an `ipv4_address` section like the example can be added. NOTE: this IP must be within the `--subnet` of the Docker network.
-
-</details>
-
-<details>
-<summary><em>Click to expand:</em> 🛡️ Change <code>user: "1000:1000"</code> to the user and group IDs you want to use</summary>
-
-Change `1000:1000` to `USER:GROUP` for the `USER` and `GROUP` IDs you wish to use to run the updater. The settings `cap_drop`, `read_only`, and `no-new-privileges` in the template provide additional protection, especially when you run the container as a non-superuser.
-
-</details>
+If you need a non-default Docker Compose deployment, see [`Docker Compose Special Setups`](#docker-compose-special-setups) below.
 
 ### 🚀 Step 2: Building and Running the Container
 
@@ -236,70 +172,230 @@ docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
 
-## ❓️ Frequently Asked Questions
+The updater should now be running in the background. Check the logs with `docker-compose logs cloudflare-ddns` and confirm that it started correctly.
 
-<details>
-<summary><em>Click to expand:</em> ❔️ I simulated an IP address change by editing the DNS records, but the updater never picked it up!</summary>
+<a id="docker-compose-special-setups"></a>
+## 🧩 Docker Compose Special Setups
 
-Please rest assured that the updater is working as expected. **It will update the DNS records _immediately_ for a real IP change.** Here is a detailed explanation. There are two causes of an IP mismatch:
+These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#all-settings).
 
-1. A change of your actual IP address (a _real_ change), or
-2. A change of the IP address in the DNS records (a _simulated_ change).
+### 🔍 Validation and Testing
 
-The updater assumes no one will actively change the DNS records. In other words, it assumes simulated changes will not happen. It thus caches the DNS records and cannot detect your simulated changes. However, when your actual IP address changes, the updater will immediately update the DNS records. Also, the updater will eventually check the DNS records and detect simulated changes after `CACHE_EXPIRATION` (six hours by default) has passed.
+#### ✅ Test a new setup safely with explicit IPs
 
-If you really wish to test the updater with simulated IP changes in the DNS records, you can set `CACHE_EXPIRATION=1ns` (all cache expiring in one nanosecond), effectively disabling the caching. However, it is recommended to keep the default value (six hours) to reduce your network traffic.
+Use this when you want to validate the updater without waiting for a real IP change.
 
-</details>
+Point the updater at dedicated test names and feed it explicit test IPs:
 
-<details>
-<summary><em>Click to expand:</em> ❔️ How can I see the timestamps of the IP checks and/or updates?</summary>
+```yaml
+environment:
+  - DOMAINS=ddns-test.example.org
+  - IP4_PROVIDER=literal:203.0.113.10
+  - IP6_PROVIDER=literal:2001:db8::10
+```
 
-The updater does not itself add timestamps because all major systems already timestamp everything:
+After the updater creates or reconciles the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
 
-- If you are using Docker Compose, Kubernetes, or Docker directly, add the option `--timestamps` when viewing the logs.
+⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
+
+#### 🔄 Test how the updater reconciles manual DNS edits
+
+Use this when you specifically want to test how the updater reacts after someone changes the DNS records directly in Cloudflare.
+
+```yaml
+environment:
+  - CACHE_EXPIRATION=1ns
+```
+
+With `CACHE_EXPIRATION=1ns`, you can edit the DNS records in Cloudflare and watch the updater reconcile them right away.
+
+⚠️ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
+
+### 🌐 Networking
+
+#### 📴 Run IPv4-only or IPv6-only
+
+Use this when your network supports only one IP family or when you want to stop seeing detection failures for the other one.
+
+```yaml
+environment:
+  - IP6_PROVIDER=none
+```
+
+Use `IP6_PROVIDER=none` to disable IPv6 completely, or `IP4_PROVIDER=none` to disable IPv4 completely. This stops future updates for that IP family. Existing DNS records for the disabled family are not removed automatically.
+
+#### 📡 Use IPv6 without sharing the host network
+
+Use this when you want IPv6 support but do not want `network_mode: host`.
+
+```yaml
+services:
+  cloudflare-ddns:
+    # Remove this line:
+    # network_mode: host
+```
+
+After removing `network_mode: host`, follow the [official Docker instructions for enabling IPv6](https://docs.docker.com/config/daemon/ipv6/) on your Docker bridge network.
+
+#### 🛜 Route outbound requests through a specific Docker network
+
+Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
+
+If you want all outbound requests from the container to use a specific Docker-attached network, create a [MacVLAN network](https://docs.docker.com/engine/network/drivers/macvlan/) first:
+
+```bash
+docker network create \
+  -d macvlan \
+  -o parent=eth0 \
+  --subnet=192.168.1.0/24 \
+  --gateway=192.168.1.1 \
+  --ip-range=192.168.1.128/25 \
+  LAN0
+```
+
+Then attach the service to that network instead of using `network_mode: host`:
+
+```yaml
+services:
+  cloudflare-ddns:
+    networks: [LAN0]
+
+networks:
+  LAN0:
+    external: true
+    name: LAN0
+```
+
+⚠️ [MacVLAN](https://docs.docker.com/engine/network/drivers/macvlan/) can bypass parts of your host firewall setup, so host `iptables` or `nftables` rules may not see this traffic.
+
+#### 🧪 Read addresses from one host interface
+
+Use this when you are already using `network_mode: host` and want the updater to read addresses from one specific host interface instead of choosing from all host interfaces.
+
+```yaml
+environment:
+  - IP4_PROVIDER=local.iface:eth0
+  - IP6_PROVIDER=local.iface:eth0
+```
+
+Use a custom Docker network to change where outbound requests leave the container.
+
+⚠️ `local.iface:<iface>` is still experimental.
+
+### 🔐 Cloudflare API Tokens
+
+#### 🔑 Read the Cloudflare token from a Docker secret
+
+Use this when you do not want to put the token directly in the Compose file or `.env` file.
+
+Replace the inline token with a file-backed token:
+
+```yaml
+services:
+  cloudflare-ddns:
+    environment:
+      - CLOUDFLARE_API_TOKEN_FILE=/run/secrets/cloudflare_api_token
+    secrets:
+      - cloudflare_api_token
+
+secrets:
+  cloudflare_api_token:
+    file: ./secrets/cloudflare_api_token.txt
+```
+
+⚠️ The token file must be readable by the user configured by `user: "UID:GID"`.
+
+#### 🧪 Update only WAF lists
+
+Use this when you only want to maintain Cloudflare WAF lists and do not want the updater to touch DNS records.
+
+```yaml
+environment:
+  - WAF_LISTS=0123456789abcdef0123456789abcdef/home-ips
+  # Do not set DOMAINS, IP4_DOMAINS, or IP6_DOMAINS
+```
+
+Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** permission.
+
+> 🤖 For IPv6, the updater stores each detected address as the smallest allowed range that contains it, because Cloudflare does not allow single IPv6 addresses in WAF lists.
+
+### 🤝 Shared Ownership
+
+#### Share domains or WAF lists across updater instances
+
+Use this when multiple updater instances overlap on DNS domains or share WAF lists, and each instance should manage only its own items.
+
+For shared DNS domains, give each instance its own comment value and matching selector:
+
+1. Set a unique `RECORD_COMMENT`.
+2. Set `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
+
+Example:
+
+- Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
+- Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
+
+If instances also touch the same WAF list, give each instance its own WAF list item comment and matching selector:
+
+- Instance A: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
+- Instance B: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
+
+> 🤖 `MANAGED_RECORDS_COMMENT_REGEX` is unreleased. `WAF_LIST_ITEM_COMMENT` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` are unreleased and experimental.
+
+## 🚚 Non-Docker Setups
+
+These setups are for runtimes that are not additive changes on top of the Docker Compose template above.
+
+### ⚙️ Deploy as a system service
+
+The repository currently includes [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD. Additional service-manager examples, such as `systemd`, may be added there over time.
+
+### 🦭 Run the container with Podman
+
+Start with the same image and environment variables shown in the Docker examples above, then adapt the run command to your Podman workflow. This README does not currently maintain Podman-specific commands, Quadlet files, or Compose conversions.
+
+### ☸️ Run on Kubernetes
+
+Due to high maintenance costs, the dedicated Kubernetes instructions have been removed. You can still generate Kubernetes configurations from the Docker Compose template using [Kompose](https://kompose.io/) version 1.35.0 or later. A simple [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) is sufficient here; there is no inbound traffic, so a [Service](https://kubernetes.io/docs/concepts/services-networking/service/) is not required. This README does not maintain first-party Kubernetes manifests.
+
+## 🛠️ Troubleshooting
+
+### 🤔 How can I see the timestamps of the IP checks and/or updates?
+
+The updater does not add timestamps itself because most runtimes already do:
+
+- If you are using Docker Compose, Kubernetes, or Docker directly, add `--timestamps` when viewing the logs.
 - If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
 
-</details>
+### 🤔 Why did the updater detect a public IP address different from the WAN IP address on my router?
 
-<details>
-<summary><em>Click to expand:</em> ❔️ Why did the updater detect a public IP address different from the WAN IP address on my router?</summary>
+If your router shows an address between `100.64.0.0` and `100.127.255.255`, you are likely behind [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In that case, your ISP is not giving you a real public IP address, so ordinary DDNS cannot make your home network directly reachable from the Internet.
 
-Is your “public” IP address on your router between `100.64.0.0` and `100.127.255.255`? If so, you are within your ISP’s [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In practice, there is no way for DDNS to work with CGNAT, because your ISP does not give you a real public IP address, nor does it allow you to forward IP packages to your router using cool protocols such as [Port Control Protocol](https://en.wikipedia.org/wiki/Port_Control_Protocol). You have to give up DDNS or switch to another ISP. You may consider other services such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) that can work around CGNAT.
+Your options are usually to switch to an ISP that gives you a real public IP address or to use a different approach such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
 
-</details>
+### 🤔 Help! I got <code>exec /bin/ddns: operation not permitted</code>
 
-<details>
-<summary><em>Click to expand:</em> ❔️ How should I install this updater in ☸️ Kubernetes?</summary>
+Some Docker, kernel, and virtualization combinations do not work well with [`security_opt: [no-new-privileges:true]`](https://docs.docker.com/reference/cli/docker/container/run/). If this happens, try removing that one hardening option and start the container again. This slightly reduces security, so keep the other hardening options if possible.
 
-Due to high maintenance costs, the Kubernetes instructions have been removed. However, you can still generate Kubernetes configurations from the provided Docker Compose template using a conversion tool like [Kompose](https://kompose.io/). **Important:** Only use Kompose version 1.35.0 or later, as these versions support the `user: "UID:GID"` attribute with `:GID`.
+If removing `no-new-privileges` fixes the problem, keep it disabled for this container or adjust your security policy to allow this binary.
 
-Note that a simple [Kubernetes Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) will suffice here. Since there’s no inbound network traffic, a [Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/) isn’t required.
+If removing `no-new-privileges` does not help, try a minimal image such as `alpine` or another popular Docker image with the same hardening option. If that also fails, the problem is likely in the host environment rather than this updater. Reported cases have included older kernels and some QEMU/Proxmox-style virtualized setups.
 
-</details>
+If none of these applies, please [open an issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new) and include your compose file with secrets redacted, `docker version`, `uname -a`, your host OS and virtualization platform (if any), and whether a minimal image such as `alpine` shows the same error.
 
-<details>
-<summary><em>Click to expand:</em> ❔️ Help! I got <code>exec /bin/ddns: operation not permitted</code></summary>
+### 🤔 I am getting <code>error code: 1034</code>
 
-Certain Docker installations may have issues with the `no-new-privileges` security option. If you cannot run Docker images with this option (including this updater), removing it might be necessary. This will slightly compromise security, but it’s better than not running the updater at all. If _only_ this updater is affected, please [report this issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new).
-
-</details>
-
-<details>
-<summary><em>Click to expand:</em> ❔️ I am getting <code>error code: 1034</code></summary>
-
-We have received reports of recent issues with the default IP provider, `cloudflare.trace`. Some users are encountering an "error code: 1034," likely due to internal problems with Cloudflare's servers. To work around this, please upgrade the updater to version 1.15.1 or later. Alternatively, you may switch to a different IP provider.
-
-</details>
+There have been reports of intermittent issues with the default provider `cloudflare.trace`. If you see `error code: 1034`, upgrade to version 1.15.1 or later, or switch to another provider such as `cloudflare.doh` or `url:<url>`.
 
 ## 🎛️ Further Customization
 
+<a id="all-settings"></a>
 ### ⚙️ All Settings
 
-The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details that most users can safely ignore.
+The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
-<summary id="generate-scoped-api-token-all-settings"><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
+<summary><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -342,23 +438,7 @@ Managed WAF lists:
 | 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)                | 🧪 Default comment for new WAF list items.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `""`                                           |
 | 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased) | 🧪 Regex that matches comments of existing WAF list items this updater manages. Only items whose comments match are managed by this updater and may be deleted during reconciliation or shutdown cleanup. Cloudflare does not provide an API to edit a single WAF list item in place. During reconciliation, when the desired IP/range set changes, the updater adds missing items and removes stale items. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (not Perl/PCRE). With `DELETE_ON_STOP=true`, a non-empty regex prevents whole-list deletion and limits shutdown cleanup to matched items.                         | `""` (empty regex; manages all WAF list items) |
 
-> 🤖 **Advanced setup for multi-instance shared domains/WAF lists**
->
-> Use this setup when multiple updater instances overlap on DNS domains or share WAF lists, and each instance should manage only its own items.
->
-> 1. Give each instance a unique `RECORD_COMMENT`.
-> 2. Set `MANAGED_RECORDS_COMMENT_REGEX` to the same DNS comment (typically with `^...$`).
-> 3. 🧪 If instances may touch the same WAF list, give each instance a unique `WAF_LIST_ITEM_COMMENT`.
-> 4. 🧪 Set `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to the same WAF item comment (typically with `^...$`).
->
-> Example:
->
-> - Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
-> - Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
->
-> `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`; otherwise the updater fails at startup.
->
-> `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
+> 🤖 For the full multi-instance recipe, see [`Docker Compose Special Setups`](#docker-compose-special-setups). The write-side comment must still match the management regex: `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
 
 Other scope notes:
 
@@ -503,8 +583,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 | Old Parameter                          |     | Note                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_KEY=<key>`                        | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup) and use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                                                                                                |
-| `API_KEY_FILE=/path/to/key-file`       | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                                                                                                     |
+| `API_KEY=<key>`                        | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#cloudflare-api-token) and use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                                                                                                                    |
+| `API_KEY_FILE=/path/to/key-file`       | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#cloudflare-api-token), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                                                                                                                         |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                                                                                                                                                          |
 | `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                                                                                                                                                           |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                                                                                                                              |
@@ -522,10 +602,10 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=<token>`                                                                                                                                                                                                       |
-| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#generate-scoped-api-token-all-settings), then follow the row above.                                                                                             |
+| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#cloudflare-api-token), then follow the row above.                                                                                                               |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see above for the detailed documentation for this advanced feature                                                                                               |
+| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                     |
 | `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
