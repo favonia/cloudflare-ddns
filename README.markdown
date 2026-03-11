@@ -178,7 +178,7 @@ The updater should now be running in the background. Check the logs with `docker
 
 These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#-all-settings).
 
-### ✅ Validation and Testing
+### 🔍 Validation and Testing
 
 #### ✅ Test a new setup safely with explicit IPs
 
@@ -197,7 +197,7 @@ After the updater creates or reconciles the expected records, switch `DOMAINS`, 
 
 ⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
 
-#### 🧪 Test how the updater reconciles manual DNS edits
+#### 🔄 Test how the updater reconciles manual DNS edits
 
 Use this when you specifically want to test how the updater reacts after someone changes the DNS records directly in Cloudflare.
 
