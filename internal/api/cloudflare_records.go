@@ -18,6 +18,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+type zoneMeta struct {
+	ID        ID
+	AccountID ID
+}
+
 func matchManagedRecordComment(regex *regexp.Regexp, comment string) bool {
 	if regex == nil {
 		return true
@@ -35,31 +40,31 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target TTL) {
+func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target TTL) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.", //nolint:lll
+		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.", //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
-		current.Describe(), target.Describe(), target.Describe(), current.Int(),
+		current.Describe(), target.Describe(), target.Describe(), dashboardURL, current.Int(),
 	)
 }
 
-func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target bool) {
+func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target bool) {
 	descriptions := map[bool]string{
 		true:  "proxied",
 		false: "not proxied (DNS only)",
 	}
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`, //nolint:lll
+		`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`, //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
-		descriptions[current], descriptions[target], descriptions[target],
+		descriptions[current], descriptions[target], descriptions[target], dashboardURL,
 	)
 }
 
-func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, current, target string) {
+func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
-		ipNet.RecordType(), domain.Describe(), id, DescribeFreeFormString(current), DescribeFreeFormString(target),
+		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		ipNet.RecordType(), domain.Describe(), id, describeFreeFormString(current), describeFreeFormString(target), dashboardURL,
 	)
 }
 
@@ -84,16 +89,15 @@ func newUndocumentedTags(returned, requested []string) []string {
 	return newUndocumented
 }
 
-// ListZones returns a list of zone IDs with the zone name.
-func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name string) ([]ID, bool) {
+func (h cloudflareHandle) listZoneMeta(ctx context.Context, ppfmt pp.PP, name string) ([]zoneMeta, bool) {
 	// WithZoneFilters does not work with the empty zone name,
 	// and the owner of the DNS root zone will not be managed by Cloudflare anyways!
 	if name == "" {
-		return []ID{}, true
+		return []zoneMeta{}, true
 	}
 
-	if ids := h.cache.listZones.Get(name); ids != nil {
-		return ids.Value(), true
+	if zones := h.cache.listZones.Get(name); zones != nil {
+		return zones.Value(), true
 	}
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
@@ -103,71 +107,98 @@ func (h CloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 		return nil, false
 	}
 
-	ids := make([]ID, 0, len(res.Result))
+	zones := make([]zoneMeta, 0, len(res.Result))
 	for _, zone := range res.Result {
+		ref := zoneMeta{ID: ID(zone.ID), AccountID: ID(zone.Account.ID)}
 		// The list of possible statuses was at https://api.cloudflare.com/#zone-list-zones
 		// but the documentation is missing now.
 		switch zone.Status {
 		case "active": // fully working
-			ids = append(ids, ID(zone.ID))
+			zones = append(zones, ref)
 		case
 			"deactivated",  // violating term of service, etc.
 			"initializing", // the setup was just started?
 			"moved",        // domain registrar not pointing to Cloudflare
 			"pending":      // the setup was not completed
 			ppfmt.Noticef(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account; some features (e.g., proxying) might not work as expected", name, zone.Status) //nolint:lll
-			ids = append(ids, ID(zone.ID))
+			zones = append(zones, ref)
 		case
 			"deleted": // archived, pending/moved for too long
 			ppfmt.Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", name, zone.Status)
 		default:
 			ppfmt.Noticef(pp.EmojiImpossible, "DNS zone %s is in an undocumented status %q in your Cloudflare account; please report this at %s", //nolint:lll
 				name, zone.Status, pp.IssueReportingURL)
-			ids = append(ids, ID(zone.ID))
+			zones = append(zones, ref)
 		}
 	}
 
 	h.cache.listZones.DeleteExpired()
-	h.cache.listZones.Set(name, ids, ttlcache.DefaultTTL)
+	h.cache.listZones.Set(name, zones, ttlcache.DefaultTTL)
 
+	return zones, true
+}
+
+// listZones returns a list of zone IDs with the zone name.
+func (h cloudflareHandle) listZones(ctx context.Context, ppfmt pp.PP, name string) ([]ID, bool) {
+	zones, ok := h.listZoneMeta(ctx, ppfmt, name)
+	if !ok {
+		return nil, false
+	}
+
+	ids := make([]ID, 0, len(zones))
+	for _, zone := range zones {
+		ids = append(ids, zone.ID)
+	}
 	return ids, true
 }
 
-// ZoneIDOfDomain finds the active zone ID governing a particular domain.
-func (h CloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
-	if id := h.cache.zoneIDOfDomain.Get(domain.DNSNameASCII()); id != nil {
-		return id.Value(), true
+func (h cloudflareHandle) zoneMetaOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (zoneMeta, bool) {
+	if zone := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); zone != nil {
+		return zone.Value(), true
 	}
 
 zoneSearch:
 	for zoneName := range domain.Zones {
-		zones, ok := h.ListZones(ctx, ppfmt, zoneName)
+		zones, ok := h.listZoneMeta(ctx, ppfmt, zoneName)
 		if !ok {
-			return "", false
+			return zoneMeta{}, false
 		}
 
 		switch len(zones) {
 		case 0: // len(zones) == 0
 			continue zoneSearch
 		case 1: // len(zones) == 1
-			h.cache.zoneIDOfDomain.DeleteExpired()
-			h.cache.zoneIDOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
+			h.cache.zoneOfDomain.DeleteExpired()
+			h.cache.zoneOfDomain.Set(domain.DNSNameASCII(), zones[0], ttlcache.DefaultTTL)
 			return zones[0], true
 		default: // len(zones) > 1
+			ids := make([]ID, 0, len(zones))
+			for _, zone := range zones {
+				ids = append(ids, zone.ID)
+			}
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %s (IDs: %s); please report this at %s",
-				zoneName, pp.EnglishJoinMap(ID.String, zones), pp.IssueReportingURL)
-			return "", false
+				zoneName, pp.EnglishJoinMap(ID.String, ids), pp.IssueReportingURL)
+			return zoneMeta{}, false
 		}
 	}
 
 	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s", domain.Describe())
 
-	return "", false
+	return zoneMeta{}, false
+}
+
+// zoneIDOfDomain finds the active zone ID governing a particular domain.
+func (h cloudflareHandle) zoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
+	if !ok {
+		return "", false
+	}
+	return zone.ID, true
 }
 
 // ListRecords calls cloudflare.ListDNSRecords.
-func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
 	configuredParams RecordParams,
 ) ([]Record, bool, bool) {
 	if cachedManagedRecords := h.cache.listRecords[ipNet].Get(domain.DNSNameASCII()); cachedManagedRecords != nil {
@@ -175,13 +206,14 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		return *cachedManagedRecords.Value(), true, true
 	}
 
-	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return nil, false, false
 	}
+	dashboardURL := cloudflareDNSRecordsDeeplink(zone.AccountID, zone.ID)
 
 	raw, _, err := h.cf.ListDNSRecords(ctx,
-		cloudflare.ZoneIdentifier(string(zone)),
+		cloudflare.ZoneIdentifier(string(zone.ID)),
 		//nolint:exhaustruct // Query params intentionally set only fields used by the selector.
 		cloudflare.ListDNSRecordsParams{
 			Type: ipNet.RecordType(),
@@ -224,13 +256,13 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 		managedRecords = append(managedRecords, record)
 
 		if record.TTL != configuredParams.TTL {
-			hintMismatchedTTL(ppfmt, ipNet, domain, id, record.TTL, configuredParams.TTL)
+			hintMismatchedTTL(ppfmt, ipNet, domain, id, dashboardURL, record.TTL, configuredParams.TTL)
 		}
 		if record.Proxied != configuredParams.Proxied {
-			hintMismatchedProxied(ppfmt, ipNet, domain, id, record.Proxied, configuredParams.Proxied)
+			hintMismatchedProxied(ppfmt, ipNet, domain, id, dashboardURL, record.Proxied, configuredParams.Proxied)
 		}
 		if record.Comment != configuredParams.Comment {
-			hintMismatchedComment(ppfmt, ipNet, domain, id, record.Comment, configuredParams.Comment)
+			hintMismatchedComment(ppfmt, ipNet, domain, id, dashboardURL, record.Comment, configuredParams.Comment)
 		}
 	}
 
@@ -241,16 +273,16 @@ func (h CloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ip
 }
 
 // DeleteRecord calls cloudflare.DeleteDNSRecord.
-func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, id ID,
 	mode DeletionMode,
 ) bool {
-	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
 
-	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), string(id)); err != nil {
+	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), string(id)); err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
@@ -268,14 +300,15 @@ func (h CloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
-func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, id ID, ip netip.Addr,
 	desiredParams RecordParams,
 ) bool {
-	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return false
 	}
+	dashboardURL := cloudflareDNSRecordsDeeplink(zone.AccountID, zone.ID)
 
 	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct):
 	// - Reconciled-on-update fields: type/name/content + desired metadata
@@ -315,7 +348,7 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		},
 	}
 
-	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), updateRequestParams)
+	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), updateRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v",
 			ipNet.RecordType(), domain.Describe(), id, err)
@@ -327,14 +360,14 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if TTL(r.TTL) != desiredParams.TTL {
-		hintMismatchedTTL(ppfmt, ipNet, domain, id, TTL(r.TTL), desiredParams.TTL)
+		hintMismatchedTTL(ppfmt, ipNet, domain, id, dashboardURL, TTL(r.TTL), desiredParams.TTL)
 	}
 	updatedProxied := r.Proxied != nil && *r.Proxied // by default, proxied = false
 	if updatedProxied != desiredParams.Proxied {
-		hintMismatchedProxied(ppfmt, ipNet, domain, id, updatedProxied, desiredParams.Proxied)
+		hintMismatchedProxied(ppfmt, ipNet, domain, id, dashboardURL, updatedProxied, desiredParams.Proxied)
 	}
 	if r.Comment != desiredParams.Comment {
-		hintMismatchedComment(ppfmt, ipNet, domain, id, r.Comment, desiredParams.Comment)
+		hintMismatchedComment(ppfmt, ipNet, domain, id, dashboardURL, r.Comment, desiredParams.Comment)
 	}
 
 	currentParams := RecordParams{
@@ -369,10 +402,10 @@ func (h CloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 }
 
 // CreateRecord calls cloudflare.CreateDNSRecord.
-func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	ipNet ipnet.Type, domain domain.Domain, ip netip.Addr, desiredParams RecordParams,
 ) (ID, bool) {
-	zone, ok := h.ZoneIDOfDomain(ctx, ppfmt, domain)
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
 		return "", false
 	}
@@ -408,7 +441,7 @@ func (h CloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		},
 	}
 
-	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone)), createRequestParams)
+	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), createRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v",
 			ipNet.RecordType(), domain.Describe(), err)

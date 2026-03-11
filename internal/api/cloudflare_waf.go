@@ -38,12 +38,12 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m WAFListMeta, configuredDescription string) {
+func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m wafListMeta, configuredDescription string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
+		`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at %s or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
 		list.Describe(), m.ID,
-		DescribeFreeFormString(m.Description), DescribeFreeFormString(configuredDescription),
-		list.AccountID,
+		describeFreeFormString(m.Description), describeFreeFormString(configuredDescription),
+		cloudflareWAFListDeeplink(list.AccountID, m.ID),
 	)
 }
 
@@ -80,8 +80,8 @@ func hintMismatchedWAFListItemComment(
 			"These mismatches are reported but not corrected.",
 		sampleID,
 		list.Describe(),
-		DescribeFreeFormString(sampleComment),
-		DescribeFreeFormString(configuredItemComment),
+		describeFreeFormString(sampleComment),
+		describeFreeFormString(configuredItemComment),
 		mismatchedCount,
 	)
 }
@@ -94,7 +94,7 @@ func snapshotManagedWAFListItemCommentsByID(items []WAFListItem) map[ID]string {
 	return commentsByID
 }
 
-func (h CloudflareHandle) cachedManagedWAFListItemCommentsByID(list WAFList) (map[ID]string, bool) {
+func (h cloudflareHandle) cachedManagedWAFListItemCommentsByID(list WAFList) (map[ID]string, bool) {
 	cached := h.cache.listListItems.Get(list)
 	if cached == nil {
 		return nil, false
@@ -126,7 +126,7 @@ func describeAllowedWAFListItemComments(allowedComments map[string]bool) string 
 
 	comments := make([]string, 0, len(allowedComments))
 	for comment := range allowedComments {
-		comments = append(comments, DescribeFreeFormString(comment))
+		comments = append(comments, describeFreeFormString(comment))
 	}
 	slices.Sort(comments)
 	return strings.Join(comments, ", ")
@@ -166,7 +166,7 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 			"Found %d managed WAF list item(s) with this anomaly.",
 		list.Describe(),
 		sampleID,
-		DescribeFreeFormString(sampleComment),
+		describeFreeFormString(sampleComment),
 		describeAllowedWAFListItemComments(allowedPostMutationComments),
 		mismatchedCount,
 	)
@@ -179,8 +179,8 @@ func matchManagedWAFListItemComment(regex *regexp.Regexp, comment string) bool {
 	return regex.MatchString(comment)
 }
 
-// ListWAFLists lists all IP lists of the given name.
-func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, accountID ID) ([]WAFListMeta, bool) {
+// listWAFLists lists all IP lists of the given name.
+func (h cloudflareHandle) listWAFLists(ctx context.Context, ppfmt pp.PP, accountID ID) ([]wafListMeta, bool) {
 	if ls := h.cache.listLists.Get(accountID); ls != nil {
 		return *ls.Value(), true
 	}
@@ -192,10 +192,10 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, account
 		return nil, false
 	}
 
-	ls := make([]WAFListMeta, 0, len(raw))
+	ls := make([]wafListMeta, 0, len(raw))
 	for _, l := range raw {
 		if l.Kind == cloudflare.ListTypeIP {
-			ls = append(ls, WAFListMeta{
+			ls = append(ls, wafListMeta{
 				ID:          ID(l.ID),
 				Name:        l.Name,
 				Description: l.Description,
@@ -208,16 +208,16 @@ func (h CloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, account
 	return ls, true
 }
 
-// WAFListID finds the ID of the list, if any.
+// wafListID finds the ID of the list, if any.
 // The second return value indicates whether the list is found.
-func (h CloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFList,
+func (h cloudflareHandle) wafListID(ctx context.Context, ppfmt pp.PP, list WAFList,
 	configuredDescription string,
 ) (ID, bool, bool) {
 	if listID := h.cache.listID.Get(list); listID != nil {
 		return listID.Value(), true, true
 	}
 
-	ls, ok := h.ListWAFLists(ctx, ppfmt, list.AccountID)
+	ls, ok := h.listWAFLists(ctx, ppfmt, list.AccountID)
 	if !ok {
 		return "", false, false
 	}
@@ -252,13 +252,13 @@ func (h CloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFLi
 	return listID, true, true
 }
 
-// FindWAFList returns the ID of the IP list with the given name.
-func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+// findWAFList returns the ID of the IP list with the given name.
+func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
 	configuredDescription string,
 ) (ID, bool) {
-	listID, found, ok := h.WAFListID(ctx, ppfmt, list, configuredDescription)
+	listID, found, ok := h.wafListID(ctx, ppfmt, list, configuredDescription)
 	if !ok || !found {
-		// When ok is false, ListWAFLists (called by WAFListID) would have output some error messages,
+		// When ok is false, listWAFLists (called by wafListID) would have output some error messages,
 		// but this provides more context.
 		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %s", list.Describe())
 		return "", false
@@ -280,13 +280,13 @@ func (h CloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 // The flow is intentionally unified for both ownership modes. Whole-list mode
 // invalidates managed-item cache before fallback item deletion so fallback
 // never trusts stale managed-item views.
-func (h CloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	list WAFList, configuredDescription string,
 ) WAFListCleanupCode {
 	tryDeleteWholeListFirst := h.options.AllowWholeWAFListDeleteOnShutdown
 
 	// Resolve list existence/ID first for both ownership modes.
-	listID, found, ok := h.WAFListID(ctx, ppfmt, list, configuredDescription)
+	listID, found, ok := h.wafListID(ctx, ppfmt, list, configuredDescription)
 	if !ok {
 		return WAFListCleanupFailed
 	}
@@ -363,12 +363,12 @@ const (
 	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
 )
 
-func (h CloudflareHandle) invalidateWAFListCleanupCache(list WAFList) {
+func (h cloudflareHandle) invalidateWAFListCleanupCache(list WAFList) {
 	h.cache.listListItems.Delete(list)
 	h.cache.listID.Delete(list)
 }
 
-func (h CloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	list WAFList, listID ID,
 ) ([]WAFListItem, bool) {
 	rawItems, err := h.cf.ListListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -393,7 +393,7 @@ func (h CloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	return items, true
 }
 
-func (h CloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, ppfmt pp.PP,
 	list WAFList, listID ID, ids []ID,
 ) bool {
 	if len(ids) == 0 {
@@ -441,7 +441,7 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 	return items, true
 }
 
-func (h CloudflareHandle) filterManagedWAFListItems(items []WAFListItem) []WAFListItem {
+func (h cloudflareHandle) filterManagedWAFListItems(items []WAFListItem) []WAFListItem {
 	if h.options.ManagedWAFListItemsCommentRegex == nil {
 		return items
 	}
@@ -455,7 +455,7 @@ func (h CloudflareHandle) filterManagedWAFListItems(items []WAFListItem) []WAFLi
 	return managedItems
 }
 
-func (h CloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFListItem) []WAFListItem {
+func (h cloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFListItem) []WAFListItem {
 	managedItems := h.filterManagedWAFListItems(items)
 	h.cache.listListItems.DeleteExpired()
 	h.cache.listListItems.Set(list, &managedItems, ttlcache.DefaultTTL)
@@ -464,16 +464,16 @@ func (h CloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFList
 
 // ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
 // It caches one managed-item view per handle/list pair.
-func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, configuredDescription, configuredItemComment string,
 ) ([]WAFListItem, bool, bool, bool) {
 	if items := h.cache.listListItems.Get(list); items != nil {
 		return *items.Value(), true, true, true
 	}
 
-	listID, found, ok := h.WAFListID(ctx, ppfmt, list, configuredDescription)
+	listID, found, ok := h.wafListID(ctx, ppfmt, list, configuredDescription)
 	if !ok {
-		// ListWAFLists (called by WAFListID) would have output some error messages,
+		// listWAFLists (called by wafListID) would have output some error messages,
 		// but this provides more context.
 		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of the list %s", list.Describe())
 		return nil, false, false, false
@@ -496,7 +496,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		var items []WAFListItem
 
 		if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
-			*ls.Value() = append([]WAFListMeta{{
+			*ls.Value() = append([]wafListMeta{{
 				ID:          listID,
 				Description: configuredDescription,
 				Name:        list.Name,
@@ -520,7 +520,7 @@ func (h CloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 }
 
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
-func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, configuredDescription string, ids []ID,
 ) bool {
 	if len(ids) == 0 {
@@ -529,7 +529,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
-	listID, ok := h.FindWAFList(ctx, ppfmt, list, configuredDescription)
+	listID, ok := h.findWAFList(ctx, ppfmt, list, configuredDescription)
 	if !ok {
 		return false
 	}
@@ -572,7 +572,7 @@ func (h CloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 }
 
 // CreateWAFListItems calls cloudflare.CreateListItems.
-func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
+func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, configuredDescription string,
 	itemsToCreate []WAFListCreateItem,
 ) bool {
@@ -582,7 +582,7 @@ func (h CloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
-	listID, ok := h.FindWAFList(ctx, ppfmt, list, configuredDescription)
+	listID, ok := h.findWAFList(ctx, ppfmt, list, configuredDescription)
 	if !ok {
 		return false
 	}

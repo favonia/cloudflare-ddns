@@ -24,7 +24,7 @@ func TestMatchManagedWAFListItemComment(t *testing.T) {
 func TestStartDeletingWAFListItemsAsyncWithNoIDs(t *testing.T) {
 	t.Parallel()
 
-	var h CloudflareHandle
+	var h cloudflareHandle
 	ok := h.startDeletingWAFListItemsAsync(
 		context.Background(),
 		pp.NewSilent(),

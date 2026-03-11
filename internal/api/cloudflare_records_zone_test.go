@@ -5,6 +5,7 @@ package api_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -23,9 +23,10 @@ import (
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {
 	return &cloudflare.Zone{ //nolint:exhaustruct
-		ID:     string(mockID(name, i)),
-		Name:   name,
-		Status: status,
+		ID:      string(mockID(name, i)),
+		Name:    name,
+		Status:  status,
+		Account: cloudflare.Account{ID: string(mockAccountID)},
 	}
 }
 
@@ -144,7 +145,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 		domain        domain.Domain
 		zoneStatuses  map[string][]string
 		requestLimit  int
-		expected      api.ID
+		expected      ID
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{

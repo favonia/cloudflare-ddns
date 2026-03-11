@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"net/http"
 	"net/netip"
 	"regexp"
@@ -18,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -26,7 +26,7 @@ import (
 const listItemPageSize = 100
 
 type listItem struct {
-	ID      api.ID
+	ID      ID
 	Prefix  string
 	Comment string
 }
@@ -73,7 +73,7 @@ func mockListListItemsResponse(listItems []listItem) cloudflare.ListItemsListRes
 	}
 }
 
-func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID api.ID, listItems []listItem) httpHandler {
+func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID ID, listItems []listItem) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -98,7 +98,7 @@ func newListListItemsHandler(t *testing.T, mux *http.ServeMux, listID api.ID, li
 	return httpHandler{requestLimit: &requestLimit}
 }
 
-func newListListItemsHandlerSequence(t *testing.T, mux *http.ServeMux, listID api.ID, sequence [][]listItem) httpHandler {
+func newListListItemsHandlerSequence(t *testing.T, mux *http.ServeMux, listID ID, sequence [][]listItem) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -485,7 +485,7 @@ func TestListWAFListItemsCommentMismatchWarningCacheMissOnly(t *testing.T) {
 	assertHandlersExhausted(t, lh, lih)
 }
 
-func mockListBulkOperationResponse(id api.ID) cloudflare.ListBulkOperationResponse {
+func mockListBulkOperationResponse(id ID) cloudflare.ListBulkOperationResponse {
 	t := time.Now()
 	return cloudflare.ListBulkOperationResponse{
 		Response: mockResponse(),
@@ -498,7 +498,7 @@ func mockListBulkOperationResponse(id api.ID) cloudflare.ListBulkOperationRespon
 	}
 }
 
-func handleListBulkOperation(t *testing.T, operationID api.ID, w http.ResponseWriter, r *http.Request) {
+func handleListBulkOperation(t *testing.T, operationID ID, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 
 	if !checkToken(t, r) {
@@ -516,7 +516,7 @@ func handleListBulkOperation(t *testing.T, operationID api.ID, w http.ResponseWr
 	assert.NoError(t, err)
 }
 
-func mockListItemDeleteResponse(id api.ID) cloudflare.ListItemDeleteResponse {
+func mockListItemDeleteResponse(id ID) cloudflare.ListItemDeleteResponse {
 	return cloudflare.ListItemDeleteResponse{
 		Result: struct {
 			OperationID string `json:"operation_id"` //nolint:tagliatelle // Cloudflare uses snake_case field names.
@@ -525,7 +525,7 @@ func mockListItemDeleteResponse(id api.ID) cloudflare.ListItemDeleteResponse {
 	}
 }
 
-func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID, expectedIDs []api.ID) httpHandler {
+func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID ID, expectedIDs []api.ID) httpHandler {
 	t.Helper()
 
 	var requestLimit int
@@ -667,7 +667,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 	}
 }
 
-func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
+func mockListItemCreateResponse(id ID) cloudflare.ListItemCreateResponse {
 	return cloudflare.ListItemCreateResponse{
 		Result: struct {
 			OperationID string `json:"operation_id"` //nolint:tagliatelle // Cloudflare uses snake_case field names.
@@ -676,7 +676,7 @@ func mockListItemCreateResponse(id api.ID) cloudflare.ListItemCreateResponse {
 	}
 }
 
-func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID api.ID,
+func newCreateListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID ID,
 	expectedItems []api.WAFListCreateItem,
 ) httpHandler {
 	t.Helper()

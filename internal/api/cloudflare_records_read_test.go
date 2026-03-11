@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -17,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -235,19 +235,19 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "100", "100", 1,
+					"1 (auto)", "100", "100", mockDNSRecordsDeeplink("test.org", 0), 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "proxied", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink("test.org", 0),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"empty", `"hello"`,
+					"empty", `"hello"`, mockDNSRecordsDeeplink("test.org", 0),
 				)
 			},
 		},
@@ -277,19 +277,19 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at https://dash.cloudflare.com or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "100", "100", 1,
+					"1 (auto)", "100", "100", mockDNSRecordsDeeplink("test.org", 0), 1,
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of PROXIED to match the current setting.`,
+					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"not proxied (DNS only)", "proxied", "proxied",
+					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink("test.org", 0),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at https://dash.cloudflare.com or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
-					`"managed"`, `"expected"`,
+					`"managed"`, `"expected"`, mockDNSRecordsDeeplink("test.org", 0),
 				)
 			},
 		},
