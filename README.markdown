@@ -197,6 +197,19 @@ After the updater creates or reconciles the expected records, switch `DOMAINS`, 
 
 ⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
 
+#### 🧪 Test how the updater reconciles manual DNS edits
+
+Use this when you specifically want to test how the updater reacts after someone changes the DNS records directly in Cloudflare.
+
+```yaml
+environment:
+  - CACHE_EXPIRATION=1ns
+```
+
+With `CACHE_EXPIRATION=1ns`, the updater stops reusing cached Cloudflare data, so you can edit the DNS records in Cloudflare and watch the updater reconcile them.
+
+⚠️ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
+
 ### 🌐 Networking
 
 #### 📴 Run IPv4-only or IPv6-only
@@ -344,12 +357,6 @@ Start with the same image and environment variables shown in the Docker examples
 Due to high maintenance costs, the dedicated Kubernetes instructions have been removed. You can still generate Kubernetes configurations from the Docker Compose template using [Kompose](https://kompose.io/) version 1.35.0 or later. A simple [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) is sufficient here; there is no inbound traffic, so a [Service](https://kubernetes.io/docs/concepts/services-networking/service/) is not required. This README does not maintain first-party Kubernetes manifests.
 
 ## 🛠️ Troubleshooting
-
-### ❔️ I simulated an IP address change by editing the DNS records, but the updater never picked it up
-
-The updater reacts immediately to a real IP change, but it assumes no one is manually editing the DNS records behind its back. Because of that assumption, it caches Cloudflare data and may not notice your simulated DNS edit until `CACHE_EXPIRATION` has passed.
-
-If you really need to test this path, set `CACHE_EXPIRATION=1ns` temporarily to make the cache expire immediately. Keep the default value afterward to avoid unnecessary network traffic.
 
 ### ❔️ How can I see the timestamps of the IP checks and/or updates?
 
