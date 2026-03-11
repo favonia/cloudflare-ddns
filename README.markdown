@@ -322,23 +322,28 @@ Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** pe
 
 > 🤖 For IPv6, the updater stores each detected address as the smallest allowed range that contains it, because Cloudflare does not allow single IPv6 addresses in WAF lists.
 
-### 🧪 Shared Ownership
+### 🤝 Shared Ownership
 
-#### 🤝 Run multiple updater instances against shared domains or WAF lists
+#### Share domains or WAF lists across multiple updater instances
 
 Use this when multiple updater instances overlap on DNS domains or share WAF lists, and each instance should manage only its own items.
 
-Give each instance its own comment values and matching selectors:
+For shared DNS domains, give each instance its own comment value and matching selector:
 
 1. Set a unique `RECORD_COMMENT`.
-2. Set 🧪 `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
-3. If instances may touch the same WAF list, set a unique 🧪 `WAF_LIST_ITEM_COMMENT`.
-4. Set 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF item comment, typically with `^...$`.
+2. Set `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
 
 Example:
 
-- Instance A: `RECORD_COMMENT=managed-by-ddns-a`, 🧪 `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
-- Instance B: `RECORD_COMMENT=managed-by-ddns-b`, 🧪 `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
+- Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
+- Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
+
+If instances may also touch the same WAF list, give each instance its own WAF list item comment and matching selector as well:
+
+- Instance A: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
+- Instance B: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
+
+> 🤖 `MANAGED_RECORDS_COMMENT_REGEX` is unreleased. `WAF_LIST_ITEM_COMMENT` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` are unreleased and experimental.
 
 ## 🚚 Non-Docker Setups
 
