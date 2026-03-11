@@ -40,7 +40,14 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	}
 }
 
-func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target TTL) {
+func hintMismatchedTTL(
+	ppfmt pp.PP,
+	ipNet ipnet.Type,
+	domain domain.Domain,
+	id ID,
+	dashboardURL string,
+	current, target TTL,
+) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.", //nolint:lll
 		ipNet.RecordType(), domain.Describe(), id,
@@ -48,7 +55,14 @@ func hintMismatchedTTL(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id I
 	)
 }
 
-func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target bool) {
+func hintMismatchedProxied(
+	ppfmt pp.PP,
+	ipNet ipnet.Type,
+	domain domain.Domain,
+	id ID,
+	dashboardURL string,
+	current, target bool,
+) {
 	descriptions := map[bool]string{
 		true:  "proxied",
 		false: "not proxied (DNS only)",
@@ -61,10 +75,18 @@ func hintMismatchedProxied(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, 
 	)
 }
 
-func hintMismatchedComment(ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, dashboardURL string, current, target string) {
+func hintMismatchedComment(
+	ppfmt pp.PP,
+	ipNet ipnet.Type,
+	domain domain.Domain,
+	id ID,
+	dashboardURL string,
+	current, target string,
+) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
-		ipNet.RecordType(), domain.Describe(), id, describeFreeFormString(current), describeFreeFormString(target), dashboardURL,
+		ipNet.RecordType(), domain.Describe(), id,
+		describeFreeFormString(current), describeFreeFormString(target), dashboardURL,
 	)
 }
 
@@ -153,6 +175,8 @@ func (h cloudflareHandle) listZones(ctx context.Context, ppfmt pp.PP, name strin
 }
 
 func (h cloudflareHandle) zoneMetaOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (zoneMeta, bool) {
+	var zero zoneMeta
+
 	if zone := h.cache.zoneOfDomain.Get(domain.DNSNameASCII()); zone != nil {
 		return zone.Value(), true
 	}
@@ -161,7 +185,7 @@ zoneSearch:
 	for zoneName := range domain.Zones {
 		zones, ok := h.listZoneMeta(ctx, ppfmt, zoneName)
 		if !ok {
-			return zoneMeta{}, false
+			return zero, false
 		}
 
 		switch len(zones) {
@@ -179,13 +203,13 @@ zoneSearch:
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %s (IDs: %s); please report this at %s",
 				zoneName, pp.EnglishJoinMap(ID.String, ids), pp.IssueReportingURL)
-			return zoneMeta{}, false
+			return zero, false
 		}
 	}
 
 	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s", domain.Describe())
 
-	return zoneMeta{}, false
+	return zero, false
 }
 
 // zoneIDOfDomain finds the active zone ID governing a particular domain.

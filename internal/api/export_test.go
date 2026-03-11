@@ -8,7 +8,7 @@ import (
 )
 
 // This file exposes a narrow test-only view of selected Cloudflare
-// implementation details.
+// implementation details for black-box tests in package api_test.
 //
 // Rationale:
 // - Production code should keep the concrete Cloudflare helpers private.
@@ -21,6 +21,14 @@ import (
 // The compromise is to keep the production surface small and provide only the
 // minimal aliases/wrappers needed by api_test, in a *_test.go file so none of
 // this is compiled into normal builds.
+//
+// Important boundary:
+// - Do add wrappers here when a package api_test integration-style test needs
+//   a narrow internal hook and cannot be moved without creating an import
+//   cycle.
+// - Do not add wrappers here for small white-box tests of private helpers.
+//   Those tests should live in package api instead; see
+//   cloudflare_internal_test.go and cloudflare_waf_internal_test.go.
 
 // CloudflareHandle is a test-only alias for the concrete Cloudflare-backed
 // handle. External tests use it for type assertions when they need to verify

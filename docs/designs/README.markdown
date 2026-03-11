@@ -26,6 +26,7 @@ When writing or editing a design note:
 - [`readme-writing.markdown`](readme-writing.markdown): shared principles for editing `README.markdown`.
 - [`codebase-architecture.markdown`](codebase-architecture.markdown): the high-level code layout and repository-wide conventions.
 - [`lint-suppressions.markdown`](lint-suppressions.markdown): how inline `//nolint` suppressions are used across the repository.
+- [`testing-boundaries.markdown`](testing-boundaries.markdown): when to use `package foo_test`, `*_internal_test.go`, and `export_test.go`.
 - [`network-security-model.markdown`](network-security-model.markdown): the attacker model and security limits for public-IP detection.
 
 ## Feature-Specific Documents

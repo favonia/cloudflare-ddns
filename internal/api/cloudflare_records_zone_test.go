@@ -5,7 +5,6 @@ package api_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -26,7 +26,7 @@ func mockZone(name string, i int, status string) *cloudflare.Zone {
 		ID:      string(mockID(name, i)),
 		Name:    name,
 		Status:  status,
-		Account: cloudflare.Account{ID: string(mockAccountID)},
+		Account: cloudflare.Account{ID: string(mockAccountID)}, //nolint:exhaustruct
 	}
 }
 

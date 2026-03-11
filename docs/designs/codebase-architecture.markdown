@@ -120,3 +120,8 @@ The design goal is not to minimize field copying. The goal is to keep each runti
   - prioritize tightening comments that describe contracts, invariants, ownership, safety boundaries, lifecycle guarantees, or other non-obvious behavior
   - avoid churn on obvious local comments that only restate nearby code
   - prefer deleting redundant comments over rewriting them with equivalent wording
+- For tests:
+  - prefer `package foo_test` by default
+  - use `*_internal_test.go` for small white-box tests of private helpers
+  - use `export_test.go` only as a narrow escape hatch for black-box tests
+  - see [testing-boundaries.markdown](testing-boundaries.markdown) for the full rule
