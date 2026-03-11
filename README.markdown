@@ -373,9 +373,15 @@ Your options are usually to switch to an ISP that gives you a real public IP add
 
 ### ❔️ Help! I got <code>exec /bin/ddns: operation not permitted</code>
 
-Some Docker and kernel combinations do not work well with `security_opt: [no-new-privileges:true]`. If this happens, try removing that one hardening option and start the container again.
+Some Docker, kernel, and virtualization combinations do not work well with `security_opt: [no-new-privileges:true]`. If this happens, try removing that one hardening option and start the container again.
 
-This slightly reduces security, so keep the other hardening options if possible. If only this updater is affected, please [report the issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new).
+This slightly reduces security, so keep the other hardening options if possible.
+
+If removing `no-new-privileges` fixes the problem, keep it disabled for this container or adjust your security policy to allow this binary.
+
+If removing `no-new-privileges` does not help, try a minimal image such as `alpine` (or any popular Docker image) with the same hardening option. If that also fails, the problem is likely in the host environment rather than this updater. Reported cases have included older kernels and some QEMU/Proxmox-style virtualized setups.
+
+If none of the above helps, please [open an issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new) and include your compose file with secrets redacted, `docker version`, `uname -a`, your host OS and virtualization platform (if any), and whether a minimal image such as `alpine` shows the same error.
 
 ### ❔️ I am getting <code>error code: 1034</code>
 
