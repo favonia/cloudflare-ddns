@@ -29,5 +29,5 @@ This document records the shared principles for editing `README.markdown`.
    - Keep the detailed guidance in special-setup sections, reference tables, or technical notes.
 9. Keep labels and emojis semantically strict.
    - Use `⚠️` only for information a reader must notice to avoid a wrong setup, broken behavior, or misleading result.
-   - Use `🧪` only for experimental or unreleased features.
+   - Use `🧪` only for experimental features.
    - Do not add labels merely to balance positive and negative prose.

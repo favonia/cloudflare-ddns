@@ -145,7 +145,7 @@ services:
         # Change them once manually if you want to switch them
 ```
 
-`CLOUDFLARE_API_TOKEN` should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens), typically using the **Edit zone DNS** template. If you also use [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/), add the **Account - Account Filter Lists - Edit** permission.
+<p id="cloudflare-api-token"><code>CLOUDFLARE_API_TOKEN</code> should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the <a href="https://dash.cloudflare.com/profile/api-tokens">API Tokens page</a>, typically using the <strong>Edit zone DNS</strong> template. If you also use <a href="https://developers.cloudflare.com/waf/tools/lists/custom-lists/">WAF lists</a>, add the <strong>Account - Account Filter Lists - Edit</strong> permission.</p>
 
 The `user: "1000:1000"` line sets the user and group IDs that the container runs as, and you can change those two numbers to match your system. The `cap_drop`, `read_only`, and `no-new-privileges` lines add extra protection, especially when you run the container as a non-superuser.
 
@@ -163,7 +163,7 @@ The setting `PROXIED=true` makes this updater use Cloudflare's proxy for these d
 
 </details>
 
-If you need a non-default Docker Compose deployment, see [`Docker Compose Special Setups`](#-docker-compose-special-setups) below.
+If you need a non-default Docker Compose deployment, see [`Docker Compose Special Setups`](#docker-compose-special-setups) below.
 
 ### 🚀 Step 2: Building and Running the Container
 
@@ -174,9 +174,10 @@ docker-compose up --detach --build cloudflare-ddns
 
 The updater should now be running in the background. Check the logs with `docker-compose logs cloudflare-ddns` and confirm that it started correctly.
 
+<a id="docker-compose-special-setups"></a>
 ## 🧩 Docker Compose Special Setups
 
-These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#-all-settings).
+These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#all-settings).
 
 ### 🔍 Validation and Testing
 
@@ -388,12 +389,13 @@ There have been reports of intermittent issues with the default provider `cloudf
 
 ## 🎛️ Further Customization
 
+<a id="all-settings"></a>
 ### ⚙️ All Settings
 
-The emoji “🧪” indicates experimental features and the emoji “🤖” indicates technical details that most users can safely ignore.
+The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
-<summary id="generate-scoped-api-token-all-settings"><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
+<summary><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -436,7 +438,7 @@ Managed WAF lists:
 | 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)                | 🧪 Default comment for new WAF list items.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `""`                                           |
 | 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased) | 🧪 Regex that matches comments of existing WAF list items this updater manages. Only items whose comments match are managed by this updater and may be deleted during reconciliation or shutdown cleanup. Cloudflare does not provide an API to edit a single WAF list item in place. During reconciliation, when the desired IP/range set changes, the updater adds missing items and removes stale items. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (not Perl/PCRE). With `DELETE_ON_STOP=true`, a non-empty regex prevents whole-list deletion and limits shutdown cleanup to matched items.                         | `""` (empty regex; manages all WAF list items) |
 
-> 🤖 For the full multi-instance recipe, see [`Docker Compose Special Setups`](#-docker-compose-special-setups). The write-side comment must still match the management regex: `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
+> 🤖 For the full multi-instance recipe, see [`Docker Compose Special Setups`](#docker-compose-special-setups). The write-side comment must still match the management regex: `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
 
 Other scope notes:
 
@@ -581,8 +583,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 | Old Parameter                          |     | Note                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_KEY=<key>`                        | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup) and use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                                                                                                |
-| `API_KEY_FILE=/path/to/key-file`       | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#generate-scoped-api-token-minimal-setup), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                                                                                                     |
+| `API_KEY=<key>`                        | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#cloudflare-api-token) and use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                                                                                                                    |
+| `API_KEY_FILE=/path/to/key-file`       | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#cloudflare-api-token), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                                                                                                                         |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                                                                                                                                                          |
 | `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                                                                                                                                                           |
 | `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                                                                                                                              |
@@ -600,7 +602,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=<token>`                                                                                                                                                                                                       |
-| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#generate-scoped-api-token-all-settings), then follow the row above.                                                                                             |
+| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#cloudflare-api-token), then follow the row above.                                                                                                               |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                     |
