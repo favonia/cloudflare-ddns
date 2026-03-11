@@ -206,7 +206,7 @@ environment:
   - CACHE_EXPIRATION=1ns
 ```
 
-With `CACHE_EXPIRATION=1ns`, the updater stops reusing cached Cloudflare data, so you can edit the DNS records in Cloudflare and watch the updater reconcile them.
+With `CACHE_EXPIRATION=1ns`, you can edit the DNS records in Cloudflare and watch the updater reconcile them right away.
 
 ⚠️ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
 
@@ -235,8 +235,6 @@ services:
 ```
 
 After removing `network_mode: host`, follow the [official Docker instructions for enabling IPv6](https://docs.docker.com/config/daemon/ipv6/) on your Docker bridge network.
-
-This keeps the container isolated. IPv6 support now depends on your Docker daemon and host network configuration instead of working automatically via host networking.
 
 #### 🛜 Route outbound requests through a specific Docker network
 
@@ -273,7 +271,7 @@ networks:
 
 Use this when you are already using `network_mode: host` and want the updater to read addresses from one specific host interface.
 
-This changes which host interface addresses are read. It does not change which network the container uses for outbound requests.
+This changes which host interface addresses are read, not which network the container uses for outbound requests.
 
 ```yaml
 environment:
@@ -281,7 +279,7 @@ environment:
   - IP6_PROVIDER=local.iface:eth0
 ```
 
-Use a custom Docker network to change where outbound requests leave the container. Use `local.iface:<iface>` to read addresses from a chosen host interface instead.
+Use a custom Docker network to change where outbound requests leave the container.
 
 ⚠️ `local.iface:<iface>` is still experimental.
 
@@ -324,7 +322,7 @@ Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** pe
 
 ### 🤝 Shared Ownership
 
-#### Share domains or WAF lists across multiple updater instances
+#### Share domains or WAF lists across updater instances
 
 Use this when multiple updater instances overlap on DNS domains or share WAF lists, and each instance should manage only its own items.
 
@@ -338,7 +336,7 @@ Example:
 - Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
 
-If instances may also touch the same WAF list, give each instance its own WAF list item comment and matching selector as well:
+If instances also touch the same WAF list, give each instance its own WAF list item comment and matching selector:
 
 - Instance A: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
