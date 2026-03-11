@@ -147,9 +147,7 @@ services:
 
 `CLOUDFLARE_API_TOKEN` should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens), typically using the **Edit zone DNS** template. If you also use [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/), add the **Account - Account Filter Lists - Edit** permission.
 
-The `user: "1000:1000"` line sets the user and group IDs that the container runs as, and you can change those two numbers to match your system.
-
-The `cap_drop`, `read_only`, and `no-new-privileges` lines add extra protection, especially when you run the container as a non-superuser.
+The `user: "1000:1000"` line sets the user and group IDs that the container runs as, and you can change those two numbers to match your system. The `cap_drop`, `read_only`, and `no-new-privileges` lines add extra protection, especially when you run the container as a non-superuser.
 
 <details>
 <summary><em>Click to expand:</em> 📍 <code>DOMAINS</code> is the list of domains to update</summary>
@@ -173,6 +171,8 @@ If you need a non-default Docker Compose deployment, see [`Docker Compose Specia
 docker-compose pull cloudflare-ddns
 docker-compose up --detach --build cloudflare-ddns
 ```
+
+The updater should now be running in the background. Check the logs with `docker-compose logs cloudflare-ddns` and confirm that it started correctly.
 
 ## 🧩 Docker Compose Special Setups
 
