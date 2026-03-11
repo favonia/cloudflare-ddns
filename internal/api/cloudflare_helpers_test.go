@@ -51,11 +51,11 @@ func mockIDsAsStrings(seed string, suffixes ...int) []string {
 }
 
 func mockDNSRecordsDeeplink(zoneID ID) string {
-	return fmt.Sprintf("https://dash.cloudflare.com/?to=/%s/%s/dns/records", mockAccountID, zoneID)
+	return fmt.Sprintf("https://dash.cloudflare.com/?to=%%2F%s%%2F%s%%2Fdns%%2Frecords", mockAccountID, zoneID)
 }
 
 func mockWAFListDeeplink(listID ID) string {
-	return fmt.Sprintf("https://dash.cloudflare.com/?to=/%s/configurations/lists/%s", mockAccountID, listID)
+	return fmt.Sprintf("https://dash.cloudflare.com/?to=%%2F%s%%2Fconfigurations%%2Flists%%2F%s", mockAccountID, listID)
 }
 
 func mockResultInfo(totalNum, pageSize int) cloudflare.ResultInfo {

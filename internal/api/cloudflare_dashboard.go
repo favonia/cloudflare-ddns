@@ -10,12 +10,14 @@ func cloudflareDashboardDeeplink(segments ...string) string {
 	for _, segment := range segments {
 		escaped = append(escaped, url.PathEscape(segment))
 	}
+	query := url.Values{}
+	query.Set("to", "/"+strings.Join(escaped, "/"))
 	//nolint:exhaustruct // url.URL is intentionally populated with only the fields used here.
 	return (&url.URL{
 		Scheme:   "https",
 		Host:     "dash.cloudflare.com",
 		Path:     "/",
-		RawQuery: "to=/" + strings.Join(escaped, "/"),
+		RawQuery: query.Encode(),
 	}).String()
 }
 
