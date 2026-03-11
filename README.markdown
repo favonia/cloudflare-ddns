@@ -145,14 +145,7 @@ services:
         # Change them once manually if you want to switch them
 ```
 
-<details>
-<summary id="generate-scoped-api-token-minimal-setup"><em>Click to expand:</em> 🔑 <code>CLOUDFLARE_API_TOKEN</code> is your Cloudflare API token</summary>
-
-The value of `CLOUDFLARE_API_TOKEN` should be an API **token** (_not_ an API key), which can be obtained from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens). Use the **Edit zone DNS** template to create a token. The less secure API key authentication is deliberately _not_ supported.
-
-There is an optional feature (available since version 1.14.0) that lets you maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. To use this feature, edit the token and grant it the **Account - Account Filter Lists - Edit** permission.
-
-</details>
+`CLOUDFLARE_API_TOKEN` should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens), typically using the **Edit zone DNS** template. If you also use [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/), add the **Account - Account Filter Lists - Edit** permission.
 
 <details>
 <summary><em>Click to expand:</em> 📍 <code>DOMAINS</code> is the list of domains to update</summary>
@@ -213,7 +206,7 @@ This keeps the container isolated. IPv6 support now depends on your Docker daemo
 
 Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
 
-If you want all outbound requests from the container to use a specific Docker-attached network, create a MacVLAN network first:
+If you want all outbound requests from the container to use a specific Docker-attached network, create a [MacVLAN network](https://docs.docker.com/engine/network/drivers/macvlan/) first:
 
 ```bash
 docker network create \
@@ -238,7 +231,7 @@ networks:
     name: LAN0
 ```
 
-⚠️ MacVLAN can bypass parts of your host firewall setup, so host `iptables` or `nftables` rules may not see this traffic.
+⚠️ [MacVLAN](https://docs.docker.com/engine/network/drivers/macvlan/) can bypass parts of your host firewall setup, so host `iptables` or `nftables` rules may not see this traffic.
 
 #### 🧪 Read addresses from one host interface
 
@@ -254,9 +247,28 @@ environment:
 
 Use a custom Docker network to change where outbound requests leave the container. Use `local.iface:<iface>` to read addresses from a chosen host interface instead.
 
-⚠️ `local.iface:<iface>` is still experimental and requires host-network access.
+⚠️ `local.iface:<iface>` is still experimental.
 
-### 🔐 Credentials and Scope
+### ✅ Validation and Testing
+
+#### ✅ Test a new setup safely with explicit IPs
+
+Use this when you want to validate the updater without waiting for a real IP change.
+
+Point the updater at dedicated test names and feed it explicit test IPs:
+
+```yaml
+environment:
+  - DOMAINS=ddns-test.example.org
+  - IP4_PROVIDER=literal:203.0.113.10
+  - IP6_PROVIDER=literal:2001:db8::10
+```
+
+After the updater creates or reconciles the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
+
+⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
+
+### 🔐 Cloudflare API Tokens
 
 #### 🔑 Read the Cloudflare token from a Docker secret
 
@@ -277,7 +289,7 @@ secrets:
     file: ./secrets/cloudflare_api_token.txt
 ```
 
-⚠️ The token file must be mounted into the service and readable by the user configured by `user: "UID:GID"`.
+⚠️ The token file must be readable by the user configured by `user: "UID:GID"`.
 
 #### 🧪 Update only WAF lists
 
@@ -289,9 +301,9 @@ environment:
   # Do not set DOMAINS, IP4_DOMAINS, or IP6_DOMAINS
 ```
 
-Use a token with the **Account - Account Filter Lists - Edit** permission.
+Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** permission.
 
-IPv6 entries are stored as the smallest allowed range that contains the detected address, because Cloudflare does not allow single IPv6 addresses in WAF lists.
+> 🤖 For IPv6, the updater stores each detected address as the smallest allowed range that contains it, because Cloudflare does not allow single IPv6 addresses in WAF lists.
 
 ### 🧪 Shared Ownership
 
@@ -302,35 +314,14 @@ Use this when multiple updater instances overlap on DNS domains or share WAF lis
 Give each instance its own comment values and matching selectors:
 
 1. Set a unique `RECORD_COMMENT`.
-2. Set `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
-3. If instances may touch the same WAF list, set a unique `WAF_LIST_ITEM_COMMENT`.
-4. Set `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF item comment, typically with `^...$`.
+2. Set 🧪 `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
+3. If instances may touch the same WAF list, set a unique 🧪 `WAF_LIST_ITEM_COMMENT`.
+4. Set 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF item comment, typically with `^...$`.
 
 Example:
 
-- Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`, `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
-- Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`, `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
-
-⚠️ `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and `WAF_LIST_ITEM_COMMENT` must match `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`; otherwise the updater fails at startup.
-
-### ✅ Validation and Testing
-
-#### ✅ Test a new setup safely with explicit IPs
-
-Use this when you want to validate the updater without waiting for a real IP change.
-
-Point the updater at dedicated test names and feed it explicit test IPs:
-
-```yaml
-environment:
-  - DOMAINS=ddns-test.example.org
-  - IP4_PROVIDER=literal:203.0.113.10
-  - IP6_PROVIDER=literal:2001:db8::10
-```
-
-After the updater creates or reconciles the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
-
-⚠️ `literal:<ip1>,<ip2>,...` is unreleased and intended only for tests or debugging.
+- Instance A: `RECORD_COMMENT=managed-by-ddns-a`, 🧪 `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
+- Instance B: `RECORD_COMMENT=managed-by-ddns-b`, 🧪 `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`, 🧪 `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
 
 ## 🚚 Non-Docker Setups
 
@@ -435,7 +426,7 @@ Managed WAF lists:
 | 🧪 `WAF_LIST_ITEM_COMMENT` (unreleased)                | 🧪 Default comment for new WAF list items.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `""`                                           |
 | 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased) | 🧪 Regex that matches comments of existing WAF list items this updater manages. Only items whose comments match are managed by this updater and may be deleted during reconciliation or shutdown cleanup. Cloudflare does not provide an API to edit a single WAF list item in place. During reconciliation, when the desired IP/range set changes, the updater adds missing items and removes stale items. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (not Perl/PCRE). With `DELETE_ON_STOP=true`, a non-empty regex prevents whole-list deletion and limits shutdown cleanup to matched items.                         | `""` (empty regex; manages all WAF list items) |
 
-> 🤖 For the full multi-instance recipe, see [`Docker Compose Special Setups`](#-docker-compose-special-setups). The write-side comment must still match the management regex: `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`; otherwise the updater fails at startup. `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
+> 🤖 For the full multi-instance recipe, see [`Docker Compose Special Setups`](#-docker-compose-special-setups). The write-side comment must still match the management regex: `RECORD_COMMENT` must match `MANAGED_RECORDS_COMMENT_REGEX`, and 🧪 `WAF_LIST_ITEM_COMMENT` must match 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. `DELETE_ON_STOP=true` always deletes managed DNS records. 🧪 For WAF lists, a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` keeps the list and deletes only items managed by this updater.
 
 Other scope notes:
 
