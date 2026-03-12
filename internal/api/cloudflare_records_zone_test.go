@@ -282,6 +282,94 @@ func TestZoneIDOfDomainCache(t *testing.T) {
 	assertHandlersExhausted(t, zh)
 }
 
+func TestZoneIDOfDomainClearsEmptyZoneCacheAfterFailedLookup(t *testing.T) {
+	t.Parallel()
+
+	f := newCloudflareHarness(t)
+	zoneStatuses := map[string][]string{}
+	zh := newZonesHandler(t, f.serveMux, zoneStatuses)
+
+	zh.setRequestLimit(3)
+	mockPP := f.newPP()
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s", "sub.test.org")
+	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	require.False(t, ok)
+	require.Zero(t, zoneID)
+	assertHandlersExhausted(t, zh)
+
+	zoneStatuses["test.org"] = []string{"active"}
+
+	zh.setRequestLimit(2)
+	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+	assertHandlersExhausted(t, zh)
+}
+
+func TestZoneIDOfDomainFailedLookupDoesNotKeepEmptySuffixCache(t *testing.T) {
+	t.Parallel()
+
+	f := newCloudflareHarness(t)
+	zh := newZonesHandler(t, f.serveMux, map[string][]string{})
+
+	zh.setRequestLimit(3)
+	mockPP := f.newPP()
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s", "sub.test.org")
+	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	require.False(t, ok)
+	require.Zero(t, zoneID)
+	assertHandlersExhausted(t, zh)
+
+	zh.setRequestLimit(3)
+	mockPP = f.newPP()
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s", "sub.test.org")
+	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	require.False(t, ok)
+	require.Zero(t, zoneID)
+	assertHandlersExhausted(t, zh)
+}
+
+func TestZoneIDOfDomainClearsZoneCacheAfterDuplicateZoneFailure(t *testing.T) {
+	t.Parallel()
+
+	f := newCloudflareHarness(t)
+	zoneStatuses := map[string][]string{
+		"test.org": {"active", "active"},
+		"org":      {},
+	}
+	zh := newZonesHandler(t, f.serveMux, zoneStatuses)
+
+	zh.setRequestLimit(1)
+	output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
+	require.True(t, ok)
+	require.Empty(t, output)
+	assertHandlersExhausted(t, zh)
+
+	zh.setRequestLimit(2)
+	mockPP := f.newPP()
+	mockPP.EXPECT().Noticef(pp.EmojiImpossible,
+		"Found multiple active zones named %s (IDs: %s); please report this at %s",
+		"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL)
+	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+	require.False(t, ok)
+	require.Zero(t, zoneID)
+	assertHandlersExhausted(t, zh)
+
+	zoneStatuses["test.org"] = []string{"active"}
+
+	zh.setRequestLimit(0)
+	output, ok = f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
+	require.True(t, ok)
+	require.Empty(t, output)
+	assertHandlersExhausted(t, zh)
+
+	zh.setRequestLimit(2)
+	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+	require.True(t, ok)
+	require.Equal(t, mockID("test.org", 0), zoneID)
+	assertHandlersExhausted(t, zh)
+}
+
 func TestZoneIDOfDomainInvalid(t *testing.T) {
 	t.Parallel()
 
