@@ -122,6 +122,15 @@ func realMain() int {
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
+	if !builtConfig.Handle.Auth.CheckUsability(ctxWithSignals, ppfmt) {
+		ppfmt.Noticef(pp.EmojiUserError, "Cloudflare DDNS could not start because the Cloudflare API token is unusable")
+		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Invalid Cloudflare API token"))
+		nt.Send(ctx, ppfmt, notifier.NewMessagef(
+			"Cloudflare DDNS could not start because the Cloudflare API token appears invalid. "+
+				"Please check the logging for details."))
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
+		return 1
+	}
 	lifecycleConfig := builtConfig.Lifecycle
 	updateConfig := builtConfig.Update
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.

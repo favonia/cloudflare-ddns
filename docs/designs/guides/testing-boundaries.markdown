@@ -4,7 +4,7 @@ Read when: adding tests, moving tests, or deciding whether a test needs private 
 
 Defines: the repository's testing boundary convention for `package foo_test`, `*_internal_test.go`, and `export_test.go`.
 
-Does not define: feature-specific testing strategy or assertion style.
+Does not define: feature-specific testing strategy outside the callback-safety rule below.
 
 The goal is to keep production package surfaces honest without making small white-box tests awkward.
 
@@ -60,3 +60,13 @@ Prefer this order:
 3. `export_test.go` only when the first two options would make the test materially worse
 
 This keeps test structure predictable and prevents accidental growth of test-only escape hatches across packages.
+
+## Assertions in Handlers and Callbacks
+
+Use safe assertion flow inside HTTP handlers, goroutines, and similar callback contexts.
+
+- do not use `require` there
+- use `assert` instead
+- when the callback cannot continue after a failed check, write the assertion as explicit control flow such as `if !assert... { return }`
+
+This rule exists because `require` uses `FailNow`, which `testifylint` rejects in those callback contexts.
