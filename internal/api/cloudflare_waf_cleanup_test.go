@@ -21,7 +21,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func mockDeleteListResponse(listID api.ID) cloudflare.ListDeleteResponse {
+func mockDeleteListResponse(listID ID) cloudflare.ListDeleteResponse {
 	return cloudflare.ListDeleteResponse{
 		Response: mockResponse(),
 		Result: struct {
@@ -30,7 +30,7 @@ func mockDeleteListResponse(listID api.ID) cloudflare.ListDeleteResponse {
 	}
 }
 
-func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID api.ID) httpHandler {
+func newDeleteListHandler(t *testing.T, mux *http.ServeMux, listID ID) httpHandler {
 	t.Helper()
 
 	var requestLimit int

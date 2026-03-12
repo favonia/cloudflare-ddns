@@ -10,8 +10,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// WAFListMeta contains the metadata of a list.
-type WAFListMeta struct {
+// wafListMeta contains the metadata of a list.
+type wafListMeta struct {
 	ID          ID
 	Name        string
 	Description string
@@ -21,15 +21,15 @@ type WAFListMeta struct {
 // full-fidelity values for mismatch diagnostics.
 const advisoryValuePreviewLimit = 48
 
-// CloudflareCache holds the previous repsonses from the Cloudflare API.
-type CloudflareCache = struct {
+// cloudflareCache holds the previous repsonses from the Cloudflare API.
+type cloudflareCache = struct {
 	// domains to zone IDs
-	listZones      *ttlcache.Cache[string, []ID] // zone names to zone IDs
-	zoneIDOfDomain *ttlcache.Cache[string, ID]   // domain names to their zone IDs
+	listZones    *ttlcache.Cache[string, []zoneMeta] // zone names to their zone/account IDs
+	zoneOfDomain *ttlcache.Cache[string, zoneMeta]   // domain names to their zone/account IDs
 	// records of domains
 	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domain names to records.
 	// lists to list IDs
-	listLists *ttlcache.Cache[ID, *[]WAFListMeta] // account IDs to list names to list IDs and other meta information
+	listLists *ttlcache.Cache[ID, *[]wafListMeta] // account IDs to list names to list IDs and other meta information
 	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
 	//
 	// This is one managed-item view per handle/list pair.
@@ -47,20 +47,20 @@ func newCache[K comparable, V any](cacheExpiration time.Duration) *ttlcache.Cach
 	return cache
 }
 
-// A CloudflareHandle implements the [Handle] interface with the Cloudflare API.
-type CloudflareHandle struct {
+// A cloudflareHandle implements the [Handle] interface with the Cloudflare API.
+type cloudflareHandle struct {
 	cf      *cloudflare.API
 	options HandleOptions
-	cache   CloudflareCache
+	cache   cloudflareCache
 }
 
-// A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [CloudflareHandle].
+// A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [cloudflareHandle].
 type CloudflareAuth struct {
 	Token   string
 	BaseURL string
 }
 
-// New creates a [CloudflareHandle] from the authentication data and handle options.
+// New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
@@ -75,17 +75,17 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		handle.BaseURL = t.BaseURL
 	}
 
-	h := CloudflareHandle{
+	h := cloudflareHandle{
 		cf:      handle,
 		options: options,
-		cache: CloudflareCache{
-			listZones:      newCache[string, []ID](options.CacheExpiration),
-			zoneIDOfDomain: newCache[string, ID](options.CacheExpiration),
+		cache: cloudflareCache{
+			listZones:    newCache[string, []zoneMeta](options.CacheExpiration),
+			zoneOfDomain: newCache[string, zoneMeta](options.CacheExpiration),
 			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
 				ipnet.IP4: newCache[string, *[]Record](options.CacheExpiration),
 				ipnet.IP6: newCache[string, *[]Record](options.CacheExpiration),
 			},
-			listLists:     newCache[ID, *[]WAFListMeta](options.CacheExpiration),
+			listLists:     newCache[ID, *[]wafListMeta](options.CacheExpiration),
 			listID:        newCache[WAFList, ID](options.CacheExpiration),
 			listListItems: newCache[WAFList, *[]WAFListItem](options.CacheExpiration),
 		},
@@ -115,10 +115,10 @@ func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
 	return options
 }
 
-// FlushCache flushes the API cache.
-func (h CloudflareHandle) FlushCache() {
+// flushCache flushes the API cache.
+func (h cloudflareHandle) flushCache() {
 	h.cache.listZones.DeleteAll()
-	h.cache.zoneIDOfDomain.DeleteAll()
+	h.cache.zoneOfDomain.DeleteAll()
 	for _, cache := range h.cache.listRecords {
 		cache.DeleteAll()
 	}
@@ -127,7 +127,7 @@ func (h CloudflareHandle) FlushCache() {
 	h.cache.listListItems.DeleteAll()
 }
 
-// DescribeFreeFormString essentially quotes a string for printing.
-func DescribeFreeFormString(str string) string {
+// describeFreeFormString essentially quotes a string for printing.
+func describeFreeFormString(str string) string {
 	return pp.QuoteOrEmptyLabel(str, "empty")
 }

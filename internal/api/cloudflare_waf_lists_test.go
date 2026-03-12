@@ -153,7 +153,7 @@ func TestWAFListID(t *testing.T) {
 		description  string
 		ok           bool
 		found        bool
-		output       api.ID
+		output       ID
 		prepareMocks func(*mocks.MockPP)
 	}{
 		"empty": {
@@ -193,8 +193,9 @@ func TestWAFListID(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at https://dash.cloudflare.com/%s/configurations/lists or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
-						"account456/list", mockID("list", 1), `"description"`, `"mismatched description"`, api.ID("account456")),
+						`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at %s or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
+						"account456/list", mockID("list", 1), `"description"`, `"mismatched description"`,
+						mockWAFListDeeplink(mockID("list", 1))),
 				)
 			},
 		},
@@ -309,7 +310,7 @@ func TestFindWAFList(t *testing.T) {
 		lists            []listMeta
 		listRequestLimit int
 		ok               bool
-		output           api.ID
+		output           ID
 		prepareMocks     func(*mocks.MockPP)
 	}{
 		"list-fail": {

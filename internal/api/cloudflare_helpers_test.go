@@ -20,13 +20,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+type ID = api.ID
+
 func mustIP(ip string) netip.Addr {
 	return netip.MustParseAddr(ip)
 }
 
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
-func mockID(seed string, suffix int) api.ID {
+func mockID(seed string, suffix int) ID {
 	seed = fmt.Sprintf("%s/%d", seed, suffix)
 	arr := sha512.Sum512([]byte(seed))
 	return api.ID(hex.EncodeToString(arr[:16]))
@@ -46,6 +48,14 @@ func mockIDsAsStrings(seed string, suffixes ...int) []string {
 		ids[i] = string(mockID(seed, suffix))
 	}
 	return ids
+}
+
+func mockDNSRecordsDeeplink(zoneID ID) string {
+	return fmt.Sprintf("https://dash.cloudflare.com/?to=%%2F%s%%2F%s%%2Fdns%%2Frecords", mockAccountID, zoneID)
+}
+
+func mockWAFListDeeplink(listID ID) string {
+	return fmt.Sprintf("https://dash.cloudflare.com/?to=%%2F%s%%2Fconfigurations%%2Flists%%2F%s", mockAccountID, listID)
 }
 
 func mockResultInfo(totalNum, pageSize int) cloudflare.ResultInfo {

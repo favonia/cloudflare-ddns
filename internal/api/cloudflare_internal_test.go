@@ -9,6 +9,6 @@ import (
 func TestDescribeFreeFormString(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "empty", DescribeFreeFormString(""))
-	require.Equal(t, `"hello"`, DescribeFreeFormString("hello"))
+	require.Equal(t, "empty", describeFreeFormString(""))
+	require.Equal(t, `"hello"`, describeFreeFormString("hello"))
 }
