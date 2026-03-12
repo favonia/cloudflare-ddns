@@ -28,6 +28,9 @@ Record durable information in the smallest correct home:
 - use `guides/` for shared editing rules reused across unrelated features
 - use `features/` for durable feature contracts, invariants, or scope boundaries
 - otherwise prefer code comments, tests, or contributor docs instead of growing `docs/designs/`
+- default to not creating a new design note
+- create a new design note only when no existing note can own the information cleanly, no smaller home fits, and the rule is durable, cross-file, and likely to matter again
+- keep local message wording rules, one-file heuristics, temporary rollout notes, and branch-local rationale out of `docs/designs/`
 
 When writing or editing a design note:
 
@@ -36,4 +39,5 @@ When writing or editing a design note:
 - keep temporary staging plans, branch-local rationale, and review notes out of `docs/designs/`
 - keep each note single-purpose and easy to scan
 - link to shared policy instead of restating it
+- update an existing note before considering a new one
 - do not create a new note unless the information is durable, cross-file, and likely to matter again

@@ -12,6 +12,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
+// Keep advisory value previews short in ignored-setting warnings while preserving
+// exact quoted values for validation and mismatch diagnostics.
 const ignoredSettingValuePreviewLimit = 48
 
 func describeIgnoredSettingValuePreview(value string) string {

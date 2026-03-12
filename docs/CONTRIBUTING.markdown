@@ -34,6 +34,8 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    If you edit `docs/designs/`, write for future readers who need the current intended design, not pull-request context. Describe present semantics directly, avoid rollout phrasing such as "currently" or "first implementation", anchor history to explicit versions or changes, move project-wide policy into shared design notes, and tighten wording to keep design notes high-signal and precise.
 
+   Default to updating an existing design note or using a code comment, test, or contributor doc. Create a new design note only when no smaller home fits and the rule is durable enough to matter across unrelated future tasks. See [docs/designs/README.markdown](designs/README.markdown) for the design-note admission rule.
+
 5. Keep README reader-friendly.
 
    `README.markdown` is for a broad user audience, including not-so-technical users.
