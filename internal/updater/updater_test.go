@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/netip"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -73,6 +74,71 @@ func initUpdateConfig() *config.UpdateConfig {
 
 func hintIP6DetectionFails(p *mocks.MockPP) *mocks.MockPPNoticeOncefCall {
 	return p.EXPECT().NoticeOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", pp.ManualURL)
+}
+
+func runUpdateIPsScenario(
+	t *testing.T,
+	domains map[ipnet.Type][]domain.Domain,
+	lists []api.WAFList,
+	enabled providerEnablers,
+	prepareMocks func(*mocks.MockPP, mockProviders, *mocks.MockSetter),
+) updater.Message {
+	t.Helper()
+
+	mockCtrl := gomock.NewController(t)
+	ctx := context.Background()
+
+	conf := initUpdateConfig()
+	conf.Domains = domains
+	conf.WAFLists = lists
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockProviders := make(mockProviders)
+	for ipnet := range enabled {
+		mockProvider := mocks.NewMockProvider(mockCtrl)
+		conf.Provider[ipnet] = mockProvider
+		mockProviders[ipnet] = mockProvider
+	}
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+	if prepareMocks != nil {
+		prepareMocks(mockPP, mockProviders, mockSetter)
+	}
+
+	return updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+}
+
+func runFinalDeleteIPsScenario(
+	t *testing.T,
+	domains map[ipnet.Type][]domain.Domain,
+	lists []api.WAFList,
+	enabled providerEnablers,
+	prepareMocks func(*mocks.MockPP, *mocks.MockSetter),
+) updater.Message {
+	t.Helper()
+
+	mockCtrl := gomock.NewController(t)
+	ctx := context.Background()
+
+	conf := initUpdateConfig()
+	conf.Domains = domains
+	conf.WAFLists = lists
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+	if prepareMocks != nil {
+		prepareMocks(mockPP, mockSetter)
+	}
+
+	for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		if !enabled[ipnet] {
+			conf.Provider[ipnet] = nil
+			continue
+		}
+
+		conf.Provider[ipnet] = mocks.NewMockProvider(mockCtrl)
+	}
+
+	return updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
 }
 
 func TestUpdateIPsMultiple(t *testing.T) {
@@ -526,6 +592,48 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			require.Equal(t, updater.Message{
+				HeartbeatMessage: heartbeat.Message{
+					OK:    tc.ok,
+					Lines: tc.monitorMessages,
+				},
+				NotifierMessage: notifier.Message(tc.notifierMessages),
+			}, resp)
+		})
+	}
+}
+
+func TestUpdateIPsTimeouts(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: recordComment,
+		Tags:    nil,
+	}
+
+	domains := map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: {domain4},
+		ipnet.IP6: {domain6},
+	}
+	list := api.WAFList{AccountID: "12341234", Name: "list"}
+	lists := []api.WAFList{list}
+
+	ip4 := netip.MustParseAddr("127.0.0.1")
+
+	for name, tc := range map[string]struct {
+		ok               bool
+		monitorMessages  []string
+		notifierMessages []string
+		providerEnablers providerEnablers
+		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
+	}{
 		"detect-timeout": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses"},
@@ -590,33 +698,16 @@ func TestUpdateIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			mockCtrl := gomock.NewController(t)
-			ctx := context.Background()
-
-			conf := initUpdateConfig()
-			conf.Domains = domains
-			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
-			conf.WAFLists = lists
-
-			mockPP := mocks.NewMockPP(mockCtrl)
-			mockProviders := make(mockProviders)
-			for ipnet := range tc.providerEnablers {
-				mockProvider := mocks.NewMockProvider(mockCtrl)
-				conf.Provider[ipnet] = mockProvider
-				mockProviders[ipnet] = mockProvider
-			}
-			mockSetter := mocks.NewMockSetter(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP, mockProviders, mockSetter)
-			}
-			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, updater.Message{
-				HeartbeatMessage: heartbeat.Message{
-					OK:    tc.ok,
-					Lines: tc.monitorMessages,
-				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
-			}, resp)
+			synctest.Test(t, func(t *testing.T) {
+				resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				require.Equal(t, updater.Message{
+					HeartbeatMessage: heartbeat.Message{
+						OK:    tc.ok,
+						Lines: tc.monitorMessages,
+					},
+					NotifierMessage: notifier.Message(tc.notifierMessages),
+				}, resp)
+			})
 		})
 	}
 }
@@ -638,20 +729,18 @@ func TestFinalDeleteIPs(t *testing.T) {
 	list := api.WAFList{AccountID: "12341234", Name: "list"}
 	lists := []api.WAFList{list}
 
-	type mockproviders = map[ipnet.Type]bool
-
 	for name, tc := range map[string]struct {
-		ok                  bool
-		monitorMessages     []string
-		notifierMessages    []string
-		prepareMockProvider mockproviders
-		prepareMocks        func(*mocks.MockPP, *mocks.MockSetter)
+		ok               bool
+		monitorMessages  []string
+		notifierMessages []string
+		providerEnablers providerEnablers
+		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"ip4-only": {
 			true,
 			[]string{"Deleted A of ip4.hello", "Cleaned WAF list(s) 12341234/list"},
 			[]string{"Deleted A records of ip4.hello.", `Cleaned WAF list(s) 12341234/list.`},
-			mockproviders{ipnet.IP4: true},
+			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated),
@@ -666,7 +755,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 				"Could not confirm deletion of A records of ip4.hello.",
 				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
 			},
-			mockproviders{ipnet.IP4: true},
+			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseFailed),
@@ -681,7 +770,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 				"Deleting A records of ip4.hello.",
 				`Cleaning WAF list(s) 12341234/list.`,
 			},
-			mockproviders{ipnet.IP4: true},
+			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdating),
@@ -696,7 +785,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 				"Deleted AAAA records of ip6.hello.",
 				`Cleaned WAF list(s) 12341234/list.`,
 			},
-			mockproviders{ipnet.IP6: true},
+			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseUpdated),
@@ -711,7 +800,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 				"Could not confirm deletion of AAAA records of ip6.hello.",
 				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
 			},
-			mockproviders{ipnet.IP6: true},
+			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseFailed),
@@ -726,7 +815,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 				"Deleted A records of ip4.hello.", "Deleted AAAA records of ip6.hello.",
 				`Cleaned WAF list(s) 12341234/list.`,
 			},
-			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
+			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated),
@@ -739,7 +828,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			false,
 			[]string{"Could not confirm deletion of A of ip4.hello"},
 			[]string{"Could not confirm deletion of A records of ip4.hello."},
-			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
+			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseFailed),
@@ -752,7 +841,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			false,
 			[]string{"Could not confirm deletion of AAAA of ip6.hello"},
 			[]string{"Could not confirm deletion of AAAA records of ip6.hello."},
-			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
+			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseNoop),
@@ -765,7 +854,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
 			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
-			mockproviders{ipnet.IP4: true, ipnet.IP6: true},
+			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseNoop),
@@ -774,11 +863,51 @@ func TestFinalDeleteIPs(t *testing.T) {
 				)
 			},
 		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			require.Equal(t, updater.Message{
+				HeartbeatMessage: heartbeat.Message{
+					OK:    tc.ok,
+					Lines: tc.monitorMessages,
+				},
+				NotifierMessage: notifier.Message(tc.notifierMessages),
+			}, resp)
+		})
+	}
+}
+
+func TestFinalDeleteIPsTimeouts(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: recordComment,
+		Tags:    nil,
+	}
+
+	domains := map[ipnet.Type][]domain.Domain{
+		ipnet.IP4: {domain4},
+		ipnet.IP6: {domain6},
+	}
+	list := api.WAFList{AccountID: "12341234", Name: "list"}
+	lists := []api.WAFList{list}
+
+	for name, tc := range map[string]struct {
+		ok               bool
+		monitorMessages  []string
+		notifierMessages []string
+		providerEnablers providerEnablers
+		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
+	}{
 		"delete-timeout": {
 			false,
 			[]string{"Could not confirm deletion of A of ip4.hello"},
 			[]string{"Could not confirm deletion of A records of ip4.hello."},
-			mockproviders{ipnet.IP4: true},
+			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello"), params).DoAndReturn(
@@ -795,7 +924,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
 			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
-			mockproviders{ipnet.IP4: true},
+			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello"), params).Return(setter.ResponseNoop),
@@ -812,37 +941,16 @@ func TestFinalDeleteIPs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			mockCtrl := gomock.NewController(t)
-			ctx := context.Background()
-
-			conf := initUpdateConfig()
-			conf.Domains = domains
-			conf.Proxied = map[domain.Domain]bool{domain4: false, domain6: false}
-			conf.WAFLists = lists
-
-			mockPP := mocks.NewMockPP(mockCtrl)
-			mockSetter := mocks.NewMockSetter(mockCtrl)
-			if tc.prepareMocks != nil {
-				tc.prepareMocks(mockPP, mockSetter)
-			}
-
-			for _, ipnet := range [...]ipnet.Type{ipnet.IP4, ipnet.IP6} {
-				if !tc.prepareMockProvider[ipnet] {
-					conf.Provider[ipnet] = nil
-					continue
-				}
-
-				conf.Provider[ipnet] = mocks.NewMockProvider(mockCtrl)
-			}
-
-			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
-			require.Equal(t, updater.Message{
-				HeartbeatMessage: heartbeat.Message{
-					OK:    tc.ok,
-					Lines: tc.monitorMessages,
-				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
-			}, resp)
+			synctest.Test(t, func(t *testing.T) {
+				resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				require.Equal(t, updater.Message{
+					HeartbeatMessage: heartbeat.Message{
+						OK:    tc.ok,
+						Lines: tc.monitorMessages,
+					},
+					NotifierMessage: notifier.Message(tc.notifierMessages),
+				}, resp)
+			})
 		})
 	}
 }
