@@ -203,8 +203,23 @@ zoneSearch:
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %s (IDs: %s); please report this at %s",
 				zoneName, pp.EnglishJoinMap(ID.String, ids), pp.IssueReportingURL)
+			// The suffix walk reached a semantic dead end at zoneName. Retry the
+			// traversed suffixes up to and including that boundary next cycle.
+			for cachedZoneName := range domain.Zones {
+				h.cache.listZones.Delete(cachedZoneName)
+				if cachedZoneName == zoneName {
+					break
+				}
+			}
 			return zero, false
 		}
+	}
+
+	// The suffix walk found no usable zone. Clear all candidate suffix caches so
+	// new or recovered zones are retried on the next cycle instead of waiting for
+	// the full zone-list cache TTL.
+	for zoneName := range domain.Zones {
+		h.cache.listZones.Delete(zoneName)
 	}
 
 	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s", domain.Describe())
