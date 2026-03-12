@@ -95,3 +95,17 @@ func TestSharedSplitClient(t *testing.T) {
 		})
 	}
 }
+
+func TestSharedSplitClientProtocols(t *testing.T) {
+	t.Parallel()
+
+	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
+		client := protocol.SharedSplitClient(ipNet)
+		transport, ok := client.Transport.(*http.Transport)
+		require.True(t, ok)
+		require.NotNil(t, transport.Protocols)
+		require.True(t, transport.Protocols.HTTP1())
+		require.True(t, transport.Protocols.HTTP2())
+		require.False(t, transport.Protocols.UnencryptedHTTP2())
+	}
+}
