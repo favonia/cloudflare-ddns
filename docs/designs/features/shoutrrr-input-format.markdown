@@ -1,6 +1,10 @@
 # Design Note: SHOUTRRR Input Format
 
-This note records the intended `SHOUTRRR` input contract and the handling of suspicious single-line values.
+Read when: changing `SHOUTRRR` parsing or validation behavior.
+
+Defines: the `SHOUTRRR` input contract and the handling of suspicious single-line values.
+
+Does not define: downstream shoutrrr runtime behavior after parsing succeeds.
 
 ## Contract
 

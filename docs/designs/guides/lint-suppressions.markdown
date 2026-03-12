@@ -1,15 +1,19 @@
 # Design Note: Lint Suppressions
 
-This document defines the repository's policy for inline `//nolint` suppressions.
+Read when: adding or reviewing inline `//nolint`.
 
-It complements [`.golangci.yaml`](../../.golangci.yaml): repository-wide lint policy belongs in the linter configuration, while `//nolint` is reserved for code-local exceptions tied to a specific declaration, statement, literal, or test.
+Defines: the repository policy for inline `//nolint` suppressions.
+
+Does not define: global lint configuration, which belongs in `.golangci.yaml`.
+
+It complements [`.golangci.yaml`](../../../.golangci.yaml): repository-wide lint policy belongs in the linter configuration, while `//nolint` is reserved for code-local exceptions tied to a specific declaration, statement, literal, or test.
 
 ## Policy
 
 Use inline `//nolint` only when all of the following are true:
 
 - the exception is genuinely local to one code site
-- a global exclusion in [`.golangci.yaml`](../../.golangci.yaml) would be too broad
+- a global exclusion in [`.golangci.yaml`](../../../.golangci.yaml) would be too broad
 - a small refactor or helper would not remove the suppression more cleanly
 - the suppressed linter is named explicitly
 
@@ -29,14 +33,12 @@ The repository does not use bare `//nolint`, `//nolint:all`, or file-wide suppre
 
 Choose the narrowest durable home for the rule:
 
-- Put repository-wide decisions in [`.golangci.yaml`](../../.golangci.yaml).
+- Put repository-wide decisions in [`.golangci.yaml`](../../../.golangci.yaml).
   - This includes globally disabled linters, path-based exclusions, and stable tool false positives.
 - Put package- or call-site-specific exceptions inline with `//nolint`.
 - Prefer changing code over suppressing lint when the warning points to a real readability, correctness, or maintenance problem.
 
 ## Accepted Recurring Categories
-
-The current tree shows a few recurring categories consistent with this policy.
 
 ### `exhaustruct`
 
@@ -121,22 +123,11 @@ Examples include:
 
 Keep these rare and usually include an explicit local reason.
 
-## Observed Repository Shape
-
-The present tree is consistent with this policy in broad strokes:
-
-- most inline suppressions are in tests
-- most suppressions fall into a small set of recurring categories
-- `exhaustruct` and `paralleltest` dominate the current footprint
-- the remaining linters are sparse, local exceptions
-
-Use this as a sanity check: a suppression style that does not resemble these patterns should be treated as unusual and justified explicitly.
-
 ## Review Heuristics
 
 When reviewing a new `//nolint`, ask:
 
-- Could this be solved better in [`.golangci.yaml`](../../.golangci.yaml)?
+- Could this be solved better in [`.golangci.yaml`](../../../.golangci.yaml)?
 - Could a helper or small refactor eliminate the need for suppression?
 - Is the scope as small as possible?
 - Is the suppressed linter named precisely?

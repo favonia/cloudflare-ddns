@@ -26,9 +26,9 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    We rely on the meta-linter `golangci-lint` to enforce coding styles. Whatever `golangci-lint` says is our coding style (unless the maintainer says otherwise). You can wait for GitHub Actions (usually very fast) or run `golangci-lint run` locally. Your must pass all automatic checks cleanly, possibly except the coverage checks, unless the maintainer says your code is okay.
 
-   If you need an inline `//nolint`, treat it as a local exception rather than a second lint policy. Broad lint policy belongs in [`.golangci.yaml`](../.golangci.yaml); repository-wide guidance for inline suppressions lives in [docs/designs/lint-suppressions.markdown](designs/lint-suppressions.markdown).
+   If you need an inline `//nolint`, treat it as a local exception rather than a second lint policy. Broad lint policy belongs in [`.golangci.yaml`](../.golangci.yaml); repository-wide guidance for inline suppressions lives in [docs/designs/guides/lint-suppressions.markdown](designs/guides/lint-suppressions.markdown).
 
-   For comments and user-facing messages, follow the shared conventions in [docs/designs/codebase-architecture.markdown](designs/codebase-architecture.markdown): tighten contract-level comments, keep obvious local comments low-churn, and use the two-layer message style (short summaries plus detailed follow-up when needed).
+   For package boundaries, config flow, and composition-root wiring, follow [docs/designs/core/codebase-architecture.markdown](designs/core/codebase-architecture.markdown). Keep local message wording and code comments close to the code unless the rule is reused broadly.
 
 4. Keep design documentation durable.
 
@@ -40,7 +40,7 @@ If you have code ready, great! Please make a pull request. Here are a few things
 
    Keep examples and nearby prose simple, concrete, and beginner-friendly. Move deep details into tables, reference sections, or clearly marked technical notes.
 
-   If you edit `README.markdown`, follow the shared guidance in [docs/designs/readme-writing.markdown](designs/readme-writing.markdown).
+   If you edit `README.markdown`, follow the shared guidance in [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown).
 
 6. Prefer explicit doc scopes in commit titles.
 

@@ -1,5 +1,11 @@
 # Design Note: Managed WAF List Item Ownership
 
+Read when: changing WAF list ownership, managed-item filtering, or ownership-aware WAF cleanup semantics.
+
+Defines: the durable contract for `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`, `WAF_LIST_ITEM_COMMENT`, and ownership-aware WAF reconciliation.
+
+Does not define: exact warning text or repository-wide naming policy.
+
 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` lets each updater instance decide which existing WAF list items it owns.
 
 ## Goal
@@ -91,8 +97,6 @@ The operational difference between the two modes is only one pre-step:
 
 If whole-list ownership cannot find the list during final cleanup, it emits a warning and returns `Noop`. This keeps cleanup idempotent while still surfacing drift.
 
-User-facing cleanup messages should prefer the operator-facing phrase "items managed by this updater" over internal shorthand like "managed items."
-
 ## Caching Contract
 
 WAF list item caches store already-filtered managed items.
@@ -107,38 +111,13 @@ Cloudflare item-creation and item-deletion APIs return whole-list content, so ma
 - Regex selectors allow flexible grouping, but exact ownership boundaries require explicit anchors such as `^managed-by-a$`.
 - The selector name is intentionally distinct from `WAF_LIST_ITEM_COMMENT` to reduce operator confusion.
 
-## Naming Notes
-
-`MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` follows the shared naming convention in [`codebase-architecture.markdown`](codebase-architecture.markdown): write-side settings stay singular, while ownership selectors stay plural.
-
-The main reason is operator safety: the selector defines management scope across a set of items, not the default comment for one newly written item. Keeping write-side settings singular and ownership selectors plural makes that distinction easier to scan in environment-variable-heavy setups.
-
-## Ownership-Specific Warning Triggers
-
-Following the project-wide warning policy in [`codebase-architecture.markdown`](codebase-architecture.markdown), this feature should warn only when configuration or observed list content strongly suggests a shared-ownership mistake.
-
-### Recommended Warnings
-
-| Scope       | Trigger                                                                                                                     | Proposed message                                                                                                                                                                                      |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| config time | `WAF_LISTS` is non-empty, `MANAGED_RECORDS_COMMENT_REGEX` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty | `MANAGED_RECORDS_COMMENT_REGEX enables DNS ownership isolation, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty for configured WAF lists. All items in WAF_LISTS will still be treated as managed.` |
-| config time | `WAF_LISTS` is non-empty, `WAF_LIST_ITEM_COMMENT` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty         | `WAF_LIST_ITEM_COMMENT (%s) does not change which existing items are managed. Existing items with any comment are still managed because MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty.`                |
-| config time | `DELETE_ON_STOP=true`, `WAF_LISTS` is non-empty, and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty                        | `DELETE_ON_STOP=true with an empty MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX will delete all items in WAF_LISTS, including items created by other deployments.`                                            |
-| runtime     | `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is empty, and a listed WAF list contains multiple distinct non-empty item comments   | `The list %s contains multiple distinct non-empty item comments, but MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty. The list may be shared with other deployments.`                                   |
-
-### Warnings to Avoid
-
-- Do not warn on every empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. The empty default is valid and preserves pre-feature behavior.
-- Do not warn based only on heuristic regex style, such as missing `^...$` anchors.
-- Do not warn merely because DNS and WAF comment values differ. Different write-comments are often intentional.
-
 ## Scope Boundary
 
 This design applies only to WAF list item ownership based on WAF list item comments.
 
 It is not a general ownership abstraction for all managed resources. DNS record ownership remains separate, and WAF-less or DNS-only runs do not use this selector.
 
-## Future Development Notes
+## Extension Points
 
 - If one process ever needs multiple ownership scopes for the same WAF list, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to WAF list items.
