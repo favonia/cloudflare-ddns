@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -226,4 +227,82 @@ func TestCheckUsabilityUnexpectedVerifyFailureIsUncertain(t *testing.T) {
 		gomock.Any())
 
 	require.True(t, auth.CheckUsability(context.Background(), mockPP))
+}
+
+func TestCheckUsabilityDisabledToken(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	serveMux, auth := newServerAuth(t)
+	serveMux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(w, `{
+			"success": true,
+			"errors": [],
+			"messages": [],
+			"result": {
+				"id": "ed17574386854bf78a67040be0a770b0",
+				"status": "disabled",
+				"not_before": "2018-07-01T05:20:00Z",
+				"expires_on": "2020-01-01T00:00:00Z"
+			}
+		}`)
+	})
+
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, "The Cloudflare API token is %s", "disabled"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError,
+			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE"),
+	)
+
+	require.False(t, auth.CheckUsability(context.Background(), mockPP))
+}
+
+func TestCheckUsabilityUnknownStatusIsUncertain(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	serveMux, auth := newServerAuth(t)
+	serveMux.HandleFunc("/user/tokens/verify", func(w http.ResponseWriter, r *http.Request) {
+		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(w, `{
+			"success": true,
+			"errors": [],
+			"messages": [],
+			"result": {
+				"id": "ed17574386854bf78a67040be0a770b0",
+				"status": "mystery",
+				"not_before": "2018-07-01T05:20:00Z",
+				"expires_on": "2020-01-01T00:00:00Z"
+			}
+		}`)
+	})
+
+	mockPP.EXPECT().Noticef(pp.EmojiWarning,
+		"Cloudflare reported the API token status as %q during startup verification; startup will continue",
+		"mystery")
+
+	require.True(t, auth.CheckUsability(context.Background(), mockPP))
+}
+
+func TestCheckUsabilityNewClientFailure(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	auth := api.CloudflareAuth{
+		Token:   "",
+		BaseURL: "",
+	}
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
+
+	require.False(t, auth.CheckUsability(context.Background(), mockPP))
 }
