@@ -10,9 +10,8 @@ import (
 )
 
 func newLiteral(ppfmt pp.PP, raw string) (Provider, bool) {
-	rawIPs := strings.Split(raw, ",")
-	ips := make([]netip.Addr, 0, len(rawIPs))
-	for _, rawIP := range rawIPs {
+	ips := make([]netip.Addr, 0)
+	for rawIP := range strings.SplitSeq(raw, ",") {
 		rawIP = strings.TrimSpace(rawIP)
 
 		ip, err := netip.ParseAddr(rawIP)
@@ -35,7 +34,7 @@ func newLiteral(ppfmt pp.PP, raw string) (Provider, bool) {
 	slices.SortFunc(ips, netip.Addr.Compare)
 	ips = slices.Compact(ips)
 
-	rawIPs = make([]string, 0, len(ips))
+	rawIPs := make([]string, 0, len(ips))
 	for _, ip := range ips {
 		rawIPs = append(rawIPs, ip.String())
 	}

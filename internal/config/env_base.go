@@ -18,9 +18,8 @@ func Getenv(key string) string {
 
 // GetenvAsList reads an environment variable, split it by sep, and trim the space.
 func GetenvAsList(key string, sep string) []string {
-	rawVals := strings.Split(os.Getenv(key), sep)
-	vals := make([]string, 0, len(rawVals))
-	for _, v := range rawVals {
+	vals := []string{}
+	for v := range strings.SplitSeq(os.Getenv(key), sep) {
 		v = strings.TrimSpace(v)
 		if v != "" {
 			vals = append(vals, v)

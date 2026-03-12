@@ -44,10 +44,14 @@ func newControlledDialer(control func(context.Context, string, string, syscall.R
 }
 
 func newControlledTransport(control func(context.Context, string, string, syscall.RawConn) error) http.RoundTripper {
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+
 	return &http.Transport{ //nolint:exhaustruct
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           newControlledDialer(control).DialContext,
-		ForceAttemptHTTP2:     true,
+		Protocols:             protocols,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
