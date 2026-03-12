@@ -34,6 +34,9 @@ jobs:
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
+      - name: 🩺 Run `go vet`
+        run: |
+          go vet ./...
       - name: 🧪 Run `go test`
         run: |
           set -o pipefail # Preserve `go test` failures through `tee`
@@ -104,15 +107,9 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: stable
-      - name: 🧪 Run `go mod tidy`
+      - name: 🧪 Run `go mod tidy -diff`
         run: |
-          go mod tidy
-      - name: 🔍 Check if any files are changed
-        run: |
-          if ! git diff --exit-code; then
-            echo "Please run 'go mod tidy'"
-            exit 1
-          fi
+          go mod tidy -diff
       - name: 🧪 Run `go generate`
         run: |
           rm ./internal/mocks -rf
