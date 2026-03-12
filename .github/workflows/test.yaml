@@ -36,7 +36,14 @@ jobs:
           go telemetry on
       - name: 🧪 Run `go test`
         run: |
-          go test -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race -v ./...
+          set -o pipefail # Preserve `go test` failures through `tee`
+          go test -json -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
+      - name: 📦 Upload `go test -json` logs
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: go-test-json
+          path: test-report.jsonl
       - name: ☂️ Report coverage rates to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
