@@ -1,5 +1,11 @@
 # Design Note: `local.iface` Multi-Address Handling
 
+Read when: changing `local.iface` detection or reconciliation semantics for multiple addresses.
+
+Defines: the contract for `local.iface` when one interface yields multiple target addresses.
+
+Does not define: behavior for other providers or Cloudflare API payload details.
+
 `local.iface:<IFACE>` detects and manages all global unicast addresses per IP family. It no longer selects only one address.
 
 ## Goal
@@ -13,12 +19,12 @@ Support multi-address interfaces without changing behavior for non-`local.iface`
 - Only global unicast addresses are considered targets.
 - Address ordering is deterministic to avoid unnecessary churn.
 
-## Required Decisions
+## Required Invariants
 
 - Zoned addresses remain rejected.
 - Empty detection for a configured family is treated as a failure.
 - Metadata drift remains warn-only. TTL, proxy, or comment mismatches do not trigger destructive correction by themselves.
-- WAF reconciliation uses keep-and-fill semantics to preserve coverage. Path-independence discussion for WAF create-comment reconciliation is documented in `managed-waf-item-ownership.markdown`.
+- WAF reconciliation uses keep-and-fill semantics to preserve coverage. Path-independence discussion for WAF create-comment reconciliation is documented in [`managed-waf-item-ownership.markdown`](managed-waf-item-ownership.markdown).
 - Heartbeat and notifier contracts remain unchanged.
 
 ## Scope Boundary
@@ -30,7 +36,7 @@ This design applies only to `local.iface`. It does not change:
 - Cloudflare API contracts
 - Cloudflare rate-limit strategy
 
-## Future Development Notes
+## Extension Points
 
 - Future provider work that returns multiple addresses should preserve family-separated set semantics and deterministic ordering.
 - Any change to empty-detection handling must be treated as a destructive-behavior change, because the current model treats empty results as failure for safety.

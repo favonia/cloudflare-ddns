@@ -1,6 +1,10 @@
 # Design Note: Testing Boundaries
 
-This document defines the repository's testing boundary convention for `package foo_test`, `*_internal_test.go`, and `export_test.go`.
+Read when: adding tests, moving tests, or deciding whether a test needs private access.
+
+Defines: the repository's testing boundary convention for `package foo_test`, `*_internal_test.go`, and `export_test.go`.
+
+Does not define: feature-specific testing strategy or assertion style.
 
 The goal is to keep production package surfaces honest without making small white-box tests awkward.
 
@@ -46,19 +50,6 @@ Do not use `export_test.go` for:
 - small white-box tests of private helpers
 - convenience access when a `*_internal_test.go` file would be clearer
 - broad test-only mirrors of implementation details
-
-## Review Heuristics
-
-When reviewing a new test or helper, ask:
-
-- Is this test really about the exported package contract?
-  - If yes, keep it in `package foo_test`.
-- Is this test really about a private helper or local implementation invariant?
-  - If yes, put it in `package foo` and name the file `*_internal_test.go`.
-- Is `export_test.go` being used only because a small white-box test was written in `package foo_test` first?
-  - If yes, move the test instead of adding a wrapper.
-- Does the new test-only hook stay minimal and specifically justified?
-  - If not, the boundary is probably wrong.
 
 ## Practical Repository Rule
 

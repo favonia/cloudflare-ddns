@@ -1,6 +1,10 @@
 # Design Note: README Writing
 
-This document records the shared principles for editing `README.markdown`.
+Read when: editing `README.markdown`.
+
+Defines: the shared writing rules for beginner-facing README content.
+
+Does not define: feature semantics beyond what the README needs to explain.
 
 ## Priorities
 

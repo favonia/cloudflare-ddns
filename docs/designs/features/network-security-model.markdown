@@ -1,6 +1,10 @@
 # Design Note: Network Security Model
 
-This document records the attacker model for public IP detection.
+Read when: changing public-IP detection security behavior or making security claims in docs.
+
+Defines: the attacker model for public IP detection.
+
+Does not define: general internet threat modeling beyond public-IP detection.
 
 ## Goal
 

@@ -1,5 +1,11 @@
 # Design Note: Managed DNS Record Ownership
 
+Read when: changing DNS ownership, managed-record filtering, or DNS reconciliation semantics tied to ownership.
+
+Defines: the durable contract for `MANAGED_RECORDS_COMMENT_REGEX`, `RECORD_COMMENT`, and ownership-aware DNS reconciliation.
+
+Does not define: exact Cloudflare request payload shapes or local warning text.
+
 `MANAGED_RECORDS_COMMENT_REGEX` lets one updater instance decide which existing DNS records it owns.
 
 ## Goal
@@ -103,51 +109,6 @@ IP-only update path that preserved metadata. Any future contract change here
 must update interface comments, implementation comments, and API write tests
 together.
 
-### Cloudflare Field Ownership (A/AAAA Reconciler)
-
-For Cloudflare DNS create/update payloads used by this reconciler, each field
-is classified as either managed desired state or server-determined.
-
-References (deep links):
-- Cloudflare API DNS record edit (update): <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/>
-- Cloudflare API DNS record create: <https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/>
-
-`UpdateDNSRecordParams`:
-
-| Field | Ownership | Why |
-| --- | --- | --- |
-| `ID` | managed | identifies the record being reconciled |
-| `Type` | managed | desired record identity for this reconciler unit (`A`/`AAAA`) |
-| `Name` | managed | desired fqdn identity for this reconciler unit |
-| `Content` | managed | desired IP address |
-| `TTL` | managed | desired metadata |
-| `Proxied` | managed | desired metadata |
-| `Comment` | managed | desired metadata (`nil` would mean “keep current”, so we pass explicit pointer) |
-| `Tags` | managed | desired metadata (always sent so clearing is explicit) |
-| `Data` | server-determined (for this reconciler) | Cloudflare uses it for non-`A/AAAA` record kinds (for example SRV/LOC) |
-| `Priority` | server-determined (for this reconciler) | relevant to non-`A/AAAA` kinds (for example MX/SRV/URI) |
-| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting, not managed for `A/AAAA` |
-
-`CreateDNSRecordParams`:
-
-| Field | Ownership | Why |
-| --- | --- | --- |
-| `Type` | managed | desired record identity (`A`/`AAAA`) |
-| `Name` | managed | desired fqdn |
-| `Content` | managed | desired IP address |
-| `TTL` | managed | desired metadata |
-| `Proxied` | managed | desired metadata |
-| `Comment` | managed | desired metadata |
-| `Tags` | managed | desired metadata |
-| `CreatedOn` | server-determined | timestamp assigned by Cloudflare |
-| `ModifiedOn` | server-determined | timestamp assigned by Cloudflare |
-| `Meta` | server-determined | Cloudflare-owned response metadata |
-| `Data` | server-determined (for this reconciler) | non-`A/AAAA` record-kind payload |
-| `ID` | server-determined | record ID allocated by Cloudflare |
-| `Priority` | server-determined (for this reconciler) | non-`A/AAAA` record-kind field |
-| `Proxiable` | server-determined | capability flag returned by Cloudflare |
-| `Settings.FlattenCNAME` | server-determined (for this reconciler) | CNAME-specific setting |
-
 ## Caching Contract
 
 Record-list caches store already-filtered managed records.
@@ -160,19 +121,13 @@ This requires one handle and its bound setter to use one stable managed-record f
 - Regex selectors allow flexible grouping, but exact ownership boundaries require explicit anchors such as `^managed-by-a$`.
 - The selector name is intentionally distinct from `RECORD_COMMENT` to reduce operator confusion.
 
-## Naming Notes
-
-`MANAGED_RECORDS_COMMENT_REGEX` follows the shared naming convention in [`codebase-architecture.markdown`](codebase-architecture.markdown): write-side settings stay singular, while ownership selectors stay plural.
-
-This is mainly about operator safety: the selector describes management scope across a set of records, not the default comment written to one record. The singular/plural contrast makes that easier to scan in environment-variable-heavy setups.
-
 ## Scope Boundary
 
 This design applies only to DNS record ownership based on DNS record comments.
 
 It is not a general ownership abstraction for all managed resources. WAF list item ownership remains separate, and DNS-less or WAF-only runs do not use this selector.
 
-## Future Development Notes
+## Extension Points
 
 - If one process ever needs multiple ownership scopes for the same domain and IP family, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to DNS records.
