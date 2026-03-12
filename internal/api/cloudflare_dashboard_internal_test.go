@@ -34,6 +34,9 @@ func TestCloudflareDashboardDeeplinkRoundTrip(t *testing.T) {
 		t.Fatalf("url.Parse(%q) failed: %v", got, err)
 	}
 
+	// "to" is a query parameter whose value is itself a dashboard path.
+	// A slash inside one segment must therefore survive one query decode as
+	// escaped path data rather than turning into a path separator.
 	want := "/account+123/zone%2F456/dns/records"
 	if decoded := parsed.Query().Get("to"); decoded != want {
 		t.Fatalf("decoded to query = %q, want %q", decoded, want)
