@@ -65,69 +65,75 @@ func TestHTTPGetIPs(t *testing.T) {
 		urlKey        ipnet.Type
 		url           string
 		ipNet         ipnet.Type
+		transportIP   *ipnet.Type
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nilctx": {
-			true, ipnet.IP4, server4.URL, ipnet.IP4, invalidIP,
+			true, ipnet.IP4, server4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", server4.URL, gomock.Any())
 			},
 		},
-		"4": {false, ipnet.IP4, server4.URL, ipnet.IP4, ip4, nil},
-		"6": {false, ipnet.IP6, server6.URL, ipnet.IP6, ip6, nil},
+		"4": {false, ipnet.IP4, server4.URL, ipnet.IP4, nil, ip4, nil},
+		"6": {false, ipnet.IP6, server6.URL, ipnet.IP6, nil, ip6, nil},
 		"4to6": {
-			false,
-			ipnet.IP6, server4via6.URL, ipnet.IP6, invalidIP,
+			false, ipnet.IP6, server4via6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address", ip4.String())
 			},
 		},
 		"6to4": {
-			false,
-			ipnet.IP4, server6via4.URL, ipnet.IP4, invalidIP,
+			false, ipnet.IP4, server6via4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip6.String())
 			},
 		},
 		"4/illformed": {
-			false,
-			ipnet.IP4, illformed4.URL, ipnet.IP4, invalidIP,
+			false, ipnet.IP4, illformed4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed4.URL, "hello")
 			},
 		},
 		"6/illformed": {
-			false,
-			ipnet.IP6, illformed6.URL, ipnet.IP6, invalidIP,
+			false, ipnet.IP6, illformed6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed6.URL, "hello")
 			},
 		},
 		"4/request-fail": {
-			false,
-			ipnet.IP4, "", ipnet.IP4, invalidIP,
+			false, ipnet.IP4, "", ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", "", gomock.Any())
 			},
 		},
 		"6/request-fail": {
 			false,
-			ipnet.IP6, "", ipnet.IP6, invalidIP,
+			ipnet.IP6, "", ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", "", gomock.Any())
 			},
 		},
+		"ip6-detected-via4-transport": {
+			false,
+			ipnet.IP6, server6via4.URL, ipnet.IP6, ipNetPtr(ipnet.IP4), ip6,
+			nil,
+		},
+		"ip4-detected-via6-transport": {
+			false,
+			ipnet.IP4, server4via6.URL, ipnet.IP4, ipNetPtr(ipnet.IP6), ip4,
+			nil,
+		},
 		"4/not-handled": {
 			false,
-			ipnet.IP4, server4.URL, ipnet.IP6, invalidIP,
+			ipnet.IP4, server4.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
 			},
 		},
 		"6/not-handled": {
 			false,
-			ipnet.IP6, server6.URL, ipnet.IP4, invalidIP,
+			ipnet.IP6, server6.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
 			},
@@ -142,6 +148,7 @@ func TestHTTPGetIPs(t *testing.T) {
 				URL: map[ipnet.Type]string{
 					tc.urlKey: tc.url,
 				},
+				ForcedTransportIPFamily: tc.transportIP,
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -166,4 +173,8 @@ func TestHTTPGetIPs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ipNetPtr(v ipnet.Type) *ipnet.Type {
+	return &v
 }

@@ -29,6 +29,8 @@ func TestReadProvider(t *testing.T) {
 		localLoopback = provider.NewLocalWithInterface("lo")
 		ipify         = provider.NewIpify()
 		custom        = provider.MustNewCustomURL("https://url.io")
+		customVia4    = provider.MustNewCustomURLVia4("https://url.io")
+		customVia6    = provider.MustNewCustomURLVia6("https://url.io")
 		literal       = provider.MustNewLiteral("1.1.1.1")
 		literalMulti  = provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
 	)
@@ -146,7 +148,9 @@ func TestReadProvider(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key)
 			},
 		},
-		"custom": {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
+		"custom":      {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
+		"custom via4": {true, "   url.via4:https://url.io   ", false, "", trace, customVia4, true, nil},
+		"custom via6": {true, "   url.via6:https://url.io   ", false, "", trace, customVia6, true, nil},
 		"literal:1.1.1.1": {
 			true, "   literal   :  1.1.1.1 ", false, "", trace, literal, true,
 			nil,
@@ -257,6 +261,36 @@ func TestReadProviderMap(t *testing.T) {
 			map[ipnet.Type]provider.Provider{
 				ipnet.IP4: trace,
 				ipnet.IP6: local,
+			},
+			true,
+			nil,
+		},
+		"ip4 via4 and ip6 via6": {
+			true,
+			"url.via4:https://url4.io", "url.via6:https://url6.io",
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: provider.MustNewCustomURLVia4("https://url4.io"),
+				ipnet.IP6: provider.MustNewCustomURLVia6("https://url6.io"),
+			},
+			true,
+			nil,
+		},
+		"ip4 via6": {
+			true,
+			"url.via6:https://url4.io", "local",
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: provider.MustNewCustomURLVia6("https://url4.io"),
+				ipnet.IP6: local,
+			},
+			true,
+			nil,
+		},
+		"ip6 via4": {
+			true,
+			"local", "url.via4:https://url6.io",
+			map[ipnet.Type]provider.Provider{
+				ipnet.IP4: local,
+				ipnet.IP6: provider.MustNewCustomURLVia4("https://url6.io"),
 			},
 			true,
 			nil,

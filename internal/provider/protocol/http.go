@@ -33,8 +33,11 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url strin
 
 // HTTP represents a generic detection protocol to use an HTTP response directly.
 type HTTP struct {
-	ProviderName string                // name of the protocol
-	URL          map[ipnet.Type]string // URL of the page for detection
+	ProviderName            string                // name of the protocol
+	URL                     map[ipnet.Type]string // URL of the page for detection
+	ForcedTransportIPFamily *ipnet.Type
+	// ForcedTransportIPFamily optionally overrides the network family used for
+	// the HTTP connection. When absent, GetIPs uses the requested family itself.
 }
 
 // Name of the detection protocol.
@@ -50,7 +53,12 @@ func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]neti
 		return nil, false
 	}
 
-	ip, ok := getIPFromHTTP(ctx, ppfmt, ipNet, url)
+	transportIP := ipNet
+	if p.ForcedTransportIPFamily != nil {
+		transportIP = *p.ForcedTransportIPFamily
+	}
+
+	ip, ok := getIPFromHTTP(ctx, ppfmt, transportIP, url)
 	if !ok {
 		return nil, false
 	}

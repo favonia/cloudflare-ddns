@@ -145,6 +145,18 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			*field = p
 		}
 		return ok
+	case len(parts) == 2 && parts[0] == "url.via4":
+		p, ok := provider.NewCustomURLVia4(ppfmt, parts[1])
+		if ok {
+			*field = p
+		}
+		return ok
+	case len(parts) == 2 && parts[0] == "url.via6":
+		p, ok := provider.NewCustomURLVia6(ppfmt, parts[1])
+		if ok {
+			*field = p
+		}
+		return ok
 	case len(parts) == 2 && parts[0] == "literal":
 		if parts[1] == "" {
 			ppfmt.Noticef(
