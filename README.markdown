@@ -116,11 +116,13 @@ Incorporate the following fragment into the compose file (typically `docker-comp
 services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
-    # Choose the appropriate tag based on your need:
-    # - "latest" for the latest stable version (which could become 2.x.y
-    #   in the future and break things)
-    # - "1" for the latest stable version whose major version is 1
-    # - "1.x.y" to pin the specific version 1.x.y
+    # Prefer "1.x.y" or "1" in production.
+    #
+    # - "latest" moves to each new stable release and may pick up breaking
+    #   changes in a future major release
+    # - "1" tracks the latest stable release whose major version is 1
+    # - "1.x.y" pins one specific stable version
+    # - "edge" tracks the latest unreleased development build
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier (optional; see below)
     restart: always
