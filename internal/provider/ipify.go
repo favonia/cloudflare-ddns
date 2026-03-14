@@ -13,5 +13,6 @@ func NewIpify() Provider {
 			ipnet.IP4: "https://api4.ipify.org",
 			ipnet.IP6: "https://api6.ipify.org",
 		},
+		ForcedTransportIPFamily: nil,
 	}
 }
