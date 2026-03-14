@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-| Version                              | Supported |
-| ------------------------------------ | --------- |
-| edge                                 | ✅️        |
-| latest (or the version it points to) | ✅️        |
-| others                               | ❌️        |
+| Version                                     | Supported |
+| ------------------------------------------- | --------- |
+| edge                                        | ✅️        |
+| latest stable major version (currently `1`) | ✅️        |
+| others                                      | ❌️        |
 
 ## Reporting a Vulnerability
 
