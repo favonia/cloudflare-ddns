@@ -6,9 +6,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
 func TestCustomURLName(t *testing.T) {
@@ -23,36 +25,92 @@ func TestNewCustom(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		name          string
-		create        func(pp.PP, string) (provider.Provider, bool)
-		input         string
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
+		name                      string
+		create                    func(pp.PP, string) (provider.Provider, bool)
+		input                     string
+		ok                        bool
+		expectedProviderName      string
+		expectedTransportIPFamily *ipnet.Type
+		prepareMockPP             func(*mocks.MockPP)
 	}{
-		{"strict/https", provider.NewCustomURL, "https://1.2.3.4", true, nil},
-		{"via4/https", provider.NewCustomURLVia4, "https://1.2.3.4", true, nil},
-		{"via6/https", provider.NewCustomURLVia6, "https://1.2.3.4", true, nil},
 		{
-			"strict/parse-error", provider.NewCustomURL, ":::::", false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the provider %s", "url:(redacted)")
-			},
+			name:                      "strict/https",
+			create:                    provider.NewCustomURL,
+			input:                     "https://1.2.3.4",
+			ok:                        true,
+			expectedProviderName:      "url:(redacted)",
+			expectedTransportIPFamily: nil,
 		},
 		{
-			"via4/http", provider.NewCustomURLVia4, "http://1.2.3.4", true,
-			func(m *mocks.MockPP) {
+			name:                      "via4/http",
+			create:                    provider.NewCustomURLVia4,
+			input:                     "http://1.2.3.4",
+			ok:                        true,
+			expectedProviderName:      "url.via4:(redacted)",
+			expectedTransportIPFamily: new(ipnet.IP4),
+			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, "The provider %s uses HTTP; consider using HTTPS instead", "url.via4:(redacted)")
 			},
 		},
 		{
-			"via6/unsupported-scheme", provider.NewCustomURLVia6, "ftp://1.2.3.4", false,
-			func(m *mocks.MockPP) {
+			name:                      "via6/https",
+			create:                    provider.NewCustomURLVia6,
+			input:                     "https://1.2.3.4",
+			ok:                        true,
+			expectedProviderName:      "url.via6:(redacted)",
+			expectedTransportIPFamily: new(ipnet.IP6),
+		},
+		{
+			name:   "strict/parse-error",
+			create: provider.NewCustomURL,
+			input:  ":::::",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the provider %s", "url:(redacted)")
+			},
+		},
+		{
+			name:   "strict/relative-url",
+			create: provider.NewCustomURL,
+			input:  "/detect-ip",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url:(redacted)")
+			},
+		},
+		{
+			name:   "via4/opaque-url",
+			create: provider.NewCustomURLVia4,
+			input:  "https:1.2.3.4",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url.via4:(redacted)")
+			},
+		},
+		{
+			name:   "via6/missing-host",
+			create: provider.NewCustomURLVia6,
+			input:  "https:///detect-ip",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url.via6:(redacted)")
+			},
+		},
+		{
+			name:   "via6/unsupported-scheme",
+			create: provider.NewCustomURLVia6,
+			input:  "ftp://1.2.3.4",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s only supports HTTP and HTTPS", "url.via6:(redacted)")
 			},
 		},
 		{
-			"strict/empty", provider.NewCustomURL, "", false,
-			func(m *mocks.MockPP) {
+			name:   "strict/empty",
+			create: provider.NewCustomURL,
+			input:  "",
+			ok:     false,
+			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url:(redacted)")
 			},
 		},
@@ -69,6 +127,17 @@ func TestNewCustom(t *testing.T) {
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.NotNil(t, p)
+				httpProvider, ok := p.(protocol.HTTP)
+				require.True(t, ok)
+				require.Equal(t, tc.expectedProviderName, httpProvider.ProviderName)
+				require.Equal(t, tc.input, httpProvider.URL[ipnet.IP4])
+				require.Equal(t, tc.input, httpProvider.URL[ipnet.IP6])
+				if tc.expectedTransportIPFamily == nil {
+					require.Nil(t, httpProvider.ForcedTransportIPFamily)
+				} else {
+					require.NotNil(t, httpProvider.ForcedTransportIPFamily)
+					require.Equal(t, *tc.expectedTransportIPFamily, *httpProvider.ForcedTransportIPFamily)
+				}
 			} else {
 				require.Nil(t, p)
 			}
@@ -89,6 +158,7 @@ func TestMustNewCustom(t *testing.T) {
 		{"via4/https", provider.MustNewCustomURLVia4, "https://1.2.3.4", true},
 		{"via6/https", provider.MustNewCustomURLVia6, "https://1.2.3.4", true},
 		{"strict/parse-error", provider.MustNewCustomURL, ":::::", false},
+		{"via4/parse-error", provider.MustNewCustomURLVia4, ":::::", false},
 		{"via4/http", provider.MustNewCustomURLVia4, "http://1.2.3.4", true},
 		{"via6/unsupported-scheme", provider.MustNewCustomURLVia6, "ftp://1.2.3.4", false},
 		{"strict/empty", provider.MustNewCustomURL, "", false},

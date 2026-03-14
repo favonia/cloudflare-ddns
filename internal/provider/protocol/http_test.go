@@ -23,8 +23,9 @@ func TestHTTPName(t *testing.T) {
 	t.Parallel()
 
 	p := &protocol.HTTP{
-		ProviderName: "very secret name",
-		URL:          nil,
+		ProviderName:            "very secret name",
+		URL:                     nil,
+		ForcedTransportIPFamily: nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -116,12 +117,12 @@ func TestHTTPGetIPs(t *testing.T) {
 		},
 		"ip6-detected-via4-transport": {
 			false,
-			ipnet.IP6, server6via4.URL, ipnet.IP6, ipNetPtr(ipnet.IP4), ip6,
+			ipnet.IP6, server6via4.URL, ipnet.IP6, new(ipnet.IP4), ip6,
 			nil,
 		},
 		"ip4-detected-via6-transport": {
 			false,
-			ipnet.IP4, server4via6.URL, ipnet.IP4, ipNetPtr(ipnet.IP6), ip4,
+			ipnet.IP4, server4via6.URL, ipnet.IP4, new(ipnet.IP6), ip4,
 			nil,
 		},
 		"4/not-handled": {
@@ -173,8 +174,4 @@ func TestHTTPGetIPs(t *testing.T) {
 			}
 		})
 	}
-}
-
-func ipNetPtr(v ipnet.Type) *ipnet.Type {
-	return &v
 }

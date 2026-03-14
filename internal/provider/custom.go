@@ -9,7 +9,12 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func newCustomURL(ppfmt pp.PP, providerName string, rawURL string, forcedTransportIPFamily *ipnet.Type) (Provider, bool) {
+func newCustomURL(
+	ppfmt pp.PP,
+	providerName string,
+	rawURL string,
+	forcedTransportIPFamily *ipnet.Type,
+) (Provider, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the provider %s", providerName)
