@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-| Version                              | Supported |
-| ------------------------------------ | --------- |
-| edge                                 | ✅️        |
-| latest (or the version it points to) | ✅️        |
-| others                               | ❌️        |
+| Surface                     | Docker tags    | Supported | Notes                                       |
+| --------------------------- | -------------- | --------- | ------------------------------------------- |
+| latest development build    | `edge`         | ✅️        |                                             |
+| latest stable major version | `1`            | ✅️        | includes `latest` and other equivalent tags |
+| other versions              | all other tags | ❌️        |                                             |
 
 ## Reporting a Vulnerability
 

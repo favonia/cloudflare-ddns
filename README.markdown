@@ -45,7 +45,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 - <details><summary><em>Click to expand:</em> ✍️ Verify with cosign that the Docker images were built from this repository.</summary>
 
   ```bash
-  cosign verify favonia/cloudflare-ddns:latest \
+  cosign verify favonia/cloudflare-ddns:1 \
     --certificate-identity-regexp https://github.com/favonia/cloudflare-ddns/ \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   ```
@@ -85,7 +85,7 @@ docker run \
   -e CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   -e DOMAINS=example.org,www.example.org,example.io \
   -e PROXIED=true \
-  favonia/cloudflare-ddns:latest
+  favonia/cloudflare-ddns:1
 ```
 
 </details>
@@ -115,13 +115,13 @@ Incorporate the following fragment into the compose file (typically `docker-comp
 ```yaml
 services:
   cloudflare-ddns:
-    image: favonia/cloudflare-ddns:latest
-    # Prefer "1.x.y" or "1" in production.
+    image: favonia/cloudflare-ddns:1
+    # Prefer "1" or "1.x.y" in production.
     #
-    # - "latest" moves to each new stable release and may pick up breaking
-    #   changes in a future major release
     # - "1" tracks the latest stable release whose major version is 1
     # - "1.x.y" pins one specific stable version
+    # - "latest" moves to each new stable release and may pick up breaking
+    #   changes in a future major release, so it is not recommended in production
     # - "edge" tracks the latest unreleased development build
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier (optional; see below)
@@ -384,7 +384,7 @@ If removing `no-new-privileges` fixes the problem, keep it disabled for this con
 
 If removing `no-new-privileges` does not help, try a minimal image such as `alpine` or another popular Docker image with the same hardening option. If that also fails, the problem is likely in the host environment rather than this updater. Reported cases have included older kernels and some QEMU/Proxmox-style virtualized setups.
 
-If none of these applies, please [open an issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new) and include your compose file with secrets redacted, `docker version`, `uname -a`, your host OS and virtualization platform (if any), and whether a minimal image such as `alpine` shows the same error.
+If none of these applies, please [open an issue on GitHub](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your compose file with secrets redacted, `docker version`, `uname -a`, your host OS and virtualization platform (if any), and whether a minimal image such as `alpine` shows the same error.
 
 ### 🤔 I am getting <code>error code: 1034</code>
 
@@ -478,7 +478,7 @@ Other scope notes:
 | `url.via4:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv4.</p><p>The intention is to get an IPv6 address over IPv4 with `IP6_PROVIDER=url.via4:<url>`. In comparison, `IP6_PROVIDER=url:<url>` will get an IPv6 address over the matching IP family (IPv6).</p>                                                                                                                                                                                                                                                                                                                                            |
 | `url.via6:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv6.</p><p>The intention is to get an IPv4 address over IPv6 with `IP4_PROVIDER=url.via6:<url>`. In comparison, `IP4_PROVIDER=url:<url>` will get an IPv4 address over the matching IP family (IPv4).</p>                                                                                                                                                                                                                                                                                                                                            |
 | `literal:<ip1>,<ip2>,...` (unreleased)                    | Use one or more explicit IP addresses for detection (handy for tests/debugging). The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.                                                                                                                                                                                                                                                                                                                                                                                            |
-| `none`                                                    | <p>Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed.</p><p>🧪 The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. As the support of WAF lists is still experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new).</p>                                                                                                 |
+| `none`                                                    | <p>Stop the DNS updating for the specified IP version completely. For example `IP4_PROVIDER=none` will disable IPv4 completely. Existing DNS records will not be removed.</p><p>🧪 The IP addresses of the disabled IP version will be removed from WAF lists; so `IP4_PROVIDER=none` will remove all IPv4 addresses from all managed WAF lists. As the support of WAF lists is still experimental, this behavior is subject to changes and please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose).</p>                                                                                          |
 
 </details>
 
@@ -612,7 +612,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                       |
-| `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new) if you want it                                                                                                                         |
+| `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if you want it                                                                                                                  |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
@@ -624,7 +624,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 
 ## 💖 Feedback
 
-Questions, suggestions, feature requests, and contributions are all welcome! Feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new).
+Questions, suggestions, feature requests, and contributions are all welcome! Feel free to [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose).
 
 ## 📜 License
 

@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a new feature or an improvement.
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please start with what you are trying to do. If you already have an idea for the configuration or design, feel free to include it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the goal or need behind this request.
+      placeholder: I am trying to ...
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What change would help?
+      description: Describe the behavior, workflow, or configuration change you want. A simple example is enough.
+      placeholder: It would help if the updater could ...
+    validations:
+      required: true
+  - type: textarea
+    id: current_workaround
+    attributes:
+      label: How are you handling this today?
+      description: If you already have a workaround, describe it here.
+      placeholder: Right now I am ...
+    validations:
+      required: false
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed syntax or design sketch
+      description: Include an example config or rough design if you already have one in mind.
+      render: yaml
+    validations:
+      required: false

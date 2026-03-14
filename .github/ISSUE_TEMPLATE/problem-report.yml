@@ -1,0 +1,72 @@
+name: Problem report
+description: Report something that seems broken or not working as expected.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You do not need to fill every field perfectly. Just share what you have. Exact logs and small redacted config snippets are often the most helpful.
+
+        Please redact Cloudflare API tokens, Healthchecks URLs, and other credentials before submitting.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong?
+      description: Describe what went wrong. If there was an error message, include it here or in the logs section below.
+      placeholder: The updater failed to update my DNS record and logged ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version shown at startup
+      description: This helps identify the exact build you are running. Please copy the first startup log line if you can. If you only know the Docker image tag, that is also fine.
+      placeholder: Cloudflare DDNS (v1.15.1-3-gabc1234)
+    validations:
+      required: true
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: How are you running it?
+      description: Pick the setup closest to yours.
+      options:
+        - Not sure
+        - Docker Compose
+        - Docker CLI
+        - Kubernetes
+        - Podman
+        - Standalone binary
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Is there an easy way to reproduce the problem?
+      description: If so, share the setup or steps.
+      placeholder: I configured ..., started the container, and then ...
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, config snippets, or command output
+      description: Paste any relevant redacted logs, config snippets, or command output here. If you are unsure what matters, include the parts around the error.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else that matters?
+      description: Add anything else that might help, such as your network environment, IP provider choice, or what you already tried.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I redacted secrets and credentials from logs, screenshots, and configuration snippets.
+          required: true
