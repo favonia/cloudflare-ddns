@@ -86,10 +86,10 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	update := built.Update
 
 	section("Domains, IP providers, and WAF lists:")
-	for ipNet, p := range ipnet.Bindings(update.Provider) {
+	for ipFamily, p := range ipnet.Bindings(update.Provider) {
 		if p != nil {
-			item(ipNet.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, update.Domains[ipNet]))
-			item(ipNet.Describe()+" provider:", "%s", provider.Name(p))
+			item(ipFamily.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, update.Domains[ipFamily]))
+			item(ipFamily.Describe()+" provider:", "%s", provider.Name(p))
 		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))

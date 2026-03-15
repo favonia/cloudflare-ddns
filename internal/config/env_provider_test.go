@@ -139,7 +139,7 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface" provider added in version 1.15.0`)
+				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface" provider available since version 1.15.0`)
 			},
 		},
 		"local.iface:": {
@@ -241,14 +241,14 @@ func TestReadProviderMap(t *testing.T) {
 		use1001       bool
 		ip4Provider   string
 		ip6Provider   string
-		expected      map[ipnet.Type]provider.Provider
+		expected      map[ipnet.Family]provider.Provider
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full/true": {
 			true,
 			"cloudflare.trace", "local",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: trace,
 				ipnet.IP6: local,
 			},
@@ -258,7 +258,7 @@ func TestReadProviderMap(t *testing.T) {
 		"full/false": {
 			false,
 			"cloudflare.trace", "local",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: trace,
 				ipnet.IP6: local,
 			},
@@ -268,7 +268,7 @@ func TestReadProviderMap(t *testing.T) {
 		"ip4 via4 and ip6 via6": {
 			true,
 			"url.via4:https://url4.io", "url.via6:https://url6.io",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: provider.MustNewCustomURLVia4("https://url4.io"),
 				ipnet.IP6: provider.MustNewCustomURLVia6("https://url6.io"),
 			},
@@ -278,7 +278,7 @@ func TestReadProviderMap(t *testing.T) {
 		"ip4 via6": {
 			true,
 			"url.via6:https://url4.io", "local",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: provider.MustNewCustomURLVia6("https://url4.io"),
 				ipnet.IP6: local,
 			},
@@ -288,7 +288,7 @@ func TestReadProviderMap(t *testing.T) {
 		"ip6 via4": {
 			true,
 			"local", "url.via4:https://url6.io",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: local,
 				ipnet.IP6: provider.MustNewCustomURLVia4("https://url6.io"),
 			},
@@ -298,7 +298,7 @@ func TestReadProviderMap(t *testing.T) {
 		"none/none": {
 			true,
 			"none", "none",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: none,
 				ipnet.IP6: none,
 			},
@@ -308,7 +308,7 @@ func TestReadProviderMap(t *testing.T) {
 		"4": {
 			true,
 			"local", "  ",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: local,
 				ipnet.IP6: local,
 			},
@@ -320,7 +320,7 @@ func TestReadProviderMap(t *testing.T) {
 		"6": {
 			false,
 			"    ", "cloudflare.doh",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: none,
 				ipnet.IP6: doh,
 			},
@@ -332,7 +332,7 @@ func TestReadProviderMap(t *testing.T) {
 		"empty": {
 			true,
 			" ", "   ",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: none,
 				ipnet.IP6: local,
 			},
@@ -347,7 +347,7 @@ func TestReadProviderMap(t *testing.T) {
 		"illformed": {
 			false,
 			" flare", "   ",
-			map[ipnet.Type]provider.Provider{
+			map[ipnet.Family]provider.Provider{
 				ipnet.IP4: none,
 				ipnet.IP6: local,
 			},
@@ -363,7 +363,7 @@ func TestReadProviderMap(t *testing.T) {
 			store(t, "IP4_PROVIDER", tc.ip4Provider)
 			store(t, "IP6_PROVIDER", tc.ip6Provider)
 
-			field := map[ipnet.Type]provider.Provider{ipnet.IP4: none, ipnet.IP6: local}
+			field := map[ipnet.Family]provider.Provider{ipnet.IP4: none, ipnet.IP6: local}
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)

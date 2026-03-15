@@ -60,7 +60,7 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-func normalizeDomainMap(raw *RawConfig) map[ipnet.Type][]domain.Domain {
+func normalizeDomainMap(raw *RawConfig) map[ipnet.Family][]domain.Domain {
 	var ip4Domains []domain.Domain
 	ip4Domains = append(ip4Domains, raw.IP4Domains...)
 	ip4Domains = append(ip4Domains, raw.Domains...)
@@ -71,7 +71,7 @@ func normalizeDomainMap(raw *RawConfig) map[ipnet.Type][]domain.Domain {
 	ip6Domains = append(ip6Domains, raw.Domains...)
 	ip6Domains = sliceutil.SortAndCompact(ip6Domains, domain.CompareDomain)
 
-	return map[ipnet.Type][]domain.Domain{
+	return map[ipnet.Family][]domain.Domain{
 		ipnet.IP4: ip4Domains,
 		ipnet.IP6: ip6Domains,
 	}
@@ -145,21 +145,21 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 
 	// Step 3: normalize domains and providers.
-	providerMap := map[ipnet.Type]provider.Provider{}
+	providerMap := map[ipnet.Family]provider.Provider{}
 	activeDomainSet := map[domain.Domain]bool{}
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
+	for ipFamily, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
-			ipNetDomains := domains[ipNet]
+			ipNetDomains := domains[ipFamily]
 
 			if len(ipNetDomains) == 0 && len(c.WAFLists) == 0 {
 				ppfmt.Noticef(pp.EmojiUserWarning,
 					"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
-					ipNet.Int(), provider.Name(nil), ipNet.Describe())
+					ipFamily.Int(), provider.Name(nil), ipFamily.Describe())
 
 				continue
 			}
 
-			providerMap[ipNet] = p
+			providerMap[ipFamily] = p
 			for _, domain := range ipNetDomains {
 				activeDomainSet[domain] = true
 			}
@@ -174,8 +174,8 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 
 	// Step 3.3: check if some domains are unused.
-	for ipNet, ipNetDomains := range ipnet.Bindings(domains) {
-		if providerMap[ipNet] == nil {
+	for ipFamily, ipNetDomains := range ipnet.Bindings(domains) {
+		if providerMap[ipFamily] == nil {
 			for _, domain := range ipNetDomains {
 				if activeDomainSet[domain] {
 					continue
@@ -183,7 +183,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 
 				ppfmt.Noticef(pp.EmojiUserWarning,
 					"Domain %q is ignored because it is only for %s but %s is disabled",
-					domain.Describe(), ipNet.Describe(), ipNet.Describe())
+					domain.Describe(), ipFamily.Describe(), ipFamily.Describe())
 			}
 		}
 	}
@@ -243,10 +243,12 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,
 		Options: api.HandleOptions{
-			CacheExpiration:                   c.CacheExpiration,
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   managedWAFListItemsCommentRegex,
-			AllowWholeWAFListDeleteOnShutdown: c.ManagedWAFListItemsCommentRegex == "",
+			CacheExpiration: c.CacheExpiration,
+			HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+				ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+				ManagedWAFListItemsCommentRegex:   managedWAFListItemsCommentRegex,
+				AllowWholeWAFListDeleteOnShutdown: c.ManagedWAFListItemsCommentRegex == "",
+			},
 		},
 	}
 	lifecycleConfig := &LifecycleConfig{

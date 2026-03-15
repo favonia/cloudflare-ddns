@@ -127,85 +127,62 @@ func TestSetIPsSingleton(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple-matching-records/delete-duplicates/response-updated",
+			name: "multiple-matching-records/preserve-duplicates/response-noop",
 			ip:   fixture.ip1,
-			resp: setter.ResponseUpdated,
+			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
-				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record3, fixture.ip1, fixture.params),
 					}, true, true),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordDuplicateDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record2),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-					expectRecordDuplicateDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record3),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
 				)
 			},
 		},
 		{
-			name: "multiple-matching-records/delete-first-duplicate/response-updated",
+			name: "multiple-matching-records/delete-first-duplicate/response-noop",
 			ip:   fixture.ip1,
-			resp: setter.ResponseUpdated,
+			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
-				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record3, fixture.ip1, fixture.params),
 					}, true, true),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, false),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-					expectRecordDuplicateDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record3),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
 				)
 			},
 		},
 		{
-			name: "multiple-matching-records/delete-second-duplicate/response-updated",
+			name: "multiple-matching-records/delete-second-duplicate/response-noop",
 			ip:   fixture.ip1,
-			resp: setter.ResponseUpdated,
+			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either duplicate can be deleted first.
-				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
-				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record3, fixture.ip1, fixture.params),
 					}, true, true),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordDuplicateDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record2),
-					expectRecordDelete(
-						ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, false),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
 				)
 			},
 		},
 		{
-			name: "multiple-matching-records/delete-duplicate-timeout/response-updated",
+			name: "multiple-matching-records/delete-duplicate-timeout/response-noop",
 			ip:   fixture.ip1,
-			resp: setter.ResponseUpdated,
+			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
+				_ = cancel
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 					}, true, true),
-					h.EXPECT().DeleteRecord(
-						ctx, p, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
 				)
 			},
 		},

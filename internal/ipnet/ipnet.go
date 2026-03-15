@@ -10,22 +10,22 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Type is the type of IP networks.
-type Type int
+// Family is the type of IP families.
+type Family int
 
 const (
 	// IP4 is IP version 4.
-	IP4 Type = 4
+	IP4 Family = 4
 
 	// IP6 is IP version 6.
-	IP6 Type = 6
+	IP6 Family = 6
 
-	// NetworkCount is the number of IP networks.
-	NetworkCount = 2
+	// FamilyCount is the number of IP networks.
+	FamilyCount = 2
 )
 
 // Int returns the version of the IP networks. It is either 4 or 6.
-func (t Type) Int() int {
+func (t Family) Int() int {
 	switch t {
 	case IP4, IP6:
 		return int(t)
@@ -35,7 +35,7 @@ func (t Type) Int() int {
 }
 
 // Describe returns a human-readable description of the IP network.
-func (t Type) Describe() string {
+func (t Family) Describe() string {
 	switch t {
 	case IP4, IP6:
 		return fmt.Sprintf("IPv%d", t)
@@ -45,7 +45,7 @@ func (t Type) Describe() string {
 }
 
 // RecordType prints out the type of DNS records for the IP network. For IPv4, it is A; for IPv6, it is AAAA.
-func (t Type) RecordType() string {
+func (t Family) RecordType() string {
 	switch t {
 	case IP4:
 		return "A"
@@ -57,7 +57,7 @@ func (t Type) RecordType() string {
 }
 
 // UDPNetwork gives the network name for net.Dial.
-func (t Type) UDPNetwork() string {
+func (t Family) UDPNetwork() string {
 	switch t {
 	case IP4:
 		return "udp4"
@@ -69,7 +69,7 @@ func (t Type) UDPNetwork() string {
 }
 
 // Matches checks whether an IP belongs to it.
-func (t Type) Matches(ip netip.Addr) bool {
+func (t Family) Matches(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	switch t {
 	case IP4:
@@ -82,7 +82,7 @@ func (t Type) Matches(ip netip.Addr) bool {
 }
 
 // normalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
-func normalizeDetectedIP(t Type, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
+func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
 			`Detected IP address is not valid; this should not happen and please report it at %s`,
@@ -190,7 +190,7 @@ func normalizeDetectedIP(t Type, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) 
 // - fail-fast: return false on the first invalid IP
 // - preserve emptiness: empty input returns empty output
 // - canonicalize set semantics: output is sorted and deduplicated.
-func (t Type) NormalizeDetectedIPs(ppfmt pp.PP, ips []netip.Addr) ([]netip.Addr, bool) {
+func (t Family) NormalizeDetectedIPs(ppfmt pp.PP, ips []netip.Addr) ([]netip.Addr, bool) {
 	if len(ips) == 0 {
 		return ips, true
 	}
@@ -210,17 +210,17 @@ func (t Type) NormalizeDetectedIPs(ppfmt pp.PP, ips []netip.Addr) ([]netip.Addr,
 }
 
 // All enumerates [IP4] and then [IP6].
-func All(yield func(Type) bool) {
+func All(yield func(Family) bool) {
 	_ = yield(IP4) && yield(IP6)
 }
 
 // Bindings enumerates the key [IP4] and then [IP6] for a map.
-func Bindings[V any](m map[Type]V) iter.Seq2[Type, V] {
-	return func(yield func(Type, V) bool) {
-		for ipNet := range All {
-			v, ok := m[ipNet]
+func Bindings[V any](m map[Family]V) iter.Seq2[Family, V] {
+	return func(yield func(Family, V) bool) {
+		for ipFamily := range All {
+			v, ok := m[ipFamily]
 			if ok {
-				if !yield(ipNet, v) {
+				if !yield(ipFamily, v) {
 					return
 				}
 			}

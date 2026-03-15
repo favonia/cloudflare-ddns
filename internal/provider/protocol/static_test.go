@@ -35,7 +35,7 @@ func TestStaticGetIPs(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		savedIPs      []netip.Addr
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		ok            bool
 		expected      []netip.Addr
 		prepareMockPP func(*mocks.MockPP)
@@ -110,12 +110,12 @@ func TestStaticGetIPs(t *testing.T) {
 				ProviderName: "",
 				IPs:          tc.savedIPs,
 			}
-			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.ok, ok)
+			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
+			require.Equal(t, tc.ok, targets.Available)
 			if tc.ok {
-				require.Equal(t, tc.expected, ips)
+				require.Equal(t, tc.expected, targets.IPs)
 			} else {
-				require.Empty(t, ips)
+				require.Empty(t, targets.IPs)
 			}
 		})
 	}

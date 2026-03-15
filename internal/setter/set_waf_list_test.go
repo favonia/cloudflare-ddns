@@ -15,6 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -52,7 +53,7 @@ func TestSetWAFList(t *testing.T) {
 	)
 
 	type items = []api.WAFListItem
-	type ipmap = map[ipnet.Type][]netip.Addr
+	type ipmap = map[ipnet.Family]provider.Targets
 
 	targetPrefixes := []netip.Prefix{prefix4.Prefix, prefix6.Prefix}
 
@@ -128,31 +129,18 @@ func TestSetWAFList(t *testing.T) {
 		},
 		{
 			name:     "ipv4-detection-failed/skip-ipv4-updates/response-noop",
-			detected: detected(netip.Addr{}, ip6),
+			detected: mergeDetected(detectedSets(nil, []netip.Addr{ip6}), unavailableDetected(true, false)),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
 				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, skipUnknownItems, true, true)
 			},
 		},
 		{
-			name: "ipv4-unmanaged/delete-existing-ipv4-prefixes/response-updated",
-			detected: map[ipnet.Type][]netip.Addr{
-				ipnet.IP6: {ip6},
-			},
-			resp: setter.ResponseUpdated,
+			name:     "ipv4-out-of-scope/preserve-existing-ipv4-prefixes/response-noop",
+			detected: detectedSets(nil, []netip.Addr{ip6}),
+			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListMutation(ctx, p, m, wafList, wafListMutationExpectation{
-					listDescription: listDescription,
-					items:           items{prefix4range1, prefix6},
-					alreadyExisting: true,
-					cached:          false,
-					createItems:     nil,
-					createPrefixes:  nil,
-					createComment:   itemComment,
-					createOK:        true,
-					deleteItems:     items{prefix4range1},
-					deleteOK:        true,
-				})
+				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4range1, prefix6}, true, false)
 			},
 		},
 		{

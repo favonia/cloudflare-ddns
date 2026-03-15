@@ -10,9 +10,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string) (netip.Addr, bool) {
+func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url string) (netip.Addr, bool) {
 	c := httpCore{
-		ipNet:             ipNet,
+		ipFamily:          ipFamily,
 		url:               url,
 		method:            http.MethodGet,
 		additionalHeaders: nil,
@@ -33,9 +33,9 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url strin
 
 // HTTP represents a generic detection protocol to use an HTTP response directly.
 type HTTP struct {
-	ProviderName            string                // name of the protocol
-	URL                     map[ipnet.Type]string // URL of the page for detection
-	ForcedTransportIPFamily *ipnet.Type
+	ProviderName            string                  // name of the protocol
+	URL                     map[ipnet.Family]string // URL of the page for detection
+	ForcedTransportIPFamily *ipnet.Family
 	// ForcedTransportIPFamily optionally overrides the network family used for
 	// the HTTP connection. When absent, GetIPs uses the requested family itself.
 }
@@ -46,22 +46,26 @@ func (p HTTP) Name() string {
 }
 
 // GetIPs detects the IP address by using the HTTP response directly.
-func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
-	url, found := p.URL[ipNet]
+func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+	url, found := p.URL[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return nil, false
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		return NewUnavailableTargets()
 	}
 
-	transportIP := ipNet
+	transportIP := ipFamily
 	if p.ForcedTransportIPFamily != nil {
 		transportIP = *p.ForcedTransportIPFamily
 	}
 
 	ip, ok := getIPFromHTTP(ctx, ppfmt, transportIP, url)
 	if !ok {
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
-	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }

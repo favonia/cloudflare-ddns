@@ -171,7 +171,7 @@ func TestBuildConfig(t *testing.T) {
 		"nilprovider": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
@@ -193,7 +193,7 @@ func TestBuildConfig(t *testing.T) {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:    true,
 				DetectionTimeout: 5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -210,10 +210,10 @@ func TestBuildConfig(t *testing.T) {
 				},
 				update: &config.UpdateConfig{ //nolint:exhaustruct
 					DetectionTimeout: 5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: {domain.FQDN("a.b.c")},
 						ipnet.IP6: nil,
 					},
@@ -234,7 +234,7 @@ func TestBuildConfig(t *testing.T) {
 		"dns6empty-ip4none": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP4Domains: []domain.Domain{domain.FQDN("a.b.c")},
@@ -255,7 +255,7 @@ func TestBuildConfig(t *testing.T) {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:    true,
 				DetectionTimeout: 5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
@@ -272,10 +272,10 @@ func TestBuildConfig(t *testing.T) {
 				},
 				update: &config.UpdateConfig{ //nolint:exhaustruct
 					DetectionTimeout: 5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
 						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 					},
@@ -301,7 +301,7 @@ func TestBuildConfig(t *testing.T) {
 				TTL:              10000,
 				RecordComment:    "hello",
 				DetectionTimeout: 5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				ProxiedExpression:          "true",
@@ -311,10 +311,12 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:                   0,
-						ManagedRecordsCommentRegex:        regexp.MustCompile("he"),
-						ManagedWAFListItemsCommentRegex:   nil,
-						AllowWholeWAFListDeleteOnShutdown: false,
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        regexp.MustCompile("he"),
+							ManagedWAFListItemsCommentRegex:   nil,
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -325,10 +327,10 @@ func TestBuildConfig(t *testing.T) {
 					TTL:              10000,
 					RecordComment:    "hello",
 					DetectionTimeout: 5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: nil,
 					},
@@ -352,7 +354,7 @@ func TestBuildConfig(t *testing.T) {
 				UpdateOnStart:    true,
 				RecordComment:    "hello-123",
 				DetectionTimeout: 5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
@@ -363,10 +365,12 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{
-						CacheExpiration:                   0,
-						ManagedRecordsCommentRegex:        regexp.MustCompile(`^hello-[0-9]+$`),
-						ManagedWAFListItemsCommentRegex:   nil,
-						AllowWholeWAFListDeleteOnShutdown: false,
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        regexp.MustCompile(`^hello-[0-9]+$`),
+							ManagedWAFListItemsCommentRegex:   nil,
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -375,10 +379,10 @@ func TestBuildConfig(t *testing.T) {
 				update: &config.UpdateConfig{ //nolint:exhaustruct
 					RecordComment:    "hello-123",
 					DetectionTimeout: 5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
@@ -398,7 +402,7 @@ func TestBuildConfig(t *testing.T) {
 		"managed-record-regex/invalid": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
@@ -420,7 +424,7 @@ func TestBuildConfig(t *testing.T) {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
 				RecordComment: "hello",
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
@@ -447,7 +451,7 @@ func TestBuildConfig(t *testing.T) {
 				WAFListItemComment:              "managed-123",
 				ManagedWAFListItemsCommentRegex: `^managed-[0-9]+$`,
 				DetectionTimeout:                5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 			},
@@ -455,7 +459,9 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{ //nolint:exhaustruct
-						ManagedWAFListItemsCommentRegex: regexp.MustCompile(`^managed-[0-9]+$`),
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedWAFListItemsCommentRegex: regexp.MustCompile(`^managed-[0-9]+$`),
+						},
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -466,10 +472,10 @@ func TestBuildConfig(t *testing.T) {
 					TTL:                api.TTLAuto,
 					WAFListItemComment: "managed-123",
 					DetectionTimeout:   5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: nil,
 					},
@@ -491,7 +497,7 @@ func TestBuildConfig(t *testing.T) {
 				TTL:                             api.TTLAuto,
 				ProxiedExpression:               "false",
 				ManagedWAFListItemsCommentRegex: "(",
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 			},
@@ -514,7 +520,7 @@ func TestBuildConfig(t *testing.T) {
 				ProxiedExpression:               "false",
 				WAFListItemComment:              "hello",
 				ManagedWAFListItemsCommentRegex: "^world$",
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 			},
@@ -534,7 +540,7 @@ func TestBuildConfig(t *testing.T) {
 				UpdateOnStart:      true,
 				WAFListDescription: "My list",
 				DetectionTimeout:   5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
@@ -551,10 +557,10 @@ func TestBuildConfig(t *testing.T) {
 				update: &config.UpdateConfig{ //nolint:exhaustruct
 					WAFListDescription: "My list",
 					DetectionTimeout:   5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
@@ -580,7 +586,7 @@ func TestBuildConfig(t *testing.T) {
 				WAFListItemComment:              strings.Repeat("b", 49),
 				ManagedWAFListItemsCommentRegex: strings.Repeat(".", 49),
 				DetectionTimeout:                5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
@@ -590,7 +596,9 @@ func TestBuildConfig(t *testing.T) {
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
 					Options: api.HandleOptions{ //nolint:exhaustruct
-						ManagedWAFListItemsCommentRegex: regexp.MustCompile(strings.Repeat(".", 49)),
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedWAFListItemsCommentRegex: regexp.MustCompile(strings.Repeat(".", 49)),
+						},
 					},
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
@@ -600,10 +608,10 @@ func TestBuildConfig(t *testing.T) {
 					WAFListDescription: strings.Repeat("a", 48),
 					WAFListItemComment: strings.Repeat("b", 49),
 					DetectionTimeout:   5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
@@ -636,7 +644,7 @@ func TestBuildConfig(t *testing.T) {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:    true,
 				DetectionTimeout: 5 * time.Second,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
@@ -652,10 +660,10 @@ func TestBuildConfig(t *testing.T) {
 				},
 				update: &config.UpdateConfig{ //nolint:exhaustruct
 					DetectionTimeout: 5 * time.Second,
-					Provider: map[ipnet.Type]provider.Provider{
+					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
-					Domains: map[ipnet.Type][]domain.Domain{
+					Domains: map[ipnet.Family][]domain.Domain{
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 					},
@@ -677,7 +685,7 @@ func TestBuildConfig(t *testing.T) {
 		"proxied/invalid/1": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
@@ -697,7 +705,7 @@ func TestBuildConfig(t *testing.T) {
 		"proxied/invalid/2": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
@@ -717,7 +725,7 @@ func TestBuildConfig(t *testing.T) {
 		"proxied/invalid/3": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: true,
-				Provider: map[ipnet.Type]provider.Provider{
+				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},

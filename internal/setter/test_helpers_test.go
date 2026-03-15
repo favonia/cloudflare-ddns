@@ -28,7 +28,7 @@ type prepareSetterMocks func(ctx context.Context, cancel func(), p *mocks.MockPP
 
 type dnsRecordFixture struct {
 	domain    domain.Domain
-	ipNetwork ipnet.Type
+	ipNetwork ipnet.Family
 	record1   api.ID
 	record2   api.ID
 	record3   api.ID
@@ -84,8 +84,8 @@ func (h setterHarness) prepare(ctx context.Context, prepare prepareSetterMocks) 
 	}
 }
 
-func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
-	return func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
+func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool {
+	return func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool {
 		cancel()
 		return false
 	}
@@ -96,7 +96,7 @@ func expectRecordList(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	params api.RecordParams,
 	records []api.Record,
@@ -110,7 +110,7 @@ func expectRecordCreate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	ip netip.Addr,
 	params api.RecordParams,
@@ -124,7 +124,7 @@ func expectRecordUpdate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	ip netip.Addr,
@@ -138,7 +138,7 @@ func expectRecordDelete(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	mode api.DeletionMode,
@@ -147,7 +147,7 @@ func expectRecordDelete(
 	return h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, id, mode).Return(ok)
 }
 
-func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiCreation,
 		"Added a new %s record of %s (ID: %s)",
@@ -157,7 +157,7 @@ func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domai
 	)
 }
 
-func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
 		"Updated a stale %s record of %s (ID: %s)",
@@ -167,7 +167,7 @@ func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain dom
 	)
 }
 
-func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
 		"Updated a matched %s record of %s (ID: %s)",
@@ -177,7 +177,7 @@ func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, dom
 	)
 }
 
-func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
 		"Deleted a stale %s record of %s (ID: %s)",
@@ -187,7 +187,7 @@ func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordDuplicateDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordDuplicateDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
 		"Deleted a duplicate %s record of %s (ID: %s)",
@@ -197,7 +197,7 @@ func expectRecordDuplicateDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, d
 	)
 }
 
-func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
@@ -214,7 +214,7 @@ func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
@@ -231,7 +231,7 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -240,7 +240,7 @@ func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain d
 	)
 }
 
-func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm deletion of %s records of %s; records might be inconsistent",
@@ -249,7 +249,7 @@ func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, 
 	)
 }
 
-func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Infof(
 		pp.EmojiTimeout,
 		"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",

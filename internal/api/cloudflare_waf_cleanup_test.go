@@ -17,9 +17,18 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func cleanupFamilies(families ...ipnet.Family) map[ipnet.Family]bool {
+	result := make(map[ipnet.Family]bool, len(families))
+	for _, ipFamily := range families {
+		result[ipFamily] = true
+	}
+	return result
+}
 
 func mockDeleteListResponse(listID ID) cloudflare.ListDeleteResponse {
 	return cloudflare.ListDeleteResponse{
@@ -176,6 +185,7 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 				f.newPreparedPP(tc.prepareMocks),
 				mockWAFList,
 				"description",
+				cleanupFamilies(ipnet.IP4, ipnet.IP6),
 			)
 			require.Equal(t, tc.code, code)
 			assertHandlersExhausted(t, lh, dh, lih, dih)
@@ -251,6 +261,7 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 				f.newPreparedPP(tc.prepareMocks),
 				mockWAFList,
 				"description",
+				cleanupFamilies(ipnet.IP4, ipnet.IP6),
 			)
 			require.Equal(t, tc.code, code)
 			assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
@@ -283,7 +294,8 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 	cleanupPP := f.newPP()
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 		"Managed items in list %s were already deleted (cached)", "account456/list")
-	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
 	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 }
@@ -319,7 +331,8 @@ func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresStaleCache(t *testing
 		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 			"Managed items in list %s were already deleted", "account456/list"),
 	)
-	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
 	assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
 }
@@ -350,7 +363,8 @@ func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 	cleanupPP := mocks.NewMockPP(mockCtrl)
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 		"Managed items in list %s were already deleted", "account456/list")
-	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
 	assertHandlersExhausted(t, listHandler)
 }
@@ -382,7 +396,8 @@ func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.
 	cleanupPP := mocks.NewMockPP(mockCtrl)
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 		"Managed items in list %s were already deleted", "account456/list")
-	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description")
+	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
 	assertHandlersExhausted(t, listHandler)
 }

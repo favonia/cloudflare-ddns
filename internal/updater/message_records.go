@@ -23,7 +23,7 @@ func (s setterResponses) register(d domain.Domain, code setter.ResponseCode) {
 	s[code] = append(s[code], d.Describe())
 }
 
-func generateDetectMessage(ipNet ipnet.Type, ok bool) Message {
+func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 	switch {
 	default:
 		return NewMessage()
@@ -31,10 +31,10 @@ func generateDetectMessage(ipNet ipnet.Type, ok bool) Message {
 		return Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
-				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipNet.Describe())},
+				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipFamily.Describe())},
 			},
 			NotifierMessage: notifier.Message{
-				fmt.Sprintf("Failed to detect any %s addresses.", ipNet.Describe()),
+				fmt.Sprintf("Failed to detect any %s addresses.", ipFamily.Describe()),
 			},
 		}
 	}
@@ -48,7 +48,7 @@ func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMap(netip.Addr.String, ips)
 }
 
-func generateUpdateHeartbeatMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) heartbeat.Message {
+func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
 	ipDescription := describeIPs(ips)
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
@@ -56,7 +56,7 @@ func generateUpdateHeartbeatMessage(ipNet ipnet.Type, ips []netip.Addr, s setter
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Could not confirm update of %s (%s) for %s",
-				ipNet.RecordType(), ipDescription, pp.Join(domains),
+				ipFamily.RecordType(), ipDescription, pp.Join(domains),
 			)},
 		}
 	}
@@ -66,34 +66,34 @@ func generateUpdateHeartbeatMessage(ipNet ipnet.Type, ips []netip.Addr, s setter
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Setting %s (%s) of %s",
-			ipNet.RecordType(), ipDescription, pp.Join(domains),
+			ipFamily.RecordType(), ipDescription, pp.Join(domains),
 		))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Set %s (%s) of %s",
-			ipNet.RecordType(), ipDescription, pp.Join(domains),
+			ipFamily.RecordType(), ipDescription, pp.Join(domains),
 		))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) notifier.Message {
+func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) notifier.Message {
 	ipDescription := describeIPsInEnglish(ips)
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Could not confirm update of ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+			"Could not confirm update of ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 		)
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Updating ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+				"Updating ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 			)
 		} else {
 			fragments = append(fragments,
@@ -105,7 +105,7 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterR
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Updated ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+				"Updated ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 			)
 		} else {
 			fragments = append(fragments,
@@ -122,20 +122,20 @@ func generateUpdateNotifierMessage(ipNet ipnet.Type, ips []netip.Addr, s setterR
 	}
 }
 
-func generateUpdateMessage(ipNet ipnet.Type, ips []netip.Addr, s setterResponses) Message {
+func generateUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) Message {
 	return Message{
-		HeartbeatMessage: generateUpdateHeartbeatMessage(ipNet, ips, s),
-		NotifierMessage:  generateUpdateNotifierMessage(ipNet, ips, s),
+		HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
+		NotifierMessage:  generateUpdateNotifierMessage(ipFamily, ips, s),
 	}
 }
 
-func generateFinalDeleteHeartbeatMessage(ipNet ipnet.Type, s setterResponses) heartbeat.Message {
+func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
 				"Could not confirm deletion of %s of %s",
-				ipNet.RecordType(), pp.Join(domains),
+				ipFamily.RecordType(), pp.Join(domains),
 			)},
 		}
 	}
@@ -145,33 +145,33 @@ func generateFinalDeleteHeartbeatMessage(ipNet ipnet.Type, s setterResponses) he
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Deleting %s of %s",
-			ipNet.RecordType(), pp.Join(domains),
+			ipFamily.RecordType(), pp.Join(domains),
 		))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Deleted %s of %s",
-			ipNet.RecordType(), pp.Join(domains),
+			ipFamily.RecordType(), pp.Join(domains),
 		))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) notifier.Message {
+func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Could not confirm deletion of ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains),
+			"Could not confirm deletion of ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
 		)
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Deleting ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains),
+				"Deleting ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
 			)
 		} else {
 			fragments = append(fragments,
@@ -183,7 +183,7 @@ func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) not
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
 			fragments = append(fragments,
-				"Deleted ", ipNet.RecordType(), " records of ", pp.EnglishJoin(domains),
+				"Deleted ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
 			)
 		} else {
 			fragments = append(fragments,
@@ -200,9 +200,9 @@ func generateFinalDeleteNotifierMessage(ipNet ipnet.Type, s setterResponses) not
 	}
 }
 
-func generateFinalDeleteMessage(ipNet ipnet.Type, s setterResponses) Message {
+func generateFinalDeleteMessage(ipFamily ipnet.Family, s setterResponses) Message {
 	return Message{
-		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipNet, s),
-		NotifierMessage:  generateFinalDeleteNotifierMessage(ipNet, s),
+		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipFamily, s),
+		NotifierMessage:  generateFinalDeleteNotifierMessage(ipFamily, s),
 	}
 }

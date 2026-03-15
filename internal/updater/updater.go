@@ -15,45 +15,45 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func getMessageIDForDetection(ipNet ipnet.Type) pp.ID {
-	return map[ipnet.Type]pp.ID{
+func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
+	return map[ipnet.Family]pp.ID{
 		ipnet.IP4: pp.MessageIP4DetectionFails,
 		ipnet.IP6: pp.MessageIP6DetectionFails,
-	}[ipNet]
+	}[ipFamily]
 }
 
-func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipNet ipnet.Type) ([]netip.Addr, Message) {
+func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipFamily ipnet.Family) (provider.Targets, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	ips, ok := c.Provider[ipNet].GetIPs(ctx, ppfmt, ipNet)
+	targets := c.Provider[ipFamily].GetIPs(ctx, ppfmt, ipFamily)
 
 	switch {
 	// Fast path: one detected target.
-	case ok && len(ips) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipNet.Describe(), ips[0])
-		ppfmt.Suppress(getMessageIDForDetection(ipNet))
+	case targets.Available && len(targets.IPs) == 1:
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), targets.IPs[0])
+		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Multi-target path: report the full deterministic set.
-	case ok && len(ips) > 1:
+	case targets.Available && len(targets.IPs) > 1:
 		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
-			len(ips), ipNet.Describe(), pp.JoinMap(netip.Addr.String, ips))
-		ppfmt.Suppress(getMessageIDForDetection(ipNet))
+			len(targets.IPs), ipFamily.Describe(), pp.JoinMap(netip.Addr.String, targets.IPs))
+		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Failure path: emit hints and timeout guidance.
 	default:
-		ok = false
-		ppfmt.Noticef(pp.EmojiError, "Failed to detect any %s addresses", ipNet.Describe())
+		targets = provider.NewUnavailableTargets()
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect any %s addresses", ipFamily.Describe())
 
-		switch ipNet {
+		switch ipFamily {
 		case ipnet.IP6:
-			ppfmt.NoticeOncef(getMessageIDForDetection(ipNet), pp.EmojiHint,
+			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
 				"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. "+
 					"If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none",
 				pp.ManualURL)
 
 		case ipnet.IP4:
-			ppfmt.NoticeOncef(getMessageIDForDetection(ipNet), pp.EmojiHint,
+			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
 				"If your network does not support IPv4, you can disable it with IP4_PROVIDER=none")
 		}
 
@@ -64,7 +64,7 @@ func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipNet i
 			)
 		}
 	}
-	return ips, generateDetectMessage(ipNet, ok)
+	return targets, generateDetectMessage(ipFamily, targets.Available)
 }
 
 var errTimeout = errors.New("timeout")
@@ -89,14 +89,14 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.UpdateCon
 
 // setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetIPs] with timeout.
 func setIPs(ctx context.Context, ppfmt pp.PP,
-	c *config.UpdateConfig, s setter.Setter, ipNet ipnet.Type, ips []netip.Addr,
+	c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family, ips []netip.Addr,
 ) Message {
 	resps := emptySetterResponses()
 
-	for _, domain := range c.Domains[ipNet] {
+	for _, domain := range c.Domains[ipFamily] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetIPs(ctx, ppfmt, ipNet, domain, ips, api.RecordParams{
+				return s.SetIPs(ctx, ppfmt, ipFamily, domain, ips, api.RecordParams{
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
@@ -106,20 +106,20 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	return generateUpdateMessage(ipNet, ips, resps)
+	return generateUpdateMessage(ipFamily, ips, resps)
 }
 
 // finalDeleteIP extracts relevant settings from the configuration
 // and calls [setter.Setter.FinalDelete] with a deadline.
 func finalDeleteIP(
-	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter, ipNet ipnet.Type,
+	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family,
 ) Message {
 	resps := emptySetterResponses()
 
-	for _, domain := range c.Domains[ipNet] {
+	for _, domain := range c.Domains[ipFamily] {
 		resps.register(domain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalDelete(ctx, ppfmt, ipNet, domain, api.RecordParams{
+				return s.FinalDelete(ctx, ppfmt, ipFamily, domain, api.RecordParams{
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
@@ -129,19 +129,19 @@ func finalDeleteIP(
 		)
 	}
 
-	return generateFinalDeleteMessage(ipNet, resps)
+	return generateFinalDeleteMessage(ipFamily, resps)
 }
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.UpdateConfig, s setter.Setter, detectedIPs map[ipnet.Type][]netip.Addr,
+	c *config.UpdateConfig, s setter.Setter, targets map[ipnet.Family]provider.Targets,
 ) Message {
 	resps := emptySetterWAFListResponses()
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, detectedIPs, c.WAFListItemComment)
+				return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, targets, c.WAFListItemComment)
 			}),
 		)
 	}
@@ -153,11 +153,17 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 // and calls [setter.Setter.FinalClearWAFList] with a deadline.
 func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	resps := emptySetterWAFListResponses()
+	managedFamilies := map[ipnet.Family]bool{}
+	for ipFamily, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
+			managedFamilies[ipFamily] = true
+		}
+	}
 
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription)
+				return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies)
 			}),
 		)
 	}
@@ -168,25 +174,21 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 // UpdateIPs detects IP addresses and updates DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
-	detectedIPsForWAF := map[ipnet.Type][]netip.Addr{}
-	numManagedNetworks := 0
-	numValidIPs := 0
-	for ipNet, p := range ipnet.Bindings(c.Provider) {
+	targetsForWAF := map[ipnet.Family]provider.Targets{}
+	shouldUpdateWAF := false
+	for ipFamily, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
-			numManagedNetworks++
-			ips, msg := detectIPs(ctx, ppfmt, c, ipNet)
+			targets, msg := detectIPs(ctx, ppfmt, c, ipFamily)
 			msgs = append(msgs, msg)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.HeartbeatMessage.OK {
-				numValidIPs++
-				detectedIPsForWAF[ipNet] = ips
-				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipNet, ips))
+				targetsForWAF[ipFamily] = targets
+				shouldUpdateWAF = true
+				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, targets.IPs))
 			} else {
-				// Keep a nil entry for managed-but-failed families.
-				// Missing keys represent unmanaged families.
-				detectedIPsForWAF[ipNet] = nil
+				targetsForWAF[ipFamily] = targets
 			}
 		}
 	}
@@ -194,10 +196,9 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 	// Close all idle connections after the IP detection
 	provider.CloseIdleConnections()
 
-	// Update WAF lists when we have fresh targets, or when some families are unmanaged
-	// and stale ranges for those families should be removed.
-	if numValidIPs > 0 || numManagedNetworks < ipnet.NetworkCount {
-		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, detectedIPsForWAF))
+	// Update WAF lists only when at least one family has a usable desired target set.
+	if shouldUpdateWAF {
+		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, targetsForWAF))
 	}
 
 	return MergeMessages(msgs...)
@@ -207,9 +208,9 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
 
-	for ipNet, provider := range ipnet.Bindings(c.Provider) {
+	for ipFamily, provider := range ipnet.Bindings(c.Provider) {
 		if provider != nil {
-			msgs = append(msgs, finalDeleteIP(ctx, ppfmt, c, s, ipNet))
+			msgs = append(msgs, finalDeleteIP(ctx, ppfmt, c, s, ipFamily))
 		}
 	}
 

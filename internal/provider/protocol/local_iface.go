@@ -52,7 +52,7 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 
 // SelectInterfaceIPs takes a list of unicast [net.Addr] and keeps all
 // matching global-unicast addresses in canonical sorted order.
-func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net.Addr) ([]netip.Addr, bool) {
+func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipFamily ipnet.Family, addrs []net.Addr) ([]netip.Addr, bool) {
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
@@ -73,7 +73,7 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net
 		// Keep only addresses in the requested family that are usable as
 		// unicast targets. Note that IsGlobalUnicast still includes private
 		// and internal ranges.
-		if !ipNet.Matches(ip) || !ip.IsGlobalUnicast() {
+		if !ipFamily.Matches(ip) || !ip.IsGlobalUnicast() {
 			continue
 		}
 		// By this point the address matches the requested family and is global
@@ -91,7 +91,7 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net
 	if len(ips) == 0 {
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
-			ipNet.Describe(), iface)
+			ipFamily.Describe(), iface)
 		return nil, false
 	}
 
@@ -100,18 +100,22 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipNet ipnet.Type, addrs []net
 
 // GetIPs detects IP addresses from unicast addresses assigned to a network
 // interface.
-func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
+func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	iface, err := net.InterfaceByName(p.InterfaceName)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", p.InterfaceName, err)
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
 	addrs, err := iface.Addrs()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
-	return SelectInterfaceIPs(ppfmt, p.InterfaceName, ipNet, addrs)
+	ips, ok := SelectInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, addrs)
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }

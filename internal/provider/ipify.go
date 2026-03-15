@@ -9,7 +9,7 @@ import (
 func NewIpify() Provider {
 	return protocol.HTTP{
 		ProviderName: "ipify",
-		URL: map[ipnet.Type]string{
+		URL: map[ipnet.Family]string{
 			ipnet.IP4: "https://api4.ipify.org",
 			ipnet.IP6: "https://api6.ipify.org",
 		},

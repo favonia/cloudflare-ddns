@@ -137,7 +137,7 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string, name string, class dnsmessage.Class,
+func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url string, name string, class dnsmessage.Class,
 ) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
@@ -150,7 +150,7 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string
 	}
 
 	c := httpCore{
-		ipNet:  ipNet,
+		ipFamily: ipFamily,
 		url:    url,
 		method: http.MethodPost,
 		additionalHeaders: map[string]string{
@@ -176,7 +176,7 @@ type DNSOverHTTPSParam = struct {
 // DNSOverHTTPS represents a generic detection protocol using DNS over HTTPS.
 type DNSOverHTTPS struct {
 	ProviderName string // name of the protocol
-	Param        map[ipnet.Type]DNSOverHTTPSParam
+	Param        map[ipnet.Family]DNSOverHTTPSParam
 }
 
 // Name of the detection protocol.
@@ -185,17 +185,21 @@ func (p DNSOverHTTPS) Name() string {
 }
 
 // GetIPs detects the IP address by DNS over HTTPS.
-func (p DNSOverHTTPS) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
-	param, found := p.Param[ipNet]
+func (p DNSOverHTTPS) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+	param, found := p.Param[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return nil, false
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		return NewUnavailableTargets()
 	}
 
-	ip, ok := getIPFromDNS(ctx, ppfmt, ipNet, param.URL, param.Name, param.Class)
+	ip, ok := getIPFromDNS(ctx, ppfmt, ipFamily, param.URL, param.Name, param.Class)
 	if !ok {
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
-	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }

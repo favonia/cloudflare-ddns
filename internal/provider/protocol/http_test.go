@@ -63,10 +63,10 @@ func TestHTTPGetIPs(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		nilCtx        bool
-		urlKey        ipnet.Type
+		urlKey        ipnet.Family
 		url           string
-		ipNet         ipnet.Type
-		transportIP   *ipnet.Type
+		ipFamily      ipnet.Family
+		transportIP   *ipnet.Family
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -146,7 +146,7 @@ func TestHTTPGetIPs(t *testing.T) {
 
 			provider := &protocol.HTTP{
 				ProviderName: "secret name",
-				URL: map[ipnet.Type]string{
+				URL: map[ipnet.Family]string{
 					tc.urlKey: tc.url,
 				},
 				ForcedTransportIPFamily: tc.transportIP,
@@ -164,13 +164,13 @@ func TestHTTPGetIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			ips, ok := provider.GetIPs(ctx, mockPP, tc.ipNet)
-			require.Equal(t, tc.expected.IsValid(), ok)
+			targets := provider.GetIPs(ctx, mockPP, tc.ipFamily)
+			require.Equal(t, tc.expected.IsValid(), targets.Available)
 			if tc.expected.IsValid() {
-				require.Len(t, ips, 1)
-				require.Equal(t, tc.expected, ips[0])
+				require.Len(t, targets.IPs, 1)
+				require.Equal(t, tc.expected, targets.IPs[0])
 			} else {
-				require.Empty(t, ips)
+				require.Empty(t, targets.IPs)
 			}
 		})
 	}

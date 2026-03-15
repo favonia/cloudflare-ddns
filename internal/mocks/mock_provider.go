@@ -11,11 +11,11 @@ package mocks
 
 import (
 	context "context"
-	netip "net/netip"
 	reflect "reflect"
 
 	ipnet "github.com/favonia/cloudflare-ddns/internal/ipnet"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
+	provider "github.com/favonia/cloudflare-ddns/internal/provider"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -44,18 +44,17 @@ func (m *MockProvider) EXPECT() *MockProviderMockRecorder {
 }
 
 // GetIPs mocks base method.
-func (m *MockProvider) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
+func (m *MockProvider) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) provider.Targets {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIPs", ctx, ppfmt, ipNet)
-	ret0, _ := ret[0].([]netip.Addr)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "GetIPs", ctx, ppfmt, ipFamily)
+	ret0, _ := ret[0].(provider.Targets)
+	return ret0
 }
 
 // GetIPs indicates an expected call of GetIPs.
-func (mr *MockProviderMockRecorder) GetIPs(ctx, ppfmt, ipNet any) *MockProviderGetIPsCall {
+func (mr *MockProviderMockRecorder) GetIPs(ctx, ppfmt, ipFamily any) *MockProviderGetIPsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIPs", reflect.TypeOf((*MockProvider)(nil).GetIPs), ctx, ppfmt, ipNet)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIPs", reflect.TypeOf((*MockProvider)(nil).GetIPs), ctx, ppfmt, ipFamily)
 	return &MockProviderGetIPsCall{Call: call}
 }
 
@@ -65,19 +64,19 @@ type MockProviderGetIPsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockProviderGetIPsCall) Return(arg0 []netip.Addr, arg1 bool) *MockProviderGetIPsCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockProviderGetIPsCall) Return(arg0 provider.Targets) *MockProviderGetIPsCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockProviderGetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Type) ([]netip.Addr, bool)) *MockProviderGetIPsCall {
+func (c *MockProviderGetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Family) provider.Targets) *MockProviderGetIPsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockProviderGetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type) ([]netip.Addr, bool)) *MockProviderGetIPsCall {
+func (c *MockProviderGetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family) provider.Targets) *MockProviderGetIPsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
