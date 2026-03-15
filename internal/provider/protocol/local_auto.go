@@ -9,6 +9,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+type udpDialContext func(context.Context, string, string) (net.Conn, error)
+
 // LocalAuto detects the IP address by pretending to send out an UDP packet
 // and using the source IP address assigned by the system. In most cases
 // it will detect the IP address of the network interface toward the internet.
@@ -46,8 +48,19 @@ func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 // GetIPs detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
 func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
-	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, ipFamily.UDPNetwork(), p.RemoteUDPAddr)
+	return p.getIPsWithDialContext(ctx, ppfmt, ipFamily, func(ctx context.Context, network, remoteUDPAddr string) (net.Conn, error) {
+		var dialer net.Dialer
+		return dialer.DialContext(ctx, network, remoteUDPAddr)
+	})
+}
+
+func (p LocalAuto) getIPsWithDialContext(
+	ctx context.Context,
+	ppfmt pp.PP,
+	ipFamily ipnet.Family,
+	dialContext udpDialContext,
+) Targets {
+	conn, err := dialContext(ctx, ipFamily.UDPNetwork(), p.RemoteUDPAddr)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipFamily.Describe(), err)
 		return NewUnavailableTargets()
