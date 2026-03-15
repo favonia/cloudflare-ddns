@@ -45,11 +45,16 @@ func (p HTTP) Name() string {
 	return p.ProviderName
 }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (HTTP) IsExplicitEmpty() bool {
+	return false
+}
+
 // GetIPs detects the IP address by using the HTTP response directly.
 func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	url, found := p.URL[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
 		return NewUnavailableTargets()
 	}
 

@@ -28,7 +28,7 @@ type prepareSetterMocks func(ctx context.Context, cancel func(), p *mocks.MockPP
 
 type dnsRecordFixture struct {
 	domain    domain.Domain
-	ipNetwork ipnet.Family
+	ipFamily  ipnet.Family
 	record1   api.ID
 	record2   api.ID
 	record3   api.ID
@@ -41,7 +41,7 @@ type dnsRecordFixture struct {
 func newDNSRecordFixture() dnsRecordFixture {
 	return dnsRecordFixture{
 		domain:    domain.FQDN("sub.test.org"),
-		ipNetwork: ipnet.IP6,
+		ipFamily:  ipnet.IP6,
 		record1:   api.ID("record1"),
 		record2:   api.ID("record2"),
 		record3:   api.ID("record3"),
@@ -96,144 +96,144 @@ func expectRecordList(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Family,
+	ipFamily ipnet.Family,
 	domain domain.Domain,
 	params api.RecordParams,
 	records []api.Record,
 	cached bool,
 	ok bool,
 ) any {
-	return h.EXPECT().ListRecords(ctx, p, ipNetwork, domain, params).Return(records, cached, ok)
+	return h.EXPECT().ListRecords(ctx, p, ipFamily, domain, params).Return(records, cached, ok)
 }
 
 func expectRecordCreate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Family,
+	ipFamily ipnet.Family,
 	domain domain.Domain,
 	ip netip.Addr,
 	params api.RecordParams,
 	id api.ID,
 	ok bool,
 ) any {
-	return h.EXPECT().CreateRecord(ctx, p, ipNetwork, domain, ip, params).Return(id, ok)
+	return h.EXPECT().CreateRecord(ctx, p, ipFamily, domain, ip, params).Return(id, ok)
 }
 
 func expectRecordUpdate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Family,
+	ipFamily ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	ip netip.Addr,
 	desiredParams api.RecordParams,
 	ok bool,
 ) any {
-	return h.EXPECT().UpdateRecord(ctx, p, ipNetwork, domain, id, ip, desiredParams).Return(ok)
+	return h.EXPECT().UpdateRecord(ctx, p, ipFamily, domain, id, ip, desiredParams).Return(ok)
 }
 
 func expectRecordDelete(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Family,
+	ipFamily ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	mode api.DeletionMode,
 	ok bool,
 ) any {
-	return h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, id, mode).Return(ok)
+	return h.EXPECT().DeleteRecord(ctx, p, ipFamily, domain, id, mode).Return(ok)
 }
 
-func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
+func expectRecordAddedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiCreation,
 		"Added a new %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
 	)
 }
 
-func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
+func expectRecordUpdatedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
 		"Updated a stale %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
 	)
 }
 
-func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
+func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
 		"Deleted a stale %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
 	)
 }
 
-func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
 			"The %s records of %s are already up to date (cached)",
-			ipNetwork.RecordType(),
+			ipFamily.RecordType(),
 			domain.Describe(),
 		)
 	}
 	return p.EXPECT().Infof(
 		pp.EmojiAlreadyDone,
 		"The %s records of %s are already up to date",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 	)
 }
 
-func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
 			"The %s records of %s were already deleted (cached)",
-			ipNetwork.RecordType(),
+			ipFamily.RecordType(),
 			domain.Describe(),
 		)
 	}
 	return p.EXPECT().Infof(
 		pp.EmojiAlreadyDone,
 		"The %s records of %s were already deleted",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 	)
 }
 
-func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
+func expectRecordSetFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm update of %s records of %s; records might be inconsistent",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 	)
 }
 
-func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
+func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm deletion of %s records of %s; records might be inconsistent",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 	)
 }
 
-func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
+func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Infof(
 		pp.EmojiTimeout,
 		"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
-		ipNetwork.RecordType(),
+		ipFamily.RecordType(),
 		domain.Describe(),
 	)
 }

@@ -62,11 +62,6 @@ func MustNewStatic(raw string) Provider {
 	return p
 }
 
-// IsStaticEmpty reports whether the provider is the explicit-empty static mode.
-func IsStaticEmpty(p Provider) bool {
-	return Name(p) == "static.empty"
-}
-
 // StaticTargets returns the configured explicit targets of a static provider.
 func StaticTargets(p Provider) ([]netip.Addr, bool) {
 	static, ok := p.(protocol.Static)

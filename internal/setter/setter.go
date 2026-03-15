@@ -215,14 +215,14 @@ func reconcileAndSortRecords(
 // SetIPs updates the IP addresses of one domain to the given target set.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
-	ipNetwork ipnet.Family, domain domain.Domain, ips []netip.Addr,
+	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
 	configuredParams api.RecordParams,
 ) ResponseCode {
-	recordType := ipNetwork.RecordType()
+	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 	targets := ips
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipNetwork, domain, configuredParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, configuredParams)
 	if !ok {
 		return ResponseFailed
 	}
@@ -264,7 +264,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			recycled := staleRecords[0]
 			staleRecords = staleRecords[1:]
 			mutated = true
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, recycled.ID, target,
+			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, recycled.ID, target,
 				resolvedParamsForNewTargets,
 			); !ok {
 				ppfmt.Noticef(pp.EmojiError,
@@ -279,7 +279,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		}
 
 		mutated = true
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipNetwork, domain, target, resolvedParamsForNewTargets)
+		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, target, resolvedParamsForNewTargets)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -293,7 +293,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// Stage 2: delete stale/out-of-target leftovers.
 	for _, r := range staleRecords {
 		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); !ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDelitionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
@@ -312,13 +312,13 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 }
 
 // FinalDelete deletes all managed DNS records.
-func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Family, domain domain.Domain,
+func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 	configuredParams api.RecordParams,
 ) ResponseCode {
-	recordType := ipnet.RecordType()
+	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipnet, domain, configuredParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, configuredParams)
 	if !ok {
 		return ResponseFailed
 	}
@@ -340,7 +340,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Family
 
 	allOK := true
 	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, ipnet, domain, id, api.FinalDeletionMode) {
+		if !s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode) {
 			allOK = false
 
 			if ctx.Err() != nil {

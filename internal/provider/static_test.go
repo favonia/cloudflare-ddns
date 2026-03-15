@@ -50,6 +50,56 @@ func TestStaticEmptyName(t *testing.T) {
 	require.Equal(t, "static.empty", provider.Name(provider.NewStaticEmpty()))
 }
 
+func TestIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, provider.NewStaticEmpty().IsExplicitEmpty())
+	require.False(t, provider.MustNewStatic("1.1.1.1").IsExplicitEmpty())
+	require.False(t, provider.NewIpify().IsExplicitEmpty())
+}
+
+func TestStaticTargets(t *testing.T) {
+	t.Parallel()
+
+	t.Run("static", func(t *testing.T) {
+		t.Parallel()
+
+		p := provider.MustNewStatic("2.2.2.2,1.1.1.1,2.2.2.2")
+		targets, ok := provider.StaticTargets(p)
+		require.True(t, ok)
+		require.Equal(t, []netip.Addr{
+			netip.MustParseAddr("1.1.1.1"),
+			netip.MustParseAddr("2.2.2.2"),
+		}, targets)
+
+		targets[0] = netip.MustParseAddr("3.3.3.3")
+		targetsAgain, ok := provider.StaticTargets(p)
+		require.True(t, ok)
+		require.Equal(t, []netip.Addr{
+			netip.MustParseAddr("1.1.1.1"),
+			netip.MustParseAddr("2.2.2.2"),
+		}, targetsAgain)
+	})
+
+	t.Run("non-static", func(t *testing.T) {
+		t.Parallel()
+
+		targets, ok := provider.StaticTargets(provider.NewIpify())
+		require.False(t, ok)
+		require.Nil(t, targets)
+	})
+}
+
+func TestStaticMatchesFamily(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, provider.StaticMatchesFamily(provider.NewStaticEmpty(), ipnet.IP4))
+	require.True(t, provider.StaticMatchesFamily(provider.MustNewStatic("1.1.1.1"), ipnet.IP4))
+	require.False(t, provider.StaticMatchesFamily(provider.MustNewStatic("1.1.1.1"), ipnet.IP6))
+	require.False(t, provider.StaticMatchesFamily(provider.MustNewStatic("1.1.1.1,1::1"), ipnet.IP4))
+	require.False(t, provider.StaticMatchesFamily(provider.NewIpify(), ipnet.IP4))
+}
+
 func TestStaticGetIPs(t *testing.T) {
 	t.Parallel()
 

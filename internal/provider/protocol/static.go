@@ -32,6 +32,11 @@ func (p Static) Name() string {
 	return p.ProviderName
 }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (p Static) IsExplicitEmpty() bool {
+	return len(p.IPs) == 0
+}
+
 // GetIPs returns the IPs as a deterministic set.
 func (p Static) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, p.IPs)

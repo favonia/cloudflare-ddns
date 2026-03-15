@@ -38,8 +38,8 @@ func TestSetIPs(t *testing.T) {
 			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{}, true, true),
-					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{}, true, true),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipFamily, fixture.domain, true),
 				)
 			},
 		},
@@ -49,10 +49,10 @@ func TestSetIPs(t *testing.T) {
 			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 					}, false, true),
-					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, false),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipFamily, fixture.domain, false),
 				)
 			},
 		},
@@ -62,14 +62,14 @@ func TestSetIPs(t *testing.T) {
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip2, fixture.params),
 					}, true, true),
-					expectRecordDelete(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record1, api.RegularDelitionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record1),
-					expectRecordDelete(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record2),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.RegularDelitionMode, true),
+					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
+					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 				)
 			},
 		},
@@ -81,7 +81,7 @@ func TestSetIPs(t *testing.T) {
 				// InOrder is stricter than the API contract here. We intentionally pin
 				// deterministic ordering for canonical SetIPs inputs.
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record3, ip4, fixture.params),
@@ -90,16 +90,16 @@ func TestSetIPs(t *testing.T) {
 						ctx,
 						p,
 						h,
-						fixture.ipNetwork,
+						fixture.ipFamily,
 						fixture.domain,
 						fixture.record3,
 						fixture.ip2,
 						fixture.params,
 						true,
 					),
-					expectRecordUpdatedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record3),
-					expectRecordCreate(ctx, p, h, fixture.ipNetwork, fixture.domain, ip3, fixture.params, record4, true),
-					expectRecordAddedNotice(p, fixture.ipNetwork, fixture.domain, record4),
+					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record3),
+					expectRecordCreate(ctx, p, h, fixture.ipFamily, fixture.domain, ip3, fixture.params, record4, true),
+					expectRecordAddedNotice(p, fixture.ipFamily, fixture.domain, record4),
 				)
 			},
 		},
@@ -109,7 +109,7 @@ func TestSetIPs(t *testing.T) {
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, ip4, fixture.params),
 						dnsRecord(fixture.record2, ip5, fixture.params),
 						dnsRecord(fixture.record3, ip6, fixture.params),
@@ -118,28 +118,28 @@ func TestSetIPs(t *testing.T) {
 						ctx,
 						p,
 						h,
-						fixture.ipNetwork,
+						fixture.ipFamily,
 						fixture.domain,
 						fixture.record1,
 						fixture.ip1,
 						fixture.params,
 						true,
 					),
-					expectRecordUpdatedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record1),
+					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 					expectRecordUpdate(
 						ctx,
 						p,
 						h,
-						fixture.ipNetwork,
+						fixture.ipFamily,
 						fixture.domain,
 						fixture.record2,
 						fixture.ip2,
 						fixture.params,
 						true,
 					),
-					expectRecordUpdatedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record2),
-					expectRecordDelete(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, false),
-					expectRecordSetFailedNotice(p, fixture.ipNetwork, fixture.domain),
+					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDelitionMode, false),
+					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -150,11 +150,11 @@ func TestSetIPs(t *testing.T) {
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
 				_ = cancel
 				gomock.InOrder(
-					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 					}, true, true),
-					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipFamily, fixture.domain, true),
 				)
 			},
 		},
@@ -167,7 +167,7 @@ func TestSetIPs(t *testing.T) {
 			ctx, h := newSetterHarness(t)
 			h.prepare(ctx, tc.prepareMocks)
 
-			resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, tc.ips, fixture.params)
+			resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, tc.ips, fixture.params)
 			require.Equal(t, tc.resp, resp)
 		})
 	}
@@ -189,15 +189,15 @@ func TestSetIPsCreateDoesNotInheritMetadataFromDeletedDuplicate(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, inherited),
 		}, true, true),
-		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, targetCreate, fixture.params, record4, true),
-		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
+		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, targetCreate, fixture.params, record4, true),
+		expectRecordAddedNotice(h.mockPP, fixture.ipFamily, fixture.domain, record4),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -208,14 +208,14 @@ func TestSetIPsDuplicateKeeperUsesLowestID(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -230,15 +230,15 @@ func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testin
 	nonMatching.Comment = "foreign"
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(record0, fixture.ip1, nonMatching),
 			dnsRecord(fixture.record3, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -254,14 +254,14 @@ func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
 	secondNonMatching.TTL = fixture.params.TTL + 60
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, firstNonMatching),
 			dnsRecord(fixture.record2, fixture.ip1, secondNonMatching),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -282,7 +282,7 @@ func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, nonMatchingA),
 			dnsRecord(fixture.record2, fixture.ip1, nonMatchingB),
 			dnsRecord(fixture.record3, ip3, fixture.params),
@@ -291,17 +291,17 @@ func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record3,
 			fixture.ip2,
 			fixture.params,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -322,16 +322,16 @@ func TestSetIPsStaleDeleteBeforeMatchedUpdate(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, nonMatchingA),
 			dnsRecord(fixture.record2, fixture.ip1, nonMatchingB),
 			dnsRecord(fixture.record3, ip3, fixture.params),
 		}, true, true),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
+		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -350,7 +350,7 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record3, fixture.ip1, nonMatchingA),
 			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
@@ -358,10 +358,10 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 			dnsRecord(record5, fixture.ip2, fixture.params),
 			dnsRecord(record4, fixture.ip2, fixture.params),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -375,7 +375,7 @@ func TestSetIPsStaleRecycleUsesLowestIDTieBreak(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record2, ip3, fixture.params),
 			dnsRecord(fixture.record1, ip4, fixture.params),
 		}, true, true),
@@ -383,29 +383,29 @@ func TestSetIPsStaleRecycleUsesLowestIDTieBreak(t *testing.T) {
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record1,
 			fixture.ip1,
 			fixture.params,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record1),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record1),
 		expectRecordUpdate(
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record2,
 			fixture.ip2,
 			fixture.params,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record2),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -423,24 +423,24 @@ func TestSetIPsRecycleUsesReconciledStaleMetadata(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip2, reconciled),
 		}, true, true),
 		expectRecordUpdate(
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record1,
 			fixture.ip1,
 			reconciled,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record1),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record1),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -459,15 +459,15 @@ func TestSetIPsDuplicateCanonicalTagsWarnOnImpossibleCases(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, withDuplicateCanonicalTags),
 		}, true, true),
-		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, targetCreate, fixture.params, record4, true),
-		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
+		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, targetCreate, fixture.params, record4, true),
+		expectRecordAddedNotice(h.mockPP, fixture.ipFamily, fixture.domain, record4),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -498,7 +498,7 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, withDuplicateCanonicalTags),
 			dnsRecord(fixture.record3, fixture.ip2, staleWithDuplicateCanonicalTags),
@@ -512,17 +512,17 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record3,
 			targetCreate,
 			reconciledFromStale,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
@@ -534,14 +534,14 @@ func TestSetIPsRepeatedKeeperIDWarnsAndReturnsNoop(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(repeatedID, fixture.ip1, fixture.params),
 			dnsRecord(repeatedID, fixture.ip1, fixture.params),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -558,14 +558,14 @@ func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, nonMatching),
 		}, true, true),
-		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipFamily, fixture.domain, true),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
@@ -591,7 +591,7 @@ func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 	ctx, h := newSetterHarness(t)
 
 	gomock.InOrder(
-		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
+		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip2, stale1),
 			dnsRecord(fixture.record2, ip3, stale2),
 		}, true, true),
@@ -604,18 +604,18 @@ func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 			ctx,
 			h.mockPP,
 			h.mockHandle,
-			fixture.ipNetwork,
+			fixture.ipFamily,
 			fixture.domain,
 			fixture.record1,
 			fixture.ip1,
 			reconciled,
 			true,
 		),
-		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record1),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
+		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record1),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
+		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record2),
 	)
 
-	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
+	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
 	require.Equal(t, setter.ResponseUpdated, resp)
 }

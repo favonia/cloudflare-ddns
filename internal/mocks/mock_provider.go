@@ -81,6 +81,44 @@ func (c *MockProviderGetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipne
 	return c
 }
 
+// IsExplicitEmpty mocks base method.
+func (m *MockProvider) IsExplicitEmpty() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsExplicitEmpty")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsExplicitEmpty indicates an expected call of IsExplicitEmpty.
+func (mr *MockProviderMockRecorder) IsExplicitEmpty() *MockProviderIsExplicitEmptyCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsExplicitEmpty", reflect.TypeOf((*MockProvider)(nil).IsExplicitEmpty))
+	return &MockProviderIsExplicitEmptyCall{Call: call}
+}
+
+// MockProviderIsExplicitEmptyCall wrap *gomock.Call
+type MockProviderIsExplicitEmptyCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockProviderIsExplicitEmptyCall) Return(arg0 bool) *MockProviderIsExplicitEmptyCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockProviderIsExplicitEmptyCall) Do(f func() bool) *MockProviderIsExplicitEmptyCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockProviderIsExplicitEmptyCall) DoAndReturn(f func() bool) *MockProviderIsExplicitEmptyCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Name mocks base method.
 func (m *MockProvider) Name() string {
 	m.ctrl.T.Helper()

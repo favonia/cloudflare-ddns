@@ -28,6 +28,11 @@ func (p LocalAuto) Name() string {
 	return p.ProviderName
 }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (LocalAuto) IsExplicitEmpty() bool {
+	return false
+}
+
 // ExtractUDPAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
 // The address will be unmapped.
 func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {

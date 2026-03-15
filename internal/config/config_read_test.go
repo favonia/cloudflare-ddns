@@ -291,7 +291,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records for the configured domains`),
+						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records for the configured domains`),
 				)
 			},
 		},
@@ -335,7 +335,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records and WAF IP items for the configured scope`),
+						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records and WAF IP items for the configured scope`),
 				)
 			},
 		},
@@ -369,7 +369,7 @@ func TestBuildConfig(t *testing.T) {
 					},
 					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
 					TTL:      api.TTLAuto,
-					Proxied: map[domain.Domain]bool{},
+					Proxied:  map[domain.Domain]bool{},
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -378,7 +378,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed WAF IP items for the configured lists`),
+						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed WAF IP items for the configured lists`),
 				)
 			},
 		},

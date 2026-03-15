@@ -39,7 +39,7 @@ func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, ur
 	return c.getIP(ctx, ppfmt)
 }
 
-// RegexpParam is the type of parameters for the Regexp provider for a specific IP network.
+// RegexpParam is the type of parameters for the Regexp provider for a specific IP family.
 type RegexpParam = struct {
 	URL    string         // URL of the detection page
 	Regexp *regexp.Regexp // regular expression to match the IP address
@@ -54,11 +54,14 @@ type Regexp struct {
 // Name of the detection protocol.
 func (p Regexp) Name() string { return p.ProviderName }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (Regexp) IsExplicitEmpty() bool { return false }
+
 // GetIPs detects the IP address by parsing the HTTP response.
 func (p Regexp) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	param, found := p.Param[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
 		return NewUnavailableTargets()
 	}
 

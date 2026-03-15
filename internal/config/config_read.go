@@ -153,9 +153,9 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	activeDomainSet := map[domain.Domain]bool{}
 	for ipFamily, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
-			ipNetDomains := domains[ipFamily]
+			domainsForFamily := domains[ipFamily]
 
-			if len(ipNetDomains) == 0 && len(c.WAFLists) == 0 {
+			if len(domainsForFamily) == 0 && len(c.WAFLists) == 0 {
 				ppfmt.Noticef(pp.EmojiUserWarning,
 					"IP%d_PROVIDER (%s) is ignored because no domains or WAF lists use %s",
 					ipFamily.Int(), describeProviderSettingValuePreview(p), ipFamily.Describe())
@@ -164,7 +164,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			}
 
 			providerMap[ipFamily] = p
-			for _, domain := range ipNetDomains {
+			for _, domain := range domainsForFamily {
 				activeDomainSet[domain] = true
 			}
 		}
@@ -176,24 +176,25 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			provider.Name(nil))
 		return nil, false
 	}
-	if provider.IsStaticEmpty(providerMap[ipnet.IP4]) && provider.IsStaticEmpty(providerMap[ipnet.IP6]) {
+	if providerMap[ipnet.IP4] != nil && providerMap[ipnet.IP4].IsExplicitEmpty() &&
+		providerMap[ipnet.IP6] != nil && providerMap[ipnet.IP6].IsExplicitEmpty() {
 		switch {
 		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records and WAF IP items for the configured scope`)
+				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records and WAF IP items for the configured scope`)
 		case len(activeDomainSet) > 0:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records for the configured domains`)
+				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records for the configured domains`)
 		case len(c.WAFLists) > 0:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed WAF IP items for the configured lists`)
+				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed WAF IP items for the configured lists`)
 		}
 	}
 
 	// Step 3.3: check if some domains are unused.
-	for ipFamily, ipNetDomains := range ipnet.Bindings(domains) {
+	for ipFamily, domainsForFamily := range ipnet.Bindings(domains) {
 		if providerMap[ipFamily] == nil {
-			for _, domain := range ipNetDomains {
+			for _, domain := range domainsForFamily {
 				if activeDomainSet[domain] {
 					continue
 				}

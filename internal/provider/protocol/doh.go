@@ -186,11 +186,16 @@ func (p DNSOverHTTPS) Name() string {
 	return p.ProviderName
 }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (DNSOverHTTPS) IsExplicitEmpty() bool {
+	return false
+}
+
 // GetIPs detects the IP address by DNS over HTTPS.
 func (p DNSOverHTTPS) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	param, found := p.Param[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
 		return NewUnavailableTargets()
 	}
 
