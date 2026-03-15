@@ -6,7 +6,11 @@ Defines: the `SHOUTRRR` input contract and the handling of suspicious single-lin
 
 Does not define: downstream shoutrrr runtime behavior after parsing succeeds.
 
-## Contract
+## Goal
+
+Keep the `SHOUTRRR` input contract simple, deterministic, and safe against common folded-input mistakes.
+
+## Core Model
 
 `SHOUTRRR` is a newline-separated list of shoutrrr URLs.
 
@@ -38,3 +42,18 @@ The design intentionally avoids two failure modes:
 
 - silently rewriting one ambiguous line into multiple URLs
 - deferring a folded multi-URL mistake until downstream shoutrrr runtime behavior
+
+## Scope Boundary
+
+This note applies only to parsing and validation of the raw `SHOUTRRR` input string.
+
+It does not define:
+
+- message delivery behavior after parsing succeeds
+- provider, DNS, or WAF semantics
+- formatting rules for notifier message bodies
+
+## Extension Points
+
+- If future work adds additional suspicious-input heuristics, preserve the newline-separated contract unless the public interface is intentionally redesigned.
+- If future work accepts alternative input surfaces for notifiers, map them back to one clear URL-list contract instead of making parsing behavior format-dependent.

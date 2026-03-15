@@ -6,6 +6,8 @@ Defines: the shared writing rules for beginner-facing README content.
 
 Does not define: feature semantics beyond what the README needs to explain.
 
+This note is about README retrieval and comprehension quality, not feature design.
+
 ## Priorities
 
 1. Put beginners first.
@@ -39,3 +41,13 @@ Does not define: feature semantics beyond what the README needs to explain.
    - Do not add `🧪` merely because a feature is new or unreleased.
    - Apply labels where they materially improve reader understanding; do not repeat them mechanically when repetition would add clutter without clarity.
    - Do not add labels merely to balance positive and negative prose.
+
+## Scope Boundary
+
+This note applies only to `README.markdown`.
+
+It does not define:
+
+- durable feature semantics, which belong in `docs/designs/features/`
+- local message wording outside the README
+- changelog style or release-note policy

@@ -70,3 +70,13 @@ Use safe assertion flow inside HTTP handlers, goroutines, and similar callback c
 - when the callback cannot continue after a failed check, write the assertion as explicit control flow such as `if !assert... { return }`
 
 This rule exists because `require` uses `FailNow`, which `testifylint` rejects in those callback contexts.
+
+## Scope Boundary
+
+This note defines repository-wide testing-boundary conventions.
+
+It does not define:
+
+- feature-specific scenario coverage
+- exact test naming beyond the package/file-boundary rules above
+- when a package should add new tests in the first place

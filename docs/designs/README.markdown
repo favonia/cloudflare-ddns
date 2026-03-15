@@ -15,6 +15,8 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/lint-suppressions.markdown`](guides/lint-suppressions.markdown): read when adding or reviewing inline `//nolint`.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
+- [`features/ip-family-intent-and-target-providers.markdown`](features/ip-family-intent-and-target-providers.markdown): read when changing `IP4_PROVIDER` / `IP6_PROVIDER` semantics, family scope, desired-target intent, or the target-provider model and shutdown behavior derived from IP-family intent.
+- [`features/unified-reconciliation-and-lifecycle-ownership.markdown`](features/unified-reconciliation-and-lifecycle-ownership.markdown): read when changing shared DNS/WAF reconciliation semantics, interruption-risk policy, or shutdown authority rules across managed resources.
 - [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing DNS ownership, filtering, or reconciliation semantics.
 - [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing WAF list ownership, filtering, or cleanup semantics.
 - [`features/local-iface-multi-address.markdown`](features/local-iface-multi-address.markdown): read when changing `local.iface` multi-address behavior.
@@ -39,5 +41,6 @@ When writing or editing a design note:
 - keep temporary staging plans, branch-local rationale, and review notes out of `docs/designs/`
 - keep each note single-purpose and easy to scan
 - link to shared policy instead of restating it
+- preserve unrelated durable content when revising a note; replace or delete it only when the new design explicitly supersedes it
 - update an existing note before considering a new one
 - do not create a new note unless the information is durable, cross-file, and likely to matter again

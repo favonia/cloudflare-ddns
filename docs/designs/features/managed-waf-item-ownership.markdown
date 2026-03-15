@@ -10,13 +10,24 @@ Does not define: exact warning text or repository-wide naming policy.
 
 ## Goal
 
-Isolate ownership safely when multiple updater instances may touch the same WAF list. Ownership affects item discovery, updates, stale-item deletion, and shutdown cleanup.
+Isolate ownership safely when multiple updater instances may touch the same WAF list. Ownership affects item discovery, mutation scope, and shutdown cleanup, but it is only one part of the WAF semantic model.
 
 ## Core Model
 
 - `WAF_LIST_ITEM_COMMENT` is the comment this instance writes to WAF list items that it creates.
 - `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is the selector used to decide which existing WAF list items are managed by this instance.
 - These settings are separate by design: one controls writes, and one controls mutation scope.
+
+Ownership is orthogonal to family intent and lifecycle ownership.
+
+- Ownership scope answers which existing items this updater may touch.
+- Family scope answers whether an IP family is in scope for this run.
+- Desired-target intent answers which target IPs the updater wants covered for an in-scope family.
+- Lifecycle ownership answers whether shutdown may delete only matched items or the whole list root.
+
+Shared family-scope and desired-target semantics are defined in [IP Family Intent and Target Providers](ip-family-intent-and-target-providers.markdown). This note defines WAF ownership and its interaction with family and lifecycle scope.
+
+Shared reconciliation and lifecycle-ownership semantics are defined in [Unified Reconciliation and Lifecycle Ownership](unified-reconciliation-and-lifecycle-ownership.markdown). This note defines the WAF-specific instantiation.
 
 The selector uses Go `regexp` RE2 syntax with `MatchString` semantics, not implicit full-match behavior.
 
@@ -36,16 +47,26 @@ Managed-item filtering happens immediately after listing items from Cloudflare.
 
 Only matched items participate in:
 
-- coverage checks for detected IP addresses
+- coverage checks for desired target IPs
 - stale-item deletion during list reconciliation
 - comment-aware warnings about managed items
-- `DELETE_ON_STOP` in ownership-aware mode
+- `DELETE_ON_STOP` in active cleanup scope
 
 Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the target IP address.
 
-### Metadata Reconciliation for New Creates
+### WAF Instantiation
 
-WAF reconciliation resolves create metadata independently per `(list, IP family)` unit.
+WAF instantiates the unified reconciliation model with these resource-specific rules:
+
+- the resource unit is `(list, IP family)`
+- a managed item satisfies a desired target when it covers that desired target IP
+- overlapping managed coverage may remain
+- retained coverage sets may stay history-dependent
+- already-satisfying item metadata is soft unless another WAF-specific contract overrides it
+
+### Metadata for New Creates
+
+WAF reconciliation resolves create metadata independently per `(list, IP family)` unit from recyclable managed items only.
 
 - In this scope, the only managed metadata field is item `comment`.
 - Create comment resolution uses family-local items scheduled for deletion:
@@ -55,47 +76,40 @@ WAF reconciliation resolves create metadata independently per `(list, IP family)
 
 ### Path-Independence Boundary
 
-Path-independence is a secondary stability goal for comment reconciliation, after coverage safety and ownership isolation.
+Path-independence is a secondary stability goal for WAF comment reconciliation, after coverage safety and ownership isolation.
 
-For successful create-then-delete rounds, when a drift step creates managed items and a later drift step makes those items stale, the resolved create comment should match the direct one-step transition outcome from the earlier stale source.
+For successful create-then-delete rounds, when a drift step creates managed items and a later drift step makes those items recyclable, the resolved create comment should match the direct one-step transition outcome from the earlier recyclable source.
 
-This is intentionally narrower than full state canonicalization. Keep-and-fill still preserves any managed ranges that cover current targets, so retained range sets can remain history-dependent even when create-comment resolution is path-stable under the drift pattern above.
+This boundary is intentionally narrower than full state canonicalization. Keep-and-cover still preserves any managed items that already cover desired targets, so retained coverage sets may remain history-dependent even when create-comment resolution is path-stable under the drift pattern above.
 
-Execution order remains create-before-delete to reduce temporary coverage gaps.
+### Interruption-Aware Priority
 
-This ordering is intentional for interruption resilience:
+WAF reconciliation should minimize residual risk under ambiguous partial execution.
 
-1. create missing coverage first,
-2. then delete stale items.
+- Missing desired coverage is higher risk than stale managed coverage.
+- Stale managed coverage is higher risk than metadata or hygiene residue.
 
-Under timeouts or ambiguous network failures, partial execution therefore favors coverage over cleanup.
+Any implementation should order work so higher-risk residual states are reduced before lower-risk ones. This note intentionally records risk order, not one exact operation list.
+
+### Failure and Shutdown Semantics
+
+When family-scope and desired-target semantics are defined elsewhere, WAF ownership interacts with them as follows:
+
+- Out-of-scope family intent preserves existing managed items of that family.
+- Explicit-empty family intent reconciles that family to no managed items.
+- Temporary target-set unavailability preserves existing managed items because desired targets are unknown.
 
 ## Shutdown Deletion Semantics
 
-`DELETE_ON_STOP` has two WAF modes:
+Lifecycle ownership determines shutdown authority.
 
-- With a non-empty `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`, shutdown cleanup deletes only matched managed items.
-- With the empty default selector, shutdown cleanup first tries deleting the whole list.
-- The mode switch uses only the configured selector template being empty or non-empty.
-- Do not infer "match-all" behavior from general regex semantics when selecting cleanup mode.
+- WAF lists are potentially root-owned resources because the updater can create them from configuration alone.
+- A WAF list is only root-owned for a run when the updater's current cleanup scope covers all semantic content it owns in that list.
+- Shared ownership or out-of-scope family preservation makes the list member-owned for that run.
+- Root-owned cleanup may delete the whole list.
+- Member-owned cleanup deletes only managed items in active family scope.
 
-The empty default is preserved for backward compatibility, but it is ambiguous in shared-list deployments and should be documented and warned about carefully.
-
-### Final Cleanup Execution Model
-
-Both modes share one cleanup state machine after list discovery:
-
-1. Check whether the target list exists.
-2. If missing, treat cleanup as already complete (`Noop`).
-3. Select cleanup scope (managed items for shared ownership; all items for whole-list fallback).
-4. Start asynchronous item deletion for that scope.
-
-The operational difference between the two modes is only one pre-step:
-
-- Whole-list ownership tries deleting the whole list first.
-- Shared ownership skips that pre-step.
-
-If whole-list ownership cannot find the list during final cleanup, it emits a warning and returns `Noop`. This keeps cleanup idempotent while still surfacing drift.
+The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule. Cleanup authority comes from ownership plus active family scope.
 
 ## Caching Contract
 
