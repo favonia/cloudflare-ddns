@@ -3,6 +3,7 @@ package provider
 
 import (
 	"context"
+	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -24,10 +25,14 @@ import (
 type Targets = protocol.Targets
 
 // NewAvailableTargets builds the managed deterministic target-set state.
-var NewAvailableTargets = protocol.NewAvailableTargets
+func NewAvailableTargets(ips []netip.Addr) Targets {
+	return protocol.NewAvailableTargets(ips)
+}
 
 // NewUnavailableTargets builds the managed temporary-unavailability state.
-var NewUnavailableTargets = protocol.NewUnavailableTargets
+func NewUnavailableTargets() Targets {
+	return protocol.NewUnavailableTargets()
+}
 
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {

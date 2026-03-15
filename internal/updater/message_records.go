@@ -86,7 +86,8 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments,
-			"Could not confirm update of ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+			"Could not confirm update of ", ipFamily.RecordType(),
+			" records of ", pp.EnglishJoin(domains), " with ", ipDescription,
 		)
 	}
 

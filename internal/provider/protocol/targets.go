@@ -25,7 +25,7 @@ func NewAvailableTargets(ips []netip.Addr) Targets {
 
 // NewUnavailableTargets builds the managed temporary-unavailability state.
 func NewUnavailableTargets() Targets {
-	return Targets{Available: false}
+	return Targets{Available: false, IPs: nil}
 }
 
 // HasUsableTargets reports whether reconciliation may mutate toward a known target set.

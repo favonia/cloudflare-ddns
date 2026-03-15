@@ -15,8 +15,16 @@ func TestMatchManagedWAFListItemComment(t *testing.T) {
 	t.Parallel()
 
 	regex := regexp.MustCompile("^managed$")
-	policyWithNil := HandleOwnershipPolicy{}
-	policyWithRegex := HandleOwnershipPolicy{ManagedWAFListItemsCommentRegex: regex}
+	policyWithNil := HandleOwnershipPolicy{
+		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: false,
+	}
+	policyWithRegex := HandleOwnershipPolicy{
+		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   regex,
+		AllowWholeWAFListDeleteOnShutdown: false,
+	}
 
 	require.True(t, policyWithNil.MatchManagedWAFListItemComment("any comment"))
 	require.True(t, policyWithRegex.MatchManagedWAFListItemComment("managed"))

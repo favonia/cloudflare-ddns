@@ -96,8 +96,9 @@ const (
 // HandleOptions bundles handle-scoped settings that affect cache correctness
 // and other per-handle behavior.
 type HandleOptions struct {
-	CacheExpiration time.Duration
 	HandleOwnershipPolicy
+
+	CacheExpiration time.Duration
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.
@@ -130,7 +131,9 @@ type Handle interface {
 	// DeleteRecord deletes one managed DNS record by ID.
 	//
 	// mode controls cache invalidation behavior for failure handling.
-	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain, id ID, mode DeletionMode) bool
+	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family,
+		domain domain.Domain, id ID, mode DeletionMode,
+	) bool
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
 	// It creates the list if it does not exist.

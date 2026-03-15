@@ -22,7 +22,9 @@ func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
 	}[ipFamily]
 }
 
-func detectIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipFamily ipnet.Family) (provider.Targets, Message) {
+func detectIPs(
+	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipFamily ipnet.Family,
+) (provider.Targets, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 

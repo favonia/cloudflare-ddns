@@ -3,6 +3,7 @@ package updater_test
 
 import (
 	"context"
+	"maps"
 	"net/netip"
 	"testing"
 	"testing/synctest"
@@ -77,14 +78,6 @@ func hintIP6DetectionFails(p *mocks.MockPP) *mocks.MockPPNoticeOncefCall {
 	return p.EXPECT().NoticeOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", pp.ManualURL)
 }
 
-func availableTargets(families map[ipnet.Family][]netip.Addr) familyTargets {
-	result := make(familyTargets, len(families))
-	for ipFamily, ips := range families {
-		result[ipFamily] = provider.NewAvailableTargets(ips)
-	}
-	return result
-}
-
 func wafTargets(ip4, ip6 []netip.Addr) familyTargets {
 	result := familyTargets{}
 	if ip4 != nil {
@@ -98,21 +91,11 @@ func wafTargets(ip4, ip6 []netip.Addr) familyTargets {
 
 func withUnavailableTargets(base familyTargets, families ...ipnet.Family) familyTargets {
 	cloned := make(familyTargets, len(base))
-	for ipFamily, targets := range base {
-		cloned[ipFamily] = targets
-	}
+	maps.Copy(cloned, base)
 	for _, ipFamily := range families {
 		cloned[ipFamily] = provider.NewUnavailableTargets()
 	}
 	return cloned
-}
-
-func shutdownTargets(enabled providerEnablers) cleanupFamilies {
-	result := cleanupFamilies{}
-	for ipFamily := range enabled {
-		result[ipFamily] = true
-	}
-	return result
 }
 
 func runUpdateIPsScenario(
@@ -677,7 +660,7 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 			[]string{"Failed to detect any IPv4 addresses"},
 			[]string{"Failed to detect any IPv4 addresses."},
 			providerEnablers{ipnet.IP4: true},
-			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP4).DoAndReturn(
 						func(context.Context, pp.PP, ipnet.Family) provider.Targets {

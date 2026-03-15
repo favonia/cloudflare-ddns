@@ -14,6 +14,7 @@ type HandleOwnershipPolicy struct {
 	AllowWholeWAFListDeleteOnShutdown bool
 }
 
+// MatchManagedRecordComment reports whether a DNS record comment is in scope.
 func (p HandleOwnershipPolicy) MatchManagedRecordComment(comment string) bool {
 	if p.ManagedRecordsCommentRegex == nil {
 		return true
@@ -21,6 +22,7 @@ func (p HandleOwnershipPolicy) MatchManagedRecordComment(comment string) bool {
 	return p.ManagedRecordsCommentRegex.MatchString(comment)
 }
 
+// MatchManagedWAFListItemComment reports whether a WAF item comment is in scope.
 func (p HandleOwnershipPolicy) MatchManagedWAFListItemComment(comment string) bool {
 	if p.ManagedWAFListItemsCommentRegex == nil {
 		return true
@@ -28,6 +30,7 @@ func (p HandleOwnershipPolicy) MatchManagedWAFListItemComment(comment string) bo
 	return p.ManagedWAFListItemsCommentRegex.MatchString(comment)
 }
 
+// Sanitize normalizes contradictory ownership settings and logs advisories.
 func (p HandleOwnershipPolicy) Sanitize(ppfmt pp.PP) HandleOwnershipPolicy {
 	if !p.AllowWholeWAFListDeleteOnShutdown {
 		return p

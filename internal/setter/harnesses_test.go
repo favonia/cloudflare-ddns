@@ -1,6 +1,7 @@
 package setter_test
 
 import (
+	"maps"
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -70,12 +71,10 @@ func unavailableDetected(ip4, ip6 bool) map[ipnet.Family]provider.Targets {
 	return result
 }
 
-func mergeDetected(maps ...map[ipnet.Family]provider.Targets) map[ipnet.Family]provider.Targets {
+func mergeDetected(targetSets ...map[ipnet.Family]provider.Targets) map[ipnet.Family]provider.Targets {
 	result := map[ipnet.Family]provider.Targets{}
-	for _, m := range maps {
-		for ipFamily, targets := range m {
-			result[ipFamily] = targets
-		}
+	for _, detectedByFamily := range targetSets {
+		maps.Copy(result, detectedByFamily)
 	}
 	return result
 }

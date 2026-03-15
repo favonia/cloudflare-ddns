@@ -373,7 +373,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Family
 // - available targets: keep ranges covering any target, add smallest prefixes for uncovered targets
 // - explicit empty (available + empty target set): delete managed family ranges
 // - target unavailable: preserve managed family ranges
-// - out of scope: preserve managed family ranges
+// - out of scope: preserve managed family ranges.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string,
 	targetsByFamily map[ipnet.Family]provider.Targets, configuredItemComment string,

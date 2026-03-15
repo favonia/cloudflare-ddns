@@ -167,30 +167,10 @@ func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain d
 	)
 }
 
-func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiUpdate,
-		"Updated a matched %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
-		domain.Describe(),
-		id,
-	)
-}
-
 func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
 		"Deleted a stale %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
-		domain.Describe(),
-		id,
-	)
-}
-
-func expectRecordDuplicateDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiDeletion,
-		"Deleted a duplicate %s record of %s (ID: %s)",
 		ipNetwork.RecordType(),
 		domain.Describe(),
 		id,
@@ -272,6 +252,24 @@ type wafListMutationExpectation struct {
 	deleteOK        bool
 }
 
+//nolint:unparam // This helper keeps repeated noop fixtures concise despite constant local test inputs.
+func wafListNoopExpectation(
+	listDescription, configuredItemComment string, alreadyExisting, cached bool,
+) wafListMutationExpectation {
+	return wafListMutationExpectation{
+		listDescription: listDescription,
+		items:           nil,
+		alreadyExisting: alreadyExisting,
+		cached:          cached,
+		createItems:     nil,
+		createPrefixes:  nil,
+		createComment:   configuredItemComment,
+		createOK:        false,
+		deleteItems:     nil,
+		deleteOK:        false,
+	}
+}
+
 func expectWAFListRead(
 	ctx context.Context,
 	p *mocks.MockPP,
@@ -292,19 +290,16 @@ func expectWAFListNoop(
 	p *mocks.MockPP,
 	m *mocks.MockHandle,
 	list api.WAFList,
-	listDescription string,
-	configuredItemComment string,
+	want wafListMutationExpectation,
 	items []api.WAFListItem,
-	alreadyExisting bool,
-	cached bool,
 ) {
 	calls := []any{
-		expectWAFListRead(ctx, p, m, list, listDescription, configuredItemComment, items, alreadyExisting, cached, true),
+		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, items, want.alreadyExisting, want.cached, true),
 	}
-	if !alreadyExisting {
+	if !want.alreadyExisting {
 		calls = append(calls, expectWAFListCreatedNotice(p, list))
 	}
-	calls = append(calls, expectWAFListNoopNotice(p, list, cached))
+	calls = append(calls, expectWAFListNoopNotice(p, list, want.cached))
 	gomock.InOrder(calls...)
 }
 

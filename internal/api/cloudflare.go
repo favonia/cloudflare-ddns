@@ -71,7 +71,7 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		return nil, false
 	}
 
-	options.HandleOwnershipPolicy = options.HandleOwnershipPolicy.Sanitize(ppfmt)
+	options.HandleOwnershipPolicy = options.Sanitize(ppfmt)
 
 	h := cloudflareHandle{
 		cf:      handle,

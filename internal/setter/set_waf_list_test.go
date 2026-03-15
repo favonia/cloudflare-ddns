@@ -132,7 +132,9 @@ func TestSetWAFList(t *testing.T) {
 			detected: mergeDetected(detectedSets(nil, []netip.Addr{ip6}), unavailableDetected(true, false)),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, skipUnknownItems, true, true)
+				expectWAFListNoop(ctx, p, m, wafList,
+					wafListNoopExpectation(listDescription, itemComment, true, true),
+					skipUnknownItems)
 			},
 		},
 		{
@@ -140,7 +142,9 @@ func TestSetWAFList(t *testing.T) {
 			detected: detectedSets(nil, []netip.Addr{ip6}),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4range1, prefix6}, true, false)
+				expectWAFListNoop(ctx, p, m, wafList,
+					wafListNoopExpectation(listDescription, itemComment, true, false),
+					items{prefix4range1, prefix6})
 			},
 		},
 		{
@@ -148,7 +152,9 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4, prefix6}, true, false)
+				expectWAFListNoop(ctx, p, m, wafList,
+					wafListNoopExpectation(listDescription, itemComment, true, false),
+					items{prefix4, prefix6})
 			},
 		},
 		{
@@ -156,7 +162,9 @@ func TestSetWAFList(t *testing.T) {
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				expectWAFListNoop(ctx, p, m, wafList, listDescription, itemComment, items{prefix4, prefix6}, true, true)
+				expectWAFListNoop(ctx, p, m, wafList,
+					wafListNoopExpectation(listDescription, itemComment, true, true),
+					items{prefix4, prefix6})
 			},
 		},
 		{

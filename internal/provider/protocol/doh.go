@@ -137,7 +137,9 @@ func parseDNSResponse(ppfmt pp.PP, r []byte, id uint16, name string, class dnsme
 	return parseDNSAnswers(ppfmt, msg.Answers, name, class)
 }
 
-func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url string, name string, class dnsmessage.Class,
+func getIPFromDNS(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family,
+	url, name string, class dnsmessage.Class,
 ) (netip.Addr, bool) {
 	var invalidIP netip.Addr
 
@@ -151,8 +153,8 @@ func getIPFromDNS(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url s
 
 	c := httpCore{
 		ipFamily: ipFamily,
-		url:    url,
-		method: http.MethodPost,
+		url:      url,
+		method:   http.MethodPost,
 		additionalHeaders: map[string]string{
 			"Content-Type": "application/dns-message",
 			"Accept":       "application/dns-message",
