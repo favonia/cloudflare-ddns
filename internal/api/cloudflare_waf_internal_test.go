@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -59,4 +60,20 @@ func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(
 			map[string]bool{"expected": true},
 		)
 	})
+}
+
+func TestDescribeInScopeWAFFamilies(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "IPv4 and IPv6", describeInScopeWAFFamilies(map[ipnet.Family]bool{
+		ipnet.IP4: true,
+		ipnet.IP6: true,
+	}))
+	require.Equal(t, "IPv4", describeInScopeWAFFamilies(map[ipnet.Family]bool{
+		ipnet.IP4: true,
+	}))
+	require.Equal(t, "IPv6", describeInScopeWAFFamilies(map[ipnet.Family]bool{
+		ipnet.IP6: true,
+	}))
+	require.Equal(t, "no", describeInScopeWAFFamilies(map[ipnet.Family]bool{}))
 }

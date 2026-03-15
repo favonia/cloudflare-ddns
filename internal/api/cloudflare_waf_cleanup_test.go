@@ -300,6 +300,81 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 }
 
+func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		initialItems      []listItem
+		managedFamilies   map[ipnet.Family]bool
+		deleteItemsLimit  int
+		deleteItemIDs     []api.ID
+		prepareCleanupPP  func(*mocks.MockPP)
+		expectedCode      api.WAFListCleanupCode
+		expectedCachedRun bool
+	}{
+		"delete-ipv4-only": {
+			initialItems: []listItem{
+				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+				{ID: "item-v6", Prefix: "2001:db8::/64", Comment: "managed"},
+			},
+			managedFamilies:  cleanupFamilies(ipnet.IP4),
+			deleteItemsLimit: 1,
+			deleteItemIDs:    []api.ID{"item-v4"},
+			prepareCleanupPP: func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiClear,
+					"Deleting managed IPv4 items in list %s asynchronously", "account456/list")
+			},
+			expectedCode: api.WAFListCleanupUpdating,
+		},
+		"cached-noop-ipv6-only": {
+			initialItems: []listItem{
+				{ID: "item-v4", Prefix: "10.0.0.1/32", Comment: "managed"},
+			},
+			managedFamilies:  cleanupFamilies(ipnet.IP6),
+			deleteItemsLimit: 0,
+			deleteItemIDs:    nil,
+			prepareCleanupPP: func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone,
+					"Managed IPv6 items in list %s were already deleted (cached)", "account456/list")
+			},
+			expectedCode:      api.WAFListCleanupNoop,
+			expectedCachedRun: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newCloudflareHarness(t)
+			listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: len(tc.initialItems), kind: cloudflare.ListTypeIP}})
+			itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.initialItems)
+			deleteHandler := newDeleteListItemsHandler(
+				t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
+
+			listHandler.setRequestLimit(1)
+			itemsHandler.setRequestLimit(1)
+			deleteHandler.setRequestLimit(tc.deleteItemsLimit)
+
+			items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(
+				context.Background(), f.newPP(), mockWAFList, "description", "managed")
+			require.True(t, ok)
+			require.True(t, alreadyExisting)
+			require.False(t, cached)
+			require.NotNil(t, items)
+
+			cleanupPP := f.newPreparedPP(tc.prepareCleanupPP)
+			code := f.cfHandle.FinalCleanWAFList(
+				context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies)
+			require.Equal(t, tc.expectedCode, code)
+
+			if tc.expectedCachedRun {
+				listHandler.setRequestLimit(0)
+				itemsHandler.setRequestLimit(0)
+			}
+			assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+		})
+	}
+}
+
 func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresStaleCache(t *testing.T) {
 	t.Parallel()
 
