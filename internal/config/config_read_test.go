@@ -295,6 +295,93 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"both-static-empty-warning/domains-and-waf": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				WAFLists:          []api.WAFList{{AccountID: "account", Name: "list"}},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records and WAF IP items for the configured scope`),
+				)
+			},
+		},
+		"both-static-empty-warning/waf-only": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				TTL:           api.TTLAuto,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				WAFLists:          []api.WAFList{{AccountID: "account", Name: "list"}},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: nil,
+					},
+					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
+					TTL:      api.TTLAuto,
+					Proxied: map[domain.Domain]bool{},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed WAF IP items for the configured lists`),
+				)
+			},
+		},
 		"ip4none": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:    true,
