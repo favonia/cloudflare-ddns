@@ -31,6 +31,10 @@ func detectIPs(
 	targets := c.Provider[ipFamily].GetIPs(ctx, ppfmt, ipFamily)
 
 	switch {
+	case targets.Available && len(targets.IPs) == 0:
+		ppfmt.Infof(pp.EmojiInternet, "The desired %s target set is empty", ipFamily.Describe())
+		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
+
 	// Fast path: one detected target.
 	case targets.Available && len(targets.IPs) == 1:
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), targets.IPs[0])

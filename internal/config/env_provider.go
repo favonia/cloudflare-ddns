@@ -11,7 +11,7 @@ import (
 // ReadProvider reads an environment variable and parses it as a provider.
 //
 // policyKey was the name of the deprecated parameters IP4/6_POLICY.
-func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provider) bool {
+func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family, field *provider.Provider) bool {
 	val := Getenv(key)
 
 	if val == "" {
@@ -157,20 +157,34 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			*field = p
 		}
 		return ok
-	case len(parts) == 2 && parts[0] == "literal":
+	case len(parts) == 1 && parts[0] == "static.empty":
+		*field = provider.NewStaticEmpty()
+		return true
+	case len(parts) == 2 && parts[0] == "static":
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				`%s=literal: must be followed by at least one IP address`,
+				`%s=static: must be followed by at least one IP address`,
 				key,
 			)
 			return false
 		}
-		p, ok := provider.NewLiteral(ppfmt, parts[1])
-		if ok {
-			*field = p
+		p, ok := provider.NewStatic(ppfmt, parts[1])
+		if !ok {
+			return false
 		}
-		return ok
+		if !provider.StaticMatchesFamily(p, ipFamily) {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				"%s=%s contains IP addresses outside %s",
+				key,
+				provider.Name(p),
+				ipFamily.Describe(),
+			)
+			return false
+		}
+		*field = p
+		return true
 	case len(parts) == 1 && parts[0] == "none":
 		*field = nil
 		return true
@@ -186,8 +200,8 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Family]provider.Provider) boo
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
-	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", &ip4Provider) ||
-		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", &ip6Provider) {
+	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, &ip4Provider) ||
+		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, &ip6Provider) {
 		return false
 	}
 

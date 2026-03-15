@@ -20,6 +20,10 @@ func describeIgnoredSettingValuePreview(value string) string {
 	return pp.QuotePreview(value, ignoredSettingValuePreviewLimit)
 }
 
+func describeProviderSettingValuePreview(p provider.Provider) string {
+	return describeIgnoredSettingValuePreview(provider.Name(p))
+}
+
 // ReadEnv calls the relevant readers to parse all relevant environment variables except
 // - timezone (TZ)
 // - privileges-related ones (PGID and PUID)
@@ -153,8 +157,8 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 
 			if len(ipNetDomains) == 0 && len(c.WAFLists) == 0 {
 				ppfmt.Noticef(pp.EmojiUserWarning,
-					"IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s",
-					ipFamily.Int(), provider.Name(nil), ipFamily.Describe())
+					"IP%d_PROVIDER (%s) is ignored because no domains or WAF lists use %s",
+					ipFamily.Int(), describeProviderSettingValuePreview(p), ipFamily.Describe())
 
 				continue
 			}
@@ -171,6 +175,19 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		ppfmt.Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
 		return nil, false
+	}
+	if provider.IsStaticEmpty(providerMap[ipnet.IP4]) && provider.IsStaticEmpty(providerMap[ipnet.IP6]) {
+		switch {
+		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records and WAF IP items for the configured scope`)
+		case len(activeDomainSet) > 0:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed DNS records for the configured domains`)
+		case len(c.WAFLists) > 0:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				`Both IP4_PROVIDER and IP6_PROVIDER are "static.empty"; this updater will clear managed WAF IP items for the configured lists`)
+		}
 	}
 
 	// Step 3.3: check if some domains are unused.

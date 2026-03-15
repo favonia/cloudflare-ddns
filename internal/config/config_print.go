@@ -123,9 +123,8 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	item("Delete on stop?", "%t", lifecycle.DeleteOnStop)
 	item("Cache expiration:", "%v", handle.Options.CacheExpiration)
 
-	section("DNS and WAF preferred values:")
-	// These settings express the configured values the updater aims to use when
-	// reconciling managed DNS records and WAF content.
+	section("DNS and WAF fallback values:")
+	// These settings are used when old values cannot be reused reliably.
 	item("TTL:", "%s", update.TTL.Describe())
 	{
 		_, inverseMap := computeInverseMap(update.Proxied)

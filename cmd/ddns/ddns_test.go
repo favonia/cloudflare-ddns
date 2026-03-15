@@ -204,7 +204,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 	}
 	updateConfig := &config.UpdateConfig{
 		Provider: map[ipnet.Family]provider.Provider{
-			ipnet.IP4: provider.MustNewLiteral("192.0.2.1"),
+			ipnet.IP4: provider.MustNewStatic("192.0.2.1"),
 			ipnet.IP6: nil,
 		},
 		Domains: map[ipnet.Family][]domain.Domain{

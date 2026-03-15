@@ -12,7 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-func TestMustLiteral(t *testing.T) {
+func TestMustStatic(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
@@ -30,24 +30,30 @@ func TestMustLiteral(t *testing.T) {
 			t.Parallel()
 
 			if tc.ok {
-				require.NotPanics(t, func() { provider.MustNewLiteral(tc.input) })
+				require.NotPanics(t, func() { provider.MustNewStatic(tc.input) })
 			} else {
-				require.Panics(t, func() { provider.MustNewLiteral(tc.input) })
+				require.Panics(t, func() { provider.MustNewStatic(tc.input) })
 			}
 		})
 	}
 }
 
-func TestLiteralName(t *testing.T) {
+func TestStaticName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "literal:1.1.1.1,2.2.2.2", provider.Name(provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")))
+	require.Equal(t, "static:1.1.1.1,2.2.2.2", provider.Name(provider.MustNewStatic("2.2.2.2,1.1.1.1,2.2.2.2")))
 }
 
-func TestLiteralGetIPs(t *testing.T) {
+func TestStaticEmptyName(t *testing.T) {
 	t.Parallel()
 
-	p := provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
+	require.Equal(t, "static.empty", provider.Name(provider.NewStaticEmpty()))
+}
+
+func TestStaticGetIPs(t *testing.T) {
+	t.Parallel()
+
+	p := provider.MustNewStatic("2.2.2.2,1.1.1.1,2.2.2.2")
 	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
 	require.True(t, targets.Available)
@@ -57,20 +63,30 @@ func TestLiteralGetIPs(t *testing.T) {
 	}, targets.IPs)
 }
 
-func TestLiteralGetIPsFailure(t *testing.T) {
+func TestStaticEmptyGetIPs(t *testing.T) {
 	t.Parallel()
 
-	p := provider.MustNewLiteral("1.1.1.1,1::1")
+	p := provider.NewStaticEmpty()
+	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP6)
+
+	require.True(t, targets.Available)
+	require.Empty(t, targets.IPs)
+}
+
+func TestStaticGetIPsFailure(t *testing.T) {
+	t.Parallel()
+
+	p := provider.MustNewStatic("1.1.1.1,1::1")
 	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP6)
 
 	require.False(t, targets.Available)
 	require.Nil(t, targets.IPs)
 }
 
-func TestLiteralGetIPsBoundaryFailure(t *testing.T) {
+func TestStaticGetIPsBoundaryFailure(t *testing.T) {
 	t.Parallel()
 
-	p := provider.MustNewLiteral("127.0.0.1")
+	p := provider.MustNewStatic("127.0.0.1")
 	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
 	require.False(t, targets.Available)

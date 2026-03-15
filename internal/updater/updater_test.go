@@ -427,6 +427,21 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
+		"ip4-only/clear": {
+			true,
+			[]string{"Cleared A of ip4.hello", "Set list(s) 12341234/list"},
+			[]string{"Cleared A records of ip4.hello.", `Updated WAF list(s) 12341234/list.`},
+			providerEnablers{ipnet.IP4: true},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP4].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP4).Return(provider.NewAvailableTargets([]netip.Addr{})),
+					p.EXPECT().Infof(pp.EmojiInternet, "The desired %s target set is empty", "IPv4"),
+					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{}, params).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{}, nil), wafItemComment).Return(setter.ResponseUpdated),
+				)
+			},
+		},
 		"ip4-only/set-fail": {
 			false,
 			[]string{"Could not confirm update of A (127.0.0.1) for ip4.hello", "Could not confirm update of WAF list(s) 12341234/list"},
