@@ -15,6 +15,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+var errDialFailed = errors.New("dial failed")
+
 type stubConn struct {
 	localAddr net.Addr
 	closeErr  error
@@ -24,7 +26,7 @@ func (c stubConn) Read([]byte) (int, error)         { return 0, io.EOF }
 func (c stubConn) Write(p []byte) (int, error)      { return len(p), nil }
 func (c stubConn) Close() error                     { return c.closeErr }
 func (c stubConn) LocalAddr() net.Addr              { return c.localAddr }
-func (c stubConn) RemoteAddr() net.Addr             { return &net.UDPAddr{} }
+func (c stubConn) RemoteAddr() net.Addr             { return &net.UDPAddr{IP: nil, Port: 0, Zone: ""} }
 func (c stubConn) SetDeadline(time.Time) error      { return nil }
 func (c stubConn) SetReadDeadline(time.Time) error  { return nil }
 func (c stubConn) SetWriteDeadline(time.Time) error { return nil }
@@ -58,7 +60,7 @@ func (*stubPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any) {}
 func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
 	t.Parallel()
 
-	mockPP := &stubPP{}
+	mockPP := &stubPP{noticeCalls: nil}
 	provider := LocalAuto{
 		ProviderName:  "auto",
 		RemoteUDPAddr: "198.51.100.10:53",
@@ -69,11 +71,12 @@ func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
 		context.Background(),
 		mockPP,
 		ipnet.IP4,
-		func(ctx context.Context, network, remoteUDPAddr string) (net.Conn, error) {
+		func(_ context.Context, network, remoteUDPAddr string) (net.Conn, error) {
 			require.Equal(t, ipnet.IP4.UDPNetwork(), network)
 			require.Equal(t, provider.RemoteUDPAddr, remoteUDPAddr)
 			return stubConn{
-				localAddr: &net.UDPAddr{IP: expected.AsSlice(), Port: 12345},
+				localAddr: &net.UDPAddr{IP: expected.AsSlice(), Port: 12345, Zone: ""},
+				closeErr:  nil,
 			}, nil
 		},
 	)
@@ -83,7 +86,9 @@ func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
 }
 
 func TestLocalAutoGetIPsWithDialContextInvalidLocalAddr(t *testing.T) {
-	mockPP := &stubPP{}
+	t.Parallel()
+
+	mockPP := &stubPP{noticeCalls: nil}
 	provider := LocalAuto{
 		ProviderName:  "auto",
 		RemoteUDPAddr: "198.51.100.10:53",
@@ -94,7 +99,7 @@ func TestLocalAutoGetIPsWithDialContextInvalidLocalAddr(t *testing.T) {
 		mockPP,
 		ipnet.IP4,
 		func(context.Context, string, string) (net.Conn, error) {
-			return stubConn{localAddr: dummyAddr{}}, nil
+			return stubConn{localAddr: dummyAddr{}, closeErr: nil}, nil
 		},
 	)
 
@@ -109,19 +114,18 @@ func TestLocalAutoGetIPsWithDialContextInvalidLocalAddr(t *testing.T) {
 func TestLocalAutoGetIPsWithDialContextDialFailure(t *testing.T) {
 	t.Parallel()
 
-	mockPP := &stubPP{}
+	mockPP := &stubPP{noticeCalls: nil}
 	provider := LocalAuto{
 		ProviderName:  "auto",
 		RemoteUDPAddr: "198.51.100.10:53",
 	}
-	dialErr := errors.New("dial failed")
 
 	targets := provider.getIPsWithDialContext(
 		context.Background(),
 		mockPP,
 		ipnet.IP6,
 		func(context.Context, string, string) (net.Conn, error) {
-			return nil, dialErr
+			return nil, errDialFailed
 		},
 	)
 
@@ -132,5 +136,7 @@ func TestLocalAutoGetIPsWithDialContextDialFailure(t *testing.T) {
 	require.Equal(t, "Failed to detect a local %s address: %v", mockPP.noticeCalls[0].format)
 	require.Len(t, mockPP.noticeCalls[0].args, 2)
 	require.Equal(t, "IPv6", mockPP.noticeCalls[0].args[0])
-	require.EqualError(t, mockPP.noticeCalls[0].args[1].(error), dialErr.Error())
+	detectedErr, ok := mockPP.noticeCalls[0].args[1].(error)
+	require.True(t, ok)
+	require.ErrorIs(t, detectedErr, errDialFailed)
 }

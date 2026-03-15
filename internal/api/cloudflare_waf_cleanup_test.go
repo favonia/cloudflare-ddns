@@ -324,7 +324,8 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 				ppfmt.EXPECT().Noticef(pp.EmojiClear,
 					"Deleting managed IPv4 items in list %s asynchronously", "account456/list")
 			},
-			expectedCode: api.WAFListCleanupUpdating,
+			expectedCode:      api.WAFListCleanupUpdating,
+			expectedCachedRun: false,
 		},
 		"cached-noop-ipv6-only": {
 			initialItems: []listItem{
