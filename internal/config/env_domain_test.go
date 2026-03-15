@@ -103,13 +103,13 @@ func TestReadDomainMap(t *testing.T) {
 		domains       string
 		ip4Domains    string
 		ip6Domains    string
-		expected      map[ipnet.Type][]domain.Domain
+		expected      map[ipnet.Family][]domain.Domain
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"full": {
 			"  a1.com, a2.com", "b1.com,  b2.com,b2.com", "c1.com,c2.com",
-			map[ipnet.Type][]domain.Domain{
+			map[ipnet.Family][]domain.Domain{
 				ipnet.IP4: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("b1.com"), domain.FQDN("b2.com")},
 				ipnet.IP6: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("c1.com"), domain.FQDN("c2.com")},
 			},
@@ -118,7 +118,7 @@ func TestReadDomainMap(t *testing.T) {
 		},
 		"duplicate": {
 			"  a1.com, a1.com", "a1.com,  a1.com,a1.com", "*.a1.com,a1.com,*.a1.com,*.a1.com",
-			map[ipnet.Type][]domain.Domain{
+			map[ipnet.Family][]domain.Domain{
 				ipnet.IP4: {domain.FQDN("a1.com")},
 				ipnet.IP6: {domain.FQDN("a1.com"), domain.Wildcard("a1.com")},
 			},
@@ -127,7 +127,7 @@ func TestReadDomainMap(t *testing.T) {
 		},
 		"empty": {
 			" ", "   ", "",
-			map[ipnet.Type][]domain.Domain{
+			map[ipnet.Family][]domain.Domain{
 				ipnet.IP4: {},
 				ipnet.IP6: {},
 			},
@@ -148,7 +148,7 @@ func TestReadDomainMap(t *testing.T) {
 			store(t, "IP4_DOMAINS", tc.ip4Domains)
 			store(t, "IP6_DOMAINS", tc.ip6Domains)
 
-			var field map[ipnet.Type][]domain.Domain
+			var field map[ipnet.Family][]domain.Domain
 			mockPP := mocks.NewMockPP(mockCtrl)
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)

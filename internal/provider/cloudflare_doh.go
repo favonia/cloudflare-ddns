@@ -12,7 +12,7 @@ import (
 func NewCloudflareDOH() Provider {
 	return protocol.DNSOverHTTPS{
 		ProviderName: "cloudflare.doh",
-		Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
+		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {
 				"https://cloudflare-dns.com/dns-query",
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,

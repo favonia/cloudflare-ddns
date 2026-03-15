@@ -19,7 +19,7 @@ func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
 
 // ReadDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
 // and consolidate the domains into a map.
-func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
+func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Family][]domain.Domain) bool {
 	var domains, ip4Domains, ip6Domains []domain.Domain
 
 	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
@@ -32,7 +32,7 @@ func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Type][]domain.Domain) bool {
 	ip4Domains = sliceutil.SortAndCompact(append(ip4Domains, domains...), domain.CompareDomain)
 	ip6Domains = sliceutil.SortAndCompact(append(ip6Domains, domains...), domain.CompareDomain)
 
-	*field = map[ipnet.Type][]domain.Domain{
+	*field = map[ipnet.Family][]domain.Domain{
 		ipnet.IP4: ip4Domains,
 		ipnet.IP6: ip6Domains,
 	}

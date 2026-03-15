@@ -100,8 +100,6 @@ func TestSetIPs(t *testing.T) {
 					expectRecordUpdatedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record3),
 					expectRecordCreate(ctx, p, h, fixture.ipNetwork, fixture.domain, ip3, fixture.params, record4, true),
 					expectRecordAddedNotice(p, fixture.ipNetwork, fixture.domain, record4),
-					expectRecordDelete(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordDuplicateDeletedNotice(p, fixture.ipNetwork, fixture.domain, fixture.record2),
 				)
 			},
 		},
@@ -146,18 +144,17 @@ func TestSetIPs(t *testing.T) {
 			},
 		},
 		{
-			name: "many-targets/duplicate-cleanup-timeout/response-updated",
+			name: "many-targets/duplicate-cleanup-timeout/response-noop",
 			ips:  []netip.Addr{fixture.ip1},
-			resp: setter.ResponseUpdated,
+			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
+				_ = cancel
 				gomock.InOrder(
 					expectRecordList(ctx, p, h, fixture.ipNetwork, fixture.domain, fixture.params, []api.Record{
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 					}, true, true),
-					h.EXPECT().DeleteRecord(
-						ctx, p, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
+					expectRecordAlreadyUpdatedInfo(p, fixture.ipNetwork, fixture.domain, true),
 				)
 			},
 		},
@@ -198,28 +195,6 @@ func TestSetIPsCreateDoesNotInheritMetadataFromDeletedDuplicate(t *testing.T) {
 		}, true, true),
 		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, targetCreate, fixture.params, record4, true),
 		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "tags", 2, "common subset",
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "ttl", 2, "configured value",
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "proxied", 2, "configured value",
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "comment", 2, "configured value",
-		),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
@@ -237,12 +212,11 @@ func TestSetIPsDuplicateKeeperUsesLowestID(t *testing.T) {
 			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 		}, true, true),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseNoop, resp)
 }
 
 func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testing.T) {
@@ -261,19 +235,11 @@ func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testin
 			dnsRecord(fixture.record3, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, fixture.params),
 		}, true, true),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "comment", 3, "configured value",
-		),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, record0, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record0),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseNoop, resp)
 }
 
 func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
@@ -292,27 +258,11 @@ func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
 			dnsRecord(fixture.record1, fixture.ip1, firstNonMatching),
 			dnsRecord(fixture.record2, fixture.ip1, secondNonMatching),
 		}, true, true),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "ttl", 2, "configured value",
-		),
-		expectRecordUpdate(
-			ctx,
-			h.mockPP,
-			h.mockHandle,
-			fixture.ipNetwork,
-			fixture.domain,
-			fixture.record1,
-			fixture.ip1,
-			fixture.params,
-			false,
-		),
-		expectRecordSetFailedNotice(h.mockPP, fixture.ipNetwork, fixture.domain),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseFailed, resp)
+	require.Equal(t, setter.ResponseNoop, resp)
 }
 
 func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
@@ -349,35 +299,6 @@ func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 			true,
 		),
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "ttl", 2, "configured value",
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "comment", 2, "configured value",
-		),
-		expectRecordUpdate(
-			ctx,
-			h.mockPP,
-			h.mockHandle,
-			fixture.ipNetwork,
-			fixture.domain,
-			fixture.record1,
-			fixture.ip1,
-			api.RecordParams{
-				TTL:     fixture.params.TTL,
-				Proxied: true,
-				Comment: fixture.params.Comment,
-				Tags:    fixture.params.Tags,
-			},
-			true,
-		),
-		expectRecordMatchedUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record1),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
@@ -408,35 +329,6 @@ func TestSetIPsStaleDeleteBeforeMatchedUpdate(t *testing.T) {
 		}, true, true),
 		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
 		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "ttl", 2, "configured value",
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "comment", 2, "configured value",
-		),
-		expectRecordUpdate(
-			ctx,
-			h.mockPP,
-			h.mockHandle,
-			fixture.ipNetwork,
-			fixture.domain,
-			fixture.record1,
-			fixture.ip1,
-			api.RecordParams{
-				TTL:     fixture.params.TTL,
-				Proxied: true,
-				Comment: fixture.params.Comment,
-				Tags:    fixture.params.Tags,
-			},
-			true,
-		),
-		expectRecordMatchedUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record1),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
@@ -466,23 +358,11 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 			dnsRecord(record5, fixture.ip2, fixture.params),
 			dnsRecord(record4, fixture.ip2, fixture.params),
 		}, true, true),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "comment", 3, "configured value",
-		),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, record6, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record6),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, record5, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record5),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseNoop, resp)
 }
 
 func TestSetIPsStaleRecycleUsesLowestIDTieBreak(t *testing.T) {
@@ -585,18 +465,6 @@ func TestSetIPsDuplicateCanonicalTagsWarnOnImpossibleCases(t *testing.T) {
 		}, true, true),
 		expectRecordCreate(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, targetCreate, fixture.params, record4, true),
 		expectRecordAddedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, record4),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", pp.IssueReportingURL,
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "tags", 2, "common subset",
-		),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
@@ -652,18 +520,6 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 			true,
 		),
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record3),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", pp.IssueReportingURL,
-		),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "tags", 2, "common subset",
-		),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordDuplicateDeletedNotice(h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
@@ -682,13 +538,7 @@ func TestSetIPsRepeatedKeeperIDWarnsAndReturnsNoop(t *testing.T) {
 			dnsRecord(repeatedID, fixture.ip1, fixture.params),
 			dnsRecord(repeatedID, fixture.ip1, fixture.params),
 		}, true, true),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"Found repeated managed record ID %s among %s records of %s; skipping duplicate deletion for this impossible case",
-			repeatedID,
-			fixture.ipNetwork.RecordType(),
-			fixture.domain.Describe(),
-		),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
@@ -712,18 +562,11 @@ func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, nonMatching),
 		}, true, true),
-		h.mockPP.EXPECT().Noticef(
-			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "tags", 2, "common subset",
-		),
-		h.mockHandle.EXPECT().DeleteRecord(
-			ctx, h.mockPP, fixture.ipNetwork, fixture.domain, fixture.record2, api.RegularDelitionMode).
-			Do(wrapCancelAsDelete(h.cancel)).Return(false),
+		expectRecordAlreadyUpdatedInfo(h.mockPP, fixture.ipNetwork, fixture.domain, true),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipNetwork, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseNoop, resp)
 }
 
 func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {

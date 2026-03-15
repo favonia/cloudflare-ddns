@@ -16,8 +16,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func mustListen(ipNet ipnet.Type) net.Listener {
-	switch ipNet {
+func mustListen(ipFamily ipnet.Family) net.Listener {
+	switch ipFamily {
 	case ipnet.IP4:
 		l, err := net.Listen("tcp4", "127.0.0.1:0") //nolint:noctx // net.Listen has no context-aware variant.
 		if err != nil {
@@ -35,9 +35,9 @@ func mustListen(ipNet ipnet.Type) net.Listener {
 	}
 }
 
-func newSplitServer(ipNet ipnet.Type, h http.HandlerFunc) *httptest.Server {
+func newSplitServer(ipFamily ipnet.Family, h http.HandlerFunc) *httptest.Server {
 	s := &httptest.Server{ //nolint:exhaustruct
-		Listener: mustListen(ipNet),
+		Listener: mustListen(ipFamily),
 		Config:   &http.Server{Handler: h, ReadHeaderTimeout: time.Minute}, //nolint:exhaustruct
 	}
 	s.Start()
@@ -47,7 +47,7 @@ func newSplitServer(ipNet ipnet.Type, h http.HandlerFunc) *httptest.Server {
 func TestSharedSplitClient(t *testing.T) {
 	t.Parallel()
 
-	server := map[ipnet.Type]*httptest.Server{
+	server := map[ipnet.Family]*httptest.Server{
 		ipnet.IP4: newSplitServer(ipnet.IP4, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, "ip4")
 		})),
@@ -59,8 +59,8 @@ func TestSharedSplitClient(t *testing.T) {
 	t.Cleanup(server[ipnet.IP6].Close)
 
 	for name, tc := range map[string]struct {
-		dialerNet ipnet.Type
-		serverNet ipnet.Type
+		dialerNet ipnet.Family
+		serverNet ipnet.Family
 		ok        bool
 		output    []byte
 	}{
@@ -99,8 +99,8 @@ func TestSharedSplitClient(t *testing.T) {
 func TestSharedSplitClientProtocols(t *testing.T) {
 	t.Parallel()
 
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		client := protocol.SharedSplitClient(ipNet)
+	for _, ipFamily := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
+		client := protocol.SharedSplitClient(ipFamily)
 		transport, ok := client.Transport.(*http.Transport)
 		require.True(t, ok)
 		require.NotNil(t, transport.Protocols)

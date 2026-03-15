@@ -333,20 +333,20 @@ func TestUpdateRecord(t *testing.T) {
 }
 
 func newCreateRecordHandlerWithComment(
-	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string,
+	t *testing.T, mux *http.ServeMux, id string, ipFamily ipnet.Family, domain string, ip string, comment string,
 ) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
+	return newCreateRecordHandlerWithParams(t, mux, id, ipFamily, domain, ip,
 		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: nil},
 		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: nil},
 	)
 }
 
 func newCreateRecordHandlerWithCommentAndTags(
-	t *testing.T, mux *http.ServeMux, id string, ipNet ipnet.Type, domain string, ip string, comment string, tags []string,
+	t *testing.T, mux *http.ServeMux, id string, ipFamily ipnet.Family, domain string, ip string, comment string, tags []string,
 ) httpHandler {
 	t.Helper()
-	return newCreateRecordHandlerWithParams(t, mux, id, ipNet, domain, ip,
+	return newCreateRecordHandlerWithParams(t, mux, id, ipFamily, domain, ip,
 		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: tags},
 		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: comment, Tags: tags},
 	)
@@ -356,7 +356,7 @@ func newCreateRecordHandlerWithParams(
 	t *testing.T,
 	mux *http.ServeMux,
 	id string,
-	ipNet ipnet.Type,
+	ipFamily ipnet.Family,
 	domain string,
 	ip string,
 	requestParams api.RecordParams,
@@ -385,7 +385,7 @@ func newCreateRecordHandlerWithParams(
 			}
 
 			if !assert.Equal(t, domain, record.Name) ||
-				!assert.Equal(t, ipNet.RecordType(), record.Type) ||
+				!assert.Equal(t, ipFamily.RecordType(), record.Type) ||
 				!assert.Equal(t, ip, record.Content) ||
 				!assert.Equal(t, requestParams.TTL.Int(), record.TTL) ||
 				!assert.NotNil(t, record.Proxied) ||
@@ -582,10 +582,12 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-		ManagedWAFListItemsCommentRegex:   nil,
-		AllowWholeWAFListDeleteOnShutdown: true,
+		CacheExpiration: defaultHandleOptions().CacheExpiration,
+		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   nil,
+			AllowWholeWAFListDeleteOnShutdown: true,
+		},
 	})
 	mockPP := f.newPP()
 
@@ -784,10 +786,12 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	managedParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-		ManagedWAFListItemsCommentRegex:   nil,
-		AllowWholeWAFListDeleteOnShutdown: true,
+		CacheExpiration: defaultHandleOptions().CacheExpiration,
+		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   nil,
+			AllowWholeWAFListDeleteOnShutdown: true,
+		},
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,

@@ -64,21 +64,21 @@ func newControlledClient(control func(context.Context, string, string, syscall.R
 }
 
 //nolint:gochecknoglobals
-var sharedSplitClient = map[ipnet.Type]*http.Client{
+var sharedSplitClient = map[ipnet.Family]*http.Client{
 	ipnet.IP4: newControlledClient(filterIP4Only),
 	ipnet.IP6: newControlledClient(filterIP6Only),
 }
 
 // SharedSplitClient returns the shared [http.Client] that allows only the traffic of specified IP family.
-func SharedSplitClient(ipNet ipnet.Type) *http.Client {
-	return sharedSplitClient[ipNet]
+func SharedSplitClient(ipFamily ipnet.Family) *http.Client {
+	return sharedSplitClient[ipFamily]
 }
 
 // SharedRetryableSplitClient returns a [retryablehttp.Client] with the shared underlying [http.Client]
 // that allows only the traffic of specified IP family.
-func SharedRetryableSplitClient(ipNet ipnet.Type) *retryablehttp.Client {
+func SharedRetryableSplitClient(ipFamily ipnet.Family) *retryablehttp.Client {
 	c := retryablehttp.NewClient()
-	c.HTTPClient = SharedSplitClient(ipNet)
+	c.HTTPClient = SharedSplitClient(ipFamily)
 	c.Logger = nil
 	return c
 }

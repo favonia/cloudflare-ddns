@@ -14,6 +14,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 //go:generate go tool mockgen -typed -destination=../mocks/mock_setter.go -package=mocks . Setter
@@ -28,7 +29,7 @@ type Setter interface {
 	SetIPs(
 		ctx context.Context,
 		ppfmt pp.PP,
-		IPNetwork ipnet.Type,
+		ipFamily ipnet.Family,
 		Domain domain.Domain,
 		IPs []netip.Addr,
 		configuredParams api.RecordParams,
@@ -38,34 +39,38 @@ type Setter interface {
 	FinalDelete(
 		ctx context.Context,
 		ppfmt pp.PP,
-		IPNetwork ipnet.Type,
+		ipFamily ipnet.Family,
 		Domain domain.Domain,
 		configuredParams api.RecordParams,
 	) ResponseCode
 
-	// SetWAFList keeps only IP ranges overlapping with detected target sets
-	// and ensures each detected target is covered by at least one range.
+	// SetWAFList reconciles one WAF list against family target states.
 	//
-	// Contract for detected:
-	// - if an entry exists with a non-empty slice, that family is managed and
-	//   the slice is a deterministic target set (sorted, deduplicated)
-	// - if an entry exists with an empty slice, detection was attempted but failed
-	//   and existing matching ranges are preserved
-	// - if an entry is missing, that family is unmanaged and matching ranges are removed
+	// Contract for targetsByFamily:
+	// - map presence means the family is managed/in scope for this run
+	// - map absence means the family is out of scope and existing managed content
+	//   of that family must be preserved
+	// - present + Available=false preserves existing managed content because the
+	//   desired targets are unavailable for this run
+	// - present + Available=true with an empty IP list is the explicit-empty
+	//   intent for that family
+	// - present + Available=true with a non-empty IP list carries a deterministic
+	//   target set (sorted, deduplicated)
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
-		detected map[ipnet.Type][]netip.Addr,
+		targetsByFamily map[ipnet.Family]provider.Targets,
 		configuredItemComment string,
 	) ResponseCode
 
-	// FinalClearWAFList removes managed WAF content during shutdown.
+	// FinalClearWAFList removes managed WAF content during shutdown in managed family scope.
 	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
+		managedFamilies map[ipnet.Family]bool,
 	) ResponseCode
 }

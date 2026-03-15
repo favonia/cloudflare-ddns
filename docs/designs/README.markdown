@@ -14,13 +14,16 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/lint-suppressions.markdown`](guides/lint-suppressions.markdown): read when adding or reviewing inline `//nolint`.
+
+- Umbrella notes:
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
-- [`features/ip-family-intent-and-target-providers.markdown`](features/ip-family-intent-and-target-providers.markdown): read when changing `IP4_PROVIDER` / `IP6_PROVIDER` semantics, family scope, desired-target intent, or the target-provider model and shutdown behavior derived from IP-family intent.
-- [`features/unified-reconciliation-and-lifecycle-ownership.markdown`](features/unified-reconciliation-and-lifecycle-ownership.markdown): read when changing shared DNS/WAF reconciliation semantics, interruption-risk policy, or shutdown authority rules across managed resources.
-- [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing DNS ownership, filtering, or reconciliation semantics.
-- [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing WAF list ownership, filtering, or cleanup semantics.
-- [`features/local-iface-multi-address.markdown`](features/local-iface-multi-address.markdown): read when changing `local.iface` multi-address behavior.
-- [`features/shoutrrr-input-format.markdown`](features/shoutrrr-input-format.markdown): read when changing `SHOUTRRR` parsing.
+- [`features/ownership-model.markdown`](features/ownership-model.markdown): read when changing what this updater may manage, preserve, mutate, or delete across DNS and WAF, including target-provider semantics, attribute-based ownership selectors, or deletion eligibility.
+- [`features/provider-target-validation.markdown`](features/provider-target-validation.markdown): read when changing provider-side IP acceptance, rejection, output shape, or target-set contracts.
+- [`features/reconciliation-algorithm.markdown`](features/reconciliation-algorithm.markdown): read when changing reconciliation semantics or interruption-risk policy across managed resources.
+
+- Ownership instantiations:
+- [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing the DNS instantiation of the ownership model, including DNS attribute-based ownership, filtering, or reconciliation semantics.
+- [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing the WAF instantiation of the ownership model, including WAF attribute-based ownership, filtering, or cleanup semantics.
 
 ## Recording Durable Info
 

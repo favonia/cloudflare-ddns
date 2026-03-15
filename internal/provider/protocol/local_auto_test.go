@@ -85,7 +85,7 @@ func TestLocalAuteGetIPs(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		addr          string
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		ok            bool
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
@@ -131,13 +131,13 @@ func TestLocalAuteGetIPs(t *testing.T) {
 				ProviderName:  "",
 				RemoteUDPAddr: tc.addr,
 			}
-			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.ok, ok)
+			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
+			require.Equal(t, tc.ok, targets.Available)
 			if tc.ok {
-				require.Len(t, ips, 1)
-				require.Equal(t, tc.expected, ips[0])
+				require.Len(t, targets.IPs, 1)
+				require.Equal(t, tc.expected, targets.IPs[0])
 			} else {
-				require.Empty(t, ips)
+				require.Empty(t, targets.IPs)
 			}
 		})
 	}

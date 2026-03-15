@@ -20,7 +20,7 @@ import (
 // - [SetupReporters] reads and constructs heartbeat/notifier services.
 type RawConfig struct {
 	Auth                            api.Auth
-	Provider                        map[ipnet.Type]provider.Provider
+	Provider                        map[ipnet.Family]provider.Provider
 	Domains                         []domain.Domain
 	IP4Domains                      []domain.Domain
 	IP6Domains                      []domain.Domain
@@ -69,8 +69,10 @@ type LifecycleConfig struct {
 // UpdateConfig holds the validated settings used during IP detection and
 // DNS/WAF reconciliation.
 type UpdateConfig struct {
-	Provider           map[ipnet.Type]provider.Provider
-	Domains            map[ipnet.Type][]domain.Domain
+	// Provider contains only managed families in the built config.
+	// Map absence means the family is out of scope for this updater.
+	Provider           map[ipnet.Family]provider.Provider
+	Domains            map[ipnet.Family][]domain.Domain
 	WAFLists           []api.WAFList
 	TTL                api.TTL
 	Proxied            map[domain.Domain]bool
@@ -86,7 +88,7 @@ type UpdateConfig struct {
 func DefaultRaw() *RawConfig {
 	return &RawConfig{
 		Auth: nil,
-		Provider: map[ipnet.Type]provider.Provider{
+		Provider: map[ipnet.Family]provider.Provider{
 			ipnet.IP4: provider.NewCloudflareTrace(),
 			ipnet.IP6: provider.NewCloudflareTrace(),
 		},

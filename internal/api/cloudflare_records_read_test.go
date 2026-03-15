@@ -24,10 +24,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func mockDNSRecord(id string, ipNet ipnet.Type, domain string, ip string) cloudflare.DNSRecord {
+func mockDNSRecord(id string, ipFamily ipnet.Family, domain string, ip string) cloudflare.DNSRecord {
 	return cloudflare.DNSRecord{ //nolint:exhaustruct
 		ID:      id,
-		Type:    ipNet.RecordType(),
+		Type:    ipFamily.RecordType(),
 		Name:    domain,
 		Content: ip,
 		TTL:     1,
@@ -43,7 +43,7 @@ type formattedRecord struct {
 	Tags    []string
 }
 
-func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
+func mockDNSListResponse(ipFamily ipnet.Family, domain string, rs []formattedRecord) cloudflare.DNSListResponse {
 	// Pagination is intentionally delegated to cloudflare-go (ListDNSRecords).
 	// These tests mock a single page only to focus on this package's logic.
 	if len(rs) > dnsRecordPageSize {
@@ -52,7 +52,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 
 	raw := make([]cloudflare.DNSRecord, 0, len(rs))
 	for _, r := range rs {
-		record := mockDNSRecord(r.ID, ipNet, domain, r.IP)
+		record := mockDNSRecord(r.ID, ipFamily, domain, r.IP)
 		record.Comment = r.Comment
 		record.Tags = r.Tags
 		raw = append(raw, record)
@@ -66,7 +66,7 @@ func mockDNSListResponse(ipNet ipnet.Type, domain string, rs []formattedRecord) 
 }
 
 func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
-	ipNet ipnet.Type, domain string, rs []formattedRecord, //nolint:unparam // Keep the handler signature aligned with the test inputs.
+	ipFamily ipnet.Family, domain string, rs []formattedRecord, //nolint:unparam // Keep the handler signature aligned with the test inputs.
 ) httpHandler {
 	t.Helper()
 
@@ -85,14 +85,14 @@ func newListRecordsHandler(t *testing.T, mux *http.ServeMux,
 				"name":     {domain},
 				"page":     {"1"},
 				"per_page": {strconv.Itoa(dnsRecordPageSize)},
-				"type":     {ipNet.RecordType()},
+				"type":     {ipFamily.RecordType()},
 			}, r.URL.Query()) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipNet, domain, rs))
+			err := json.NewEncoder(w).Encode(mockDNSListResponse(ipFamily, domain, rs))
 			assert.NoError(t, err)
 		})
 
@@ -298,10 +298,12 @@ func TestListRecords(t *testing.T) {
 			t.Parallel()
 
 			f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-				CacheExpiration:                   defaultHandleOptions().CacheExpiration,
-				ManagedRecordsCommentRegex:        tc.managedRecordsCommentRegex,
-				ManagedWAFListItemsCommentRegex:   nil,
-				AllowWholeWAFListDeleteOnShutdown: true,
+				CacheExpiration: defaultHandleOptions().CacheExpiration,
+				HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+					ManagedRecordsCommentRegex:        tc.managedRecordsCommentRegex,
+					ManagedWAFListItemsCommentRegex:   nil,
+					AllowWholeWAFListDeleteOnShutdown: true,
+				},
 			})
 
 			zh := newZonesHandler(t, f.serveMux, tc.zones)
@@ -413,10 +415,12 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
-		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-		ManagedWAFListItemsCommentRegex:   nil,
-		AllowWholeWAFListDeleteOnShutdown: true,
+		CacheExpiration: defaultHandleOptions().CacheExpiration,
+		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   nil,
+			AllowWholeWAFListDeleteOnShutdown: true,
+		},
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
@@ -455,6 +459,6 @@ func envelopDNSRecordResponse(record cloudflare.DNSRecord) cloudflare.DNSRecordR
 	}
 }
 
-func mockDNSRecordResponse(id string, ipNet ipnet.Type, domain string, ip string) cloudflare.DNSRecordResponse {
-	return envelopDNSRecordResponse(mockDNSRecord(id, ipNet, domain, ip))
+func mockDNSRecordResponse(id string, ipFamily ipnet.Family, domain string, ip string) cloudflare.DNSRecordResponse {
+	return envelopDNSRecordResponse(mockDNSRecord(id, ipFamily, domain, ip))
 }

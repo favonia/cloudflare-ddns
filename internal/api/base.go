@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
-	"regexp"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
@@ -97,10 +96,9 @@ const (
 // HandleOptions bundles handle-scoped settings that affect cache correctness
 // and other per-handle behavior.
 type HandleOptions struct {
-	CacheExpiration                   time.Duration
-	ManagedRecordsCommentRegex        *regexp.Regexp
-	ManagedWAFListItemsCommentRegex   *regexp.Regexp
-	AllowWholeWAFListDeleteOnShutdown bool
+	HandleOwnershipPolicy
+
+	CacheExpiration time.Duration
 }
 
 // A Handle represents a generic API to update DNS records and WAF lists.
@@ -111,7 +109,7 @@ type Handle interface {
 	// implementations may cache filtered records by domain/IP-family scope.
 	//
 	// The second return value indicates whether the list was cached.
-	ListRecords(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+	ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		configuredParams RecordParams,
 	) ([]Record, bool, bool)
 
@@ -121,19 +119,21 @@ type Handle interface {
 	// desiredParams for this record:
 	// - content/IP: ip
 	// - ttl/proxied/comment/tags: desiredParams
-	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		id ID, ip netip.Addr, desiredParams RecordParams,
 	) bool
 
 	// CreateRecord creates one managed DNS record with the given desired metadata.
 	// It returns the ID of the new record.
-	CreateRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain,
+	CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		ip netip.Addr, desiredParams RecordParams) (ID, bool)
 
 	// DeleteRecord deletes one managed DNS record by ID.
 	//
 	// mode controls cache invalidation behavior for failure handling.
-	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, domain domain.Domain, id ID, mode DeletionMode) bool
+	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family,
+		domain domain.Domain, id ID, mode DeletionMode,
+	) bool
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
 	// It creates the list if it does not exist.
@@ -150,12 +150,12 @@ type Handle interface {
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
 	// Implementations choose whole-list or managed-item cleanup from the handle's
-	// bound ownership policy.
+	// bound ownership policy and the in-scope family set for the run.
 	//
 	// The handle should not be reused for any further update operations after
 	// calling this method.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-		configuredDescription string,
+		configuredDescription string, managedFamilies map[ipnet.Family]bool,
 	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.

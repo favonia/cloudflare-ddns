@@ -34,11 +34,11 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	lifecycleConfig.DeleteOnStop = raw.DeleteOnStop
 
 	updateConfig := &config.UpdateConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
-	updateConfig.Provider = map[ipnet.Type]provider.Provider{
+	updateConfig.Provider = map[ipnet.Family]provider.Provider{
 		ipnet.IP4: raw.Provider[ipnet.IP4],
 		ipnet.IP6: raw.Provider[ipnet.IP6],
 	}
-	updateConfig.Domains = map[ipnet.Type][]domain.Domain{
+	updateConfig.Domains = map[ipnet.Family][]domain.Domain{
 		ipnet.IP4: nil,
 		ipnet.IP6: nil,
 	}

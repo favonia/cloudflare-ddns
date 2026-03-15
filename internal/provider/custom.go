@@ -13,7 +13,7 @@ func newCustomURL(
 	ppfmt pp.PP,
 	providerName string,
 	rawURL string,
-	forcedTransportIPFamily *ipnet.Type,
+	forcedTransportIPFamily *ipnet.Family,
 ) (Provider, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -40,7 +40,7 @@ func newCustomURL(
 
 	return protocol.HTTP{
 		ProviderName: providerName,
-		URL: map[ipnet.Type]string{
+		URL: map[ipnet.Family]string{
 			ipnet.IP4: rawURL,
 			ipnet.IP6: rawURL,
 		},

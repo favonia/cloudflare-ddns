@@ -20,12 +20,12 @@ func mustIP(ip string) netip.Addr {
 func TestInt(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		input    ipnet.Type
+		input    ipnet.Family
 		expected int
 	}{
 		"4":   {ipnet.IP4, 4},
 		"6":   {ipnet.IP6, 6},
-		"100": {ipnet.Type(100), 0},
+		"100": {ipnet.Family(100), 0},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -37,12 +37,12 @@ func TestInt(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		input    ipnet.Type
+		input    ipnet.Family
 		expected string
 	}{
 		"4":   {ipnet.IP4, "IPv4"},
 		"6":   {ipnet.IP6, "IPv6"},
-		"100": {ipnet.Type(100), ""},
+		"100": {ipnet.Family(100), ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -54,12 +54,12 @@ func TestDescribe(t *testing.T) {
 func TestRecordType(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		input    ipnet.Type
+		input    ipnet.Family
 		expected string
 	}{
 		"4":   {ipnet.IP4, "A"},
 		"6":   {ipnet.IP6, "AAAA"},
-		"100": {ipnet.Type(100), ""},
+		"100": {ipnet.Family(100), ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -71,12 +71,12 @@ func TestRecordType(t *testing.T) {
 func TestUDPNetwork(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		input    ipnet.Type
+		input    ipnet.Family
 		expected string
 	}{
 		"4":   {ipnet.IP4, "udp4"},
 		"6":   {ipnet.IP6, "udp6"},
-		"100": {ipnet.Type(100), ""},
+		"100": {ipnet.Family(100), ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -92,7 +92,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 	singleton := func(ip netip.Addr) []netip.Addr { return []netip.Addr{ip} }
 
 	for name, tc := range map[string]struct {
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		input         []netip.Addr
 		ok            bool
 		expected      []netip.Addr
@@ -283,7 +283,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			ips, ok := tc.ipNet.NormalizeDetectedIPs(mockPP, tc.input)
+			ips, ok := tc.ipFamily.NormalizeDetectedIPs(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, ips)
 		})
@@ -293,7 +293,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 func TestMatches(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		ipNet    ipnet.Type
+		ipFamily ipnet.Family
 		ip       netip.Addr
 		expected bool
 	}{
@@ -301,11 +301,11 @@ func TestMatches(t *testing.T) {
 		"4/no":  {ipnet.IP4, netip.IPv6Unspecified(), false},
 		"6/yes": {ipnet.IP6, netip.IPv6Unspecified(), true},
 		"6/no":  {ipnet.IP6, netip.IPv4Unspecified(), false},
-		"100":   {ipnet.Type(100), netip.Addr{}, false},
+		"100":   {ipnet.Family(100), netip.Addr{}, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.expected, tc.ipNet.Matches(tc.ip))
+			require.Equal(t, tc.expected, tc.ipFamily.Matches(tc.ip))
 		})
 	}
 }
@@ -314,12 +314,12 @@ func TestBindings(t *testing.T) {
 	t.Parallel()
 
 	count := 0
-	for ipNet := range ipnet.Bindings(map[ipnet.Type]int{
+	for ipFamily := range ipnet.Bindings(map[ipnet.Family]int{
 		ipnet.IP4: 400,
 		ipnet.IP6: 600,
 	}) {
 		count++
-		require.Equal(t, ipnet.IP4, ipNet)
+		require.Equal(t, ipnet.IP4, ipFamily)
 		break
 	}
 	require.Equal(t, 1, count)

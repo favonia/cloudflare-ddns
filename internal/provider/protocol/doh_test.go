@@ -103,8 +103,8 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 	invalidIP := netip.Addr{}
 
 	for name, tc := range map[string]struct {
-		urlKey        ipnet.Type
-		ipNet         ipnet.Type
+		urlKey        ipnet.Family
+		ipFamily      ipnet.Family
 		name          string
 		class         dnsmessage.Class
 		response      bool
@@ -544,7 +544,7 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 
 			provider := &protocol.DNSOverHTTPS{
 				ProviderName: "",
-				Param: map[ipnet.Type]protocol.DNSOverHTTPSParam{
+				Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
 					tc.urlKey: {server.URL, tc.name, tc.class},
 				},
 			}
@@ -553,13 +553,13 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.expected.IsValid(), ok)
+			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
+			require.Equal(t, tc.expected.IsValid(), targets.Available)
 			if tc.expected.IsValid() {
-				require.Len(t, ips, 1)
-				require.Equal(t, tc.expected, ips[0])
+				require.Len(t, targets.IPs, 1)
+				require.Equal(t, tc.expected, targets.IPs[0])
 			} else {
-				require.Empty(t, ips)
+				require.Empty(t, targets.IPs)
 			}
 		})
 	}
