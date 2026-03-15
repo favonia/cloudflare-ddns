@@ -30,7 +30,7 @@ func TestNewCustom(t *testing.T) {
 		input                     string
 		ok                        bool
 		expectedProviderName      string
-		expectedTransportIPFamily *ipnet.Type
+		expectedTransportIPFamily *ipnet.Family
 		prepareMockPP             func(*mocks.MockPP)
 	}{
 		{

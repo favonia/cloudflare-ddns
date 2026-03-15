@@ -15,10 +15,20 @@ func TestMatchManagedWAFListItemComment(t *testing.T) {
 	t.Parallel()
 
 	regex := regexp.MustCompile("^managed$")
+	policyWithNil := HandleOwnershipPolicy{
+		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: false,
+	}
+	policyWithRegex := HandleOwnershipPolicy{
+		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   regex,
+		AllowWholeWAFListDeleteOnShutdown: false,
+	}
 
-	require.True(t, matchManagedWAFListItemComment(nil, "any comment"))
-	require.True(t, matchManagedWAFListItemComment(regex, "managed"))
-	require.False(t, matchManagedWAFListItemComment(regex, "foreign"))
+	require.True(t, policyWithNil.MatchManagedWAFListItemComment("any comment"))
+	require.True(t, policyWithRegex.MatchManagedWAFListItemComment("managed"))
+	require.False(t, policyWithRegex.MatchManagedWAFListItemComment("foreign"))
 }
 
 func TestStartDeletingWAFListItemsAsyncWithNoIDs(t *testing.T) {

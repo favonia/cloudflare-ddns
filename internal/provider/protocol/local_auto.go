@@ -45,19 +45,23 @@ func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 
 // GetIPs detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
+func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
 	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, ipNet.UDPNetwork(), p.RemoteUDPAddr)
+	conn, err := dialer.DialContext(ctx, ipFamily.UDPNetwork(), p.RemoteUDPAddr)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipNet.Describe(), err)
-		return nil, false
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipFamily.Describe(), err)
+		return NewUnavailableTargets()
 	}
 	defer conn.Close()
 
 	ip, ok := ExtractUDPAddr(ppfmt, conn.LocalAddr())
 	if !ok {
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
-	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }

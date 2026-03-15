@@ -23,6 +23,10 @@ func (p Static) Name() string {
 }
 
 // GetIPs returns the IPs as a deterministic set.
-func (p Static) GetIPs(_ context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
-	return ipNet.NormalizeDetectedIPs(ppfmt, p.IPs)
+func (p Static) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, p.IPs)
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }

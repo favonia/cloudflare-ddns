@@ -20,7 +20,7 @@ func NewCloudflareTrace() Provider {
 func NewCloudflareTraceCustom(url string) Provider {
 	return protocol.Regexp{
 		ProviderName: "cloudflare.trace",
-		Param: map[ipnet.Type]protocol.RegexpParam{
+		Param: map[ipnet.Family]protocol.RegexpParam{
 			ipnet.IP4: {url, fieldIP},
 			ipnet.IP6: {url, fieldIP},
 		},

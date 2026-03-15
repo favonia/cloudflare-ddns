@@ -93,7 +93,7 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	require.Empty(t, auth.BaseURL)
 	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP4]))
 	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP6]))
-	require.Equal(t, map[ipnet.Type][]domain.Domain{
+	require.Equal(t, map[ipnet.Family][]domain.Domain{
 		ipnet.IP4: {domain.FQDN("example.org")},
 		ipnet.IP6: {domain.FQDN("example.org")},
 	}, updateConfig.Domains)
@@ -203,11 +203,11 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		DeleteOnStop:  true,
 	}
 	updateConfig := &config.UpdateConfig{
-		Provider: map[ipnet.Type]provider.Provider{
+		Provider: map[ipnet.Family]provider.Provider{
 			ipnet.IP4: provider.MustNewLiteral("192.0.2.1"),
 			ipnet.IP6: nil,
 		},
-		Domains: map[ipnet.Type][]domain.Domain{
+		Domains: map[ipnet.Family][]domain.Domain{
 			ipnet.IP4: {domain4},
 			ipnet.IP6: nil,
 		},
@@ -222,7 +222,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 	}
 
 	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
-	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list").Return(setter.ResponseUpdated)
+	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list", gomock.Any()).Return(setter.ResponseUpdated)
 	mockHeartbeat.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
 			require.True(t, msg.OK)

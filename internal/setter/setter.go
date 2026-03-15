@@ -11,6 +11,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 type setter struct {
@@ -102,15 +103,9 @@ func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Recor
 		return false
 	}
 	for _, target := range targets {
-		// Intentionally treat one matched record per target as already settled
-		// even if its metadata differs from configuredParams.
-		//
-		// This branch's reconciliation policy uses configured DNS metadata as
-		// preferred values, not forced values: unanimous metadata already present
-		// on matched managed records may be kept. Metadata reconciliation below is
-		// therefore for duplicates and stale-to-new recycling, not for forcing a
-		// same-IP singleton record back to the configured values.
-		if len(matched[target]) != 1 {
+		// Already-satisfying managed records are soft residue, even when more than
+		// one record covers the same desired target or their metadata differs.
+		if len(matched[target]) == 0 {
 			return false
 		}
 	}
@@ -220,7 +215,7 @@ func reconcileAndSortRecords(
 // SetIPs updates the IP addresses of one domain to the given target set.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
-	ipNetwork ipnet.Type, domain domain.Domain, ips []netip.Addr,
+	ipNetwork ipnet.Family, domain domain.Domain, ips []netip.Addr,
 	configuredParams api.RecordParams,
 ) ResponseCode {
 	recordType := ipNetwork.RecordType()
@@ -234,12 +229,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 
 	matchedByIP, unmatchedTargets, staleRecords := partitionRecords(targets, rs)
 
-	// If records already match all desired targets (one record per target, with no
-	// stale or duplicate leftovers), we are done.
-	//
-	// Do not add metadata equality checks here unless the documented policy
-	// changes. A singleton matched record with unanimous metadata is allowed to
-	// keep that metadata as an already-reconciled outcome.
+	// If records already satisfy all desired targets and no stale managed records
+	// remain, we are done. Matching duplicates are tolerated residue.
 	if recordsAlreadyUpToDate(targets, matchedByIP, staleRecords) {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
@@ -253,19 +244,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		return ResponseNoop
 	}
 
-	// Satisfy each target deterministically:
-	// 1. keep one matched record if available,
-	// 2. otherwise recycle one stale record via update,
-	// 3. otherwise create a new record.
+	// Satisfy each uncovered target deterministically:
+	// 1. recycle one stale record via update,
+	// 2. otherwise create a new record.
 	warnings := newAmbiguityWarnings()
 	unit := recordType + " records of " + domainDescription
-	matchedTargets := make([]netip.Addr, 0, len(targets)-len(unmatchedTargets))
 	targetsToCreate := unmatchedTargets
-	for _, target := range targets {
-		if len(matchedByIP[target]) > 0 {
-			matchedTargets = append(matchedTargets, target)
-		}
-	}
 
 	// Stage 1: stale-first operations for unmatched targets.
 	resolvedParamsForNewTargets, staleRecords := reconcileAndSortRecords(
@@ -320,82 +304,6 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 	}
 
-	// Stage 3: update kept matched records if metadata reconciliation changes them.
-	duplicateMatchedNonMatchingRecords := make([]Record, 0)
-	duplicateMatchedMatchingRecords := make([]Record, 0)
-	for _, target := range matchedTargets {
-		matched := matchedByIP[target]
-		// Consume this target bucket exactly once.
-		matchedByIP[target] = nil
-
-		resolvedParams, matchingCandidates, nonMatchingCandidates := reconcileAndPartitionRecords(
-			configuredParams, matched, ppfmt, warnings, unit,
-		)
-		var keptRecord Record
-		if len(matchingCandidates) > 0 {
-			keptRecord = matchingCandidates[0]
-			matchingCandidates = matchingCandidates[1:]
-		} else {
-			keptRecord = nonMatchingCandidates[0]
-			nonMatchingCandidates = nonMatchingCandidates[1:]
-		}
-
-		collectDuplicates := func(candidates []Record, targetBucket *[]Record) {
-			for _, record := range candidates {
-				if record.ID == keptRecord.ID {
-					ppfmt.Noticef(pp.EmojiImpossible,
-						"Found repeated managed record ID %s among %s records of %s; "+
-							"skipping duplicate deletion for this impossible case",
-						keptRecord.ID, recordType, domainDescription,
-					)
-					continue
-				}
-				*targetBucket = append(*targetBucket, record)
-			}
-		}
-		collectDuplicates(matchingCandidates, &duplicateMatchedMatchingRecords)
-		collectDuplicates(nonMatchingCandidates, &duplicateMatchedNonMatchingRecords)
-
-		if !sameDNSRecordParams(keptRecord.RecordParams, resolvedParams) {
-			mutated = true
-			// Same-IP update is intentional here: reconcile metadata on the kept record.
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipNetwork, domain, keptRecord.ID, target,
-				resolvedParams,
-			); !ok {
-				ppfmt.Noticef(pp.EmojiError,
-					"Could not confirm update of %s records of %s; records might be inconsistent",
-					recordType, domainDescription)
-				return ResponseFailed
-			}
-			ppfmt.Noticef(pp.EmojiUpdate,
-				"Updated a matched %s record of %s (ID: %s)",
-				recordType, domainDescription, keptRecord.ID)
-		}
-	}
-
-	// Stage 4: delete duplicate matched records that do not match resolved metadata.
-	for _, r := range duplicateMatchedNonMatchingRecords {
-		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
-			ppfmt.Noticef(pp.EmojiDeletion,
-				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
-		}
-		if ctx.Err() != nil {
-			return ResponseUpdated
-		}
-	}
-	// Stage 5: delete duplicate matched records that already match resolved metadata.
-	for _, r := range duplicateMatchedMatchingRecords {
-		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipNetwork, domain, r.ID, api.RegularDelitionMode); ok {
-			ppfmt.Noticef(pp.EmojiDeletion,
-				"Deleted a duplicate %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
-		}
-		if ctx.Err() != nil {
-			return ResponseUpdated
-		}
-	}
-
 	if !mutated {
 		return ResponseNoop
 	}
@@ -404,7 +312,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 }
 
 // FinalDelete deletes all managed DNS records.
-func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, domain domain.Domain,
+func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Family, domain domain.Domain,
 	configuredParams api.RecordParams,
 ) ResponseCode {
 	recordType := ipnet.RecordType()
@@ -462,12 +370,13 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipnet ipnet.Type, 
 // ownership selector.
 //
 // For each IP family:
-// - managed + targets: keep ranges covering any target, add smallest prefixes for uncovered targets
-// - managed + empty target set: detection failed, preserve existing family ranges
-// - unmanaged: remove all family ranges.
+// - available targets: keep ranges covering any target, add smallest prefixes for uncovered targets
+// - explicit empty (available + empty target set): delete managed family ranges
+// - target unavailable: preserve managed family ranges
+// - out of scope: preserve managed family ranges.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string,
-	detectedIPs map[ipnet.Type][]netip.Addr, configuredItemComment string,
+	targetsByFamily map[ipnet.Family]provider.Targets, configuredItemComment string,
 ) ResponseCode {
 	type wafFamilyPlan struct {
 		createPrefixes []netip.Prefix
@@ -487,31 +396,25 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	warnings := newAmbiguityWarnings()
 	// Plan each family independently, then consume plans in a fixed family order.
-	plans := make(map[ipnet.Type]wafFamilyPlan, ipnet.NetworkCount)
-	for ipNet := range ipnet.All {
+	plans := make(map[ipnet.Family]wafFamilyPlan, ipnet.FamilyCount)
+	for ipFamily := range ipnet.All {
+		targets, managed := targetsByFamily[ipFamily]
 		var plan wafFamilyPlan
-		targets, managed := detectedIPs[ipNet]
-		if managed && len(targets) == 0 {
-			continue // detection was attempted but failed; do nothing
+		if !managed || !targets.HasUsableTargets() {
+			continue
 		}
 
 		// Track targets already covered by at least one kept item.
-		coveredTargets := make(map[netip.Addr]bool, len(targets))
+		coveredTargets := make(map[netip.Addr]bool, len(targets.IPs))
 		for _, item := range items {
-			if !ipNet.Matches(item.Prefix.Addr()) {
+			if !ipFamily.Matches(item.Prefix.Addr()) {
 				continue
 			}
 
-			// Unmanaged family: remove all existing items of this family.
-			if !managed {
-				plan.deleteItems = append(plan.deleteItems, item)
-				continue
-			}
-
-			// Managed family with targets: keep items that cover at least one
+			// Managed family with known targets: keep items that cover at least one
 			// target and remember which targets are already covered.
 			covered := false
-			for _, target := range targets {
+			for _, target := range targets.IPs {
 				if item.Prefix.Contains(target) {
 					coveredTargets[target] = true
 					covered = true
@@ -524,10 +427,10 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 		// Add the smallest allowed prefix for each uncovered target so every
 		// managed target ends up covered by at least one list item.
-		for _, target := range targets {
+		for _, target := range targets.IPs {
 			if !coveredTargets[target] {
 				plan.createPrefixes = append(plan.createPrefixes,
-					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipNet]).Masked())
+					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipFamily]).Masked())
 			}
 		}
 
@@ -540,16 +443,16 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		}
 		resolvedComment, ambiguousComment := resolveScalarValue(configuredItemComment, commentValues)
 		if ambiguousComment {
-			unit := "WAF list " + list.Describe() + " " + ipNet.Describe()
+			unit := "WAF list " + list.Describe() + " " + ipFamily.Describe()
 			warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured comment")
 		}
 		plan.createComment = resolvedComment
-		plans[ipNet] = plan
+		plans[ipFamily] = plan
 	}
 
 	var itemsToDelete []api.WAFListItem
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		itemsToDelete = append(itemsToDelete, plans[ipNet].deleteItems...)
+	for _, ipFamily := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
+		itemsToDelete = append(itemsToDelete, plans[ipFamily].deleteItems...)
 	}
 	slices.SortFunc(itemsToDelete, func(i, j api.WAFListItem) int {
 		return cmp.Or(i.Prefix.Compare(j.Prefix), cmp.Compare(i.ID, j.ID))
@@ -568,8 +471,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
 	itemsToCreate := make([]api.WAFListCreateItem, 0, itemsToCreateCount)
-	for _, ipNet := range []ipnet.Type{ipnet.IP4, ipnet.IP6} {
-		plan := plans[ipNet]
+	for _, ipFamily := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
+		plan := plans[ipFamily]
 		for _, prefix := range plan.createPrefixes {
 			itemsToCreate = append(itemsToCreate, api.WAFListCreateItem{
 				Prefix:  prefix,
@@ -612,8 +515,9 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 
 // FinalClearWAFList removes managed WAF content during shutdown.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
+	managedFamilies map[ipnet.Family]bool,
 ) ResponseCode {
-	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription) {
+	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription, managedFamilies) {
 	case api.WAFListCleanupNoop:
 		return ResponseNoop
 	case api.WAFListCleanupUpdated:

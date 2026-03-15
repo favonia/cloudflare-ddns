@@ -15,7 +15,7 @@ import (
 const maxReadLength int64 = 102400
 
 type httpCore struct {
-	ipNet             ipnet.Type
+	ipFamily          ipnet.Family
 	url               string
 	method            string
 	additionalHeaders map[string]string
@@ -36,7 +36,7 @@ func (h httpCore) getIP(ctx context.Context, ppfmt pp.PP) (netip.Addr, bool) {
 		req.Header.Set(header, value)
 	}
 
-	c := SharedRetryableSplitClient(h.ipNet)
+	c := SharedRetryableSplitClient(h.ipFamily)
 
 	resp, err := c.Do(req)
 	if err != nil {

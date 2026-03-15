@@ -28,7 +28,7 @@ type prepareSetterMocks func(ctx context.Context, cancel func(), p *mocks.MockPP
 
 type dnsRecordFixture struct {
 	domain    domain.Domain
-	ipNetwork ipnet.Type
+	ipNetwork ipnet.Family
 	record1   api.ID
 	record2   api.ID
 	record3   api.ID
@@ -84,8 +84,8 @@ func (h setterHarness) prepare(ctx context.Context, prepare prepareSetterMocks) 
 	}
 }
 
-func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
-	return func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.ID, api.DeletionMode) bool {
+func wrapCancelAsDelete(cancel func()) func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool {
+	return func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool {
 		cancel()
 		return false
 	}
@@ -96,7 +96,7 @@ func expectRecordList(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	params api.RecordParams,
 	records []api.Record,
@@ -110,7 +110,7 @@ func expectRecordCreate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	ip netip.Addr,
 	params api.RecordParams,
@@ -124,7 +124,7 @@ func expectRecordUpdate(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	ip netip.Addr,
@@ -138,7 +138,7 @@ func expectRecordDelete(
 	ctx context.Context,
 	p *mocks.MockPP,
 	h *mocks.MockHandle,
-	ipNetwork ipnet.Type,
+	ipNetwork ipnet.Family,
 	domain domain.Domain,
 	id api.ID,
 	mode api.DeletionMode,
@@ -147,7 +147,7 @@ func expectRecordDelete(
 	return h.EXPECT().DeleteRecord(ctx, p, ipNetwork, domain, id, mode).Return(ok)
 }
 
-func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiCreation,
 		"Added a new %s record of %s (ID: %s)",
@@ -157,7 +157,7 @@ func expectRecordAddedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domai
 	)
 }
 
-func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
 		"Updated a stale %s record of %s (ID: %s)",
@@ -167,17 +167,7 @@ func expectRecordUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain dom
 	)
 }
 
-func expectRecordMatchedUpdatedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiUpdate,
-		"Updated a matched %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
-		domain.Describe(),
-		id,
-	)
-}
-
-func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
+func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
 		"Deleted a stale %s record of %s (ID: %s)",
@@ -187,17 +177,7 @@ func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordDuplicateDeletedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, id api.ID) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiDeletion,
-		"Deleted a duplicate %s record of %s (ID: %s)",
-		ipNetwork.RecordType(),
-		domain.Describe(),
-		id,
-	)
-}
-
-func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
@@ -214,7 +194,7 @@ func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain, cached bool) any {
+func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain, cached bool) any {
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
@@ -231,7 +211,7 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domai
 	)
 }
 
-func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm update of %s records of %s; records might be inconsistent",
@@ -240,7 +220,7 @@ func expectRecordSetFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain d
 	)
 }
 
-func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
 		"Could not confirm deletion of %s records of %s; records might be inconsistent",
@@ -249,7 +229,7 @@ func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipNetwork ipnet.Type, 
 	)
 }
 
-func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipNetwork ipnet.Type, domain domain.Domain) any {
+func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipNetwork ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Infof(
 		pp.EmojiTimeout,
 		"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
@@ -272,6 +252,24 @@ type wafListMutationExpectation struct {
 	deleteOK        bool
 }
 
+//nolint:unparam // This helper keeps repeated noop fixtures concise despite constant local test inputs.
+func wafListNoopExpectation(
+	listDescription, configuredItemComment string, alreadyExisting, cached bool,
+) wafListMutationExpectation {
+	return wafListMutationExpectation{
+		listDescription: listDescription,
+		items:           nil,
+		alreadyExisting: alreadyExisting,
+		cached:          cached,
+		createItems:     nil,
+		createPrefixes:  nil,
+		createComment:   configuredItemComment,
+		createOK:        false,
+		deleteItems:     nil,
+		deleteOK:        false,
+	}
+}
+
 func expectWAFListRead(
 	ctx context.Context,
 	p *mocks.MockPP,
@@ -292,19 +290,16 @@ func expectWAFListNoop(
 	p *mocks.MockPP,
 	m *mocks.MockHandle,
 	list api.WAFList,
-	listDescription string,
-	configuredItemComment string,
+	want wafListMutationExpectation,
 	items []api.WAFListItem,
-	alreadyExisting bool,
-	cached bool,
 ) {
 	calls := []any{
-		expectWAFListRead(ctx, p, m, list, listDescription, configuredItemComment, items, alreadyExisting, cached, true),
+		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, items, want.alreadyExisting, want.cached, true),
 	}
-	if !alreadyExisting {
+	if !want.alreadyExisting {
 		calls = append(calls, expectWAFListCreatedNotice(p, list))
 	}
-	calls = append(calls, expectWAFListNoopNotice(p, list, cached))
+	calls = append(calls, expectWAFListNoopNotice(p, list, want.cached))
 	gomock.InOrder(calls...)
 }
 

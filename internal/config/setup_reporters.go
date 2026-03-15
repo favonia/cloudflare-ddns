@@ -60,10 +60,26 @@ func classifyShoutrrrURLSpace(rawURL string) shoutrrrSpaceClassification {
 
 // parseShoutrrrURLs parses SHOUTRRR into a list of shoutrrr URLs.
 //
-// The documented format is newline-separated URLs. A single line containing
-// raw ASCII spaces is suspicious: it is preserved only when it still parses as
-// one URL and only its first space-separated token is URL-like. The parser
-// never rewrites one line into multiple URLs.
+// The input contract is newline-separated URLs, with each configured line kept
+// as exactly one URL. The parser never rewrites one ambiguous line into
+// multiple URLs.
+//
+// This function only handles parsing and validation of the raw SHOUTRRR input.
+// Final shoutrrr client construction and message delivery behavior are handled
+// downstream.
+//
+// A single line containing raw ASCII spaces is suspicious because YAML folded
+// input or similar formatting mistakes can merge multiple URLs onto one line.
+// Such a line is preserved only when the whole line is still URL-like and only
+// its first space-separated token is URL-like; any other spaced line fails
+// early instead of deferring the ambiguity to downstream shoutrrr behavior.
+//
+// Warnings are delayed until after the full scan so mixed inputs emit only the
+// hard-error path when any line is unsafe. If future heuristics are added here,
+// preserve the newline-separated contract unless the public interface is
+// intentionally redesigned. Any future notifier input surface should normalize
+// back to the same one-URL-per-line contract instead of making parsing behavior
+// format-dependent.
 func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 	urls := GetenvAsList("SHOUTRRR", "\n")
 	sawWarning := false
@@ -131,7 +147,7 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 
 	if len(shoutrrrURLs) > 0 {
 		ppfmt.InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint,
-			"You are using the experimental shoutrrr support added in version 1.12.0")
+			"You are using the experimental shoutrrr support available since version 1.12.0")
 
 		s, senderOK := notifier.NewShoutrrr(ppfmt, shoutrrrURLs)
 		if !senderOK {

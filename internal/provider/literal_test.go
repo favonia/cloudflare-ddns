@@ -48,31 +48,31 @@ func TestLiteralGetIPs(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
-	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
+	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
-	require.True(t, ok)
+	require.True(t, targets.Available)
 	require.Equal(t, []netip.Addr{
 		netip.MustParseAddr("1.1.1.1"),
 		netip.MustParseAddr("2.2.2.2"),
-	}, ips)
+	}, targets.IPs)
 }
 
 func TestLiteralGetIPsFailure(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("1.1.1.1,1::1")
-	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP6)
+	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP6)
 
-	require.False(t, ok)
-	require.Nil(t, ips)
+	require.False(t, targets.Available)
+	require.Nil(t, targets.IPs)
 }
 
 func TestLiteralGetIPsBoundaryFailure(t *testing.T) {
 	t.Parallel()
 
 	p := provider.MustNewLiteral("127.0.0.1")
-	ips, ok := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
+	targets := p.GetIPs(context.Background(), pp.NewSilent(), ipnet.IP4)
 
-	require.False(t, ok)
-	require.Nil(t, ips)
+	require.False(t, targets.Available)
+	require.Nil(t, targets.IPs)
 }

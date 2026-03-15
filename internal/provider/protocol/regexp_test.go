@@ -62,10 +62,10 @@ func TestRegexpGetIPs(t *testing.T) {
 	t.Cleanup(illformed6.Close)
 
 	for name, tc := range map[string]struct {
-		urlKey        ipnet.Type
+		urlKey        ipnet.Family
 		url           string
 		regexp        *regexp.Regexp
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -138,7 +138,7 @@ func TestRegexpGetIPs(t *testing.T) {
 
 			provider := &protocol.Regexp{
 				ProviderName: "secret name",
-				Param: map[ipnet.Type]protocol.RegexpParam{
+				Param: map[ipnet.Family]protocol.RegexpParam{
 					tc.urlKey: {
 						URL:    tc.url,
 						Regexp: tc.regexp,
@@ -154,13 +154,13 @@ func TestRegexpGetIPs(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			ips, ok := provider.GetIPs(ctx, mockPP, tc.ipNet)
-			require.Equal(t, tc.expected.IsValid(), ok)
+			targets := provider.GetIPs(ctx, mockPP, tc.ipFamily)
+			require.Equal(t, tc.expected.IsValid(), targets.Available)
 			if tc.expected.IsValid() {
-				require.Len(t, ips, 1)
-				require.Equal(t, tc.expected, ips[0])
+				require.Len(t, targets.IPs, 1)
+				require.Equal(t, tc.expected, targets.IPs[0])
 			} else {
-				require.Empty(t, ips)
+				require.Empty(t, targets.IPs)
 			}
 		})
 	}

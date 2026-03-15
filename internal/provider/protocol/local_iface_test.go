@@ -104,7 +104,7 @@ func TestSelectInterfaceIPs(t *testing.T) {
 	var invalidIPs []netip.Addr
 
 	for name, tc := range map[string]struct {
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		input         []net.Addr
 		ok            bool
 		output        []netip.Addr
@@ -278,7 +278,7 @@ func TestSelectInterfaceIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			output, ok := protocol.SelectInterfaceIPs(mockPP, "iface", tc.ipNet, tc.input)
+			output, ok := protocol.SelectInterfaceIPs(mockPP, "iface", tc.ipFamily, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.output, output)
 		})
@@ -290,7 +290,7 @@ func TestLocalWithInterfaceGetIPs(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		interfaceName string
-		ipNet         ipnet.Type
+		ipFamily      ipnet.Family
 		ok            bool
 		expected      []netip.Addr
 		prepareMockPP func(*mocks.MockPP)
@@ -330,9 +330,9 @@ func TestLocalWithInterfaceGetIPs(t *testing.T) {
 				ProviderName:  "",
 				InterfaceName: tc.interfaceName,
 			}
-			ips, ok := provider.GetIPs(context.Background(), mockPP, tc.ipNet)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, ips)
+			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
+			require.Equal(t, tc.ok, targets.Available)
+			require.Equal(t, tc.expected, targets.IPs)
 		})
 	}
 }

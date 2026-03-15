@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -23,7 +22,7 @@ import (
 // - An IPv4 CIDR ranges with a prefix from /8 to /32
 // - An IPv6 CIDR ranges with a prefix from /4 to /64
 // For this updater, only the maximum values matter.
-var WAFListMaxBitLen = map[ipnet.Type]int{ //nolint:gochecknoglobals
+var WAFListMaxBitLen = map[ipnet.Family]int{ //nolint:gochecknoglobals
 	ipnet.IP4: 32,
 	ipnet.IP6: 64,
 }
@@ -172,13 +171,6 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 	)
 }
 
-func matchManagedWAFListItemComment(regex *regexp.Regexp, comment string) bool {
-	if regex == nil {
-		return true
-	}
-	return regex.MatchString(comment)
-}
-
 // listWAFLists lists all IP lists of the given name.
 func (h cloudflareHandle) listWAFLists(ctx context.Context, ppfmt pp.PP, accountID ID) ([]wafListMeta, bool) {
 	if ls := h.cache.listLists.Get(accountID); ls != nil {
@@ -270,8 +262,8 @@ func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 // FinalCleanWAFList removes managed WAF content during shutdown.
 //
 // Whole-list ownership tries deleting the list first, then falls back to async
-// item deletion. Shared ownership deletes only items selected by
-// ManagedWAFListItemsCommentRegex.
+// item deletion. Shared ownership deletes only items selected by the handle's
+// managed-item selector.
 //
 // We delete cached data in listListItems and listID when the underlying list
 // or its managed-item view may have changed, but we keep listLists so that we
@@ -281,9 +273,16 @@ func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 // invalidates managed-item cache before fallback item deletion so fallback
 // never trusts stale managed-item views.
 func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
-	list WAFList, configuredDescription string,
+	list WAFList, configuredDescription string, managedFamilies map[ipnet.Family]bool,
 ) WAFListCleanupCode {
-	tryDeleteWholeListFirst := h.options.AllowWholeWAFListDeleteOnShutdown
+	allFamiliesInScope := true
+	for ipFamily := range ipnet.All {
+		if !managedFamilies[ipFamily] {
+			allFamiliesInScope = false
+			break
+		}
+	}
+	tryDeleteWholeListFirst := h.options.AllowWholeWAFListDeleteOnShutdown && allFamiliesInScope
 
 	// Resolve list existence/ID first for both ownership modes.
 	listID, found, ok := h.wafListID(ctx, ppfmt, list, configuredDescription)
@@ -333,25 +332,51 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		items = h.cacheManagedWAFListItems(list, allItems)
 	}
 
-	if len(items) == 0 {
+	itemsToDelete := items
+	if !allFamiliesInScope {
+		itemsToDelete = make([]WAFListItem, 0, len(items))
+		for _, item := range items {
+			for ipFamily := range ipnet.All {
+				if managedFamilies[ipFamily] && ipFamily.Matches(item.Prefix.Addr()) {
+					itemsToDelete = append(itemsToDelete, item)
+					break
+				}
+			}
+		}
+	}
+
+	alreadyDeletedMessage := finalWAFListManagedItemsAlreadyDeletedMessage
+	alreadyDeletedCachedMessage := finalWAFListManagedItemsAlreadyDeletedCachedMessage
+	deleteFailedMessage := finalWAFListManagedItemsDeleteFailedMessage
+	deletingMessage := finalWAFListManagedItemsDeletingMessage
+	if !allFamiliesInScope {
+		familiesDescription := describeInScopeWAFFamilies(managedFamilies)
+		alreadyDeletedMessage = "Managed " + familiesDescription + " items in list %s were already deleted"
+		alreadyDeletedCachedMessage = "Managed " + familiesDescription + " items in list %s were already deleted (cached)"
+		deleteFailedMessage = "Could not confirm deletion of managed " + familiesDescription +
+			" items in list %s; list content may be inconsistent"
+		deletingMessage = "Deleting managed " + familiesDescription + " items in list %s asynchronously"
+	}
+
+	if len(itemsToDelete) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, finalWAFListManagedItemsAlreadyDeletedCachedMessage, list.Describe())
+			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedCachedMessage, list.Describe())
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, finalWAFListManagedItemsAlreadyDeletedMessage, list.Describe())
+			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedMessage, list.Describe())
 		}
 		return WAFListCleanupNoop
 	}
 
-	ids := make([]ID, 0, len(items))
-	for _, item := range items {
+	ids := make([]ID, 0, len(itemsToDelete))
+	for _, item := range itemsToDelete {
 		ids = append(ids, item.ID)
 	}
 	if !h.startDeletingWAFListItemsAsync(ctx, ppfmt, list, listID, ids) {
-		ppfmt.Noticef(pp.EmojiError, finalWAFListManagedItemsDeleteFailedMessage, list.Describe())
+		ppfmt.Noticef(pp.EmojiError, deleteFailedMessage, list.Describe())
 		return WAFListCleanupFailed
 	}
 
-	ppfmt.Noticef(pp.EmojiClear, finalWAFListManagedItemsDeletingMessage, list.Describe())
+	ppfmt.Noticef(pp.EmojiClear, deletingMessage, list.Describe())
 	return WAFListCleanupUpdating
 }
 
@@ -362,6 +387,21 @@ const (
 		"list content may be inconsistent"
 	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
 )
+
+func describeInScopeWAFFamilies(managedFamilies map[ipnet.Family]bool) string {
+	ip4InScope := managedFamilies[ipnet.IP4]
+	ip6InScope := managedFamilies[ipnet.IP6]
+	switch {
+	case ip4InScope && ip6InScope:
+		return "IPv4 and IPv6"
+	case ip4InScope:
+		return "IPv4"
+	case ip6InScope:
+		return "IPv6"
+	default:
+		return "no"
+	}
+}
 
 func (h cloudflareHandle) invalidateWAFListCleanupCache(list WAFList) {
 	h.cache.listListItems.Delete(list)
@@ -448,7 +488,7 @@ func (h cloudflareHandle) filterManagedWAFListItems(items []WAFListItem) []WAFLi
 
 	managedItems := make([]WAFListItem, 0, len(items))
 	for _, item := range items {
-		if matchManagedWAFListItemComment(h.options.ManagedWAFListItemsCommentRegex, item.Comment) {
+		if h.options.MatchManagedWAFListItemComment(item.Comment) {
 			managedItems = append(managedItems, item)
 		}
 	}

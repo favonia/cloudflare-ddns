@@ -31,7 +31,7 @@ type cloudflareCache = struct {
 	listZones    *ttlcache.Cache[string, []zoneMeta] // zone names to their zone/account IDs
 	zoneOfDomain *ttlcache.Cache[string, zoneMeta]   // domain names to their zone/account IDs
 	// records of domains
-	listRecords map[ipnet.Type]*ttlcache.Cache[string, *[]Record] // domain names to records.
+	listRecords map[ipnet.Family]*ttlcache.Cache[string, *[]Record] // domain names to records.
 	// lists to list IDs
 	listLists *ttlcache.Cache[ID, *[]wafListMeta] // account IDs to list names to list IDs and other meta information
 	listID    *ttlcache.Cache[WAFList, ID]        // lists to list IDs
@@ -71,7 +71,7 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		return nil, false
 	}
 
-	options = sanitizeHandleOptions(ppfmt, options)
+	options.HandleOwnershipPolicy = options.Sanitize(ppfmt)
 
 	h := cloudflareHandle{
 		cf:      handle,
@@ -79,7 +79,7 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 		cache: cloudflareCache{
 			listZones:    newCache[string, []zoneMeta](options.CacheExpiration),
 			zoneOfDomain: newCache[string, zoneMeta](options.CacheExpiration),
-			listRecords: map[ipnet.Type]*ttlcache.Cache[string, *[]Record]{
+			listRecords: map[ipnet.Family]*ttlcache.Cache[string, *[]Record]{
 				ipnet.IP4: newCache[string, *[]Record](options.CacheExpiration),
 				ipnet.IP6: newCache[string, *[]Record](options.CacheExpiration),
 			},
@@ -193,27 +193,6 @@ func (t CloudflareAuth) newClient(ppfmt pp.PP) (*cloudflare.API, bool) {
 	}
 
 	return handle, true
-}
-
-func sanitizeHandleOptions(ppfmt pp.PP, options HandleOptions) HandleOptions {
-	if !options.AllowWholeWAFListDeleteOnShutdown {
-		return options
-	}
-
-	// Whole-list final deletion is only allowed for the empty default selector.
-	// A nil selector is treated as the empty default for backward compatibility.
-	if options.ManagedWAFListItemsCommentRegex == nil || options.ManagedWAFListItemsCommentRegex.String() == "" {
-		return options
-	}
-
-	ppfmt.Noticef(pp.EmojiUserWarning,
-		"DELETE_ON_STOP is enabled, but "+
-			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
-			"the updater will keep the list and delete only items managed by this updater",
-		pp.QuotePreview(options.ManagedWAFListItemsCommentRegex.String(), advisoryValuePreviewLimit),
-	)
-	options.AllowWholeWAFListDeleteOnShutdown = false
-	return options
 }
 
 // flushCache flushes the API cache.

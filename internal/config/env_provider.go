@@ -136,7 +136,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 			return false
 		}
 		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint,
-			`You are using the experimental "local.iface" provider added in version 1.15.0`)
+			`You are using the experimental "local.iface" provider available since version 1.15.0`)
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
 	case len(parts) == 2 && parts[0] == "url":
@@ -182,7 +182,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, field *provider.Provid
 
 // ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
 // with support of deprecated environment variables IP4_POLICY and IP6_POLICY.
-func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool {
+func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Family]provider.Provider) bool {
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
@@ -191,7 +191,7 @@ func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Type]provider.Provider) bool 
 		return false
 	}
 
-	*field = map[ipnet.Type]provider.Provider{
+	*field = map[ipnet.Family]provider.Provider{
 		ipnet.IP4: ip4Provider,
 		ipnet.IP6: ip6Provider,
 	}

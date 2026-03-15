@@ -18,6 +18,7 @@ import (
 	domain "github.com/favonia/cloudflare-ddns/internal/domain"
 	ipnet "github.com/favonia/cloudflare-ddns/internal/ipnet"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
+	provider "github.com/favonia/cloudflare-ddns/internal/provider"
 	setter "github.com/favonia/cloudflare-ddns/internal/setter"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -47,17 +48,17 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 }
 
 // FinalClearWAFList mocks base method.
-func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string) setter.ResponseCode {
+func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, managedFamilies map[ipnet.Family]bool) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalClearWAFList", ctx, ppfmt, list, listDescription)
+	ret := m.ctrl.Call(m, "FinalClearWAFList", ctx, ppfmt, list, listDescription, managedFamilies)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // FinalClearWAFList indicates an expected call of FinalClearWAFList.
-func (mr *MockSetterMockRecorder) FinalClearWAFList(ctx, ppfmt, list, listDescription any) *MockSetterFinalClearWAFListCall {
+func (mr *MockSetterMockRecorder) FinalClearWAFList(ctx, ppfmt, list, listDescription, managedFamilies any) *MockSetterFinalClearWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFList", reflect.TypeOf((*MockSetter)(nil).FinalClearWAFList), ctx, ppfmt, list, listDescription)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFList", reflect.TypeOf((*MockSetter)(nil).FinalClearWAFList), ctx, ppfmt, list, listDescription, managedFamilies)
 	return &MockSetterFinalClearWAFListCall{Call: call}
 }
 
@@ -73,29 +74,29 @@ func (c *MockSetterFinalClearWAFListCall) Return(arg0 setter.ResponseCode) *Mock
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // FinalDelete mocks base method.
-func (m *MockSetter) FinalDelete(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, configuredParams api.RecordParams) setter.ResponseCode {
+func (m *MockSetter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, configuredParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalDelete", ctx, ppfmt, IPNetwork, Domain, configuredParams)
+	ret := m.ctrl.Call(m, "FinalDelete", ctx, ppfmt, ipFamily, Domain, configuredParams)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // FinalDelete indicates an expected call of FinalDelete.
-func (mr *MockSetterMockRecorder) FinalDelete(ctx, ppfmt, IPNetwork, Domain, configuredParams any) *MockSetterFinalDeleteCall {
+func (mr *MockSetterMockRecorder) FinalDelete(ctx, ppfmt, ipFamily, Domain, configuredParams any) *MockSetterFinalDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalDelete", reflect.TypeOf((*MockSetter)(nil).FinalDelete), ctx, ppfmt, IPNetwork, Domain, configuredParams)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalDelete", reflect.TypeOf((*MockSetter)(nil).FinalDelete), ctx, ppfmt, ipFamily, Domain, configuredParams)
 	return &MockSetterFinalDeleteCall{Call: call}
 }
 
@@ -111,29 +112,29 @@ func (c *MockSetterFinalDeleteCall) Return(arg0 setter.ResponseCode) *MockSetter
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterFinalDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) setter.ResponseCode) *MockSetterFinalDeleteCall {
+func (c *MockSetterFinalDeleteCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.RecordParams) setter.ResponseCode) *MockSetterFinalDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, api.RecordParams) setter.ResponseCode) *MockSetterFinalDeleteCall {
+func (c *MockSetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.RecordParams) setter.ResponseCode) *MockSetterFinalDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetIPs mocks base method.
-func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, IPNetwork ipnet.Type, Domain domain.Domain, IPs []netip.Addr, configuredParams api.RecordParams) setter.ResponseCode {
+func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, IPs []netip.Addr, configuredParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, IPNetwork, Domain, IPs, configuredParams)
+	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, ipFamily, Domain, IPs, configuredParams)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // SetIPs indicates an expected call of SetIPs.
-func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, IPNetwork, Domain, IPs, configuredParams any) *MockSetterSetIPsCall {
+func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, ipFamily, Domain, IPs, configuredParams any) *MockSetterSetIPsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, IPNetwork, Domain, IPs, configuredParams)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, ipFamily, Domain, IPs, configuredParams)
 	return &MockSetterSetIPsCall{Call: call}
 }
 
@@ -149,29 +150,29 @@ func (c *MockSetterSetIPsCall) Return(arg0 setter.ResponseCode) *MockSetterSetIP
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
+func (c *MockSetterSetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Type, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
+func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode) *MockSetterSetIPsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, detected map[ipnet.Type][]netip.Addr, configuredItemComment string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]provider.Targets, configuredItemComment string) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, detected, configuredItemComment)
+	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // SetWAFList indicates an expected call of SetWAFList.
-func (mr *MockSetterMockRecorder) SetWAFList(ctx, ppfmt, list, listDescription, detected, configuredItemComment any) *MockSetterSetWAFListCall {
+func (mr *MockSetterMockRecorder) SetWAFList(ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment any) *MockSetterSetWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWAFList", reflect.TypeOf((*MockSetter)(nil).SetWAFList), ctx, ppfmt, list, listDescription, detected, configuredItemComment)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWAFList", reflect.TypeOf((*MockSetter)(nil).SetWAFList), ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment)
 	return &MockSetterSetWAFListCall{Call: call}
 }
 
@@ -187,13 +188,13 @@ func (c *MockSetterSetWAFListCall) Return(arg0 setter.ResponseCode) *MockSetterS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type][]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]provider.Targets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Type][]netip.Addr, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]provider.Targets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

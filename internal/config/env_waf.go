@@ -27,7 +27,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	}
 
 	ppfmt.InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint,
-		"You're using the experimental WAF list manipulation feature added in version 1.14.0")
+		"You're using the experimental WAF list manipulation feature available since version 1.14.0")
 
 	lists := make([]api.WAFList, 0, len(vals))
 

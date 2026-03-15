@@ -10,10 +10,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type, url string, re *regexp.Regexp,
+func getIPFromRegexp(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url string, re *regexp.Regexp,
 ) (netip.Addr, bool) {
 	c := httpCore{
-		ipNet:             ipNet,
+		ipFamily:          ipFamily,
 		url:               url,
 		method:            http.MethodGet,
 		additionalHeaders: nil,
@@ -48,24 +48,28 @@ type RegexpParam = struct {
 // Regexp represents a generic detection protocol to parse an HTTP response.
 type Regexp struct {
 	ProviderName string // name of the detection protocol
-	Param        map[ipnet.Type]RegexpParam
+	Param        map[ipnet.Family]RegexpParam
 }
 
 // Name of the detection protocol.
 func (p Regexp) Name() string { return p.ProviderName }
 
 // GetIPs detects the IP address by parsing the HTTP response.
-func (p Regexp) GetIPs(ctx context.Context, ppfmt pp.PP, ipNet ipnet.Type) ([]netip.Addr, bool) {
-	param, found := p.Param[ipNet]
+func (p Regexp) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+	param, found := p.Param[ipFamily]
 	if !found {
-		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipNet.Describe())
-		return nil, false
+		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", ipFamily.Describe())
+		return NewUnavailableTargets()
 	}
 
-	ip, ok := getIPFromRegexp(ctx, ppfmt, ipNet, param.URL, param.Regexp)
+	ip, ok := getIPFromRegexp(ctx, ppfmt, ipFamily, param.URL, param.Regexp)
 	if !ok {
-		return nil, false
+		return NewUnavailableTargets()
 	}
 
-	return ipNet.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	if !ok {
+		return NewUnavailableTargets()
+	}
+	return NewAvailableTargets(ips)
 }
