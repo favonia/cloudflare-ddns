@@ -225,7 +225,7 @@ environment:
   - IP6_PROVIDER=none
 ```
 
-Use `IP6_PROVIDER=none` to disable IPv6 completely, or `IP4_PROVIDER=none` to disable IPv4 completely. This stops future updates for that IP family. Existing DNS records for the disabled family are preserved. 🧪 If you also use WAF lists, existing managed items of the disabled family are preserved there too.
+Use `IP6_PROVIDER=none` to stop managing IPv6, or `IP4_PROVIDER=none` to stop managing IPv4. Existing managed DNS records of that IP family are preserved. 🧪 If you also use WAF lists, existing managed items of that IP family are preserved there too.
 
 #### 📡 Use IPv6 without sharing the host network
 
@@ -310,7 +310,7 @@ secrets:
 
 #### 🧪 Update only WAF lists
 
-Use this when you only want to maintain Cloudflare WAF lists and do not want the updater to touch DNS records.
+The updater can work without DNS records and manage only WAF lists.
 
 ```yaml
 environment:
@@ -319,8 +319,6 @@ environment:
 ```
 
 Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** permission.
-
-> 🤖 For IPv6, the updater stores each detected address as the smallest allowed range that contains it, because Cloudflare does not allow single IPv6 addresses in WAF lists.
 
 ### 🤝 Shared Ownership
 
@@ -421,11 +419,9 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📍 DNS and WAF Scope</summary>
+<summary><em>Click to expand:</em> 📍 DNS Scope</summary>
 
-> You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, `IP6_DOMAINS`, or 🧪 `WAF_LISTS` (available since version 1.14.0) for the updater to update.
-
-Managed DNS records:
+> You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS` for the updater to manage DNS records.
 
 | Name                                         | Meaning                                                                                                                                                                                                                                               | Default Value                               |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -434,24 +430,21 @@ Managed DNS records:
 | `IP6_DOMAINS`                                | Comma-separated fully qualified domain names or wildcard domain names that the updater should manage for `AAAA` records                                                                                                                               | `""` (empty list)                           |
 | `MANAGED_RECORDS_COMMENT_REGEX` (unreleased) | Regex that matches comments of existing DNS records this updater manages. Only records whose comments match are updated or deleted. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (the Go `regexp` syntax, not Perl/PCRE).             | `""` (empty regex; manages all DNS records) |
 
-Managed WAF lists:
+> 🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
+>
+> 🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
+
+</details>
+
+<details>
+<summary><em>Click to expand:</em> 📍 WAF Scope</summary>
 
 | Name                                                   | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Default Value                                  |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | 🧪 `WAF_LISTS` (available since version 1.14.0)        | <p>🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `<account-id>/<list-name>` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. If the referenced WAF list does not exist, the updater will try to create it.</p><p>🔑 The API token needs the **Account - Account Filter Lists - Edit** permission.<br/>💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/).</p> | `""` (empty list)                              |
 | 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased) | 🧪 Regex that matches comments of existing WAF list items this updater manages. This lets multiple updater instances share one WAF list safely: only matched items are updated or deleted. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (the Go `regexp` syntax, not Perl/PCRE).                                                                                                                                                                                                                                                                                                                                                            | `""` (empty regex; manages all WAF list items) |
 
-> 🤖 With `DELETE_ON_STOP=true`, managed DNS records are deleted only for in-scope IP families. 🧪 For WAF lists, the updater deletes the whole list only when the current configuration is enough to recreate it safely; otherwise it keeps the list and deletes only the managed items in scope.
-
-Other scope notes:
-
-> 🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
-
-> 🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
-
-> 🤖 WAF list API quirks:
->
-> 1. [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range.
+> 🤖 [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range.
 
 </details>
 
@@ -460,8 +453,8 @@ Other scope notes:
 
 | Name           | Meaning                                                                                                                                                                                                                                                                                                                                                     | Default Value      |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider disables IPv4 completely. See below for a detailed explanation. | `cloudflare.trace` |
-| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider disables IPv6 completely. See below for a detailed explanation. | `cloudflare.trace` |
+| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv4. See below for a detailed explanation. | `cloudflare.trace` |
+| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv6. See below for a detailed explanation. | `cloudflare.trace` |
 
 > 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
@@ -476,7 +469,7 @@ Other scope notes:
 | `url.via6:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv6.</p><p>The intention is to get an IPv4 address over IPv6 with `IP4_PROVIDER=url.via6:<url>`. In comparison, `IP4_PROVIDER=url:<url>` will get an IPv4 address over the matching IP family (IPv4).</p>                                                                                                                                                                                                                                                                                                                                            |
 | `static:<ip1>,<ip2>,...` (unreleased)                     | <p>Use one or more explicit IP addresses as the desired target set. This is an advanced provider for tests, debugging, and special fixed-target setups.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p><p>🤖 The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.</p>                                                                                                                                                                                                                                    |
 | `static.empty` (unreleased)                               | <p>Manage the selected IP family to an empty target set. This purges existing managed content for that family, while `none` preserves it.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p>                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `none`                                                    | <p>Stop updating the specified IP version completely. For example `IP4_PROVIDER=none` disables IPv4 for this run. Existing DNS records of that IP version are preserved.</p><p>🧪 Existing managed WAF list items of that IP version are preserved too, because that family is out of scope rather than "managed to empty". As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p>                                                                                                                     |
+| `none`                                                    | <p>Stop managing the specified IP family for this run. For example `IP4_PROVIDER=none` stops managing IPv4. Existing managed DNS records of that IP family are preserved.</p><p>🧪 Existing managed WAF list items of that IP family are preserved too, because that family is out of scope rather than managed to empty. As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p>                                                                                                                     |
 
 </details>
 
@@ -506,7 +499,7 @@ Other scope notes:
 <details>
 <summary><em>Click to expand:</em> 🐣 DNS and WAF Fallback Values</summary>
 
-> The updater preserves existing attributes unless it cannot reliably reuse the old ones. 🤖 The updater keeps existing values when stale content agrees on them.
+> The updater preserves existing attributes when it can. 🤖 It keeps existing values when stale content agrees on them.
 
 | Name                                                       | Meaning                                                                                                                                                                                                                                                                                                         | Default Value                              |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
@@ -564,7 +557,7 @@ Other scope notes:
 <details>
 <summary><em>Click to expand:</em> 📣 Notifications</summary>
 
-> 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to disable IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
+> 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to stop managing IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 
 | Name                                           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -591,8 +584,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `API_KEY_FILE=/path/to/key-file`       | ⚠️  | Legacy global API keys are not supported. Please [generate a scoped API token](#cloudflare-api-token), save it, and use `CLOUDFLARE_API_TOKEN_FILE=/path/to/token-file`.                                                                                                                                                                                                                                    |
 | `ZONE=example.org` and `SUBDOMAIN=sub` | ✔️  | Use `DOMAINS=sub.example.org` directly                                                                                                                                                                                                                                                                                                                                                                      |
 | `PROXIED=true`                         | ✔️  | Same (`PROXIED=true`)                                                                                                                                                                                                                                                                                                                                                                                       |
-| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                                                                                                                                                                                          |
-| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                                                                                                                                                                                          |
+| `RRTYPE=A`                             | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to stop managing IPv6                                                                                                                                                                                                                                                                                                                    |
+| `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to stop managing IPv4                                                                                                                                                                                                                                                                                                                    |
 | `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                                                                                                                                                                                                                                                                                                                                                |
 | `INTERFACE=<iface>`                    | ✔️  | To automatically select the local address, use `IP4/6_PROVIDER=local`. 🧪 To select addresses of a specific network interface, use `IP4/6_PROVIDER=local.iface:<iface>` (available since version 1.15.0). Since the unreleased version, the updater collects all matching global unicast addresses instead of just the first one, then reconciles DNS records and WAF lists against that full detected set. |
 | `CUSTOM_LOOKUP_CMD=cmd`                | ❌️  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                                                                                                                                                           |
@@ -611,8 +604,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
 | `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                       |
 | `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if you want it                                                                                                                  |
-| `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to disable IPv4                                                                                                                                                       |
-| `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to disable IPv6                                                                                                                                                       |
+| `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to stop managing IPv4                                                                                                                                                 |
+| `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to stop managing IPv6                                                                                                                                                 |
 | `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
 | `purgeUnknownRecords`                 | ❌️  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
 

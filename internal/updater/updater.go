@@ -55,12 +55,12 @@ func detectIPs(
 		case ipnet.IP6:
 			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
 				"If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. "+
-					"If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none",
+					"If your network doesn't support IPv6, you can stop managing it by setting IP6_PROVIDER=none",
 				pp.ManualURL)
 
 		case ipnet.IP4:
 			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
-				"If your network does not support IPv4, you can disable it with IP4_PROVIDER=none")
+				"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none")
 		}
 
 		if errors.Is(context.Cause(ctx), errTimeout) {
