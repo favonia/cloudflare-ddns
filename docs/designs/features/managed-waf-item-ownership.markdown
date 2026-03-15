@@ -1,33 +1,29 @@
-# Design Note: Managed WAF List Item Ownership
+# Design Note: WAF Ownership Instantiation
 
-Read when: changing WAF list ownership, managed-item filtering, or ownership-aware WAF cleanup semantics.
+Read when: changing WAF list ownership, managed-item filtering, or ownership-aware WAF cleanup semantics tied to WAF list items.
 
-Defines: the durable contract for `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`, `WAF_LIST_ITEM_COMMENT`, and ownership-aware WAF reconciliation.
+Defines: the WAF instantiation of the ownership model, including WAF attribute-based ownership via `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` and `WAF_LIST_ITEM_COMMENT`, plus ownership-aware WAF reconciliation.
 
 Does not define: exact warning text or repository-wide naming policy.
 
-`MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` lets each updater instance decide which existing WAF list items it owns.
+`MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` lets each updater instance decide which WAF list items it recognizes as its own.
 
 ## Goal
 
-Isolate ownership safely when multiple updater instances may touch the same WAF list. Ownership affects item discovery, mutation scope, and shutdown cleanup, but it is only one part of the WAF semantic model.
+Isolate WAF item ownership safely when multiple updater instances may touch the same WAF list. This note defines the WAF attribute-based ownership layer inside the ownership model.
 
 ## Core Model
 
 - `WAF_LIST_ITEM_COMMENT` is the comment this instance writes to WAF list items that it creates.
-- `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is the selector used to decide which existing WAF list items are managed by this instance.
+- `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is the attribute-based selector used to decide which WAF list items are managed by this instance.
 - These settings are separate by design: one controls writes, and one controls mutation scope.
 
-Ownership is orthogonal to family intent and lifecycle ownership.
+Within the ownership model:
 
-- Ownership scope answers which existing items this updater may touch.
-- Family scope answers whether an IP family is in scope for this run.
-- Desired-target intent answers which target IPs the updater wants covered for an in-scope family.
-- Lifecycle ownership answers whether shutdown may delete only matched items or the whole list root.
-
-Shared family-scope and desired-target semantics are defined in [IP Family Intent and Target Providers](ip-family-intent-and-target-providers.markdown). This note defines WAF ownership and its interaction with family and lifecycle scope.
-
-Shared reconciliation and lifecycle-ownership semantics are defined in [Unified Reconciliation and Lifecycle Ownership](unified-reconciliation-and-lifecycle-ownership.markdown). This note defines the WAF-specific instantiation.
+- resource ownership is defined elsewhere
+- IP-family ownership is defined in [Ownership Model](ownership-model.markdown)
+- this note defines WAF attribute-based ownership
+- reconciliation semantics are defined in [Reconciliation Algorithm](reconciliation-algorithm.markdown)
 
 The selector uses Go `regexp` RE2 syntax with `MatchString` semantics, not implicit full-match behavior.
 
@@ -50,13 +46,13 @@ Only matched items participate in:
 - coverage checks for desired target IPs
 - stale-item deletion during list reconciliation
 - comment-aware warnings about managed items
-- `DELETE_ON_STOP` in active cleanup scope
+- `DELETE_ON_STOP`
 
 Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the target IP address.
 
 ### WAF Instantiation
 
-WAF instantiates the unified reconciliation model with these resource-specific rules:
+WAF instantiates the reconciliation algorithm with these resource-specific rules:
 
 - the resource unit is `(list, IP family)`
 - a managed item satisfies a desired target when it covers that desired target IP
@@ -93,23 +89,21 @@ Any implementation should order work so higher-risk residual states are reduced 
 
 ### Failure and Shutdown Semantics
 
-When family-scope and desired-target semantics are defined elsewhere, WAF ownership interacts with them as follows:
+When the shared IP-family ownership semantics from [Ownership Model](ownership-model.markdown) are applied to WAF:
 
 - Out-of-scope family intent preserves existing managed items of that family.
 - Explicit-empty family intent reconciles that family to no managed items.
 - Temporary target-set unavailability preserves existing managed items because desired targets are unknown.
 
-## Shutdown Deletion Semantics
+## Deletion Eligibility
 
-Lifecycle ownership determines shutdown authority.
+Deletion eligibility determines shutdown authority as an inferred consequence of the ownership model. For WAF, the relevant deletion targets are managed items and, when full ownership and recreatability hold, the whole configured list.
 
-- WAF lists are potentially root-owned resources because the updater can create them from configuration alone.
-- A WAF list is only root-owned for a run when the updater's current cleanup scope covers all semantic content it owns in that list.
-- Shared ownership or out-of-scope family preservation makes the list member-owned for that run.
-- Root-owned cleanup may delete the whole list.
-- Member-owned cleanup deletes only managed items in active family scope.
+- A WAF list is eligible for deletion only if the updater can recreate the fully reconciled state of that list from configuration alone.
+- When that condition holds, shutdown may delete the whole list.
+- Otherwise, shutdown may delete only managed items.
 
-The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule. Cleanup authority comes from ownership plus active family scope.
+The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule. Deletion eligibility is inferred from the ownership model plus recreatability. Optional future ownership filters do not change this as long as they can still be widened to full coverage while keeping the fully reconciled state recreatable; only mandatory filters that necessarily prevent recreating the fully reconciled state of the whole list would make whole-list deletion impossible in principle.
 
 ## Caching Contract
 
@@ -129,10 +123,8 @@ Cloudflare item-creation and item-deletion APIs return whole-list content, so ma
 
 This design applies only to WAF list item ownership based on WAF list item comments.
 
-It is not a general ownership abstraction for all managed resources. DNS record ownership remains separate, and WAF-less or DNS-only runs do not use this selector.
-
 ## Extension Points
 
 - If one process ever needs multiple ownership scopes for the same WAF list, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to WAF list items.
-- If future work needs shared ownership rules across DNS and WAF resources, that should be designed as a new abstraction instead of coupling the two selectors implicitly.
+- If future work changes the broader ownership model, this note should continue to own only the WAF attribute-based ownership layer instead of coupling itself to unrelated ownership rules.
