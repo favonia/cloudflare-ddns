@@ -135,3 +135,13 @@ When reviewing a new `//nolint`, ask:
 - If not, does the comment say why this exception is acceptable here?
 
 If the answer to those questions is weak, the suppression should usually be rewritten or removed rather than normalized.
+
+## Scope Boundary
+
+This note defines when inline `//nolint` is acceptable.
+
+It does not define:
+
+- which linters are enabled repository-wide
+- feature-specific correctness rules
+- whether a warning is acceptable if a code change can remove it cleanly
