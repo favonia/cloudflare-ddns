@@ -54,7 +54,7 @@ func TestFinalDelete(t *testing.T) {
 					}, true, true),
 					expectRecordDelete(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.FinalDeletionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 				)
 			},
 		},
@@ -102,10 +102,10 @@ func TestFinalDelete(t *testing.T) {
 					}, true, true),
 					expectRecordDelete(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.FinalDeletionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 					expectRecordDelete(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.FinalDeletionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 				)
 			},
 		},

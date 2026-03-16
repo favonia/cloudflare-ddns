@@ -53,7 +53,7 @@ func TestSetIPsSingleton(t *testing.T) {
 			},
 		},
 		{
-			name: "single-stale-record/update-record/response-updated",
+			name: "single-outdated-record/update-record/response-updated",
 			ip:   fixture.ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -77,7 +77,7 @@ func TestSetIPsSingleton(t *testing.T) {
 			},
 		},
 		{
-			name: "single-stale-record/update-record/response-failed",
+			name: "single-outdated-record/update-record/response-failed",
 			ip:   fixture.ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -187,11 +187,11 @@ func TestSetIPsSingleton(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple-stale-records/update-and-delete/response-updated",
+			name: "multiple-outdated-records/update-and-delete/response-updated",
 			ip:   fixture.ip1,
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either stale record can be recycled first.
+				// InOrder is stricter than the API contract here: either outdated record can be recycled first.
 				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
@@ -212,17 +212,17 @@ func TestSetIPsSingleton(t *testing.T) {
 					),
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 					expectRecordDelete(
-						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
+						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode, true),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 				)
 			},
 		},
 		{
-			name: "multiple-stale-records/delete-after-update-timeout/response-failed",
+			name: "multiple-outdated-records/delete-after-update-timeout/response-failed",
 			ip:   fixture.ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, cancel func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either stale record can be recycled first.
+				// InOrder is stricter than the API contract here: either outdated record can be recycled first.
 				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
@@ -243,18 +243,18 @@ func TestSetIPsSingleton(t *testing.T) {
 					),
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 					h.EXPECT().DeleteRecord(
-						ctx, p, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode).
+						ctx, p, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode).
 						Do(wrapCancelAsDelete(cancel)).Return(false),
 					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
 		{
-			name: "multiple-stale-records/update-first-record/response-failed",
+			name: "multiple-outdated-records/update-first-record/response-failed",
 			ip:   fixture.ip1,
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
-				// InOrder is stricter than the API contract here: either stale record can be recycled first.
+				// InOrder is stricter than the API contract here: either outdated record can be recycled first.
 				// We intentionally pin singleton SetIPs's deterministic top-to-bottom traversal so this test can
 				// detect processing-order regressions; looser gomock checks allow too many orders.
 				gomock.InOrder(
