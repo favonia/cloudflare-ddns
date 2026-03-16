@@ -181,7 +181,8 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		switch {
 		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records and WAF IP items for the configured scope`)
+				"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear "+
+					"managed DNS records and WAF IP items for the configured scope")
 		case len(activeDomainSet) > 0:
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records for the configured domains`)
