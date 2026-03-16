@@ -14,7 +14,7 @@ Isolate WAF item ownership safely when multiple updater instances may touch the 
 
 ## Core Model
 
-- `WAF_LIST_ITEM_COMMENT` is the comment this instance writes to WAF list items that it creates.
+- `WAF_LIST_ITEM_COMMENT` is the fallback comment this instance uses when reconciling WAF list items.
 - `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` is the attribute-based selector used to decide which WAF list items are managed by this instance.
 - These settings are separate by design: one controls writes, and one controls mutation scope.
 
