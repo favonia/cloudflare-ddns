@@ -285,6 +285,15 @@ func TestSelectInterfaceIPs(t *testing.T) {
 	}
 }
 
+func TestLocalWithInterfaceIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.LocalWithInterface{
+		ProviderName:  "",
+		InterfaceName: "lo",
+	}.IsExplicitEmpty())
+}
+
 func TestLocalWithInterfaceGetIPs(t *testing.T) {
 	t.Parallel()
 

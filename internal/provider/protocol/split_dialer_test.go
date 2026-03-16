@@ -96,6 +96,13 @@ func TestSharedSplitClient(t *testing.T) {
 	}
 }
 
+func TestCloseIdleConnections(t *testing.T) {
+	t.Parallel()
+
+	// Verify CloseIdleConnections does not panic.
+	protocol.CloseIdleConnections()
+}
+
 func TestSharedSplitClientProtocols(t *testing.T) {
 	t.Parallel()
 

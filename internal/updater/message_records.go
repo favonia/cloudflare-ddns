@@ -48,10 +48,26 @@ func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMap(netip.Addr.String, ips)
 }
 
+// isTargetSetEmpty reports whether the target IP set is empty.
+// An empty target set signals record clearing (as produced by static.empty).
+func isTargetSetEmpty(ips []netip.Addr) bool {
+	return len(ips) == 0
+}
+
 func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
 	ipDescription := describeIPs(ips)
+	emptyTargets := isTargetSetEmpty(ips)
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
+		if emptyTargets {
+			return heartbeat.Message{
+				OK: false,
+				Lines: []string{fmt.Sprintf(
+					"Could not confirm clearing %s of %s",
+					ipFamily.RecordType(), pp.Join(domains),
+				)},
+			}
+		}
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
@@ -64,17 +80,31 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, fmt.Sprintf(
-			"Setting %s (%s) of %s",
-			ipFamily.RecordType(), ipDescription, pp.Join(domains),
-		))
+		if emptyTargets {
+			successLines = append(successLines, fmt.Sprintf(
+				"Clearing %s of %s",
+				ipFamily.RecordType(), pp.Join(domains),
+			))
+		} else {
+			successLines = append(successLines, fmt.Sprintf(
+				"Setting %s (%s) of %s",
+				ipFamily.RecordType(), ipDescription, pp.Join(domains),
+			))
+		}
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, fmt.Sprintf(
-			"Set %s (%s) of %s",
-			ipFamily.RecordType(), ipDescription, pp.Join(domains),
-		))
+		if emptyTargets {
+			successLines = append(successLines, fmt.Sprintf(
+				"Cleared %s of %s",
+				ipFamily.RecordType(), pp.Join(domains),
+			))
+		} else {
+			successLines = append(successLines, fmt.Sprintf(
+				"Set %s (%s) of %s",
+				ipFamily.RecordType(), ipDescription, pp.Join(domains),
+			))
+		}
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
@@ -82,20 +112,34 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 
 func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) notifier.Message {
 	ipDescription := describeIPsInEnglish(ips)
+	emptyTargets := isTargetSetEmpty(ips)
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments,
-			"Could not confirm update of ", ipFamily.RecordType(),
-			" records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-		)
+		if emptyTargets {
+			fragments = append(fragments,
+				"Could not confirm clearing ", ipFamily.RecordType(),
+				" records of ", pp.EnglishJoin(domains),
+			)
+		} else {
+			fragments = append(fragments,
+				"Could not confirm update of ", ipFamily.RecordType(),
+				" records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+			)
+		}
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments,
-				"Updating ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-			)
+			if emptyTargets {
+				fragments = append(fragments,
+					"Clearing ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
+				)
+			} else {
+				fragments = append(fragments,
+					"Updating ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+				)
+			}
 		} else {
 			fragments = append(fragments,
 				"; updating those of ", pp.EnglishJoin(domains),
@@ -105,9 +149,15 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments,
-				"Updated ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-			)
+			if emptyTargets {
+				fragments = append(fragments,
+					"Cleared ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
+				)
+			} else {
+				fragments = append(fragments,
+					"Updated ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
+				)
+			}
 		} else {
 			fragments = append(fragments,
 				"; updated those of ", pp.EnglishJoin(domains),

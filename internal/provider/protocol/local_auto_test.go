@@ -26,6 +26,15 @@ func TestLocalAuteName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
+func TestLocalAutoIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.LocalAuto{
+		ProviderName:  "",
+		RemoteUDPAddr: "",
+	}.IsExplicitEmpty())
+}
+
 func TestExtractUDPAddr(t *testing.T) {
 	t.Parallel()
 
@@ -94,14 +103,14 @@ func TestLocalAuteGetIPs(t *testing.T) {
 			"127.0.0.1:80", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "127.0.0.1", "a loopback address")
 			},
 		},
 		"loopback/6": {
 			"[::1]:80", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv6", "::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "::1", "a loopback address")
 			},
 		},
 		"empty/4": {

@@ -129,14 +129,14 @@ func TestHTTPGetIPs(t *testing.T) {
 			false,
 			ipnet.IP4, server4.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv6")
 			},
 		},
 		"6/not-handled": {
 			false,
 			ipnet.IP6, server6.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv4")
 			},
 		},
 	} {
@@ -174,4 +174,14 @@ func TestHTTPGetIPs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHTTPIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.HTTP{
+		ProviderName:            "",
+		URL:                     map[ipnet.Family]string{},
+		ForcedTransportIPFamily: nil,
+	}.IsExplicitEmpty())
 }

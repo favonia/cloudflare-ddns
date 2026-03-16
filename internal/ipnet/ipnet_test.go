@@ -133,35 +133,35 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP4, singleton(mustIP("0.0.0.0")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is an unspecified address", "IPv4", "0.0.0.0")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "0.0.0.0", "an unspecified address")
 			},
 		},
 		"singleton/4-127.0.0.1": {
 			ipnet.IP4, singleton(mustIP("127.0.0.1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv4", "127.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "127.0.0.1", "a loopback address")
 			},
 		},
 		"singleton/4-169.254.1.1": {
 			ipnet.IP4, singleton(mustIP("169.254.1.1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local address", "IPv4", "169.254.1.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "169.254.1.1", "a link-local address")
 			},
 		},
 		"singleton/4-224.0.0.1": {
 			ipnet.IP4, singleton(mustIP("224.0.0.1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv4", "224.0.0.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "224.0.0.1", "a link-local multicast address")
 			},
 		},
 		"singleton/4-239.1.1.1": {
 			ipnet.IP4, singleton(mustIP("239.1.1.1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv4", "239.1.1.1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "239.1.1.1", "a multicast address")
 			},
 		},
 		"singleton/4-255.255.255.255": {
@@ -187,11 +187,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP6, singleton(mustIP("1::2%eth0")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(
-					pp.EmojiError,
-					"Detected %s address %s has a zone identifier and cannot be used as a target address",
-					"IPv6", "1::2%eth0",
-				)
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "1::2%eth0", "an address with a zone identifier")
 			},
 		},
 		"singleton/6-10.10.10.10": {
@@ -215,28 +211,28 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP6, singleton(mustIP("::1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a loopback address", "IPv6", "::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "::1", "a loopback address")
 			},
 		},
 		"singleton/6-ff01::1": {
 			ipnet.IP6, singleton(mustIP("ff01::1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff01::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "ff01::1", "a multicast address")
 			},
 		},
 		"singleton/6-ff02::1": {
 			ipnet.IP6, singleton(mustIP("ff02::1")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a link-local multicast address", "IPv6", "ff02::1")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "ff02::1", "a link-local multicast address")
 			},
 		},
 		"singleton/6-ff05::2": {
 			ipnet.IP6, singleton(mustIP("ff05::2")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is a multicast address", "IPv6", "ff05::2")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "ff05::2", "a multicast address")
 			},
 		},
 		"singleton/100-10.10.10.10": {
@@ -306,6 +302,55 @@ func TestMatches(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, tc.ipFamily.Matches(tc.ip))
+		})
+	}
+}
+
+func TestDescribeAddressIssue(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		ip          netip.Addr
+		description string
+		bad         bool
+	}{
+		"unspecified/4":        {mustIP("0.0.0.0"), "an unspecified address", true},
+		"unspecified/6":        {mustIP("::"), "an unspecified address", true},
+		"loopback/4":           {mustIP("127.0.0.1"), "a loopback address", true},
+		"loopback/6":           {mustIP("::1"), "a loopback address", true},
+		"link-local-multicast": {mustIP("ff02::1"), "a link-local multicast address", true},
+		"multicast/4":          {mustIP("239.1.1.1"), "a multicast address", true},
+		"multicast/6":          {mustIP("ff05::2"), "a multicast address", true},
+		"link-local/4":         {mustIP("169.254.1.1"), "a link-local address", true},
+		"link-local/6":         {mustIP("fe80::1"), "a link-local address", true},
+		"zone":                 {mustIP("1::2%eth0"), "an address with a zone identifier", true},
+		"global-unicast/4":     {mustIP("1.1.1.1"), "", false},
+		"global-unicast/6":     {mustIP("2001:db8::1"), "", false},
+		"broadcast":            {mustIP("255.255.255.255"), "", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			desc, bad := ipnet.DescribeAddressIssue(tc.ip)
+			require.Equal(t, tc.bad, bad)
+			require.Equal(t, tc.description, desc)
+		})
+	}
+}
+
+func TestIsNonGlobalUnicast(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		ip       netip.Addr
+		expected bool
+	}{
+		"global-unicast/4": {mustIP("1.1.1.1"), false},
+		"global-unicast/6": {mustIP("2001:db8::1"), false},
+		"broadcast":        {mustIP("255.255.255.255"), true},
+		"loopback":         {mustIP("127.0.0.1"), true},
+		"unspecified":      {mustIP("0.0.0.0"), true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, ipnet.IsNonGlobalUnicast(tc.ip))
 		})
 	}
 }

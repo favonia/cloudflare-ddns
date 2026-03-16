@@ -24,9 +24,11 @@ func TestCustomURLName(t *testing.T) {
 func TestNewCustom(t *testing.T) {
 	t.Parallel()
 
+	envKey := "IP4_PROVIDER"
+
 	for _, tc := range []struct {
 		name                      string
-		create                    func(pp.PP, string) (provider.Provider, bool)
+		create                    func(pp.PP, string, string) (provider.Provider, bool)
 		input                     string
 		ok                        bool
 		expectedProviderName      string
@@ -50,7 +52,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "url.via4:(redacted)",
 			expectedTransportIPFamily: new(ipnet.IP4),
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "The provider %s uses HTTP; consider using HTTPS instead", "url.via4:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s=%s uses HTTP; consider using HTTPS instead", envKey, "url.via4:(redacted)")
 			},
 		},
 		{
@@ -70,7 +72,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the provider %s", "url:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s: failed to parse the URL", envKey, "url:(redacted)")
 			},
 		},
 		{
@@ -81,7 +83,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", envKey, "url:(redacted)")
 			},
 		},
 		{
@@ -92,7 +94,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url.via4:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", envKey, "url.via4:(redacted)")
 			},
 		},
 		{
@@ -103,7 +105,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url.via6:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", envKey, "url.via6:(redacted)")
 			},
 		},
 		{
@@ -114,7 +116,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s only supports HTTP and HTTPS", "url.via6:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s only supports HTTP and HTTPS", envKey, "url.via6:(redacted)")
 			},
 		},
 		{
@@ -125,7 +127,7 @@ func TestNewCustom(t *testing.T) {
 			expectedProviderName:      "",
 			expectedTransportIPFamily: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The provider %s does not contain a valid URL", "url:(redacted)")
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", envKey, "url:(redacted)")
 			},
 		},
 	} {
@@ -137,7 +139,7 @@ func TestNewCustom(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			p, ok := tc.create(mockPP, tc.input)
+			p, ok := tc.create(mockPP, envKey, tc.input)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.NotNil(t, p)

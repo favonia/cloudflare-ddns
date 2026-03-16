@@ -24,6 +24,11 @@ func (p LocalWithInterface) Name() string {
 	return p.ProviderName
 }
 
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (LocalWithInterface) IsExplicitEmpty() bool {
+	return false
+}
+
 // ExtractInterfaceAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
 // The address will be unmapped.
 func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr, bool) {

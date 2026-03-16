@@ -31,11 +31,13 @@ func TestReadProvider(t *testing.T) {
 		custom        = provider.MustNewCustomURL("https://url.io")
 		customVia4    = provider.MustNewCustomURLVia4("https://url.io")
 		customVia6    = provider.MustNewCustomURLVia6("https://url.io")
-		literal       = provider.MustNewLiteral("1.1.1.1")
-		literalMulti  = provider.MustNewLiteral("2.2.2.2,1.1.1.1,2.2.2.2")
+		static        = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
+		staticMulti   = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
+		staticEmpty   = provider.NewStaticEmpty()
 	)
 
 	for name, tc := range map[string]struct {
+		ipFamily      ipnet.Family
 		set           bool
 		val           string
 		setDeprecated bool
@@ -46,86 +48,86 @@ func TestReadProvider(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"nil": {
-			false, "", false, "", none, none, true,
+			ipnet.IP4, false, "", false, "", none, none, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "none")
 			},
 		},
 		"deprecated/empty": {
-			false, "", true, "", local, local, true,
+			ipnet.IP4, false, "", true, "", local, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"deprecated/cloudflare": {
-			false, "", true, "    cloudflare\t   ", none, trace, true,
+			ipnet.IP4, false, "", true, "    cloudflare\t   ", none, trace, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=cloudflare is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, keyDeprecated, key, key)
 			},
 		},
 		"deprecated/cloudflare.trace": {
-			false, "", true, " cloudflare.trace", none, trace, true,
+			ipnet.IP4, false, "", true, " cloudflare.trace", none, trace, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "cloudflare.trace")
 			},
 		},
 		"deprecated/cloudflare.doh": {
-			false, "", true, "    \tcloudflare.doh   ", none, doh, true,
+			ipnet.IP4, false, "", true, "    \tcloudflare.doh   ", none, doh, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "cloudflare.doh")
 			},
 		},
 		"deprecated/unmanaged": {
-			false, "", true, "   unmanaged   ", trace, none, true,
+			ipnet.IP4, false, "", true, "   unmanaged   ", trace, none, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=none`, keyDeprecated, key)
 			},
 		},
 		"deprecated/local": {
-			false, "", true, "   local   ", trace, local, true,
+			ipnet.IP4, false, "", true, "   local   ", trace, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s is deprecated; use %s=%s`, keyDeprecated, key, "local")
 			},
 		},
 		"deprecated/ipify": {
-			false, "", true, "     ipify  ", trace, ipify, true,
+			ipnet.IP4, false, "", true, "     ipify  ", trace, ipify, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, keyDeprecated, key, key)
 			},
 		},
 		"deprecated/others": {
-			false, "", true, "   something-else ", ipify, ipify, false,
+			ipnet.IP4, false, "", true, "   something-else ", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", keyDeprecated, "something-else")
 			},
 		},
 		"conflicts": {
-			true, "cloudflare.doh", true, "cloudflare.doh", ipify, ipify, false,
+			ipnet.IP4, true, "cloudflare.doh", true, "cloudflare.doh", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `Cannot have both %s and %s set`, key, keyDeprecated)
 			},
 		},
 		"empty": {
-			false, "", false, "", local, local, true,
+			ipnet.IP4, false, "", false, "", local, local, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
 			},
 		},
 		"cloudflare": {
-			true, "    cloudflare\t   ", false, "", none, none, false,
+			ipnet.IP4, true, "    cloudflare\t   ", false, "", none, none, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare is invalid; use %s=cloudflare.trace or %s=cloudflare.doh`, key, key, key)
 			},
 		},
-		"cloudflare.trace": {true, " cloudflare.trace", false, "", none, trace, true, nil},
+		"cloudflare.trace": {ipnet.IP4, true, " cloudflare.trace", false, "", none, trace, true, nil},
 		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
-			true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
+			ipnet.IP4, true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`)
 			},
 		},
 		"cloudflare.trace:": {
-			true, "   cloudflare.trace: ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`),
@@ -133,80 +135,143 @@ func TestReadProvider(t *testing.T) {
 				)
 			},
 		},
-		"cloudflare.doh": {true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
-		"none":           {true, "   none   ", false, "", trace, none, true, nil},
-		"local":          {true, "   local   ", false, "", trace, local, true, nil},
+		"cloudflare.doh": {ipnet.IP4, true, "    \tcloudflare.doh   ", false, "", none, doh, true, nil},
+		"none":           {ipnet.IP4, true, "   none   ", false, "", trace, none, true, nil},
+		"local":          {ipnet.IP4, true, "   local   ", false, "", trace, local, true, nil},
 		"local.iface:lo": {
-			true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
+			ipnet.IP4, true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface" provider available since version 1.15.0`)
 			},
 		},
 		"local.iface:": {
-			true, "   local.iface: ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   local.iface: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key)
 			},
 		},
-		"custom":      {true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
-		"custom via4": {true, "   url.via4:https://url.io   ", false, "", trace, customVia4, true, nil},
-		"custom via6": {true, "   url.via6:https://url.io   ", false, "", trace, customVia6, true, nil},
-		"literal:1.1.1.1": {
-			true, "   literal   :  1.1.1.1 ", false, "", trace, literal, true,
+		"custom":      {ipnet.IP4, true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
+		"custom via4": {ipnet.IP4, true, "   url.via4:https://url.io   ", false, "", trace, customVia4, true, nil},
+		"custom via6": {ipnet.IP4, true, "   url.via6:https://url.io   ", false, "", trace, customVia6, true, nil},
+		"static:1.1.1.1": {
+			ipnet.IP4, true, "   static   :  1.1.1.1 ", false, "", trace, static, true,
 			nil,
 		},
-		"literal:2.2.2.2,1.1.1.1,2.2.2.2": {
-			true, "   literal   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, literalMulti, true,
+		"static:2.2.2.2,1.1.1.1,2.2.2.2": {
+			ipnet.IP4, true, "   static   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, staticMulti, true,
 			nil,
 		},
-		"literal:1::1%eth0": {
-			true, "   literal   :  1::1%eth0 ", false, "", trace, trace, false,
+		"static.empty": {
+			ipnet.IP4, true, "   static.empty   ", false, "", trace, staticEmpty, true,
+			nil,
+		},
+		"static:trailing-comma": {
+			ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`%s has an empty entry (check for extra commas)`, key)
+			},
+		},
+		"static:double-comma": {
+			ipnet.IP4, true, "static:1.1.1.1,,2.2.2.2", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`%s has an empty entry (check for extra commas)`, key)
+			},
+		},
+		"static:loopback": {
+			ipnet.IP4, true, "static:127.0.0.1", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The IP address %q in %s is %s`,
+					"127.0.0.1", key, "a loopback address")
+			},
+		},
+		"static:unspecified": {
+			ipnet.IP4, true, "static:0.0.0.0", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The IP address %q in %s is %s`,
+					"0.0.0.0", key, "an unspecified address")
+			},
+		},
+		"static:link-local": {
+			ipnet.IP4, true, "static:169.254.1.1", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The IP address %q in %s is %s`,
+					"169.254.1.1", key, "a link-local address")
+			},
+		},
+		"static:is4in6": {
+			ipnet.IP6, true, "static:::ffff:1.1.1.1", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The IP address %q in %s is an IPv4-mapped IPv6 address`,
+					"::ffff:1.1.1.1", key)
+			},
+		},
+		"static:1::1%eth0": {
+			ipnet.IP4, true, "   static   :  1::1%eth0 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`Failed to parse the IP address %q for "literal:": zoned IP addresses are not allowed`,
+					`The IP address %q in %s has a zone identifier, which is not allowed`,
 					"1::1%eth0",
+					key,
 				)
 			},
 		},
-		"literal": {
-			true, "   literal: ", false, "", trace, trace, false,
+		"static:family-mismatch": {
+			ipnet.IP4, true, "static:2001:db8::1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `%s=literal: must be followed by at least one IP address`, key)
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`The IP address %q in %s is not a valid %s address`,
+					"2001:db8::1",
+					key,
+					"IPv4",
+				)
+			},
+		},
+		"static": {
+			ipnet.IP4, true, "   static: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=static: must be followed by at least one IP address`, key)
 			},
 		},
 		"ipify": {
-			true, "     ipify  ", false, "", trace, ipify, true,
+			ipnet.IP4, true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, key, key, key)
 			},
 		},
 		"others": {
-			true, "   something-else ", false, "", ipify, ipify, false,
+			ipnet.IP4, true, "   something-else ", false, "", ipify, ipify, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "something-else")
 			},
 		},
 		"debug.const:1.1.1.1": {
-			true, "   debug.const   :  1.1.1.1 ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   debug.const   :  1.1.1.1 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  1.1.1.1")
 			},
 		},
 		"debug.const:2.2.2.2,1.1.1.1,2.2.2.2": {
-			true, "   debug.const   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   debug.const   :  2.2.2.2, 1.1.1.1, 2.2.2.2 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  2.2.2.2, 1.1.1.1, 2.2.2.2")
 			},
 		},
 		"debug.const:1::1%eth0": {
-			true, "   debug.const   :  1::1%eth0 ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   debug.const   :  1::1%eth0 ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const   :  1::1%eth0")
 			},
 		},
 		"debug.const": {
-			true, "   debug.const: ", false, "", trace, trace, false,
+			ipnet.IP4, true, "   debug.const: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.const:")
 			},
@@ -221,7 +286,7 @@ func TestReadProvider(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProvider(mockPP, key, keyDeprecated, &field)
+			ok := config.ReadProvider(mockPP, key, keyDeprecated, tc.ipFamily, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

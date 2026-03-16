@@ -1,4 +1,4 @@
-// Package ipnet contains utility functions for IPv4 and IPv6 networks.
+// Package ipnet contains utility functions for IPv4 and IPv6 families.
 package ipnet
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Family is the type of IP families.
+// Family identifies an IP family.
 type Family int
 
 const (
@@ -20,11 +20,11 @@ const (
 	// IP6 is IP version 6.
 	IP6 Family = 6
 
-	// FamilyCount is the number of IP networks.
+	// FamilyCount is the number of IP families.
 	FamilyCount = 2
 )
 
-// Int returns the version of the IP networks. It is either 4 or 6.
+// Int returns the IP version. It is either 4 or 6.
 func (t Family) Int() int {
 	switch t {
 	case IP4, IP6:
@@ -34,7 +34,7 @@ func (t Family) Int() int {
 	}
 }
 
-// Describe returns a human-readable description of the IP network.
+// Describe returns a human-readable description of the IP family.
 func (t Family) Describe() string {
 	switch t {
 	case IP4, IP6:
@@ -44,7 +44,7 @@ func (t Family) Describe() string {
 	}
 }
 
-// RecordType prints out the type of DNS records for the IP network. For IPv4, it is A; for IPv6, it is AAAA.
+// RecordType prints out the DNS record type for the IP family. For IPv4, it is A; for IPv6, it is AAAA.
 func (t Family) RecordType() string {
 	switch t {
 	case IP4:
@@ -56,7 +56,7 @@ func (t Family) RecordType() string {
 	}
 }
 
-// UDPNetwork gives the network name for net.Dial.
+// UDPNetwork returns the net.Dial network name for this IP family.
 func (t Family) UDPNetwork() string {
 	switch t {
 	case IP4:
@@ -68,7 +68,7 @@ func (t Family) UDPNetwork() string {
 	}
 }
 
-// Matches checks whether an IP belongs to it.
+// Matches reports whether an IP belongs to this family.
 func (t Family) Matches(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	switch t {
@@ -81,7 +81,34 @@ func (t Family) Matches(ip netip.Addr) bool {
 	}
 }
 
-// normalizeDetectedIP normalizes an IP into an IPv4 or IPv6 address.
+// DescribeAddressIssue reports whether the address is unsuitable as a DNS/WAF target.
+// If unsuitable, it returns a description (e.g., "a loopback address") and true.
+// The caller is responsible for formatting the full message with context.
+func DescribeAddressIssue(ip netip.Addr) (string, bool) {
+	switch {
+	case ip.IsUnspecified():
+		return "an unspecified address", true
+	case ip.IsLoopback():
+		return "a loopback address", true
+	case ip.IsLinkLocalMulticast():
+		return "a link-local multicast address", true
+	case ip.IsMulticast():
+		return "a multicast address", true
+	case ip.IsLinkLocalUnicast():
+		return "a link-local address", true
+	case ip.Zone() != "":
+		return "an address with a zone identifier", true
+	default:
+		return "", false
+	}
+}
+
+// IsNonGlobalUnicast reports whether the address is valid but not global unicast.
+func IsNonGlobalUnicast(ip netip.Addr) bool {
+	return !ip.IsGlobalUnicast()
+}
+
+// normalizeDetectedIP normalizes an IP into the requested family.
 func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
@@ -120,47 +147,10 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		return netip.Addr{}, false
 	}
 
-	switch {
-	case ip.IsUnspecified():
+	if desc, bad := DescribeAddressIssue(ip); bad {
 		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is an unspecified address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLoopback():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a loopback address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLinkLocalMulticast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a link-local multicast address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsMulticast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a multicast address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLinkLocalUnicast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a link-local address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	}
-
-	// Special-use scoped addresses were rejected above. A remaining
-	// zone-qualified address is unusual and often indicates misconfiguration.
-	// Independently, Cloudflare DNS record content is validated as an
-	// IPv4/IPv6 address, so zone-qualified values must be rejected.
-	if ip.Zone() != "" {
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s address %s has a zone identifier and cannot be used as a target address",
-			t.Describe(), ip.String(),
+			"Detected %s address %s is %s",
+			t.Describe(), ip.String(), desc,
 		)
 		return netip.Addr{}, false
 	}
@@ -173,7 +163,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	// In practice, the checks above and IsGlobalUnicast should cover all useful
 	// DDNS address classes; this warning path is kept as a future-proof guard in
 	// case Go or IP standards introduce new edge classes.
-	if !ip.IsGlobalUnicast() {
+	if IsNonGlobalUnicast(ip) {
 		ppfmt.Noticef(
 			pp.EmojiWarning,
 			`Detected %s address %s does not look like a global unicast address`,

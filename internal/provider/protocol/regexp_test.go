@@ -31,6 +31,15 @@ func TestRegexpName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
+func TestRegexpIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.Regexp{
+		ProviderName: "",
+		Param:        nil,
+	}.IsExplicitEmpty())
+}
+
 func TestRegexpGetIPs(t *testing.T) {
 	t.Parallel()
 
@@ -110,13 +119,13 @@ func TestRegexpGetIPs(t *testing.T) {
 		"4/not-handled": {
 			ipnet.IP4, server4.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv6")
 			},
 		},
 		"6/not-handled": {
 			ipnet.IP6, server6.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv4")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv4")
 			},
 		},
 		"4/no-match": {

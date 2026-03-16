@@ -1,4 +1,9 @@
-// Package provider implements protocols to detect public IP addresses.
+// Package provider implements config-facing provider constructors and the
+// runtime Provider interface.
+//
+// Creation functions accept an envKey parameter (the environment variable
+// name) so that validation messages identify the configuration source.
+// Pure protocol implementations live in provider/protocol.
 package provider
 
 import (
@@ -39,6 +44,10 @@ type Provider interface {
 	Name() string
 	// Name gives the name of the protocol.
 
+	IsExplicitEmpty() bool
+	// IsExplicitEmpty reports whether the provider intentionally manages the
+	// requested family to an empty target set when detection succeeds.
+
 	GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets
 	// GetIPs gets the desired targets for the requested managed network family.
 	//
@@ -51,7 +60,7 @@ type Provider interface {
 	//     can treat it as a deterministic set
 	// - dynamic providers use Available=false when they cannot produce a usable
 	//   target set for the requested family
-	// - explicit static-empty modes use Available=true with an empty IP list
+	// - explicit-empty modes use Available=true with an empty IP list
 }
 
 // Name gets the protocol name. It returns "none" for nil.

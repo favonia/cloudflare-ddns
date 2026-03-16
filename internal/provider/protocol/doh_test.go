@@ -532,7 +532,7 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP network: %s", "IPv6")
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv6")
 			},
 		},
 	} {
@@ -563,4 +563,15 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDNSOverHTTPSNameIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.DNSOverHTTPS{
+		ProviderName: "",
+		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
+			ipnet.IP4: {"https://localhost", "hello.", dnsmessage.ClassCHAOS},
+		},
+	}.IsExplicitEmpty())
 }

@@ -227,7 +227,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s", 6, "none", "IPv6"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER (%s) is ignored because no domains or WAF lists use %s", 6, `"cloudflare.trace"`, "IPv6"),
 				)
 			},
 		},
@@ -246,8 +246,224 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER was changed to %q because no domains or WAF lists use %s", 6, "none", "IPv6"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "IP%d_PROVIDER (%s) is ignored because no domains or WAF lists use %s", 6, `"cloudflare.trace"`, "IPv6"),
 					m.EXPECT().Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q", "none"),
+				)
+			},
+		},
+		"both-static-empty-warning": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: {domain.FQDN("d.e.f")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+						domain.FQDN("d.e.f"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed DNS records for the configured domains"),
+				)
+			},
+		},
+		"both-static-empty-warning/domains-and-waf": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				WAFLists:          []api.WAFList{{AccountID: "account", Name: "list"}},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed DNS records and WAF IP items for the configured scope"),
+				)
+			},
+		},
+		"both-static-empty-warning/waf-only": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				TTL:           api.TTLAuto,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				WAFLists:          []api.WAFList{{AccountID: "account", Name: "list"}},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: nil,
+					},
+					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
+					TTL:      api.TTLAuto,
+					Proxied:  map[domain.Domain]bool{},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed WAF IP items for the configured lists"),
+				)
+			},
+		},
+		"ip4-none-ip6-static-empty/domains": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("d.e.f")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("d.e.f"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP6_PROVIDER is configured to clear %s while IP4_PROVIDER is %q",
+						"managed DNS records for the configured domains", "none"),
+				)
+			},
+		},
+		"ip4-static-empty-ip6-none/domains": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
+						"managed DNS records for the configured domains", "none"),
 				)
 			},
 		},

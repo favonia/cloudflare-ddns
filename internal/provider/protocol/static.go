@@ -13,13 +13,28 @@ type Static struct {
 	// Name of the detection protocol.
 	ProviderName string
 
-	// The IPs.
+	// The IPs. Config-side constructors canonicalize these for stable naming.
+	// Runtime normalization still runs in GetIPs because the provider contract is
+	// enforced per requested family at the point the targets are consumed.
 	IPs []netip.Addr
+}
+
+// NewStatic creates a static provider with a defensive copy of ips.
+func NewStatic(providerName string, ips []netip.Addr) Static {
+	return Static{
+		ProviderName: providerName,
+		IPs:          append([]netip.Addr(nil), ips...),
+	}
 }
 
 // Name of the detection protocol.
 func (p Static) Name() string {
 	return p.ProviderName
+}
+
+// IsExplicitEmpty reports whether the provider intentionally clears the family.
+func (p Static) IsExplicitEmpty() bool {
+	return len(p.IPs) == 0
 }
 
 // GetIPs returns the IPs as a deterministic set.

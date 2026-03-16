@@ -75,7 +75,7 @@ func initUpdateConfig() *config.UpdateConfig {
 }
 
 func hintIP6DetectionFails(p *mocks.MockPP) *mocks.MockPPNoticeOncefCall {
-	return p.EXPECT().NoticeOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can turn it off by setting IP6_PROVIDER=none", pp.ManualURL)
+	return p.EXPECT().NoticeOncef(pp.MessageIP6DetectionFails, pp.EmojiHint, "If you are using Docker or Kubernetes, IPv6 might need extra setup. Read more at %s. If your network doesn't support IPv6, you can stop managing it by setting IP6_PROVIDER=none", pp.ManualURL)
 }
 
 func wafTargets(ip4, ip6 []netip.Addr) familyTargets {
@@ -427,6 +427,21 @@ func TestUpdateIPs(t *testing.T) {
 				)
 			},
 		},
+		"ip4-only/clear": {
+			true,
+			[]string{"Cleared A of ip4.hello", "Set list(s) 12341234/list"},
+			[]string{"Cleared A records of ip4.hello.", `Updated WAF list(s) 12341234/list.`},
+			providerEnablers{ipnet.IP4: true},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP4].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP4).Return(provider.NewAvailableTargets([]netip.Addr{})),
+					p.EXPECT().Infof(pp.EmojiInternet, "The desired %s target set is empty", "IPv4"),
+					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{}, params).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{}, nil), wafItemComment).Return(setter.ResponseUpdated),
+				)
+			},
+		},
 		"ip4-only/set-fail": {
 			false,
 			[]string{"Could not confirm update of A (127.0.0.1) for ip4.hello", "Could not confirm update of WAF list(s) 12341234/list"},
@@ -570,7 +585,7 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP4).Return(provider.NewUnavailableTargets()),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect any %s addresses", "IPv4"),
-					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
+					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP6).Return(provider.NewAvailableTargets([]netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected the %s address %v", "IPv6", ip6),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
@@ -606,7 +621,7 @@ func TestUpdateIPs(t *testing.T) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP4).Return(provider.NewUnavailableTargets()),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect any %s addresses", "IPv4"),
-					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
+					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetIPs(gomock.Any(), p, ipnet.IP6).Return(provider.NewUnavailableTargets()),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect any %s addresses", "IPv6"),
 					hintIP6DetectionFails(p),
@@ -669,7 +684,7 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 						},
 					),
 					p.EXPECT().Noticef(pp.EmojiError, "Failed to detect any %s addresses", "IPv4"),
-					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can disable it with IP4_PROVIDER=none"),
+					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 					p.EXPECT().NoticeOncef(pp.MessageDetectionTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second),
 				)
 			},
