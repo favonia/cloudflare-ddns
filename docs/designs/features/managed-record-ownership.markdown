@@ -14,7 +14,7 @@ Safely isolate DNS record ownership when multiple updater instances may touch ov
 
 ## Core Model
 
-- `RECORD_COMMENT` is the comment this instance writes to DNS records that it creates or updates.
+- `RECORD_COMMENT` is the fallback comment this instance uses when reconciling DNS records.
 - `MANAGED_RECORDS_COMMENT_REGEX` is the attribute-based selector used to decide which DNS records are managed by this instance.
 - These settings are intentionally separate: one controls what this instance writes, and the other controls what it may mutate.
 
@@ -68,13 +68,13 @@ When DNS reconciliation needs to satisfy uncovered targets, metadata is resolved
 Recycling is only an optimization of delete-and-create to reduce disruption; the target metadata always comes from reconciled recyclable sources, not from already-matching records.
 
 - Scalar fields (`TTL`, `PROXIED`, `RECORD_COMMENT`):
-  - empty source set: use configured value
+  - empty source set: use fallback value
   - unanimous source value: inherit source value
-  - non-unanimous source values: use configured value and emit one ambiguity warning per field
+  - non-unanimous source values: use fallback value and emit one ambiguity warning per field
 - Tag field (`TAGS`):
   - tag name is compared case-insensitively
   - tag value is compared case-sensitively
-  - configured-default tags are sticky unless all sources omit them
+  - fallback-default tags are sticky unless all sources omit them
   - non-default tags require unanimity across sources to be inherited
 
 ### Interruption-Aware Priority

@@ -9,7 +9,7 @@
 
 A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It detects your machine’s public IP addresses and updates DNS records through the Cloudflare API.
 
-## 📜 Highlights
+## ✨️ Highlights
 
 ### ⚡️ Efficiency
 
@@ -17,10 +17,10 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 - 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
-### 💯 Complete Support of Domain Names
+### ✅️ Comprehensive Support of Domain Names
 
 - 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
-- 🌍 [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
+- 🌍️ [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
 
@@ -30,12 +30,12 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 - 📝 You can set [comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.
 - 📜 The updater can maintain [lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. These lists can then be referenced in any Cloudflare product that uses [Cloudflare’s Rules language](https://developers.cloudflare.com/ruleset-engine/), such as [Cloudflare Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) and [Cloudflare Rules](https://developers.cloudflare.com/rules/). (We call the lists “WAF lists”, but their use is not limited to Cloudflare WAF.)
 
-### 👁️ Integration with Notification Services
+### 🔔 Integration with Notification Services
 
 - 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
 - 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
 
-### 🕵️ Minimum Privacy Impact
+### 🙈 Minimum Privacy Impact
 
 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
 
@@ -43,7 +43,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
 
-- <details><summary><em>Click to expand:</em> ✍️ Verify with cosign that the Docker images were built from this repository.</summary>
+- <details><summary><em>Click to expand:</em> 🔏 Verify with cosign that the Docker images were built from this repository.</summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:1 \
@@ -53,7 +53,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
   This only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
-- <details><summary><em>Click to expand:</em> 📚 The updater uses only established open-source Go libraries.</summary>
+- <details><summary><em>Click to expand:</em> 📚️ The updater uses only established open-source Go libraries.</summary>
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of Cloudflare API v4.
   - [cron](https://github.com/robfig/cron):\
@@ -73,7 +73,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
   </details>
 
-## ⛷️ Quick Start
+## 🚀 Quick Start
 
 <details><summary><em>Click to expand:</em> 🐋 Directly run the Docker image</summary>
 
@@ -109,7 +109,7 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 ## 🐋 Deployment with Docker Compose
 
-### 📦 Step 1: Updating the Compose File
+### 📦️ Step 1: Updating the Compose File
 
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template looks a bit scary only because it includes various optional flags for extra security protection.
 
@@ -162,7 +162,7 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 <details>
 <summary><em>Click to expand:</em> 🚨 Remove the optional <code>PROXIED=true</code> line if you are <em>not</em> running a web server</summary>
 
-The setting `PROXIED=true` makes this updater use Cloudflare's proxy for these domains, which lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare's proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
+The setting `PROXIED=true` makes this updater use Cloudflare’s proxy for these domains, which lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare’s proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
 
 </details>
 
@@ -183,9 +183,9 @@ The updater should now be running in the background. Check the logs with `docker
 
 These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#all-settings).
 
-### 🔍 Validation and Testing
+### 🔍️ Validation and Testing
 
-#### ✅ Test a new setup safely with explicit IPs
+#### ✅️ Test a new setup safely with explicit IPs
 
 Use this when you want to validate the updater without waiting for a real IP change.
 
@@ -245,7 +245,7 @@ After removing `network_mode: host`, follow the [official Docker instructions fo
 
 Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
 
-If you want all outbound requests from the container to use a specific Docker-attached network, create a [MacVLAN network](https://docs.docker.com/engine/network/drivers/macvlan/) first:
+If you want all outbound requests from the container to use a specific Docker-attached network, one solution is to create a [MacVLAN network](https://docs.docker.com/engine/network/drivers/macvlan/):
 
 ```bash
 docker network create \
@@ -398,7 +398,7 @@ There have been reports of intermittent issues with the default provider `cloudf
 The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
-<summary><em>Click to expand:</em> 🔑 Cloudflare API Access</summary>
+<summary><em>Click to expand:</em> 🔐 Cloudflare API Access</summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -411,16 +411,16 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
-> 🔑 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
+> 🌐 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
 >
-> 🔑 To manipulate WAF lists, the updater needs the **Account - Account Filter Lists - Edit** permission.
+> 📋️ To manipulate WAF lists, the updater needs the **Account - Account Filter Lists - Edit** permission.
 >
 > 💡 `CLOUDFLARE_API_TOKEN_FILE` works well with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/) where secrets will be mounted as files at `/run/secrets/<secret-name>`.
 
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📍 DNS Scope</summary>
+<summary><em>Click to expand:</em> 🌐 DNS Record Scope</summary>
 
 > You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS` for the updater to manage DNS records.
 
@@ -438,26 +438,26 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📍 WAF Scope</summary>
+<summary><em>Click to expand:</em> 📋️ WAF List Scope</summary>
+
+> The updater can maintain [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) to match detected IP addresses. 🤖 [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range. Existing ranges in the list that already cover a detected address are kept as-is.
 
 | Name                                                   | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Default Value                                  |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | 🧪 `WAF_LISTS` (available since version 1.14.0)        | <p>🧪 Comma-separated references of [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) the updater should manage. A list reference is written in the format `<account-id>/<list-name>` where `account-id` is your account ID and `list-name` is the list name; it should look like `0123456789abcdef0123456789abcdef/mylist`. If the referenced WAF list does not exist, the updater will try to create it.</p><p>🔑 The API token needs the **Account - Account Filter Lists - Edit** permission.<br/>💡 See [how to find your account ID](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/).</p> | `""` (empty list)                              |
 | 🧪 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased) | 🧪 Regex that matches comments of existing WAF list items this updater manages. This lets multiple updater instances share one WAF list safely: only matched items are updated or deleted. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (the Go `regexp` syntax, not Perl/PCRE).                                                                                                                                                                                                                                                                                                                                                            | `""` (empty regex; manages all WAF list items) |
 
-> 🤖 [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range.
-
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🔍 IP Detection</summary>
+<summary><em>Click to expand:</em> 🔍️ IP Detection</summary>
 
 | Name           | Meaning                                                                                                                                                                                                                                                                                                                                                | Default Value      |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv4. See below for a detailed explanation. | `cloudflare.trace` |
 | `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv6. See below for a detailed explanation. | `cloudflare.trace` |
 
-> 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
+> 👉️ The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
 | Provider Name                                             | Explanation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -488,7 +488,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ⏳ Operation Timeouts</summary>
+<summary><em>Click to expand:</em> ⏳️ Operation Timeouts</summary>
 
 | Name                | Meaning                                                                                                                                                                                                                                       | Default Value      |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -498,9 +498,9 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🐣 DNS and WAF Fallback Values</summary>
+<summary><em>Click to expand:</em> 🛟 DNS and WAF Fallback Values</summary>
 
-> The updater preserves existing attributes when it can. 🤖 It keeps existing values when stale content agrees on them.
+> The updater preserves existing attributes (such as TTL and proxy status) when possible. 🤖 It keeps existing attribute values when old content agrees on them; otherwise, it uses the fallback values below when the values conflict.
 
 | Name                                                       | Meaning                                                                                                                                                                                                                                                                                                         | Default Value                              |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
