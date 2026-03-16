@@ -169,46 +169,46 @@ func TestReadProvider(t *testing.T) {
 			ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`%s has an empty entry (check for extra commas)`, key)
+					`The %s entry of %s is empty (check for extra commas)`, "2nd", key)
 			},
 		},
 		"static:double-comma": {
 			ipnet.IP4, true, "static:1.1.1.1,,2.2.2.2", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`%s has an empty entry (check for extra commas)`, key)
+					`The %s entry of %s is empty (check for extra commas)`, "2nd", key)
 			},
 		},
 		"static:loopback": {
 			ipnet.IP4, true, "static:127.0.0.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The IP address %q in %s is %s`,
-					"127.0.0.1", key, "a loopback address")
+					`The %s entry (%q) of %s is %s`,
+					"1st", "127.0.0.1", key, "a loopback address")
 			},
 		},
 		"static:unspecified": {
 			ipnet.IP4, true, "static:0.0.0.0", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The IP address %q in %s is %s`,
-					"0.0.0.0", key, "an unspecified address")
+					`The %s entry (%q) of %s is %s`,
+					"1st", "0.0.0.0", key, "an unspecified address")
 			},
 		},
 		"static:link-local": {
 			ipnet.IP4, true, "static:169.254.1.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The IP address %q in %s is %s`,
-					"169.254.1.1", key, "a link-local address")
+					`The %s entry (%q) of %s is %s`,
+					"1st", "169.254.1.1", key, "a link-local address")
 			},
 		},
 		"static:is4in6": {
 			ipnet.IP6, true, "static:::ffff:1.1.1.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The IP address %q in %s is an IPv4-mapped IPv6 address`,
-					"::ffff:1.1.1.1", key)
+					`The %s entry (%q) of %s is an IPv4-mapped IPv6 address`,
+					"1st", "::ffff:1.1.1.1", key)
 			},
 		},
 		"static:1::1%eth0": {
@@ -216,9 +216,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The IP address %q in %s has a zone identifier, which is not allowed`,
-					"1::1%eth0",
-					key,
+					`The %s entry (%q) of %s has a zone identifier, which is not allowed`,
+					"1st", "1::1%eth0", key,
 				)
 			},
 		},
@@ -227,10 +226,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The IP address %q in %s is not a valid %s address`,
-					"2001:db8::1",
-					key,
-					"IPv4",
+					`The %s entry (%q) of %s is not a valid %s address`,
+					"1st", "2001:db8::1", key, "IPv4",
 				)
 			},
 		},
