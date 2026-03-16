@@ -291,7 +291,8 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records for the configured domains`),
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed DNS records for the configured domains"),
 				)
 			},
 		},
@@ -335,7 +336,8 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records and WAF IP items for the configured scope`),
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed DNS records and WAF IP items for the configured scope"),
 				)
 			},
 		},
@@ -378,7 +380,90 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed WAF IP items for the configured lists`),
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed WAF IP items for the configured lists"),
+				)
+			},
+		},
+		"ip4-none-ip6-static-empty/domains": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("d.e.f")},
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("d.e.f"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP6_PROVIDER is configured to clear %s while IP4_PROVIDER is %q",
+						"managed DNS records for the configured domains", "none"),
+				)
+			},
+		},
+		"ip4-static-empty-ip6-none/domains": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
+						"managed DNS records for the configured domains", "none"),
 				)
 			},
 		},

@@ -48,16 +48,18 @@ func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMap(netip.Addr.String, ips)
 }
 
-func isClearingTargets(ips []netip.Addr) bool {
+// isTargetSetEmpty reports whether the target IP set is empty.
+// An empty target set signals record clearing (as produced by static.empty).
+func isTargetSetEmpty(ips []netip.Addr) bool {
 	return len(ips) == 0
 }
 
 func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
 	ipDescription := describeIPs(ips)
-	clearing := isClearingTargets(ips)
+	emptyTargets := isTargetSetEmpty(ips)
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		if clearing {
+		if emptyTargets {
 			return heartbeat.Message{
 				OK: false,
 				Lines: []string{fmt.Sprintf(
@@ -78,7 +80,7 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		if clearing {
+		if emptyTargets {
 			successLines = append(successLines, fmt.Sprintf(
 				"Clearing %s of %s",
 				ipFamily.RecordType(), pp.Join(domains),
@@ -92,7 +94,7 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		if clearing {
+		if emptyTargets {
 			successLines = append(successLines, fmt.Sprintf(
 				"Cleared %s of %s",
 				ipFamily.RecordType(), pp.Join(domains),
@@ -110,11 +112,11 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 
 func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) notifier.Message {
 	ipDescription := describeIPsInEnglish(ips)
-	clearing := isClearingTargets(ips)
+	emptyTargets := isTargetSetEmpty(ips)
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		if clearing {
+		if emptyTargets {
 			fragments = append(fragments,
 				"Could not confirm clearing ", ipFamily.RecordType(),
 				" records of ", pp.EnglishJoin(domains),
@@ -129,7 +131,7 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			if clearing {
+			if emptyTargets {
 				fragments = append(fragments,
 					"Clearing ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
 				)
@@ -147,7 +149,7 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			if clearing {
+			if emptyTargets {
 				fragments = append(fragments,
 					"Cleared ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
 				)

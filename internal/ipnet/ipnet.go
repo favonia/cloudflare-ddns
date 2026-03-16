@@ -81,6 +81,33 @@ func (t Family) Matches(ip netip.Addr) bool {
 	}
 }
 
+// DescribeAddressIssue reports whether the address is unsuitable as a DNS/WAF target.
+// If unsuitable, it returns a description (e.g., "a loopback address") and true.
+// The caller is responsible for formatting the full message with context.
+func DescribeAddressIssue(ip netip.Addr) (string, bool) {
+	switch {
+	case ip.IsUnspecified():
+		return "an unspecified address", true
+	case ip.IsLoopback():
+		return "a loopback address", true
+	case ip.IsLinkLocalMulticast():
+		return "a link-local multicast address", true
+	case ip.IsMulticast():
+		return "a multicast address", true
+	case ip.IsLinkLocalUnicast():
+		return "a link-local address", true
+	case ip.Zone() != "":
+		return "an address with a zone identifier", true
+	default:
+		return "", false
+	}
+}
+
+// IsNonGlobalUnicast reports whether the address is valid but not global unicast.
+func IsNonGlobalUnicast(ip netip.Addr) bool {
+	return !ip.IsGlobalUnicast()
+}
+
 // normalizeDetectedIP normalizes an IP into the requested family.
 func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
@@ -120,47 +147,10 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		return netip.Addr{}, false
 	}
 
-	switch {
-	case ip.IsUnspecified():
+	if desc, bad := DescribeAddressIssue(ip); bad {
 		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is an unspecified address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLoopback():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a loopback address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLinkLocalMulticast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a link-local multicast address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsMulticast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a multicast address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	case ip.IsLinkLocalUnicast():
-		ppfmt.Noticef(pp.EmojiError,
-			`Detected %s address %s is a link-local address`,
-			t.Describe(), ip.String(),
-		)
-		return netip.Addr{}, false
-	}
-
-	// Special-use scoped addresses were rejected above. A remaining
-	// zone-qualified address is unusual and often indicates misconfiguration.
-	// Independently, Cloudflare DNS record content is validated as an
-	// IPv4/IPv6 address, so zone-qualified values must be rejected.
-	if ip.Zone() != "" {
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s address %s has a zone identifier and cannot be used as a target address",
-			t.Describe(), ip.String(),
+			"Detected %s address %s is %s",
+			t.Describe(), ip.String(), desc,
 		)
 		return netip.Addr{}, false
 	}
@@ -173,7 +163,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	// In practice, the checks above and IsGlobalUnicast should cover all useful
 	// DDNS address classes; this warning path is kept as a future-proof guard in
 	// case Go or IP standards introduce new edge classes.
-	if !ip.IsGlobalUnicast() {
+	if IsNonGlobalUnicast(ip) {
 		ppfmt.Noticef(
 			pp.EmojiWarning,
 			`Detected %s address %s does not look like a global unicast address`,

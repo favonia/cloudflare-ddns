@@ -16,6 +16,12 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 	for rawIP := range strings.SplitSeq(raw, ",") {
 		rawIP = strings.TrimSpace(rawIP)
 
+		if rawIP == "" {
+			ppfmt.Noticef(pp.EmojiUserError,
+				`%s has an empty entry (check for extra commas)`, envKey)
+			return nil, false
+		}
+
 		ip, err := netip.ParseAddr(rawIP)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError, `Failed to parse the IP address %q in %s`, rawIP, envKey)
@@ -30,6 +36,16 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 			)
 			return nil, false
 		}
+		if ipFamily == ipnet.IP6 && ip.Is4In6() {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				`The IP address %q in %s is an IPv4-mapped IPv6 address`,
+				rawIP,
+				envKey,
+			)
+			return nil, false
+		}
+		ip = ip.Unmap()
 		if !ipFamily.Matches(ip) {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
@@ -39,6 +55,19 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 				ipFamily.Describe(),
 			)
 			return nil, false
+		}
+		if desc, bad := ipnet.DescribeAddressIssue(ip); bad {
+			ppfmt.Noticef(pp.EmojiUserError,
+				`The IP address %q in %s is %s`,
+				rawIP, envKey, desc,
+			)
+			return nil, false
+		}
+		if ipnet.IsNonGlobalUnicast(ip) {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				`The IP address %q in %s does not look like a global unicast address`,
+				rawIP, envKey,
+			)
 		}
 		ips = append(ips, ip)
 	}

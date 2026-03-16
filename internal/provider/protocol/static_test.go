@@ -95,11 +95,7 @@ func TestStaticGetIPs(t *testing.T) {
 			ipnet.IP6,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(
-					pp.EmojiError,
-					"Detected %s address %s has a zone identifier and cannot be used as a target address",
-					"IPv6", "1::1%1",
-				)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "1::1%1", "an address with a zone identifier")
 			},
 		},
 		"error/invalid": {

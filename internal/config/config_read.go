@@ -176,19 +176,33 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			provider.Name(nil))
 		return nil, false
 	}
-	if providerMap[ipnet.IP4] != nil && providerMap[ipnet.IP4].IsExplicitEmpty() &&
-		providerMap[ipnet.IP6] != nil && providerMap[ipnet.IP6].IsExplicitEmpty() {
+	ip4Off := providerMap[ipnet.IP4] == nil || providerMap[ipnet.IP4].IsExplicitEmpty()
+	ip6Off := providerMap[ipnet.IP6] == nil || providerMap[ipnet.IP6].IsExplicitEmpty()
+	if ip4Off && ip6Off {
+		var targetDesc string
 		switch {
 		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear "+
-					"managed DNS records and WAF IP items for the configured scope")
+			targetDesc = "managed DNS records and WAF IP items for the configured scope"
 		case len(activeDomainSet) > 0:
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed DNS records for the configured domains`)
+			targetDesc = "managed DNS records for the configured domains"
 		case len(c.WAFLists) > 0:
+			targetDesc = "managed WAF IP items for the configured lists"
+		}
+
+		ip4Managed := providerMap[ipnet.IP4] != nil
+		ip6Managed := providerMap[ipnet.IP6] != nil
+		switch {
+		case ip4Managed && ip6Managed:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`Both IP4_PROVIDER and IP6_PROVIDER are configured to clear managed WAF IP items for the configured lists`)
+				"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s", targetDesc)
+		case ip4Managed:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
+				targetDesc, provider.Name(nil))
+		case ip6Managed:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"IP6_PROVIDER is configured to clear %s while IP4_PROVIDER is %q",
+				targetDesc, provider.Name(nil))
 		}
 	}
 

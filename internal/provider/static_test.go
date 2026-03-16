@@ -24,8 +24,14 @@ func TestMustStatic(t *testing.T) {
 		{ipnet.IP4, "  2.2.2.2,1.1.1.1,2.2.2.2 ", true},
 		{ipnet.IP6, "1::1%1", false},
 		{ipnet.IP4, "1.1.1.1,", false},
+		{ipnet.IP4, "1.1.1.1,,2.2.2.2", false},
 		{ipnet.IP4, "", false},
 		{ipnet.IP6, "blah", false},
+		{ipnet.IP4, "127.0.0.1", false},
+		{ipnet.IP4, "0.0.0.0", false},
+		{ipnet.IP4, "169.254.1.1", false},
+		{ipnet.IP6, "::ffff:1.1.1.1", false},
+		{ipnet.IP4, "255.255.255.255", true},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
