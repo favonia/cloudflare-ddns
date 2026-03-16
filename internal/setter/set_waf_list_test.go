@@ -444,20 +444,20 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 	t.Parallel()
 
 	const listDescription = "My List"
-	const configuredComment = "configured"
+	const fallbackComment = "fallback"
 	wafList := api.WAFList{AccountID: "account", Name: "list"}
 
 	ip4 := netip.MustParseAddr("10.0.0.1")
-	stale4 := wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "stale-ip4", comment: "inherit-me"})
+	outdated4 := wafItem(wafItemFixture{prefix: "20.0.0.0/24", id: "outdated-ip4", comment: "inherit-me"})
 
-	t.Run("unanimous-stale-comment-is-inherited", func(t *testing.T) {
+	t.Run("unanimous-outdated-comment-is-inherited", func(t *testing.T) {
 		t.Parallel()
 		ctx, h := newSetterHarness(t)
 
 		gomock.InOrder(
 			h.mockHandle.EXPECT().
-				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
-				Return([]api.WAFListItem{stale4}, true, false, true),
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, fallbackComment).
+				Return([]api.WAFListItem{outdated4}, true, false, true),
 			h.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
 					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
@@ -466,40 +466,40 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
 		)
 
-		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), fallbackComment)
 		require.Equal(t, setter.ResponseUpdated, resp)
 	})
 
-	t.Run("non-unanimous-stale-comments-fallback-to-configured-and-warn-once", func(t *testing.T) {
+	t.Run("non-unanimous-outdated-comments-fallback-to-fallback-and-warn-once", func(t *testing.T) {
 		t.Parallel()
 		ctx, h := newSetterHarness(t)
 
-		stale4b := wafItem(wafItemFixture{prefix: "30.0.0.0/24", id: "stale-ip4b", comment: "different"})
+		outdated4b := wafItem(wafItemFixture{prefix: "30.0.0.0/24", id: "outdated-ip4b", comment: "different"})
 
 		gomock.InOrder(
 			h.mockHandle.EXPECT().
-				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
-				Return([]api.WAFListItem{stale4, stale4b}, true, false, true),
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, fallbackComment).
+				Return([]api.WAFListItem{outdated4, outdated4b}, true, false, true),
 			h.mockPP.EXPECT().Noticef(
 				pp.EmojiWarning,
-				"The %q values for %s disagree across %d managed candidates; using %s",
-				"WAF list "+wafList.Describe()+" IPv4", "comment", 2, "configured comment",
+				"The %d outdated %s disagree on %s; using %s",
+				2, "IPv4 items in WAF list "+wafList.Describe(), "comments", "fallback value",
 			),
 			h.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
-					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: configuredComment},
+					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: fallbackComment},
 				}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale4b.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID, outdated4b.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
@@ -507,21 +507,21 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				"30.0.0.0/24", wafList.Describe()),
 		)
 
-		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), configuredComment)
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, netip.Addr{}), fallbackComment)
 		require.Equal(t, setter.ResponseUpdated, resp)
 	})
 
-	t.Run("mixed-family-stale-comments-use-single-create-call-with-structured-items", func(t *testing.T) {
+	t.Run("mixed-family-outdated-comments-use-single-create-call-with-structured-items", func(t *testing.T) {
 		t.Parallel()
 		ctx, h := newSetterHarness(t)
 
 		ip6 := netip.MustParseAddr("2001:db8::1")
-		stale6 := wafItem(wafItemFixture{prefix: "2001:db8:ffff::/48", id: "stale-ip6", comment: "inherit-v6"})
+		outdated6 := wafItem(wafItemFixture{prefix: "2001:db8:ffff::/48", id: "outdated-ip6", comment: "inherit-v6"})
 
 		gomock.InOrder(
 			h.mockHandle.EXPECT().
-				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, configuredComment).
-				Return([]api.WAFListItem{stale4, stale6}, true, false, true),
+				ListWAFListItems(ctx, h.mockPP, wafList, listDescription, fallbackComment).
+				Return([]api.WAFListItem{outdated4, outdated6}, true, false, true),
 			h.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
 					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
@@ -533,7 +533,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"2001:db8::/64", wafList.Describe()),
 			h.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{stale4.ID, stale6.ID}).
+				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID, outdated6.ID}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
@@ -541,7 +541,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				"2001:db8:ffff::/48", wafList.Describe()),
 		)
 
-		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, ip6), configuredComment)
+		resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detected(ip4, ip6), fallbackComment)
 		require.Equal(t, setter.ResponseUpdated, resp)
 	})
 }
@@ -552,8 +552,8 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 	const listDescription = "My List"
 	wafList := api.WAFList{AccountID: "account", Name: "list"}
 
-	initialStale1 := wafItem(wafItemFixture{prefix: "20.0.0.1/32", id: "stale-1", comment: "carry"})
-	initialStale2 := wafItem(wafItemFixture{prefix: "30.0.0.1/32", id: "stale-2", comment: "carry"})
+	initialOutdated1 := wafItem(wafItemFixture{prefix: "20.0.0.1/32", id: "outdated-1", comment: "carry"})
+	initialOutdated2 := wafItem(wafItemFixture{prefix: "30.0.0.1/32", id: "outdated-2", comment: "carry"})
 	midItem := wafItem(wafItemFixture{prefix: "40.0.0.1/32", id: "mid-item", comment: "carry"})
 
 	midIP := netip.MustParseAddr("40.0.0.1")
@@ -569,7 +569,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 		gomock.InOrder(
 			twoStep.mockHandle.EXPECT().
 				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
-				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+				Return([]api.WAFListItem{initialOutdated1, initialOutdated2}, true, false, true),
 			twoStep.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
@@ -578,7 +578,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 					return true
 				}),
 			twoStep.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
+				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{initialOutdated1.ID, initialOutdated2.ID}).
 				Return(true),
 			twoStep.mockHandle.EXPECT().
 				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
@@ -609,7 +609,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 		gomock.InOrder(
 			direct.mockHandle.EXPECT().
 				ListWAFListItems(ctx, direct.mockPP, wafList, listDescription, "").
-				Return([]api.WAFListItem{initialStale1, initialStale2}, true, false, true),
+				Return([]api.WAFListItem{initialOutdated1, initialOutdated2}, true, false, true),
 			direct.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, direct.mockPP, wafList, listDescription, gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) bool {
@@ -618,7 +618,7 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 					return true
 				}),
 			direct.mockHandle.EXPECT().
-				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, []api.ID{initialStale1.ID, initialStale2.ID}).
+				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, []api.ID{initialOutdated1.ID, initialOutdated2.ID}).
 				Return(true),
 		)
 

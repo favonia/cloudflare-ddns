@@ -24,12 +24,12 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 		{ID: "record4", IP: ip4, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
 	}
 
-	matched, unmatched, stale := partitionRecords(targets, records)
+	matched, unmatched, outdated := partitionRecords(targets, records)
 	require.Len(t, matched, 1)
 	require.Contains(t, matched, ip2)
 	require.Equal(t, []netip.Addr{ip1, ip3}, unmatched)
-	require.Len(t, stale, 1)
-	require.Equal(t, api.ID("record4"), stale[0].ID)
+	require.Len(t, outdated, 1)
+	require.Equal(t, api.ID("record4"), outdated[0].ID)
 }
 
 func TestResolveScalarValue(t *testing.T) {
@@ -51,12 +51,12 @@ func TestResolveScalarValue(t *testing.T) {
 func TestResolveScalarValueOrderInvariant(t *testing.T) {
 	t.Parallel()
 
-	configured := "configured"
+	fallback := "fallback"
 	input := []string{"z", "a", "z", "z"}
 
-	valueA, ambiguousA := resolveScalarValue(configured, input)
+	valueA, ambiguousA := resolveScalarValue(fallback, input)
 	slices.Reverse(input)
-	valueB, ambiguousB := resolveScalarValue(configured, input)
+	valueB, ambiguousB := resolveScalarValue(fallback, input)
 
 	require.Equal(t, valueA, valueB)
 	require.Equal(t, ambiguousA, ambiguousB)
@@ -65,25 +65,25 @@ func TestResolveScalarValueOrderInvariant(t *testing.T) {
 func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	t.Parallel()
 
-	configured := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "hello", Tags: nil}
+	fallback := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "hello", Tags: nil}
 	records := []Record{
-		{ID: "record3", RecordParams: configured},
-		{ID: "record1", RecordParams: configured},
+		{ID: "record3", RecordParams: fallback},
+		{ID: "record1", RecordParams: fallback},
 		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
 	}
 
 	resolved, matching, nonMatching := reconcileAndPartitionRecords(
-		configured,
+		fallback,
 		records,
 		pp.NewSilent(),
 		newAmbiguityWarnings(),
 		"AAAA records of sub.test.org",
 	)
 
-	require.Equal(t, configured, resolved)
+	require.Equal(t, fallback, resolved)
 	require.Equal(t, []Record{
-		{ID: "record1", RecordParams: configured},
-		{ID: "record3", RecordParams: configured},
+		{ID: "record1", RecordParams: fallback},
+		{ID: "record3", RecordParams: fallback},
 	}, matching)
 	require.Equal(t, []Record{
 		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},

@@ -66,10 +66,10 @@ func TestSetIPs(t *testing.T) {
 						dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 						dnsRecord(fixture.record2, fixture.ip2, fixture.params),
 					}, true, true),
-					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.RegularDelitionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
-					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-					expectRecordStaleDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.RegularDeletionMode, true),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode, true),
+					expectRecordOutdatedDeletedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 				)
 			},
 		},
@@ -104,7 +104,7 @@ func TestSetIPs(t *testing.T) {
 			},
 		},
 		{
-			name: "many-targets/delete-leftover-stale-fails/response-failed",
+			name: "many-targets/delete-leftover-outdated-fails/response-failed",
 			ips:  []netip.Addr{fixture.ip1, fixture.ip2},
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, h *mocks.MockHandle) {
@@ -138,7 +138,7 @@ func TestSetIPs(t *testing.T) {
 						true,
 					),
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
-					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDelitionMode, false),
+					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDeletionMode, false),
 					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
@@ -265,7 +265,7 @@ func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
-func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
+func TestSetIPsOutdatedOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
@@ -305,7 +305,7 @@ func TestSetIPsStaleOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
-func TestSetIPsStaleDeleteBeforeMatchedUpdate(t *testing.T) {
+func TestSetIPsOutdatedDeleteBeforeMatchedUpdate(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
@@ -327,8 +327,8 @@ func TestSetIPsStaleDeleteBeforeMatchedUpdate(t *testing.T) {
 			dnsRecord(fixture.record2, fixture.ip1, nonMatchingB),
 			dnsRecord(fixture.record3, ip3, fixture.params),
 		}, true, true),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDelitionMode, true),
-		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDeletionMode, true),
+		expectRecordOutdatedDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
@@ -365,7 +365,7 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
-func TestSetIPsStaleRecycleUsesLowestIDTieBreak(t *testing.T) {
+func TestSetIPsOutdatedRecycleUsesLowestIDTieBreak(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
@@ -409,14 +409,14 @@ func TestSetIPsStaleRecycleUsesLowestIDTieBreak(t *testing.T) {
 	require.Equal(t, setter.ResponseUpdated, resp)
 }
 
-func TestSetIPsRecycleUsesReconciledStaleMetadata(t *testing.T) {
+func TestSetIPsRecycleUsesReconciledOutdatedMetadata(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
 	reconciled := api.RecordParams{
 		TTL:     300,
 		Proxied: true,
-		Comment: "from-stale",
+		Comment: "from-outdated",
 		Tags:    []string{"env:prod", "Team:Alpha"},
 	}
 
@@ -482,13 +482,13 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 		Comment: fixture.params.Comment,
 		Tags:    []string{"TEAM:one", "team:one"},
 	}
-	staleWithDuplicateCanonicalTags := api.RecordParams{
+	outdatedWithDuplicateCanonicalTags := api.RecordParams{
 		TTL:     fixture.params.TTL,
 		Proxied: fixture.params.Proxied,
 		Comment: fixture.params.Comment,
 		Tags:    []string{"env:prod", "env:prod"},
 	}
-	reconciledFromStale := api.RecordParams{
+	reconciledFromOutdated := api.RecordParams{
 		TTL:     fixture.params.TTL,
 		Proxied: fixture.params.Proxied,
 		Comment: fixture.params.Comment,
@@ -501,7 +501,7 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
 			dnsRecord(fixture.record1, fixture.ip1, fixture.params),
 			dnsRecord(fixture.record2, fixture.ip1, withDuplicateCanonicalTags),
-			dnsRecord(fixture.record3, fixture.ip2, staleWithDuplicateCanonicalTags),
+			dnsRecord(fixture.record3, fixture.ip2, outdatedWithDuplicateCanonicalTags),
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiImpossible,
@@ -516,7 +516,7 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 			fixture.domain,
 			fixture.record3,
 			targetCreate,
-			reconciledFromStale,
+			reconciledFromOutdated,
 			true,
 		),
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record3),
@@ -553,7 +553,7 @@ func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
 		TTL:     fixture.params.TTL,
 		Proxied: fixture.params.Proxied,
 		Comment: fixture.params.Comment,
-		Tags:    []string{"env:stale"},
+		Tags:    []string{"env:outdated"},
 	}
 	ctx, h := newSetterHarness(t)
 
@@ -569,18 +569,18 @@ func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
 	require.Equal(t, setter.ResponseNoop, resp)
 }
 
-func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
+func TestSetIPsWarnsAmbiguousTagsFromOutdatedSources(t *testing.T) {
 	t.Parallel()
 
 	fixture := newDNSRecordFixture()
 	ip3 := netip.MustParseAddr("::3")
-	stale1 := api.RecordParams{
+	outdated1 := api.RecordParams{
 		TTL:     fixture.params.TTL,
 		Proxied: fixture.params.Proxied,
 		Comment: fixture.params.Comment,
 		Tags:    []string{"env:prod"},
 	}
-	stale2 := api.RecordParams{
+	outdated2 := api.RecordParams{
 		TTL:     fixture.params.TTL,
 		Proxied: fixture.params.Proxied,
 		Comment: fixture.params.Comment,
@@ -592,13 +592,13 @@ func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 
 	gomock.InOrder(
 		expectRecordList(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{
-			dnsRecord(fixture.record1, fixture.ip2, stale1),
-			dnsRecord(fixture.record2, ip3, stale2),
+			dnsRecord(fixture.record1, fixture.ip2, outdated1),
+			dnsRecord(fixture.record2, ip3, outdated2),
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"The %q values for %s disagree across %d managed candidates; using %s",
-			"AAAA records of sub.test.org", "tags", 2, "common subset",
+			"The %d outdated %s disagree on %s; using %s",
+			2, "AAAA records of sub.test.org", "tags", "common subset",
 		),
 		expectRecordUpdate(
 			ctx,
@@ -612,8 +612,8 @@ func TestSetIPsWarnsAmbiguousTagsFromStaleSources(t *testing.T) {
 			true,
 		),
 		expectRecordUpdatedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record1),
-		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDelitionMode, true),
-		expectRecordStaleDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record2),
+		expectRecordDelete(ctx, h.mockPP, h.mockHandle, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode, true),
+		expectRecordOutdatedDeletedNotice(h.mockPP, fixture.ipFamily, fixture.domain, fixture.record2),
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)

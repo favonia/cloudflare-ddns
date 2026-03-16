@@ -87,8 +87,8 @@ const (
 type DeletionMode bool
 
 const (
-	// RegularDelitionMode enables re-reading when an error occurs.
-	RegularDelitionMode DeletionMode = false
+	// RegularDeletionMode enables re-reading when an error occurs.
+	RegularDeletionMode DeletionMode = false
 	// FinalDeletionMode disables re-reading when an error occurs.
 	FinalDeletionMode DeletionMode = true
 )
@@ -110,7 +110,7 @@ type Handle interface {
 	//
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
-		configuredParams RecordParams,
+		fallbackParams RecordParams,
 	) ([]Record, bool, bool)
 
 	// UpdateRecord reconciles one managed DNS record to the desired state.
@@ -140,12 +140,12 @@ type Handle interface {
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.
-	// configuredItemComment is the configured comment target for newly created
+	// fallbackItemComment is the fallback comment target for newly created
 	// managed list items; implementations may use it for advisory mismatch hints.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
-	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription, configuredItemComment string,
+	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription, fallbackItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
 	// FinalCleanWAFList removes managed WAF content during shutdown.
@@ -155,15 +155,15 @@ type Handle interface {
 	// The handle should not be reused for any further update operations after
 	// calling this method.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-		configuredDescription string, managedFamilies map[ipnet.Family]bool,
+		fallbackDescription string, managedFamilies map[ipnet.Family]bool,
 	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string, ids []ID) bool
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string, ids []ID) bool
 
 	// CreateWAFListItems creates managed WAF list items with the given prefixes
 	// and per-item comments.
-	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string,
+	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string,
 		items []WAFListCreateItem) bool
 }
 
