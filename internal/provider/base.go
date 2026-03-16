@@ -1,4 +1,9 @@
-// Package provider implements protocols to detect public IP addresses.
+// Package provider implements config-facing provider constructors and the
+// runtime Provider interface.
+//
+// Creation functions accept an envKey parameter (the environment variable
+// name) so that validation messages identify the configuration source.
+// Pure protocol implementations live in provider/protocol.
 package provider
 
 import (

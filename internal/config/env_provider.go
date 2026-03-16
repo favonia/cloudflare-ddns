@@ -140,19 +140,19 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 		*field = provider.NewLocalWithInterface(parts[1])
 		return true
 	case len(parts) == 2 && parts[0] == "url":
-		p, ok := provider.NewCustomURL(ppfmt, parts[1])
+		p, ok := provider.NewCustomURL(ppfmt, key, parts[1])
 		if ok {
 			*field = p
 		}
 		return ok
 	case len(parts) == 2 && parts[0] == "url.via4":
-		p, ok := provider.NewCustomURLVia4(ppfmt, parts[1])
+		p, ok := provider.NewCustomURLVia4(ppfmt, key, parts[1])
 		if ok {
 			*field = p
 		}
 		return ok
 	case len(parts) == 2 && parts[0] == "url.via6":
-		p, ok := provider.NewCustomURLVia6(ppfmt, parts[1])
+		p, ok := provider.NewCustomURLVia6(ppfmt, key, parts[1])
 		if ok {
 			*field = p
 		}
@@ -169,18 +169,8 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 			)
 			return false
 		}
-		p, ok := provider.NewStatic(ppfmt, parts[1])
+		p, ok := provider.NewStatic(ppfmt, key, ipFamily, parts[1])
 		if !ok {
-			return false
-		}
-		if !provider.StaticMatchesFamily(p, ipFamily) {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				"%s=%s contains IP addresses outside %s",
-				key,
-				provider.Name(p),
-				ipFamily.Describe(),
-			)
 			return false
 		}
 		*field = p

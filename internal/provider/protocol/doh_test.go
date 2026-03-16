@@ -564,3 +564,14 @@ func TestDNSOverHTTPSGetIPs(t *testing.T) {
 		})
 	}
 }
+
+func TestDNSOverHTTPSNameIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.DNSOverHTTPS{
+		ProviderName: "",
+		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
+			ipnet.IP4: {"https://localhost", "hello.", dnsmessage.ClassCHAOS},
+		},
+	}.IsExplicitEmpty())
+}

@@ -31,6 +31,15 @@ func TestRegexpName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
+func TestRegexpIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.Regexp{
+		ProviderName: "",
+		Param:        nil,
+	}.IsExplicitEmpty())
+}
+
 func TestRegexpGetIPs(t *testing.T) {
 	t.Parallel()
 

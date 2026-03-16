@@ -26,6 +26,15 @@ func TestLocalAuteName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
+func TestLocalAutoIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.LocalAuto{
+		ProviderName:  "",
+		RemoteUDPAddr: "",
+	}.IsExplicitEmpty())
+}
+
 func TestExtractUDPAddr(t *testing.T) {
 	t.Parallel()
 

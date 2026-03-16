@@ -17,6 +17,28 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
+func TestNewStatic(t *testing.T) {
+	t.Parallel()
+
+	original := []netip.Addr{netip.MustParseAddr("1.1.1.1"), netip.MustParseAddr("2.2.2.2")}
+	p := protocol.NewStatic("test", original)
+
+	require.Equal(t, "test", p.ProviderName)
+	require.Equal(t, original, p.IPs)
+
+	// Verify defensive copy: mutating the original slice should not affect the provider.
+	original[0] = netip.MustParseAddr("3.3.3.3")
+	require.Equal(t, netip.MustParseAddr("1.1.1.1"), p.IPs[0])
+}
+
+func TestNewStaticNil(t *testing.T) {
+	t.Parallel()
+
+	p := protocol.NewStatic("empty", nil)
+	require.Equal(t, "empty", p.ProviderName)
+	require.Empty(t, p.IPs)
+}
+
 func TestStaticName(t *testing.T) {
 	t.Parallel()
 
@@ -119,4 +141,22 @@ func TestStaticGetIPs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHasUsableTargets(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, protocol.NewAvailableTargets([]netip.Addr{netip.MustParseAddr("1.1.1.1")}).HasUsableTargets())
+	require.True(t, protocol.NewAvailableTargets(nil).HasUsableTargets())
+	require.False(t, protocol.NewUnavailableTargets().HasUsableTargets())
+}
+
+func TestStaticIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, protocol.Static{ProviderName: "", IPs: nil}.IsExplicitEmpty())
+	require.True(t, protocol.Static{ProviderName: "", IPs: []netip.Addr{}}.IsExplicitEmpty())
+	require.False(t, protocol.Static{ProviderName: "", IPs: []netip.Addr{
+		netip.MustParseAddr("1.1.1.1"),
+	}}.IsExplicitEmpty())
 }

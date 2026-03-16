@@ -175,3 +175,13 @@ func TestHTTPGetIPs(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPIsExplicitEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, protocol.HTTP{
+		ProviderName:            "",
+		URL:                     map[ipnet.Family]string{},
+		ForcedTransportIPFamily: nil,
+	}.IsExplicitEmpty())
+}

@@ -31,8 +31,8 @@ func TestReadProvider(t *testing.T) {
 		custom        = provider.MustNewCustomURL("https://url.io")
 		customVia4    = provider.MustNewCustomURLVia4("https://url.io")
 		customVia6    = provider.MustNewCustomURLVia6("https://url.io")
-		static        = provider.MustNewStatic("1.1.1.1")
-		staticMulti   = provider.MustNewStatic("2.2.2.2,1.1.1.1,2.2.2.2")
+		static        = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
+		staticMulti   = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
 		staticEmpty   = provider.NewStaticEmpty()
 	)
 
@@ -170,15 +170,22 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`Failed to parse the IP address %q for "static:": zoned IP addresses are not allowed`,
+					`The IP address %q in %s has a zone identifier, which is not allowed`,
 					"1::1%eth0",
+					key,
 				)
 			},
 		},
 		"static:family-mismatch": {
 			ipnet.IP4, true, "static:2001:db8::1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s contains IP addresses outside %s", key, "static:2001:db8::1", "IPv4")
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`The IP address %q in %s is not a valid %s address`,
+					"2001:db8::1",
+					key,
+					"IPv4",
+				)
 			},
 		},
 		"static": {

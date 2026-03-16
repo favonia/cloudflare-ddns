@@ -22,6 +22,7 @@ Does not define: feature-specific semantics, exact mutation ordering, or local i
 7. Favor user models that track observable outcomes rather than internal mechanisms.
    - User-facing guidance should explain what the updater will do, what it will not do, and what the operator can do next.
    - Mention internal mechanisms only when they materially change operator decisions.
+   - Configuration error messages should identify the configuration source so the operator knows where to act.
 8. For semantic redesigns, derive behavior from first principles and stable public interface, not from the current implementation shape.
    - Start from operator intent, ownership boundaries, observable outcomes, and failure semantics.
    - Treat current implementation only as evidence of shipped public behavior and interface constraints.
