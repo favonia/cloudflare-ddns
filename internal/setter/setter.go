@@ -69,9 +69,9 @@ type Record struct {
 func partitionRecords(
 	targets []netip.Addr, rs []api.Record,
 ) (matched map[netip.Addr][]Record, unmatched []netip.Addr, stale []Record) {
-	targetSet := make(map[netip.Addr]struct{}, len(targets))
+	targetSet := make(map[netip.Addr]bool, len(targets))
 	for _, target := range targets {
-		targetSet[target] = struct{}{}
+		targetSet[target] = true
 	}
 	matched = make(map[netip.Addr][]Record, len(targetSet))
 	stale = make([]Record, 0, len(rs))
@@ -80,7 +80,7 @@ func partitionRecords(
 		// Invalid or non-target records are intentionally treated as stale.
 		ip := r.IP.Unmap()
 		if ip.IsValid() {
-			if _, ok := targetSet[ip]; ok {
+			if targetSet[ip] {
 				matched[ip] = append(matched[ip], Record{ID: r.ID, RecordParams: r.RecordParams})
 				continue
 			}
