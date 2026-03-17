@@ -70,7 +70,6 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
     A comprehensive, semi-official framework for mocking.
   - [testify](https://github.com/stretchr/testify) (for testing only):\
     A comprehensive tool set for testing Go programs.
-
   </details>
 
 ## 🚀 Quick Start
@@ -362,20 +361,7 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🛠️ Troubleshooting
 
-### 🤔 How can I see the timestamps of the IP checks and/or updates?
-
-The updater does not add timestamps itself because most runtimes already do:
-
-- If you are using Docker Compose, Kubernetes, or Docker directly, add `--timestamps` when viewing the logs.
-- If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
-
-### 🤔 Why did the updater detect a public IP address different from the WAN IP address on my router?
-
-If your router shows an address between `100.64.0.0` and `100.127.255.255`, you are likely behind [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In that case, your ISP is not giving you a real public IP address, so ordinary DDNS cannot make your home network directly reachable from the Internet.
-
-Your options are usually to switch to an ISP that gives you a real public IP address or to use a different approach such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
-
-### 🤔 Help! I got <code>exec /bin/ddns: operation not permitted</code>
+### 🤔 I got <code>exec /bin/ddns: operation not permitted</code>
 
 Some Docker, kernel, and virtualization combinations do not work well with [`security_opt: [no-new-privileges:true]`](https://docs.docker.com/reference/cli/docker/container/run/). If this happens, try removing that one hardening option and start the container again. This slightly reduces security, so keep the other hardening options if possible.
 
@@ -388,6 +374,32 @@ If none of these applies, please [open an issue on GitHub](https://github.com/fa
 ### 🤔 I am getting <code>error code: 1034</code>
 
 There have been reports of intermittent issues with the default provider `cloudflare.trace`. If you see `error code: 1034`, upgrade to version 1.15.1 or later, or switch to another provider such as `cloudflare.doh` or `url:<url>`.
+
+### 🤔 I got <code>context deadline exceeded</code> and IP detection failed
+
+The first thing to check is whether a container can reach Cloudflare from the Docker environment at all. A simple way to test that is to run a minimal image such as `alpine` and try both DNS resolution and HTTPS connectivity:
+
+```bash
+docker run --rm alpine nslookup api.cloudflare.com
+docker run --rm alpine wget -qO- https://api.cloudflare.com/cdn-cgi/trace
+```
+
+If `nslookup` fails, your Docker setup likely has a DNS problem. If `wget` fails, outbound HTTPS connectivity to Cloudflare is likely blocked or broken. If both commands work, try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`) in case requests are simply slow in your environment.
+
+If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
+
+### 🤔 Why did the updater detect a public IP address different from the WAN IP address on my router?
+
+If your router shows an address between `100.64.0.0` and `100.127.255.255`, you are likely behind [CGNAT (Carrier-grade NAT)](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In that case, your ISP is not giving you a real public IP address, so ordinary DDNS cannot make your home network directly reachable from the Internet.
+
+Your options are usually to switch to an ISP that gives you a real public IP address or to use a different approach such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
+
+### 🤔 How can I see the timestamps of the IP checks and/or updates?
+
+The updater does not add timestamps itself because most runtimes already do:
+
+- If you are using Docker Compose, Kubernetes, or Docker directly, add `--timestamps` when viewing the logs.
+- If you are using Portainer, [enable “Show timestamp” when viewing the logs](https://docs.portainer.io/user/docker/containers/logs).
 
 ## 🎛️ Further Customization
 

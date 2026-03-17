@@ -49,7 +49,7 @@ func detectIPs(
 	// Failure path: emit hints and timeout guidance.
 	default:
 		targets = provider.NewUnavailableTargets()
-		ppfmt.Noticef(pp.EmojiError, "Failed to detect any %s addresses", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiError, "Failed to detect valid %s addresses; will try again", ipFamily.Describe())
 
 		switch ipFamily {
 		case ipnet.IP6:
