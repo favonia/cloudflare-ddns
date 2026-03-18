@@ -53,6 +53,8 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
   This only proves that the Docker image is from this repository, assuming that no one hacks into GitHub or the repository. It does not prove that the code itself is secure.
 
+  </details>
+
 - <details><summary><em>Click to expand:</em> 📚️ The updater uses only established open-source Go libraries.</summary>
   - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
     The official Go binding of Cloudflare API v4.
@@ -553,8 +555,6 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 >
 > - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`
 > - `PROXIED=is(example1.org,example2.org,example3.org)`
->
-> </details>
 
 </details>
 
