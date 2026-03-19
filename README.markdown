@@ -43,7 +43,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
 
-- <details><summary><em>Click to expand:</em> 🔏 Verify with cosign that the Docker images were built from this repository.</summary>
+- <details><summary>🔏 Verify with cosign that the Docker images were built from this repository <sup><em>click to expand</em></sup></summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:1 \
@@ -55,28 +55,24 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
   </details>
 
-- <details><summary><em>Click to expand:</em> 📚️ The updater uses only established open-source Go libraries.</summary>
-  - [cloudflare-go](https://github.com/cloudflare/cloudflare-go):\
-    The official Go binding of Cloudflare API v4.
-  - [cron](https://github.com/robfig/cron):\
-    Parsing of Cron expressions.
-  - [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp):\
-    HTTP clients with automatic retries and exponential backoff.
-  - [go-querystring](https://github.com/google/go-querystring):\
-    A library to construct URL query parameters.
-  - [shoutrrr](https://github.com/containrrr/shoutrrr):\
-    A notification library for sending general updates.
-  - [ttlcache](https://github.com/jellydator/ttlcache):\
-    In-memory cache to hold Cloudflare API responses.
-  - [mock](https://go.uber.org/mock) (for testing only):\
-    A comprehensive, semi-official framework for mocking.
-  - [testify](https://github.com/stretchr/testify) (for testing only):\
-    A comprehensive tool set for testing Go programs.
+- <details><summary>📚️ The updater uses only a small set of established external Go packages <sup><em>click to expand</em></sup></summary>
+  <ul>
+    <li><a href="https://github.com/cloudflare/cloudflare-go">cloudflare-go</a>: official Go binding of Cloudflare API v4.</li>
+    <li><a href="https://github.com/robfig/cron">cron</a>: parsing of Cron expressions.</li>
+    <li><a href="https://github.com/hashicorp/go-retryablehttp">go-retryablehttp</a>: HTTP clients with retries and exponential backoff.</li>
+    <li><a href="https://github.com/google/go-querystring">go-querystring</a>: library to construct URL query parameters.</li>
+    <li><a href="https://github.com/containrrr/shoutrrr">shoutrrr</a>: notification library for sending general updates.</li>
+    <li><a href="https://github.com/jellydator/ttlcache">ttlcache</a>: in-memory cache to hold Cloudflare API responses.</li>
+    <li><a href="https://pkg.go.dev/golang.org/x/net">x/net</a>: official Go supplementary packages for domain handling and low-level DNS support.</li>
+    <li><a href="https://pkg.go.dev/golang.org/x/text">x/text</a>: official Go supplementary packages for locale-aware text handling.</li>
+    <li><a href="https://go.uber.org/mock">mock</a> (for testing only): semi-official framework for mocking.</li>
+    <li><a href="https://github.com/stretchr/testify">testify</a> (for testing only): tool set for testing Go programs.</li>
+  </ul>
   </details>
 
 ## 🚀 Quick Start
 
-<details><summary><em>Click to expand:</em> 🐋 Directly run the Docker image</summary>
+<details><summary>🐋 Directly run the Docker image <sup><em>click to expand</em></sup></summary>
 
 ```bash
 # Use Cloudflare's proxy for these domains (optional).
@@ -92,7 +88,7 @@ docker run \
 
 </details>
 
-<details><summary><em>Click to expand:</em> 🧬 Directly run the updater from its source</summary>
+<details><summary>🧬 Directly run the updater from its source <sup><em>click to expand</em></sup></summary>
 
 You need the [Go tool](https://golang.org/doc/install) to run the updater from its source.
 
@@ -154,14 +150,14 @@ services:
 The `user: "1000:1000"` line sets the user and group IDs that the container runs as, and you can change those two numbers to match your system. The `cap_drop`, `read_only`, and `no-new-privileges` lines add extra protection, especially when you run the container as a non-superuser.
 
 <details>
-<summary><em>Click to expand:</em> 📍 <code>DOMAINS</code> is the list of domains to update</summary>
+<summary>📍 <code>DOMAINS</code> is the list of domains to update <sup><em>click to expand</em></sup></summary>
 
 The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) separated by commas. For example, `DOMAINS=example.org,www.example.org,example.io` instructs the updater to manage the domains `example.org`, `www.example.org`, and `example.io`. These domains do not have to share the same DNS zone---the updater will take care of the DNS zones behind the scenes.
 
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🚨 Remove the optional <code>PROXIED=true</code> line if you are <em>not</em> running a web server</summary>
+<summary>🚨 Remove the optional <code>PROXIED=true</code> line if you are <em>not</em> running a web server <sup><em>click to expand</em></sup></summary>
 
 The setting `PROXIED=true` makes this updater use Cloudflare’s proxy for these domains, which lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare’s proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
 
@@ -416,7 +412,7 @@ The updater does not add timestamps itself because most runtimes already do:
 The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
-<summary><em>Click to expand:</em> 🔐 Cloudflare API Access</summary>
+<summary>🔐 Cloudflare API Access <sup><em>click to expand</em></sup></summary>
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
@@ -438,7 +434,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🌐 DNS Record Scope</summary>
+<summary>🌐 DNS Record Scope <sup><em>click to expand</em></sup></summary>
 
 > You need to specify at least one thing in `DOMAINS`, `IP4_DOMAINS`, or `IP6_DOMAINS` for the updater to manage DNS records.
 
@@ -456,7 +452,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📋️ WAF List Scope</summary>
+<summary>📋️ WAF List Scope <sup><em>click to expand</em></sup></summary>
 
 > The updater can maintain [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) to match detected IP addresses. 🤖 [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range. Existing ranges in the list that already cover a detected address are kept as-is.
 
@@ -468,7 +464,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🔍️ IP Detection</summary>
+<summary>🔍️ IP Detection <sup><em>click to expand</em></sup></summary>
 
 | Name           | Meaning                                                                                                                                                                                                                                                                                                                                                | Default Value      |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
@@ -493,7 +489,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📅 Update Schedule and Lifecycle</summary>
+<summary>📅 Update Schedule and Lifecycle <sup><em>click to expand</em></sup></summary>
 
 | Name               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Default Value                 |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
@@ -506,7 +502,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> ⏳️ Operation Timeouts</summary>
+<summary>⏳️ Operation Timeouts <sup><em>click to expand</em></sup></summary>
 
 | Name                | Meaning                                                                                                                                                                                                                                       | Default Value      |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -516,7 +512,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 🛟 DNS and WAF Fallback Values</summary>
+<summary>🛟 DNS and WAF Fallback Values <sup><em>click to expand</em></sup></summary>
 
 > The updater preserves existing attributes (such as TTL and proxy status) when possible. 🤖 It keeps existing attribute values when old content agrees on them; otherwise, it uses the fallback values below when the values conflict.
 
@@ -563,7 +559,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 👁️ Logging</summary>
+<summary>👁️ Logging <sup><em>click to expand</em></sup></summary>
 
 | Name    | Meaning                                                                                                                                                                                       | Default Value |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -573,7 +569,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary><em>Click to expand:</em> 📣 Notifications</summary>
+<summary>📣 Notifications <sup><em>click to expand</em></sup></summary>
 
 > 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to stop managing IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 
@@ -592,7 +588,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 ## 🚵 Migration Guides
 
 <details>
-<summary><em>Click to expand:</em> I am migrating from oznu/cloudflare-ddns (now archived)</summary>
+<summary>I am migrating from oznu/cloudflare-ddns (now archived) <sup><em>click to expand</em></sup></summary>
 
 ⚠️ [oznu/cloudflare-ddns](https://github.com/oznu/docker-cloudflare-ddns) relies on the insecure DNS protocol to obtain public IP addresses; a malicious hacker could more easily forge DNS responses and trick it into updating your domain with any IP address. In comparison, we use only verified responses from Cloudflare, which makes the attack much more difficult. See the [network security design note](docs/designs/features/network-security-model.markdown) for more information.
 
@@ -612,7 +608,7 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 </details>
 
 <details>
-<summary><em>Click to expand:</em> I am migrating from timothymiller/cloudflare-ddns</summary>
+<summary>I am migrating from timothymiller/cloudflare-ddns <sup><em>click to expand</em></sup></summary>
 
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
