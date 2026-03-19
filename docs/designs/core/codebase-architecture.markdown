@@ -50,6 +50,8 @@ Configuration is intentionally split into one raw phase and several runtime-faci
 - `LifecycleConfig` holds validated schedule and shutdown settings used by the main process loop.
 - `UpdateConfig` holds validated provider, domain, WAF, timeout, and write-side settings used during reconciliation.
 
+Configuration defaults must be ordinary semantic values. Omitting a setting must have exactly the same effect as explicitly writing that setting's default value. For example, omitting `IP4_PROVIDER` or `IP6_PROVIDER` must match explicitly writing `cloudflare.trace`, and omitting `PROXIED` must match explicitly writing `false`.
+
 Constructed heartbeat and notifier services are runtime services, not config slices. The current bootstrap path wires them separately from `BuiltConfig`.
 
 A key lifecycle invariant is that reporter services are initialized before config or handle setup failure paths, so startup-failure reporting uses the same heartbeat/notifier instances as normal runtime reporting.

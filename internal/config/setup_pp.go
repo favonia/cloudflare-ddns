@@ -13,7 +13,7 @@ import (
 // separately by [SetupReporters], and updater settings are read separately into
 // [RawConfig].
 func SetupPP(output io.Writer) (pp.PP, bool) {
-	emoji, verbosity := true, pp.DefaultVerbosity
+	emoji, verbosity := true, pp.Verbose
 
 	valEmoji, valQuiet := Getenv("EMOJI"), Getenv("QUIET")
 

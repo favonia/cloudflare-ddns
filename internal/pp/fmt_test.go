@@ -35,7 +35,7 @@ func TestIndent(t *testing.T) {
 	t.Parallel()
 
 	var buf strings.Builder
-	outer := pp.New(&buf, true, pp.DefaultVerbosity)
+	outer := pp.New(&buf, true, pp.Verbose)
 
 	outer.Noticef(pp.EmojiStar, "message1")
 	middle := outer.Indent()
