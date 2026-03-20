@@ -24,11 +24,11 @@ Provider mode determines whether the known-target state may carry an empty IP li
 
 Conceptually, this note is how the IP-family ownership model lands at the provider target-set boundary for families that are in scope for provider evaluation:
 
-| provider-target state | ownership-model meaning |
-| --- | --- |
-| unavailable | target-set unavailable for this run |
-| known empty target set | explicit-empty family intent |
-| known non-empty target set | non-empty desired-target intent |
+| provider-target state      | ownership-model meaning             |
+| -------------------------- | ----------------------------------- |
+| unavailable                | target-set unavailable for this run |
+| known empty target set     | explicit-empty family intent        |
+| known non-empty target set | non-empty desired-target intent     |
 
 Out-of-scope family ownership is represented outside this provider target-set contract, because out-of-scope families are not in provider evaluation scope for that run.
 

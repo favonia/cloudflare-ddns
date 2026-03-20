@@ -40,7 +40,8 @@ jobs:
       - name: 🧪 Run `go test`
         run: |
           set -o pipefail # Preserve `go test` failures through `tee`
-          go test -json -coverpkg=$(go list ./... | grep -v 'internal/mocks' | tr '\n' ',') -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
+          coverpkg="$(go list ./... | grep -v 'internal/mocks' | paste -sd,)"
+          go test -json "-coverpkg=${coverpkg}" -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
       - name: 📦 Upload `go test -json` logs
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
