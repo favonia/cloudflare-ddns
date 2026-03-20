@@ -42,6 +42,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 ### 🛡️ Attention to Security
 
 - 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
+
 - <details><summary><em>Click to expand:</em> ✍️ Verify with cosign that the Docker images were built from this repository.</summary>
 
   ```bash
@@ -526,20 +527,21 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 > | `is(d)`                                                                                                                | Matching the domain `d`. Note that `is(*.a)` only matches the wildcard domain `*.a`; use `sub(a)` to match all subdomains of `a` (including `*.a`). |
 > | `sub(d)`                                                                                                               | Matching subdomains of `d`, such as `a.d`, `b.c.d`, and `*.d`. It does not match the domain `d` itself.                                             |
 > | `! e`                                                                                                                  | Logical negation of the boolean expression `e`                                                                                                      |
-> | <code>e1 &#124;&#124; e2</code>                                                                                        | Logical disjunction of the boolean expressions `e1` and `e2`                                                                                        |
+> | <code>e1 \|\| e2</code>                                                                                                | Logical disjunction of the boolean expressions `e1` and `e2`                                                                                        |
 > | `e1 && e2`                                                                                                             | Logical conjunction of the boolean expressions `e1` and `e2`                                                                                        |
 >
 > One can use parentheses to group expressions, such as `!(is(a) && (is(b) || is(c)))`. For convenience, the parser also accepts these short forms:
 >
-> | Short Form             | Equivalent Full Form                                                            |
-> | ---------------------- | ------------------------------------------------------------------------------- |
-> | `is(d1, d2, ..., dn)`  | <code>is(d1) &#124;&#124; is(d2) &#124;&#124; ... &#124;&#124; is(dn)</code>    |
-> | `sub(d1, d2, ..., dn)` | <code>sub(d1) &#124;&#124; sub(d2) &#124;&#124; ... &#124;&#124; sub(dn)</code> |
+> | Short Form             | Equivalent Full Form                                    |
+> | ---------------------- | ------------------------------------------------------- |
+> | `is(d1, d2, ..., dn)`  | <code>is(d1) \|\| is(d2) \|\| ... \|\| is(dn)</code>    |
+> | `sub(d1, d2, ..., dn)` | <code>sub(d1) \|\| sub(d2) \|\| ... \|\| sub(dn)</code> |
 >
 > For example, these two settings are equivalent:
 >
 > - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`
 > - `PROXIED=is(example1.org,example2.org,example3.org)`
+>
 > </details>
 
 </details>
@@ -563,7 +565,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HEALTHCHECKS`                                 | <p>The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>`</p><p>⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`.<br/>🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.</p> |
 | `UPTIMEKUMA`                                   | <p>The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page.</p><p>⚠️ The “Heartbeat Interval” should match the update schedule specified by `UPDATE_CRON`.</p>                                                                                                                                                                                                                                                                                                                                                       |
-| 🧪 `SHOUTRRR` (available since version 1.12.0) | <p>Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>&#124;</code></a> over <a href="https://yaml-multiline.info/">folded style <code>&gt;</code></a>.</p>      |
+| 🧪 `SHOUTRRR` (available since version 1.12.0) | <p>Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>\|</code></a> over <a href="https://yaml-multiline.info/">folded style <code>></code></a>.</p>             |
 
 </details>
 

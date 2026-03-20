@@ -7,10 +7,13 @@ _(contributed by [Brandon @skarekrow](https://github.com/skarekrow))_
 To use:
 
 1. Copy the shipped [rc.d script](./openbsd/cloudflare_ddns) into `/etc/rc.d/`
+
 2. The `rc.d` script assumes a user called `_cloudflare_ddns` will be used. This is easily created by using `useradd`
+
    ```sh
    useradd -s /sbin/nologin -d /var/empty _cloudflare_ddns
    ```
+
 3. Create a `/etc/login.conf` entry for the daemon, specifying the environment variables you wish to use:
 
    ```sh

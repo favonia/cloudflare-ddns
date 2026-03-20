@@ -1,0 +1,98 @@
+name: Lint non-Go
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: GitHub Actions workflows
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: actionlint
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 📦 Download actionlint
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+      - name: 🧹 Run actionlint
+        run: |
+          # renovate: datasource=go depName=github.com/rhysd/actionlint versioning=semver
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.11
+          actionlint .github/workflows/*.yaml .github/workflows/*.yml
+        continue-on-error: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  hadolint:
+    name: Dockerfile
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: hadolint
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 📦 Download hadolint
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+      - name: 🧹 Run hadolint
+        run: |
+          # renovate: datasource=go depName=github.com/hadolint/hadolint versioning=semver
+          go install github.com/hadolint/hadolint@v2.14.0+incompatible
+          hadolint Dockerfile
+
+  mdformat:
+    name: Markdown
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: mdformat
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: .github/workflows/mdformat-requirements.txt
+      - name: 📦 Install mdformat
+        run: python -m pip install --require-hashes --requirement .github/workflows/mdformat-requirements.txt
+      - name: 🧹 Run mdformat
+        run: git ls-files -z '*.md' '*.markdown' | xargs -0r python -m mdformat --check
