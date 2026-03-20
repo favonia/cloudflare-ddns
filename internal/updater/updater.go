@@ -111,7 +111,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 					Comment: c.RecordComment,
 					// The config surface does not expose non-empty fallback DNS tags yet.
 					// Nil here therefore means "no configured fallback tags", not "clear tags".
-					Tags:    nil,
+					Tags: nil,
 				})
 			}),
 		)
@@ -137,7 +137,7 @@ func finalDeleteIP(
 					// Keep final-delete reconciliation aligned with steady-state updates:
 					// current config can preserve/inherit existing tags but cannot specify
 					// non-empty fallback tags.
-					Tags:    nil,
+					Tags: nil,
 				})
 			}),
 		)
