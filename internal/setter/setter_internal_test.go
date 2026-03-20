@@ -204,3 +204,98 @@ func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.
 		},
 	}, nonMatching)
 }
+
+func TestReconcileAndPartitionRecordsFallsBackWhenEverythingDisagrees(t *testing.T) {
+	t.Parallel()
+
+	fallback := api.RecordParams{
+		TTL:     600,
+		Proxied: false,
+		Comment: "fallback-comment",
+		Tags:    []string{"region:us"},
+	}
+	records := []Record{
+		{
+			ID: "record-c",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "comment-a",
+				Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
+			},
+		},
+		{
+			ID: "record-a",
+			RecordParams: api.RecordParams{
+				TTL:     300,
+				Proxied: false,
+				Comment: "comment-b",
+				Tags:    []string{"env:prod", "team:beta"},
+			},
+		},
+		{
+			ID: "record-b",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "comment-c",
+				Tags:    []string{"env:prod", "team:gamma"},
+			},
+		},
+	}
+
+	var buf strings.Builder
+	ppfmt := pp.New(&buf, false, pp.Verbose)
+
+	resolved, matching, nonMatching := reconcileAndPartitionRecords(
+		fallback,
+		records,
+		ppfmt,
+		newAmbiguityWarnings(),
+		"AAAA records of sub.test.org",
+	)
+
+	require.Equal(t,
+		"The 3 outdated AAAA records of sub.test.org disagree on tags; using common subset\n"+
+			"The 3 outdated AAAA records of sub.test.org disagree on TTL values; using fallback value\n"+
+			"The 3 outdated AAAA records of sub.test.org disagree on proxy states; using fallback value\n"+
+			"The 3 outdated AAAA records of sub.test.org disagree on comments; using fallback value\n",
+		buf.String(),
+	)
+	require.Equal(t, api.RecordParams{
+		TTL:     fallback.TTL,
+		Proxied: fallback.Proxied,
+		Comment: fallback.Comment,
+		Tags:    []string{"env:prod"},
+	}, resolved)
+	require.Empty(t, matching)
+	require.Equal(t, []Record{
+		{
+			ID: "record-a",
+			RecordParams: api.RecordParams{
+				TTL:     300,
+				Proxied: false,
+				Comment: "comment-b",
+				Tags:    []string{"env:prod", "team:beta"},
+			},
+		},
+		{
+			ID: "record-b",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "comment-c",
+				Tags:    []string{"env:prod", "team:gamma"},
+			},
+		},
+		{
+			ID: "record-c",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "comment-a",
+				Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
+			},
+		},
+	}, nonMatching)
+}
