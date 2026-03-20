@@ -105,7 +105,10 @@ func SummarizeSets(tagSets [][]string) Summary {
 	return summary
 }
 
-// CommonSubset computes the greatest common subset of tags across tag sets.
+// CommonSubset computes the greatest canonical subset of tags across tag sets.
+//
+// This is the tag reconciliation result used when there is no configured
+// fallback tag set to merge in: only tags present in every input set survive.
 func CommonSubset(tagSets [][]string) []string {
 	if len(tagSets) == 0 {
 		return nil

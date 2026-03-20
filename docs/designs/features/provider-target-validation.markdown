@@ -1,42 +1,51 @@
 # Design Note: Provider Target Validation
 
-Read when: changing provider-side IP acceptance, rejection, output shape, or target-set contracts.
+Read when: changing provider-side IP acceptance, rejection, output shape, or raw target-data contracts.
 
-Defines: the observable target-set contract for providers.
+Defines: the observable raw target-data contract for providers.
 
 Does not define: provider-specific discovery mechanisms, provider syntax, resource ownership, or reconciliation ordering.
 
 ## Goal
 
-Give providers one observable contract for the target sets they hand to DNS and WAF reconciliation.
+Give providers one observable contract for the raw target data they hand to lifecycle derivation.
 
 ## Core Model
 
-Providers operate per requested IP family and return one family-specific target-set state for that run.
+Providers operate per requested IP family and return one family-specific raw target-data state for that run.
 
-- one state means the desired target set is unavailable for that run
-- the other means the desired target set is known for that run
+- one state means the raw target data is unavailable for that run
+- the other means the raw target data is known for that run
 
-Provider mode determines whether the known-target state may carry an empty IP list:
+Today, the raw target data is a family-scoped set of CIDR prefixes.
 
-- dynamic observation providers are known only when they produce a non-empty usable target set for the requested family
-- explicit static-empty provider modes use a known empty IP list to mean "manage this family to empty"
+Provider mode determines whether the known raw-data state may carry an empty result:
 
-Conceptually, this note is how the IP-family ownership model lands at the provider target-set boundary for families that are in scope for provider evaluation:
+- dynamic observation providers are known only when they produce a non-empty usable result for the requested family
+- explicit static-empty provider modes use a known empty result to mean "manage this family to empty"
 
-| provider-target state      | ownership-model meaning             |
-| -------------------------- | ----------------------------------- |
-| unavailable                | target-set unavailable for this run |
-| known empty target set     | explicit-empty family intent        |
-| known non-empty target set | non-empty desired-target intent     |
+Conceptually, this note is how in-scope IP-family ownership lands at the provider raw-data boundary:
 
-Out-of-scope family ownership is represented outside this provider target-set contract, because out-of-scope families are not in provider evaluation scope for that run.
+| provider raw-data state    | lifecycle meaning                       |
+| -------------------------- | --------------------------------------- |
+| unavailable                | raw target data unavailable for this run |
+| known empty raw target data | known empty raw target data             |
+| known non-empty raw target data | known non-empty raw target data     |
+
+Out-of-scope family ownership is represented outside this provider raw-data contract, because out-of-scope families are not in provider evaluation scope for that run.
 
 The exact in-memory representation of these states belongs in code comments near the provider-runtime contract, not in this design note.
 
-## Observable Address Rules
+## Current Implementation Specialization
 
-Every IP that enters an available provider target set must satisfy these rules:
+The current code realizes only the canonical singleton special case of that CIDR model:
+
+- IPv4 raw prefixes are represented as their host address and implicitly treated as `/32`
+- IPv6 raw prefixes are represented as their subnet address and implicitly treated as `/64`
+
+This narrowed runtime form is an implementation choice, not part of the semantic contract above.
+
+Every IP in the current known result must satisfy these rules:
 
 - it is a valid IP address
 - it matches the requested family
@@ -48,16 +57,16 @@ Every IP that enters an available provider target set must satisfy these rules:
 
 ## Shared Set Semantics
 
-Available provider target sets follow deterministic set semantics:
+Under the current implementation specialization, known results follow deterministic set semantics:
 
 - outputs are sorted by `netip.Addr.Compare`
 - duplicates are removed
 - validation fails fast on the first invalid detected IP
-- multi-address providers still report one target set per requested family, not one mixed cross-family set
+- multi-address providers still report one family-scoped result, not one mixed cross-family result
 
 These rules keep reconciliation behavior independent of discovery order and duplicate observations.
 
-The same target-set contract is consumed by both DNS and WAF reconciliation. Changing provider target-set shape does not by itself change Cloudflare API contracts or heartbeat/notifier reporting contracts.
+Lifecycle derivation consumes the semantic CIDR raw data above. The current code reaches that model through the narrowed address-only representation described here.
 
 ## Scope Boundary
 

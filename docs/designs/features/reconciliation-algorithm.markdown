@@ -40,6 +40,16 @@ Resource-specific notes define:
 - which metadata fields exist
 - any stricter contracts that intentionally override the default softness above
 
+## Metadata Resolution for New Creates
+
+When reconciliation needs metadata for newly created objects, it resolves that metadata from recyclable owned objects only.
+
+- An empty source set uses the configured fallback value.
+- A unanimous source value is inherited.
+- A non-unanimous source value uses the configured fallback value and emits one ambiguity warning for that field.
+
+Set-valued metadata fields may apply the same rule per element instead of per whole field. In that case, each element is inherited only when its source values agree under the resource-specific equality rule; otherwise the fallback for that element is used.
+
 ## Residual-Risk Policy
 
 Under ambiguous partial execution, implementations should minimize residual risk rather than follow one fixed mutation script.

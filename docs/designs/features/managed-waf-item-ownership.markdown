@@ -43,67 +43,58 @@ Managed-item filtering happens immediately after listing items from Cloudflare.
 
 Only matched items participate in:
 
-- coverage checks for desired target IPs
+- coverage checks for desired target prefixes
 - stale-item deletion during list reconciliation
 - comment-aware warnings about managed items
 - `DELETE_ON_STOP`
 
-Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the target IP address.
+Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the desired target prefix.
 
 ### WAF Instantiation
 
 WAF instantiates the reconciliation algorithm with these resource-specific rules:
 
 - the resource unit is `(list, IP family)`
-- a managed item satisfies a desired target when it covers that desired target IP
+- a managed item satisfies a desired target when it covers that desired target prefix
 - overlapping managed coverage may remain
 - retained coverage sets may stay history-dependent
 - already-satisfying item metadata is soft unless another WAF-specific contract overrides it
 
 ### Metadata for New Creates
 
-WAF reconciliation resolves create metadata independently per `(list, IP family)` unit from recyclable managed items only.
+WAF resolves create metadata independently per `(list, IP family)` unit from recyclable managed items only.
 
-- In this scope, the only managed metadata field is item `comment`.
-- Create comment resolution uses family-local items scheduled for deletion:
-  - empty source set: use configured `WAF_LIST_ITEM_COMMENT`
-  - unanimous source comment: inherit source comment
-  - non-unanimous source comments: use configured comment and emit one ambiguity warning for that family field
+In this scope, the only managed metadata field is item `comment`, and WAF uses the shared reconciliation rule from [Reconciliation Algorithm](reconciliation-algorithm.markdown) with fallback `WAF_LIST_ITEM_COMMENT`.
 
-### Path-Independence Boundary
+### Emergent Goodness
 
-Path-independence is a secondary stability goal for WAF comment reconciliation, after coverage safety and ownership isolation.
+This WAF instantiation has one useful emergent property: create-comment resolution is path-stable across successful create-then-delete drift rounds.
 
-For successful create-then-delete rounds, when a drift step creates managed items and a later drift step makes those items recyclable, the resolved create comment should match the direct one-step transition outcome from the earlier recyclable source.
+When a drift step creates managed items and a later drift step makes those items recyclable, the resolved create comment matches the direct one-step transition outcome from the earlier recyclable source.
 
-This boundary is intentionally narrower than full state canonicalization. Keep-and-cover still preserves any managed items that already cover desired targets, so retained coverage sets may remain history-dependent even when create-comment resolution is path-stable under the drift pattern above.
+This is indirect evidence that the shared algorithm and this WAF instantiation fit together well. It is narrower than full state canonicalization: keep-and-cover still preserves any managed items that already cover desired targets, so retained coverage sets may remain history-dependent even when create-comment resolution is path-stable under that drift pattern.
 
 ### Interruption-Aware Priority
 
-WAF reconciliation should minimize residual risk under ambiguous partial execution.
+WAF refines the shared residual-risk policy with these tiers:
 
-- Missing desired coverage is higher risk than stale managed coverage.
-- Stale managed coverage is higher risk than metadata or hygiene residue.
-
-Any implementation should order work so higher-risk residual states are reduced before lower-risk ones. This note intentionally records risk order, not one exact operation list.
+- missing desired coverage
+- stale managed coverage
+- metadata or hygiene residue
 
 ### Failure and Shutdown Semantics
 
-When the shared IP-family ownership semantics from [Ownership Model](ownership-model.markdown) are applied to WAF:
-
-- Out-of-scope family intent preserves existing managed items of that family.
-- Explicit-empty family intent reconciles that family to no managed items.
-- Temporary target-set unavailability preserves existing managed items because desired targets are unknown.
+WAF uses the shared family-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
 ## Deletion Eligibility
 
-Deletion eligibility determines shutdown authority as an inferred consequence of the ownership model. For WAF, the relevant deletion targets are managed items and, when full ownership and recreatability hold, the whole configured list.
+For WAF, the relevant deletion targets are managed items and, when full ownership and recreatability hold, the whole configured list.
 
 - A WAF list is eligible for deletion only if the updater can recreate the fully reconciled state of that list from configuration alone.
 - When that condition holds, shutdown may delete the whole list.
 - Otherwise, shutdown may delete only managed items.
 
-The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule. Deletion eligibility is inferred from the ownership model plus recreatability. Optional future ownership filters do not change this as long as they can still be widened to full coverage while keeping the fully reconciled state recreatable; only mandatory filters that necessarily prevent recreating the fully reconciled state of the whole list would make whole-list deletion impossible in principle.
+The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule.
 
 ## Caching Contract
 

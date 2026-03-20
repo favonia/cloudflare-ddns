@@ -63,25 +63,22 @@ DNS instantiates the reconciliation algorithm with these resource-specific rules
 
 ### Metadata for New Creates
 
-When DNS reconciliation needs to satisfy uncovered targets, metadata is resolved per `(domain, record type)` unit from recyclable managed records only.
+When DNS reconciliation needs create metadata, it resolves that metadata per `(domain, record type)` unit from recyclable managed records only.
 
-Recycling is only an optimization of delete-and-create to reduce disruption; the target metadata always comes from reconciled recyclable sources, not from already-matching records.
+For scalar DNS metadata fields (`TTL`, `PROXIED`, `RECORD_COMMENT`), DNS uses the shared reconciliation rule from [Reconciliation Algorithm](reconciliation-algorithm.markdown).
 
-- Scalar fields (`TTL`, `PROXIED`, `RECORD_COMMENT`):
-  - empty source set: use fallback value
-  - unanimous source value: inherit source value
-  - non-unanimous source values: use fallback value and emit one ambiguity warning per field
-- Tag field (`TAGS`):
-  - tag name is compared case-insensitively
-  - tag value is compared case-sensitively
-  - fallback-default tags are sticky unless all sources omit them
-  - non-default tags require unanimity across sources to be inherited
+`TAGS` uses the same rule per individual tag instead of per whole field:
+
+- tag names are compared case-insensitively
+- tag values are compared case-sensitively
+- a tag is inherited only if every recyclable managed record has that canonical tag
+- otherwise the fallback for that tag is used
+
+With today's exposed config surface, the fallback tag set is empty, so DNS tag reconciliation reduces to the canonical intersection/common subset of recyclable managed records.
 
 ### Interruption-Aware Priority
 
-DNS reconciliation should minimize residual risk under ambiguous partial execution.
-
-The intended DNS risk tiers are:
+DNS refines the shared residual-risk policy with these tiers:
 
 - `R0`: missing desired target satisfaction
 - `R1`: stale managed records still pointing to non-desired targets
@@ -91,19 +88,11 @@ The intended DNS risk tiers are:
 - `R2d`: comment/tags drift
 - `R3`: duplicate or hygiene residue
 
-Any implementation should order work so higher-risk residual states are reduced before lower-risk ones.
-
-This note intentionally records risk order, not one exact stage decomposition.
-
 ### Failure and Shutdown Semantics
 
-When the shared IP-family ownership semantics from [Ownership Model](ownership-model.markdown) are applied to DNS:
+DNS uses the shared family-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
-- Out-of-scope family intent preserves existing managed records of that family.
-- Explicit-empty family intent reconciles that family to no managed records.
-- Temporary target-set unavailability preserves existing managed records because desired targets are unknown.
-
-For DNS, the deletion target is an individual managed record, not a broader DNS root. DNS shutdown may therefore delete only managed records. This is an inferred consequence of the ownership model: non-owned coexisting DNS content may always exist under the same domain and IP-family unit, so a broader DNS root is never eligible for deletion.
+For DNS, the deletion target is an individual managed record, not a broader DNS root. DNS shutdown may therefore delete only managed records.
 
 ### API Contract Boundary
 
