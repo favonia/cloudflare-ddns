@@ -156,17 +156,17 @@ func TestZoneIDOfDomain(t *testing.T) {
 			"test.org", domain.FQDN("sub.test.org"),
 			map[string][]string{},
 			3, "", false,
-				func(m *mocks.MockPP) {
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
-				},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
+			},
 		},
 		"none/wildcard": {
 			"test.org", domain.Wildcard("test.org"),
 			map[string][]string{},
 			2, "", false,
-				func(m *mocks.MockPP) {
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "*.test.org")
-				},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "*.test.org")
+			},
 		},
 		"multiple": {
 			"test.org", domain.FQDN("sub.test.org"),
@@ -195,7 +195,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", "test.org", "deleted"),
-						m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "test.org"),
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "test.org"),
 				)
 			},
 		},
