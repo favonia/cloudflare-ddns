@@ -68,4 +68,6 @@ The design goal is not to minimize field copying. The goal is to keep each runti
 
 - Keep domain logic, provider logic, API logic, reconciliation logic, and user-facing reporting decoupled enough to evolve independently.
 - Keep configuration slices honest about ownership. The goal is not to minimize field copying; the goal is to prevent a runtime layer from silently depending on settings it does not own.
+- Design notes may define models that are broader than one concrete runtime carrier. Code comments should describe the current carrier precisely without narrowing the design note to today's representation choices.
+- A documented implementation gap means the codebase is ready to move the current carrier closer to the design model.
 - Put task-specific editing rules in `docs/designs/guides/`, and feature-specific contracts in `docs/designs/features/`.

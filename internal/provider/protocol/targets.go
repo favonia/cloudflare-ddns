@@ -4,8 +4,9 @@ import "net/netip"
 
 // Targets bundles one managed family's provider output for a run.
 //
-// This is the provider-runtime carrier, not the full cross-resource target model.
-// Later derivation may reinterpret this runtime form differently for different resources.
+// This runtime carrier is still address-only:
+// IPv4 entries carry singleton /32 raw data, and IPv6 entries carry singleton
+// /64 raw data.
 //
 // Runtime maps use presence to mean "managed/in scope" and absence to mean
 // "out of scope". That keeps out-of-scope distinct from temporary target
@@ -15,7 +16,7 @@ type Targets struct {
 	// When it is false, callers must preserve existing managed content of that
 	// family because the provider output is unavailable.
 	//
-	// When it is true, IPs stores the current deterministic runtime form for the run.
+	// When it is true, IPs stores the current deterministic address-only carrier.
 	// An empty IP list is the explicit-empty intent.
 	Available bool
 	IPs       []netip.Addr

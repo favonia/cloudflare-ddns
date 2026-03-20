@@ -218,8 +218,8 @@ func reconcileAndSortRecords(
 }
 
 // SetIPs updates the IP addresses of one domain to the given target set.
-// This function consumes the DNS-specific derived targets, not the provider
-// runtime form in general.
+// Provider output currently reaches this function through an address-only
+// specialization of the raw-data model.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
@@ -432,8 +432,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			}
 		}
 
-		// This function consumes WAF-specific derived targets. In the current
-		// runtime form, each uncovered address becomes the smallest allowed family prefix here.
+		// Runtime input is currently address-only, so each uncovered address
+		// becomes the smallest allowed family prefix here.
 		for _, target := range targets.IPs {
 			if !coveredTargets[target] {
 				plan.createPrefixes = append(plan.createPrefixes,

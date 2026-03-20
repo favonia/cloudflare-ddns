@@ -17,7 +17,7 @@ Providers operate per requested IP family and return one family-specific raw tar
 - one state means the raw target data is unavailable for that run
 - the other means the raw target data is known for that run
 
-Today, the raw target data is a family-scoped set of CIDR prefixes.
+The raw target data is modeled as a family-scoped set of CIDR prefixes.
 
 Provider mode determines whether the known raw-data state may carry an empty result:
 
@@ -34,16 +34,12 @@ Conceptually, this note is how in-scope IP-family ownership lands at the provide
 
 Out-of-scope family ownership is represented outside this provider raw-data contract, because out-of-scope families are not in provider evaluation scope for that run.
 
-The exact in-memory representation of these states belongs in code comments near the provider-runtime contract, not in this design note.
+## Current Runtime Specialization
 
-## Current Implementation Specialization
+The current runtime specialization is address-only:
 
-The current code realizes only the canonical singleton special case of that CIDR model:
-
-- IPv4 raw prefixes are represented as their host address and implicitly treated as `/32`
-- IPv6 raw prefixes are represented as their subnet address and implicitly treated as `/64`
-
-This narrowed runtime form is an implementation choice, not part of the semantic contract above.
+- IPv4 raw prefixes are carried as their host address and interpreted as singleton `/32` raw data
+- IPv6 raw prefixes are carried as their subnet address and interpreted as singleton `/64` raw data
 
 Every IP in the current known result must satisfy these rules:
 
@@ -57,7 +53,7 @@ Every IP in the current known result must satisfy these rules:
 
 ## Shared Set Semantics
 
-Under the current implementation specialization, known results follow deterministic set semantics:
+Under the current runtime specialization, known results follow deterministic set semantics:
 
 - outputs are sorted by `netip.Addr.Compare`
 - duplicates are removed
@@ -66,7 +62,7 @@ Under the current implementation specialization, known results follow determinis
 
 These rules keep reconciliation behavior independent of discovery order and duplicate observations.
 
-Lifecycle derivation consumes the semantic CIDR raw data above. The current code reaches that model through the narrowed address-only representation described here.
+Lifecycle derivation consumes the raw target-data semantics above through this runtime specialization.
 
 ## Scope Boundary
 

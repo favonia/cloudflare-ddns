@@ -28,6 +28,9 @@ func detectIPs(
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
+	// Provider runtime output is currently address-only:
+	// IPv4 addresses carry singleton /32 raw data, and IPv6 addresses carry
+	// singleton /64 raw data.
 	targets := c.Provider[ipFamily].GetIPs(ctx, ppfmt, ipFamily)
 
 	switch {
