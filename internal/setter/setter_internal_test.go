@@ -3,6 +3,7 @@ package setter
 import (
 	"net/netip"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,24 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	require.Equal(t, []netip.Addr{ip1, ip3}, unmatched)
 	require.Len(t, outdated, 1)
 	require.Equal(t, api.ID("record4"), outdated[0].ID)
+}
+
+func TestPartitionRecordsTreatsIPv4MappedIPv6AsMatchingCanonicalIPv4(t *testing.T) {
+	t.Parallel()
+
+	target := netip.MustParseAddr("192.0.2.10")
+	targets := []netip.Addr{target}
+	records := []api.Record{
+		{ID: "mapped", IP: netip.MustParseAddr("::ffff:192.0.2.10")},
+		{ID: "invalid", IP: netip.Addr{}},
+	}
+
+	matched, unmatched, outdated := partitionRecords(targets, records)
+	require.Len(t, matched, 1)
+	require.Contains(t, matched, target)
+	require.Equal(t, []Record{{ID: "mapped"}}, matched[target])
+	require.Empty(t, unmatched)
+	require.Equal(t, []Record{{ID: "invalid"}}, outdated)
 }
 
 func TestResolveScalarValue(t *testing.T) {
@@ -62,6 +81,26 @@ func TestResolveScalarValueOrderInvariant(t *testing.T) {
 	require.Equal(t, ambiguousA, ambiguousB)
 }
 
+func TestAmbiguityWarningsWarnDeduplicatesPerUnitAndField(t *testing.T) {
+	t.Parallel()
+
+	var buf strings.Builder
+	ppfmt := pp.New(&buf, false, pp.Verbose)
+	warnings := newAmbiguityWarnings()
+
+	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "comments", "fallback value")
+	warnings.warn(ppfmt, 5, "AAAA records of sub.test.org", "comments", "fallback value")
+	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "TTL values", "fallback value")
+	warnings.warn(ppfmt, 3, "A records of sub.test.org", "comments", "fallback value")
+
+	require.Equal(t,
+		"The 2 outdated AAAA records of sub.test.org disagree on comments; using fallback value\n"+
+			"The 2 outdated AAAA records of sub.test.org disagree on TTL values; using fallback value\n"+
+			"The 3 outdated A records of sub.test.org disagree on comments; using fallback value\n",
+		buf.String(),
+	)
+}
+
 func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	t.Parallel()
 
@@ -87,5 +126,81 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	}, matching)
 	require.Equal(t, []Record{
 		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
+	}, nonMatching)
+}
+
+func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.T) {
+	t.Parallel()
+
+	fallback := api.RecordParams{
+		TTL:     600,
+		Proxied: false,
+		Comment: "fallback-comment",
+		Tags:    []string{"region:us"},
+	}
+	records := []Record{
+		{
+			ID: "record-b",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "carry-me",
+				Tags:    []string{"env:prod", "team:alpha"},
+			},
+		},
+		{
+			ID: "record-a",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: false,
+				Comment: "carry-me",
+				Tags:    []string{"env:prod"},
+			},
+		},
+	}
+
+	var buf strings.Builder
+	ppfmt := pp.New(&buf, false, pp.Verbose)
+
+	resolved, matching, nonMatching := reconcileAndPartitionRecords(
+		fallback,
+		records,
+		ppfmt,
+		newAmbiguityWarnings(),
+		"AAAA records of sub.test.org",
+	)
+
+	require.Equal(t,
+		"The 2 outdated AAAA records of sub.test.org disagree on tags; using common subset\n"+
+			"The 2 outdated AAAA records of sub.test.org disagree on proxy states; using fallback value\n",
+		buf.String(),
+	)
+	require.Equal(t, api.RecordParams{
+		TTL:     120,
+		Proxied: false,
+		Comment: "carry-me",
+		Tags:    []string{"env:prod"},
+	}, resolved)
+	require.Equal(t, []Record{
+		{
+			ID: "record-a",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: false,
+				Comment: "carry-me",
+				Tags:    []string{"env:prod"},
+			},
+		},
+	}, matching)
+	require.Equal(t, []Record{
+		{
+			ID: "record-b",
+			RecordParams: api.RecordParams{
+				TTL:     120,
+				Proxied: true,
+				Comment: "carry-me",
+				Tags:    []string{"env:prod", "team:alpha"},
+			},
+		},
 	}, nonMatching)
 }

@@ -209,6 +209,27 @@ func TestSetupReportersNotifier(t *testing.T) {
 				require.Equal(t, notifier.NewComposed(), nt)
 			},
 		},
+		"blank lines are skipped but non-empty line numbers stay original": {
+			shoutrrr: "\n  generic+https://example.com/hook?title=hello world  \n\n   \npushover://shoutrrr:token@userKey ifttt://hey/?events=1\n",
+			ok:       false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"5th")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					"If you are using YAML folded block style >, use literal block style | instead")
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				require.Equal(t, notifier.NewComposed(), nt)
+			},
+		},
 		"repeated spaces": {
 			shoutrrr: "generic+https://example.com/api/v1/postStuff  pushover://shoutrrr:token@userKey",
 			ok:       false,
