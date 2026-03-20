@@ -180,6 +180,10 @@ func reconcileAndPartitionRecords(
 		warnings.warn(ppfmt, len(records), unit, "comments", "fallback value")
 	}
 
+	// Tags differ from scalar fields: the current config surface has no non-empty
+	// fallback tag value, so reconciliation preserves only the canonical tags that
+	// every recyclable managed record already has. With today's configured
+	// fallback Tags=nil, this is exactly the canonical intersection/common subset.
 	resolvedParams = api.RecordParams{
 		TTL:     resolvedTTL,
 		Proxied: resolvedProxied,
@@ -214,6 +218,8 @@ func reconcileAndSortRecords(
 }
 
 // SetIPs updates the IP addresses of one domain to the given target set.
+// Provider output currently reaches this function through an address-only
+// specialization of the raw-data model.
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
@@ -426,8 +432,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			}
 		}
 
-		// Add the smallest allowed prefix for each uncovered target so every
-		// managed target ends up covered by at least one list item.
+		// Runtime input is currently address-only, so each uncovered address
+		// becomes the smallest allowed family prefix here.
 		for _, target := range targets.IPs {
 			if !coveredTargets[target] {
 				plan.createPrefixes = append(plan.createPrefixes,

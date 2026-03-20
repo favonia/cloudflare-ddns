@@ -8,13 +8,13 @@ Does not define: general internet threat modeling beyond public-IP detection.
 
 ## Goal
 
-Prevent an adversary from causing the updater to publish or enforce an incorrect IP target in managed Cloudflare resources.
+Prevent an adversary from causing the updater to detect incorrect raw IP data and thereby publish or enforce an attacker-chosen result in managed Cloudflare resources.
 
 ## Core Model
 
-The security model is about target-provider correctness, not broad application security.
+The security model is about provider correctness at the raw-data boundary, not broad application security.
 
-- The protected outcome is: the updater should not publish or enforce an attacker-chosen IP target in managed DNS records or managed WAF content.
+- The protected outcome is: the updater should not publish or enforce an attacker-chosen result in managed DNS records or managed WAF content.
 - The relevant trust boundary is the network path used by public-IP detection.
 - If that path is fundamentally attacker-controlled, no DDNS updater can recover security through application-layer logic alone.
 
@@ -51,9 +51,9 @@ It does not define:
 - Cloudflare account or credential security
 - local host compromise
 - shutdown cleanup semantics
-- reconciliation behavior after target detection succeeds
+- reconciliation behavior after raw-data detection succeeds
 
 ## Extension Points
 
-- If future provider work changes which external systems are trusted for target detection, update this note before expanding security claims elsewhere.
+- If future provider work changes which external systems are trusted for raw-data detection, update this note before expanding security claims elsewhere.
 - If future documentation makes stronger guarantees about route selection, source-address binding, or hostile-network behavior, those claims must be checked against this attacker model.

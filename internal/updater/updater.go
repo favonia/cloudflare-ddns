@@ -28,6 +28,9 @@ func detectIPs(
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
+	// Provider runtime output is currently address-only:
+	// IPv4 addresses carry singleton /32 raw data, and IPv6 addresses carry
+	// singleton /64 raw data.
 	targets := c.Provider[ipFamily].GetIPs(ctx, ppfmt, ipFamily)
 
 	switch {
@@ -106,7 +109,9 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
-					Tags:    nil,
+					// The config surface does not expose non-empty fallback DNS tags yet.
+					// Nil here therefore means "no configured fallback tags", not "clear tags".
+					Tags: nil,
 				})
 			}),
 		)
@@ -129,7 +134,10 @@ func finalDeleteIP(
 					TTL:     c.TTL,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
-					Tags:    nil,
+					// Keep final-delete reconciliation aligned with steady-state updates:
+					// current config can preserve/inherit existing tags but cannot specify
+					// non-empty fallback tags.
+					Tags: nil,
 				})
 			}),
 		)
