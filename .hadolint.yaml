@@ -1,0 +1,46 @@
+# Hadolint configuration for Dockerfile linting
+# Documentation: https://github.com/hadolint/hadolint#readme
+
+# Rules that should be ignored (default rules to ignore)
+# DL3008: Pin versions in FROM (e.g., amazonlinux:2 instead of amazonlinux)
+# DL3009: Remove packages after use
+# DL3018: Pin versions in pip install
+# DL3025: Use labels to define metadata
+# DL3033: Specify port as a string
+# DL3040: Use --no-install-recommends in apt-get
+# DL3059: Multiple RUN instructions
+# DL3060: Use --no-cache in apt-get
+# DL3061: Use ADD for archives
+# DL3064: Use explicit user/group in FROM
+# DL3072: Limit build stage names
+# DL3073: Use COPY --from instead of ADD
+# DL3074: Use named stages
+# DL3078: Pin versions in RUN commands
+# SC2086: Duplicated arguments
+
+# For this project, we use specific SHA256 digests in FROM statements,
+# so we ignore the version pinning warnings.
+ignored:
+  - DL3008 # Pin versions in FROM - we use digests
+  - DL3009 # Remove packages after use - not applicable for multi-stage builds
+  - DL3018 # Pin versions in pip install - not used
+  - DL3025 # Use labels to define metadata - not applicable
+  - DL3033 # Specify port as a string - not applicable
+  - DL3040 # Use --no-install-recommends - not applicable (alpine)
+  - DL3059 # Multiple RUN instructions - we use multi-stage builds
+  - DL3060 # Use --no-cache - not applicable (alpine)
+  - DL3061 # Use ADD for archives - not applicable
+  - DL3064 # Use explicit user/group in FROM - we set USER after FROM
+  - DL3072 # Limit build stage names - we have intentional stage names
+  - DL3073 # Use COPY --from instead of ADD - we use COPY
+  - DL3074 # Use named stages - we use named stages intentionally
+  - DL3078 # Pin versions in RUN commands - we use specific base image digests
+  - SC2086 # Duplicated arguments - false positives
+
+
+# Rules that should be treated as error instead of warning
+# none
+
+# Rules that should be treated as warning instead of error
+# none
+

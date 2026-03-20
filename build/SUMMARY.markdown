@@ -19,7 +19,4 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. The
 - `edge`: The development version
 - `edge-alpine`: A development build running on a non-minimal Alpine Linux distribution. This allows for easier network troubleshooting due to the availability of additional system tools and libraries.
 
-Prefer `1` or `1.x.y` in production. The `latest` tag moves to each new stable
-release and may pick up breaking changes in a future major release, so it is
-not recommended in production. The `edge` tag tracks the latest unreleased
-development build.
+Prefer `1` or `1.x.y` in production. The `latest` tag moves to each new stable release and may pick up breaking changes in a future major release, so it is not recommended in production. The `edge` tag tracks the latest unreleased development build.

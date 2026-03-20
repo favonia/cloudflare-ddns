@@ -130,5 +130,4 @@ The reconciliation algorithm that consumes this ownership result is defined in [
   - their resource ownership unit
   - their IP-family ownership consequences, if any
   - their attribute-based ownership selectors, if any
-  - which deletion targets are eligible by recreatability
-  instead of inventing separate scope rules ad hoc.
+  - which deletion targets are eligible by recreatability instead of inventing separate scope rules ad hoc.

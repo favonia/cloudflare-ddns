@@ -34,10 +34,9 @@ Typical cases:
 
 Use `export_test.go` only as a narrow escape hatch for black-box tests.
 
-- a `package foo_test` test genuinely needs a small internal hook
-- moving that test to `package foo` would lose the desired black-box perspective or create an import cycle
-- the wrapper or alias can stay minimal and clearly test-only
-
+- use it when a `package foo_test` test genuinely needs a small internal hook
+- do not use it when moving that test to `package foo` would preserve the desired black-box perspective and avoid an import cycle
+- keep the wrapper or alias minimal and clearly test-only
 - keep `export_test.go` in `package foo`
 - expose the smallest possible alias or wrapper
 - document why the hook is needed

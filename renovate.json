@@ -5,7 +5,29 @@
     "group:allNonMajor",
     ":semanticCommitTypeAll(build)"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-zA-Z0-9-._]+?) depName=(?<depName>[^\\s]+?)(?: (?:lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s+go install \\S+@(?<currentValue>\\S+)\\s"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{/if}}"
+    }
+  ],
+  "pip-compile": {
+    "managerFilePatterns": ["/(^|/)\\.github/workflows/mdformat-requirements\\.txt$/"],
+    "lockFileMaintenance": {
+      "enabled": false
+    }
+  },
+  "pip_requirements": {
+    "enabled": false
+  },
   "schedule": ["on the first day instance on friday after 9pm"],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchPackageNames": ["github.com/cloudflare/cloudflare-go"],
@@ -16,6 +38,11 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["docker/dockerfile"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["pip-compile"],
+      "matchPackageNames": ["mdformat", "mdformat-gfm"],
+      "groupName": "mdformat"
     }
   ],
   "postUpdateOptions": ["gomodTidy"]

@@ -115,8 +115,7 @@ Examples include:
 - `tagliatelle` for externally defined JSON field names such as `operation_id`
 - `testifylint` when `require` would be unsafe inside an HTTP handler goroutine
 - `embeddedstructfieldcheck` when embedding preserves the intended public model shape
-- `unparam` when a helper signature stays intentionally symmetric with its callers
-  and would become misleading if made less explicit
+- `unparam` when a helper signature stays intentionally symmetric with its callers and would become misleading if made less explicit
 - `gosec` when a weak fallback is used only after a stronger mechanism fails and the risk is understood
 - `forcetypeassert` after earlier checks establish the expected concrete type
 - `noctx` when a test helper must call an API that has no context-aware alternative
