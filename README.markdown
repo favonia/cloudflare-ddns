@@ -203,7 +203,7 @@ After the updater creates or updates the expected records, switch `DOMAINS`, `IP
 
 Use this when you want to test how the updater responds after DNS records are changed directly in Cloudflare.
 
-By default, the updater caches the DNS records it reads from Cloudflare to reduce network traffic. To make it fetch the latest DNS records every time, disable that cache:
+By default, the updater caches Cloudflare API responses to reduce network traffic. To make it fetch the latest DNS records every time, disable that cache:
 
 ```yaml
 environment:
@@ -212,7 +212,7 @@ environment:
 
 With `CACHE_EXPIRATION=1ns`, you can edit DNS records in Cloudflare and watch the updater reconcile them right away.
 
-`CACHE_EXPIRATION` only affects the cache for DNS records read from Cloudflare. It does not affect public IP detection. The updater still detects the current public IP addresses each time it runs.
+`CACHE_EXPIRATION` affects cached Cloudflare API responses. It does not affect public IP detection. The updater still detects the current public IP addresses each time it runs.
 
 ⚠️ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
 
