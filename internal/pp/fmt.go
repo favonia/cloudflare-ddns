@@ -27,7 +27,7 @@ func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 
 // NewDefault creates a new pretty printer with default settings.
 func NewDefault(writer io.Writer) PP {
-	return New(writer, true, DefaultVerbosity)
+	return New(writer, true, defaultVerbosity)
 }
 
 // NewSilent creates a pretty printer that never emits output.

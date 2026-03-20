@@ -19,7 +19,7 @@ const (
 const (
 	Quiet            Verbosity = Notice
 	Verbose          Verbosity = Info
-	DefaultVerbosity Verbosity = Verbose
+	defaultVerbosity Verbosity = Verbose
 )
 
 // PP is the abstraction of a pretty printer.
