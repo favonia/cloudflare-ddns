@@ -39,16 +39,16 @@ func TestPartitionRecordsTreatsIPv4MappedIPv6AsMatchingCanonicalIPv4(t *testing.
 	target := netip.MustParseAddr("192.0.2.10")
 	targets := []netip.Addr{target}
 	records := []api.Record{
-		{ID: "mapped", IP: netip.MustParseAddr("::ffff:192.0.2.10")},
-		{ID: "invalid", IP: netip.Addr{}},
+		{ID: "mapped", IP: netip.MustParseAddr("::ffff:192.0.2.10"), RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
+		{ID: "invalid", IP: netip.Addr{}, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
 	}
 
 	matched, unmatched, outdated := partitionRecords(targets, records)
 	require.Len(t, matched, 1)
 	require.Contains(t, matched, target)
-	require.Equal(t, []Record{{ID: "mapped"}}, matched[target])
+	require.Equal(t, []Record{{ID: "mapped", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, matched[target])
 	require.Empty(t, unmatched)
-	require.Equal(t, []Record{{ID: "invalid"}}, outdated)
+	require.Equal(t, []Record{{ID: "invalid", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, outdated)
 }
 
 func TestResolveScalarValue(t *testing.T) {
