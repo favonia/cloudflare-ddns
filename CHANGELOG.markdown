@@ -17,11 +17,6 @@ As a reminder, since 1.13.0, **the updater no longer drops superuser privileges 
 - **provider:** add undocumented `debug.const` provider ([#966](https://github.com/favonia/cloudflare-ddns/issues/966)) ([638c1a2](https://github.com/favonia/cloudflare-ddns/commit/638c1a21068fe0fdc79bacfa8a48deb1d6ee4638))
 - **provider:** add undocumented `cloudflare.trace:URL` provider ([#988](https://github.com/favonia/cloudflare-ddns/issues/988)) ([7afb1d2](https://github.com/favonia/cloudflare-ddns/commit/7afb1d2254a810ace2cbbb0d5d0ea737bb1c0c4d))
 
-### Features
-
-- **config:** accept CLOUDFLARE\_\* and all compatible token settings ([#948](https://github.com/favonia/cloudflare-ddns/issues/948)) ([4fc883c](https://github.com/favonia/cloudflare-ddns/commit/4fc883c45cb3068572d0fa55740ecd338c4ccd4f))
-- **provider:** specify interface name ([#941](https://github.com/favonia/cloudflare-ddns/issues/941)) ([69f8cf2](https://github.com/favonia/cloudflare-ddns/commit/69f8cf2f62c533cffb7652fe6377f7a6ba8959cb))
-
 # [1.15.0](https://github.com/favonia/cloudflare-ddns/compare/v1.14.2...v1.15.0) (2024-10-01)
 
 This is a major release with many improvements:
