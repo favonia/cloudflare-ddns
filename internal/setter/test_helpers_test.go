@@ -160,17 +160,17 @@ func expectRecordAddedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain doma
 func expectRecordUpdatedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
-		"Updated a stale %s record of %s (ID: %s)",
+		"Updated a outdated %s record of %s (ID: %s)",
 		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
 	)
 }
 
-func expectRecordStaleDeletedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
+func expectRecordOutdatedDeletedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
-		"Deleted a stale %s record of %s (ID: %s)",
+		"Deleted a outdated %s record of %s (ID: %s)",
 		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
@@ -254,7 +254,7 @@ type wafListMutationExpectation struct {
 
 //nolint:unparam // This helper keeps repeated noop fixtures concise despite constant local test inputs.
 func wafListNoopExpectation(
-	listDescription, configuredItemComment string, alreadyExisting, cached bool,
+	listDescription, fallbackItemComment string, alreadyExisting, cached bool,
 ) wafListMutationExpectation {
 	return wafListMutationExpectation{
 		listDescription: listDescription,
@@ -263,7 +263,7 @@ func wafListNoopExpectation(
 		cached:          cached,
 		createItems:     nil,
 		createPrefixes:  nil,
-		createComment:   configuredItemComment,
+		createComment:   fallbackItemComment,
 		createOK:        false,
 		deleteItems:     nil,
 		deleteOK:        false,
@@ -276,13 +276,13 @@ func expectWAFListRead(
 	m *mocks.MockHandle,
 	list api.WAFList,
 	listDescription string,
-	configuredItemComment string,
+	fallbackItemComment string,
 	items []api.WAFListItem,
 	alreadyExisting bool,
 	cached bool,
 	ok bool,
 ) any {
-	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription, configuredItemComment).Return(items, alreadyExisting, cached, ok)
+	return m.EXPECT().ListWAFListItems(ctx, p, list, listDescription, fallbackItemComment).Return(items, alreadyExisting, cached, ok)
 }
 
 func expectWAFListNoop(

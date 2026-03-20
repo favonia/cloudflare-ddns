@@ -26,29 +26,29 @@ func TestSummarizeSetsDuplicateKeepsLexicographicallySmallest(t *testing.T) {
 func TestCommonSubset(t *testing.T) {
 	t.Parallel()
 
-	t.Run("empty-stale-returns-empty", func(t *testing.T) {
+	t.Run("empty-outdated-returns-empty", func(t *testing.T) {
 		t.Parallel()
 		require.Nil(t, apitags.CommonSubset(nil))
 	})
 
 	t.Run("returns-unanimous-tags-only", func(t *testing.T) {
 		t.Parallel()
-		stale := [][]string{
+		outdated := [][]string{
 			{"x:new", "y:drop"},
 			{"X:new", "z:drop"},
 			{"x:new"},
 		}
-		require.Equal(t, []string{"X:new"}, apitags.CommonSubset(stale))
+		require.Equal(t, []string{"X:new"}, apitags.CommonSubset(outdated))
 	})
 
 	t.Run("name-case-insensitive-value-case-sensitive", func(t *testing.T) {
 		t.Parallel()
-		stale := [][]string{
+		outdated := [][]string{
 			{"name:Value", "hi:Sigma"},
 			{"NAME:Value", "HI:sigma"},
 		}
 
-		resolved := apitags.CommonSubset(stale)
+		resolved := apitags.CommonSubset(outdated)
 		require.Contains(t, resolved, "NAME:Value")
 		require.NotContains(t, resolved, "hi:Sigma")
 		require.NotContains(t, resolved, "HI:sigma")
@@ -56,30 +56,30 @@ func TestCommonSubset(t *testing.T) {
 
 	t.Run("returns-empty-when-no-canonical-tag-is-unanimous", func(t *testing.T) {
 		t.Parallel()
-		stale := [][]string{
+		outdated := [][]string{
 			{"env:prod"},
 			{"team:alpha"},
 		}
-		require.Nil(t, apitags.CommonSubset(stale))
+		require.Nil(t, apitags.CommonSubset(outdated))
 	})
 }
 
 func TestCommonSubsetOrderInvariant(t *testing.T) {
 	t.Parallel()
 
-	stale := [][]string{
+	outdated := [][]string{
 		{"A:1", "x:one"},
 		{"A:1", "x:one"},
 		{"a:1", "x:one"},
 	}
-	original := apitags.CommonSubset(stale)
+	original := apitags.CommonSubset(outdated)
 
-	permutedStale := [][]string{
+	permutedOutdated := [][]string{
 		{"x:one", "a:1"},
 		{"x:one", "A:1"},
 		{"x:one", "A:1"},
 	}
-	permuted := apitags.CommonSubset(permutedStale)
+	permuted := apitags.CommonSubset(permutedOutdated)
 	require.Equal(t, original, permuted)
 }
 

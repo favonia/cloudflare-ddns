@@ -376,7 +376,7 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 	}
 }
 
-func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresStaleCache(t *testing.T) {
+func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresOutdatedCache(t *testing.T) {
 	t.Parallel()
 
 	options := defaultHandleOptions()

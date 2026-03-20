@@ -31,12 +31,15 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 
 	lists := make([]api.WAFList, 0, len(vals))
 
-	for _, val := range vals {
+	for i, val := range vals {
+		nthEntry := pp.Ordinal(i + 1)
 		var list api.WAFList
 
 		parts := strings.SplitN(val, "/", 2)
 		if len(parts) != 2 {
-			ppfmt.Noticef(pp.EmojiUserError, `List %q should be in format "account-id/list-name"`, val)
+			ppfmt.Noticef(pp.EmojiUserError,
+				`The %s entry of %s (%q) should be in format "account-id/list-name"`,
+				nthEntry, key, val)
 			return false
 		}
 		list = api.WAFList{
@@ -45,7 +48,9 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 		}
 
 		if violated := inverseWAFListNameRegex.FindString(list.Name); violated != "" {
-			ppfmt.Noticef(pp.EmojiUserWarning, "List name %q contains invalid character %q", list.Name, violated)
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"The %s entry of %s has list name %q, which contains invalid character %q",
+				nthEntry, key, list.Name, violated)
 		}
 
 		lists = append(lists, list)

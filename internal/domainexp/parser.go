@@ -47,18 +47,19 @@ func scanASCIIDomainList(ppfmt pp.PP, key string, input string, tokens []string)
 func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]domain.Domain, []string) {
 	list, tokens := scanList(ppfmt, key, input, tokens)
 	domains := make([]domain.Domain, 0, len(list))
-	for _, raw := range list {
+	for i, raw := range list {
+		nthDomain := pp.Ordinal(i + 1)
 		d, err := domain.New(raw)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFQDN) {
 				ppfmt.Noticef(pp.EmojiUserError,
-					`%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
-					key, input, d.Describe())
+					`The %s domain in %s (%q) is %q, but it is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
+					nthDomain, key, input, d.Describe())
 				return nil, nil
 			} else {
 				ppfmt.Noticef(pp.EmojiUserError,
-					"%s (%q) contains an ill-formed domain %q: %v",
-					key, input, d.Describe(), err)
+					"The %s domain in %s (%q) is %q, but it is ill-formed: %v",
+					nthDomain, key, input, d.Describe(), err)
 				return nil, nil
 			}
 		}

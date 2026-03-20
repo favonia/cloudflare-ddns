@@ -3,6 +3,7 @@ package setter
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"net/netip"
 	"slices"
 
@@ -32,15 +33,15 @@ func newAmbiguityWarnings() ambiguityWarnings {
 	return ambiguityWarnings{emitted: make(map[warningKey]bool)}
 }
 
-func (w ambiguityWarnings) warn(ppfmt pp.PP, unit, field string, count int, fallback string) {
+func (w ambiguityWarnings) warn(ppfmt pp.PP, count int, unit, field string, fallback string) {
 	key := warningKey{unit: unit, field: field, reason: "ambiguous"}
 	if w.emitted[key] {
 		return
 	}
 	w.emitted[key] = true
 	ppfmt.Noticef(pp.EmojiWarning,
-		"The %q values for %s disagree across %d managed candidates; using %s",
-		unit, field, count, fallback,
+		"The %d outdated %s disagree on %s; using %s",
+		count, unit, field, fallback,
 	)
 }
 
@@ -63,29 +64,29 @@ type Record struct {
 	api.RecordParams
 }
 
-// partitionRecords partitions records into desired-target buckets and stale ones.
+// partitionRecords partitions records into desired-target buckets and outdated ones.
 // matched contains only keys that have at least one matched record.
 // unmatched keeps the original target order.
 func partitionRecords(
 	targets []netip.Addr, rs []api.Record,
-) (matched map[netip.Addr][]Record, unmatched []netip.Addr, stale []Record) {
-	targetSet := make(map[netip.Addr]struct{}, len(targets))
+) (matched map[netip.Addr][]Record, unmatched []netip.Addr, outdated []Record) {
+	targetSet := make(map[netip.Addr]bool, len(targets))
 	for _, target := range targets {
-		targetSet[target] = struct{}{}
+		targetSet[target] = true
 	}
 	matched = make(map[netip.Addr][]Record, len(targetSet))
-	stale = make([]Record, 0, len(rs))
+	outdated = make([]Record, 0, len(rs))
 	for _, r := range rs {
 		// Unmap so IPv4-mapped IPv6 records match canonical IPv4 targets.
-		// Invalid or non-target records are intentionally treated as stale.
+		// Invalid or non-target records are intentionally treated as outdated.
 		ip := r.IP.Unmap()
 		if ip.IsValid() {
-			if _, ok := targetSet[ip]; ok {
+			if targetSet[ip] {
 				matched[ip] = append(matched[ip], Record{ID: r.ID, RecordParams: r.RecordParams})
 				continue
 			}
 		}
-		stale = append(stale, Record{ID: r.ID, RecordParams: r.RecordParams})
+		outdated = append(outdated, Record{ID: r.ID, RecordParams: r.RecordParams})
 	}
 
 	unmatched = make([]netip.Addr, 0, len(targets))
@@ -95,11 +96,11 @@ func partitionRecords(
 		}
 	}
 
-	return matched, unmatched, stale
+	return matched, unmatched, outdated
 }
 
-func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Record, stale []Record) bool {
-	if len(stale) != 0 {
+func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Record, outdated []Record) bool {
+	if len(outdated) != 0 {
 		return false
 	}
 	for _, target := range targets {
@@ -125,24 +126,24 @@ func sortRecordsByID(records []Record) {
 	})
 }
 
-// resolveScalarValue resolves a scalar value from stale sources.
-// The returned bool is true when stale values are non-empty and disagree.
-func resolveScalarValue[T comparable](configured T, staleValues []T) (T, bool) {
-	if len(staleValues) == 0 {
-		return configured, false
+// resolveScalarValue resolves a scalar value from outdated sources.
+// The returned bool is true when outdated values are non-empty and disagree.
+func resolveScalarValue[T comparable](fallback T, outdatedValues []T) (T, bool) {
+	if len(outdatedValues) == 0 {
+		return fallback, false
 	}
 
-	candidate := staleValues[0]
-	for _, value := range staleValues[1:] {
+	candidate := outdatedValues[0]
+	for _, value := range outdatedValues[1:] {
 		if value != candidate {
-			return configured, true
+			return fallback, true
 		}
 	}
 	return candidate, false
 }
 
 func reconcileAndPartitionRecords(
-	configuredParams api.RecordParams,
+	fallbackParams api.RecordParams,
 	records []Record,
 	ppfmt pp.PP,
 	warnings ambiguityWarnings,
@@ -163,20 +164,20 @@ func reconcileAndPartitionRecords(
 		warnings.warnDuplicateCanonicalTags(ppfmt, unit)
 	}
 	if tagSummary.HasAmbiguousCanonical {
-		warnings.warn(ppfmt, unit, "tags", len(tagSets), "common subset")
+		warnings.warn(ppfmt, len(records), unit, "tags", "common subset")
 	}
 
-	resolvedTTL, ttlAmbiguous := resolveScalarValue(configuredParams.TTL, ttlValues)
-	resolvedProxied, proxiedAmbiguous := resolveScalarValue(configuredParams.Proxied, proxiedValues)
-	resolvedComment, commentAmbiguous := resolveScalarValue(configuredParams.Comment, commentValues)
+	resolvedTTL, ttlAmbiguous := resolveScalarValue(fallbackParams.TTL, ttlValues)
+	resolvedProxied, proxiedAmbiguous := resolveScalarValue(fallbackParams.Proxied, proxiedValues)
+	resolvedComment, commentAmbiguous := resolveScalarValue(fallbackParams.Comment, commentValues)
 	if ttlAmbiguous {
-		warnings.warn(ppfmt, unit, "ttl", len(ttlValues), "configured value")
+		warnings.warn(ppfmt, len(records), unit, "TTL values", "fallback value")
 	}
 	if proxiedAmbiguous {
-		warnings.warn(ppfmt, unit, "proxied", len(proxiedValues), "configured value")
+		warnings.warn(ppfmt, len(records), unit, "proxy states", "fallback value")
 	}
 	if commentAmbiguous {
-		warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured value")
+		warnings.warn(ppfmt, len(records), unit, "comments", "fallback value")
 	}
 
 	resolvedParams = api.RecordParams{
@@ -200,14 +201,14 @@ func reconcileAndPartitionRecords(
 }
 
 func reconcileAndSortRecords(
-	configuredParams api.RecordParams,
+	fallbackParams api.RecordParams,
 	records []Record,
 	ppfmt pp.PP,
 	warnings ambiguityWarnings,
 	unit string,
 ) (resolvedParams api.RecordParams, sorted []Record) {
 	resolvedParams, matching, nonMatching := reconcileAndPartitionRecords(
-		configuredParams, records, ppfmt, warnings, unit,
+		fallbackParams, records, ppfmt, warnings, unit,
 	)
 	return resolvedParams, slices.Concat(matching, nonMatching)
 }
@@ -216,22 +217,22 @@ func reconcileAndSortRecords(
 // The inputs are assumed to satisfy [Setter.SetIPs] invariants.
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
-	configuredParams api.RecordParams,
+	fallbackParams api.RecordParams,
 ) ResponseCode {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 	targets := ips
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, configuredParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
 		return ResponseFailed
 	}
 
-	matchedByIP, unmatchedTargets, staleRecords := partitionRecords(targets, rs)
+	matchedByIP, unmatchedTargets, outdatedRecords := partitionRecords(targets, rs)
 
-	// If records already satisfy all desired targets and no stale managed records
+	// If records already satisfy all desired targets and no outdated managed records
 	// remain, we are done. Matching duplicates are tolerated residue.
-	if recordsAlreadyUpToDate(targets, matchedByIP, staleRecords) {
+	if recordsAlreadyUpToDate(targets, matchedByIP, outdatedRecords) {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
 				"The %s records of %s are already up to date (cached)",
@@ -245,24 +246,24 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	}
 
 	// Satisfy each uncovered target deterministically:
-	// 1. recycle one stale record via update,
+	// 1. recycle one outdated record via update,
 	// 2. otherwise create a new record.
 	warnings := newAmbiguityWarnings()
-	unit := recordType + " records of " + domainDescription
+	unit := fmt.Sprintf("%s records of %s", recordType, domainDescription)
 	targetsToCreate := unmatchedTargets
 
-	// Stage 1: stale-first operations for unmatched targets.
-	resolvedParamsForNewTargets, staleRecords := reconcileAndSortRecords(
-		configuredParams, staleRecords, ppfmt, warnings, unit,
+	// Stage 1: outdated-first operations for unmatched targets.
+	resolvedParamsForNewTargets, outdatedRecords := reconcileAndSortRecords(
+		fallbackParams, outdatedRecords, ppfmt, warnings, unit,
 	)
 
 	mutated := false
 	for _, target := range targetsToCreate {
-		if len(staleRecords) > 0 {
+		if len(outdatedRecords) > 0 {
 			// Recycle is an optimization of delete+create after metadata reconciliation.
 			// UpdateRecord contract: apply target IP and resolved metadata for new targets.
-			recycled := staleRecords[0]
-			staleRecords = staleRecords[1:]
+			recycled := outdatedRecords[0]
+			outdatedRecords = outdatedRecords[1:]
 			mutated = true
 			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, recycled.ID, target,
 				resolvedParamsForNewTargets,
@@ -273,7 +274,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				return ResponseFailed
 			}
 			ppfmt.Noticef(pp.EmojiUpdate,
-				"Updated a stale %s record of %s (ID: %s)",
+				"Updated a outdated %s record of %s (ID: %s)",
 				recordType, domainDescription, recycled.ID)
 			continue
 		}
@@ -290,10 +291,10 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			"Added a new %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 
-	// Stage 2: delete stale/out-of-target leftovers.
-	for _, r := range staleRecords {
+	// Stage 2: delete outdated/out-of-target leftovers.
+	for _, r := range outdatedRecords {
 		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDelitionMode); !ok {
+		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDeletionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records of %s; records might be inconsistent",
 				recordType, domainDescription)
@@ -301,7 +302,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		}
 
 		ppfmt.Noticef(pp.EmojiDeletion,
-			"Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
+			"Deleted a outdated %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
 	}
 
 	if !mutated {
@@ -313,12 +314,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 
 // FinalDelete deletes all managed DNS records.
 func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
-	configuredParams api.RecordParams,
+	fallbackParams api.RecordParams,
 ) ResponseCode {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 
-	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, configuredParams)
+	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
 		return ResponseFailed
 	}
@@ -352,7 +353,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 			continue
 		}
 
-		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a stale %s record of %s (ID: %s)", recordType, domainDescription, id)
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a outdated %s record of %s (ID: %s)", recordType, domainDescription, id)
 	}
 	if !allOK {
 		ppfmt.Noticef(pp.EmojiError,
@@ -376,7 +377,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 // - out of scope: preserve managed family ranges.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string,
-	targetsByFamily map[ipnet.Family]provider.Targets, configuredItemComment string,
+	targetsByFamily map[ipnet.Family]provider.Targets, fallbackItemComment string,
 ) ResponseCode {
 	type wafFamilyPlan struct {
 		createPrefixes []netip.Prefix
@@ -385,7 +386,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 
 	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(
-		ctx, ppfmt, list, listDescription, configuredItemComment,
+		ctx, ppfmt, list, listDescription, fallbackItemComment,
 	)
 	if !ok {
 		return ResponseFailed
@@ -441,10 +442,10 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		for _, item := range plan.deleteItems {
 			commentValues = append(commentValues, item.Comment)
 		}
-		resolvedComment, ambiguousComment := resolveScalarValue(configuredItemComment, commentValues)
+		resolvedComment, ambiguousComment := resolveScalarValue(fallbackItemComment, commentValues)
 		if ambiguousComment {
-			unit := "WAF list " + list.Describe() + " " + ipFamily.Describe()
-			warnings.warn(ppfmt, unit, "comment", len(commentValues), "configured comment")
+			unit := fmt.Sprintf("%s items in WAF list %s", ipFamily.Describe(), list.Describe())
+			warnings.warn(ppfmt, len(plan.deleteItems), unit, "comments", "fallback value")
 		}
 		plan.createComment = resolvedComment
 		plans[ipFamily] = plan

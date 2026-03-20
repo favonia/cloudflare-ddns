@@ -75,7 +75,7 @@ func TestDeleteRecord(t *testing.T) {
 			2, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 	} {
@@ -214,10 +214,10 @@ func TestUpdateRecord(t *testing.T) {
 			params,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatched-attributes": {
@@ -992,7 +992,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		require.True(t, ok)
 
 		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record2", api.RegularDelitionMode)
+			"record2", api.RegularDeletionMode)
 		require.True(t, ok)
 
 		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -1038,7 +1038,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		require.Equal(t, api.ID("record1"), id)
 
 		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", api.RegularDelitionMode)
+			"record1", api.RegularDeletionMode)
 		require.True(t, ok)
 
 		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -1103,7 +1103,7 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 		require.Equal(t, api.ID("record3"), id)
 
 		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record2", api.RegularDelitionMode)
+			"record2", api.RegularDeletionMode)
 		require.True(t, ok)
 
 		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)

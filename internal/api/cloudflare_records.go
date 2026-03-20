@@ -214,7 +214,7 @@ zoneSearch:
 		h.cache.listZones.Delete(zoneName)
 	}
 
-	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s", domain.Describe())
+	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", domain.Describe())
 
 	return zero, false
 }
@@ -230,7 +230,7 @@ func (h cloudflareHandle) zoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domai
 
 // ListRecords calls cloudflare.ListDNSRecords.
 func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
-	configuredParams RecordParams,
+	fallbackParams RecordParams,
 ) ([]Record, bool, bool) {
 	if cachedManagedRecords := h.cache.listRecords[ipFamily].Get(domain.DNSNameASCII()); cachedManagedRecords != nil {
 		// Cache stores managed records only; this assumes a stable selector per handle.
@@ -286,14 +286,14 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 		hintUndocumentedTags(ppfmt, ipFamily, domain, id, apitags.Undocumented(record.Tags))
 		managedRecords = append(managedRecords, record)
 
-		if record.TTL != configuredParams.TTL {
-			hintMismatchedTTL(ppfmt, ipFamily, domain, id, dashboardURL, record.TTL, configuredParams.TTL)
+		if record.TTL != fallbackParams.TTL {
+			hintMismatchedTTL(ppfmt, ipFamily, domain, id, dashboardURL, record.TTL, fallbackParams.TTL)
 		}
-		if record.Proxied != configuredParams.Proxied {
-			hintMismatchedProxied(ppfmt, ipFamily, domain, id, dashboardURL, record.Proxied, configuredParams.Proxied)
+		if record.Proxied != fallbackParams.Proxied {
+			hintMismatchedProxied(ppfmt, ipFamily, domain, id, dashboardURL, record.Proxied, fallbackParams.Proxied)
 		}
-		if record.Comment != configuredParams.Comment {
-			hintMismatchedComment(ppfmt, ipFamily, domain, id, dashboardURL, record.Comment, configuredParams.Comment)
+		if record.Comment != fallbackParams.Comment {
+			hintMismatchedComment(ppfmt, ipFamily, domain, id, dashboardURL, record.Comment, fallbackParams.Comment)
 		}
 	}
 
@@ -314,10 +314,10 @@ func (h cloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), string(id)); err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of stale %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of outdated %s record of %s (ID: %s): %v",
 			ipFamily.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
-		if mode == RegularDelitionMode {
+		if mode == RegularDeletionMode {
 			h.cache.listRecords[ipFamily].Delete(domain.DNSNameASCII())
 		}
 		return false
@@ -381,7 +381,7 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), updateRequestParams)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of stale %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v",
 			ipFamily.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 

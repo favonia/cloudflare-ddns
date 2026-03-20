@@ -2,7 +2,7 @@
 // using [api.Handle].
 //
 // The idea is to reuse existing DNS records as much as possible, and only when
-// that fails, create new DNS records and remove stale ones. The complexity of
+// that fails, create new DNS records and remove outdated ones. The complexity of
 // this package is due to the error handling of each API call.
 package setter
 
@@ -32,7 +32,7 @@ type Setter interface {
 		ipFamily ipnet.Family,
 		Domain domain.Domain,
 		IPs []netip.Addr,
-		configuredParams api.RecordParams,
+		fallbackParams api.RecordParams,
 	) ResponseCode
 
 	// FinalDelete removes DNS records of a particular domain.
@@ -41,7 +41,7 @@ type Setter interface {
 		ppfmt pp.PP,
 		ipFamily ipnet.Family,
 		Domain domain.Domain,
-		configuredParams api.RecordParams,
+		fallbackParams api.RecordParams,
 	) ResponseCode
 
 	// SetWAFList reconciles one WAF list against family target states.
@@ -62,7 +62,7 @@ type Setter interface {
 		list api.WAFList,
 		listDescription string,
 		targetsByFamily map[ipnet.Family]provider.Targets,
-		configuredItemComment string,
+		fallbackItemComment string,
 	) ResponseCode
 
 	// FinalClearWAFList removes managed WAF content during shutdown in managed family scope.

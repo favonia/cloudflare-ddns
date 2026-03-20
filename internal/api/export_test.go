@@ -53,14 +53,14 @@ func (h cloudflareHandle) ListWAFLists(ctx context.Context, ppfmt pp.PP, account
 }
 
 // WAFListID is a test-only wrapper around the internal list-ID lookup helper.
-func (h cloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string) (ID, bool, bool) {
-	return h.wafListID(ctx, ppfmt, list, configuredDescription)
+func (h cloudflareHandle) WAFListID(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string) (ID, bool, bool) {
+	return h.wafListID(ctx, ppfmt, list, fallbackDescription)
 }
 
 // FindWAFList is a test-only wrapper around the internal list-resolution
 // helper that reports a user-facing error when lookup fails.
-func (h cloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAFList, configuredDescription string) (ID, bool) {
-	return h.findWAFList(ctx, ppfmt, list, configuredDescription)
+func (h cloudflareHandle) FindWAFList(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string) (ID, bool) {
+	return h.findWAFList(ctx, ppfmt, list, fallbackDescription)
 }
 
 // ListZones is a test-only wrapper around the zone-enumeration helper.

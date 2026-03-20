@@ -86,17 +86,17 @@ func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp
 }
 
 // FinalDelete mocks base method.
-func (m *MockSetter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, configuredParams api.RecordParams) setter.ResponseCode {
+func (m *MockSetter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, fallbackParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalDelete", ctx, ppfmt, ipFamily, Domain, configuredParams)
+	ret := m.ctrl.Call(m, "FinalDelete", ctx, ppfmt, ipFamily, Domain, fallbackParams)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // FinalDelete indicates an expected call of FinalDelete.
-func (mr *MockSetterMockRecorder) FinalDelete(ctx, ppfmt, ipFamily, Domain, configuredParams any) *MockSetterFinalDeleteCall {
+func (mr *MockSetterMockRecorder) FinalDelete(ctx, ppfmt, ipFamily, Domain, fallbackParams any) *MockSetterFinalDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalDelete", reflect.TypeOf((*MockSetter)(nil).FinalDelete), ctx, ppfmt, ipFamily, Domain, configuredParams)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalDelete", reflect.TypeOf((*MockSetter)(nil).FinalDelete), ctx, ppfmt, ipFamily, Domain, fallbackParams)
 	return &MockSetterFinalDeleteCall{Call: call}
 }
 
@@ -124,17 +124,17 @@ func (c *MockSetterFinalDeleteCall) DoAndReturn(f func(context.Context, pp.PP, i
 }
 
 // SetIPs mocks base method.
-func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, IPs []netip.Addr, configuredParams api.RecordParams) setter.ResponseCode {
+func (m *MockSetter) SetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, Domain domain.Domain, IPs []netip.Addr, fallbackParams api.RecordParams) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, ipFamily, Domain, IPs, configuredParams)
+	ret := m.ctrl.Call(m, "SetIPs", ctx, ppfmt, ipFamily, Domain, IPs, fallbackParams)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // SetIPs indicates an expected call of SetIPs.
-func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, ipFamily, Domain, IPs, configuredParams any) *MockSetterSetIPsCall {
+func (mr *MockSetterMockRecorder) SetIPs(ctx, ppfmt, ipFamily, Domain, IPs, fallbackParams any) *MockSetterSetIPsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, ipFamily, Domain, IPs, configuredParams)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIPs", reflect.TypeOf((*MockSetter)(nil).SetIPs), ctx, ppfmt, ipFamily, Domain, IPs, fallbackParams)
 	return &MockSetterSetIPsCall{Call: call}
 }
 
@@ -162,17 +162,17 @@ func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]provider.Targets, configuredItemComment string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]provider.Targets, fallbackItemComment string) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment)
+	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, targetsByFamily, fallbackItemComment)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // SetWAFList indicates an expected call of SetWAFList.
-func (mr *MockSetterMockRecorder) SetWAFList(ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment any) *MockSetterSetWAFListCall {
+func (mr *MockSetterMockRecorder) SetWAFList(ctx, ppfmt, list, listDescription, targetsByFamily, fallbackItemComment any) *MockSetterSetWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWAFList", reflect.TypeOf((*MockSetter)(nil).SetWAFList), ctx, ppfmt, list, listDescription, targetsByFamily, configuredItemComment)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWAFList", reflect.TypeOf((*MockSetter)(nil).SetWAFList), ctx, ppfmt, list, listDescription, targetsByFamily, fallbackItemComment)
 	return &MockSetterSetWAFListCall{Call: call}
 }
 
