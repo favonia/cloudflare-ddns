@@ -310,6 +310,8 @@ secrets:
 
 ⚠️ The token file must be readable by the user configured by `user: "UID:GID"`.
 
+### 🧭 Resource Scope and Ownership
+
 #### 🧪 Update only WAF lists
 
 The updater can work without DNS records and manage only WAF lists.
@@ -322,13 +324,17 @@ environment:
 
 Use a Cloudflare API token with the **Account - Account Filter Lists - Edit** permission.
 
-### 🤝 Shared Ownership
+### 🤝 Multiple Instances
 
-#### Share domains or WAF lists across updater instances
+Use this when multiple updater instances may overlap and each instance should manage only its own resources. The DNS setup and the WAF setup are independent:
 
-Use this when multiple updater instances overlap on DNS domains or share WAF lists, and each instance should manage only its own items.
+- If multiple instances share DNS domains, configure the DNS subsection.
+- If multiple instances share WAF lists, configure the WAF subsection.
+- If both apply, configure both subsections.
 
-For shared DNS domains, give each instance its own comment value and matching selector:
+#### Share DNS domains across updater instances
+
+Use this when multiple instances share DNS domains. This setup does not use WAF lists. Give each instance its own DNS record comment value and matching selector:
 
 1. Set a unique `RECORD_COMMENT`.
 2. Set `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
@@ -338,12 +344,21 @@ Example:
 - Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
 
-If instances also touch the same WAF list, give each instance its own WAF list item comment and matching selector:
+> 🤖 `MANAGED_RECORDS_COMMENT_REGEX` is unreleased.
+
+#### Share WAF lists across updater instances
+
+Use this when multiple instances share WAF lists. This setup does not use the DNS settings above. Give each instance its own WAF list item comment and matching selector:
+
+1. Set a unique `WAF_LIST_ITEM_COMMENT`.
+2. Set `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF list item comment, typically with `^...$`.
+
+Example:
 
 - Instance A: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
 
-> 🤖 `MANAGED_RECORDS_COMMENT_REGEX` is unreleased. `WAF_LIST_ITEM_COMMENT` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` are unreleased and experimental.
+> 🤖 `WAF_LIST_ITEM_COMMENT` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` are unreleased and experimental.
 
 ## 🚚 Non-Docker Setups
 
