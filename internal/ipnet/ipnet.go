@@ -121,7 +121,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	switch t {
 	case IP4:
 		if !ip.Is4() && !ip.Is4In6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", ip.String())
+			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", ip.String())
 			return netip.Addr{}, false
 		}
 		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
@@ -130,11 +130,11 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	case IP6:
 		// Accept only native IPv6 addresses and reject IPv4-mapped IPv6.
 		if !ip.Is6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address", ip.String())
+			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address; it can't be used", ip.String())
 			return netip.Addr{}, false
 		}
 		if ip.Is4In6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", ip.String())
+			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address; it can't be used", ip.String())
 			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 				"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
 					"It cannot be used for routing IPv6 traffic. "+
@@ -166,7 +166,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	if IsNonGlobalUnicast(ip) {
 		ppfmt.Noticef(
 			pp.EmojiWarning,
-			`Detected %s address %s does not look like a global unicast address`,
+			`Detected %s address %s does not look like a global unicast address; still using it`,
 			t.Describe(), ip.String(),
 		)
 	}

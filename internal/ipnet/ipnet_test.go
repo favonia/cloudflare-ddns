@@ -121,7 +121,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP4, singleton(mustIP("1::2")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::2")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", "1::2")
 			},
 		},
 		"singleton/4-::ffff:0a0a:0a0a": {
@@ -168,7 +168,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP4, singleton(mustIP("255.255.255.255")),
 			true, singleton(mustIP("255.255.255.255")),
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address", "IPv4", "255.255.255.255")
+				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address; still using it", "IPv4", "255.255.255.255")
 			},
 		},
 		"singleton/6-invalid": {
@@ -194,7 +194,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP6, singleton(mustIP("10.10.10.10")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address", "10.10.10.10")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address; it can't be used", "10.10.10.10")
 			},
 		},
 		"singleton/6-::ffff:10.10.10.10": {
@@ -202,7 +202,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address", "::ffff:10.10.10.10"),
+					m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address; it can't be used", "::ffff:10.10.10.10"),
 					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint, "An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s", pp.IssueReportingURL),
 				)
 			},

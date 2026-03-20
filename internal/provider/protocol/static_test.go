@@ -111,7 +111,7 @@ func TestStaticGetIPs(t *testing.T) {
 			ipnet.IP4,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address", "1::1")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", "1::1")
 			},
 		},
 	} {
