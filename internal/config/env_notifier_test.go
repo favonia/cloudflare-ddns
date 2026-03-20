@@ -73,7 +73,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -93,7 +94,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"2nd")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -113,7 +115,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"SHOUTRRR contains space characters")
+					"The %s non-empty line of SHOUTRRR contains space characters",
+					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"Percent-encode spaces to suppress this warning")
@@ -136,7 +139,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -156,7 +160,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -189,7 +194,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"2nd")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -209,7 +215,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")

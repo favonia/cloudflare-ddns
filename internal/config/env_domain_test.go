@@ -37,7 +37,7 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) contains a domain %q that is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, key, "*", "*")
+				m.EXPECT().Noticef(pp.EmojiUserError, `The %s domain in %s (%q) is %q, but it is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, "1st", key, "*", "*")
 			},
 		},
 		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
@@ -50,7 +50,7 @@ func TestReadDomains(t *testing.T) {
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
 			},
 		},
 		"illformed2": {
@@ -59,7 +59,7 @@ func TestReadDomains(t *testing.T) {
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
 			},
 		},
 		"illformed3": {
@@ -137,7 +137,7 @@ func TestReadDomainMap(t *testing.T) {
 		"ill-formed": {
 			" ", "   ", "*.*", nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) contains an ill-formed domain %q: %v", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
 			},
 		},
 	} {

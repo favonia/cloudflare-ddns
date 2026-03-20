@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
@@ -58,6 +59,28 @@ func classifyShoutrrrURLSpace(rawURL string) shoutrrrSpaceClassification {
 	return shoutrrrSpaceFail
 }
 
+type shoutrrrURLLine struct {
+	lineNum int
+	rawURL  string
+}
+
+func shoutrrrURLLines() []shoutrrrURLLine {
+	raw := os.Getenv("SHOUTRRR")
+	if raw == "" {
+		return nil
+	}
+
+	lines := make([]shoutrrrURLLine, 0)
+	for i, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		lines = append(lines, shoutrrrURLLine{lineNum: i + 1, rawURL: line})
+	}
+	return lines
+}
+
 // parseShoutrrrURLs parses SHOUTRRR into a list of shoutrrr URLs.
 //
 // The input contract is newline-separated URLs, with each configured line kept
@@ -81,18 +104,21 @@ func classifyShoutrrrURLSpace(rawURL string) shoutrrrSpaceClassification {
 // back to the same one-URL-per-line contract instead of making parsing behavior
 // format-dependent.
 func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
-	urls := GetenvAsList("SHOUTRRR", "\n")
+	lines := shoutrrrURLLines()
+	urls := make([]string, 0, len(lines))
 	sawWarning := false
 
-	for _, rawURL := range urls {
-		switch classifyShoutrrrURLSpace(rawURL) {
+	for _, line := range lines {
+		urls = append(urls, line.rawURL)
+		switch classifyShoutrrrURLSpace(line.rawURL) {
 		case shoutrrrSpaceClean:
 			// No suspicious spaces detected.
 		case shoutrrrSpaceWarn:
 			sawWarning = true
 		case shoutrrrSpaceFail:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"SHOUTRRR contains space characters that look like multiple URLs were folded onto one line")
+				"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+				pp.Ordinal(line.lineNum))
 			ppfmt.Infof(pp.EmojiHint,
 				"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 			ppfmt.Infof(pp.EmojiHint,
@@ -104,7 +130,13 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 	// Delay the warning until after the scan so mixed inputs emit only the
 	// hard-error path when any line is unsafe.
 	if sawWarning {
-		ppfmt.Noticef(pp.EmojiUserWarning, "SHOUTRRR contains space characters")
+		for _, line := range lines {
+			if classifyShoutrrrURLSpace(line.rawURL) == shoutrrrSpaceWarn {
+				ppfmt.Noticef(pp.EmojiUserWarning,
+					"The %s non-empty line of SHOUTRRR contains space characters",
+					pp.Ordinal(line.lineNum))
+			}
+		}
 		ppfmt.Infof(pp.EmojiHint, "Percent-encode spaces to suppress this warning")
 	}
 
