@@ -24,7 +24,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ### Supporting feature models
 
-- [`features/provider-target-validation.markdown`](features/provider-target-validation.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
+- [`features/provider-raw-data-contract.markdown`](features/provider-raw-data-contract.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
 
 ### Resource-specific instantiations

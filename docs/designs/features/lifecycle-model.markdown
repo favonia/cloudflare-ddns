@@ -70,7 +70,7 @@ If a family is in scope, detection yields one of three raw-data states:
 
 The concrete raw-data representation is an implementation choice, not an axiom of this lifecycle model.
 
-Detection semantics and provider contracts are owned by [Provider Target Validation](provider-target-validation.markdown). Detection trust assumptions are owned by [Network Security Model](network-security-model.markdown).
+Detection semantics and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection trust assumptions are owned by [Network Security Model](network-security-model.markdown).
 
 ## Derivation
 

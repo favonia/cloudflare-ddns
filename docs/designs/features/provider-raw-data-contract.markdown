@@ -1,4 +1,4 @@
-# Design Note: Provider Target Validation
+# Design Note: Provider Raw-Data Contract
 
 Read when: changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 
