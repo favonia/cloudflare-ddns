@@ -13,7 +13,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### ⚡️ Efficiency
 
-- 🤏 The default Docker image stays small, and the badge above shows its current published size.
+- 🤏 The default Docker image stays small, and the `Docker Image Size` badge shows its current published size.
 - 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
@@ -70,6 +70,8 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
   </ul>
   </details>
 
+<a id="quick-start"></a>
+
 ## 🚀 Quick Start
 
 <details><summary>🐋 Directly run the Docker image <sup><em>click to expand</em></sup></summary>
@@ -106,6 +108,8 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 ## 🐋 Deployment with Docker Compose
 
+<a id="docker-compose-template"></a>
+
 ### 📦️ Step 1: Updating the Compose File
 
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template looks a bit scary only because it includes various optional flags for extra security protection.
@@ -122,7 +126,8 @@ services:
     #   changes in a future major release, so it is not recommended in production
     # - "edge" tracks the latest unreleased development build
     network_mode: host
-    # This bypasses network isolation and makes IPv6 easier (optional; see below)
+    # Optional. This bypasses network isolation and makes IPv6 easier.
+    # See "Use IPv6 without sharing the host network".
     restart: always
     # Restart the updater after reboot
     user: "1000:1000"
@@ -163,7 +168,7 @@ The setting `PROXIED=true` makes this updater use Cloudflare’s proxy for these
 
 </details>
 
-If you need a non-default Docker Compose deployment, see [`Docker Compose Special Setups`](#docker-compose-special-setups) below.
+If you need a non-default Docker Compose deployment, see [Docker Compose Special Setups](#docker-compose-special-setups).
 
 ### 🚀 Step 2: Building and Running the Container
 
@@ -178,7 +183,7 @@ The updater should now be running in the background. Check the logs with `docker
 
 ## 🧩 Docker Compose Special Setups
 
-These setups are additive changes on top of the basic Docker Compose template above. Each setup shows a minimal delta. For the exact behavior of each environment variable, see [`All Settings`](#all-settings).
+These setups are additive changes on top of the basic Docker Compose template in [Step 1: Updating the Compose File](#docker-compose-template). Each setup shows a minimal delta. For the exact behavior of each environment variable, see [All Settings](#all-settings).
 
 ### 🔍️ Validation and Testing
 
@@ -214,7 +219,7 @@ With `CACHE_EXPIRATION=1ns`, you can edit DNS records in Cloudflare and watch th
 
 `CACHE_EXPIRATION` affects cached Cloudflare API responses. It does not affect public IP detection. The updater still detects the current public IP addresses each time it runs.
 
-⚠️ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
+Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network traffic.
 
 ### 🌐 Networking
 
@@ -241,6 +246,8 @@ services:
 ```
 
 After removing `network_mode: host`, follow the [official Docker instructions for enabling IPv6](https://docs.docker.com/config/daemon/ipv6/) on your Docker bridge network.
+
+<a id="docker-network-routing"></a>
 
 #### 🛜 Route outbound requests through a specific Docker network
 
@@ -283,9 +290,9 @@ environment:
   - IP6_PROVIDER=local.iface:eth0
 ```
 
-Use a custom Docker network to change where outbound requests leave the container.
+If you want to change where outbound requests leave the container instead, see [Route outbound requests through a specific Docker network](#docker-network-routing).
 
-⚠️ `local.iface:<iface>` is still experimental.
+🧪 `local.iface:<iface>` is still experimental.
 
 ### 🔐 Cloudflare API Tokens
 
@@ -344,11 +351,11 @@ Example:
 - Instance A: `RECORD_COMMENT=managed-by-ddns-a`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `RECORD_COMMENT=managed-by-ddns-b`, `MANAGED_RECORDS_COMMENT_REGEX=^managed-by-ddns-b$`
 
-> 🤖 `MANAGED_RECORDS_COMMENT_REGEX` is unreleased.
+> This setup requires `MANAGED_RECORDS_COMMENT_REGEX` (unreleased).
 
 #### Share WAF lists across updater instances
 
-Use this when multiple instances share WAF lists. This setup does not use the DNS settings above. Give each instance its own WAF list item comment and matching selector:
+Use this when multiple instances share WAF lists. This setup does not use the DNS settings in Share DNS domains across updater instances. Give each instance its own WAF list item comment and matching selector:
 
 1. Set a unique `WAF_LIST_ITEM_COMMENT`.
 2. Set `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF list item comment, typically with `^...$`.
@@ -358,11 +365,11 @@ Example:
 - Instance A: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-a`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-a$`
 - Instance B: `WAF_LIST_ITEM_COMMENT=managed-by-ddns-b`, `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=^managed-by-ddns-b$`
 
-> 🤖 `WAF_LIST_ITEM_COMMENT` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` are unreleased and experimental.
+> 🧪 This setup requires `WAF_LIST_ITEM_COMMENT` (unreleased) and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` (unreleased). Both settings are experimental.
 
 ## 🚚 Non-Docker Setups
 
-These setups are for runtimes that are not additive changes on top of the Docker Compose template above.
+These setups are for runtimes that are not additive changes on top of the Docker Compose template in [Step 1: Updating the Compose File](#docker-compose-template).
 
 ### ⚙️ Deploy as a system service
 
@@ -370,7 +377,7 @@ The repository currently includes [community-contributed sample configurations](
 
 ### 🦭 Run the container with Podman
 
-Start with the same image and environment variables shown in the Docker examples above, then adapt the run command to your Podman workflow. This README does not currently maintain Podman-specific commands, Quadlet files, or Compose conversions.
+Start with the same image and environment variables shown in [Quick Start](#quick-start) or [Step 1: Updating the Compose File](#docker-compose-template), then adapt the run command to your Podman workflow. This README does not currently maintain Podman-specific commands, Quadlet files, or Compose conversions.
 
 ### ☸️ Run on Kubernetes
 
@@ -483,8 +490,8 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 | Name           | Meaning                                                                                                                                                                                                                                                                                                                                                | Default Value      |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
-| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv4. See below for a detailed explanation. | `cloudflare.trace` |
-| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv6. See below for a detailed explanation. | `cloudflare.trace` |
+| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv4. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
+| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv6. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
 
 > 👉️ The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
@@ -529,11 +536,11 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 <details>
 <summary>🛟 DNS and WAF Fallback Values <sup><em>click to expand</em></sup></summary>
 
-> The updater preserves existing attributes (such as TTL and proxy status) when possible. 🤖 It keeps existing attribute values when old content agrees on them; otherwise, it uses the fallback values below when the values conflict.
+> The updater preserves existing attributes (such as TTL and proxy status) when possible. 🤖 It keeps existing attribute values when old content agrees on them; otherwise, it uses the fallback values in this table when the values conflict.
 
 | Name                                                       | Meaning                                                                                                                                                                                                                                                                                                           | Default Value                              |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `PROXIED`                                                  | <p>Fallback proxy setting for DNS records managed by the updater. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>🤖 Advanced usage: it can also be a domain-dependent boolean expression, as described below.</p> | `false`                                    |
+| `PROXIED`                                                  | <p>Fallback proxy setting for DNS records managed by the updater. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>🤖 Advanced usage: it can also be a domain-dependent boolean expression, as described in the examples later in this section.</p> | `false`                                    |
 | `TTL`                                                      | Fallback TTL (in seconds) for DNS records managed by the updater.                                                                                                                                                                                                                                                 | `1` (This means “automatic” to Cloudflare) |
 | `RECORD_COMMENT`                                           | Fallback [record comment](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.                                                                                                                                                          | `""`                                       |
 | 🧪 `WAF_LIST_DESCRIPTION` (available since version 1.14.0) | <p>🧪 Fallback description for WAF lists managed by the updater.</p><p>🤖 This matters only when the updater needs to create a new WAF list, because a WAF list has only one description.</p>                                                                                                                     | `""`                                       |
@@ -628,10 +635,10 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
 | ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=<token>`                                                                                                                                                                                                       |
-| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#cloudflare-api-token), then follow the row above.                                                                                                               |
+| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#cloudflare-api-token), then use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                  |
 | `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
 | `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in `All Settings` above for the detailed documentation for this advanced feature                                                       |
+| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in [All Settings](#all-settings) for the detailed documentation for this advanced feature                                                 |
 | `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if you want it                                                                                                                  |
 | `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to stop managing IPv4                                                                                                                                                 |
 | `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to stop managing IPv6                                                                                                                                                 |
