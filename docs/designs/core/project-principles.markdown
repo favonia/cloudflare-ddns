@@ -4,26 +4,40 @@ Read when: making design tradeoffs or choosing between competing implementations
 
 Defines: the project-wide priorities that should influence many tasks.
 
-Does not define: feature-specific semantics, exact mutation ordering, or local implementation details.
+## Decision Tree
 
-## Priorities
+Apply this strictly ordered list from top to bottom.
 
-1. Build the DDNS updater the maintainer wants to use.
-2. Support the features the maintainer wants, including expressive output such as emojis.
-3. Favor practical security:
-   - prefer open design over obscurity
-   - use code analysis, unit tests, fuzzing, and similar techniques to find bugs
-   - detect common misconfigurations
-4. Favor resilience against temporary failures such as network outages and Cloudflare downtime.
-   - For mutation flows that can fail ambiguously (timeouts, transport errors), order operations so any executed prefix leaves the system in the best known state.
-   - Prefer designs whose useful prefix remains correct or recoverable after interruption.
-5. Favor efficiency in network usage, CPU usage, memory usage, and operational churn.
-6. Favor features that remain maintainable.
-7. Favor user models that track observable outcomes rather than internal mechanisms.
-   - User-facing guidance should explain what the updater will do, what it will not do, and what the operator can do next.
-   - Mention internal mechanisms only when they materially change operator decisions.
-   - Configuration error messages should identify the configuration source so the operator knows where to act.
-8. For semantic redesigns, derive behavior from first principles and stable public interface, not from the current implementation shape.
-   - Start from operator intent, ownership boundaries, observable outcomes, and failure semantics.
-   - Treat current implementation only as evidence of shipped public behavior and interface constraints.
-   - Do not let local control flow, cached state shape, or existing mutation stages define durable semantics by themselves.
+Use only the criteria written in this tree.
+
+### 0. Required Behavior
+
+- Provide the behavior the maintainer wants.
+
+### 1. Practical Security
+
+- Favor memory safety and a small attack surface.
+- Prefer open, inspectable designs over obscurity.
+- Prefer designs that make bugs and misconfigurations easier to detect through analysis, tests, fuzzing, validation, or clear operator feedback.
+
+### 2. Resilience
+
+- Prefer automatic recovery from transient failures, startup delays, remote instability, and interrupted runs.
+- Prefer designs whose partial progress leaves the system in a safer and more recoverable state.
+
+### 3. Critical Efficiency
+
+- Prefer lower network, CPU, memory, and operational cost at critical spots.
+
+### 4. Operator Clarity
+
+- Explain behavior through observable outcomes, operator decisions, and actionable next steps.
+- Mention internal mechanisms only when they change operator decisions.
+
+### 5. Principled Design
+
+- Prefer designs whose local decisions are determined by global principles and local context over ad hoc local decisions.
+
+### 6. Maintainability
+
+- Prefer choices that reduce long-term maintenance burden.

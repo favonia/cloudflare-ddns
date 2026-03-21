@@ -14,6 +14,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/lint-suppressions.markdown`](guides/lint-suppressions.markdown): read when adding or reviewing inline `//nolint`.
+- [`guides/derived-rules.markdown`](guides/derived-rules.markdown): read when writing repository-wide explanatory text derived from project principles.
 
 ### Shared lifecycle and resource models:
 
