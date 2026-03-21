@@ -14,7 +14,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/go-lint-suppressions.markdown`](guides/go-lint-suppressions.markdown): read when adding or reviewing Go inline `//nolint`.
-- [`guides/derived-rules.markdown`](guides/derived-rules.markdown): read when writing repository-wide explanatory text derived from project principles.
+- [`guides/enforcement-point-explanations.markdown`](guides/enforcement-point-explanations.markdown): read when writing code comments, design-note pointers, or other non-README explanatory text at an enforcement point.
 
 ### Shared lifecycle and resource models
 
