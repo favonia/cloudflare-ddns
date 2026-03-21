@@ -16,6 +16,27 @@ import (
 )
 
 //nolint:paralleltest // environment vars are global
+func TestSetupReportersOmissionMatchesCanonicalExplicitValues(t *testing.T) {
+	check := func(t *testing.T, setHealthchecks bool, healthchecks string, setUptimeKuma bool, uptimeKuma string, setShoutrrr bool, shoutrrr string) (heartbeat.Heartbeat, notifier.Notifier) {
+		t.Helper()
+
+		set(t, "HEALTHCHECKS", setHealthchecks, healthchecks)
+		set(t, "UPTIMEKUMA", setUptimeKuma, uptimeKuma)
+		set(t, "SHOUTRRR", setShoutrrr, shoutrrr)
+
+		hb, nt, ok := config.SetupReporters(pp.NewSilent())
+		require.True(t, ok)
+		return hb, nt
+	}
+
+	implicitHB, implicitNT := check(t, false, "", false, "", false, "")
+	explicitHB, explicitNT := check(t, true, "", true, "", true, "")
+
+	require.Equal(t, implicitHB, explicitHB)
+	require.Equal(t, implicitNT, explicitNT)
+}
+
+//nolint:paralleltest // environment vars are global
 func TestSetupReportersHeartbeat(t *testing.T) {
 	for name, tc := range map[string]struct {
 		setHealthchecks bool

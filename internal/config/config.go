@@ -1,5 +1,9 @@
-// Package config reads environment variables into [RawConfig] and builds the
-// validated [BuiltConfig] value used by the rest of the updater.
+// Package config reads user-facing settings from the environment and builds the
+// validated runtime dependencies used by the rest of the updater.
+//
+// Optional user-facing settings in this package use canonical explicit values:
+// omitting such a setting must be semantically equivalent to explicitly
+// configuring one particular value for it, which may be the empty string.
 package config
 
 import (
@@ -83,8 +87,12 @@ type UpdateConfig struct {
 	UpdateTimeout      time.Duration
 }
 
-// DefaultRaw gives the default raw updater configuration used before reading
-// environment variables.
+// DefaultRaw gives the canonical explicit defaults for updater settings before
+// reading environment variables.
+//
+// In the standard updater bootstrap path [DefaultRaw] -> [RawConfig.ReadEnv] ->
+// [RawConfig.BuildConfig], these values define the omission semantics for the
+// optional updater settings handled by [RawConfig].
 func DefaultRaw() *RawConfig {
 	return &RawConfig{
 		Auth: nil,

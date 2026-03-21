@@ -22,12 +22,12 @@ func TestSetupPP(t *testing.T) {
 		"true/true":   {"true", " true", true, "🌟 notice\n"},
 		"false/false": {"false", "false", true, "info\nnotice\n"},
 		"invalid/invalid": {
-			"invalid", "invalid", true,
+			"invalid", "invalid", false,
 			`😡 EMOJI ("invalid") is not a boolean: strconv.ParseBool: parsing "invalid": invalid syntax
 `,
 		},
 		"false/invalid": {
-			"false", "invalid", true,
+			"false", "invalid", false,
 			`QUIET ("invalid") is not a boolean: strconv.ParseBool: parsing "invalid": invalid syntax
 `,
 		},
@@ -38,6 +38,7 @@ func TestSetupPP(t *testing.T) {
 
 			var buf strings.Builder
 			ppfmt, ok := config.SetupPP(&buf)
+			require.Equal(t, tc.ok, ok)
 
 			switch {
 			case ok:
@@ -51,4 +52,26 @@ func TestSetupPP(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestSetupPPOmissionMatchesCanonicalExplicitValues(t *testing.T) {
+	render := func(t *testing.T, setEmoji bool, emoji string, setQuiet bool, quiet string) string {
+		t.Helper()
+
+		set(t, "EMOJI", setEmoji, emoji)
+		set(t, "QUIET", setQuiet, quiet)
+
+		var buf strings.Builder
+		ppfmt, ok := config.SetupPP(&buf)
+		require.True(t, ok)
+		ppfmt.Infof(pp.EmojiStar, "info")
+		ppfmt.Noticef(pp.EmojiStar, "notice")
+		return buf.String()
+	}
+
+	implicit := render(t, false, "", false, "")
+	explicit := render(t, true, "true", true, "false")
+
+	require.Equal(t, implicit, explicit)
 }

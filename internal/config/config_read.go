@@ -33,6 +33,10 @@ func describeProviderSettingValuePreview(p provider.Provider) string {
 // It only parses updater settings into [RawConfig]. Call [RawConfig.BuildConfig] afterwards to
 // validate cross-field invariants and derive the updater runtime configs.
 // Reporter construction is handled separately by [SetupReporters].
+//
+// This method overlays environment values onto the existing [RawConfig]. Callers
+// that want the standard updater defaults must start from [DefaultRaw] before
+// calling [ReadEnv].
 func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	if ppfmt.IsShowing(pp.Info) {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")

@@ -1,6 +1,6 @@
 # Design Note: Lifecycle Model
 
-Read when: changing how one updater run starts, detects raw target data, derives resource-specific targets, reconciles managed state, or cleans up on shutdown.
+Read when: changing how one updater run starts, detects raw data, derives resource-specific targets, reconciles managed state, or cleans up on shutdown.
 
 Defines: the umbrella phase model for one updater process and one update round.
 
@@ -56,7 +56,7 @@ This phase covers immediate start, future scheduling, and shutdown requests.
 
 ## Detection
 
-Detection obtains the raw per-family target data for the current round.
+Detection obtains the raw per-family data for the current round.
 
 Detection lands family intent for the current round in raw form.
 
@@ -64,9 +64,9 @@ If a family is out of scope, there is only one intent: preserve existing managed
 
 If a family is in scope, detection yields one of three raw-data states:
 
-- raw target data unavailable for this run
-- known empty raw target data
-- known non-empty raw target data
+- raw data unavailable for this run
+- known empty raw data
+- known non-empty raw data
 
 The concrete raw-data representation is an implementation choice, not an axiom of this lifecycle model.
 
@@ -74,9 +74,9 @@ Detection semantics and provider contracts are owned by [Provider Target Validat
 
 ## Derivation
 
-Derivation transforms raw target data into the resource-specific target shape consumed by reconciliation.
+Derivation transforms raw data into the resource-specific target shape consumed by reconciliation.
 
-Today, the semantic raw target data is a CIDR set.
+Today, the semantic raw data is a CIDR set.
 
 DNS derivation turns each raw CIDR into a DNS address target by forgetting the prefix length.
 
@@ -104,8 +104,8 @@ Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and
 
 These boundaries should remain explicit:
 
-- detection discovers raw target data; it does not decide mutation authority
-- derivation changes raw target data into resource-specific targets; it does not mutate remote state
+- detection discovers raw data; it does not decide mutation authority
+- derivation changes raw data into resource-specific targets; it does not mutate remote state
 - reconciliation mutates toward the desired steady state for this round
 - cleanup mutates under shutdown authority, not ordinary steady-state authority
 

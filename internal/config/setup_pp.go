@@ -12,6 +12,9 @@ import (
 // It owns only output-formatting concerns. Reporter services are configured
 // separately by [SetupReporters], and updater settings are read separately into
 // [RawConfig].
+//
+// Omitting these settings is semantically equivalent to EMOJI=true and
+// QUIET=false.
 func SetupPP(output io.Writer) (pp.PP, bool) {
 	emoji, verbosity := true, pp.Verbose
 

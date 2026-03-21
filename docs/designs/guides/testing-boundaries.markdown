@@ -2,80 +2,61 @@
 
 Read when: adding tests, moving tests, or deciding whether a test needs private access.
 
-Defines: the repository's testing boundary convention for `package foo_test`, `*_internal_test.go`, and `export_test.go`.
+Defines: the repository convention for choosing between `package foo_test`, `package foo` in `*_internal_test.go`, and `export_test.go`.
 
-Does not define: feature-specific testing strategy outside the callback-safety rule below.
+Does not define: feature-specific coverage strategy or any new project-wide testing priorities.
 
-The goal is to keep production package surfaces honest without making small white-box tests awkward.
+This note applies [Project Principles](../core/project-principles.markdown) to one local question: how test code crosses Go package boundaries in this repository.
 
-## Default Test Shape
+## Default Boundary
 
-Prefer black-box tests in the external test package.
+Use `package foo_test` for the normal test suite.
 
-- use `package foo_test` for the normal package test suite
-- test the exported contract the same way callers use it
-- keep helpers and expectations aligned with the intended public package boundary
+- keep behavior tests outside the package
+- exercise the exported contract the same way callers use it
+- keep helpers and expectations on the public side of the boundary
 
-## White-Box Tests
+## Same-Package Tests
 
 Use same-package tests only when the test is directly about private implementation behavior.
 
 - use `package foo`
-- name the file `*_internal_test.go`
+- put these tests in `*_internal_test.go`
 - call unexported helpers directly
+- keep the file focused on local helper behavior or implementation logic that would become less clear if driven only through exported APIs
 
 Typical cases:
 
 - small unit tests for private helper functions
 - focused edge-case tests for local internal logic
-- tests whose setup would become more awkward if routed through a larger exported API
+- tests whose setup only makes sense inside the package
 
 ## `export_test.go`
 
-Use `export_test.go` only as a narrow escape hatch for black-box tests.
+Use `export_test.go` only when a `package foo_test` test still needs a small internal hook after the first two choices have been ruled out.
 
-- use it when a `package foo_test` test genuinely needs a small internal hook
-- do not use it when moving that test to `package foo` would preserve the desired black-box perspective and avoid an import cycle
-- keep the wrapper or alias minimal and clearly test-only
 - keep `export_test.go` in `package foo`
-- expose the smallest possible alias or wrapper
+- keep the alias or wrapper minimal and test-only
+- use it when moving the test into `package foo` would blur the intended black-box boundary or create an import cycle
 - document why the hook is needed
 - do not add production exports to satisfy tests
+- do not use it for small helper tests that fit cleanly in `*_internal_test.go`
+- do not mirror broad implementation details through test-only exports
 
-## What Not To Do
+## Decision Order
 
-Do not use `export_test.go` for:
-
-- small white-box tests of private helpers
-- convenience access when a `*_internal_test.go` file would be clearer
-- broad test-only mirrors of implementation details
-
-## Practical Repository Rule
-
-Prefer this order:
+When placing a test, choose the first shape that fits:
 
 1. `package foo_test` for normal behavior tests
-2. `package foo` in `*_internal_test.go` for small private-helper tests
-3. `export_test.go` only when the first two options would make the test materially worse
-
-This keeps test structure predictable and prevents accidental growth of test-only escape hatches across packages.
-
-## Assertions in Handlers and Callbacks
-
-Use safe assertion flow inside HTTP handlers, goroutines, and similar callback contexts.
-
-- do not use `require` there
-- use `assert` instead
-- when the callback cannot continue after a failed check, write the assertion as explicit control flow such as `if !assert... { return }`
-
-This rule exists because `require` uses `FailNow`, which `testifylint` rejects in those callback contexts.
+2. `package foo` in `*_internal_test.go` for direct tests of private helpers or local implementation behavior
+3. `export_test.go` only when the test should stay in `package foo_test` and still needs a minimal internal hook
 
 ## Scope Boundary
 
-This note defines repository-wide testing-boundary conventions.
+This note defines repository-wide test boundary conventions.
 
 It does not define:
 
 - feature-specific scenario coverage
-- exact test naming beyond the package/file-boundary rules above
-- when a package should add new tests in the first place
+- package-specific test helpers beyond the boundary rules above
+- general testing philosophy beyond the local conventions above

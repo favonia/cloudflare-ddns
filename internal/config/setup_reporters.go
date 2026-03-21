@@ -151,6 +151,9 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 // [RawConfig.BuildConfig], not part of them. Its job is limited to the
 // reporter-specific environment variables HEALTHCHECKS, UPTIMEKUMA, and
 // SHOUTRRR.
+//
+// Omitting any of these settings is semantically equivalent to setting that
+// variable to the empty string.
 func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) {
 	emptyHeartbeat := heartbeat.NewComposed()
 	emptyNotifier := notifier.NewComposed()
