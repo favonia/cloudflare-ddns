@@ -10,8 +10,4 @@ This directory holds the public documentation set beyond the top-level `README.m
 - `docs/release-workflow.markdown`: maintainer release and feature-note conventions.
 - `docs/designs/`: durable design documents for future developers, including AI agents.
 
-Use `docs/designs/` for the current intended design of the codebase, including durable constraints, invariants, and intended extension points.
-
-The `docs/designs/` collection should be self-contained. Documents there may refer to each other, but they should not depend on private planning material outside this collection.
-
-Start with [`docs/designs/README.markdown`](designs/README.markdown) for the retrieval map. Notes under `docs/designs/core/` are the small always-read set; notes under `docs/designs/guides/` and `docs/designs/features/` are task-triggered references.
+For `docs/designs/`, start with [`docs/designs/README.markdown`](designs/README.markdown).
