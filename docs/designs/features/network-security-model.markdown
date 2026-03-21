@@ -8,7 +8,7 @@ Does not define: general internet threat modeling beyond public-IP detection.
 
 ## Goal
 
-Prevent an adversary from causing the updater to detect incorrect raw IP data and thereby publish or enforce an attacker-chosen result in managed Cloudflare resources.
+Prevent an adversary from causing the updater to detect incorrect raw data and thereby publish or enforce an attacker-chosen result in managed Cloudflare resources.
 
 ## Core Model
 

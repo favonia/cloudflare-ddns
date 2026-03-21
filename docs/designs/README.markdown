@@ -17,13 +17,13 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ### Shared lifecycle and resource models:
 
-- [`features/lifecycle-model.markdown`](features/lifecycle-model.markdown): read when changing how one updater run starts, detects raw target data, derives resource-specific targets, reconciles managed state, or cleans up on shutdown.
+- [`features/lifecycle-model.markdown`](features/lifecycle-model.markdown): read when changing how one updater run starts, detects raw data, derives resource-specific targets, reconciles managed state, or cleans up on shutdown.
 - [`features/ownership-model.markdown`](features/ownership-model.markdown): read when changing the shared ownership predicates or deletion-eligibility inference across DNS and WAF.
 - [`features/reconciliation-algorithm.markdown`](features/reconciliation-algorithm.markdown): read when changing reconciliation semantics or interruption-risk policy across managed resources.
 
 ### Supporting feature models:
 
-- [`features/provider-target-validation.markdown`](features/provider-target-validation.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw target-data contracts.
+- [`features/provider-target-validation.markdown`](features/provider-target-validation.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
 
 ### Resource-specific instantiations:

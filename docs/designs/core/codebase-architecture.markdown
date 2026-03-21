@@ -26,7 +26,7 @@ The repository root also contains module metadata, top-level user documentation,
 The updater is split into small internal packages with explicit responsibilities instead of one large service layer.
 
 - `internal/config/` reads raw environment inputs, derives validated runtime configs, and prints the resulting settings summary.
-- `internal/provider/` implements family target providers that supply desired IP targets through dynamic observation or explicit provider modes. Creation functions are config-facing: they accept an environment variable key and emit user-facing validation messages. Pure protocol implementations live in `internal/provider/protocol/`.
+- `internal/provider/` implements family providers that supply raw data through dynamic observation or explicit provider modes. Creation functions are config-facing: they accept an environment variable key and emit user-facing validation messages. Pure protocol implementations live in `internal/provider/protocol/`.
 - `internal/api/` talks to Cloudflare and applies caching around API-facing operations.
 - `internal/setter/` reconciles desired DNS and WAF state against current remote state.
 - `internal/updater/` orchestrates a full update cycle.

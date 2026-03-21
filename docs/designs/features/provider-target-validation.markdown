@@ -1,23 +1,23 @@
 # Design Note: Provider Target Validation
 
-Read when: changing provider-side IP acceptance, rejection, output shape, or raw target-data contracts.
+Read when: changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 
-Defines: the observable raw target-data contract for providers.
+Defines: the observable raw-data contract for providers.
 
 Does not define: provider-specific discovery mechanisms, provider syntax, resource ownership, or reconciliation ordering.
 
 ## Goal
 
-Give providers one observable contract for the raw target data they hand to lifecycle derivation.
+Give providers one observable contract for the raw data they hand to lifecycle derivation.
 
 ## Core Model
 
-Providers operate per requested IP family and return one family-specific raw target-data state for that run.
+Providers operate per requested IP family and return one family-specific raw-data state for that run.
 
-- one state means the raw target data is unavailable for that run
-- the other means the raw target data is known for that run
+- one state means the raw data is unavailable for that run
+- the other means the raw data is known for that run
 
-The raw target data is modeled as a family-scoped set of CIDR prefixes.
+The raw data is modeled as a family-scoped set of CIDR prefixes.
 
 Provider mode determines whether the known raw-data state may carry an empty result:
 
@@ -28,9 +28,9 @@ Conceptually, this note is how in-scope IP-family ownership lands at the provide
 
 | provider raw-data state         | lifecycle meaning                        |
 | ------------------------------- | ---------------------------------------- |
-| unavailable                     | raw target data unavailable for this run |
-| known empty raw target data     | known empty raw target data              |
-| known non-empty raw target data | known non-empty raw target data          |
+| unavailable                     | raw data unavailable for this run |
+| known empty raw data            | known empty raw data              |
+| known non-empty raw data        | known non-empty raw data          |
 
 Out-of-scope family ownership is represented outside this provider raw-data contract, because out-of-scope families are not in provider evaluation scope for that run.
 
@@ -62,7 +62,7 @@ Under the current runtime specialization, known results follow deterministic set
 
 These rules keep reconciliation behavior independent of discovery order and duplicate observations.
 
-Lifecycle derivation consumes the raw target-data semantics above through this runtime specialization.
+Lifecycle derivation consumes the raw-data semantics above through this runtime specialization.
 
 ## Scope Boundary
 
