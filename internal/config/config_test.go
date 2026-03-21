@@ -179,7 +179,10 @@ func summarizeAuth(t *testing.T, auth api.Auth) authSummary {
 	switch a := auth.(type) {
 	case *api.CloudflareAuth:
 		if a == nil {
-			return authSummary{}
+			return authSummary{
+				token:   "",
+				baseURL: "",
+			}
 		}
 		return authSummary{
 			token:   a.Token,
@@ -187,7 +190,10 @@ func summarizeAuth(t *testing.T, auth api.Auth) authSummary {
 		}
 	default:
 		t.Fatalf("unexpected auth type %T", auth)
-		return authSummary{}
+		return authSummary{
+			token:   "",
+			baseURL: "",
+		}
 	}
 }
 
