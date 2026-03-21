@@ -28,7 +28,7 @@ If you have code ready, please make a pull request. Before you do:
 
 4. Put documentation in the right place.
 
-   Use [docs/README.markdown](README.markdown) as the map for public docs. If you edit `docs/designs/`, write for future developers rather than pull-request context, and prefer updating an existing note. The detailed design-note rules live in [docs/designs/README.markdown](designs/README.markdown). If you edit `README.markdown`, keep it beginner-friendly and follow [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown). Maintainer release workflow lives in [docs/release-workflow.markdown](release-workflow.markdown).
+   Use [docs/README.markdown](README.markdown) as the map for public docs. If you edit `docs/designs/`, write for future developers rather than pull-request context, and prefer updating an existing note. If a detail matters only for one local change, keep it near the code or tests instead of growing `docs/designs/`. The detailed design-note rules live in [docs/designs/README.markdown](designs/README.markdown). If you edit `README.markdown`, keep it beginner-friendly and follow [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown). Maintainer release workflow lives in [docs/release-workflow.markdown](release-workflow.markdown).
 
 5. Open the pull request.
 
