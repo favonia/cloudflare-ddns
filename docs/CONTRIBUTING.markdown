@@ -24,7 +24,7 @@ If you have code ready, please make a pull request. Before you do:
 
 3. Follow the coding style.
 
-   We use `golangci-lint` to enforce the coding style. You can wait for GitHub Actions or run `golangci-lint run` locally. If you need a local `//nolint`, treat it as an exception, not a second lint policy. Repository-wide lint guidance lives in [docs/designs/guides/lint-suppressions.markdown](designs/guides/lint-suppressions.markdown).
+   We use `golangci-lint` to enforce the coding style. You can wait for GitHub Actions or run `golangci-lint run` locally. If you need a local `//nolint`, treat it as an exception, not a second lint policy. Repository guidance for Go inline `//nolint` lives in [docs/designs/guides/go-lint-suppressions.markdown](designs/guides/go-lint-suppressions.markdown).
 
 4. Put documentation in the right place.
 
