@@ -4,7 +4,7 @@ Read when: changing WAF list ownership, managed-item filtering, or ownership-awa
 
 Defines: the WAF instantiation of the ownership model, including WAF attribute-based ownership via `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` and `WAF_LIST_ITEM_COMMENT`, plus ownership-aware WAF reconciliation.
 
-Does not define: exact warning text or repository-wide naming policy.
+Does not define: WAF target projection policy, exact warning text, or repository-wide naming policy.
 
 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` lets each updater instance decide which WAF list items it recognizes as its own.
 

@@ -41,7 +41,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 ### 🛡️ Attention to Security
 
-- 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
+- 🛡️ By default, the updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
 
 - <details><summary>🔏 Verify with cosign that the Docker images were built from this repository <sup><em>click to expand</em></sup></summary>
 

@@ -82,6 +82,8 @@ DNS derivation turns each raw CIDR into a DNS address target by forgetting the p
 
 WAF derivation turns each raw CIDR into a WAF prefix target by taking its subnet.
 
+The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Policy](ipv6-default-prefix-policy.markdown).
+
 The current code realizes only the canonical singleton special case of this model, so those derivations are currently implemented through an address-only representation instead of an explicit CIDR representation.
 
 Future work may insert non-identity derivation without changing the surrounding lifecycle.

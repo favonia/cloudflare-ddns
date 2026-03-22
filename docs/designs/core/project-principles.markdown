@@ -6,38 +6,45 @@ Defines: the project-wide priorities that should influence many tasks.
 
 ## Decision Tree
 
-Apply this strictly ordered list from top to bottom.
+- Apply this strictly ordered list from top to bottom.
+- Use only the criteria written in this tree.
+- A fact may matter at more than one step.
+- When the same fact affects multiple steps, the highest-priority affected step decides.
 
-Use only the criteria written in this tree.
+Examples:
+
+- If a clearer configuration surface is more likely to weaken protection through operator error, `Pragmatic Security` decides before `Operator Clarity`.
+- If a lower-request strategy weakens transient-failure recovery, `Resilience` decides before `Critical Efficiency`.
 
 ### 0. Required Behavior
 
 - Provide the behavior the maintainer wants.
 
-### 1. Practical Security
+### 1. Pragmatic Security
 
-- Favor memory safety and a small attack surface.
-- Prefer open, inspectable designs over obscurity.
-- Prefer designs that make bugs and misconfigurations easier to detect through analysis, tests, fuzzing, validation, or clear operator feedback.
+- Avoid unnecessary security risk without making supported deployments unusable.
+- Do not rely on obscurity for security.
+- Detect bugs through analysis, tests, fuzzing, or formal verification.
 
 ### 2. Resilience
 
-- Prefer automatic recovery from transient failures, startup delays, remote instability, and interrupted runs.
-- Prefer designs whose partial progress leaves the system in a safer and more recoverable state.
+- Recover automatically from transient failures, startup delays, remote instability, and interrupted runs.
+- Keep partial progress in a safer and more recoverable state.
 
 ### 3. Critical Efficiency
 
-- Prefer lower network, CPU, memory, and operational cost at critical spots.
+- Reduce network, CPU, memory, and operational cost at critical spots.
 
 ### 4. Operator Clarity
 
+- Detect operator misconfigurations clearly.
 - Explain behavior through observable outcomes, operator decisions, and actionable next steps.
 - Mention internal mechanisms only when they change operator decisions.
 
 ### 5. Principled Design
 
-- Prefer designs whose local decisions are determined by global principles and local context over ad hoc local decisions.
+- Let global principles and local context determine local decisions instead of ad hoc choices.
 
 ### 6. Maintainability
 
-- Prefer choices that reduce long-term maintenance burden.
+- Reduce long-term maintenance burden.
