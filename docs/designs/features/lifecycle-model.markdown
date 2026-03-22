@@ -58,7 +58,7 @@ This phase covers immediate start, future scheduling, and shutdown requests.
 
 Detection obtains the raw per-family data for the current round.
 
-Detection lands family intent for the current round in raw form.
+Detection yields family-scoped reconciliation intent for the current round in raw form.
 
 If a family is out of scope, there is only one intent: preserve existing managed content of that family.
 
