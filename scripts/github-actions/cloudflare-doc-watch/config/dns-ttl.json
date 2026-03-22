@@ -1,0 +1,32 @@
+{
+  "name": "Cloudflare DNS TTL semantics",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/docs/dns/manage-dns-records/reference/ttl.mdx",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/dns/manage-dns-records/reference/ttl.mdx",
+  "page_url": "https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl/index.md",
+  "watched_heading": "# Time to Live (TTL)",
+  "line_filters": [
+    "^By default, all \\[proxied records\\]",
+    "^For \\*\\*DNS only\\*\\* records, you can choose a TTL between",
+    "^A TTL of \\*\\*Auto\\*\\* is set to 300 seconds"
+  ],
+  "expected_lines": [
+    "By default, all [proxied records](https://developers.cloudflare.com/dns/proxy-status/) have a TTL of **Auto**, which is set to 300 seconds. This value cannot be edited.",
+    "For **DNS only** records, you can choose a TTL between **30 seconds** (Enterprise) or **60 seconds** (non-Enterprise) and **1 day**.",
+    "A TTL of **Auto** is set to 300 seconds (five minutes)."
+  ],
+  "watch_label": "Watched TTL lines",
+  "reminders": [
+    "Re-check ReadTTL and any user guidance if Cloudflare changes the editable TTL range.",
+    "Re-check whether proxied records still force Auto/300.",
+    "Re-check whether non-Enterprise records still have a 60-second floor while Enterprise records allow 30 seconds."
+  ],
+  "related_paths": [
+    "internal/config/env_base.go",
+    "internal/api/ttl.go",
+    "internal/api/cloudflare_records.go",
+    "README.markdown"
+  ]
+}

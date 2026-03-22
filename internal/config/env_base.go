@@ -86,6 +86,8 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 
 // ReadTTL reads a valid TTL value.
 //
+// The TTL snapshot below was adopted on 2026-03-22. Update that date only when
+// scripts/github-actions/cloudflare-doc-watch/config/dns-ttl.json changes.
 // According to [API documentation], the valid range is 1 (auto) and [60, 86400].
 // According to [DNS documentation], the valid range is "Auto" and [30, 86400].
 // We thus accept the union of both ranges---1 (auto) and [30, 86400].

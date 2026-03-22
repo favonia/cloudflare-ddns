@@ -5,11 +5,16 @@ import (
 	"strings"
 )
 
+// The published dashboard-route anchor snapshot below was adopted on
+// 2026-03-22 and is watched by
+// scripts/github-actions/cloudflare-doc-watch/config/dashboard-deeplinks.json.
+//
 // Cloudflare dashboard deeplink provenance:
-//   - DNS records uses a documented "to" target published in Cloudflare's
+//   - DNS records uses the documented "Records" route from
 //     dash-routes/core.json: /:account/:zone/dns/records.
-//   - WAF lists currently uses an undocumented dashboard path observed to work in
-//     practice.
+//   - WAF lists uses the documented account-level "Configurations" route
+//     prefix from dash-routes/core.json: /:account/configurations, plus the
+//     unofficial /lists/:list-id suffix observed to work in practice.
 func cloudflareDashboardDeeplink(segments ...string) string {
 	escaped := make([]string, 0, len(segments))
 	for _, segment := range segments {
