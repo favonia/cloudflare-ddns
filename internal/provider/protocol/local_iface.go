@@ -103,24 +103,30 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipFamily ipnet.Family, addrs 
 	return sliceutil.SortAndCompact(ips, netip.Addr.Compare), true
 }
 
-// GetIPs detects IP addresses from unicast addresses assigned to a network
+// GetRawData detects raw data from unicast addresses assigned to a network
 // interface.
-func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+func (p LocalWithInterface) GetRawData(
+	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
 	iface, err := net.InterfaceByName(p.InterfaceName)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", p.InterfaceName, err)
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	addrs, err := iface.Addrs()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	ips, ok := SelectInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, addrs)
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	cidrs, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, ips)
+	if !ok {
+		return NewUnavailableDetectionResult()
+	}
+	return NewKnownDetectionResult(cidrs)
 }

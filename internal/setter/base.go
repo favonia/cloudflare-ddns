@@ -14,10 +14,33 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 //go:generate go tool mockgen -typed -destination=../mocks/mock_setter.go -package=mocks . Setter
+
+// WAFTargets carries one managed family's derived WAF target prefixes for a run.
+//
+// Map presence means the family is managed/in scope for this run. Available
+// distinguishes explicit-empty intent from temporary unavailability.
+type WAFTargets struct {
+	Available bool
+	Prefixes  []netip.Prefix
+}
+
+// NewAvailableWAFTargets builds the managed deterministic WAF-target state.
+func NewAvailableWAFTargets(prefixes []netip.Prefix) WAFTargets {
+	return WAFTargets{Available: true, Prefixes: prefixes}
+}
+
+// NewUnavailableWAFTargets builds the managed temporary-unavailability state.
+func NewUnavailableWAFTargets() WAFTargets {
+	return WAFTargets{Available: false, Prefixes: nil}
+}
+
+// HasUsableTargets reports whether reconciliation may proceed for this family.
+func (t WAFTargets) HasUsableTargets() bool {
+	return t.Available
+}
 
 // Setter uses [api.Handle] to reconcile DNS records and WAF lists.
 type Setter interface {
@@ -52,16 +75,16 @@ type Setter interface {
 	//   of that family must be preserved
 	// - present + Available=false preserves existing managed content because the
 	//   desired targets are unavailable for this run
-	// - present + Available=true with an empty IP list is the explicit-empty
+	// - present + Available=true with an empty target list is the explicit-empty
 	//   intent for that family
-	// - present + Available=true with a non-empty IP list carries a deterministic
+	// - present + Available=true with a non-empty target list carries a deterministic
 	//   target set (sorted, deduplicated)
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
-		targetsByFamily map[ipnet.Family]provider.Targets,
+		targetsByFamily map[ipnet.Family]WAFTargets,
 		fallbackItemComment string,
 	) ResponseCode
 

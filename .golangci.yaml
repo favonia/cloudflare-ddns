@@ -51,6 +51,8 @@ linters:
         - name: unused-parameter
           arguments:
             - allowRegex: ^_
+    perfsprint:
+      strconcat: false
   exclusions:
     generated: lax
     presets:

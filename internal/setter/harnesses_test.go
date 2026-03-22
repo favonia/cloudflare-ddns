@@ -6,7 +6,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
 func dnsRecord(id api.ID, ip netip.Addr, params api.RecordParams) api.Record {
@@ -32,7 +32,11 @@ func wafItem(fixture wafItemFixture) api.WAFListItem {
 	}
 }
 
-func detected(ip4, ip6 netip.Addr) map[ipnet.Family]provider.Targets {
+func liftTestPrefix(ip netip.Addr, bitLen int) netip.Prefix {
+	return netip.PrefixFrom(ip, bitLen)
+}
+
+func detected(ip4, ip6 netip.Addr) map[ipnet.Family]setter.WAFTargets {
 	return detectedSets(
 		func() []netip.Addr {
 			if ip4.IsValid() {
@@ -49,30 +53,38 @@ func detected(ip4, ip6 netip.Addr) map[ipnet.Family]provider.Targets {
 	)
 }
 
-func detectedSets(ip4, ip6 []netip.Addr) map[ipnet.Family]provider.Targets {
-	result := map[ipnet.Family]provider.Targets{}
+func detectedSets(ip4, ip6 []netip.Addr) map[ipnet.Family]setter.WAFTargets {
+	result := map[ipnet.Family]setter.WAFTargets{}
 	if ip4 != nil {
-		result[ipnet.IP4] = provider.NewAvailableTargets(ip4)
+		prefixes := make([]netip.Prefix, 0, len(ip4))
+		for _, ip := range ip4 {
+			prefixes = append(prefixes, liftTestPrefix(ip, 32))
+		}
+		result[ipnet.IP4] = setter.NewAvailableWAFTargets(prefixes)
 	}
 	if ip6 != nil {
-		result[ipnet.IP6] = provider.NewAvailableTargets(ip6)
+		prefixes := make([]netip.Prefix, 0, len(ip6))
+		for _, ip := range ip6 {
+			prefixes = append(prefixes, liftTestPrefix(ip, 64))
+		}
+		result[ipnet.IP6] = setter.NewAvailableWAFTargets(prefixes)
 	}
 	return result
 }
 
-func unavailableDetected(ip4, ip6 bool) map[ipnet.Family]provider.Targets {
-	result := map[ipnet.Family]provider.Targets{}
+func unavailableDetected(ip4, ip6 bool) map[ipnet.Family]setter.WAFTargets {
+	result := map[ipnet.Family]setter.WAFTargets{}
 	if ip4 {
-		result[ipnet.IP4] = provider.NewUnavailableTargets()
+		result[ipnet.IP4] = setter.NewUnavailableWAFTargets()
 	}
 	if ip6 {
-		result[ipnet.IP6] = provider.NewUnavailableTargets()
+		result[ipnet.IP6] = setter.NewUnavailableWAFTargets()
 	}
 	return result
 }
 
-func mergeDetected(targetSets ...map[ipnet.Family]provider.Targets) map[ipnet.Family]provider.Targets {
-	result := map[ipnet.Family]provider.Targets{}
+func mergeDetected(targetSets ...map[ipnet.Family]setter.WAFTargets) map[ipnet.Family]setter.WAFTargets {
+	result := map[ipnet.Family]setter.WAFTargets{}
 	for _, detectedByFamily := range targetSets {
 		maps.Copy(result, detectedByFamily)
 	}

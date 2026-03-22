@@ -43,40 +43,40 @@ func (m *MockProvider) EXPECT() *MockProviderMockRecorder {
 	return m.recorder
 }
 
-// GetIPs mocks base method.
-func (m *MockProvider) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) provider.Targets {
+// GetRawData mocks base method.
+func (m *MockProvider) GetRawData(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int) provider.DetectionResult {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIPs", ctx, ppfmt, ipFamily)
-	ret0, _ := ret[0].(provider.Targets)
+	ret := m.ctrl.Call(m, "GetRawData", ctx, ppfmt, ipFamily, defaultPrefixLen)
+	ret0, _ := ret[0].(provider.DetectionResult)
 	return ret0
 }
 
-// GetIPs indicates an expected call of GetIPs.
-func (mr *MockProviderMockRecorder) GetIPs(ctx, ppfmt, ipFamily any) *MockProviderGetIPsCall {
+// GetRawData indicates an expected call of GetRawData.
+func (mr *MockProviderMockRecorder) GetRawData(ctx, ppfmt, ipFamily, defaultPrefixLen any) *MockProviderGetRawDataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIPs", reflect.TypeOf((*MockProvider)(nil).GetIPs), ctx, ppfmt, ipFamily)
-	return &MockProviderGetIPsCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawData", reflect.TypeOf((*MockProvider)(nil).GetRawData), ctx, ppfmt, ipFamily, defaultPrefixLen)
+	return &MockProviderGetRawDataCall{Call: call}
 }
 
-// MockProviderGetIPsCall wrap *gomock.Call
-type MockProviderGetIPsCall struct {
+// MockProviderGetRawDataCall wrap *gomock.Call
+type MockProviderGetRawDataCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockProviderGetIPsCall) Return(arg0 provider.Targets) *MockProviderGetIPsCall {
+func (c *MockProviderGetRawDataCall) Return(arg0 provider.DetectionResult) *MockProviderGetRawDataCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockProviderGetIPsCall) Do(f func(context.Context, pp.PP, ipnet.Family) provider.Targets) *MockProviderGetIPsCall {
+func (c *MockProviderGetRawDataCall) Do(f func(context.Context, pp.PP, ipnet.Family, int) provider.DetectionResult) *MockProviderGetRawDataCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockProviderGetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family) provider.Targets) *MockProviderGetIPsCall {
+func (c *MockProviderGetRawDataCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, int) provider.DetectionResult) *MockProviderGetRawDataCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

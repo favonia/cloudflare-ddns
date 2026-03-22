@@ -1,0 +1,38 @@
+{
+  "name": "Cloudflare dashboard deeplink anchors",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/dash-routes/core.json",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/dash-routes/core.json",
+  "json_route_selectors": [
+    {
+      "label": "DNS records route",
+      "name": "Records",
+      "parent": [
+        "DNS"
+      ],
+      "expected_deeplink": "/?to=/:account/:zone/dns/records"
+    },
+    {
+      "label": "Account configurations route",
+      "name": "Configurations",
+      "parent": [
+        "Manage account"
+      ],
+      "expected_deeplink": "/?to=/:account/configurations"
+    }
+  ],
+  "watch_label": "Watched published dashboard-route anchors",
+  "reminders": [
+    "Re-check cloudflareDNSRecordsDeeplink if the documented DNS records route changes.",
+    "Re-check whether the documented account-level Configurations route still exists before trusting the unofficial /lists/:list-id suffix.",
+    "Re-check internal/api/cloudflare_dashboard.go and internal/api/cloudflare_dashboard_internal_test.go."
+  ],
+  "related_paths": [
+    "internal/api/cloudflare_dashboard.go",
+    "internal/api/cloudflare_dashboard_internal_test.go",
+    "internal/api/cloudflare_records.go",
+    "internal/api/cloudflare_waf.go"
+  ]
+}

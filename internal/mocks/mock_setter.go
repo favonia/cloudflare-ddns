@@ -18,7 +18,6 @@ import (
 	domain "github.com/favonia/cloudflare-ddns/internal/domain"
 	ipnet "github.com/favonia/cloudflare-ddns/internal/ipnet"
 	pp "github.com/favonia/cloudflare-ddns/internal/pp"
-	provider "github.com/favonia/cloudflare-ddns/internal/provider"
 	setter "github.com/favonia/cloudflare-ddns/internal/setter"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -162,7 +161,7 @@ func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]provider.Targets, fallbackItemComment string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]setter.WAFTargets, fallbackItemComment string) setter.ResponseCode {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, targetsByFamily, fallbackItemComment)
 	ret0, _ := ret[0].(setter.ResponseCode)
@@ -188,13 +187,13 @@ func (c *MockSetterSetWAFListCall) Return(arg0 setter.ResponseCode) *MockSetterS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]provider.Targets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]provider.Targets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

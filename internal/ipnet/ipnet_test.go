@@ -17,6 +17,10 @@ func mustIP(ip string) netip.Addr {
 	return netip.MustParseAddr(ip)
 }
 
+func mustPrefix(prefix string) netip.Prefix {
+	return netip.MustParsePrefix(prefix)
+}
+
 func TestInt(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
@@ -282,6 +286,135 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ips, ok := tc.ipFamily.NormalizeDetectedIPs(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, ips)
+		})
+	}
+}
+
+func TestNormalizeDetectedPrefixes(t *testing.T) {
+	t.Parallel()
+
+	var invalidPrefix netip.Prefix
+	singleton := func(prefix netip.Prefix) []netip.Prefix { return []netip.Prefix{prefix} }
+
+	for name, tc := range map[string]struct {
+		ipFamily      ipnet.Family
+		input         []netip.Prefix
+		ok            bool
+		expected      []netip.Prefix
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"4-empty-nil": {
+			ipnet.IP4, nil,
+			true, nil,
+			nil,
+		},
+		"4-empty-list": {
+			ipnet.IP4,
+			[]netip.Prefix{},
+			true,
+			[]netip.Prefix{},
+			nil,
+		},
+		"singleton/4-invalid": {
+			ipnet.IP4, singleton(invalidPrefix),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP prefix is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+			},
+		},
+		"singleton/4-native": {
+			ipnet.IP4, singleton(mustPrefix("10.0.0.1/32")),
+			true, singleton(mustPrefix("10.0.0.1/32")),
+			nil,
+		},
+		"singleton/4-mapped-128": {
+			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/128")),
+			true, singleton(mustPrefix("10.10.10.10/32")),
+			nil,
+		},
+		"singleton/4-mapped-120": {
+			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/120")),
+			true, singleton(mustPrefix("10.10.10.10/24")),
+			nil,
+		},
+		"singleton/4-mapped-short": {
+			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/80")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected IP prefix %s is an IPv4-mapped IPv6 prefix with a prefix length shorter than /96; it can't be used",
+					"::ffff:10.10.10.10/80",
+				)
+			},
+		},
+		"singleton/4-6-prefix": {
+			ipnet.IP4, singleton(mustPrefix("2001:db8::1/64")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected IP prefix %s is not a valid IPv4 prefix; it can't be used",
+					"2001:db8::1/64",
+				)
+			},
+		},
+		"singleton/4-broadcast-warning": {
+			ipnet.IP4, singleton(mustPrefix("255.255.255.255/32")),
+			true, singleton(mustPrefix("255.255.255.255/32")),
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiWarning,
+					"Detected %s prefix %s does not look like a global unicast prefix; still using it",
+					"IPv4", "255.255.255.255/32",
+				)
+			},
+		},
+		"singleton/6-native": {
+			ipnet.IP6, singleton(mustPrefix("2001:db8::1/64")),
+			true, singleton(mustPrefix("2001:db8::1/64")),
+			nil,
+		},
+		"singleton/6-mapped": {
+			ipnet.IP6, singleton(mustPrefix("::ffff:10.10.10.10/128")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiError,
+						"Detected IP prefix %s is an IPv4-mapped IPv6 prefix; it can't be used",
+						"::ffff:10.10.10.10/128",
+					),
+					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
+						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s",
+						pp.IssueReportingURL,
+					),
+				)
+			},
+		},
+		"sort-dedup-4-mapped": {
+			ipnet.IP4,
+			[]netip.Prefix{
+				mustPrefix("10.0.0.2/32"),
+				mustPrefix("::ffff:10.0.0.1/128"),
+				mustPrefix("10.0.0.2/32"),
+			},
+			true,
+			[]netip.Prefix{
+				mustPrefix("10.0.0.1/32"),
+				mustPrefix("10.0.0.2/32"),
+			},
+			nil,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+
+			prefixes, ok := tc.ipFamily.NormalizeDetectedPrefixes(mockPP, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.expected, prefixes)
 		})
 	}
 }

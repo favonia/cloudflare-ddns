@@ -1,0 +1,28 @@
+{
+  "name": "Cloudflare WAF list name rules",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/docs/waf/tools/lists/index.mdx",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/waf/tools/lists/index.mdx",
+  "page_url": "https://developers.cloudflare.com/waf/tools/lists/index.md",
+  "watched_heading": "## List names",
+  "line_filters": [
+    "^\\* "
+  ],
+  "expected_lines": [
+    "* The name uses only lowercase letters, numbers, and the underscore (`_`) character in the name. A valid name satisfies this regular expression: `^[a-z0-9_]+$`.",
+    "* The maximum length of a list name is 50 characters."
+  ],
+  "watch_label": "Watched list-name rules",
+  "reminders": [
+    "Re-check whether warnings on characters outside ^[a-z0-9_]+$ still match Cloudflare's user-facing docs.",
+    "Re-check whether list names remain lowercase-only or whether uppercase should be accepted or normalized.",
+    "Re-check the documented maximum list-name length."
+  ],
+  "related_paths": [
+    "internal/config/env_waf.go",
+    "internal/config/env_waf_test.go",
+    "README.markdown"
+  ]
+}

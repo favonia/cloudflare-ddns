@@ -12,7 +12,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
 type setter struct {
@@ -383,7 +382,7 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 // - out of scope: preserve managed family ranges.
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string,
-	targetsByFamily map[ipnet.Family]provider.Targets, fallbackItemComment string,
+	targetsByFamily map[ipnet.Family]WAFTargets, fallbackItemComment string,
 ) ResponseCode {
 	type wafFamilyPlan struct {
 		createPrefixes []netip.Prefix
@@ -412,7 +411,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		}
 
 		// Track targets already covered by at least one kept item.
-		coveredTargets := make(map[netip.Addr]bool, len(targets.IPs))
+		coveredTargets := make(map[netip.Prefix]bool, len(targets.Prefixes))
 		for _, item := range items {
 			if !ipFamily.Matches(item.Prefix.Addr()) {
 				continue
@@ -421,8 +420,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			// Managed family with known targets: keep items that cover at least one
 			// target and remember which targets are already covered.
 			covered := false
-			for _, target := range targets.IPs {
-				if item.Prefix.Contains(target) {
+			for _, target := range targets.Prefixes {
+				if prefixContainsPrefix(item.Prefix, target) {
 					coveredTargets[target] = true
 					covered = true
 				}
@@ -432,12 +431,9 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 			}
 		}
 
-		// Runtime input is currently address-only, so each uncovered address
-		// becomes the smallest allowed family prefix here.
-		for _, target := range targets.IPs {
+		for _, target := range targets.Prefixes {
 			if !coveredTargets[target] {
-				plan.createPrefixes = append(plan.createPrefixes,
-					netip.PrefixFrom(target, api.WAFListMaxBitLen[ipFamily]).Masked())
+				plan.createPrefixes = append(plan.createPrefixes, target.Masked())
 			}
 		}
 
@@ -518,6 +514,13 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 
 	return ResponseUpdated
+}
+
+// prefixContainsPrefix reports whether container fully covers target.
+// For valid CIDR prefixes, containment is equivalent to containing target's
+// base address plus having a prefix length no longer than target's.
+func prefixContainsPrefix(container, target netip.Prefix) bool {
+	return container.Contains(target.Addr()) && container.Bits() <= target.Bits()
 }
 
 // FinalClearWAFList removes managed WAF content during shutdown.

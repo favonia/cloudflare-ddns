@@ -1,0 +1,36 @@
+{
+  "name": "Cloudflare zone status docs",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/docs/dns/zone-setups/reference/domain-status.mdx",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/dns/zone-setups/reference/domain-status.mdx",
+  "page_url": "https://developers.cloudflare.com/dns/zone-setups/reference/domain-status/index.md",
+  "watched_heading": "# Zone status",
+  "line_filters": [
+    "^## Initializing \\(Setup\\)$",
+    "^## Pending$",
+    "^## Active$",
+    "^## Moved$",
+    "^## Deleted$",
+    "^## Purged$"
+  ],
+  "expected_lines": [
+    "## Initializing (Setup)",
+    "## Pending",
+    "## Active",
+    "## Moved",
+    "## Deleted",
+    "## Purged"
+  ],
+  "watch_label": "Watched zone-status headings",
+  "reminders": [
+    "Re-check zone-status handling in internal/api/cloudflare_records.go if Cloudflare adds or removes documented zone states.",
+    "Re-check whether the API schema and docs still disagree about deleted or purged states.",
+    "Re-check whether warnings or skips for non-active zones should change."
+  ],
+  "related_paths": [
+    "internal/api/cloudflare_records.go",
+    "internal/api/cloudflare_records_zone_test.go"
+  ]
+}

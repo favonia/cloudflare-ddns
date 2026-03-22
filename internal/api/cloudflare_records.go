@@ -124,8 +124,10 @@ func (h cloudflareHandle) listZoneMeta(ctx context.Context, ppfmt pp.PP, name st
 	zones := make([]zoneMeta, 0, len(res.Result))
 	for _, zone := range res.Result {
 		ref := zoneMeta{ID: ID(zone.ID), AccountID: ID(zone.Account.ID)}
-		// The list of possible statuses was at https://api.cloudflare.com/#zone-list-zones
-		// but the documentation is missing now.
+		// Cloudflare documents zone-status names again at
+		// https://developers.cloudflare.com/dns/zone-setups/reference/domain-status/ .
+		// Keep a default branch in case the API surfaces additional or
+		// older statuses beyond the current docs.
 		switch zone.Status {
 		case "active": // fully working
 			zones = append(zones, ref)

@@ -1,4 +1,4 @@
-# Design Note: Provider Target Validation
+# Design Note: Provider Raw-Data Contract
 
 Read when: changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 
@@ -48,7 +48,7 @@ Every IP in the current known result must satisfy these rules:
 - IPv4 mode accepts IPv4-mapped IPv6 only as its plain IPv4 meaning
 - IPv4-mapped IPv6 is rejected in IPv6 mode
 - unspecified, loopback, multicast, and link-local addresses are rejected
-- zone-qualified addresses are rejected because they are not suitable target values
+- zone-qualified addresses are rejected because they are not suitable raw-data values in this runtime specialization
 - addresses outside the usual global-unicast shape are warned about, not rejected, after the stronger checks above
 
 ## Shared Set Semantics

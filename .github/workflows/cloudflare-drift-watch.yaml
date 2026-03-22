@@ -1,0 +1,68 @@
+name: Cloudflare drift watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 15 * * 5"
+
+permissions:
+  contents: read
+
+jobs:
+  doc-watch:
+    name: Watch Cloudflare WAF docs drift (${{ matrix.watch.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        watch:
+          - name: dashboard deeplinks
+            config: config/dashboard-deeplinks.json
+          - name: DNS TTL semantics
+            config: config/dns-ttl.json
+          - name: DNS record attributes
+            config: config/dns-record-attributes.json
+          - name: OpenAPI DNS record schema
+            config: config/openapi-dns-record-schema.json
+          - name: OpenAPI lists schema
+            config: config/openapi-lists-schema.json
+          - name: OpenAPI zones schema
+            config: config/openapi-zones-schema.json
+          - name: zone status docs
+            config: config/zone-status-docs.json
+          - name: list IP ranges
+            config: config/waf-list-ip-ranges.json
+          - name: list availability
+            config: config/waf-list-availability.json
+          - name: list deletion rule
+            config: config/waf-list-deletion-rule.json
+          - name: list JSON-object name rules
+            config: config/waf-list-json-object-name-rules.json
+          - name: list name rules
+            config: config/waf-list-name-rules.json
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: cloudflare-drift-watch.doc
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+
+      - name: 🔎 Check the upstream Cloudflare document
+        working-directory: scripts/github-actions/cloudflare-doc-watch
+        run: go run . ${{ matrix.watch.config }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

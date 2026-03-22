@@ -41,7 +41,7 @@ By default, public IP addresses are obtained via [Cloudflare’s debugging page]
 
 ### 🛡️ Attention to Security
 
-- 🛡️ The updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
+- 🛡️ By default, the updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
 
 - <details><summary>🔏 Verify with cosign that the Docker images were built from this repository <sup><em>click to expand</em></sup></summary>
 
@@ -185,9 +185,9 @@ The updater should now be running in the background. Check the logs with `docker
 
 These setups are additive changes on top of the basic Docker Compose template in [Step 1: Updating the Compose File](#docker-compose-template). Each setup shows a minimal delta. For the exact behavior of each environment variable, see [All Settings](#all-settings).
 
-### 🔍️ Validation and Testing
+### ✅️ Validation and Testing
 
-#### ✅️ Test a new setup safely with explicit IPs
+#### Test a new setup safely with explicit IPs
 
 Use this when you want to validate the updater without waiting for a real IP change.
 
@@ -202,9 +202,9 @@ environment:
 
 After the updater creates or updates the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
 
-⚠️ `static:<ip1>,<ip2>,...` is an advanced explicit-target provider. It is useful for tests, debugging, and other setups where you want to manage a known IP set directly, but it is not the normal long-running DDNS path.
+⚠️ `static:<ip1>,<ip2>,...` is an advanced provider that supplies a fixed set of IP addresses. It is useful for tests, debugging, and other setups where you want to feed a known address set into the updater, but it is not the normal long-running DDNS path.
 
-#### 🔄 Test how the updater reconciles manual DNS edits
+#### Test how the updater reconciles manual DNS edits
 
 Use this when you want to test how the updater responds after DNS records are changed directly in Cloudflare.
 
@@ -223,7 +223,7 @@ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network tr
 
 ### 🌐 Networking
 
-#### 📴 Run IPv4-only or IPv6-only
+#### Run IPv4-only or IPv6-only
 
 Use this when your network supports only one IP family or when you want to stop seeing detection failures for the other one.
 
@@ -234,7 +234,7 @@ environment:
 
 Use `IP6_PROVIDER=none` to stop managing IPv6, or `IP4_PROVIDER=none` to stop managing IPv4. Existing managed DNS records of that IP family are preserved. 🧪 If you also use WAF lists, existing managed items of that IP family are preserved there too.
 
-#### 📡 Use IPv6 without sharing the host network
+#### Use IPv6 without sharing the host network
 
 Use this when you want IPv6 support but do not want `network_mode: host`.
 
@@ -249,7 +249,7 @@ After removing `network_mode: host`, follow the [official Docker instructions fo
 
 <a id="docker-network-routing"></a>
 
-#### 🛜 Route outbound requests through a specific Docker network
+#### Route outbound requests through a specific Docker network
 
 Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
 
@@ -296,7 +296,7 @@ If you want to change where outbound requests leave the container instead, see [
 
 ### 🔐 Cloudflare API Tokens
 
-#### 🔑 Read the Cloudflare token from a Docker secret
+#### Read the Cloudflare token from a Docker secret
 
 Use this when you do not want to put the token directly in the Compose file or `.env` file.
 
@@ -476,7 +476,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 <details>
 <summary>📋️ WAF List Scope <sup><em>click to expand</em></sup></summary>
 
-> The updater can maintain [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) to match detected IP addresses. 🤖 [Cloudflare does not allow single IPv6 addresses in a WAF list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/#lists-with-ip-addresses-ip-lists), so the updater stores each IPv6 target as the smallest allowed covering range. Existing ranges in the list that already cover a detected address are kept as-is.
+> The updater can maintain [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) to match detected IP addresses, with new IPv6 detections stored as `/64` ranges. 🤖 See [IPv6 Default Prefix Policy](docs/designs/features/ipv6-default-prefix-policy.markdown) for the design rationale. Existing ranges in the list that already cover a detected address are kept as-is.
 
 | Name                                                   | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Default Value                                  |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
@@ -504,7 +504,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `url:<url>`                                               | <p>Fetch the IP address from a URL. The provider format is `url:` followed by the URL itself. For example, `IP4_PROVIDER=url:https://api4.ipify.org` fetches the IPv4 address from <https://api4.ipify.org>. Currently, only HTTP(S) is supported.</p><p>The updater connects over IPv4 for `IP4_PROVIDER` and over IPv6 for `IP6_PROVIDER`. The intention is to query a public IP detection server with the correct IP family. If you want to override that, use `IP4_PROVIDER=url.via6:<url>` or `IP6_PROVIDER=url.via4:<url>` instead.</p><p>🕰️ Before version 1.15.0, `url:<url>` did not enforce the matching IP family.</p> |
 | `url.via4:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv4.</p><p>The intention is to get an IPv6 address over IPv4 with `IP6_PROVIDER=url.via4:<url>`. In comparison, `IP6_PROVIDER=url:<url>` will get an IPv6 address over the matching IP family (IPv6).</p>                                                                                                                                                                                                                                                                                                                                            |
 | `url.via6:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv6.</p><p>The intention is to get an IPv4 address over IPv6 with `IP4_PROVIDER=url.via6:<url>`. In comparison, `IP4_PROVIDER=url:<url>` will get an IPv4 address over the matching IP family (IPv4).</p>                                                                                                                                                                                                                                                                                                                                            |
-| `static:<ip1>,<ip2>,...` (unreleased)                     | <p>Use one or more explicit IP addresses as the desired target set. This is an advanced provider for tests, debugging, and special fixed-target setups.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p><p>🤖 The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.</p>                                                                                                                                                                                                                                    |
+| `static:<ip1>,<ip2>,...` (unreleased)                     | <p>Use one or more explicit IP addresses as a fixed address set. This is an advanced provider for tests, debugging, and special fixed-input setups.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p><p>🤖 The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers before DNS or WAF targets are derived from them.</p>                                                                                                                                                                                        |
 | `static.empty` (unreleased)                               | <p>Clear existing managed content for the selected IP family. In contrast, `none` preserves existing managed content for that family.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p>                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `none`                                                    | <p>Stop managing the specified IP family for this run. For example `IP4_PROVIDER=none` stops managing IPv4. Existing managed DNS records of that IP family are preserved.</p><p>🧪 Existing managed WAF list items of that IP family are preserved too, because that family is out of scope. Use `static.empty` if you want to clear managed content for that family. As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p>                                                                           |
 

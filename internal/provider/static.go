@@ -79,7 +79,10 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 	for _, ip := range ips {
 		rawIPs = append(rawIPs, ip.String())
 	}
-	return protocol.NewStatic("static:"+strings.Join(rawIPs, ","), ips), true
+	return protocol.NewStatic(
+		"static:"+strings.Join(rawIPs, ","),
+		ipnet.LiftValidatedIPsToPrefixes(ips, DefaultRawDataPrefixLen(ipFamily)),
+	), true
 }
 
 // NewStaticEmpty creates an explicit-empty [protocol.Static] provider.
