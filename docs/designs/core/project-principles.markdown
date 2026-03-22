@@ -37,7 +37,7 @@ Examples:
 
 ### 4. Operator Clarity
 
-- Detect operator misconfigurations clearly.
+- Detect operator misconfigurations early.
 - Explain behavior through observable outcomes, operator decisions, and actionable next steps.
 - Mention internal mechanisms only when they change operator decisions.
 
