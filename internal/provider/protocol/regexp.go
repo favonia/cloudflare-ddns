@@ -57,22 +57,24 @@ func (p Regexp) Name() string { return p.ProviderName }
 // IsExplicitEmpty reports whether the provider intentionally clears the family.
 func (Regexp) IsExplicitEmpty() bool { return false }
 
-// GetIPs detects the IP address by parsing the HTTP response.
-func (p Regexp) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+// GetRawData detects the IP address by parsing the HTTP response.
+func (p Regexp) GetRawData(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
 	param, found := p.Param[ipFamily]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	ip, ok := getIPFromRegexp(ctx, ppfmt, ipFamily, param.URL, param.Regexp)
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
-	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	cidrs, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	return NewKnownDetectionResult(cidrs)
 }

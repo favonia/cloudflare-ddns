@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
@@ -22,36 +23,57 @@ func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
 	}[ipFamily]
 }
 
-func detectIPs(
+func deriveDNSAddresses(rawData provider.DetectionResult) []netip.Addr {
+	addresses := make([]netip.Addr, 0, len(rawData.CIDRs))
+	for _, cidr := range rawData.CIDRs {
+		addresses = append(addresses, cidr.Addr())
+	}
+	slices.SortFunc(addresses, netip.Addr.Compare)
+	return slices.Compact(addresses)
+}
+
+func deriveWAFTargets(rawData provider.DetectionResult) setter.WAFTargets {
+	if !rawData.Available {
+		return setter.NewUnavailableWAFTargets()
+	}
+
+	prefixes := make([]netip.Prefix, 0, len(rawData.CIDRs))
+	for _, cidr := range rawData.CIDRs {
+		prefixes = append(prefixes, cidr.Masked())
+	}
+	slices.SortFunc(prefixes, netip.Prefix.Compare)
+	prefixes = slices.Compact(prefixes)
+	return setter.NewAvailableWAFTargets(prefixes)
+}
+
+func detectRawData(
 	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, ipFamily ipnet.Family,
-) (provider.Targets, Message) {
+) (provider.DetectionResult, Message) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.DetectionTimeout, errTimeout)
 	defer cancel()
 
-	// Provider runtime output is currently address-only:
-	// IPv4 addresses carry singleton /32 raw data, and IPv6 addresses carry
-	// singleton /64 raw data.
-	targets := c.Provider[ipFamily].GetIPs(ctx, ppfmt, ipFamily)
+	rawData := c.Provider[ipFamily].GetRawData(ctx, ppfmt, ipFamily, c.DefaultPrefixLen[ipFamily])
+	addresses := deriveDNSAddresses(rawData)
 
 	switch {
-	case targets.Available && len(targets.IPs) == 0:
-		ppfmt.Infof(pp.EmojiInternet, "The desired %s target set is empty", ipFamily.Describe())
+	case rawData.Available && len(rawData.CIDRs) == 0:
+		ppfmt.Infof(pp.EmojiInternet, "The desired %s raw data set is empty", ipFamily.Describe())
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Fast path: one detected target.
-	case targets.Available && len(targets.IPs) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), targets.IPs[0])
+	case rawData.Available && len(addresses) == 1:
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), addresses[0])
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Multi-target path: report the full deterministic set.
-	case targets.Available && len(targets.IPs) > 1:
+	case rawData.Available && len(addresses) > 1:
 		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
-			len(targets.IPs), ipFamily.Describe(), pp.JoinMap(netip.Addr.String, targets.IPs))
+			len(addresses), ipFamily.Describe(), pp.JoinMap(netip.Addr.String, addresses))
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Failure path: emit hints and timeout guidance.
 	default:
-		targets = provider.NewUnavailableTargets()
+		rawData = provider.NewUnavailableDetectionResult()
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect valid %s addresses; will try again", ipFamily.Describe())
 
 		switch ipFamily {
@@ -73,7 +95,7 @@ func detectIPs(
 			)
 		}
 	}
-	return targets, generateDetectMessage(ipFamily, targets.Available)
+	return rawData, generateDetectMessage(ipFamily, rawData.Available)
 }
 
 var errTimeout = errors.New("timeout")
@@ -148,7 +170,7 @@ func finalDeleteIP(
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
-	c *config.UpdateConfig, s setter.Setter, targets map[ipnet.Family]provider.Targets,
+	c *config.UpdateConfig, s setter.Setter, targets map[ipnet.Family]setter.WAFTargets,
 ) Message {
 	resps := emptySetterWAFListResponses()
 
@@ -188,21 +210,22 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 // UpdateIPs detects IP addresses and updates DNS records of managed domains.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
-	targetsForWAF := map[ipnet.Family]provider.Targets{}
+	targetsForWAF := map[ipnet.Family]setter.WAFTargets{}
 	shouldUpdateWAF := false
 	for ipFamily, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
-			targets, msg := detectIPs(ctx, ppfmt, c, ipFamily)
+			rawData, msg := detectRawData(ctx, ppfmt, c, ipFamily)
 			msgs = append(msgs, msg)
+			addresses := deriveDNSAddresses(rawData)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.HeartbeatMessage.OK {
-				targetsForWAF[ipFamily] = targets
+				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
 				shouldUpdateWAF = true
-				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, targets.IPs))
+				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, addresses))
 			} else {
-				targetsForWAF[ipFamily] = targets
+				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
 			}
 		}
 	}

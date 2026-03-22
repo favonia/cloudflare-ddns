@@ -29,6 +29,13 @@ func quotedIgnoredValuePreview(value string) string {
 	return strconv.Quote(value)
 }
 
+func defaultPrefixLen() map[ipnet.Family]int {
+	return map[ipnet.Family]int{
+		ipnet.IP4: 32,
+		ipnet.IP6: 64,
+	}
+}
+
 func unsetAll(t *testing.T) {
 	t.Helper()
 	unset(t,
@@ -217,6 +224,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: {domain.FQDN("a.b.c")},
 						ipnet.IP6: nil,
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 					},
@@ -279,6 +287,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: {domain.FQDN("a.b.c")},
 						ipnet.IP6: {domain.FQDN("d.e.f")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 						domain.FQDN("d.e.f"): false,
@@ -324,7 +333,8 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: {domain.FQDN("a.b.c")},
 						ipnet.IP6: nil,
 					},
-					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
+					WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 					},
@@ -369,9 +379,10 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: nil,
 					},
-					WAFLists: []api.WAFList{{AccountID: "account", Name: "list"}},
-					TTL:      api.TTLAuto,
-					Proxied:  map[domain.Domain]bool{},
+					WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen: defaultPrefixLen(),
+					TTL:              api.TTLAuto,
+					Proxied:          map[domain.Domain]bool{},
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -410,6 +421,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("d.e.f")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("d.e.f"): false,
 					},
@@ -451,6 +463,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: {domain.FQDN("a.b.c")},
 						ipnet.IP6: nil,
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 					},
@@ -495,6 +508,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: {domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
 						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 						domain.FQDN("g.h.i"): false,
@@ -550,7 +564,8 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: nil,
 					},
-					Proxied: map[domain.Domain]bool{},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied:          map[domain.Domain]bool{},
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -602,6 +617,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 					},
@@ -695,7 +711,8 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: nil,
 					},
-					Proxied: map[domain.Domain]bool{},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied:          map[domain.Domain]bool{},
 				},
 			},
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -780,6 +797,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): true,
 					},
@@ -831,6 +849,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"): false,
 					},
@@ -883,6 +902,7 @@ func TestBuildConfig(t *testing.T) {
 						ipnet.IP4: nil,
 						ipnet.IP6: {domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
 					},
+					DefaultPrefixLen: defaultPrefixLen(),
 					Proxied: map[domain.Domain]bool{
 						domain.FQDN("a.b.c"):   true,
 						domain.FQDN("a.bb.c"):  false,

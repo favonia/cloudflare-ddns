@@ -15,7 +15,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -53,7 +52,7 @@ func TestSetWAFList(t *testing.T) {
 	)
 
 	type items = []api.WAFListItem
-	type ipmap = map[ipnet.Family]provider.Targets
+	type ipmap = map[ipnet.Family]setter.WAFTargets
 
 	targetPrefixes := []netip.Prefix{prefix4.Prefix, prefix6.Prefix}
 
@@ -405,7 +404,10 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					} else {
 						expectedCreateItems := make([]api.WAFListCreateItem, 0, len(scenario.wantCreate))
 						for _, prefix := range scenario.wantCreate {
-							expectedCreateItems = append(expectedCreateItems, api.WAFListCreateItem{Prefix: prefix, Comment: ""})
+							expectedCreateItems = append(expectedCreateItems, api.WAFListCreateItem{
+								Prefix:  prefix,
+								Comment: "",
+							})
 						}
 						createCall := h.mockHandle.EXPECT().
 							CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, expectedCreateItems).

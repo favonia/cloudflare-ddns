@@ -294,9 +294,13 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		DeleteOnStop:  c.DeleteOnStop,
 	}
 	updateConfig := &UpdateConfig{
-		Provider:           providerMap,
-		Domains:            domains,
-		WAFLists:           c.WAFLists,
+		Provider: providerMap,
+		Domains:  domains,
+		WAFLists: c.WAFLists,
+		DefaultPrefixLen: map[ipnet.Family]int{
+			ipnet.IP4: provider.DefaultRawDataPrefixLen(ipnet.IP4),
+			ipnet.IP6: provider.DefaultRawDataPrefixLen(ipnet.IP6),
+		},
 		TTL:                c.TTL,
 		Proxied:            proxiedMap,
 		RecordComment:      c.RecordComment,

@@ -294,7 +294,7 @@ func TestLocalWithInterfaceIsExplicitEmpty(t *testing.T) {
 	}.IsExplicitEmpty())
 }
 
-func TestLocalWithInterfaceGetIPs(t *testing.T) {
+func TestLocalWithInterfaceGetRawData(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -339,9 +339,16 @@ func TestLocalWithInterfaceGetIPs(t *testing.T) {
 				ProviderName:  "",
 				InterfaceName: tc.interfaceName,
 			}
-			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
-			require.Equal(t, tc.ok, targets.Available)
-			require.Equal(t, tc.expected, targets.IPs)
+			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, map[ipnet.Family]int{
+				ipnet.IP4: 32,
+				ipnet.IP6: 64,
+			}[tc.ipFamily])
+			require.Equal(t, tc.ok, rawData.Available)
+			want := liftedPrefixes(tc.ipFamily, tc.expected)
+			if len(want) == 0 {
+				want = nil
+			}
+			require.Equal(t, want, rawData.CIDRs)
 		})
 	}
 }
