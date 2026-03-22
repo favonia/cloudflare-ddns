@@ -185,9 +185,9 @@ The updater should now be running in the background. Check the logs with `docker
 
 These setups are additive changes on top of the basic Docker Compose template in [Step 1: Updating the Compose File](#docker-compose-template). Each setup shows a minimal delta. For the exact behavior of each environment variable, see [All Settings](#all-settings).
 
-### 🔍️ Validation and Testing
+### ✅️ Validation and Testing
 
-#### ✅️ Test a new setup safely with explicit IPs
+#### Test a new setup safely with explicit IPs
 
 Use this when you want to validate the updater without waiting for a real IP change.
 
@@ -204,7 +204,7 @@ After the updater creates or updates the expected records, switch `DOMAINS`, `IP
 
 ⚠️ `static:<ip1>,<ip2>,...` is an advanced provider that supplies a fixed set of IP addresses. It is useful for tests, debugging, and other setups where you want to feed a known address set into the updater, but it is not the normal long-running DDNS path.
 
-#### 🔄 Test how the updater reconciles manual DNS edits
+#### Test how the updater reconciles manual DNS edits
 
 Use this when you want to test how the updater responds after DNS records are changed directly in Cloudflare.
 
@@ -223,7 +223,7 @@ Restore the default `CACHE_EXPIRATION` afterward to avoid unnecessary network tr
 
 ### 🌐 Networking
 
-#### 📴 Run IPv4-only or IPv6-only
+#### Run IPv4-only or IPv6-only
 
 Use this when your network supports only one IP family or when you want to stop seeing detection failures for the other one.
 
@@ -234,7 +234,7 @@ environment:
 
 Use `IP6_PROVIDER=none` to stop managing IPv6, or `IP4_PROVIDER=none` to stop managing IPv4. Existing managed DNS records of that IP family are preserved. 🧪 If you also use WAF lists, existing managed items of that IP family are preserved there too.
 
-#### 📡 Use IPv6 without sharing the host network
+#### Use IPv6 without sharing the host network
 
 Use this when you want IPv6 support but do not want `network_mode: host`.
 
@@ -249,7 +249,7 @@ After removing `network_mode: host`, follow the [official Docker instructions fo
 
 <a id="docker-network-routing"></a>
 
-#### 🛜 Route outbound requests through a specific Docker network
+#### Route outbound requests through a specific Docker network
 
 Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
 
@@ -296,7 +296,7 @@ If you want to change where outbound requests leave the container instead, see [
 
 ### 🔐 Cloudflare API Tokens
 
-#### 🔑 Read the Cloudflare token from a Docker secret
+#### Read the Cloudflare token from a Docker secret
 
 Use this when you do not want to put the token directly in the Compose file or `.env` file.
 
