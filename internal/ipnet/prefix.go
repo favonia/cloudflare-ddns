@@ -113,6 +113,8 @@ func normalizeDetectedPrefix(t Family, ppfmt pp.PP, prefix netip.Prefix) (netip.
 
 	normalized := netip.PrefixFrom(addr, bits)
 	switch desc, disposition := checkDetectedAddr(addr); disposition {
+	default:
+		fallthrough
 	case detectedAddrOK:
 		return normalized, true
 	case detectedAddrReject:
@@ -129,8 +131,6 @@ func normalizeDetectedPrefix(t Family, ppfmt pp.PP, prefix netip.Prefix) (netip.
 		)
 		return normalized, true
 	}
-
-	panic("unreachable detectedAddrDisposition")
 }
 
 // NormalizeDetectedPrefixes normalizes a list of detected raw-data CIDRs while

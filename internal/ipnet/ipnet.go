@@ -179,6 +179,8 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 	}
 
 	switch desc, disposition := checkDetectedAddr(ip); disposition {
+	default:
+		fallthrough
 	case detectedAddrOK:
 		return ip, true
 	case detectedAddrReject:
@@ -195,8 +197,6 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		)
 		return ip, true
 	}
-
-	panic("unreachable detectedAddrDisposition")
 }
 
 // NormalizeDetectedIPs normalizes a list of detected IPs.
