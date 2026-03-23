@@ -76,15 +76,15 @@ Detection semantics and provider contracts are owned by [Provider Raw-Data Contr
 
 Derivation transforms raw data into the resource-specific target shape consumed by reconciliation.
 
-Today, the semantic raw data is a CIDR set.
+Today, the semantic raw data is a set of IP addresses with prefix lengths.
 
-DNS derivation turns each raw CIDR into a DNS address target by forgetting the prefix length.
+DNS derivation turns each raw IP address with prefix length into a DNS address target by forgetting the prefix length.
 
-WAF derivation turns each raw CIDR into a WAF prefix target by taking its subnet.
+WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
 
 The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 
-The current code realizes only the canonical singleton special case of this model, so those derivations are currently implemented through an address-only representation instead of an explicit CIDR representation.
+The current code realizes only the canonical singleton special case of this model, so those derivations are currently implemented through an address-only representation instead of one that also carries prefix lengths.
 
 Future work may insert non-identity derivation without changing the surrounding lifecycle.
 

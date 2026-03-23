@@ -17,7 +17,7 @@ Providers operate per requested IP family and return one family-specific raw-dat
 - one state means the raw data is unavailable for that run
 - the other means the raw data is known for that run
 
-The raw data is modeled as a family-scoped set of CIDR prefixes.
+The raw data is modeled as a family-scoped set of IP addresses with prefix lengths.
 
 Provider mode determines whether the known raw-data state may carry an empty result:
 
