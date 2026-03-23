@@ -21,20 +21,21 @@ func TestReadProvider(t *testing.T) {
 	keyDeprecated := keyPrefix + "DEPRECATED"
 
 	var (
-		none          provider.Provider
-		doh           = provider.NewCloudflareDOH()
-		trace         = provider.NewCloudflareTrace()
-		traceCustom   = provider.NewCloudflareTraceCustom("https://1.1.1.1/cdn-cgi/trace")
-		local         = provider.NewLocal()
-		localLoopback = provider.NewLocalWithInterface("lo")
-		ipify         = provider.NewIpify()
-		custom        = provider.MustNewCustomURL("https://url.io")
-		customVia4    = provider.MustNewCustomURLVia4("https://url.io")
-		customVia6    = provider.MustNewCustomURLVia6("https://url.io")
-		static        = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
-		staticMulti   = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
-		staticEmpty   = provider.NewStaticEmpty()
-		fileProvider  = provider.MustNewFile("/etc/ips.txt")
+		none             provider.Provider
+		doh              = provider.NewCloudflareDOH()
+		trace            = provider.NewCloudflareTrace()
+		traceCustom      = provider.NewCloudflareTraceCustom("https://1.1.1.1/cdn-cgi/trace")
+		local            = provider.NewLocal()
+		localLoopback    = provider.NewLocalWithInterface("lo")
+		ipify            = provider.NewIpify()
+		custom           = provider.MustNewCustomURL("https://url.io")
+		customVia4       = provider.MustNewCustomURLVia4("https://url.io")
+		customVia6       = provider.MustNewCustomURLVia6("https://url.io")
+		static           = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
+		staticMulti      = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
+		staticEmpty      = provider.NewStaticEmpty()
+		fileProvider     = provider.MustNewFile("/etc/ips.txt")
+		debugUnavailable = provider.NewDebugUnavailable()
 	)
 
 	for name, tc := range map[string]struct {
@@ -269,6 +270,19 @@ func TestReadProvider(t *testing.T) {
 			ipnet.IP4, true, "     ipify  ", false, "", trace, ipify, true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, `%s=ipify is deprecated; use %s=cloudflare.trace or %s=cloudflare.doh`, key, key, key)
+			},
+		},
+		"debug.unavailable": {
+			ipnet.IP4, true, "   debug.unavailable   ", false, "", trace, debugUnavailable, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedDebugUnavailableProvider, pp.EmojiHint,
+					`You are using the undocumented "debug.unavailable" provider`)
+			},
+		},
+		"debug.unavailable:": {
+			ipnet.IP4, true, "   debug.unavailable: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, "debug.unavailable:")
 			},
 		},
 		"others": {

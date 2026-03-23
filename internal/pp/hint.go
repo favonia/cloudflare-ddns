@@ -18,4 +18,5 @@ const (
 	MessageExperimentalWAF                                     // New feature introduced in 1.14.0 on 2024/8/25
 	MessageExperimentalLocalWithInterface                      // New feature introduced in 1.15.0
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
+	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
 )
