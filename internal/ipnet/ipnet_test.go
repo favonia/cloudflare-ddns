@@ -290,6 +290,135 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 	}
 }
 
+func TestRawEntryFrom(t *testing.T) {
+	t.Parallel()
+
+	entry := ipnet.RawEntryFrom(mustIP("192.168.1.5"), 24)
+	require.Equal(t, mustIP("192.168.1.5"), entry.Addr())
+	require.Equal(t, 24, entry.PrefixLen())
+	require.True(t, entry.IsValid())
+	require.Equal(t, "192.168.1.5/24", entry.String())
+	require.Equal(t, netip.MustParsePrefix("192.168.1.0/24"), entry.Masked())
+	require.Equal(t, netip.MustParsePrefix("192.168.1.5/24"), entry.Prefix())
+}
+
+func TestRawEntryZeroValue(t *testing.T) {
+	t.Parallel()
+
+	var entry ipnet.RawEntry
+	require.False(t, entry.IsValid())
+	require.Equal(t, "invalid Prefix", entry.String())
+}
+
+func TestRawEntryMasked(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input    string
+		expected string
+	}{
+		"4-host-bits":    {"192.168.1.100/24", "192.168.1.0/24"},
+		"4-full":         {"10.0.0.1/32", "10.0.0.1/32"},
+		"6-host-bits":    {"2001:db8::cafe/48", "2001:db8::/48"},
+		"6-full":         {"2001:db8::1/128", "2001:db8::1/128"},
+		"4-no-mask":      {"192.168.1.100/0", "0.0.0.0/0"},
+		"6-no-mask":      {"2001:db8::1/0", "::/0"},
+		"4-single-bit":   {"128.0.0.1/1", "128.0.0.0/1"},
+		"6-single-bit":   {"8000::1/1", "8000::/1"},
+		"4-partial-byte": {"192.168.255.255/20", "192.168.240.0/20"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			entry := mustRawEntry(tc.input)
+			require.Equal(t, netip.MustParsePrefix(tc.expected), entry.Masked())
+		})
+	}
+}
+
+func TestRawEntryPrefix(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+	}{
+		"4-with-host-bits": {"192.168.1.100/24"},
+		"6-with-host-bits": {"2001:db8::cafe/48"},
+		"4-full":           {"10.0.0.1/32"},
+		"6-full":           {"2001:db8::1/128"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			entry := mustRawEntry(tc.input)
+			// Prefix preserves host bits (unlike Masked)
+			require.Equal(t, netip.MustParsePrefix(tc.input), entry.Prefix())
+		})
+	}
+}
+
+func TestRawEntryCompare(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		a, b     string
+		expected int
+	}{
+		"equal":              {"10.0.0.1/24", "10.0.0.1/24", 0},
+		"less-by-addr":       {"10.0.0.1/24", "10.0.0.2/24", -1},
+		"greater-by-addr":    {"10.0.0.2/24", "10.0.0.1/24", 1},
+		"less-by-prefix":     {"10.0.0.1/24", "10.0.0.1/32", -1},
+		"greater-by-prefix":  {"10.0.0.1/32", "10.0.0.1/24", 1},
+		"4-before-6":         {"10.0.0.1/32", "2001:db8::1/128", -1},
+		"6-after-4":          {"2001:db8::1/128", "10.0.0.1/32", 1},
+		"same-addr-diff-len": {"192.168.1.0/24", "192.168.1.0/16", 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := mustRawEntry(tc.a)
+			b := mustRawEntry(tc.b)
+			require.Equal(t, tc.expected, a.Compare(b))
+		})
+	}
+}
+
+func TestLiftValidatedIPsToRawEntries(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		ips       []netip.Addr
+		prefixLen int
+		expected  []ipnet.RawEntry
+	}{
+		"nil": {
+			nil, 24, nil,
+		},
+		"empty": {
+			[]netip.Addr{}, 24, nil,
+		},
+		"single-4": {
+			[]netip.Addr{mustIP("10.0.0.1")}, 24,
+			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/24")},
+		},
+		"single-6": {
+			[]netip.Addr{mustIP("2001:db8::1")}, 48,
+			[]ipnet.RawEntry{mustRawEntry("2001:db8::1/48")},
+		},
+		"multiple": {
+			[]netip.Addr{mustIP("10.0.0.1"), mustIP("10.0.0.2"), mustIP("10.0.0.3")}, 32,
+			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/32"), mustRawEntry("10.0.0.2/32"), mustRawEntry("10.0.0.3/32")},
+		},
+		"full-prefix-4": {
+			[]netip.Addr{mustIP("192.168.1.1")}, 32,
+			[]ipnet.RawEntry{mustRawEntry("192.168.1.1/32")},
+		},
+		"zero-prefix": {
+			[]netip.Addr{mustIP("10.0.0.1")}, 0,
+			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/0")},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			result := ipnet.LiftValidatedIPsToRawEntries(tc.ips, tc.prefixLen)
+			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func TestNormalizeDetectedRawEntries(t *testing.T) {
 	t.Parallel()
 
@@ -388,6 +517,66 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 				)
 			},
 		},
+		"singleton/4-mapped-96": {
+			ipnet.IP4, singleton(mustRawEntry("::ffff:10.10.10.10/96")),
+			true, singleton(mustRawEntry("10.10.10.10/0")),
+			nil,
+		},
+		"singleton/4-native-with-prefix": {
+			ipnet.IP4, singleton(mustRawEntry("10.0.0.1/24")),
+			true, singleton(mustRawEntry("10.0.0.1/24")),
+			nil,
+		},
+		"singleton/4-loopback-rejected": {
+			ipnet.IP4, singleton(mustRawEntry("127.0.0.1/32")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected %s address %s is %s",
+					"IPv4", "127.0.0.1", "a loopback address",
+				)
+			},
+		},
+		"singleton/6-ipv4-not-is6": {
+			ipnet.IP6, singleton(mustRawEntry("10.10.10.10/32")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected address %s is not a valid IPv6 address and cannot be used",
+					"10.10.10.10/32",
+				)
+			},
+		},
+		"singleton/6-loopback-rejected": {
+			ipnet.IP6, singleton(mustRawEntry("::1/128")),
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected %s address %s is %s",
+					"IPv6", "::1", "a loopback address",
+				)
+			},
+		},
+		"singleton/100-default-family": {
+			100, singleton(mustRawEntry("10.0.0.1/32")),
+			false, nil,
+			nil,
+		},
+		"list/4-fail-fast": {
+			ipnet.IP4,
+			[]ipnet.RawEntry{
+				invalidEntry,
+				mustRawEntry("10.0.0.1/32"),
+			},
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiImpossible,
+					`Detected address is not valid; this should not happen and please report it at %s`,
+					pp.IssueReportingURL,
+				)
+			},
+		},
 		"sort-dedup-4-mapped": {
 			ipnet.IP4,
 			[]ipnet.RawEntry{
@@ -399,6 +588,20 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			[]ipnet.RawEntry{
 				mustRawEntry("10.0.0.1/32"),
 				mustRawEntry("10.0.0.2/32"),
+			},
+			nil,
+		},
+		"sort-dedup-6": {
+			ipnet.IP6,
+			[]ipnet.RawEntry{
+				mustRawEntry("2001:db8::2/64"),
+				mustRawEntry("2001:db8::1/64"),
+				mustRawEntry("2001:db8::2/64"),
+			},
+			true,
+			[]ipnet.RawEntry{
+				mustRawEntry("2001:db8::1/64"),
+				mustRawEntry("2001:db8::2/64"),
 			},
 			nil,
 		},
