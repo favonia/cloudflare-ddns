@@ -70,7 +70,7 @@ func (p HTTP) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
-	rawEntries, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
+	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}

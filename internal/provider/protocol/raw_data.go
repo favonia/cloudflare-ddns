@@ -52,9 +52,9 @@ func DefaultRawDataPrefixLen(ipFamily ipnet.Family) int {
 	}
 }
 
-// NormalizeDetectedRawData validates detected addresses for one family and lifts
+// NormalizeDetectedRawIPs validates detected addresses for one family and lifts
 // them into deterministic raw entries using the given default prefix length.
-func NormalizeDetectedRawData(
+func NormalizeDetectedRawIPs(
 	ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int, ips []netip.Addr,
 ) ([]ipnet.RawEntry, bool) {
 	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, ips)
