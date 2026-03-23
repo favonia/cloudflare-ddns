@@ -117,9 +117,9 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// "broken token" cases as fatal.
 		//
 		// The expected snapshot for this observed contract was adopted on
-		// 2026-03-22. Update that date only when the workflow-only canary in
-		// scripts/github-actions/cloudflare-verify-contract/main.go changes the expected
-		// behavior. The canary currently observes:
+		// 2026-03-22. Update that date only when the contract probe in
+		// scripts/github-actions/cloudflare-verify-contract/config/verify-contract.json
+		// changes the expected behavior. The contract probe currently observes:
 		// - 400 for malformed or missing Authorization headers
 		// - 401 for well-formed but invalid bearer tokens
 		// cloudflare-go maps those to RequestError and AuthorizationError.

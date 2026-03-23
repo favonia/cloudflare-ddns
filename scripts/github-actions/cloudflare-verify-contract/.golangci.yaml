@@ -1,0 +1,17 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - cyclop # okay for a small script
+    - err113 # okay for a small script
+    - funlen # okay for a small script
+    - goconst # okay for a small script
+    - mnd # okay for a small script
+    - perfsprint # okay for a small script
+    - depguard # okay for a small script
+
+    - nlreturn # I disagree with the linter
+    - noinlineerr # I disagree with the linter
+    - wsl # I disagree with the linter
+    - wsl_v5 # I disagree with the linter
+

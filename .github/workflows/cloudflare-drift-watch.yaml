@@ -66,3 +66,32 @@ jobs:
         run: go run . ${{ matrix.watch.config }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  token-verify-contract:
+    name: Watch Cloudflare /user/tokens/verify drift
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: cloudflare-drift-watch.verify
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+          cache-dependency-path: scripts/github-actions/cloudflare-verify-contract/go.sum
+
+      - name: 🧪 Run /user/tokens/verify contract probe
+        working-directory: scripts/github-actions/cloudflare-verify-contract
+        run: go run . config/verify-contract.json
