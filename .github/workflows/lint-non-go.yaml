@@ -1,13 +1,10 @@
 name: Non-Go Linting
-
 on:
   push:
     branches: ["main"]
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
   actionlint:
     name: GitHub Actions workflows
@@ -22,7 +19,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: actionlint
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -39,7 +35,6 @@ jobs:
         continue-on-error: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   hadolint:
     name: Dockerfile
     runs-on: ubuntu-latest
@@ -53,7 +48,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: hadolint
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -62,8 +56,6 @@ jobs:
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: Dockerfile
-          config: .hadolint.yaml
-
   mdformat:
     name: Markdown
     runs-on: ubuntu-latest
@@ -77,7 +69,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: mdformat
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
