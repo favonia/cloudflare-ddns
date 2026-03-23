@@ -109,15 +109,38 @@ func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 	}
 }
 
-func checkAddress(t Family, ppfmt pp.PP, ip netip.Addr) bool {
-	if desc, bad := DescribeAddressIssue(ip); bad {
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s address %s is %s",
-			t.Describe(), ip.String(), desc,
-		)
-		return false
+// ValidateAndNormalizeIP validates ip for ipFamily and returns the canonical form.
+// On failure it returns a noun phrase suitable for "… is %s" (e.g., "a loopback address")
+// and false. When is4in6Hint is true, callers should show [pp.MessageIP4MappedIP6Address].
+// No messaging — callers handle error reporting with their own context.
+func ValidateAndNormalizeIP(ipFamily Family, ip netip.Addr) (
+	normalized netip.Addr, issue string, is4in6Hint bool, ok bool,
+) {
+	switch ipFamily {
+	case IP4:
+		if !ip.Is4() && !ip.Is4In6() {
+			return netip.Addr{}, fmt.Sprintf("not a valid %s address", ipFamily.Describe()), false, false
+		}
+		// Turns an IPv4-mapped IPv6 address back to an IPv4 address.
+		ip = ip.Unmap()
+
+	case IP6:
+		if !ip.Is6() {
+			return netip.Addr{}, fmt.Sprintf("not a valid %s address", ipFamily.Describe()), false, false
+		}
+		if ip.Is4In6() {
+			return netip.Addr{}, "an IPv4-mapped IPv6 address", true, false
+		}
+
+	default:
+		return netip.Addr{}, "not in a recognized IP family", false, false
 	}
-	return true
+
+	if desc, bad := DescribeAddressIssue(ip); bad {
+		return netip.Addr{}, desc, false, false
+	}
+
+	return ip, "", false, true
 }
 
 // normalizeDetectedIP normalizes an IP into the requested family.
@@ -130,40 +153,20 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		return netip.Addr{}, false
 	}
 
-	switch t {
-	case IP4:
-		if !ip.Is4() && !ip.Is4In6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", ip.String())
-			return netip.Addr{}, false
-		}
-		// Turns an IPv4-mapped IPv6 address back to an IPv4 address.
-		ip = ip.Unmap()
-
-	case IP6:
-		// Accept only native IPv6 addresses and reject IPv4-mapped IPv6.
-		if !ip.Is6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address; it can't be used", ip.String())
-			return netip.Addr{}, false
-		}
-		if ip.Is4In6() {
-			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is an IPv4-mapped IPv6 address; it can't be used", ip.String())
+	normalized, issue, is4in6Hint, ok := ValidateAndNormalizeIP(t, ip)
+	if !ok {
+		ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is %s", ip.String(), issue)
+		if is4in6Hint {
 			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 				"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
 					"It cannot be used for routing IPv6 traffic. "+
 					"If you need to use it for DNS, please open an issue at %s",
 				pp.IssueReportingURL)
-			return netip.Addr{}, false
 		}
-
-	default:
 		return netip.Addr{}, false
 	}
 
-	if !checkAddress(t, ppfmt, ip) {
-		return netip.Addr{}, false
-	}
-
-	return ip, true
+	return normalized, true
 }
 
 // NormalizeDetectedIPs normalizes a list of detected IPs.

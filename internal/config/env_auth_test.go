@@ -104,12 +104,12 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/success": {
 			map[string]string{"token.txt": "hello"},
-			"", "", "token.txt", "", "",
+			"", "", "/token.txt", "", "",
 			true, "hello", nil,
 		},
 		"file/empty": {
 			map[string]string{"empty.txt": ""},
-			"", "", "empty.txt", "", "",
+			"", "", "/empty.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The file specified by %s does not contain an API token", "CLOUDFLARE_API_TOKEN_FILE")
@@ -117,7 +117,7 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/quoted": {
 			map[string]string{"token.txt": "\"hello\""},
-			"", "", "token.txt", "", "",
+			"", "", "/token.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
@@ -127,7 +127,7 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/conflicting": {
 			map[string]string{"token1.txt": "hello1", "token2.txt": "hello2"},
-			"", "", "token1.txt", "token2.txt", "",
+			"", "", "/token1.txt", "/token2.txt", "",
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The files specified by %s and %s have conflicting tokens; their content must match", "CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
@@ -135,7 +135,7 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/conflicting/non-file": {
 			map[string]string{"token.txt": "file"},
-			"plain", "", "token.txt", "", "",
+			"plain", "", "/token.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The value of %s does not match the token found in the file specified by %s; they must specify the same token", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
@@ -143,12 +143,12 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/same/non-file": {
 			map[string]string{"token.txt": "token"},
-			"token", "", "token.txt", "", "",
+			"token", "", "/token.txt", "", "",
 			true, "token", nil,
 		},
 		"file/old": {
 			map[string]string{"token.txt": "hello"},
-			"", "", "", "token.txt", "",
+			"", "", "", "/token.txt", "",
 			true, "hello",
 			func(m *mocks.MockPP) {
 				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, config.HintAuthTokenNewPrefix)
@@ -156,31 +156,31 @@ func TestReadAuth(t *testing.T) {
 		},
 		"file/old/same": {
 			map[string]string{"token1.txt": "hello", "token2.txt": "hello"},
-			"", "", "token1.txt", "token2.txt", "",
+			"", "", "/token1.txt", "/token2.txt", "",
 			true, "hello", nil,
 		},
 		"file/wrong.path": {
 			map[string]string{},
-			"", "", "wrong.txt", "", "",
+			"", "", "/wrong.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/wrong.txt", gomock.Any())
 			},
 		},
 		"file/wrong.path/2": {
 			map[string]string{},
-			"", "", "", "wrong.txt", "",
+			"", "", "", "/wrong.txt", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "wrong.txt", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/wrong.txt", gomock.Any())
 			},
 		},
 		"file/invalid-directory": {
 			map[string]string{"dir/file.txt": ""},
-			"", "", "dir", "", "",
+			"", "", "/dir", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "dir", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/dir", gomock.Any())
 			},
 		},
 	} {

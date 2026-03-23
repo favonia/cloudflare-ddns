@@ -103,14 +103,14 @@ func TestLocalAuteGetRawData(t *testing.T) {
 			"127.0.0.1:80", ipnet.IP4,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "127.0.0.1", "a loopback address")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", "127.0.0.1", "a loopback address")
 			},
 		},
 		"loopback/6": {
 			"[::1]:80", ipnet.IP6,
 			false, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv6", "::1", "a loopback address")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", "::1", "a loopback address")
 			},
 		},
 		"empty/4": {

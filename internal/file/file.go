@@ -4,8 +4,10 @@ package file
 import (
 	"bytes"
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -17,24 +19,85 @@ const LinuxRoot string = "/"
 // and can be modified to a virtual file system for testing.
 var FS = os.DirFS(LinuxRoot) //nolint:gochecknoglobals
 
-// ReadString reads the content of the file at path. It treats an absolute path as
-// a path relative to the root of [FS].
-func ReadString(ppfmt pp.PP, path string) (string, bool) {
-	// os.DirFS(...).Open() does not accept absolute paths
-	if filepath.IsAbs(path) {
-		newpath, err := filepath.Rel(LinuxRoot, path)
-		if err != nil {
-			ppfmt.Noticef(pp.EmojiImpossible, `%q is an absolute path but does not start with %q: %v`, path, LinuxRoot, err)
-			return "", false
-		}
-		path = newpath
+// processPath validates that path is absolute and converts it to a relative form for [FS].
+// If the path is not absolute, fixedPath holds the suggested correction ("/"+path)
+// and ok is false. If absolute, relPath is for use with [FS] and fixedPath equals path.
+func processPath(ppfmt pp.PP, path string) (relPath string, fixedPath string, ok bool) {
+	if !filepath.IsAbs(path) {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"The path %q is not absolute; to use an absolute path, prefix it with /", path)
+		return "", "/" + path, false
 	}
 
-	body, err := fs.ReadFile(FS, path)
+	// os.DirFS(...).Open() does not accept absolute paths
+	relPath, err := filepath.Rel(LinuxRoot, path)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiImpossible,
+			"%q is an absolute path but does not start with %q: %v", path, LinuxRoot, err)
+		return "", path, false
+	}
+
+	return relPath, path, true
+}
+
+// RequireAbsolutePath checks that path is absolute. On failure, it prints a generic error
+// and returns the suggested fix ("/"+path). Callers may use fixedPath for context-specific hints.
+func RequireAbsolutePath(ppfmt pp.PP, path string) (fixedPath string, ok bool) {
+	_, fixedPath, ok = processPath(ppfmt, path)
+	return fixedPath, ok
+}
+
+// ReadString reads the content of the file at path.
+// The path must be absolute; relative paths are rejected.
+func ReadString(ppfmt pp.PP, path string) (string, bool) {
+	relPath, _, ok := processPath(ppfmt, path)
+	if !ok {
+		return "", false
+	}
+
+	body, err := fs.ReadFile(FS, relPath)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
 		return "", false
 	}
 
 	return string(bytes.TrimSpace(body)), true
+}
+
+// ReadLines reads a file and returns an iterator over its non-blank, non-comment lines.
+// Each yielded pair is (1-based line number, trimmed content after stripping # comments).
+// The path must be absolute; relative paths are rejected.
+// If the file cannot be read, lines is nil and ok is false.
+func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool) {
+	relPath, _, ok := processPath(ppfmt, path)
+	if !ok {
+		return nil, false
+	}
+
+	body, err := fs.ReadFile(FS, relPath)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		return nil, false
+	}
+
+	return func(yield func(int, string) bool) {
+		lineNum := 0
+		for line := range strings.Lines(string(body)) {
+			lineNum++
+
+			// Strip comments.
+			if i := strings.IndexByte(line, '#'); i >= 0 {
+				line = line[:i]
+			}
+
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+
+			if !yield(lineNum, line) {
+				return
+			}
+		}
+	}, true
 }

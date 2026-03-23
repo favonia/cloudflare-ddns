@@ -30,39 +30,21 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 				`Failed to parse the %s entry (%q) of %s as an IP address`, pp.Ordinal(entryNum), rawIP, envKey)
 			return nil, false
 		}
-		if ip.Zone() != "" {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`The %s entry (%q) of %s has a zone identifier, which is not allowed`,
-				pp.Ordinal(entryNum), rawIP, envKey,
-			)
-			return nil, false
-		}
-		if ipFamily == ipnet.IP6 && ip.Is4In6() {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`The %s entry (%q) of %s is an IPv4-mapped IPv6 address`,
-				pp.Ordinal(entryNum), rawIP, envKey,
-			)
-			return nil, false
-		}
-		ip = ip.Unmap()
-		if !ipFamily.Matches(ip) {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`The %s entry (%q) of %s is not a valid %s address`,
-				pp.Ordinal(entryNum), rawIP, envKey, ipFamily.Describe(),
-			)
-			return nil, false
-		}
-		if desc, bad := ipnet.DescribeAddressIssue(ip); bad {
+		normalized, issue, is4in6Hint, ok := ipnet.ValidateAndNormalizeIP(ipFamily, ip)
+		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
 				`The %s entry (%q) of %s is %s`,
-				pp.Ordinal(entryNum), rawIP, envKey, desc,
-			)
+				pp.Ordinal(entryNum), rawIP, envKey, issue)
+			if is4in6Hint {
+				ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
+					"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
+						"It cannot be used for routing IPv6 traffic. "+
+						"If you need to use it for DNS, please open an issue at %s",
+					pp.IssueReportingURL)
+			}
 			return nil, false
 		}
-		ips = append(ips, ip)
+		ips = append(ips, normalized)
 	}
 
 	// Make the explicit-input provider deterministic before it enters the pipeline.

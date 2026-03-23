@@ -175,7 +175,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			},
 			invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", ip6.String())
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip6.String(), "not a valid IPv4 address")
 			},
 		},
 		"unmatched-id": {

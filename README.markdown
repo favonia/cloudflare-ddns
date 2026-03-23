@@ -187,11 +187,11 @@ These setups are additive changes on top of the basic Docker Compose template in
 
 ### ✅️ Validation and Testing
 
-#### Test a new setup safely with explicit IPs
+#### Test a new setup with explicit IPs
 
 Use this when you want to validate the updater without waiting for a real IP change.
 
-Point the updater at dedicated test names and feed it explicit test IPs:
+Point the updater at dedicated test domain names and feed it explicit test IPs:
 
 ```yaml
 environment:
@@ -200,9 +200,29 @@ environment:
   - IP6_PROVIDER=static:2001:db8::10
 ```
 
-After the updater creates or updates the expected records, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
+After the testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
 
 ⚠️ `static:<ip1>,<ip2>,...` is an advanced provider that supplies a fixed set of IP addresses. It is useful for tests, debugging, and other setups where you want to feed a known address set into the updater, but it is not the normal long-running DDNS path.
+
+#### 🧪 Test a new setup with changing IPs (unreleased)
+
+Use this when you want to validate the updater with simulated IP changes by reading test addresses from local files.
+
+Create `ip4.txt` and `ip6.txt` with one IP address per line (blank lines and `#` comments are ignored). Then, point the updater at dedicated test domain names and feed it the file paths:
+
+```yaml
+environment:
+  - DOMAINS=ddns-test.example.org
+  - IP4_PROVIDER=file:/ip4.txt
+  - IP6_PROVIDER=file:/ip6.txt
+volumes:
+  - $PWD/ip4.txt:/ip4.txt
+  - $PWD/ip6.txt:/ip6.txt
+```
+
+After the updater creates or updates the expected records, change the addresses in `ip4.txt` or `ip6.txt` to simulate further IP changes. The updater should pick up new content and reconcile the DNS records.
+
+After testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values and remove the test files and `volumes:` entries.
 
 #### Test how the updater reconciles manual DNS edits
 
@@ -438,12 +458,12 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > Starting with version 1.15.0, the updater supports environment variables that begin with `CLOUDFLARE_*`. Multiple environment variables can be used at the same time, provided they all specify the same token.
 
-| Name                                                      | Meaning                                                                                                                                |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`                                    | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                |
-| `CLOUDFLARE_API_TOKEN_FILE`                               | A path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
-| `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                         |
-| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                    |
+| Name                                                      | Meaning                                                                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`                                    | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                          |
+| `CLOUDFLARE_API_TOKEN_FILE`                               | An absolute path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
+| `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                                   |
+| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                              |
 
 > 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
@@ -488,10 +508,10 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 <details>
 <summary>🔍️ IP Detection <sup><em>click to expand</em></sup></summary>
 
-| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                               | Default Value      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv4. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
-| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, and `none`. The special `none` provider stops managing IPv6. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
+| Name           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                       | Default Value      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `IP4_PROVIDER` | This specifies how to detect the current IPv4 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, `file:<absolute-path>`, and `none`. The special `none` provider stops managing IPv4. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
+| `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, `file:<absolute-path>`, and `none`. The special `none` provider stops managing IPv6. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
 
 > 👉️ The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
@@ -504,9 +524,22 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `url:<url>`                                               | <p>Fetch the IP address from a URL. The provider format is `url:` followed by the URL itself. For example, `IP4_PROVIDER=url:https://api4.ipify.org` fetches the IPv4 address from <https://api4.ipify.org>. Currently, only HTTP(S) is supported.</p><p>The updater connects over IPv4 for `IP4_PROVIDER` and over IPv6 for `IP6_PROVIDER`. The intention is to query a public IP detection server with the correct IP family. If you want to override that, use `IP4_PROVIDER=url.via6:<url>` or `IP6_PROVIDER=url.via4:<url>` instead.</p><p>🕰️ Before version 1.15.0, `url:<url>` did not enforce the matching IP family.</p> |
 | `url.via4:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv4.</p><p>The intention is to get an IPv6 address over IPv4 with `IP6_PROVIDER=url.via4:<url>`. In comparison, `IP6_PROVIDER=url:<url>` will get an IPv6 address over the matching IP family (IPv6).</p>                                                                                                                                                                                                                                                                                                                                            |
 | `url.via6:<url>` (unreleased)                             | <p>Fetch the IP address from a URL while always connecting to that URL over IPv6.</p><p>The intention is to get an IPv4 address over IPv6 with `IP4_PROVIDER=url.via6:<url>`. In comparison, `IP4_PROVIDER=url:<url>` will get an IPv4 address over the matching IP family (IPv4).</p>                                                                                                                                                                                                                                                                                                                                            |
+| 🧪 `file:<absolute-path>` (unreleased)                    | <p>Read IP addresses from a local file. The file uses one IP address per line. Blank lines are ignored and `#` starts a comment (the rest of the line is ignored). The path must be absolute.</p><p>The file is re-read on every detection cycle, so you can update it without restarting the updater. Addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.</p><p>⚠️ All addresses in the file must belong to the selected IP family (IPv4 for `IP4_PROVIDER`, IPv6 for `IP6_PROVIDER`); mismatched-family entries are rejected.</p> |
 | `static:<ip1>,<ip2>,...` (unreleased)                     | <p>Use one or more explicit IP addresses as a fixed address set. This is an advanced provider for tests, debugging, and special fixed-input setups.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p><p>🤖 The addresses are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers before DNS or WAF targets are derived from them.</p>                                                                                                                                                                                        |
 | `static.empty` (unreleased)                               | <p>Clear existing managed content for the selected IP family. In contrast, `none` preserves existing managed content for that family.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p>                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `none`                                                    | <p>Stop managing the specified IP family for this run. For example `IP4_PROVIDER=none` stops managing IPv4. Existing managed DNS records of that IP family are preserved.</p><p>🧪 Existing managed WAF list items of that IP family are preserved too, because that family is out of scope. Use `static.empty` if you want to clear managed content for that family. As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p>                                                                           |
+
+> 🧪 The experimental file-based IP provider uses the following format:
+>
+> ```txt
+> # One IP address per line. Blank lines are ignored.
+> # Everything after # is treated as a comment.
+> # Use one file for IPv4 and another for IPv6.
+>
+> # Yet another comment
+> 198.51.100.1 # This is my primary server
+> 198.51.100.2 # This is my secondary server
+> ```
 
 </details>
 
