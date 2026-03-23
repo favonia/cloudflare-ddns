@@ -88,11 +88,11 @@ func detectionResult(ipFamily ipnet.Family, ips []netip.Addr) provider.Detection
 		prefixLen = 64
 	}
 
-	cidrs := make([]netip.Prefix, 0, len(ips))
+	rawEntries := make([]ipnet.RawEntry, 0, len(ips))
 	for _, ip := range ips {
-		cidrs = append(cidrs, netip.PrefixFrom(ip, prefixLen))
+		rawEntries = append(rawEntries, ipnet.RawEntryFrom(ip, prefixLen))
 	}
-	return provider.NewKnownDetectionResult(cidrs)
+	return provider.NewKnownDetectionResult(rawEntries)
 }
 
 func wafTargets(ip4, ip6 []netip.Addr) familyTargets {

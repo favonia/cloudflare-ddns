@@ -2,30 +2,29 @@ package protocol
 
 import (
 	"context"
-	"net/netip"
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Static returns the same set of raw CIDRs.
+// Static returns the same set of raw IP addresses with prefix lengths.
 type Static struct {
 	// Name of the detection protocol.
 	ProviderName string
 
-	// The raw CIDRs. Config-side constructors canonicalize these for stable
-	// naming. Runtime normalization still runs in GetRawData because the
-	// provider contract is enforced per requested family at the point the raw
-	// data is consumed.
-	CIDRs []netip.Prefix
+	// The raw IP addresses with prefix lengths. Config-side constructors
+	// canonicalize these for stable naming. Runtime normalization still runs
+	// in GetRawData because the provider contract is enforced per requested
+	// family at the point the raw data is consumed.
+	RawEntries []ipnet.RawEntry
 }
 
-// NewStatic creates a static provider with a defensive copy of cidrs.
-func NewStatic(providerName string, cidrs []netip.Prefix) Static {
+// NewStatic creates a static provider with a defensive copy of rawEntries.
+func NewStatic(providerName string, rawEntries []ipnet.RawEntry) Static {
 	return Static{
 		ProviderName: providerName,
-		CIDRs:        slices.Clone(cidrs),
+		RawEntries:   slices.Clone(rawEntries),
 	}
 }
 
@@ -36,16 +35,16 @@ func (p Static) Name() string {
 
 // IsExplicitEmpty reports whether the provider intentionally clears the family.
 func (p Static) IsExplicitEmpty() bool {
-	return len(p.CIDRs) == 0
+	return len(p.RawEntries) == 0
 }
 
-// GetRawData returns the static raw CIDRs as deterministic raw data.
+// GetRawData returns the static raw entries as deterministic raw data.
 func (p Static) GetRawData(
 	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, _ int,
 ) DetectionResult {
-	cidrs, ok := ipFamily.NormalizeDetectedPrefixes(ppfmt, p.CIDRs)
+	rawEntries, ok := ipFamily.NormalizeDetectedRawEntries(ppfmt, p.RawEntries)
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}
-	return NewKnownDetectionResult(cidrs)
+	return NewKnownDetectionResult(rawEntries)
 }

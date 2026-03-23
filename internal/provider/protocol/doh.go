@@ -206,9 +206,9 @@ func (p DNSOverHTTPS) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
-	cidrs, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
+	rawEntries, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}
-	return NewKnownDetectionResult(cidrs)
+	return NewKnownDetectionResult(rawEntries)
 }

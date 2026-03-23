@@ -124,9 +124,9 @@ func (p LocalWithInterface) GetRawData(
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}
-	cidrs, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, ips)
+	rawEntries, ok := NormalizeDetectedRawData(ppfmt, ipFamily, defaultPrefixLen, ips)
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}
-	return NewKnownDetectionResult(cidrs)
+	return NewKnownDetectionResult(rawEntries)
 }

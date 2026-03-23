@@ -17,20 +17,21 @@ type DetectionResult struct {
 	// When it is false, callers must preserve existing managed content of that
 	// family because the raw data is unavailable.
 	//
-	// When it is true, CIDRs stores the current deterministic raw-data carrier.
-	// An empty CIDR list is the explicit-empty intent.
-	Available bool
-	CIDRs     []netip.Prefix
+	// When it is true, RawEntries stores the current deterministic raw-data carrier.
+	// Each entry is an IP address with prefix length (host bits are preserved).
+	// An empty list is the explicit-empty intent.
+	Available  bool
+	RawEntries []ipnet.RawEntry
 }
 
 // NewKnownDetectionResult builds the managed deterministic raw-data state.
-func NewKnownDetectionResult(cidrs []netip.Prefix) DetectionResult {
-	return DetectionResult{Available: true, CIDRs: cidrs}
+func NewKnownDetectionResult(rawEntries []ipnet.RawEntry) DetectionResult {
+	return DetectionResult{Available: true, RawEntries: rawEntries}
 }
 
 // NewUnavailableDetectionResult builds the managed temporary-unavailability state.
 func NewUnavailableDetectionResult() DetectionResult {
-	return DetectionResult{Available: false, CIDRs: nil}
+	return DetectionResult{Available: false, RawEntries: nil}
 }
 
 // HasUsableRawData reports whether downstream derivation and reconciliation may proceed.
@@ -52,13 +53,13 @@ func DefaultRawDataPrefixLen(ipFamily ipnet.Family) int {
 }
 
 // NormalizeDetectedRawData validates detected addresses for one family and lifts
-// them into deterministic raw-data CIDRs using the given default prefix length.
+// them into deterministic raw entries using the given default prefix length.
 func NormalizeDetectedRawData(
 	ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int, ips []netip.Addr,
-) ([]netip.Prefix, bool) {
+) ([]ipnet.RawEntry, bool) {
 	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, ips)
 	if !ok {
 		return nil, false
 	}
-	return ipnet.LiftValidatedIPsToPrefixes(ips, defaultPrefixLen), true
+	return ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen), true
 }

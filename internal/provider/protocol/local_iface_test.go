@@ -344,11 +344,11 @@ func TestLocalWithInterfaceGetRawData(t *testing.T) {
 				ipnet.IP6: 64,
 			}[tc.ipFamily])
 			require.Equal(t, tc.ok, rawData.Available)
-			want := liftedPrefixes(tc.ipFamily, tc.expected)
+			want := liftedRawEntries(tc.ipFamily, tc.expected)
 			if len(want) == 0 {
 				want = nil
 			}
-			require.Equal(t, want, rawData.CIDRs)
+			require.Equal(t, want, rawData.RawEntries)
 		})
 	}
 }

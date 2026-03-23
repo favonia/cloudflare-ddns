@@ -81,7 +81,7 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 	}
 	return protocol.NewStatic(
 		"static:"+strings.Join(rawIPs, ","),
-		ipnet.LiftValidatedIPsToPrefixes(ips, DefaultRawDataPrefixLen(ipFamily)),
+		ipnet.LiftValidatedIPsToRawEntries(ips, DefaultRawDataPrefixLen(ipFamily)),
 	), true
 }
 

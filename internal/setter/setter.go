@@ -517,7 +517,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 }
 
 // prefixContainsPrefix reports whether container fully covers target.
-// For valid CIDR prefixes, containment is equivalent to containing target's
+// For valid network prefixes, containment is equivalent to containing target's
 // base address plus having a prefix length no longer than target's.
 func prefixContainsPrefix(container, target netip.Prefix) bool {
 	return container.Contains(target.Addr()) && container.Bits() <= target.Bits()

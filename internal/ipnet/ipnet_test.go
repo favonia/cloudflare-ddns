@@ -17,8 +17,8 @@ func mustIP(ip string) netip.Addr {
 	return netip.MustParseAddr(ip)
 }
 
-func mustPrefix(prefix string) netip.Prefix {
-	return netip.MustParsePrefix(prefix)
+func mustRawEntry(s string) ipnet.RawEntry {
+	return ipnet.RawEntry(netip.MustParsePrefix(s))
 }
 
 func TestInt(t *testing.T) {
@@ -290,17 +290,17 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 	}
 }
 
-func TestNormalizeDetectedPrefixes(t *testing.T) {
+func TestNormalizeDetectedRawEntries(t *testing.T) {
 	t.Parallel()
 
-	var invalidPrefix netip.Prefix
-	singleton := func(prefix netip.Prefix) []netip.Prefix { return []netip.Prefix{prefix} }
+	var invalidEntry ipnet.RawEntry
+	singleton := func(entry ipnet.RawEntry) []ipnet.RawEntry { return []ipnet.RawEntry{entry} }
 
 	for name, tc := range map[string]struct {
 		ipFamily      ipnet.Family
-		input         []netip.Prefix
+		input         []ipnet.RawEntry
 		ok            bool
-		expected      []netip.Prefix
+		expected      []ipnet.RawEntry
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"4-empty-nil": {
@@ -310,55 +310,55 @@ func TestNormalizeDetectedPrefixes(t *testing.T) {
 		},
 		"4-empty-list": {
 			ipnet.IP4,
-			[]netip.Prefix{},
+			[]ipnet.RawEntry{},
 			true,
-			[]netip.Prefix{},
+			[]ipnet.RawEntry{},
 			nil,
 		},
 		"singleton/4-invalid": {
-			ipnet.IP4, singleton(invalidPrefix),
+			ipnet.IP4, singleton(invalidEntry),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP prefix is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected raw entry is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"singleton/4-native": {
-			ipnet.IP4, singleton(mustPrefix("10.0.0.1/32")),
-			true, singleton(mustPrefix("10.0.0.1/32")),
+			ipnet.IP4, singleton(mustRawEntry("10.0.0.1/32")),
+			true, singleton(mustRawEntry("10.0.0.1/32")),
 			nil,
 		},
 		"singleton/4-mapped-128": {
-			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/128")),
-			true, singleton(mustPrefix("10.10.10.10/32")),
+			ipnet.IP4, singleton(mustRawEntry("::ffff:10.10.10.10/128")),
+			true, singleton(mustRawEntry("10.10.10.10/32")),
 			nil,
 		},
 		"singleton/4-mapped-120": {
-			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/120")),
-			true, singleton(mustPrefix("10.10.10.10/24")),
+			ipnet.IP4, singleton(mustRawEntry("::ffff:10.10.10.10/120")),
+			true, singleton(mustRawEntry("10.10.10.10/24")),
 			nil,
 		},
 		"singleton/4-mapped-short": {
-			ipnet.IP4, singleton(mustPrefix("::ffff:10.10.10.10/80")),
+			ipnet.IP4, singleton(mustRawEntry("::ffff:10.10.10.10/80")),
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected IP prefix %s is an IPv4-mapped IPv6 prefix with a prefix length shorter than /96; it can't be used",
+					"Detected raw entry %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96; it can't be used",
 					"::ffff:10.10.10.10/80",
 				)
 			},
 		},
 		"singleton/4-6-prefix": {
-			ipnet.IP4, singleton(mustPrefix("2001:db8::1/64")),
+			ipnet.IP4, singleton(mustRawEntry("2001:db8::1/64")),
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected IP prefix %s is not a valid IPv4 prefix; it can't be used",
+					"Detected raw entry %s is not a valid IPv4 address; it can't be used",
 					"2001:db8::1/64",
 				)
 			},
 		},
 		"singleton/4-broadcast-rejected": {
-			ipnet.IP4, singleton(mustPrefix("255.255.255.255/32")),
+			ipnet.IP4, singleton(mustRawEntry("255.255.255.255/32")),
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
@@ -368,17 +368,17 @@ func TestNormalizeDetectedPrefixes(t *testing.T) {
 			},
 		},
 		"singleton/6-native": {
-			ipnet.IP6, singleton(mustPrefix("2001:db8::1/64")),
-			true, singleton(mustPrefix("2001:db8::1/64")),
+			ipnet.IP6, singleton(mustRawEntry("2001:db8::1/64")),
+			true, singleton(mustRawEntry("2001:db8::1/64")),
 			nil,
 		},
 		"singleton/6-mapped": {
-			ipnet.IP6, singleton(mustPrefix("::ffff:10.10.10.10/128")),
+			ipnet.IP6, singleton(mustRawEntry("::ffff:10.10.10.10/128")),
 			false, nil,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiError,
-						"Detected IP prefix %s is an IPv4-mapped IPv6 prefix; it can't be used",
+						"Detected raw entry %s is an IPv4-mapped IPv6 address; it can't be used",
 						"::ffff:10.10.10.10/128",
 					),
 					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
@@ -390,15 +390,15 @@ func TestNormalizeDetectedPrefixes(t *testing.T) {
 		},
 		"sort-dedup-4-mapped": {
 			ipnet.IP4,
-			[]netip.Prefix{
-				mustPrefix("10.0.0.2/32"),
-				mustPrefix("::ffff:10.0.0.1/128"),
-				mustPrefix("10.0.0.2/32"),
+			[]ipnet.RawEntry{
+				mustRawEntry("10.0.0.2/32"),
+				mustRawEntry("::ffff:10.0.0.1/128"),
+				mustRawEntry("10.0.0.2/32"),
 			},
 			true,
-			[]netip.Prefix{
-				mustPrefix("10.0.0.1/32"),
-				mustPrefix("10.0.0.2/32"),
+			[]ipnet.RawEntry{
+				mustRawEntry("10.0.0.1/32"),
+				mustRawEntry("10.0.0.2/32"),
 			},
 			nil,
 		},
@@ -412,9 +412,9 @@ func TestNormalizeDetectedPrefixes(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			prefixes, ok := tc.ipFamily.NormalizeDetectedPrefixes(mockPP, tc.input)
+			entries, ok := tc.ipFamily.NormalizeDetectedRawEntries(mockPP, tc.input)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, prefixes)
+			require.Equal(t, tc.expected, entries)
 		})
 	}
 }

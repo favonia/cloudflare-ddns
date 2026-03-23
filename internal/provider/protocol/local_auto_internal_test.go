@@ -83,7 +83,7 @@ func TestLocalAutoGetRawDataWithDialContextSuccess(t *testing.T) {
 	)
 
 	require.True(t, rawData.Available)
-	require.Equal(t, []netip.Prefix{netip.PrefixFrom(expected, 32)}, rawData.CIDRs)
+	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(expected, 32)}, rawData.RawEntries)
 }
 
 func TestLocalAutoGetRawDataWithDialContextInvalidLocalAddr(t *testing.T) {
@@ -106,7 +106,7 @@ func TestLocalAutoGetRawDataWithDialContextInvalidLocalAddr(t *testing.T) {
 	)
 
 	require.False(t, rawData.Available)
-	require.Nil(t, rawData.CIDRs)
+	require.Nil(t, rawData.RawEntries)
 	require.Len(t, mockPP.noticeCalls, 1)
 	require.Equal(t, pp.EmojiImpossible, mockPP.noticeCalls[0].emoji)
 	require.Equal(t, "Unexpected UDP source address data %q of type %T", mockPP.noticeCalls[0].format)
@@ -133,7 +133,7 @@ func TestLocalAutoGetRawDataWithDialContextDialFailure(t *testing.T) {
 	)
 
 	require.False(t, rawData.Available)
-	require.Nil(t, rawData.CIDRs)
+	require.Nil(t, rawData.RawEntries)
 	require.Len(t, mockPP.noticeCalls, 1)
 	require.Equal(t, pp.EmojiError, mockPP.noticeCalls[0].emoji)
 	require.Equal(t, "Failed to detect a local %s address: %v", mockPP.noticeCalls[0].format)

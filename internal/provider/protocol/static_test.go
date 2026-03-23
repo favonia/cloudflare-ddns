@@ -17,8 +17,12 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
-func liftedPrefixes(ipFamily ipnet.Family, ips []netip.Addr) []netip.Prefix {
-	return ipnet.LiftValidatedIPsToPrefixes(ips, protocol.DefaultRawDataPrefixLen(ipFamily))
+func liftedRawEntries(ipFamily ipnet.Family, ips []netip.Addr) []ipnet.RawEntry {
+	return ipnet.LiftValidatedIPsToRawEntries(ips, protocol.DefaultRawDataPrefixLen(ipFamily))
+}
+
+func mustRawEntry(s string) ipnet.RawEntry {
+	return ipnet.RawEntry(netip.MustParsePrefix(s))
 }
 
 func TestDefaultRawDataPrefixLen(t *testing.T) {
@@ -42,15 +46,15 @@ func TestDefaultRawDataPrefixLen(t *testing.T) {
 func TestNewStatic(t *testing.T) {
 	t.Parallel()
 
-	original := []netip.Prefix{netip.MustParsePrefix("1.1.1.1/32"), netip.MustParsePrefix("2.2.2.2/32")}
+	original := []ipnet.RawEntry{mustRawEntry("1.1.1.1/32"), mustRawEntry("2.2.2.2/32")}
 	p := protocol.NewStatic("test", original)
 
 	require.Equal(t, "test", p.ProviderName)
-	require.Equal(t, original, p.CIDRs)
+	require.Equal(t, original, p.RawEntries)
 
 	// Verify defensive copy: mutating the original slice should not affect the provider.
-	original[0] = netip.MustParsePrefix("3.3.3.3/32")
-	require.Equal(t, netip.MustParsePrefix("1.1.1.1/32"), p.CIDRs[0])
+	original[0] = mustRawEntry("3.3.3.3/32")
+	require.Equal(t, mustRawEntry("1.1.1.1/32"), p.RawEntries[0])
 }
 
 func TestNewStaticNil(t *testing.T) {
@@ -58,7 +62,7 @@ func TestNewStaticNil(t *testing.T) {
 
 	p := protocol.NewStatic("empty", nil)
 	require.Equal(t, "empty", p.ProviderName)
-	require.Empty(t, p.CIDRs)
+	require.Empty(t, p.RawEntries)
 }
 
 func TestStaticName(t *testing.T) {
@@ -66,7 +70,7 @@ func TestStaticName(t *testing.T) {
 
 	p := &protocol.Static{
 		ProviderName: "very secret name",
-		CIDRs:        nil,
+		RawEntries:   nil,
 	}
 
 	require.Equal(t, "very secret name", p.Name())
@@ -75,64 +79,64 @@ func TestStaticName(t *testing.T) {
 func TestStaticGetRawData(t *testing.T) {
 	t.Parallel()
 
-	var invalidPrefix netip.Prefix
+	var invalidEntry ipnet.RawEntry
 
 	for name, tc := range map[string]struct {
-		savedCIDRs    []netip.Prefix
-		ipFamily      ipnet.Family
-		ok            bool
-		expected      []netip.Prefix
-		prepareMockPP func(*mocks.MockPP)
+		savedRawEntries []ipnet.RawEntry
+		ipFamily        ipnet.Family
+		ok              bool
+		expected        []ipnet.RawEntry
+		prepareMockPP   func(*mocks.MockPP)
 	}{
 		"valid/4": {
-			[]netip.Prefix{netip.MustParsePrefix("1.1.1.1/32")},
+			[]ipnet.RawEntry{mustRawEntry("1.1.1.1/32")},
 			ipnet.IP4,
 			true,
-			[]netip.Prefix{netip.MustParsePrefix("1.1.1.1/32")},
+			[]ipnet.RawEntry{mustRawEntry("1.1.1.1/32")},
 			nil,
 		},
 		"valid/6": {
-			[]netip.Prefix{netip.MustParsePrefix("1::1/64")},
+			[]ipnet.RawEntry{mustRawEntry("1::1/64")},
 			ipnet.IP6,
 			true,
-			[]netip.Prefix{netip.MustParsePrefix("1::1/64")},
+			[]ipnet.RawEntry{mustRawEntry("1::1/64")},
 			nil,
 		},
 		"valid/4/deduplicate-sort": {
-			[]netip.Prefix{
-				netip.MustParsePrefix("2.2.2.2/32"),
-				netip.MustParsePrefix("1.1.1.1/32"),
-				netip.MustParsePrefix("2.2.2.2/32"),
+			[]ipnet.RawEntry{
+				mustRawEntry("2.2.2.2/32"),
+				mustRawEntry("1.1.1.1/32"),
+				mustRawEntry("2.2.2.2/32"),
 			},
 			ipnet.IP4,
 			true,
-			[]netip.Prefix{
-				netip.MustParsePrefix("1.1.1.1/32"),
-				netip.MustParsePrefix("2.2.2.2/32"),
+			[]ipnet.RawEntry{
+				mustRawEntry("1.1.1.1/32"),
+				mustRawEntry("2.2.2.2/32"),
 			},
 			nil,
 		},
 		"valid/4/mapped-prefix": {
-			[]netip.Prefix{netip.MustParsePrefix("::ffff:10.10.10.10/128")},
+			[]ipnet.RawEntry{mustRawEntry("::ffff:10.10.10.10/128")},
 			ipnet.IP4,
 			true,
-			[]netip.Prefix{netip.MustParsePrefix("10.10.10.10/32")},
+			[]ipnet.RawEntry{mustRawEntry("10.10.10.10/32")},
 			nil,
 		},
 		"error/invalid": {
-			[]netip.Prefix{invalidPrefix},
+			[]ipnet.RawEntry{invalidEntry},
 			ipnet.IP6,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected IP prefix is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected raw entry is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
 			},
 		},
 		"error/6-as-4": {
-			[]netip.Prefix{netip.MustParsePrefix("1::1/64")},
+			[]ipnet.RawEntry{mustRawEntry("1::1/64")},
 			ipnet.IP4,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected IP prefix %s is not a valid IPv4 prefix; it can't be used", "1::1/64")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected raw entry %s is not a valid IPv4 address; it can't be used", "1::1/64")
 			},
 		},
 	} {
@@ -147,7 +151,7 @@ func TestStaticGetRawData(t *testing.T) {
 
 			provider := &protocol.Static{
 				ProviderName: "",
-				CIDRs:        tc.savedCIDRs,
+				RawEntries:   tc.savedRawEntries,
 			}
 			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, map[ipnet.Family]int{
 				ipnet.IP4: 32,
@@ -155,9 +159,9 @@ func TestStaticGetRawData(t *testing.T) {
 			}[tc.ipFamily])
 			require.Equal(t, tc.ok, rawData.Available)
 			if tc.ok {
-				require.Equal(t, tc.expected, rawData.CIDRs)
+				require.Equal(t, tc.expected, rawData.RawEntries)
 			} else {
-				require.Empty(t, rawData.CIDRs)
+				require.Empty(t, rawData.RawEntries)
 			}
 		})
 	}
@@ -166,7 +170,7 @@ func TestStaticGetRawData(t *testing.T) {
 func TestHasUsableRawData(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, protocol.NewKnownDetectionResult([]netip.Prefix{netip.PrefixFrom(netip.MustParseAddr("1.1.1.1"), 32)}).HasUsableRawData())
+	require.True(t, protocol.NewKnownDetectionResult([]ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("1.1.1.1"), 32)}).HasUsableRawData())
 	require.True(t, protocol.NewKnownDetectionResult(nil).HasUsableRawData())
 	require.False(t, protocol.NewUnavailableDetectionResult().HasUsableRawData())
 }
@@ -174,9 +178,9 @@ func TestHasUsableRawData(t *testing.T) {
 func TestStaticIsExplicitEmpty(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, protocol.Static{ProviderName: "", CIDRs: nil}.IsExplicitEmpty())
-	require.True(t, protocol.Static{ProviderName: "", CIDRs: []netip.Prefix{}}.IsExplicitEmpty())
-	require.False(t, protocol.Static{ProviderName: "", CIDRs: []netip.Prefix{
-		netip.MustParsePrefix("1.1.1.1/32"),
+	require.True(t, protocol.Static{ProviderName: "", RawEntries: nil}.IsExplicitEmpty())
+	require.True(t, protocol.Static{ProviderName: "", RawEntries: []ipnet.RawEntry{}}.IsExplicitEmpty())
+	require.False(t, protocol.Static{ProviderName: "", RawEntries: []ipnet.RawEntry{
+		mustRawEntry("1.1.1.1/32"),
 	}}.IsExplicitEmpty())
 }

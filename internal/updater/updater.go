@@ -24,9 +24,9 @@ func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
 }
 
 func deriveDNSAddresses(rawData provider.DetectionResult) []netip.Addr {
-	addresses := make([]netip.Addr, 0, len(rawData.CIDRs))
-	for _, cidr := range rawData.CIDRs {
-		addresses = append(addresses, cidr.Addr())
+	addresses := make([]netip.Addr, 0, len(rawData.RawEntries))
+	for _, entry := range rawData.RawEntries {
+		addresses = append(addresses, entry.Addr())
 	}
 	slices.SortFunc(addresses, netip.Addr.Compare)
 	return slices.Compact(addresses)
@@ -37,9 +37,9 @@ func deriveWAFTargets(rawData provider.DetectionResult) setter.WAFTargets {
 		return setter.NewUnavailableWAFTargets()
 	}
 
-	prefixes := make([]netip.Prefix, 0, len(rawData.CIDRs))
-	for _, cidr := range rawData.CIDRs {
-		prefixes = append(prefixes, cidr.Masked())
+	prefixes := make([]netip.Prefix, 0, len(rawData.RawEntries))
+	for _, entry := range rawData.RawEntries {
+		prefixes = append(prefixes, entry.Masked())
 	}
 	slices.SortFunc(prefixes, netip.Prefix.Compare)
 	prefixes = slices.Compact(prefixes)
@@ -56,16 +56,16 @@ func detectRawData(
 	addresses := deriveDNSAddresses(rawData)
 
 	switch {
-	case rawData.Available && len(rawData.CIDRs) == 0:
+	case rawData.Available && len(rawData.RawEntries) == 0:
 		ppfmt.Infof(pp.EmojiInternet, "The desired %s raw data set is empty", ipFamily.Describe())
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
-	// Fast path: one detected target.
+	// Fast path: one detected address.
 	case rawData.Available && len(addresses) == 1:
 		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), addresses[0])
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
-	// Multi-target path: report the full deterministic set.
+	// Multi-address path: report the full deterministic set.
 	case rawData.Available && len(addresses) > 1:
 		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
 			len(addresses), ipFamily.Describe(), pp.JoinMap(netip.Addr.String, addresses))
@@ -233,7 +233,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 	// Close all idle connections after the IP detection
 	provider.CloseIdleConnections()
 
-	// Update WAF lists only when at least one family has a usable desired target set.
+	// Update WAF lists only when at least one family has usable derived targets.
 	if shouldUpdateWAF {
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, targetsForWAF))
 	}

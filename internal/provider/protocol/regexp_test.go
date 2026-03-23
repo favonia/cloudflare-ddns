@@ -169,12 +169,12 @@ func TestRegexpGetRawData(t *testing.T) {
 			}[tc.ipFamily])
 			require.Equal(t, tc.expected.IsValid(), rawData.Available)
 			if tc.expected.IsValid() {
-				require.Equal(t, []netip.Prefix{netip.PrefixFrom(tc.expected, map[ipnet.Family]int{
+				require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(tc.expected, map[ipnet.Family]int{
 					ipnet.IP4: 32,
 					ipnet.IP6: 64,
-				}[tc.ipFamily])}, rawData.CIDRs)
+				}[tc.ipFamily])}, rawData.RawEntries)
 			} else {
-				require.Empty(t, rawData.CIDRs)
+				require.Empty(t, rawData.RawEntries)
 			}
 		})
 	}
