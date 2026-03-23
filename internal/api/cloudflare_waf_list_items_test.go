@@ -137,12 +137,17 @@ func newListListItemsHandlerSequence(t *testing.T, mux *http.ServeMux, listID ID
 func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedItems []api.WAFListCreateItem) bool {
 	t.Helper()
 
+	type comparableCreateItem struct {
+		Prefix  netip.Prefix
+		Comment string
+	}
+
 	var createRequests []cloudflare.ListItemCreateRequest
 	if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&createRequests)) { //nolint:testifylint // require is unsafe in HTTP handler goroutines.
 		return false
 	}
 
-	actualItems := make([]api.WAFListCreateItem, 0, len(createRequests))
+	actualItems := make([]comparableCreateItem, 0, len(createRequests))
 	for _, item := range createRequests {
 		if !assert.NotNil(t, item.IP) {
 			return false
@@ -158,21 +163,21 @@ func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedIt
 			require.NoError(t, addrErr)
 			prefix = netip.PrefixFrom(addr, addr.BitLen())
 		}
-		actualItems = append(actualItems, api.WAFListCreateItem{
+		actualItems = append(actualItems, comparableCreateItem{
 			Prefix:  prefix.Masked(),
 			Comment: item.Comment,
 		})
 	}
 
-	expectedNormalizedItems := make([]api.WAFListCreateItem, 0, len(expectedItems))
+	expectedComparableItems := make([]comparableCreateItem, 0, len(expectedItems))
 	for _, item := range expectedItems {
-		expectedNormalizedItems = append(expectedNormalizedItems, api.WAFListCreateItem{
+		expectedComparableItems = append(expectedComparableItems, comparableCreateItem{
 			Prefix:  item.Prefix.Masked(),
 			Comment: item.Comment,
 		})
 	}
 
-	return assert.ElementsMatch(t, expectedNormalizedItems, actualItems)
+	return assert.ElementsMatch(t, expectedComparableItems, actualItems)
 }
 
 func TestListWAFListItems(t *testing.T) {
@@ -729,7 +734,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
-				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
 			},
 			1,
 			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
@@ -742,7 +747,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			0,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
-				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
 			},
 			0, nil, 0,
 			false,
@@ -757,7 +762,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
-				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
 			},
 			0, nil, 0,
 			false,
@@ -769,7 +774,7 @@ func TestCreateWAFListItems(t *testing.T) {
 			1,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
-				{Prefix: netip.MustParsePrefix("2001:db8::/50"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
 			},
 			1,
 			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "invalid item", Comment: ""}},

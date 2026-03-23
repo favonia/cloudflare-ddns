@@ -6,7 +6,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// ParsePrefixOrIP parses a prefix or an IP.
+// ParsePrefixOrIP parses a network prefix or a bare IP address.
+// This is used for parsing Cloudflare WAF list items, not raw detection data.
 func ParsePrefixOrIP(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 	p, errPrefix := netip.ParsePrefix(s)
 	if errPrefix != nil {

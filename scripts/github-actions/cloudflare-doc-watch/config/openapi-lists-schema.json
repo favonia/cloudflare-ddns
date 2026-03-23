@@ -1,0 +1,46 @@
+{
+  "name": "Cloudflare OpenAPI lists schema",
+  "repo": "cloudflare/api-schemas",
+  "ref": "main",
+  "path": "openapi.json",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+  "json_pointers": [
+    {
+      "label": "lists_name.pattern",
+      "pointer": "/components/schemas/lists_name/pattern",
+      "expected": "^[a-zA-Z0-9_]+$"
+    },
+    {
+      "label": "lists_name.maxLength",
+      "pointer": "/components/schemas/lists_name/maxLength",
+      "expected": 50
+    },
+    {
+      "label": "lists_kind.enum",
+      "pointer": "/components/schemas/lists_kind/enum",
+      "expected": [
+        "ip",
+        "redirect",
+        "hostname",
+        "asn"
+      ]
+    },
+    {
+      "label": "lists_num_referencing_filters.readOnly",
+      "pointer": "/components/schemas/lists_num_referencing_filters/readOnly",
+      "expected": true
+    }
+  ],
+  "watch_label": "Watched OpenAPI list-schema values",
+  "reminders": [
+    "Re-check the name-rule conflict between the Lists page and the OpenAPI/JSON-object schema if the list-name pattern changes.",
+    "Re-check assumptions about available list kinds and the read-only num_referencing_filters field.",
+    "Re-check WAF list create/read handling in internal/api/cloudflare_waf.go if the schema changes."
+  ],
+  "related_paths": [
+    "internal/config/env_waf.go",
+    "internal/api/cloudflare_waf.go",
+    "README.markdown"
+  ]
+}

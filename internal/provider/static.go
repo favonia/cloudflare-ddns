@@ -62,12 +62,6 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 			)
 			return nil, false
 		}
-		if ipnet.IsNonGlobalUnicast(ip) {
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				`The %s entry (%q) of %s does not look like a global unicast address`,
-				pp.Ordinal(entryNum), rawIP, envKey,
-			)
-		}
 		ips = append(ips, ip)
 	}
 
@@ -79,7 +73,10 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 	for _, ip := range ips {
 		rawIPs = append(rawIPs, ip.String())
 	}
-	return protocol.NewStatic("static:"+strings.Join(rawIPs, ","), ips), true
+	return protocol.NewStatic(
+		"static:"+strings.Join(rawIPs, ","),
+		ipnet.LiftValidatedIPsToRawEntries(ips, DefaultRawDataPrefixLen(ipFamily)),
+	), true
 }
 
 // NewStaticEmpty creates an explicit-empty [protocol.Static] provider.

@@ -50,13 +50,16 @@ func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 	}
 }
 
-// GetIPs detects the IP address by pretending to send an UDP packet.
+// GetRawData detects the IP address by pretending to send an UDP packet.
 // (No actual UDP packets will be sent out.)
-func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
-	return p.getIPsWithDialContext(
+func (p LocalAuto) GetRawData(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
+	return p.getRawDataWithDialContext(
 		ctx,
 		ppfmt,
 		ipFamily,
+		defaultPrefixLen,
 		func(ctx context.Context, network, remoteUDPAddr string) (net.Conn, error) {
 			var dialer net.Dialer
 			return dialer.DialContext(ctx, network, remoteUDPAddr)
@@ -64,27 +67,28 @@ func (p LocalAuto) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Famil
 	)
 }
 
-func (p LocalAuto) getIPsWithDialContext(
+func (p LocalAuto) getRawDataWithDialContext(
 	ctx context.Context,
 	ppfmt pp.PP,
 	ipFamily ipnet.Family,
+	defaultPrefixLen int,
 	dialContext udpDialContext,
-) Targets {
+) DetectionResult {
 	conn, err := dialContext(ctx, ipFamily.UDPNetwork(), p.RemoteUDPAddr)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to detect a local %s address: %v", ipFamily.Describe(), err)
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 	defer conn.Close()
 
 	ip, ok := ExtractUDPAddr(ppfmt, conn.LocalAddr())
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
-	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	return NewKnownDetectionResult(rawEntries)
 }

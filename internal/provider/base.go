@@ -8,7 +8,6 @@ package provider
 
 import (
 	"context"
-	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -17,26 +16,35 @@ import (
 
 //go:generate go tool mockgen -typed -destination=../mocks/mock_provider.go -package=mocks . Provider
 
-// Targets is the runtime family-state contract exported from the provider layer.
+// DetectionResult is the runtime family-state contract exported from the provider layer.
 //
-// This is the in-memory landing of the provider target-validation and
+// This is the in-memory landing of the provider raw-data contract and
 // ownership-model design notes:
 //   - one map entry means the family is managed/in scope for this run
 //   - map absence means the family is out of scope for this run
-//   - Available=false means the family is in scope but its desired target set is
+//   - Available=false means the family is in scope but its raw data is
 //     unavailable for this run
-//   - Available=true means the family is in scope and its desired target set is
+//   - Available=true means the family is in scope and its raw data is
 //     known for this run
-type Targets = protocol.Targets
+//
+// In the lifecycle model, this carrier is detection-phase raw data, not
+// resource-specific derived targets.
+type DetectionResult = protocol.DetectionResult
 
-// NewAvailableTargets builds the managed deterministic target-set state.
-func NewAvailableTargets(ips []netip.Addr) Targets {
-	return protocol.NewAvailableTargets(ips)
+// NewKnownDetectionResult builds the managed deterministic raw-data state.
+func NewKnownDetectionResult(rawEntries []ipnet.RawEntry) DetectionResult {
+	return protocol.NewKnownDetectionResult(rawEntries)
 }
 
-// NewUnavailableTargets builds the managed temporary-unavailability state.
-func NewUnavailableTargets() Targets {
-	return protocol.NewUnavailableTargets()
+// NewUnavailableDetectionResult builds the managed temporary-unavailability state.
+func NewUnavailableDetectionResult() DetectionResult {
+	return protocol.NewUnavailableDetectionResult()
+}
+
+// DefaultRawDataPrefixLen returns the shared product default used when lifting
+// a bare detected address into detection-phase raw data for one family.
+func DefaultRawDataPrefixLen(ipFamily ipnet.Family) int {
+	return protocol.DefaultRawDataPrefixLen(ipFamily)
 }
 
 // Provider is the abstraction of a protocol to detect public IP addresses.
@@ -46,21 +54,23 @@ type Provider interface {
 
 	IsExplicitEmpty() bool
 	// IsExplicitEmpty reports whether the provider intentionally manages the
-	// requested family to an empty target set when detection succeeds.
+	// requested family to an empty result set when detection succeeds.
 
-	GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets
-	// GetIPs gets the desired targets for the requested managed network family.
+	GetRawData(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int) DetectionResult
+	// GetRawData gets the detection-phase raw data for the requested managed network family.
+	// defaultPrefixLen is the shared product default used by providers that need
+	// to lift bare detected addresses into raw data.
 	//
 	// Contract:
 	// - when Available is true:
-	//   - each returned IP is valid and matches ipFamily
-	//   - each returned IP is canonical (e.g., IPv4-mapped IPv6 is unmapped)
-	//   - each returned IP has no zone identifier and is suitable as DNS content
-	//   - the slice is sorted by netip.Addr.Compare and deduplicated so callers
-	//     can treat it as a deterministic set
+	//   - each returned raw entry is valid and matches ipFamily
+	//   - providers that lift bare addresses preserve the observed address bits
+	//     while using defaultPrefixLen as their lifted prefix length
+	//   - the slice is sorted by [ipnet.RawEntry.Compare] and deduplicated so
+	//     callers can treat it as a deterministic set
 	// - dynamic providers use Available=false when they cannot produce a usable
-	//   target set for the requested family
-	// - explicit-empty modes use Available=true with an empty IP list
+	//   raw-data set for the requested family
+	// - explicit-empty modes use Available=true with an empty list
 }
 
 // Name gets the protocol name. It returns "none" for nil.

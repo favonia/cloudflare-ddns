@@ -98,50 +98,46 @@ func TestExtractInterfaceAddr(t *testing.T) {
 	}
 }
 
-func TestSelectInterfaceIPs(t *testing.T) {
+func TestSelectAndNormalizeInterfaceIPs(t *testing.T) {
 	t.Parallel()
 
-	var invalidIPs []netip.Addr
-
 	for name, tc := range map[string]struct {
-		ipFamily      ipnet.Family
-		input         []net.Addr
-		ok            bool
-		output        []netip.Addr
-		prepareMockPP func(*mocks.MockPP)
+		ipFamily         ipnet.Family
+		defaultPrefixLen int
+		input            []net.Addr
+		output           protocol.DetectionResult
+		prepareMockPP    func(*mocks.MockPP)
 	}{
 		"ipaddr/4/multiple-global": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{
 				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("4.3.2.1"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""},
 			},
-			true,
-			[]netip.Addr{
-				netip.MustParseAddr("1.2.3.4"),
-				netip.MustParseAddr("4.3.2.1"),
-			},
+			protocol.NewKnownDetectionResult([]ipnet.RawEntry{
+				mustRawEntry("1.2.3.4/32"),
+				mustRawEntry("4.3.2.1/32"),
+			}),
 			nil,
 		},
 		"ipaddr/4/duplicates": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{
 				&net.IPAddr{IP: net.ParseIP("4.3.2.1"), Zone: ""},
 				&net.IPNet{IP: net.ParseIP("1.2.3.4"), Mask: net.CIDRMask(10, 22)},
 				&net.IPAddr{IP: net.ParseIP("::ffff:4.3.2.1"), Zone: ""},
 				&net.IPNet{IP: net.ParseIP("4.3.2.1"), Mask: net.CIDRMask(10, 22)},
 			},
-			true,
-			[]netip.Addr{
-				netip.MustParseAddr("1.2.3.4"),
-				netip.MustParseAddr("4.3.2.1"),
-			},
+			protocol.NewKnownDetectionResult([]ipnet.RawEntry{
+				mustRawEntry("1.2.3.4/32"),
+				mustRawEntry("4.3.2.1/32"),
+			}),
 			nil,
 		},
 		"ipaddr/6/mixed-scopes": {
-			ipnet.IP6,
+			ipnet.IP6, 64,
 			[]net.Addr{
 				&net.IPAddr{IP: net.ParseIP("::1"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("fe80::1"), Zone: ""},
@@ -149,10 +145,9 @@ func TestSelectInterfaceIPs(t *testing.T) {
 				&net.IPAddr{IP: net.ParseIP("2001:db8::3"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("1.2.3.4"), Zone: ""},
 			},
-			true,
-			[]netip.Addr{
-				netip.MustParseAddr("2001:db8::3"),
-			},
+			protocol.NewKnownDetectionResult([]ipnet.RawEntry{
+				mustRawEntry("2001:db8::3/64"),
+			}),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiWarning,
@@ -162,25 +157,24 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/4/no-global-matches": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("1::1"), Zone: ""}, &net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
 			},
 		},
 		"ipaddr/6/ignore-zoned": {
-			ipnet.IP6,
+			ipnet.IP6, 64,
 			[]net.Addr{
 				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: "eth0"},
 				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: ""},
 				&net.IPAddr{IP: net.ParseIP("3::3"), Zone: ""},
 			},
-			true,
-			[]netip.Addr{
-				netip.MustParseAddr("2::2"),
-				netip.MustParseAddr("3::3"),
-			},
+			protocol.NewKnownDetectionResult([]ipnet.RawEntry{
+				mustRawEntry("2::2/64"),
+				mustRawEntry("3::3/64"),
+			}),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiWarning,
@@ -190,12 +184,12 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/6/all-zoned": {
-			ipnet.IP6,
+			ipnet.IP6, 64,
 			[]net.Addr{
 				&net.IPAddr{IP: net.ParseIP("1::1"), Zone: "eth0"},
 				&net.IPAddr{IP: net.ParseIP("2::2"), Zone: "eth1"},
 			},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(
@@ -217,17 +211,17 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/4/loopback": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("127.0.0.1"), Zone: ""}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find any global unicast %s address among unicast addresses assigned to interface %s", "IPv4", "iface")
 			},
 		},
 		"ipaddr/4/255.255.255.255": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("255.255.255.255"), Zone: ""}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiError,
@@ -237,9 +231,9 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/4/239.1.1.1": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("239.1.1.1"), Zone: ""}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiImpossible,
@@ -249,9 +243,9 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/6/ff05::2": {
-			ipnet.IP6,
+			ipnet.IP6, 64,
 			[]net.Addr{&net.IPAddr{IP: net.ParseIP("ff05::2"), Zone: "site"}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(
 					pp.EmojiImpossible,
@@ -261,9 +255,9 @@ func TestSelectInterfaceIPs(t *testing.T) {
 			},
 		},
 		"ipaddr/4/dummy": {
-			ipnet.IP4,
+			ipnet.IP4, 32,
 			[]net.Addr{&Dummy{}},
-			false, invalidIPs,
+			protocol.NewUnavailableDetectionResult(),
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unexpected address data %q of type %T found in interface %s", "dummy/string", &Dummy{}, "iface")
 			},
@@ -278,8 +272,7 @@ func TestSelectInterfaceIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			output, ok := protocol.SelectInterfaceIPs(mockPP, "iface", tc.ipFamily, tc.input)
-			require.Equal(t, tc.ok, ok)
+			output := protocol.SelectAndNormalizeInterfaceIPs(mockPP, "iface", tc.ipFamily, tc.defaultPrefixLen, tc.input)
 			require.Equal(t, tc.output, output)
 		})
 	}
@@ -294,7 +287,7 @@ func TestLocalWithInterfaceIsExplicitEmpty(t *testing.T) {
 	}.IsExplicitEmpty())
 }
 
-func TestLocalWithInterfaceGetIPs(t *testing.T) {
+func TestLocalWithInterfaceGetRawData(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
@@ -339,9 +332,16 @@ func TestLocalWithInterfaceGetIPs(t *testing.T) {
 				ProviderName:  "",
 				InterfaceName: tc.interfaceName,
 			}
-			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
-			require.Equal(t, tc.ok, targets.Available)
-			require.Equal(t, tc.expected, targets.IPs)
+			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, map[ipnet.Family]int{
+				ipnet.IP4: 32,
+				ipnet.IP6: 64,
+			}[tc.ipFamily])
+			require.Equal(t, tc.ok, rawData.Available)
+			want := liftedRawEntries(tc.ipFamily, tc.expected)
+			if len(want) == 0 {
+				want = nil
+			}
+			require.Equal(t, want, rawData.RawEntries)
 		})
 	}
 }

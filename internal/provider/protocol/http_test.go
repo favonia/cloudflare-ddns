@@ -31,7 +31,7 @@ func TestHTTPName(t *testing.T) {
 	require.Equal(t, "very secret name", p.Name())
 }
 
-func TestHTTPGetIPs(t *testing.T) {
+func TestHTTPGetRawData(t *testing.T) {
 	t.Parallel()
 
 	ip4 := netip.MustParseAddr("1.2.3.4")
@@ -164,13 +164,18 @@ func TestHTTPGetIPs(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			targets := provider.GetIPs(ctx, mockPP, tc.ipFamily)
-			require.Equal(t, tc.expected.IsValid(), targets.Available)
+			rawData := provider.GetRawData(ctx, mockPP, tc.ipFamily, map[ipnet.Family]int{
+				ipnet.IP4: 32,
+				ipnet.IP6: 64,
+			}[tc.ipFamily])
+			require.Equal(t, tc.expected.IsValid(), rawData.Available)
 			if tc.expected.IsValid() {
-				require.Len(t, targets.IPs, 1)
-				require.Equal(t, tc.expected, targets.IPs[0])
+				require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(tc.expected, map[ipnet.Family]int{
+					ipnet.IP4: 32,
+					ipnet.IP6: 64,
+				}[tc.ipFamily])}, rawData.RawEntries)
 			} else {
-				require.Empty(t, targets.IPs)
+				require.Empty(t, rawData.RawEntries)
 			}
 		})
 	}

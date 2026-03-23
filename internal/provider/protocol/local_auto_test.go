@@ -87,7 +87,7 @@ func TestExtractUDPAddr(t *testing.T) {
 	}
 }
 
-func TestLocalAuteGetIPs(t *testing.T) {
+func TestLocalAuteGetRawData(t *testing.T) {
 	t.Parallel()
 
 	invalidIP := netip.Addr{}
@@ -140,13 +140,18 @@ func TestLocalAuteGetIPs(t *testing.T) {
 				ProviderName:  "",
 				RemoteUDPAddr: tc.addr,
 			}
-			targets := provider.GetIPs(context.Background(), mockPP, tc.ipFamily)
-			require.Equal(t, tc.ok, targets.Available)
+			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, map[ipnet.Family]int{
+				ipnet.IP4: 32,
+				ipnet.IP6: 64,
+			}[tc.ipFamily])
+			require.Equal(t, tc.ok, rawData.Available)
 			if tc.ok {
-				require.Len(t, targets.IPs, 1)
-				require.Equal(t, tc.expected, targets.IPs[0])
+				require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(tc.expected, map[ipnet.Family]int{
+					ipnet.IP4: 32,
+					ipnet.IP6: 64,
+				}[tc.ipFamily])}, rawData.RawEntries)
 			} else {
-				require.Empty(t, targets.IPs)
+				require.Empty(t, rawData.RawEntries)
 			}
 		})
 	}

@@ -82,8 +82,8 @@ func (t Family) Matches(ip netip.Addr) bool {
 }
 
 // DescribeAddressIssue reports whether the address is unsuitable as a DNS/WAF target.
-// If unsuitable, it returns a description (e.g., "a loopback address") and true.
-// The caller is responsible for formatting the full message with context.
+// If unsuitable, it returns a noun phrase suitable for "… is %s" (e.g., "a loopback address")
+// and true. The caller is responsible for formatting the full message with context.
 func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 	switch {
 	case ip.IsUnspecified():
@@ -98,14 +98,26 @@ func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 		return "a link-local address", true
 	case ip.Zone() != "":
 		return "an address with a zone identifier", true
+	case ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}):
+		return "a broadcast address", true
+	case !ip.IsGlobalUnicast():
+		// Safety net: all known non-global-unicast cases are handled above.
+		// If this fires, consider adding an explicit case.
+		return "not a global unicast address", true
 	default:
 		return "", false
 	}
 }
 
-// IsNonGlobalUnicast reports whether the address is valid but not global unicast.
-func IsNonGlobalUnicast(ip netip.Addr) bool {
-	return !ip.IsGlobalUnicast()
+func checkAddress(t Family, ppfmt pp.PP, ip netip.Addr) bool {
+	if desc, bad := DescribeAddressIssue(ip); bad {
+		ppfmt.Noticef(pp.EmojiError,
+			"Detected %s address %s is %s",
+			t.Describe(), ip.String(), desc,
+		)
+		return false
+	}
+	return true
 }
 
 // normalizeDetectedIP normalizes an IP into the requested family.
@@ -124,7 +136,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 			ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", ip.String())
 			return netip.Addr{}, false
 		}
-		// Turns an IPv4-mapped IPv6 address back to an IPv4 address
+		// Turns an IPv4-mapped IPv6 address back to an IPv4 address.
 		ip = ip.Unmap()
 
 	case IP6:
@@ -147,28 +159,8 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		return netip.Addr{}, false
 	}
 
-	if desc, bad := DescribeAddressIssue(ip); bad {
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s address %s is %s",
-			t.Describe(), ip.String(), desc,
-		)
+	if !checkAddress(t, ppfmt, ip) {
 		return netip.Addr{}, false
-	}
-
-	// Note that netip.IsGlobalUnicast is not equivalent to "public Internet-routable".
-	// For example, private/internal ranges can still be global unicast.
-	//
-	// Current exceptional case after the filters above: IPv4 limited broadcast
-	// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in IPv4 mode).
-	// In practice, the checks above and IsGlobalUnicast should cover all useful
-	// DDNS address classes; this warning path is kept as a future-proof guard in
-	// case Go or IP standards introduce new edge classes.
-	if IsNonGlobalUnicast(ip) {
-		ppfmt.Noticef(
-			pp.EmojiWarning,
-			`Detected %s address %s does not look like a global unicast address; still using it`,
-			t.Describe(), ip.String(),
-		)
 	}
 
 	return ip, true

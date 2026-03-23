@@ -1,0 +1,25 @@
+{
+  "name": "Cloudflare WAF list deletion rule",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/docs/waf/tools/lists/index.mdx",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/waf/tools/lists/index.mdx",
+  "page_url": "https://developers.cloudflare.com/waf/tools/lists/index.md",
+  "watched_heading": "## Final remarks",
+  "line_filters": [
+    "^You can only delete a list when there are no rules"
+  ],
+  "expected_lines": [
+    "You can only delete a list when there are no rules (enabled or disabled) that reference that list."
+  ],
+  "watch_label": "Watched list-deletion rule",
+  "reminders": [
+    "Re-check any cleanup or operator guidance that assumes referenced WAF lists cannot be deleted.",
+    "Re-check whether Cloudflare still treats disabled rules as blocking list deletion too."
+  ],
+  "related_paths": [
+    "internal/api/cloudflare_waf.go",
+    "README.markdown"
+  ]
+}

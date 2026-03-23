@@ -75,9 +75,15 @@ type LifecycleConfig struct {
 type UpdateConfig struct {
 	// Provider contains only managed families in the built config.
 	// Map absence means the family is out of scope for this updater.
-	Provider           map[ipnet.Family]provider.Provider
-	Domains            map[ipnet.Family][]domain.Domain
-	WAFLists           []api.WAFList
+	Provider map[ipnet.Family]provider.Provider
+	Domains  map[ipnet.Family][]domain.Domain
+	WAFLists []api.WAFList
+	// DefaultPrefixLen stores the internal-only derivation default prefix length
+	// for each family when lifting bare detected addresses into raw data.
+	//
+	// They are runtime config, not raw config: the current env surface does not
+	// expose them yet.
+	DefaultPrefixLen   map[ipnet.Family]int
 	TTL                api.TTL
 	Proxied            map[domain.Domain]bool
 	RecordComment      string

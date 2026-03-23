@@ -7,7 +7,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
 // LocalWithInterface detects IP addresses assigned to a network interface.
@@ -55,15 +54,17 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 	}
 }
 
-// SelectInterfaceIPs takes a list of unicast [net.Addr] and keeps all
-// matching global-unicast addresses in canonical sorted order.
-func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipFamily ipnet.Family, addrs []net.Addr) ([]netip.Addr, bool) {
+// SelectAndNormalizeInterfaceIPs takes a list of unicast [net.Addr], keeps all
+// matching global-unicast addresses, and lifts them to [DetectionResult].
+func SelectAndNormalizeInterfaceIPs(
+	ppfmt pp.PP, iface string, ipFamily ipnet.Family, defaultPrefixLen int, addrs []net.Addr,
+) DetectionResult {
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
 		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
 		// Fail fast on malformed interface data instead of proceeding with a partial snapshot.
 		if !ok {
-			return nil, false
+			return NewUnavailableDetectionResult()
 		}
 		// net.Interface.Addrs documents that it returns only unicast interface addresses.
 		// A multicast address here means this assumption is broken and should be reported.
@@ -73,7 +74,7 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipFamily ipnet.Family, addrs 
 					"(expected unicast addresses only); please report this at %s",
 				ip.String(), iface, pp.IssueReportingURL,
 			)
-			return nil, false
+			return NewUnavailableDetectionResult()
 		}
 		// Keep only addresses in the requested family that are usable as
 		// unicast targets. Note that IsGlobalUnicast still includes private
@@ -97,30 +98,32 @@ func SelectInterfaceIPs(ppfmt pp.PP, iface string, ipFamily ipnet.Family, addrs 
 		ppfmt.Noticef(pp.EmojiError,
 			"Failed to find any global unicast %s address among unicast addresses assigned to interface %s",
 			ipFamily.Describe(), iface)
-		return nil, false
+		return NewUnavailableDetectionResult()
 	}
 
-	return sliceutil.SortAndCompact(ips, netip.Addr.Compare), true
+	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, ips)
+	if !ok {
+		return NewUnavailableDetectionResult()
+	}
+	return NewKnownDetectionResult(rawEntries)
 }
 
-// GetIPs detects IP addresses from unicast addresses assigned to a network
+// GetRawData detects raw data from unicast addresses assigned to a network
 // interface.
-func (p LocalWithInterface) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+func (p LocalWithInterface) GetRawData(
+	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
 	iface, err := net.InterfaceByName(p.InterfaceName)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to find an interface named %q: %v", p.InterfaceName, err)
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	addrs, err := iface.Addrs()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
-	ips, ok := SelectInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, addrs)
-	if !ok {
-		return NewUnavailableTargets()
-	}
-	return NewAvailableTargets(ips)
+	return SelectAndNormalizeInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, defaultPrefixLen, addrs)
 }

@@ -2,28 +2,29 @@ package protocol
 
 import (
 	"context"
-	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Static returns the same set of IPs.
+// Static returns the same set of raw IP addresses with prefix lengths.
 type Static struct {
 	// Name of the detection protocol.
 	ProviderName string
 
-	// The IPs. Config-side constructors canonicalize these for stable naming.
-	// Runtime normalization still runs in GetIPs because the provider contract is
-	// enforced per requested family at the point the targets are consumed.
-	IPs []netip.Addr
+	// The raw IP addresses with prefix lengths. Config-side constructors
+	// canonicalize these for stable naming. Runtime normalization still runs
+	// in GetRawData because the provider contract is enforced per requested
+	// family at the point the raw data is consumed.
+	RawEntries []ipnet.RawEntry
 }
 
-// NewStatic creates a static provider with a defensive copy of ips.
-func NewStatic(providerName string, ips []netip.Addr) Static {
+// NewStatic creates a static provider with a defensive copy of rawEntries.
+func NewStatic(providerName string, rawEntries []ipnet.RawEntry) Static {
 	return Static{
 		ProviderName: providerName,
-		IPs:          append([]netip.Addr(nil), ips...),
+		RawEntries:   slices.Clone(rawEntries),
 	}
 }
 
@@ -34,14 +35,16 @@ func (p Static) Name() string {
 
 // IsExplicitEmpty reports whether the provider intentionally clears the family.
 func (p Static) IsExplicitEmpty() bool {
-	return len(p.IPs) == 0
+	return len(p.RawEntries) == 0
 }
 
-// GetIPs returns the IPs as a deterministic set.
-func (p Static) GetIPs(_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
-	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, p.IPs)
+// GetRawData returns the static raw entries as deterministic raw data.
+func (p Static) GetRawData(
+	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, _ int,
+) DetectionResult {
+	rawEntries, ok := ipFamily.NormalizeDetectedRawEntries(ppfmt, p.RawEntries)
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	return NewKnownDetectionResult(rawEntries)
 }

@@ -1,0 +1,54 @@
+{
+  "name": "Cloudflare OpenAPI DNS record schema",
+  "repo": "cloudflare/api-schemas",
+  "ref": "main",
+  "path": "openapi.json",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+  "json_pointers": [
+    {
+      "label": "dns-records_ttl.anyOf[0].minimum",
+      "pointer": "/components/schemas/dns-records_ttl/anyOf/0/minimum",
+      "expected": 30
+    },
+    {
+      "label": "dns-records_ttl.anyOf[0].maximum",
+      "pointer": "/components/schemas/dns-records_ttl/anyOf/0/maximum",
+      "expected": 86400
+    },
+    {
+      "label": "dns-records_ttl.anyOf[1].enum",
+      "pointer": "/components/schemas/dns-records_ttl/anyOf/1/enum",
+      "expected": [
+        1
+      ]
+    },
+    {
+      "label": "dns-records_proxied.type",
+      "pointer": "/components/schemas/dns-records_proxied/type",
+      "expected": "boolean"
+    },
+    {
+      "label": "dns-records_comment.type",
+      "pointer": "/components/schemas/dns-records_comment/type",
+      "expected": "string"
+    },
+    {
+      "label": "dns-records_tags.items.description",
+      "pointer": "/components/schemas/dns-records_tags/items/description",
+      "expected": "Individual tag of the form name:value (the name must consist of only letters, numbers, underscores and hyphens)"
+    }
+  ],
+  "watch_label": "Watched OpenAPI DNS-record schema values",
+  "reminders": [
+    "Re-check TTL validation and operator guidance if the OpenAPI TTL bounds change.",
+    "Re-check DNS tag semantics if the schema changes the documented name:value form or allowed tag-name characters.",
+    "Re-check proxied/comment/tag handling in internal/api/cloudflare_records.go if these field types or descriptions change."
+  ],
+  "related_paths": [
+    "internal/config/env_base.go",
+    "internal/api/ttl.go",
+    "internal/api/cloudflare_records.go",
+    "internal/api/tags/tags.go"
+  ]
+}

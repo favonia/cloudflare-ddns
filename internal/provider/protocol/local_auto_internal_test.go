@@ -57,7 +57,7 @@ func (*stubPP) Suppress(pp.ID)                              {}
 func (*stubPP) InfoOncef(pp.ID, pp.Emoji, string, ...any)   {}
 func (*stubPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any) {}
 
-func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
+func TestLocalAutoGetRawDataWithDialContextSuccess(t *testing.T) {
 	t.Parallel()
 
 	mockPP := &stubPP{noticeCalls: nil}
@@ -67,10 +67,11 @@ func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
 	}
 	expected := netip.MustParseAddr("10.0.0.8")
 
-	targets := provider.getIPsWithDialContext(
+	rawData := provider.getRawDataWithDialContext(
 		context.Background(),
 		mockPP,
 		ipnet.IP4,
+		32,
 		func(_ context.Context, network, remoteUDPAddr string) (net.Conn, error) {
 			require.Equal(t, ipnet.IP4.UDPNetwork(), network)
 			require.Equal(t, provider.RemoteUDPAddr, remoteUDPAddr)
@@ -81,11 +82,11 @@ func TestLocalAutoGetIPsWithDialContextSuccess(t *testing.T) {
 		},
 	)
 
-	require.True(t, targets.Available)
-	require.Equal(t, []netip.Addr{expected}, targets.IPs)
+	require.True(t, rawData.Available)
+	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(expected, 32)}, rawData.RawEntries)
 }
 
-func TestLocalAutoGetIPsWithDialContextInvalidLocalAddr(t *testing.T) {
+func TestLocalAutoGetRawDataWithDialContextInvalidLocalAddr(t *testing.T) {
 	t.Parallel()
 
 	mockPP := &stubPP{noticeCalls: nil}
@@ -94,24 +95,25 @@ func TestLocalAutoGetIPsWithDialContextInvalidLocalAddr(t *testing.T) {
 		RemoteUDPAddr: "198.51.100.10:53",
 	}
 
-	targets := provider.getIPsWithDialContext(
+	rawData := provider.getRawDataWithDialContext(
 		context.Background(),
 		mockPP,
 		ipnet.IP4,
+		32,
 		func(context.Context, string, string) (net.Conn, error) {
 			return stubConn{localAddr: dummyAddr{}, closeErr: nil}, nil
 		},
 	)
 
-	require.False(t, targets.Available)
-	require.Nil(t, targets.IPs)
+	require.False(t, rawData.Available)
+	require.Nil(t, rawData.RawEntries)
 	require.Len(t, mockPP.noticeCalls, 1)
 	require.Equal(t, pp.EmojiImpossible, mockPP.noticeCalls[0].emoji)
 	require.Equal(t, "Unexpected UDP source address data %q of type %T", mockPP.noticeCalls[0].format)
 	require.Equal(t, []any{"dummy/string", dummyAddr{}}, mockPP.noticeCalls[0].args)
 }
 
-func TestLocalAutoGetIPsWithDialContextDialFailure(t *testing.T) {
+func TestLocalAutoGetRawDataWithDialContextDialFailure(t *testing.T) {
 	t.Parallel()
 
 	mockPP := &stubPP{noticeCalls: nil}
@@ -120,17 +122,18 @@ func TestLocalAutoGetIPsWithDialContextDialFailure(t *testing.T) {
 		RemoteUDPAddr: "198.51.100.10:53",
 	}
 
-	targets := provider.getIPsWithDialContext(
+	rawData := provider.getRawDataWithDialContext(
 		context.Background(),
 		mockPP,
 		ipnet.IP6,
+		64,
 		func(context.Context, string, string) (net.Conn, error) {
 			return nil, errDialFailed
 		},
 	)
 
-	require.False(t, targets.Available)
-	require.Nil(t, targets.IPs)
+	require.False(t, rawData.Available)
+	require.Nil(t, rawData.RawEntries)
 	require.Len(t, mockPP.noticeCalls, 1)
 	require.Equal(t, pp.EmojiError, mockPP.noticeCalls[0].emoji)
 	require.Equal(t, "Failed to detect a local %s address: %v", mockPP.noticeCalls[0].format)

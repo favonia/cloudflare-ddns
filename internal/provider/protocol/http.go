@@ -50,12 +50,14 @@ func (HTTP) IsExplicitEmpty() bool {
 	return false
 }
 
-// GetIPs detects the IP address by using the HTTP response directly.
-func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+// GetRawData detects the IP address by using the HTTP response directly.
+func (p HTTP) GetRawData(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
 	url, found := p.URL[ipFamily]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	transportIP := ipFamily
@@ -65,12 +67,12 @@ func (p HTTP) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Ta
 
 	ip, ok := getIPFromHTTP(ctx, ppfmt, transportIP, url)
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
-	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	return NewKnownDetectionResult(rawEntries)
 }

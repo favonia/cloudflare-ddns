@@ -191,22 +191,24 @@ func (DNSOverHTTPS) IsExplicitEmpty() bool {
 	return false
 }
 
-// GetIPs detects the IP address by DNS over HTTPS.
-func (p DNSOverHTTPS) GetIPs(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family) Targets {
+// GetRawData detects the IP address by DNS over HTTPS.
+func (p DNSOverHTTPS) GetRawData(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
+) DetectionResult {
 	param, found := p.Param[ipFamily]
 	if !found {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
 	ip, ok := getIPFromDNS(ctx, ppfmt, ipFamily, param.URL, param.Name, param.Class)
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
 
-	ips, ok := ipFamily.NormalizeDetectedIPs(ppfmt, []netip.Addr{ip})
+	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
 	if !ok {
-		return NewUnavailableTargets()
+		return NewUnavailableDetectionResult()
 	}
-	return NewAvailableTargets(ips)
+	return NewKnownDetectionResult(rawEntries)
 }

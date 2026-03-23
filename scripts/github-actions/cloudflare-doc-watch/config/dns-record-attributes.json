@@ -1,0 +1,47 @@
+{
+  "name": "Cloudflare DNS record attributes",
+  "repo": "cloudflare/cloudflare-docs",
+  "ref": "production",
+  "path": "src/content/docs/dns/manage-dns-records/reference/record-attributes.mdx",
+  "snapshot_date": "2026-03-22",
+  "history_url": "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/dns/manage-dns-records/reference/record-attributes.mdx",
+  "page_url": "https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/index.md",
+  "watched_heading": "# Record attributes",
+  "line_filters": [
+    "^### Record comments$",
+    "^\\| Availability \\| Yes \\| Yes \\| Yes \\| Yes \\|$",
+    "^\\| Character limit \\| 100 \\| 500 \\| 500 \\| 500 \\|$",
+    "^\\| Comments per record \\| 1 \\| 1 \\| 1 \\| 1 \\|$",
+    "^### Record tags$",
+    "^\\| Availability \\| No \\| Yes \\| Yes \\| Yes \\|$",
+    "^\\| Name character limit \\(everything before the colon\\) \\| N/A \\| 32 \\| 32 \\| 32 \\|$",
+    "^\\| Value character limit \\(everything after the colon\\) \\| N/A \\| 100 \\| 100 \\| 100 \\|$",
+    "^\\| Tags per record \\| N/A \\| 20 \\| 20 \\| 20 \\|$",
+    "^Comments are treated as",
+    "^Tags are treated as an array of `name:value` pairs"
+  ],
+  "expected_lines": [
+    "### Record comments",
+    "| Availability | Yes | Yes | Yes | Yes |",
+    "| Character limit | 100 | 500 | 500 | 500 |",
+    "| Comments per record | 1 | 1 | 1 | 1 |",
+    "### Record tags",
+    "| Availability | No | Yes | Yes | Yes |",
+    "| Name character limit (everything before the colon) | N/A | 32 | 32 | 32 |",
+    "| Value character limit (everything after the colon) | N/A | 100 | 100 | 100 |",
+    "| Tags per record | N/A | 20 | 20 | 20 |",
+    "Comments are treated as [graphic Unicode characters ↗](https://en.wikipedia.org/wiki/Graphic%5Fcharacter), meaning that they are case-sensitive and do not have any character limitations. However, comments do not support newline (`\\n`) or carriage return (`\\r`) characters.",
+    "Tags are treated as an array of `name:value` pairs, meaning that tag names are not case-sensitive and can only contain letters, numbers, `-`, and `_`. For tag values, the same character restrictions apply as for comments."
+  ],
+  "watch_label": "Watched record-attribute lines",
+  "reminders": [
+    "Re-check DNS comment and tag reconciliation if Cloudflare changes attribute availability or limits.",
+    "Re-check whether tag names remain case-insensitive and constrained to name:value form.",
+    "Re-check whether comments still reject newline and carriage-return characters."
+  ],
+  "related_paths": [
+    "internal/api/tags/tags.go",
+    "internal/api/cloudflare_records.go",
+    "README.markdown"
+  ]
+}
