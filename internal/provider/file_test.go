@@ -11,6 +11,23 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
+func TestMustNewFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("absolute", func(t *testing.T) {
+		t.Parallel()
+		p := provider.MustNewFile("/etc/ips.txt")
+		require.Equal(t, "file:/etc/ips.txt", provider.Name(p))
+	})
+
+	t.Run("relative", func(t *testing.T) {
+		t.Parallel()
+		require.Panics(t, func() {
+			provider.MustNewFile("relative/path.txt")
+		})
+	})
+}
+
 func TestNewFile(t *testing.T) {
 	t.Parallel()
 
