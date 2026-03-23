@@ -66,7 +66,7 @@ func LiftValidatedIPsToRawEntries(ips []netip.Addr, prefixLen int) []RawEntry {
 func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry, bool) {
 	if !entry.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
-			`Detected raw entry is not valid; this should not happen and please report it at %s`,
+			`Detected address is not valid; this should not happen and please report it at %s`,
 			pp.IssueReportingURL,
 		)
 		return RawEntry{}, false
@@ -86,7 +86,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 			// prefix. We reuse that arithmetic here for canonicalization.
 			if bits < 96 {
 				ppfmt.Noticef(pp.EmojiError,
-					"Detected raw entry %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96; it can't be used",
+					"Detected address %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
 					entry.String(),
 				)
 				return RawEntry{}, false
@@ -95,7 +95,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 			bits -= 96
 		default:
 			ppfmt.Noticef(pp.EmojiError,
-				"Detected raw entry %s is not a valid IPv4 address; it can't be used",
+				"Detected address %s is not a valid IPv4 address and cannot be used",
 				entry.String(),
 			)
 			return RawEntry{}, false
@@ -103,14 +103,14 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 	case IP6:
 		if !addr.Is6() {
 			ppfmt.Noticef(pp.EmojiError,
-				"Detected raw entry %s is not a valid IPv6 address; it can't be used",
+				"Detected address %s is not a valid IPv6 address and cannot be used",
 				entry.String(),
 			)
 			return RawEntry{}, false
 		}
 		if addr.Is4In6() {
 			ppfmt.Noticef(pp.EmojiError,
-				"Detected raw entry %s is an IPv4-mapped IPv6 address; it can't be used",
+				"Detected address %s is an IPv4-mapped IPv6 address and cannot be used",
 				entry.String(),
 			)
 			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,

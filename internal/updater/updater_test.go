@@ -460,7 +460,7 @@ func TestUpdateIPs(t *testing.T) {
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{})),
-					p.EXPECT().Infof(pp.EmojiInternet, "The desired %s raw data set is empty", "IPv4"),
+					p.EXPECT().Infof(pp.EmojiInternet, "No %s addresses were detected", "IPv4"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{}, params).Return(setter.ResponseUpdated),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{}, nil), wafItemComment).Return(setter.ResponseUpdated),

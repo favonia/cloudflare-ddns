@@ -319,7 +319,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			ipnet.IP4, singleton(invalidEntry),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected raw entry is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"singleton/4-native": {
@@ -342,7 +342,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected raw entry %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96; it can't be used",
+					"Detected address %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
 					"::ffff:10.10.10.10/80",
 				)
 			},
@@ -352,7 +352,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"Detected raw entry %s is not a valid IPv4 address; it can't be used",
+					"Detected address %s is not a valid IPv4 address and cannot be used",
 					"2001:db8::1/64",
 				)
 			},
@@ -378,7 +378,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiError,
-						"Detected raw entry %s is an IPv4-mapped IPv6 address; it can't be used",
+						"Detected address %s is an IPv4-mapped IPv6 address and cannot be used",
 						"::ffff:10.10.10.10/128",
 					),
 					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,

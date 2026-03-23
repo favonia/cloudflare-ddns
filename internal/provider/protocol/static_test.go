@@ -128,7 +128,7 @@ func TestStaticGetRawData(t *testing.T) {
 			ipnet.IP6,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected raw entry is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected address is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
 			},
 		},
 		"error/6-as-4": {
@@ -136,7 +136,7 @@ func TestStaticGetRawData(t *testing.T) {
 			ipnet.IP4,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected raw entry %s is not a valid IPv4 address; it can't be used", "1::1/64")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected address %s is not a valid IPv4 address and cannot be used", "1::1/64")
 			},
 		},
 	} {
