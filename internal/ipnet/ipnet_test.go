@@ -170,9 +170,9 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 		},
 		"singleton/4-255.255.255.255": {
 			ipnet.IP4, singleton(mustIP("255.255.255.255")),
-			true, singleton(mustIP("255.255.255.255")),
+			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiWarning, "Detected %s address %s does not look like a global unicast address; still using it", "IPv4", "255.255.255.255")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "255.255.255.255", "not a global unicast address")
 			},
 		},
 		"singleton/6-invalid": {
@@ -357,13 +357,13 @@ func TestNormalizeDetectedPrefixes(t *testing.T) {
 				)
 			},
 		},
-		"singleton/4-broadcast-warning": {
+		"singleton/4-broadcast-rejected": {
 			ipnet.IP4, singleton(mustPrefix("255.255.255.255/32")),
-			true, singleton(mustPrefix("255.255.255.255/32")),
+			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiWarning,
-					"Detected %s prefix %s does not look like a global unicast prefix; still using it",
-					"IPv4", "255.255.255.255/32",
+				m.EXPECT().Noticef(pp.EmojiError,
+					"Detected %s address %s is %s",
+					"IPv4", "255.255.255.255", "not a global unicast address",
 				)
 			},
 		},
@@ -458,7 +458,7 @@ func TestDescribeAddressIssue(t *testing.T) {
 		"zone":                 {mustIP("1::2%eth0"), "an address with a zone identifier", true},
 		"global-unicast/4":     {mustIP("1.1.1.1"), "", false},
 		"global-unicast/6":     {mustIP("2001:db8::1"), "", false},
-		"broadcast":            {mustIP("255.255.255.255"), "", false},
+		"broadcast":            {mustIP("255.255.255.255"), "not a global unicast address", true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

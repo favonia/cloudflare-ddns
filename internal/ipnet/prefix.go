@@ -111,26 +111,11 @@ func normalizeDetectedPrefix(t Family, ppfmt pp.PP, prefix netip.Prefix) (netip.
 		return netip.Prefix{}, false
 	}
 
-	normalized := netip.PrefixFrom(addr, bits)
-	switch desc, disposition := checkDetectedAddr(addr); disposition {
-	default:
-		fallthrough
-	case detectedAddrOK:
-		return normalized, true
-	case detectedAddrReject:
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s prefix %s is %s",
-			t.Describe(), prefix.String(), desc,
-		)
+	if !checkAddress(t, ppfmt, addr) {
 		return netip.Prefix{}, false
-	case detectedAddrWarnNonGlobalUnicast:
-		ppfmt.Noticef(
-			pp.EmojiWarning,
-			`Detected %s prefix %s does not look like a global unicast prefix; still using it`,
-			t.Describe(), prefix.String(),
-		)
-		return normalized, true
 	}
+
+	return netip.PrefixFrom(addr, bits), true
 }
 
 // NormalizeDetectedPrefixes normalizes a list of detected raw-data CIDRs while

@@ -98,45 +98,32 @@ func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 		return "a link-local address", true
 	case ip.Zone() != "":
 		return "an address with a zone identifier", true
+	case !ip.IsGlobalUnicast():
+		// Note that netip.IsGlobalUnicast is not equivalent to "public Internet-routable".
+		// For example, private/internal ranges can still be global unicast.
+		//
+		// Current exceptional case after the filters above: IPv4 limited broadcast
+		// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in IPv4 mode).
+		return "not a global unicast address", true
 	default:
 		return "", false
 	}
 }
 
+func checkAddress(t Family, ppfmt pp.PP, ip netip.Addr) bool {
+	if desc, bad := DescribeAddressIssue(ip); bad {
+		ppfmt.Noticef(pp.EmojiError,
+			"Detected %s address %s is %s",
+			t.Describe(), ip.String(), desc,
+		)
+		return false
+	}
+	return true
+}
+
 // IsNonGlobalUnicast reports whether the address is valid but not global unicast.
 func IsNonGlobalUnicast(ip netip.Addr) bool {
 	return !ip.IsGlobalUnicast()
-}
-
-type detectedAddrDisposition int
-
-const (
-	detectedAddrOK detectedAddrDisposition = iota
-	detectedAddrWarnNonGlobalUnicast
-	detectedAddrReject
-)
-
-// checkDetectedAddr checks a family-canonicalized detected address for generic
-// suitability. The returned issue description is fatal; a non-global-unicast
-// address should only trigger a warning.
-func checkDetectedAddr(addr netip.Addr) (string, detectedAddrDisposition) {
-	if issue, bad := DescribeAddressIssue(addr); bad {
-		return issue, detectedAddrReject
-	}
-
-	// Note that netip.IsGlobalUnicast is not equivalent to "public Internet-routable".
-	// For example, private/internal ranges can still be global unicast.
-	//
-	// Current exceptional case after the filters above: IPv4 limited broadcast
-	// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in IPv4 mode).
-	// In practice, the checks above and IsGlobalUnicast should cover all useful
-	// DDNS address classes; this warning path is kept as a future-proof guard in
-	// case Go or IP standards introduce new edge classes.
-	if IsNonGlobalUnicast(addr) {
-		return "", detectedAddrWarnNonGlobalUnicast
-	}
-
-	return "", detectedAddrOK
 }
 
 // normalizeDetectedIP normalizes an IP into the requested family.
@@ -178,25 +165,11 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 		return netip.Addr{}, false
 	}
 
-	switch desc, disposition := checkDetectedAddr(ip); disposition {
-	default:
-		fallthrough
-	case detectedAddrOK:
-		return ip, true
-	case detectedAddrReject:
-		ppfmt.Noticef(pp.EmojiError,
-			"Detected %s address %s is %s",
-			t.Describe(), ip.String(), desc,
-		)
+	if !checkAddress(t, ppfmt, ip) {
 		return netip.Addr{}, false
-	case detectedAddrWarnNonGlobalUnicast:
-		ppfmt.Noticef(
-			pp.EmojiWarning,
-			`Detected %s address %s does not look like a global unicast address; still using it`,
-			t.Describe(), ip.String(),
-		)
-		return ip, true
 	}
+
+	return ip, true
 }
 
 // NormalizeDetectedIPs normalizes a list of detected IPs.

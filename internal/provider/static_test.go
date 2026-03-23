@@ -31,7 +31,7 @@ func TestMustStatic(t *testing.T) {
 		{ipnet.IP4, "0.0.0.0", false},
 		{ipnet.IP4, "169.254.1.1", false},
 		{ipnet.IP6, "::ffff:1.1.1.1", false},
-		{ipnet.IP4, "255.255.255.255", true},
+		{ipnet.IP4, "255.255.255.255", false},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
