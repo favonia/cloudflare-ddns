@@ -83,13 +83,13 @@ func TestRegexpGetRawData(t *testing.T) {
 		"4to6": {
 			ipnet.IP6, server4via6.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP6, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv6 address; it can't be used", ip4.String())
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip4.String(), "not a valid IPv6 address")
 			},
 		},
 		"6to4": {
 			ipnet.IP4, server6via4.URL, regexp.MustCompile(`<<(.*)>>`), ipnet.IP4, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is not a valid IPv4 address; it can't be used", ip6.String())
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip6.String(), "not a valid IPv4 address")
 			},
 		},
 		"4/illformed": {

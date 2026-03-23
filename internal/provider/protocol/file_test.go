@@ -120,8 +120,8 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s has a zone identifier, which is not allowed",
-					1, "1::1%eth0", "/ips.txt")
+					"Line %d (%q) of %s is %s",
+					1, "1::1%eth0", "/ips.txt", "an address with a zone identifier")
 			},
 		},
 		"is4in6": {
@@ -129,9 +129,14 @@ func TestFileGetRawData(t *testing.T) {
 			ipnet.IP6,
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s is an IPv4-mapped IPv6 address",
-					1, "::ffff:1.1.1.1", "/ips.txt")
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserError,
+						"Line %d (%q) of %s is %s",
+						1, "::ffff:1.1.1.1", "/ips.txt", "an IPv4-mapped IPv6 address"),
+					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
+						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s",
+						pp.IssueReportingURL),
+				)
 			},
 		},
 		"family-mismatch": {
@@ -140,8 +145,8 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s is not a valid %s address",
-					1, "2001:db8::1", "/ips.txt", "IPv4")
+					"Line %d (%q) of %s is %s",
+					1, "2001:db8::1", "/ips.txt", "not a valid IPv4 address")
 			},
 		},
 		"loopback": {

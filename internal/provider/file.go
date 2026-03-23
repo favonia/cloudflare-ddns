@@ -1,9 +1,9 @@
 package provider
 
 import (
-	"path/filepath"
 	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
@@ -11,9 +11,9 @@ import (
 // NewFile creates a [protocol.File] provider that reads IPs from a file on every detection cycle.
 // The path must be absolute.
 func NewFile(ppfmt pp.PP, key string, path string) (Provider, bool) {
-	if !filepath.IsAbs(path) {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"The path %q in %s is not absolute; use an absolute path", path, key)
+	fixedPath, ok := file.RequireAbsolutePath(ppfmt, path)
+	if !ok {
+		ppfmt.Noticef(pp.EmojiHint, "Try setting %s=file:%s", key, fixedPath)
 		return nil, false
 	}
 

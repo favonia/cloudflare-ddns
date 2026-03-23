@@ -26,9 +26,13 @@ func TestNewFile(t *testing.T) {
 		"relative": {
 			"relative/path.txt", false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The path %q in %s is not absolute; use an absolute path",
-					"relative/path.txt", "IP4_PROVIDER")
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserError,
+						"The path %q is not absolute; to use an absolute path, prefix it with /",
+						"relative/path.txt"),
+					m.EXPECT().Noticef(pp.EmojiHint,
+						"Try setting %s=file:%s", "IP4_PROVIDER", "/relative/path.txt"),
+				)
 			},
 		},
 	} {

@@ -56,42 +56,24 @@ func (p File) GetRawData(
 				"Failed to parse line %d (%q) of %s as an IP address", lineNum, rawIP, p.Path)
 			return NewUnavailableDetectionResult()
 		}
-		if ip.Zone() != "" {
+		normalized, issue, is4in6Hint, ok := ipnet.ValidateAndNormalizeIP(ipFamily, ip)
+		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s has a zone identifier, which is not allowed",
-				lineNum, rawIP, p.Path)
+				"Line %d (%q) of %s is %s", lineNum, rawIP, p.Path, issue)
+			if is4in6Hint {
+				ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
+					"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
+						"It cannot be used for routing IPv6 traffic. "+
+						"If you need to use it for DNS, please open an issue at %s",
+					pp.IssueReportingURL)
+			}
 			return NewUnavailableDetectionResult()
 		}
-		if ipFamily == ipnet.IP6 && ip.Is4In6() {
-			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s is an IPv4-mapped IPv6 address",
-				lineNum, rawIP, p.Path)
-			return NewUnavailableDetectionResult()
-		}
-		ip = ip.Unmap()
-		if !ipFamily.Matches(ip) {
-			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s is not a valid %s address",
-				lineNum, rawIP, p.Path, ipFamily.Describe())
-			return NewUnavailableDetectionResult()
-		}
-		if desc, bad := ipnet.DescribeAddressIssue(ip); bad {
-			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s is %s",
-				lineNum, rawIP, p.Path, desc)
-			return NewUnavailableDetectionResult()
-		}
-		ips = append(ips, ip)
+		ips = append(ips, normalized)
 	}
 
 	slices.SortFunc(ips, netip.Addr.Compare)
 	ips = slices.Compact(ips)
 
-	rawEntries := ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen)
-
-	normalized, ok := ipFamily.NormalizeDetectedRawEntries(ppfmt, rawEntries)
-	if !ok {
-		return NewUnavailableDetectionResult()
-	}
-	return NewKnownDetectionResult(normalized)
+	return NewKnownDetectionResult(ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen))
 }

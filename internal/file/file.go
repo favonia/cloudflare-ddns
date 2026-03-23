@@ -3,6 +3,8 @@ package file
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io/fs"
 	"iter"
 	"os"
@@ -19,30 +21,54 @@ const LinuxRoot string = "/"
 // and can be modified to a virtual file system for testing.
 var FS = os.DirFS(LinuxRoot) //nolint:gochecknoglobals
 
-// toRelPath converts an absolute path to a path relative to [LinuxRoot] for use with [FS].
-// It rejects non-absolute paths with an actionable error because the updater targets
-// Docker and systemd environments where the working directory is arbitrary.
-func toRelPath(ppfmt pp.PP, path string) (string, bool) {
+// errNotAbsolute is returned by processPath when the path is not absolute.
+var errNotAbsolute = errors.New("path is not absolute")
+
+// processPath validates that path is absolute and converts it to a relative form for [FS].
+// If the path is not absolute, fixedPath holds the suggested correction ("/"+path)
+// and the error is [errNotAbsolute]. If absolute, relPath is for use with [FS]
+// and fixedPath equals path. No messaging — callers handle error reporting.
+func processPath(path string) (relPath string, fixedPath string, err error) {
 	if !filepath.IsAbs(path) {
-		ppfmt.Noticef(pp.EmojiUserError, "The path %q is not absolute; use an absolute path", path)
-		return "", false
+		return "", "/" + path, errNotAbsolute
 	}
 
 	// os.DirFS(...).Open() does not accept absolute paths
-	relPath, err := filepath.Rel(LinuxRoot, path)
+	relPath, err = filepath.Rel(LinuxRoot, path)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible, `%q is an absolute path but does not start with %q: %v`, path, LinuxRoot, err)
-		return "", false
+		return "", path, fmt.Errorf("%q is an absolute path but does not start with %q: %w", path, LinuxRoot, err)
 	}
 
-	return relPath, true
+	return relPath, path, nil
+}
+
+// RequireAbsolutePath checks that path is absolute. On failure, it prints a generic error
+// and returns the suggested fix ("/"+path). Callers may use fixedPath for context-specific hints.
+func RequireAbsolutePath(ppfmt pp.PP, path string) (fixedPath string, ok bool) {
+	_, fixedPath, err := processPath(path)
+	if err != nil {
+		if errors.Is(err, errNotAbsolute) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The path %q is not absolute; to use an absolute path, prefix it with /", path)
+		} else {
+			ppfmt.Noticef(pp.EmojiImpossible, "%v", err)
+		}
+		return fixedPath, false
+	}
+	return fixedPath, true
 }
 
 // ReadString reads the content of the file at path.
 // The path must be absolute; relative paths are rejected.
 func ReadString(ppfmt pp.PP, path string) (string, bool) {
-	relPath, ok := toRelPath(ppfmt, path)
-	if !ok {
+	relPath, _, err := processPath(path)
+	if err != nil {
+		if errors.Is(err, errNotAbsolute) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The path %q is not absolute; to use an absolute path, prefix it with /", path)
+		} else {
+			ppfmt.Noticef(pp.EmojiImpossible, "%v", err)
+		}
 		return "", false
 	}
 
@@ -60,8 +86,14 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 // The path must be absolute; relative paths are rejected.
 // If the file cannot be read, lines is nil and ok is false.
 func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool) {
-	relPath, ok := toRelPath(ppfmt, path)
-	if !ok {
+	relPath, _, err := processPath(path)
+	if err != nil {
+		if errors.Is(err, errNotAbsolute) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The path %q is not absolute; to use an absolute path, prefix it with /", path)
+		} else {
+			ppfmt.Noticef(pp.EmojiImpossible, "%v", err)
+		}
 		return nil, false
 	}
 

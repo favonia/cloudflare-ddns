@@ -75,60 +75,35 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 	addr := entry.Addr()
 	bits := entry.PrefixLen()
 
-	switch t {
-	case IP4:
-		switch {
-		case addr.Is4():
-		case addr.Is4In6():
-			// Inspired by RFC 6887's PCP FILTER semantics: when an IPv4 prefix
-			// is encoded in the ::ffff:0:0/96 mapped form, the encoded prefix
-			// length is the IPv4 prefix length plus the fixed 96-bit mapping
-			// prefix. We reuse that arithmetic here for canonicalization.
-			if bits < 96 {
-				ppfmt.Noticef(pp.EmojiError,
-					"Detected address %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
-					entry.String(),
-				)
-				return RawEntry{}, false //nolint:exhaustruct
-			}
-			addr = addr.Unmap()
-			bits -= 96
-		default:
+	// Raw-entry-specific: prefix-length adjustment for IPv4-mapped IPv6 in IPv4 family.
+	// Inspired by RFC 6887's PCP FILTER semantics: when an IPv4 prefix is encoded
+	// in the ::ffff:0:0/96 mapped form, the encoded prefix length is the IPv4
+	// prefix length plus the fixed 96-bit mapping prefix.
+	if t == IP4 && addr.Is4In6() {
+		if bits < 96 {
 			ppfmt.Noticef(pp.EmojiError,
-				"Detected address %s is not a valid IPv4 address and cannot be used",
+				"Detected address %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
 				entry.String(),
 			)
 			return RawEntry{}, false //nolint:exhaustruct
 		}
-	case IP6:
-		if !addr.Is6() {
-			ppfmt.Noticef(pp.EmojiError,
-				"Detected address %s is not a valid IPv6 address and cannot be used",
-				entry.String(),
-			)
-			return RawEntry{}, false //nolint:exhaustruct
-		}
-		if addr.Is4In6() {
-			ppfmt.Noticef(pp.EmojiError,
-				"Detected address %s is an IPv4-mapped IPv6 address and cannot be used",
-				entry.String(),
-			)
+		bits -= 96
+	}
+
+	normalized, issue, is4in6Hint, ok := ValidateAndNormalizeIP(t, addr)
+	if !ok {
+		ppfmt.Noticef(pp.EmojiError, "Detected address %s is %s", entry.String(), issue)
+		if is4in6Hint {
 			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 				"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
 					"It cannot be used for routing IPv6 traffic. "+
 					"If you need to use it for DNS, please open an issue at %s",
 				pp.IssueReportingURL)
-			return RawEntry{}, false //nolint:exhaustruct
 		}
-	default:
 		return RawEntry{}, false //nolint:exhaustruct
 	}
 
-	if !checkAddress(t, ppfmt, addr) {
-		return RawEntry{}, false //nolint:exhaustruct
-	}
-
-	return RawEntryFrom(addr, bits), true
+	return RawEntryFrom(normalized, bits), true
 }
 
 // NormalizeDetectedRawEntries normalizes a list of detected raw-data IP

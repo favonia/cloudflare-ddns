@@ -207,9 +207,14 @@ func TestReadProvider(t *testing.T) {
 		"static:is4in6": {
 			ipnet.IP6, true, "static:::ffff:1.1.1.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry (%q) of %s is an IPv4-mapped IPv6 address`,
-					"1st", "::ffff:1.1.1.1", key)
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserError,
+						`The %s entry (%q) of %s is %s`,
+						"1st", "::ffff:1.1.1.1", key, "an IPv4-mapped IPv6 address"),
+					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
+						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s",
+						pp.IssueReportingURL),
+				)
 			},
 		},
 		"static:1::1%eth0": {
@@ -217,8 +222,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The %s entry (%q) of %s has a zone identifier, which is not allowed`,
-					"1st", "1::1%eth0", key,
+					`The %s entry (%q) of %s is %s`,
+					"1st", "1::1%eth0", key, "not a valid IPv4 address",
 				)
 			},
 		},
@@ -227,8 +232,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The %s entry (%q) of %s is not a valid %s address`,
-					"1st", "2001:db8::1", key, "IPv4",
+					`The %s entry (%q) of %s is %s`,
+					"1st", "2001:db8::1", key, "not a valid IPv4 address",
 				)
 			},
 		},
@@ -251,7 +256,13 @@ func TestReadProvider(t *testing.T) {
 		"file:relative": {
 			ipnet.IP4, true, "file:relative/path.txt", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The path %q in %s is not absolute; use an absolute path", "relative/path.txt", key)
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserError,
+						"The path %q is not absolute; to use an absolute path, prefix it with /",
+						"relative/path.txt"),
+					m.EXPECT().Noticef(pp.EmojiHint,
+						"Try setting %s=file:%s", key, "/relative/path.txt"),
+				)
 			},
 		},
 		"ipify": {

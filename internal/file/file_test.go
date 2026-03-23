@@ -104,7 +104,7 @@ func TestReadStringRelativePath(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Noticef(pp.EmojiUserError,
-		"The path %q is not absolute; use an absolute path", "relative/path.txt")
+		"The path %q is not absolute; to use an absolute path, prefix it with /", "relative/path.txt")
 	content, ok := file.ReadString(mockPP, "relative/path.txt")
 	require.False(t, ok)
 	require.Empty(t, content)
@@ -240,7 +240,7 @@ func TestReadLinesRelativePath(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Noticef(pp.EmojiUserError,
-		"The path %q is not absolute; use an absolute path", "relative.txt")
+		"The path %q is not absolute; to use an absolute path, prefix it with /", "relative.txt")
 	lines, ok := file.ReadLines(mockPP, "relative.txt")
 	require.False(t, ok)
 	require.Nil(t, lines)
