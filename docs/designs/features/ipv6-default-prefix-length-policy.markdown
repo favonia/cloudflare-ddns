@@ -1,4 +1,4 @@
-# Design Note: IPv6 Default Prefix Policy
+# Design Note: IPv6 Default Prefix Length Policy
 
 Read when: changing the default meaning of bare detected IPv6 addresses, including IPv6 lifting defaults, WAF IPv6 projection defaults, or exact-address versus network-presence semantics.
 

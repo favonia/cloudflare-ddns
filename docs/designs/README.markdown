@@ -26,7 +26,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 - [`features/provider-raw-data-contract.markdown`](features/provider-raw-data-contract.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
-- [`features/ipv6-default-prefix-policy.markdown`](features/ipv6-default-prefix-policy.markdown): read when changing the default meaning of bare detected IPv6 addresses, including IPv6 lifting defaults or WAF exact-address versus network-presence semantics.
+- [`features/ipv6-default-prefix-length-policy.markdown`](features/ipv6-default-prefix-length-policy.markdown): read when changing the default meaning of bare detected IPv6 addresses, including IPv6 lifting defaults or WAF exact-address versus network-presence semantics.
 
 ### Resource-specific instantiations
 
