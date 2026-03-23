@@ -391,23 +391,28 @@ func TestLiftValidatedIPsToRawEntries(t *testing.T) {
 			[]netip.Addr{}, 24, nil,
 		},
 		"single-4": {
-			[]netip.Addr{mustIP("10.0.0.1")}, 24,
+			[]netip.Addr{mustIP("10.0.0.1")},
+			24,
 			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/24")},
 		},
 		"single-6": {
-			[]netip.Addr{mustIP("2001:db8::1")}, 48,
+			[]netip.Addr{mustIP("2001:db8::1")},
+			48,
 			[]ipnet.RawEntry{mustRawEntry("2001:db8::1/48")},
 		},
 		"multiple": {
-			[]netip.Addr{mustIP("10.0.0.1"), mustIP("10.0.0.2"), mustIP("10.0.0.3")}, 32,
+			[]netip.Addr{mustIP("10.0.0.1"), mustIP("10.0.0.2"), mustIP("10.0.0.3")},
+			32,
 			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/32"), mustRawEntry("10.0.0.2/32"), mustRawEntry("10.0.0.3/32")},
 		},
 		"full-prefix-4": {
-			[]netip.Addr{mustIP("192.168.1.1")}, 32,
+			[]netip.Addr{mustIP("192.168.1.1")},
+			32,
 			[]ipnet.RawEntry{mustRawEntry("192.168.1.1/32")},
 		},
 		"zero-prefix": {
-			[]netip.Addr{mustIP("10.0.0.1")}, 0,
+			[]netip.Addr{mustIP("10.0.0.1")},
+			0,
 			[]ipnet.RawEntry{mustRawEntry("10.0.0.1/0")},
 		},
 	} {
