@@ -62,12 +62,6 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 			)
 			return nil, false
 		}
-		if ipnet.IsNonGlobalUnicast(ip) {
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				`The %s entry (%q) of %s does not look like a global unicast address`,
-				pp.Ordinal(entryNum), rawIP, envKey,
-			)
-		}
 		ips = append(ips, ip)
 	}
 

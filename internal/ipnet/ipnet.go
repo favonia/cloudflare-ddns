@@ -82,8 +82,8 @@ func (t Family) Matches(ip netip.Addr) bool {
 }
 
 // DescribeAddressIssue reports whether the address is unsuitable as a DNS/WAF target.
-// If unsuitable, it returns a description (e.g., "a loopback address") and true.
-// The caller is responsible for formatting the full message with context.
+// If unsuitable, it returns a noun phrase suitable for "… is %s" (e.g., "a loopback address")
+// and true. The caller is responsible for formatting the full message with context.
 func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 	switch {
 	case ip.IsUnspecified():
@@ -98,12 +98,11 @@ func DescribeAddressIssue(ip netip.Addr) (string, bool) {
 		return "a link-local address", true
 	case ip.Zone() != "":
 		return "an address with a zone identifier", true
+	case ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}):
+		return "a broadcast address", true
 	case !ip.IsGlobalUnicast():
-		// Note that netip.IsGlobalUnicast is not equivalent to "public Internet-routable".
-		// For example, private/internal ranges can still be global unicast.
-		//
-		// Current exceptional case after the filters above: IPv4 limited broadcast
-		// 255.255.255.255 (including ::ffff:255.255.255.255 before Unmap in IPv4 mode).
+		// Safety net: all known non-global-unicast cases are handled above.
+		// If this fires, consider adding an explicit case.
 		return "not a global unicast address", true
 	default:
 		return "", false
@@ -119,11 +118,6 @@ func checkAddress(t Family, ppfmt pp.PP, ip netip.Addr) bool {
 		return false
 	}
 	return true
-}
-
-// IsNonGlobalUnicast reports whether the address is valid but not global unicast.
-func IsNonGlobalUnicast(ip netip.Addr) bool {
-	return !ip.IsGlobalUnicast()
 }
 
 // normalizeDetectedIP normalizes an IP into the requested family.

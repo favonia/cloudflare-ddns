@@ -172,7 +172,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP4, singleton(mustIP("255.255.255.255")),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "255.255.255.255", "not a global unicast address")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected %s address %s is %s", "IPv4", "255.255.255.255", "a broadcast address")
 			},
 		},
 		"singleton/6-invalid": {
@@ -363,7 +363,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
 					"Detected %s address %s is %s",
-					"IPv4", "255.255.255.255", "not a global unicast address",
+					"IPv4", "255.255.255.255", "a broadcast address",
 				)
 			},
 		},
@@ -458,32 +458,13 @@ func TestDescribeAddressIssue(t *testing.T) {
 		"zone":                 {mustIP("1::2%eth0"), "an address with a zone identifier", true},
 		"global-unicast/4":     {mustIP("1.1.1.1"), "", false},
 		"global-unicast/6":     {mustIP("2001:db8::1"), "", false},
-		"broadcast":            {mustIP("255.255.255.255"), "not a global unicast address", true},
+		"broadcast":            {mustIP("255.255.255.255"), "a broadcast address", true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			desc, bad := ipnet.DescribeAddressIssue(tc.ip)
 			require.Equal(t, tc.bad, bad)
 			require.Equal(t, tc.description, desc)
-		})
-	}
-}
-
-func TestIsNonGlobalUnicast(t *testing.T) {
-	t.Parallel()
-	for name, tc := range map[string]struct {
-		ip       netip.Addr
-		expected bool
-	}{
-		"global-unicast/4": {mustIP("1.1.1.1"), false},
-		"global-unicast/6": {mustIP("2001:db8::1"), false},
-		"broadcast":        {mustIP("255.255.255.255"), true},
-		"loopback":         {mustIP("127.0.0.1"), true},
-		"unspecified":      {mustIP("0.0.0.0"), true},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tc.expected, ipnet.IsNonGlobalUnicast(tc.ip))
 		})
 	}
 }

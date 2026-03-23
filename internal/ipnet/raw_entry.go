@@ -69,7 +69,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 			`Detected address is not valid; this should not happen and please report it at %s`,
 			pp.IssueReportingURL,
 		)
-		return RawEntry{}, false
+		return RawEntry{}, false //nolint:exhaustruct
 	}
 
 	addr := entry.Addr()
@@ -89,7 +89,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 					"Detected address %s is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
 					entry.String(),
 				)
-				return RawEntry{}, false
+				return RawEntry{}, false //nolint:exhaustruct
 			}
 			addr = addr.Unmap()
 			bits -= 96
@@ -98,7 +98,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 				"Detected address %s is not a valid IPv4 address and cannot be used",
 				entry.String(),
 			)
-			return RawEntry{}, false
+			return RawEntry{}, false //nolint:exhaustruct
 		}
 	case IP6:
 		if !addr.Is6() {
@@ -106,7 +106,7 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 				"Detected address %s is not a valid IPv6 address and cannot be used",
 				entry.String(),
 			)
-			return RawEntry{}, false
+			return RawEntry{}, false //nolint:exhaustruct
 		}
 		if addr.Is4In6() {
 			ppfmt.Noticef(pp.EmojiError,
@@ -118,14 +118,14 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 					"It cannot be used for routing IPv6 traffic. "+
 					"If you need to use it for DNS, please open an issue at %s",
 				pp.IssueReportingURL)
-			return RawEntry{}, false
+			return RawEntry{}, false //nolint:exhaustruct
 		}
 	default:
-		return RawEntry{}, false
+		return RawEntry{}, false //nolint:exhaustruct
 	}
 
 	if !checkAddress(t, ppfmt, addr) {
-		return RawEntry{}, false
+		return RawEntry{}, false //nolint:exhaustruct
 	}
 
 	return RawEntryFrom(addr, bits), true
