@@ -245,3 +245,147 @@ func TestReadLinesRelativePath(t *testing.T) {
 	require.False(t, ok)
 	require.Nil(t, lines)
 }
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadLinesNoAccess(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	useMemFS(t, fstest.MapFS{
+		"dir/file.txt": &fstest.MapFile{
+			Data:    []byte("data"),
+			Mode:    0,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/dir", gomock.Any())
+	lines, ok := file.ReadLines(mockPP, "/dir")
+	require.False(t, ok)
+	require.Nil(t, lines)
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadLinesEarlyBreak(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	useMemFS(t, fstest.MapFS{
+		"many.txt": &fstest.MapFile{
+			Data:    []byte("first\nsecond\nthird\nfourth\n"),
+			Mode:    0o644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	lines, ok := file.ReadLines(mockPP, "/many.txt")
+	require.True(t, ok)
+
+	// Only consume the first line, then break
+	var got []struct {
+		num  int
+		text string
+	}
+	for num, text := range lines {
+		got = append(got, struct {
+			num  int
+			text string
+		}{num, text})
+		break
+	}
+	require.Equal(t, []struct {
+		num  int
+		text string
+	}{{1, "first"}}, got)
+}
+
+func TestRequireAbsolutePathAbsolute(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	fixedPath, ok := file.RequireAbsolutePath(mockPP, "/some/path")
+	require.True(t, ok)
+	require.Equal(t, "/some/path", fixedPath)
+}
+
+func TestRequireAbsolutePathRelative(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Noticef(pp.EmojiUserError,
+		"The path %q is not absolute; to use an absolute path, prefix it with /", "relative/path")
+	fixedPath, ok := file.RequireAbsolutePath(mockPP, "relative/path")
+	require.False(t, ok)
+	require.Equal(t, "/relative/path", fixedPath)
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadStringEmpty(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	useMemFS(t, fstest.MapFS{
+		"empty.txt": &fstest.MapFile{
+			Data:    []byte(""),
+			Mode:    0o644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	content, ok := file.ReadString(mockPP, "/empty.txt")
+	require.True(t, ok)
+	require.Empty(t, content)
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadStringWhitespaceOnly(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	useMemFS(t, fstest.MapFS{
+		"spaces.txt": &fstest.MapFile{
+			Data:    []byte("   \n\t\n  "),
+			Mode:    0o644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	content, ok := file.ReadString(mockPP, "/spaces.txt")
+	require.True(t, ok)
+	require.Empty(t, content)
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadLinesIteratorReuse(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	useMemFS(t, fstest.MapFS{
+		"reuse.txt": &fstest.MapFile{
+			Data:    []byte("alpha\nbeta\n"),
+			Mode:    0o644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	lines, ok := file.ReadLines(mockPP, "/reuse.txt")
+	require.True(t, ok)
+
+	expected := []struct {
+		num  int
+		text string
+	}{
+		{1, "alpha"},
+		{2, "beta"},
+	}
+
+	// Iterate twice to confirm the iterator is reusable
+	require.Equal(t, expected, collectLines(lines))
+	require.Equal(t, expected, collectLines(lines))
+}
