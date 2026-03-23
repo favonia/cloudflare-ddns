@@ -204,11 +204,11 @@ After the testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` 
 
 ⚠️ `static:<ip1>,<ip2>,...` is an advanced provider that supplies a fixed set of IP addresses. It is useful for tests, debugging, and other setups where you want to feed a known address set into the updater, but it is not the normal long-running DDNS path.
 
-#### 🧪 Test a new setup with changing IPs
+#### 🧪 Test a new setup with changing IPs (unreleased)
 
-Use this when you want to validate the updater with simulated IP changes, using the experimental `file:` provider.
+Use this when you want to validate the updater with simulated IP changes by reading test addresses from local files.
 
-Point the updater at dedicated test domain names and feed it file paths containing explicit test IPs:
+Create `ip4.txt` and `ip6.txt` with one IP address per line (blank lines and `#` comments are ignored). Then, point the updater at dedicated test domain names and feed it the file paths:
 
 ```yaml
 environment:
@@ -220,9 +220,9 @@ volumes:
   - $PWD/ip6.txt:/ip6.txt
 ```
 
-After the updater creates or updates the expected records, change the content of `ip4.txt` and/or `ip6.txt` for updates.
+After the updater creates or updates the expected records, change the addresses in `ip4.txt` or `ip6.txt` to simulate further IP changes. The updater should pick up new content and reconcile the DNS records.
 
-After the testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values.
+After testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to your production values and remove the test files and `volumes:` entries.
 
 #### Test how the updater reconciles manual DNS edits
 
