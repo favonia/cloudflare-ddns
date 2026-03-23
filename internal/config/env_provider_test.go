@@ -34,6 +34,7 @@ func TestReadProvider(t *testing.T) {
 		static        = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
 		staticMulti   = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
 		staticEmpty   = provider.NewStaticEmpty()
+		fileProvider  = provider.MustNewFile("/etc/ips.txt")
 	)
 
 	for name, tc := range map[string]struct {
@@ -235,6 +236,22 @@ func TestReadProvider(t *testing.T) {
 			ipnet.IP4, true, "   static: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s=static: must be followed by at least one IP address`, key)
+			},
+		},
+		"file:/etc/ips.txt": {
+			ipnet.IP4, true, "   file:/etc/ips.txt ", false, "", trace, fileProvider, true,
+			nil,
+		},
+		"file:": {
+			ipnet.IP4, true, "   file: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=file: must be followed by a file path`, key)
+			},
+		},
+		"file:relative": {
+			ipnet.IP4, true, "file:relative/path.txt", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The path %q in %s is not absolute; use an absolute path", "relative/path.txt", key)
 			},
 		},
 		"ipify": {

@@ -175,6 +175,21 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 		}
 		*field = p
 		return true
+	case len(parts) == 2 && parts[0] == "file":
+		if parts[1] == "" {
+			ppfmt.Noticef(
+				pp.EmojiUserError,
+				`%s=file: must be followed by a file path`,
+				key,
+			)
+			return false
+		}
+		p, ok := provider.NewFile(ppfmt, key, parts[1])
+		if !ok {
+			return false
+		}
+		*field = p
+		return true
 	case len(parts) == 1 && parts[0] == "none":
 		*field = nil
 		return true
