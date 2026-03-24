@@ -1,4 +1,7 @@
 // vim: nowrap
+
+// Linux only: TestLocalWithInterfaceGetRawData calls net.InterfaceByName("lo"),
+// and the loopback interface name "lo" is Linux-specific (e.g., macOS uses "lo0").
 //go:build linux
 
 package protocol_test

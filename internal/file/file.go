@@ -6,38 +6,34 @@ import (
 	"io/fs"
 	"iter"
 	"os"
-	"path/filepath"
+	pathpkg "path"
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// LinuxRoot is the root in Linux.
-const LinuxRoot string = "/"
-
 // FS represents the file system in use. By default, it points to the actual file system,
 // and can be modified to a virtual file system for testing.
-var FS = os.DirFS(LinuxRoot) //nolint:gochecknoglobals
+var FS = os.DirFS("/") //nolint:gochecknoglobals
 
-// processPath validates that path is absolute and converts it to a relative form for [FS].
-// If the path is not absolute, fixedPath holds the suggested correction ("/"+path)
-// and ok is false. If absolute, relPath is for use with [FS] and fixedPath equals path.
+// processPath validates that path starts with "/" and converts it to a relative form for [FS].
+// If the path does not start with "/", fixedPath holds the suggested correction ("/"+path)
+// and ok is false. If it starts with "/", relPath is for use with [FS] and fixedPath equals path.
+//
+// This uses [path.Clean] (forward-slash only) instead of filepath.IsAbs and filepath.Rel
+// so that the behavior is OS-independent: the app targets Linux (Docker), and all valid
+// paths start with "/". Using the path package also lets tests run without a //go:build unix tag.
 func processPath(ppfmt pp.PP, path string) (relPath string, fixedPath string, ok bool) {
-	if !filepath.IsAbs(path) {
+	if !strings.HasPrefix(path, "/") {
 		ppfmt.Noticef(pp.EmojiUserError,
 			"The path %q is not absolute; to use an absolute path, prefix it with /", path)
 		return "", "/" + path, false
 	}
 
-	// os.DirFS(...).Open() does not accept absolute paths
-	relPath, err := filepath.Rel(LinuxRoot, path)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible,
-			"%q is an absolute path but does not start with %q: %v", path, LinuxRoot, err)
-		return "", path, false
-	}
-
-	return relPath, path, true
+	// pathpkg.Clean normalizes redundant slashes, dot segments, and the POSIX-permitted
+	// "//path" prefix (which Linux treats identically to "/path") into a canonical form.
+	// os.DirFS(...).Open() does not accept absolute paths, so strip the leading "/".
+	return pathpkg.Clean(path)[1:], path, true
 }
 
 // RequireAbsolutePath checks that path is absolute. On failure, it prints a generic error
