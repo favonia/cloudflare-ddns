@@ -56,41 +56,32 @@ This phase covers immediate start, future scheduling, and shutdown requests.
 
 ## Detection
 
-Detection obtains the raw per-family data for the current round.
+Detection yields per-resource reconciliation intents for the current round. A reconciliation intent expresses what ownership and observation together lead to; the actual action is decided by the reconciliation algorithm.
 
-Detection yields family-scoped reconciliation intent for the current round in raw form.
+If a resource is out of scope, there is only one intent:
 
-If a family is out of scope, there is only one intent: preserve existing managed content of that family.
+- `preserve`: preserve existing content
 
-If a family is in scope, detection yields one of three raw-data states:
+If a resource is in scope, detection yields one of these three intents:
 
-- raw data unavailable for this run
-- known empty raw data
-- known non-empty raw data
+- `abort`: raw data is unavailable for this run; normal update is aborted and further handling is up to reconciliation
+- `clear`: known empty raw data
+- `update`: known non-empty raw data
 
-The concrete raw-data representation is an implementation choice, not an axiom of this lifecycle model.
+The current concrete raw-data representation is a set of IP addresses with prefix lengths. The default prefix lengths are 32 for bare IPv4 observations and 64 for bare IPv6 observations. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 
-Detection semantics and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection trust assumptions are owned by [Network Security Model](network-security-model.markdown).
+Concrete detection and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection security is owned by [Network Security Model](network-security-model.markdown).
 
 ## Derivation
 
-Derivation transforms raw data into the resource-specific target shape consumed by reconciliation.
+Derivation transforms raw data into the resource-specific target state consumed by reconciliation.
 
-Today, the semantic raw data is a set of IP addresses with prefix lengths.
-
-DNS derivation turns each raw IP address with prefix length into a DNS address target by forgetting the prefix length.
-
-WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
-
-The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
-
-The current code realizes only the canonical singleton special case of this model, so those derivations are currently implemented through an address-only representation instead of one that also carries prefix lengths.
-
-Future work may insert non-identity derivation without changing the surrounding lifecycle.
+- DNS derivation turns each raw IP address with prefix length into a DNS address target by forgetting the prefix length.
+- WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
 
 ## Reconciliation
 
-Reconciliation consumes the derived resource-specific target state plus the effective ownership result and mutates managed remote state toward the desired result.
+Reconciliation consumes reconciliation intent and derived resource-specific target state, and mutates managed remote state toward the desired result.
 
 The shared reconciliation algorithm is owned by [Reconciliation Algorithm](reconciliation-algorithm.markdown). Resource-specific ownership filters and instantiations are owned by [Ownership Model](ownership-model.markdown), [DNS Ownership Instantiation](managed-record-ownership.markdown), and [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
 
@@ -98,7 +89,7 @@ The shared reconciliation algorithm is owned by [Reconciliation Algorithm](recon
 
 Cleanup is shutdown-time mutation after the process has decided to stop.
 
-Cleanup deletes the targets that are eligible for shutdown deletion.
+Cleanup deletes the resources that are eligible for shutdown deletion.
 
 Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and instantiated for WAF in [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
 

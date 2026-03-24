@@ -1,13 +1,9 @@
 package provider
 
 import (
-	"regexp"
-
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
-
-var fieldIP = regexp.MustCompile(`(?m:^ip=(.*)$)`)
 
 // NewCloudflareTrace creates a specialized CloudflareTrace provider.
 // It parses https://api.cloudflare.com/cdn-cgi/trace.
@@ -18,11 +14,11 @@ func NewCloudflareTrace() Provider {
 // NewCloudflareTraceCustom creates a specialized CloudflareTrace provider
 // with a specific URL.
 func NewCloudflareTraceCustom(url string) Provider {
-	return protocol.Regexp{
+	return protocol.CloudflareTrace{
 		ProviderName: "cloudflare.trace",
-		Param: map[ipnet.Family]protocol.RegexpParam{
-			ipnet.IP4: {url, fieldIP},
-			ipnet.IP6: {url, fieldIP},
+		URL: map[ipnet.Family]string{
+			ipnet.IP4: url,
+			ipnet.IP6: url,
 		},
 	}
 }

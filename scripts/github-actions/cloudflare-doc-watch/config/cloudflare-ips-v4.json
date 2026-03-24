@@ -1,0 +1,15 @@
+{
+  "name": "Cloudflare IP ranges (IPv4)",
+  "page_url": "https://www.cloudflare.com/ips-v4/",
+  "expected_file": "../../../internal/ipnet/cloudflare-ips-v4.txt",
+  "watch_label": "Watched IPv4 ranges",
+  "reminders": [
+    "Re-check the Cloudflare IPv4 ranges used by the trace IP validator.",
+    "Update internal/provider/protocol/cloudflare-ips-v4.txt if ranges changed."
+  ],
+  "related_paths": [
+    "internal/ipnet/cloudflare-ips-v4.txt",
+    "internal/ipnet/cloudflare_ranges.go",
+    "internal/provider/protocol/cloudflare_trace.go"
+  ]
+}

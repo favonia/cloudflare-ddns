@@ -21,10 +21,24 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
+// testIPRejecter is a test helper that always rejects with a message containing the IP.
+type testIPRejecter struct{}
+
+func (testIPRejecter) RejectRawIP(ip netip.Addr) (bool, string) {
+	return false, "rejected: " + ip.String()
+}
+
+// testIPAccepter is a test helper that always accepts.
+type testIPAccepter struct{}
+
+func (testIPAccepter) RejectRawIP(_ netip.Addr) (bool, string) {
+	return true, ""
+}
+
 func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	p := protocol.DNSOverHTTPS{
+	p := protocol.DNSOverHTTPS{ //nolint:exhaustruct // only testing Name()
 		ProviderName: "very secret name",
 		Param:        nil,
 	}
@@ -111,6 +125,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 		header        *dnsmessage.Header
 		idShift       uint16
 		answers       []dnsmessage.Resource
+		rejecter      ipnet.RawIPRejecter
 		expected      netip.Addr
 		prepareMockPP func(*mocks.MockPP)
 	}{
@@ -131,6 +146,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			ip4,
 			nil,
 		},
@@ -151,6 +167,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to prepare the DNS query: %v", gomock.Any())
@@ -173,6 +190,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip6.String(), "not a valid IPv4 address")
@@ -195,6 +213,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: mismatched transaction ID`)
@@ -207,6 +226,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
 			0,
 			[]dnsmessage.Resource{},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`)
@@ -229,6 +249,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: QR was not set`)
@@ -251,6 +272,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: TC was set`)
@@ -273,6 +295,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: response code is %v", dnsmessage.RCodeFormatError)
@@ -304,6 +327,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			ip4,
 			nil,
 		},
@@ -333,6 +357,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			ip4,
 			nil,
 		},
@@ -353,6 +378,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`)
@@ -384,6 +410,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			ip4,
 			nil,
 		},
@@ -413,6 +440,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			ip4,
 			nil,
 		},
@@ -433,6 +461,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: failed to parse the IP address in the TXT record: %s`, "I am definitely not an IP address")
@@ -455,6 +484,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`)
@@ -486,9 +516,33 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: more than one string in TXT records`)
+			},
+		},
+		"reject-ip": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip4.String()},
+					},
+				},
+			},
+			testIPRejecter{},
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "%s", "rejected: "+ip4.String())
 			},
 		},
 		"noresponse": {
@@ -508,9 +562,121 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: %v", gomock.Any())
+			},
+		},
+		"inet-class": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassINET,
+			true,
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassINET,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip4.String()},
+					},
+				},
+			},
+			nil,
+			ip4,
+			nil,
+		},
+		"accept-ip": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip4.String()},
+					},
+				},
+			},
+			testIPAccepter{},
+			ip4,
+			nil,
+		},
+		"rcode-server-failure": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeServerFailure}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip4.String()},
+					},
+				},
+			},
+			nil,
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: response code is %v", dnsmessage.RCodeServerFailure)
+			},
+		},
+		"rcode-name-error": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeNameError}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip4.String()},
+					},
+				},
+			},
+			nil,
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Invalid DNS response: response code is %v", dnsmessage.RCodeNameError)
+			},
+		},
+		"all-empty-txt-strings": {
+			ipnet.IP4, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{"", "   ", "\t"},
+					},
+				},
+			},
+			nil,
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Invalid DNS response: no TXT records or all TXT records are empty`)
 			},
 		},
 		"nourl": {
@@ -530,9 +696,33 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 			},
+			nil,
 			invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv6")
+			},
+		},
+		"nourl-ip6": {
+			ipnet.IP6, ipnet.IP4, "test.",
+			dnsmessage.ClassCHAOS,
+			true,
+			&dnsmessage.Header{}, //nolint:exhaustruct
+			0,
+			[]dnsmessage.Resource{
+				{
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+						Name:  dnsmessage.MustNewName("test."),
+						Class: dnsmessage.ClassCHAOS,
+					},
+					Body: &dnsmessage.TXTResource{
+						TXT: []string{ip6.String()},
+					},
+				},
+			},
+			nil,
+			invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", "IPv4")
 			},
 		},
 	} {
@@ -547,6 +737,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 				Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
 					tc.urlKey: {server.URL, tc.name, tc.class},
 				},
+				Rejecter: tc.rejecter,
 			}
 
 			mockPP := mocks.NewMockPP(mockCtrl)
@@ -573,7 +764,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 func TestDNSOverHTTPSNameIsExplicitEmpty(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, protocol.DNSOverHTTPS{
+	require.False(t, protocol.DNSOverHTTPS{ //nolint:exhaustruct // only testing IsExplicitEmpty()
 		ProviderName: "",
 		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {"https://localhost", "hello.", dnsmessage.ClassCHAOS},

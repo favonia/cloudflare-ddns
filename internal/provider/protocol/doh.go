@@ -151,7 +151,7 @@ func getIPFromDNS(
 		return invalidIP, false
 	}
 
-	c := httpCore{
+	c := httpCore{ //nolint:exhaustruct // maxReadLength zero uses the default limit.
 		ipFamily: ipFamily,
 		url:      url,
 		method:   http.MethodPost,
@@ -160,12 +160,14 @@ func getIPFromDNS(
 			"Accept":       "application/dns-message",
 		},
 		requestBody: bytes.NewReader(q),
-		extract: func(ppfmt pp.PP, body []byte) (netip.Addr, bool) {
-			return parseDNSResponse(ppfmt, body, id, name, class)
-		},
 	}
 
-	return c.getIP(ctx, ppfmt)
+	body, ok := c.getBody(ctx, ppfmt)
+	if !ok {
+		return invalidIP, false
+	}
+
+	return parseDNSResponse(ppfmt, body, id, name, class)
 }
 
 // DNSOverHTTPSParam is the parameter of a DNS-based IP provider.
@@ -179,6 +181,11 @@ type DNSOverHTTPSParam = struct {
 type DNSOverHTTPS struct {
 	ProviderName string // name of the protocol
 	Param        map[ipnet.Family]DNSOverHTTPSParam
+	// Rejecter is an optional hook called after the IP is parsed from the DNS
+	// response. If it rejects the IP, the result is treated as unavailable.
+	// This allows provider-specific validation (e.g., rejecting Cloudflare
+	// egress IPs) without breaking the generic protocol type.
+	Rejecter ipnet.RawIPRejecter
 }
 
 // Name of the detection protocol.
@@ -204,6 +211,13 @@ func (p DNSOverHTTPS) GetRawData(
 	ip, ok := getIPFromDNS(ctx, ppfmt, ipFamily, param.URL, param.Name, param.Class)
 	if !ok {
 		return NewUnavailableDetectionResult()
+	}
+
+	if p.Rejecter != nil {
+		if accepted, reason := p.Rejecter.RejectRawIP(ip); !accepted {
+			ppfmt.Noticef(pp.EmojiError, "%s", reason)
+			return NewUnavailableDetectionResult()
+		}
 	}
 
 	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})

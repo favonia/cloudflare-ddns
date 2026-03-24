@@ -84,11 +84,11 @@ WAF refines the shared residual-risk policy with these tiers:
 
 ### Failure and Shutdown Semantics
 
-WAF uses the shared family-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
+WAF uses the shared reconciliation-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
 ## Deletion Eligibility
 
-For WAF, the relevant deletion targets are managed items and, when full ownership and recreatability hold, the whole configured list.
+For WAF, the resources eligible for deletion are managed items and, when full ownership and recreatability hold, the whole configured list.
 
 - A WAF list is eligible for deletion only if the updater can recreate the fully reconciled state of that list from configuration alone.
 - When that condition holds, shutdown may delete the whole list.

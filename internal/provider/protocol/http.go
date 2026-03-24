@@ -17,18 +17,21 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url 
 		method:            http.MethodGet,
 		additionalHeaders: nil,
 		requestBody:       nil,
-		extract: func(_ pp.PP, body []byte) (netip.Addr, bool) {
-			ipString := strings.TrimSpace(string(body))
-			ip, err := netip.ParseAddr(ipString)
-			if err != nil {
-				ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, url, ipString)
-				return netip.Addr{}, false
-			}
-			return ip, true
-		},
+		maxReadLength:     0, // use default limit
 	}
 
-	return c.getIP(ctx, ppfmt)
+	body, ok := c.getBody(ctx, ppfmt)
+	if !ok {
+		return netip.Addr{}, false
+	}
+
+	ipString := strings.TrimSpace(string(body))
+	ip, err := netip.ParseAddr(ipString)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, url, ipString)
+		return netip.Addr{}, false
+	}
+	return ip, true
 }
 
 // HTTP represents a generic detection protocol to use an HTTP response directly.

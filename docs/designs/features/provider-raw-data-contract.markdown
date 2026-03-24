@@ -26,11 +26,11 @@ Provider mode determines whether the known raw-data state may carry an empty res
 
 Conceptually, this note is how in-scope IP-family ownership lands at the provider raw-data boundary:
 
-| provider raw-data state  | lifecycle meaning                 |
-| ------------------------ | --------------------------------- |
-| unavailable              | raw data unavailable for this run |
-| known empty raw data     | known empty raw data              |
-| known non-empty raw data | known non-empty raw data          |
+| reconciliation intent | provider raw-data state  | lifecycle meaning                 |
+| --------------------- | ------------------------ | --------------------------------- |
+| `abort`               | unavailable              | raw data unavailable for this run |
+| `clear`               | known empty raw data     | known empty raw data              |
+| `update`              | known non-empty raw data | known non-empty raw data          |
 
 Out-of-scope family ownership is represented outside this provider raw-data contract, because out-of-scope families are not in provider evaluation scope for that run.
 

@@ -36,6 +36,7 @@ type config struct {
 	ExpectedLines      []string              `json:"expected_lines"`
 	WatchedSection     string                `json:"watched_section"`
 	ExpectedBullets    []string              `json:"expected_bullets"`
+	ExpectedFile       string                `json:"expected_file"`
 	WatchLabel         string                `json:"watch_label"`
 	Reminders          []string              `json:"reminders"`
 	RelatedPaths       []string              `json:"related_paths"`
@@ -112,9 +113,13 @@ func run() error {
 		cfg.WatchLabel = "Watched content"
 	}
 
-	latest, err := fetchLatestCommit(ctx, cfg.Repo, cfg.Ref, cfg.Path)
-	if err != nil {
-		return err
+	var latest latestCommit
+	if cfg.Repo != "" {
+		var err error
+		latest, err = fetchLatestCommit(ctx, cfg.Repo, cfg.Ref, cfg.Path)
+		if err != nil {
+			return err
+		}
 	}
 
 	expectedItems, actualItems, err := collectWatchItems(ctx, cfg)
@@ -125,7 +130,10 @@ func run() error {
 	summaryHeaderLines := []string{
 		fmt.Sprintf("## %s", cfg.Name),
 		"",
-		fmt.Sprintf("- Source path: `%s/%s` on `%s`", cfg.Repo, cfg.Path, cfg.Ref),
+	}
+	if cfg.Repo != "" {
+		summaryHeaderLines = append(summaryHeaderLines,
+			fmt.Sprintf("- Source path: `%s/%s` on `%s`", cfg.Repo, cfg.Path, cfg.Ref))
 	}
 	if cfg.SnapshotDate != "" {
 		summaryHeaderLines = append(summaryHeaderLines, fmt.Sprintf("- Expected snapshot date: %s", cfg.SnapshotDate))
@@ -133,11 +141,13 @@ func run() error {
 	if cfg.PageURL != "" {
 		summaryHeaderLines = append(summaryHeaderLines, fmt.Sprintf("- Rendered page: %s", cfg.PageURL))
 	}
-	summaryHeaderLines = append(summaryHeaderLines,
-		fmt.Sprintf("- Latest source path commit: [`%s`](%s) on %s", latest.SHA[:12], latest.URL, latest.Date),
-		fmt.Sprintf("- Latest source path commit subject: `%s`", latest.Message),
-		fmt.Sprintf("- History: %s", cfg.HistoryURL),
-	)
+	if cfg.Repo != "" {
+		summaryHeaderLines = append(summaryHeaderLines,
+			fmt.Sprintf("- Latest source path commit: [`%s`](%s) on %s", latest.SHA[:12], latest.URL, latest.Date),
+			fmt.Sprintf("- Latest source path commit subject: `%s`", latest.Message),
+			fmt.Sprintf("- History: %s", cfg.HistoryURL),
+		)
+	}
 	summaryHeader := strings.Join(summaryHeaderLines, "\n") + "\n"
 
 	if slices.Equal(actualItems, expectedItems) {
@@ -149,16 +159,21 @@ func run() error {
 
 	messageLines := []string{
 		fmt.Sprintf("Cloudflare doc watch failed for %s.", cfg.Name),
-		fmt.Sprintf("Source path: %s/%s on %s", cfg.Repo, cfg.Path, cfg.Ref),
+	}
+	if cfg.Repo != "" {
+		messageLines = append(messageLines,
+			fmt.Sprintf("Source path: %s/%s on %s", cfg.Repo, cfg.Path, cfg.Ref))
 	}
 	if cfg.SnapshotDate != "" {
 		messageLines = append(messageLines, fmt.Sprintf("Expected snapshot date: %s", cfg.SnapshotDate))
 	}
-	messageLines = append(messageLines,
-		fmt.Sprintf("Latest source path commit: %s (%s) %s", latest.SHA, latest.Date, latest.Message),
-		fmt.Sprintf("Latest source path commit URL: %s", latest.URL),
-		fmt.Sprintf("History URL: %s", cfg.HistoryURL),
-	)
+	if cfg.Repo != "" {
+		messageLines = append(messageLines,
+			fmt.Sprintf("Latest source path commit: %s (%s) %s", latest.SHA, latest.Date, latest.Message),
+			fmt.Sprintf("Latest source path commit URL: %s", latest.URL),
+			fmt.Sprintf("History URL: %s", cfg.HistoryURL),
+		)
+	}
 	if cfg.PageURL != "" {
 		messageLines = append(messageLines, fmt.Sprintf("Rendered page URL: %s", cfg.PageURL))
 	}
@@ -231,12 +246,21 @@ func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, err
 		actual, err := extractJSONRouteItems(document, cfg.JSONRouteSelectors)
 		return expected, actual, err
 	case cfg.PageURL != "":
+		expected, err := loadExpectedLines(cfg)
+		if err != nil {
+			return nil, nil, err
+		}
 		document, err := httpGetText(ctx, cfg.PageURL)
 		if err != nil {
 			return nil, nil, err
 		}
+		if cfg.WatchedHeading == "" {
+			// Plain text mode: compare all non-empty trimmed lines.
+			actual := extractPlainTextLines(document)
+			return expected, actual, nil
+		}
 		actual, err := extractMarkdownSectionLines(document, cfg.WatchedHeading, cfg.LineFilters)
-		return cfg.ExpectedLines, actual, err
+		return expected, actual, err
 	default:
 		document, err := fetchDocument(ctx, cfg.Repo, cfg.Ref, cfg.Path)
 		if err != nil {
@@ -355,6 +379,33 @@ func fetchDocument(ctx context.Context, repo, ref, path string) (string, error) 
 	}
 
 	return "", fmt.Errorf("GitHub returned unexpected content metadata for %s:%s:%s", repo, ref, path)
+}
+
+// loadExpectedLines returns the expected lines from the config. When
+// ExpectedFile is set, it reads the file and uses its non-empty trimmed
+// lines; otherwise it falls back to the inline ExpectedLines field.
+func loadExpectedLines(cfg config) ([]string, error) {
+	if cfg.ExpectedFile == "" {
+		return cfg.ExpectedLines, nil
+	}
+	//nolint:gosec // this is intentional
+	data, err := os.ReadFile(cfg.ExpectedFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read expected file %s: %w", cfg.ExpectedFile, err)
+	}
+	return extractPlainTextLines(string(data)), nil
+}
+
+// extractPlainTextLines splits a document into non-empty trimmed lines.
+func extractPlainTextLines(document string) []string {
+	var lines []string
+	for _, line := range strings.Split(document, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			lines = append(lines, trimmed)
+		}
+	}
+	return lines
 }
 
 func extractWatchedBullets(document, watchedSection string) ([]string, error) {

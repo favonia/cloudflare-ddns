@@ -40,6 +40,10 @@ jobs:
             config: config/waf-list-json-object-name-rules.json
           - name: list name rules
             config: config/waf-list-name-rules.json
+          - name: Cloudflare IP ranges (IPv4)
+            config: config/cloudflare-ips-v4.json
+          - name: Cloudflare IP ranges (IPv6)
+            config: config/cloudflare-ips-v6.json
     permissions:
       id-token: write
       contents: read

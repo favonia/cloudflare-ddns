@@ -90,9 +90,9 @@ DNS refines the shared residual-risk policy with these tiers:
 
 ### Failure and Shutdown Semantics
 
-DNS uses the shared family-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
+DNS uses the shared reconciliation-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
-For DNS, the deletion target is an individual managed record, not a broader DNS root. DNS shutdown may therefore delete only managed records.
+For DNS, the resource eligible for deletion is an individual managed record, not a broader DNS root. DNS shutdown may therefore delete only managed records.
 
 ### API Contract Boundary
 

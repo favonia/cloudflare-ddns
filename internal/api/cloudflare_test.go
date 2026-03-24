@@ -49,7 +49,7 @@ func TestVerifyPassed(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{
 			"success": true,
 			"errors": [],
@@ -76,7 +76,7 @@ func TestVerifyFailedInvalidToken(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = fmt.Fprint(w, `{
 			"success": false,
@@ -105,7 +105,7 @@ func TestVerifyFailedInvalidAuthorizationHeader(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = fmt.Fprint(w, `{
 			"success": false,
@@ -138,7 +138,7 @@ func TestVerifyUnexpectedAuthorizationFailureIsUncertain(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = fmt.Fprint(w, `{
 			"success": false,
@@ -165,7 +165,7 @@ func TestVerifyFailedExpiredToken(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{
 			"success": true,
 			"errors": [],
@@ -218,7 +218,7 @@ func TestCheckUsabilityUnexpectedVerifyFailureIsUncertain(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{`)
 	})
 
@@ -239,7 +239,7 @@ func TestCheckUsabilityDisabledToken(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{
 			"success": true,
 			"errors": [],
@@ -272,7 +272,7 @@ func TestCheckUsabilityUnknownStatusIsUncertain(t *testing.T) {
 		if !assert.Equal(t, http.MethodGet, r.Method) || !checkToken(t, r) {
 			return
 		}
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{
 			"success": true,
 			"errors": [],

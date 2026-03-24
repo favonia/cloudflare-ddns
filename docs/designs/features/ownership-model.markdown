@@ -12,7 +12,7 @@ Give the project one first-principles answer to the question: what may this upda
 
 ## Core Model
 
-Ownership is the intersection of static yes-or-no predicates.
+Ownership is the intersection of static predicates. Run-time states do not change ownership.
 
 This project currently defines three predicates:
 
@@ -48,11 +48,10 @@ Selectors are resource-specific:
 
 ## Deletion Eligibility
 
-A deletion target is eligible for shutdown deletion only if the updater can recreate the fully reconciled state of that same target from configuration alone.
+A resource is eligible for shutdown deletion only if the updater can recreate the fully reconciled state of that resource from configuration alone.
 
 ## Extension Points
 
-- If future work changes how family scope is configured, preserve the IP-family predicate instead of moving runtime target-state detail back into the ownership layer.
 - If future resources beyond DNS and WAF are added, they should define:
   - their resource ownership unit
   - their attribute-based ownership selectors, if any

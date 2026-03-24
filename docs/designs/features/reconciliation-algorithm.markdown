@@ -14,8 +14,20 @@ Give DNS and WAF one reconciliation algorithm so resource-specific notes only ne
 
 Every reconciler run is defined by these inputs:
 
+- the reconciliation intent from [Lifecycle Model](lifecycle-model.markdown)
 - the effective ownership result from [Ownership Model](ownership-model.markdown)
 - resource-specific matching semantics
+
+## Intent Handling
+
+The reconciliation intent determines the overall action for one managed resource unit:
+
+- `preserve`: keep all existing managed content unchanged (the resource is out of scope)
+- `abort`: keep all existing managed content unchanged (the resource is in scope but raw data was unavailable for this run)
+- `clear`: proceed to the core model with an empty desired target set
+- `update`: proceed to the core model with the derived desired target set
+
+This algorithm treats `preserve` and `abort` identically, but they are kept apart because a different algorithm could reasonably handle them differently (e.g., clearing stale content on `abort` after a timeout).
 
 ## Core Model
 

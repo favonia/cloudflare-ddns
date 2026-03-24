@@ -22,5 +22,6 @@ func NewCloudflareDOH() Provider {
 				"whoami.cloudflare.", dnsmessage.ClassCHAOS,
 			},
 		},
+		Rejecter: ipnet.CloudflareIPRejecter{},
 	}
 }

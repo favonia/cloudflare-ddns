@@ -16,12 +16,13 @@ import (
 // unavailability without reusing nil pointers or empty slices.
 type DetectionResult struct {
 	// Available reports whether the raw data is known for this run.
-	// When it is false, callers must preserve existing managed content of that
-	// family because the raw data is unavailable.
+	// When it is false, the reconciliation intent is "abort" (raw data
+	// unavailable); the current algorithm preserves existing managed content.
+	// See reconciliation-algorithm.markdown for intent handling.
 	//
 	// When it is true, RawEntries stores the current deterministic raw-data carrier.
 	// Each entry is an IP address with prefix length (host bits are preserved).
-	// An empty list is the explicit-empty intent.
+	// An empty list is the explicit-empty intent ("clear").
 	Available  bool
 	RawEntries []ipnet.RawEntry
 }
