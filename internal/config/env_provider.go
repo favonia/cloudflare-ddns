@@ -193,6 +193,11 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 	case len(parts) == 1 && parts[0] == "none":
 		*field = nil
 		return true
+	case len(parts) == 1 && parts[0] == "debug.unavailable":
+		ppfmt.InfoOncef(pp.MessageUndocumentedDebugUnavailableProvider, pp.EmojiHint,
+			`You are using the undocumented "debug.unavailable" provider`)
+		*field = provider.NewDebugUnavailable()
+		return true
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", key, val)
 		return false
