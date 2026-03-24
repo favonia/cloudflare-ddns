@@ -665,20 +665,17 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 <details>
 <summary>I am migrating from timothymiller/cloudflare-ddns <sup><em>click to expand</em></sup></summary>
 
-| Old JSON Key                          |     | Note                                                                                                                                                                                                                                     |
-| ------------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cloudflare.authentication.api_token` | ✔️  | Use `CLOUDFLARE_API_TOKEN=<token>`                                                                                                                                                                                                       |
-| `cloudflare.authentication.api_key`   | ⚠️  | Legacy global API keys are not supported. [Generate a scoped API token](#cloudflare-api-token), then use `CLOUDFLARE_API_TOKEN=<token>`.                                                                                                 |
-| `cloudflare.zone_id`                  | ✔️  | Not needed; automatically retrieved from the server                                                                                                                                                                                      |
-| `cloudflare.subdomains[].name`        | ✔️  | Use `DOMAINS` with [**fully qualified domain names (FQDNs)**](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) directly; for example, if your zone is `example.org` and your subdomain is `sub`, use `DOMAINS=sub.example.org` |
-| `cloudflare.subdomains[].proxied`     | ✔️  | Write boolean expressions for `PROXIED` to specify per-domain settings; see the `PROXIED` setting in [All Settings](#all-settings) for the detailed documentation for this advanced feature                                              |
-| `load_balancer`                       | ❌️  | Not supported yet; please [make a request](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if you want it                                                                                                                  |
-| `a`                                   | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to stop managing IPv4                                                                                                                                                 |
-| `aaaa`                                | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP6_PROVIDER=none` to stop managing IPv6                                                                                                                                                 |
-| `proxied`                             | ✔️  | Use `PROXIED=true` or `PROXIED=false`                                                                                                                                                                                                    |
-| `purgeUnknownRecords`                 | ❌️  | The updater never deletes unmanaged DNS records                                                                                                                                                                                          |
+Since [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) 2.0.0, many setting names and features look very close to this updater. However, similar names do not necessarily mean identical semantics. There are too many settings to list every difference here, and most mismatches will produce a clear startup error, but some differences are silent. If you only set a few options, checking the [documentation for those specific settings](#all-settings) should be quick and worthwhile.
 
-> 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program purged unmanaged DNS records back then and it was not configurable via environment variables on its default branch. Eventually, an option `purgeUnknownRecords` was added to the Python program to disable purging, and it became configurable via environment variables, but my Go clone had already gone its own way. Beyond the migration points above, there were other issues and discussions that I prefer not to detail here, and some of that context is no longer publicly available. My opinions are biased, so please check the technical details by yourself. 😉
+**Known silent semantic differences:**
+
+- ⚠️ **`sub()` in `PROXIED` expressions:** In this updater, `sub(example.com)` matches _strict subdomains only_—it does **not** match `example.com` itself. In timothymiller/cloudflare-ddns, `sub(example.com)` matches `example.com` _and_ all its subdomains. Copying a `PROXIED` expression verbatim may silently change which domains are proxied. If you need to match a domain and all its subdomains, use `is(example.com) || sub(example.com)`.
+
+**Known naming differences that will cause startup errors:**
+
+- `literal:` (timothymiller/cloudflare-ddns) is called `static:` in this updater (_e.g._, `IP4_PROVIDER=static:1.2.3.4`).
+
+> 📜 Some historical notes: This updater was originally written as a Go clone of the Python program [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) because the Python program purged unmanaged DNS records back then and it was not configurable via environment variables on its default branch. Eventually, the Python program became configurable via environment variables and later was rewritten in Rust, but this Go updater had already gone its own way. My opinions are biased, so please check the technical details by yourself. 😉
 
 </details>
 
