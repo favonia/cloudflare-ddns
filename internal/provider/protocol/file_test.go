@@ -1,5 +1,4 @@
 // vim: nowrap
-//go:build linux
 
 package protocol_test
 
