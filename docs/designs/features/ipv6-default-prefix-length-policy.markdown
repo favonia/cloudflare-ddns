@@ -113,6 +113,6 @@ Historical context is still useful because Cloudflare capability changed over ti
 ## Extension Points
 
 - If future evidence shows that most users mean exact endpoint identity rather than stable network presence, revisit this default.
-- If future product work exposes configurable prefix lengths, start from one shared configuration knob. Split it only if DNS-side observed-prefix interpretation and WAF-side projection stop moving together in ordinary use or if the product gains a clear resource-specific reason to prefer different defaults.
+- Configurable prefix lengths are now exposed as one shared knob per IP family (`IP4_DEFAULT_PREFIX_LEN`, `IP6_DEFAULT_PREFIX_LEN`), each shared across DNS-side and WAF-side derivation. Split a family's knob into separate DNS-side and WAF-side knobs only if the two projections stop moving together in ordinary use or if the product gains a clear resource-specific reason to prefer different defaults.
 - If future DNS-side derivation stops needing ordinary host-bit space under the observed prefix, or future WAF use cases stop preferring attachment-level semantics, treat the current convergence as broken and revisit this note.
 - If future design work adopts a different default attachment boundary, update this note and its linked lifecycle or provider notes together.

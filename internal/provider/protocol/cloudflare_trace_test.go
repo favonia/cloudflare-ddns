@@ -360,7 +360,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			prefixLen := map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}[tc.ipFamily]
+			prefixLen := testDefaultPrefixLen(tc.ipFamily)
 			rawData := provider.GetRawData(ctx, mockPP, tc.ipFamily, prefixLen)
 			require.Equal(t, tc.available, rawData.Available)
 			if tc.expected.IsValid() {

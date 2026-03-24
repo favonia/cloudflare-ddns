@@ -40,6 +40,8 @@ type RawConfig struct {
 	WAFListItemComment              string
 	ManagedWAFListItemsCommentRegex string
 	CacheExpiration                 time.Duration
+	IP4DefaultPrefixLen             int
+	IP6DefaultPrefixLen             int
 	DetectionTimeout                time.Duration
 	UpdateTimeout                   time.Duration
 }
@@ -78,11 +80,8 @@ type UpdateConfig struct {
 	Provider map[ipnet.Family]provider.Provider
 	Domains  map[ipnet.Family][]domain.Domain
 	WAFLists []api.WAFList
-	// DefaultPrefixLen stores the internal-only derivation default prefix length
-	// for each family when lifting bare detected addresses into raw data.
-	//
-	// They are runtime config, not raw config: the current env surface does not
-	// expose them yet.
+	// DefaultPrefixLen stores the derivation default prefix length for each family
+	// when lifting bare detected addresses into raw data.
 	DefaultPrefixLen   map[ipnet.Family]int
 	TTL                api.TTL
 	Proxied            map[domain.Domain]bool
@@ -120,6 +119,8 @@ func DefaultRaw() *RawConfig {
 		WAFListDescription:              "",
 		WAFListItemComment:              "",
 		ManagedWAFListItemsCommentRegex: "",
+		IP4DefaultPrefixLen:             32,
+		IP6DefaultPrefixLen:             64,
 		CacheExpiration:                 time.Hour * 6,
 		DetectionTimeout:                time.Second * 5,
 		UpdateTimeout:                   time.Second * 30,

@@ -62,13 +62,16 @@ func detectRawData(
 
 	// Fast path: one detected address.
 	case rawData.Available && len(addresses) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %v", ipFamily.Describe(), addresses[0])
+		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %s",
+			ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Multi-address path: report the full deterministic set.
 	case rawData.Available && len(addresses) > 1:
+		defaultPrefixLen := c.DefaultPrefixLen[ipFamily]
 		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
-			len(addresses), ipFamily.Describe(), pp.JoinMap(netip.Addr.String, addresses))
+			len(addresses), ipFamily.Describe(),
+			pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Failure path: emit hints and timeout guidance.

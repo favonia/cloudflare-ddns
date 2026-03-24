@@ -379,6 +379,29 @@ func TestRawEntryCompare(t *testing.T) {
 	}
 }
 
+func TestRawEntryDescribe(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		entry            string
+		defaultPrefixLen int
+		expected         string
+	}{
+		"ip4/32-default32":   {"1.2.3.4/32", 32, "1.2.3.4"},
+		"ip4/32-default24":   {"1.2.3.4/32", 24, "1.2.3.4/32"},
+		"ip4/24-default24":   {"1.2.3.4/24", 24, "1.2.3.4/24"},
+		"ip6/128-default128": {"2001:db8::1/128", 128, "2001:db8::1"},
+		"ip6/128-default64":  {"2001:db8::1/128", 64, "2001:db8::1/128"},
+		"ip6/64-default64":   {"2001:db8::1/64", 64, "2001:db8::1/64"},
+		"ip6/48-default64":   {"2001:db8::1/48", 64, "2001:db8::1/48"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			entry := mustRawEntry(tc.entry)
+			require.Equal(t, tc.expected, entry.Describe(tc.defaultPrefixLen))
+		})
+	}
+}
+
 func TestLiftValidatedIPsToRawEntries(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {

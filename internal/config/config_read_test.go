@@ -43,6 +43,7 @@ func unsetAll(t *testing.T) {
 		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
 		"IP4_PROVIDER", "IP6_PROVIDER",
 		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS", "WAF_LISTS",
+		"IP4_DEFAULT_PREFIX_LEN", "IP6_DEFAULT_PREFIX_LEN",
 		"UPDATE_CRON",
 		"UPDATE_ON_START",
 		"DELETE_ON_STOP",
@@ -69,6 +70,10 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 	unsetAll(t)
 	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 
+	// Start from a zero-value RawConfig (not DefaultRaw) to verify that
+	// ReadEnv prints whatever the caller's initial field values are, even
+	// when those values are zero.  This exercises the "Use default" log
+	// path without depending on the production defaults.
 	var cfg config.RawConfig
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
@@ -76,6 +81,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "IP4_DEFAULT_PREFIX_LEN", 0),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "UPDATE_CRON", "@once"),
@@ -198,8 +205,10 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"dns6empty": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:    true,
-				DetectionTimeout: 5 * time.Second,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -261,7 +270,9 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"both-static-empty-warning": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart: true,
+				UpdateOnStart:       true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
@@ -307,7 +318,9 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"both-static-empty-warning/domains-and-waf": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart: true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
@@ -353,8 +366,10 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"both-static-empty-warning/waf-only": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart: true,
-				TTL:           api.TTLAuto,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				TTL:                 api.TTLAuto,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
@@ -398,7 +413,9 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ip4-none-ip6-static-empty/domains": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart: true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewStaticEmpty(),
 				},
@@ -440,7 +457,9 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ip4-static-empty-ip6-none/domains": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart: true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 				},
@@ -482,8 +501,10 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ip4none": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:    true,
-				DetectionTimeout: 5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -526,11 +547,13 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ignored/dns": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:    true,
-				WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
-				TTL:              10000,
-				RecordComment:    "hello",
-				DetectionTimeout: 5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				WAFLists:            []api.WAFList{{AccountID: "account", Name: "list"}},
+				TTL:                 10000,
+				RecordComment:       "hello",
+				DetectionTimeout:    5 * time.Second,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -582,9 +605,11 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"managed-record-regex/valid": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:    true,
-				RecordComment:    "hello-123",
-				DetectionTimeout: 5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				RecordComment:       "hello-123",
+				DetectionTimeout:    5 * time.Second,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -676,6 +701,8 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"managed-waf-item-regex/valid": {
 			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:             32,
+				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
 				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
 				TTL:                             api.TTLAuto,
@@ -770,9 +797,11 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ignored/waf": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:      true,
-				WAFListDescription: "My list",
-				DetectionTimeout:   5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				WAFListDescription:  "My list",
+				DetectionTimeout:    5 * time.Second,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
@@ -815,6 +844,8 @@ func TestBuildConfig(t *testing.T) {
 		},
 		"ignored/waf/quoted-preview": {
 			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:             32,
+				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
 				WAFListDescription:              strings.Repeat("a", 48),
 				WAFListItemComment:              strings.Repeat("b", 49),
@@ -875,10 +906,151 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"ignored/ip4-prefix-len": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen: 24,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					DefaultPrefixLen: map[ipnet.Family]int{
+						ipnet.IP4: 24,
+						ipnet.IP6: 64,
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP4_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv4", 24),
+				)
+			},
+		},
+		"ignored/ip6-prefix-len": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 48,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewCloudflareTrace(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					DefaultPrefixLen: map[ipnet.Family]int{
+						ipnet.IP4: 32,
+						ipnet.IP6: 48,
+					},
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP6_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv6", 48),
+				)
+			},
+		},
+		"ignored/ip4-prefix-len-at-default": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					DetectionTimeout: 5 * time.Second,
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
 		"proxied": {
 			input: &config.RawConfig{ //nolint:exhaustruct
-				UpdateOnStart:    true,
-				DetectionTimeout: 5 * time.Second,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				DetectionTimeout:    5 * time.Second,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},

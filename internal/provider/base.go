@@ -41,12 +41,6 @@ func NewUnavailableDetectionResult() DetectionResult {
 	return protocol.NewUnavailableDetectionResult()
 }
 
-// DefaultRawDataPrefixLen returns the shared product default used when lifting
-// a bare detected address into detection-phase raw data for one family.
-func DefaultRawDataPrefixLen(ipFamily ipnet.Family) int {
-	return protocol.DefaultRawDataPrefixLen(ipFamily)
-}
-
 // Provider is the abstraction of a protocol to detect public IP addresses.
 type Provider interface {
 	Name() string
