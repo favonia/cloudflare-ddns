@@ -1,13 +1,10 @@
 name: golangci-lint
-
 on:
   push:
     branches: ["main"]
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
   lint:
     name: Lint
@@ -22,7 +19,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: golangci-lint
-
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
