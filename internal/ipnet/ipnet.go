@@ -81,37 +81,39 @@ func (t Family) Matches(ip netip.Addr) bool {
 	}
 }
 
-// DescribeAddressIssue reports whether the address is unsuitable as a DNS/WAF target.
-// If unsuitable, it returns a noun phrase suitable for "… is %s" (e.g., "a loopback address")
-// and true. The caller is responsible for formatting the full message with context.
-func DescribeAddressIssue(ip netip.Addr) (string, bool) {
+// DescribeBadAddress reports whether the address is unsuitable as a DNS/WAF target.
+// If unsuitable, it returns a predicate phrase suitable for "(subject) %s"
+// (e.g., "is a loopback address") and true.
+// The caller is responsible for formatting the full message with context.
+func DescribeBadAddress(ip netip.Addr) (string, bool) {
 	switch {
 	case ip.IsUnspecified():
-		return "an unspecified address", true
+		return "is an unspecified address", true
 	case ip.IsLoopback():
-		return "a loopback address", true
+		return "is a loopback address", true
 	case ip.IsLinkLocalMulticast():
-		return "a link-local multicast address", true
+		return "is a link-local multicast address", true
 	case ip.IsMulticast():
-		return "a multicast address", true
+		return "is a multicast address", true
 	case ip.IsLinkLocalUnicast():
-		return "a link-local address", true
+		return "is a link-local address", true
 	case ip.Zone() != "":
-		return "an address with a zone identifier", true
+		return "is an address with a zone identifier", true
 	case ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}):
-		return "a broadcast address", true
+		return "is a broadcast address", true
 	case !ip.IsGlobalUnicast():
 		// Safety net: all known non-global-unicast cases are handled above.
 		// If this fires, consider adding an explicit case.
-		return "not a global unicast address", true
+		return "is not a global unicast address", true
 	default:
 		return "", false
 	}
 }
 
 // ValidateAndNormalizeIP validates ip for ipFamily and returns the canonical form.
-// On failure it returns a noun phrase suitable for "… is %s" (e.g., "a loopback address")
-// and false. When is4in6Hint is true, callers should show [pp.MessageIP4MappedIP6Address].
+// On failure it returns a predicate phrase suitable for "(subject) %s"
+// (e.g., "is a loopback address") and false.
+// When is4in6Hint is true, callers should show [pp.MessageIP4MappedIP6Address].
 // No messaging — callers handle error reporting with their own context.
 func ValidateAndNormalizeIP(ipFamily Family, ip netip.Addr) (
 	normalized netip.Addr, issue string, is4in6Hint bool, ok bool,
@@ -119,24 +121,24 @@ func ValidateAndNormalizeIP(ipFamily Family, ip netip.Addr) (
 	switch ipFamily {
 	case IP4:
 		if !ip.Is4() && !ip.Is4In6() {
-			return netip.Addr{}, fmt.Sprintf("not a valid %s address", ipFamily.Describe()), false, false
+			return netip.Addr{}, fmt.Sprintf("is not a valid %s address", ipFamily.Describe()), false, false
 		}
 		// Turns an IPv4-mapped IPv6 address back to an IPv4 address.
 		ip = ip.Unmap()
 
 	case IP6:
 		if !ip.Is6() {
-			return netip.Addr{}, fmt.Sprintf("not a valid %s address", ipFamily.Describe()), false, false
+			return netip.Addr{}, fmt.Sprintf("is not a valid %s address", ipFamily.Describe()), false, false
 		}
 		if ip.Is4In6() {
-			return netip.Addr{}, "an IPv4-mapped IPv6 address", true, false
+			return netip.Addr{}, "is an IPv4-mapped IPv6 address", true, false
 		}
 
 	default:
-		return netip.Addr{}, "not in a recognized IP family", false, false
+		return netip.Addr{}, "is not in a recognized IP family", false, false
 	}
 
-	if desc, bad := DescribeAddressIssue(ip); bad {
+	if desc, bad := DescribeBadAddress(ip); bad {
 		return netip.Addr{}, desc, false, false
 	}
 
@@ -155,7 +157,7 @@ func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool
 
 	normalized, issue, is4in6Hint, ok := ValidateAndNormalizeIP(t, ip)
 	if !ok {
-		ppfmt.Noticef(pp.EmojiError, "Detected IP address %s is %s", ip.String(), issue)
+		ppfmt.Noticef(pp.EmojiError, "Detected IP address %s %s", ip.String(), issue)
 		if is4in6Hint {
 			ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 				"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+

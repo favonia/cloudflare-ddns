@@ -6,9 +6,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// ParsePrefixOrIP parses a network prefix or a bare IP address.
+// ParseAddrOrPrefix parses a network prefix or a bare IP address.
 // This is used for parsing Cloudflare WAF list items, not raw detection data.
-func ParsePrefixOrIP(ppfmt pp.PP, s string) (netip.Prefix, bool) {
+func ParseAddrOrPrefix(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 	p, errPrefix := netip.ParsePrefix(s)
 	if errPrefix != nil {
 		ip, errAddr := netip.ParseAddr(s)
@@ -22,14 +22,4 @@ func ParsePrefixOrIP(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 		p = netip.PrefixFrom(ip, ip.BitLen())
 	}
 	return p, true
-}
-
-// DescribePrefixOrIP is similar to [netip.Prefix.String] but prints out
-// the IP directly if the input range only contains one IP.
-func DescribePrefixOrIP(p netip.Prefix) string {
-	if p.IsSingleIP() {
-		return p.Addr().String()
-	} else {
-		return p.Masked().String()
-	}
 }

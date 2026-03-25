@@ -194,7 +194,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			},
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip6.String(), "not a valid IPv4 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s %s", ip6.String(), "is not a valid IPv4 address")
 			},
 		},
 		"6/ip4-response-family-mismatch": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -204,7 +204,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			},
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip4.String(), "not a valid IPv6 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s %s", ip4.String(), "is not a valid IPv6 address")
 			},
 		},
 		"4/extra-fields-ignored": { //nolint:exhaustruct // test fixture sets only exercised fields

@@ -60,25 +60,12 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 	return string(bytes.TrimSpace(body)), true
 }
 
-// ReadLines reads a file and returns an iterator over its non-blank, non-comment lines.
+// ProcessLines returns an iterator over non-blank, non-comment lines in content.
 // Each yielded pair is (1-based line number, trimmed content after stripping # comments).
-// The path must be absolute; relative paths are rejected.
-// If the file cannot be read, lines is nil and ok is false.
-func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool) {
-	relPath, _, ok := processPath(ppfmt, path)
-	if !ok {
-		return nil, false
-	}
-
-	body, err := fs.ReadFile(FS, relPath)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
-		return nil, false
-	}
-
+func ProcessLines(content string) iter.Seq2[int, string] {
 	return func(yield func(int, string) bool) {
 		lineNum := 0
-		for line := range strings.Lines(string(body)) {
+		for line := range strings.Lines(content) {
 			lineNum++
 
 			// Strip comments.
@@ -95,5 +82,24 @@ func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool)
 				return
 			}
 		}
-	}, true
+	}
+}
+
+// ReadLines reads a file and returns an iterator over its non-blank, non-comment lines.
+// Each yielded pair is (1-based line number, trimmed content after stripping # comments).
+// The path must be absolute; relative paths are rejected.
+// If the file cannot be read, lines is nil and ok is false.
+func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool) {
+	relPath, _, ok := processPath(ppfmt, path)
+	if !ok {
+		return nil, false
+	}
+
+	body, err := fs.ReadFile(FS, relPath)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		return nil, false
+	}
+
+	return ProcessLines(string(body)), true
 }

@@ -123,7 +123,7 @@ func TestStaticGetRawData(t *testing.T) {
 			ipnet.IP4,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected address %s is %s", "1::1/64", "not a valid IPv4 address")
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Detected address %s %s", "1::1/64", "is not a valid IPv4 address")
 			},
 		},
 	} {

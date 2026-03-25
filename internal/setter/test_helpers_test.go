@@ -382,7 +382,7 @@ func expectWAFCreateNotices(p *mocks.MockPP, list api.WAFList, prefixes []netip.
 		calls = append(calls, p.EXPECT().Noticef(
 			pp.EmojiCreation,
 			"Added %s to the list %s",
-			ipnet.DescribePrefixOrIP(prefix),
+			prefix.Masked().String(),
 			list.Describe(),
 		))
 	}
@@ -395,7 +395,7 @@ func expectWAFDeleteNotices(p *mocks.MockPP, list api.WAFList, items []api.WAFLi
 		calls = append(calls, p.EXPECT().Noticef(
 			pp.EmojiDeletion,
 			"Deleted %s from the list %s",
-			ipnet.DescribePrefixOrIP(item.Prefix),
+			item.Prefix.Masked().String(),
 			list.Describe(),
 		))
 	}

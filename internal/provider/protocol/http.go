@@ -3,16 +3,20 @@ package protocol
 import (
 	"context"
 	"net/http"
-	"net/netip"
-	"strings"
+	"slices"
 
+	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url string) (netip.Addr, bool) {
+func getRawEntriesFromHTTP(
+	ctx context.Context, ppfmt pp.PP,
+	transportIPFamily ipnet.Family, url string,
+	ipFamily ipnet.Family, defaultPrefixLen int,
+) ([]ipnet.RawEntry, bool) {
 	c := httpCore{
-		ipFamily:          ipFamily,
+		ipFamily:          transportIPFamily,
 		url:               url,
 		method:            http.MethodGet,
 		additionalHeaders: nil,
@@ -22,16 +26,33 @@ func getIPFromHTTP(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, url 
 
 	body, ok := c.getBody(ctx, ppfmt)
 	if !ok {
-		return netip.Addr{}, false
+		return nil, false
 	}
 
-	ipString := strings.TrimSpace(string(body))
-	ip, err := netip.ParseAddr(ipString)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, url, ipString)
-		return netip.Addr{}, false
+	entries := make([]ipnet.RawEntry, 0)
+	for lineNum, raw := range file.ProcessLines(string(body)) {
+		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
+		if err != nil {
+			ppfmt.Noticef(pp.EmojiError,
+				"Failed to parse line %d of the response of %q (%q) as an IP address or CIDR range",
+				lineNum, url, raw)
+			return nil, false
+		}
+
+		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
+		if !ok {
+			ppfmt.Noticef(pp.EmojiError,
+				"Line %d of the response of %q (%q) %s", lineNum, url, raw, problem)
+			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
+			return nil, false
+		}
+		entries = append(entries, normalized)
 	}
-	return ip, true
+
+	slices.SortFunc(entries, ipnet.RawEntry.Compare)
+	entries = slices.Compact(entries)
+
+	return entries, true
 }
 
 // HTTP represents a generic detection protocol to use an HTTP response directly.
@@ -68,12 +89,7 @@ func (p HTTP) GetRawData(
 		transportIP = *p.ForcedTransportIPFamily
 	}
 
-	ip, ok := getIPFromHTTP(ctx, ppfmt, transportIP, url)
-	if !ok {
-		return NewUnavailableDetectionResult()
-	}
-
-	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, []netip.Addr{ip})
+	rawEntries, ok := getRawEntriesFromHTTP(ctx, ppfmt, transportIP, url, ipFamily, defaultPrefixLen)
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}

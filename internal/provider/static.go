@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"net/netip"
 	"slices"
 	"strings"
 
@@ -12,52 +11,49 @@ import (
 
 // NewStatic creates a [protocol.Static] provider.
 func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixLen int, raw string) (Provider, bool) {
-	ips := make([]netip.Addr, 0)
+	entries := make([]ipnet.RawEntry, 0)
 	entryNum := 0
-	for rawIP := range strings.SplitSeq(raw, ",") {
+	for rawEntry := range strings.SplitSeq(raw, ",") {
 		entryNum++
-		rawIP = strings.TrimSpace(rawIP)
+		rawEntry = strings.TrimSpace(rawEntry)
 
-		if rawIP == "" {
+		if rawEntry == "" {
 			ppfmt.Noticef(pp.EmojiUserError,
 				`The %s entry of %s is empty (check for extra commas)`, pp.Ordinal(entryNum), envKey)
 			return nil, false
 		}
 
-		ip, err := netip.ParseAddr(rawIP)
+		entry, err := ipnet.ParseRawEntry(rawEntry, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`Failed to parse the %s entry (%q) of %s as an IP address`, pp.Ordinal(entryNum), rawIP, envKey)
+				`Failed to parse the %s entry (%q) of %s as an IP address or CIDR range`,
+				pp.Ordinal(entryNum), rawEntry, envKey)
 			return nil, false
 		}
-		normalized, issue, is4in6Hint, ok := ipnet.ValidateAndNormalizeIP(ipFamily, ip)
+
+		// Per-entry validation with contextual error messages.
+		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`The %s entry (%q) of %s is %s`,
-				pp.Ordinal(entryNum), rawIP, envKey, issue)
-			if is4in6Hint {
-				ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
-					"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
-						"It cannot be used for routing IPv6 traffic. "+
-						"If you need to use it for DNS, please open an issue at %s",
-					pp.IssueReportingURL)
-			}
+				`The %s entry (%q) of %s %s`,
+				pp.Ordinal(entryNum), rawEntry, envKey, problem)
+			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return nil, false
 		}
-		ips = append(ips, normalized)
+		entries = append(entries, normalized)
 	}
 
 	// Make the explicit-input provider deterministic before it enters the pipeline.
-	slices.SortFunc(ips, netip.Addr.Compare)
-	ips = slices.Compact(ips)
+	slices.SortFunc(entries, ipnet.RawEntry.Compare)
+	entries = slices.Compact(entries)
 
-	rawIPs := make([]string, 0, len(ips))
-	for _, ip := range ips {
-		rawIPs = append(rawIPs, ip.String())
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Describe(defaultPrefixLen))
 	}
 	return protocol.NewStatic(
-		"static:"+strings.Join(rawIPs, ","),
-		ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen),
+		"static:"+strings.Join(names, ","),
+		entries,
 	), true
 }
 

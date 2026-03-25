@@ -495,7 +495,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		}
 		for _, item := range itemsToCreate {
 			ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %s",
-				ipnet.DescribePrefixOrIP(item.Prefix), list.Describe())
+				item.Prefix.Masked().String(), list.Describe())
 		}
 	}
 
@@ -510,7 +510,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	}
 	for _, item := range itemsToDelete {
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
-			ipnet.DescribePrefixOrIP(item.Prefix), list.Describe())
+			item.Prefix.Masked().String(), list.Describe())
 	}
 
 	return ResponseUpdated
