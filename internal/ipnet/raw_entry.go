@@ -9,8 +9,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// ErrRawEntryParse indicates that a string could not be parsed as an IP address or CIDR range.
-var ErrRawEntryParse = errors.New("failed to parse as an IP address or CIDR range")
+// ErrRawEntryParse indicates that a string could not be parsed as an IP address or an IP address in CIDR notation.
+var ErrRawEntryParse = errors.New("failed to parse as an IP address or an IP address in CIDR notation")
 
 // RawEntry carries one detected IP address together with its prefix length.
 //

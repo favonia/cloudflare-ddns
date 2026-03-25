@@ -19,14 +19,14 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixL
 
 		if rawEntry == "" {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`The %s entry of %s is empty (check for extra commas)`, pp.Ordinal(entryNum), envKey)
+				`The %s entry in %s is empty (check for extra commas)`, pp.Ordinal(entryNum), envKey)
 			return nil, false
 		}
 
 		entry, err := ipnet.ParseRawEntry(rawEntry, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`Failed to parse the %s entry (%q) of %s as an IP address or CIDR range`,
+				`Failed to parse the %s entry (%q) in %s as an IP address or an IP address in CIDR notation`,
 				pp.Ordinal(entryNum), rawEntry, envKey)
 			return nil, false
 		}
@@ -35,7 +35,7 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixL
 		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`The %s entry (%q) of %s %s`,
+				`The %s entry (%q) in %s %s`,
 				pp.Ordinal(entryNum), rawEntry, envKey, problem)
 			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return nil, false

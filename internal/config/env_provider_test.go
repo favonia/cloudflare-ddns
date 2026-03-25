@@ -223,7 +223,7 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`Failed to parse the %s entry (%q) of %s as an IP address or CIDR range`,
+					`Failed to parse the %s entry (%q) of %s as an IP address or an IP address in CIDR notation`,
 					"1st", "1::1%eth0", key,
 				)
 			},

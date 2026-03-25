@@ -34,7 +34,7 @@ func getRawEntriesFromHTTP(
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to parse line %d of the response of %q (%q) as an IP address or CIDR range",
+				"Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation",
 				lineNum, url, raw)
 			return nil, false
 		}

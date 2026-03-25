@@ -110,7 +110,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Failed to parse line %d (%q) of %s as an IP address or CIDR range", 1, "not-an-ip", "/ips.txt")
+					"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation", 1, "not-an-ip", "/ips.txt")
 			},
 		},
 		"zone-identifier": {
@@ -119,7 +119,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Failed to parse line %d (%q) of %s as an IP address or CIDR range",
+					"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation",
 					1, "1::1%eth0", "/ips.txt")
 			},
 		},

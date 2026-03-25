@@ -37,7 +37,7 @@ func (p File) IsExplicitEmpty() bool {
 	return false
 }
 
-// GetRawData reads the file, parses IP addresses or CIDR ranges, validates them
+// GetRawData reads the file, parses IP addresses or IP addresses in CIDR notation, validates them
 // for the requested family, and returns deterministic raw data.
 func (p File) GetRawData(
 	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
@@ -52,7 +52,7 @@ func (p File) GetRawData(
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Failed to parse line %d (%q) of %s as an IP address or CIDR range", lineNum, raw, p.Path)
+				"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation", lineNum, raw, p.Path)
 			return NewUnavailableDetectionResult()
 		}
 

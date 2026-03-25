@@ -93,13 +93,13 @@ func TestHTTPGetRawData(t *testing.T) {
 		"4/illformed": {
 			false, ipnet.IP4, illformed4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or CIDR range", 1, illformed4.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation", 1, illformed4.URL, "hello")
 			},
 		},
 		"6/illformed": {
 			false, ipnet.IP6, illformed6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or CIDR range", 1, illformed6.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation", 1, illformed6.URL, "hello")
 			},
 		},
 		"4/request-fail": {
