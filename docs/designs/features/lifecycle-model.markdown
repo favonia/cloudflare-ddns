@@ -36,7 +36,7 @@ Some phases happen once per process, some happen once per update round, and some
 
 Startup prepares the runtime so later update rounds can use one stable set of validated dependencies.
 
-Startup includes:
+Current startup includes:
 
 - output setup
 - reporter setup

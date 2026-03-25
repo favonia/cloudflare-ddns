@@ -12,57 +12,39 @@ Give providers one observable contract for the raw data they hand to lifecycle d
 
 ## Core Model
 
-Providers operate per requested IP family and return one family-specific raw-data state for that run.
+Providers currently operate per in-scope IP family and return one family-specific raw-data state for that run. The raw data is modeled as a family-scoped set of IP addresses with prefix lengths. Future detection may vary by resource, not only by IP family.
 
-- one state means the raw data is unavailable for that run
-- the other means the raw data is known for that run
+This note specifies how in-scope providers produce raw data under the reconciliation intents defined by [Lifecycle Model](lifecycle-model.markdown):
 
-The raw data is modeled as a family-scoped set of IP addresses with prefix lengths.
+| reconciliation intent | meaning                           | carried raw data        |
+| --------------------- | --------------------------------- | ----------------------- |
+| `abort`               | raw data unavailable for this run | not applicable          |
+| `clear`               | known empty raw data              | not applicable or empty |
+| `update`              | known non-empty raw data          | non-empty raw data      |
 
-Provider mode determines whether the known raw-data state may carry an empty result:
+Out-of-scope families are outside this contract because no provider is called for them.
 
-- dynamic observation providers are known only when they produce a non-empty usable result for the requested family
-- explicit static-empty provider modes use a known empty result to mean "manage this family to empty"
+## Current Runtime Representation
 
-Conceptually, this note is how in-scope IP-family ownership lands at the provider raw-data boundary:
+Each element in the raw-data set is an address-plus-prefix-length pair (`ipnet.RawEntry`). The address carries the full observed bits; the prefix length rides alongside but does not clear host bits.
 
-| reconciliation intent | provider raw-data state  | lifecycle meaning                 |
-| --------------------- | ------------------------ | --------------------------------- |
-| `abort`               | unavailable              | raw data unavailable for this run |
-| `clear`               | known empty raw data     | known empty raw data              |
-| `update`              | known non-empty raw data | known non-empty raw data          |
+- Providers that discover bare addresses lift them using the configured default prefix length (`IP4_DEFAULT_PREFIX_LEN`, default 32; `IP6_DEFAULT_PREFIX_LEN`, default 64). The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
+- Providers that discover CIDR-notation entries may preserve the stated prefix length and the full address, or may ignore unsuitable source prefix lengths and fall back to the defaults.
+- Host bits must not be eagerly masked. Preserving the original address bits through normalization keeps downstream host-ID derivation meaningful.
 
-Out-of-scope family ownership is represented outside this provider raw-data contract, because out-of-scope families are not in provider evaluation scope for that run.
+Every entry in the current known result must satisfy these rules:
 
-## Current Runtime Specialization
-
-The current runtime specialization is address-only:
-
-- IPv4 raw prefixes are carried as their host address and interpreted as singleton `/32` raw data
-- IPv6 raw prefixes are carried as their subnet address and interpreted as singleton `/64` raw data
-
-Every IP in the current known result must satisfy these rules:
-
-- it is a valid IP address
-- it matches the requested family
-- IPv4 mode accepts IPv4-mapped IPv6 only as its plain IPv4 meaning
-- IPv4-mapped IPv6 is rejected in IPv6 mode
-- unspecified, loopback, multicast, and link-local addresses are rejected
-- zone-qualified addresses are rejected because they are not suitable raw-data values in this runtime specialization
-- addresses outside the usual global-unicast shape are warned about, not rejected, after the stronger checks above
+- it must be a global unicast IP address without a zone
+- it must match the requested family; IPv4-mapped IPv6 is accepted in IPv4 mode as its plain IPv4 meaning, but rejected in IPv6 mode
 
 ## Shared Set Semantics
 
-Under the current runtime specialization, known results follow deterministic set semantics:
+Known results follow deterministic set semantics:
 
-- outputs are sorted by `netip.Addr.Compare`
-- duplicates are removed
-- validation fails fast on the first invalid detected IP
-- multi-address providers still report one family-scoped result, not one mixed cross-family result
+- outputs should be sorted and de-duplicated by `RawEntry.Compare` (address first, then prefix length)
+- validation fails fast on the first invalid detected entry
 
 These rules keep reconciliation behavior independent of discovery order and duplicate observations.
-
-Lifecycle derivation consumes the raw-data semantics above through this runtime specialization.
 
 ## Scope Boundary
 
