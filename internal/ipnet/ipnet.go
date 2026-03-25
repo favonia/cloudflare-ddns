@@ -129,11 +129,15 @@ func DescribeBadAddress(ip netip.Addr) (string, bool) {
 	}
 }
 
-// ValidateAndNormalizeIP validates ip for ipFamily and returns the canonical form.
-// On failure it returns a predicate phrase suitable for "(subject) %s"
-// (e.g., "is a loopback address") and false.
-// When wants4in6Hint is true, callers should show [pp.MessageIP4MappedIP6Address].
-// No messaging — callers handle error reporting with their own context.
+// ValidateAndNormalizeIP validates ip for ipFamily.
+//   - On success, it returns the canonical normalized address, whether
+//     normalization unmapped an IPv4-mapped IPv6 address (unmapped),
+//     and ok=true.
+//   - On failure, it returns an issue phrase suitable for "(subject) %s"
+//     (for example, "is a loopback address") and ok=false. When wants4in6Hint
+//     is true, callers should also show [pp.MessageIP4MappedIP6Address].
+//
+// The function does not emit messages; callers report errors in their own context.
 func ValidateAndNormalizeIP(ipFamily Family, ip netip.Addr) (
 	normalized netip.Addr, unmapped bool, issue string, wants4in6Hint bool, ok bool,
 ) {
