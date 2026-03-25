@@ -1,7 +1,6 @@
 # 🌟 Cloudflare DDNS
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
-[![Go Reference](https://pkg.go.dev/badge/github.com/favonia/cloudflare-ddns/.svg)](https://pkg.go.dev/github.com/favonia/cloudflare-ddns/)
 [![Codecov](https://img.shields.io/codecov/c/github/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
@@ -13,7 +12,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### ⚡️ Efficiency
 
-- 🤏 The default Docker image stays small, and the `Docker Image Size` badge shows its current published size.
+- <a href="https://hub.docker.com/r/favonia/cloudflare-ddns"><img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"></a> The default Docker image stays small.
 - 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
