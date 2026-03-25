@@ -1,7 +1,7 @@
 # 🌟 Cloudflare DDNS
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
-[![Codecov](https://img.shields.io/codecov/c/github/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
+[![Codecov](https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/6680/badge)](https://bestpractices.coreinfrastructure.org/projects/6680)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/favonia/cloudflare-ddns/badge)](https://securityscorecards.dev/viewer/?uri=github.com/favonia/cloudflare-ddns)
@@ -12,7 +12,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### ⚡️ Efficiency
 
-- <a href="https://hub.docker.com/r/favonia/cloudflare-ddns"><img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"></a> The default Docker image stays small.
+- <img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"> The default Docker image stays small.
 - 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
@@ -34,13 +34,17 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 - 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
 - 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
 
-### 🛡️ Attention to Security and Privacy
+### 📐 Attention to Correctness and Security
 
-- 🙈 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records. Moreover, if Cloudflare servers are not reachable, chances are you cannot update DNS records anyways.
+- <img src="https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns?label=" alt="Codecov" align="top"> The testing coverage is high (though the coverage itself doesn’t say much).
+
+- 📚 The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
+
+- 🙈 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records.
 
 - 🛡️ By default, the updater uses only HTTPS or [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS) to detect IP addresses. This makes it harder for someone else to trick the updater into updating your DNS records with wrong IP addresses. See the [Security Model](docs/designs/features/network-security-model.markdown) for more information.
 
-- <details><summary>🔏 Verify with cosign that the Docker images were built from this repository <sup><em>click to expand</em></sup></summary>
+- <details><summary>🔏 You can verify with cosign that the Docker images were built from this repository <sup><em>click to expand</em></sup></summary>
 
   ```bash
   cosign verify favonia/cloudflare-ddns:1 \
