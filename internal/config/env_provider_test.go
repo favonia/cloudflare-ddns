@@ -125,14 +125,14 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
 			ipnet.IP4, true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`)
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`)
 			},
 		},
 		"cloudflare.trace:": {
 			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL`),
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare.trace: must be followed by a URL`, key),
 				)
 			},
