@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"context"
-	"net/netip"
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/file"
@@ -38,8 +37,8 @@ func (p File) IsExplicitEmpty() bool {
 	return false
 }
 
-// GetRawData reads the file, parses IP addresses, validates them for the
-// requested family, and returns deterministic raw data.
+// GetRawData reads the file, parses IP addresses or IP addresses in CIDR notation, validates them
+// for the requested family, and returns deterministic raw data.
 func (p File) GetRawData(
 	_ context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
 ) DetectionResult {
@@ -48,32 +47,28 @@ func (p File) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
-	ips := make([]netip.Addr, 0)
-	for lineNum, rawIP := range lines {
-		ip, err := netip.ParseAddr(rawIP)
+	entries := make([]ipnet.RawEntry, 0)
+	for lineNum, raw := range lines {
+		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Failed to parse line %d (%q) of %s as an IP address", lineNum, rawIP, p.Path)
+				"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation", lineNum, raw, p.Path)
 			return NewUnavailableDetectionResult()
 		}
-		normalized, issue, is4in6Hint, ok := ipnet.ValidateAndNormalizeIP(ipFamily, ip)
+
+		// Per-line validation with contextual error messages.
+		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s is %s", lineNum, rawIP, p.Path, issue)
-			if is4in6Hint {
-				ppfmt.InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
-					"An IPv4-mapped IPv6 address is an IPv4 address in disguise. "+
-						"It cannot be used for routing IPv6 traffic. "+
-						"If you need to use it for DNS, please open an issue at %s",
-					pp.IssueReportingURL)
-			}
+				"Line %d (%q) of %s %s", lineNum, raw, p.Path, problem)
+			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return NewUnavailableDetectionResult()
 		}
-		ips = append(ips, normalized)
+		entries = append(entries, normalized)
 	}
 
-	slices.SortFunc(ips, netip.Addr.Compare)
-	ips = slices.Compact(ips)
+	slices.SortFunc(entries, ipnet.RawEntry.Compare)
+	entries = slices.Compact(entries)
 
-	return NewKnownDetectionResult(ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen))
+	return NewKnownDetectionResult(entries)
 }

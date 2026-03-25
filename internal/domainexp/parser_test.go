@@ -1,4 +1,5 @@
 // vim: nowrap
+
 package domainexp_test
 
 import (

@@ -466,7 +466,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
-				"10.0.0.1", wafList.Describe()),
+				"10.0.0.1/32", wafList.Describe()),
 			h.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID}).
 				Return(true),
@@ -499,7 +499,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
-				"10.0.0.1", wafList.Describe()),
+				"10.0.0.1/32", wafList.Describe()),
 			h.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID, outdated4b.ID}).
 				Return(true),
@@ -531,7 +531,7 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				}).
 				Return(true),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
-				"10.0.0.1", wafList.Describe()),
+				"10.0.0.1/32", wafList.Describe()),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"2001:db8::/64", wafList.Describe()),
 			h.mockHandle.EXPECT().

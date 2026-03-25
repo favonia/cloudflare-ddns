@@ -1,4 +1,5 @@
 // vim: nowrap
+
 package heartbeat_test
 
 import (

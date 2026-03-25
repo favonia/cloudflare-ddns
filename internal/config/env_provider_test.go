@@ -171,38 +171,38 @@ func TestReadProvider(t *testing.T) {
 			ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry of %s is empty (check for extra commas)`, "2nd", key)
+					`The %s entry in %s is empty (check for extra commas)`, "2nd", key)
 			},
 		},
 		"static:double-comma": {
 			ipnet.IP4, true, "static:1.1.1.1,,2.2.2.2", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry of %s is empty (check for extra commas)`, "2nd", key)
+					`The %s entry in %s is empty (check for extra commas)`, "2nd", key)
 			},
 		},
 		"static:loopback": {
 			ipnet.IP4, true, "static:127.0.0.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry (%q) of %s is %s`,
-					"1st", "127.0.0.1", key, "a loopback address")
+					`The %s entry (%q) in %s %s`,
+					"1st", "127.0.0.1", key, "is a loopback address")
 			},
 		},
 		"static:unspecified": {
 			ipnet.IP4, true, "static:0.0.0.0", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry (%q) of %s is %s`,
-					"1st", "0.0.0.0", key, "an unspecified address")
+					`The %s entry (%q) in %s %s`,
+					"1st", "0.0.0.0", key, "is an unspecified address")
 			},
 		},
 		"static:link-local": {
 			ipnet.IP4, true, "static:169.254.1.1", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry (%q) of %s is %s`,
-					"1st", "169.254.1.1", key, "a link-local address")
+					`The %s entry (%q) in %s %s`,
+					"1st", "169.254.1.1", key, "is a link-local address")
 			},
 		},
 		"static:is4in6": {
@@ -210,8 +210,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserError,
-						`The %s entry (%q) of %s is %s`,
-						"1st", "::ffff:1.1.1.1", key, "an IPv4-mapped IPv6 address"),
+						`The %s entry (%q) in %s %s`,
+						"1st", "::ffff:1.1.1.1", key, "is an IPv4-mapped IPv6 address"),
 					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s",
 						pp.IssueReportingURL),
@@ -223,8 +223,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The %s entry (%q) of %s is %s`,
-					"1st", "1::1%eth0", key, "not a valid IPv4 address",
+					`Failed to parse the %s entry (%q) in %s as an IP address or an IP address in CIDR notation`,
+					"1st", "1::1%eth0", key,
 				)
 			},
 		},
@@ -233,8 +233,8 @@ func TestReadProvider(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					`The %s entry (%q) of %s is %s`,
-					"1st", "2001:db8::1", key, "not a valid IPv4 address",
+					`The %s entry (%q) in %s %s`,
+					"1st", "2001:db8::1", key, "is not a valid IPv4 address",
 				)
 			},
 		},

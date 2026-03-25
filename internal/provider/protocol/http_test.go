@@ -81,25 +81,25 @@ func TestHTTPGetRawData(t *testing.T) {
 		"4to6": {
 			false, ipnet.IP6, server4via6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip4.String(), "not a valid IPv6 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Line %d of the response of %q (%q) %s", 1, server4via6.URL, ip4.String(), "is not a valid IPv6 address")
 			},
 		},
 		"6to4": {
 			false, ipnet.IP4, server6via4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s is %s", ip6.String(), "not a valid IPv4 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Line %d of the response of %q (%q) %s", 1, server6via4.URL, ip6.String(), "is not a valid IPv4 address")
 			},
 		},
 		"4/illformed": {
 			false, ipnet.IP4, illformed4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed4.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation", 1, illformed4.URL, "hello")
 			},
 		},
 		"6/illformed": {
 			false, ipnet.IP6, illformed6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, `Failed to parse the IP address in the response of %q (%q)`, illformed6.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation", 1, illformed6.URL, "hello")
 			},
 		},
 		"4/request-fail": {

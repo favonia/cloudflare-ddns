@@ -1,4 +1,5 @@
 // vim: nowrap
+
 package notifier_test
 
 import (

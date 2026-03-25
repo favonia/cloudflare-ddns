@@ -1,4 +1,5 @@
 // vim: nowrap
+
 package updater_test
 
 import (

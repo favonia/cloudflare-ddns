@@ -456,7 +456,7 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 			ppfmt.Noticef(pp.EmojiImpossible, "Found a non-IP in the list %s", list.Describe())
 			return nil, false
 		}
-		p, ok := ipnet.ParsePrefixOrIP(ppfmt, *rawItem.IP)
+		p, ok := ipnet.ParseAddrOrPrefix(ppfmt, *rawItem.IP)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s",
 				*rawItem.IP, list.Describe())
@@ -615,7 +615,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	rawItemsToCreate := make([]cloudflare.ListItemCreateRequest, 0, len(itemsToCreate))
 	for _, item := range itemsToCreate {
-		formattedPrefix := ipnet.DescribePrefixOrIP(item.Prefix)
+		formattedPrefix := item.Prefix.Masked().String()
 		rawItemsToCreate = append(rawItemsToCreate, cloudflare.ListItemCreateRequest{
 			IP:       &formattedPrefix,
 			Redirect: nil,
