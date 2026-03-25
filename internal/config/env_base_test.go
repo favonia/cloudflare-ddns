@@ -12,6 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -254,6 +255,96 @@ func TestReadNonnegInt(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			ok := config.ReadNonnegInt(mockPP, key, &field)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.newField, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadPrefixLen(t *testing.T) {
+	key := keyPrefix + "PREFIXLEN"
+	for name, tc := range map[string]struct {
+		set           bool
+		val           string
+		ipFamily      ipnet.Family
+		oldField      int
+		newField      int
+		ok            bool
+		prepareMockPP func(*mocks.MockPP)
+	}{
+		"ip6/nil": {
+			false, "", ipnet.IP6, 64, 64, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 64)
+			},
+		},
+		"ip6/empty": {
+			true, "", ipnet.IP6, 64, 64, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 64)
+			},
+		},
+		"ip6/48":  {true, "48", ipnet.IP6, 64, 48, true, nil},
+		"ip6/12":  {true, "12", ipnet.IP6, 64, 12, true, nil},
+		"ip6/128": {true, "128", ipnet.IP6, 64, 128, true, nil},
+		"ip6/11": {
+			true, "11", ipnet.IP6, 64, 64, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%d) is not within the range %d-%d for %s",
+					key, 11, 12, 128, "IPv6")
+			},
+		},
+		"ip6/129": {
+			true, "129", ipnet.IP6, 64, 64, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%d) is not within the range %d-%d for %s",
+					key, 129, 12, 128, "IPv6")
+			},
+		},
+		"ip6/words": {
+			true, "word", ipnet.IP6, 64, 64, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
+			},
+		},
+		"ip4/nil": {
+			false, "", ipnet.IP4, 32, 32, true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 32)
+			},
+		},
+		"ip4/24": {true, "24", ipnet.IP4, 32, 24, true, nil},
+		"ip4/8":  {true, "8", ipnet.IP4, 32, 8, true, nil},
+		"ip4/32": {true, "32", ipnet.IP4, 32, 32, true, nil},
+		"ip4/7": {
+			true, "7", ipnet.IP4, 32, 32, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%d) is not within the range %d-%d for %s",
+					key, 7, 8, 32, "IPv4")
+			},
+		},
+		"ip4/33": {
+			true, "33", ipnet.IP4, 32, 32, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%d) is not within the range %d-%d for %s",
+					key, 33, 8, 32, "IPv4")
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			set(t, key, tc.set, tc.val)
+			field := tc.oldField
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			if tc.prepareMockPP != nil {
+				tc.prepareMockPP(mockPP)
+			}
+			ok := config.ReadPrefixLen(mockPP, key, &field, tc.ipFamily)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

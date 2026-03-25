@@ -53,8 +53,7 @@ func TestUnavailableGetRawData(t *testing.T) {
 				"The provider %s simulates detection failure (no real detection is attempted)", "debug.unavailable")
 
 			p := protocol.NewUnavailable("debug.unavailable")
-			rawData := p.GetRawData(context.Background(), mockPP, tc.ipFamily,
-				protocol.DefaultRawDataPrefixLen(tc.ipFamily))
+			rawData := p.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))
 			require.False(t, rawData.Available)
 			require.Empty(t, rawData.RawEntries)
 		})

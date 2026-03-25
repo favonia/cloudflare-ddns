@@ -10,8 +10,10 @@ import (
 
 // ReadProvider reads an environment variable and parses it as a provider.
 //
-// policyKey was the name of the deprecated parameters IP4/6_POLICY.
-func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family, field *provider.Provider) bool {
+// keyDeprecated was the name of the deprecated parameters IP4/6_POLICY.
+func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
+	ipFamily ipnet.Family, defaultPrefixLen int, field *provider.Provider,
+) bool {
 	val := Getenv(key)
 
 	if val == "" {
@@ -169,7 +171,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 			)
 			return false
 		}
-		p, ok := provider.NewStatic(ppfmt, key, ipFamily, parts[1])
+		p, ok := provider.NewStatic(ppfmt, key, ipFamily, defaultPrefixLen, parts[1])
 		if !ok {
 			return false
 		}
@@ -206,12 +208,14 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string, ipFamily ipnet.Family,
 
 // ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
 // with support of deprecated environment variables IP4_POLICY and IP6_POLICY.
-func ReadProviderMap(ppfmt pp.PP, field *map[ipnet.Family]provider.Provider) bool {
+func ReadProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
+	field *map[ipnet.Family]provider.Provider,
+) bool {
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
-	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, &ip4Provider) ||
-		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, &ip6Provider) {
+	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, defaultPrefixLen[ipnet.IP4], &ip4Provider) ||
+		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, defaultPrefixLen[ipnet.IP6], &ip6Provider) {
 		return false
 	}
 

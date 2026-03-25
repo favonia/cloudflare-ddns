@@ -34,6 +34,21 @@ func (r RawEntry) IsValid() bool { return netip.Prefix(r).IsValid() }
 // String returns the CIDR notation representation (e.g. "1.2.3.4/32").
 func (r RawEntry) String() string { return netip.Prefix(r).String() }
 
+// Describe returns a human-readable representation of the raw entry.
+// The CIDR suffix is omitted only when the entry is a single host
+// (prefix length == address bit length) AND that full-host length is also
+// the configured default. This keeps output familiar: users who leave the
+// default at /32 see bare "1.2.3.4", while users who set /24 always see
+// the explicit "/24" or "/32" suffix so the distinction is never ambiguous.
+func (r RawEntry) Describe(defaultPrefixLen int) string {
+	p := netip.Prefix(r)
+	maxBits := p.Addr().BitLen()
+	if defaultPrefixLen == maxBits && p.Bits() == maxBits {
+		return p.Addr().String()
+	}
+	return p.String()
+}
+
 // Compare returns an integer comparing two raw entries.
 // The result is suitable for use with [slices.SortFunc].
 func (r RawEntry) Compare(other RawEntry) int {

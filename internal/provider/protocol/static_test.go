@@ -16,30 +16,18 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 )
 
+// testDefaultPrefixLen returns the hardcoded default prefix length for testing.
+// Production defaults live in [config.DefaultRaw].
+func testDefaultPrefixLen(ipFamily ipnet.Family) int {
+	return map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}[ipFamily]
+}
+
 func liftedRawEntries(ipFamily ipnet.Family, ips []netip.Addr) []ipnet.RawEntry {
-	return ipnet.LiftValidatedIPsToRawEntries(ips, protocol.DefaultRawDataPrefixLen(ipFamily))
+	return ipnet.LiftValidatedIPsToRawEntries(ips, testDefaultPrefixLen(ipFamily))
 }
 
 func mustRawEntry(s string) ipnet.RawEntry {
 	return ipnet.RawEntry(netip.MustParsePrefix(s))
-}
-
-func TestDefaultRawDataPrefixLen(t *testing.T) {
-	t.Parallel()
-
-	for name, tc := range map[string]struct {
-		ipFamily ipnet.Family
-		expected int
-	}{
-		"ipv4":    {ipnet.IP4, 32},
-		"ipv6":    {ipnet.IP6, 64},
-		"unknown": {ipnet.Family(100), 0},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tc.expected, protocol.DefaultRawDataPrefixLen(tc.ipFamily))
-		})
-	}
 }
 
 func TestNewStatic(t *testing.T) {
@@ -152,10 +140,7 @@ func TestStaticGetRawData(t *testing.T) {
 				ProviderName: "",
 				RawEntries:   tc.savedRawEntries,
 			}
-			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, map[ipnet.Family]int{
-				ipnet.IP4: 32,
-				ipnet.IP6: 64,
-			}[tc.ipFamily])
+			rawData := provider.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))
 			require.Equal(t, tc.ok, rawData.Available)
 			if tc.ok {
 				require.Equal(t, tc.expected, rawData.RawEntries)

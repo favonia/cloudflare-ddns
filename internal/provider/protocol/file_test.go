@@ -192,7 +192,7 @@ func TestFileGetRawData(t *testing.T) {
 			}
 
 			p := protocol.NewFile("file:/ips.txt", "/ips.txt")
-			result := p.GetRawData(context.Background(), mockPP, tc.ipFamily, protocol.DefaultRawDataPrefixLen(tc.ipFamily))
+			result := p.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))
 			require.Equal(t, tc.ok, result.Available)
 			if tc.ok {
 				require.Equal(t, tc.expected, result.RawEntries)
@@ -212,7 +212,7 @@ func TestFileGetRawDataMissingFile(t *testing.T) {
 	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/missing.txt", gomock.Any())
 
 	p := protocol.NewFile("file:/missing.txt", "/missing.txt")
-	result := p.GetRawData(context.Background(), mockPP, ipnet.IP4, protocol.DefaultRawDataPrefixLen(ipnet.IP4))
+	result := p.GetRawData(context.Background(), mockPP, ipnet.IP4, 32)
 	require.False(t, result.Available)
 	require.Empty(t, result.RawEntries)
 }

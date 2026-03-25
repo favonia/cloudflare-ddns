@@ -44,7 +44,12 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	}
 
 	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadProviderMap(ppfmt, &c.Provider) ||
+		!ReadPrefixLen(ppfmt, "IP4_DEFAULT_PREFIX_LEN", &c.IP4DefaultPrefixLen, ipnet.IP4) ||
+		!ReadPrefixLen(ppfmt, "IP6_DEFAULT_PREFIX_LEN", &c.IP6DefaultPrefixLen, ipnet.IP6) ||
+		!ReadProviderMap(ppfmt, map[ipnet.Family]int{
+			ipnet.IP4: c.IP4DefaultPrefixLen,
+			ipnet.IP6: c.IP6DefaultPrefixLen,
+		}, &c.Provider) ||
 		!ReadDomains(ppfmt, "DOMAINS", &c.Domains) ||
 		!ReadDomains(ppfmt, "IP4_DOMAINS", &c.IP4Domains) ||
 		!ReadDomains(ppfmt, "IP6_DOMAINS", &c.IP6Domains) ||
@@ -276,6 +281,16 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 				describeIgnoredSettingValuePreview(c.ManagedWAFListItemsCommentRegex))
 		}
 	}
+	if providerMap[ipnet.IP4] == nil && c.IP4DefaultPrefixLen != 32 {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"IP4_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv4",
+			c.IP4DefaultPrefixLen)
+	}
+	if providerMap[ipnet.IP6] == nil && c.IP6DefaultPrefixLen != 64 {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"IP6_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv6",
+			c.IP6DefaultPrefixLen)
+	}
 
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,
@@ -298,8 +313,8 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		Domains:  domains,
 		WAFLists: c.WAFLists,
 		DefaultPrefixLen: map[ipnet.Family]int{
-			ipnet.IP4: provider.DefaultRawDataPrefixLen(ipnet.IP4),
-			ipnet.IP6: provider.DefaultRawDataPrefixLen(ipnet.IP6),
+			ipnet.IP4: c.IP4DefaultPrefixLen,
+			ipnet.IP6: c.IP6DefaultPrefixLen,
 		},
 		TTL:                c.TTL,
 		Proxied:            proxiedMap,

@@ -11,7 +11,7 @@ import (
 )
 
 // NewStatic creates a [protocol.Static] provider.
-func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (Provider, bool) {
+func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixLen int, raw string) (Provider, bool) {
 	ips := make([]netip.Addr, 0)
 	entryNum := 0
 	for rawIP := range strings.SplitSeq(raw, ",") {
@@ -57,7 +57,7 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, raw string) (P
 	}
 	return protocol.NewStatic(
 		"static:"+strings.Join(rawIPs, ","),
-		ipnet.LiftValidatedIPsToRawEntries(ips, DefaultRawDataPrefixLen(ipFamily)),
+		ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen),
 	), true
 }
 
@@ -67,9 +67,9 @@ func NewStaticEmpty() Provider {
 }
 
 // MustNewStatic creates a [protocol.Static] provider and panics if it fails.
-func MustNewStatic(ipFamily ipnet.Family, raw string) Provider {
+func MustNewStatic(ipFamily ipnet.Family, defaultPrefixLen int, raw string) Provider {
 	var buf strings.Builder
-	p, ok := NewStatic(pp.NewDefault(&buf), "IP_PROVIDER", ipFamily, raw)
+	p, ok := NewStatic(pp.NewDefault(&buf), "IP_PROVIDER", ipFamily, defaultPrefixLen, raw)
 	if !ok {
 		panic(buf.String())
 	}

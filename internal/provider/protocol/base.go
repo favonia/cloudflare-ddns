@@ -42,19 +42,6 @@ func (r DetectionResult) HasUsableRawData() bool {
 	return r.Available
 }
 
-// DefaultRawDataPrefixLen returns the shared product default used when lifting
-// a bare detected address into detection-phase raw data for one family.
-func DefaultRawDataPrefixLen(ipFamily ipnet.Family) int {
-	switch ipFamily {
-	case ipnet.IP4:
-		return 32
-	case ipnet.IP6:
-		return 64
-	default:
-		return 0
-	}
-}
-
 // NormalizeDetectedRawIPs validates detected addresses for one family and lifts
 // them into deterministic raw entries using the given default prefix length.
 func NormalizeDetectedRawIPs(

@@ -31,8 +31,8 @@ func TestReadProvider(t *testing.T) {
 		custom           = provider.MustNewCustomURL("https://url.io")
 		customVia4       = provider.MustNewCustomURLVia4("https://url.io")
 		customVia6       = provider.MustNewCustomURLVia6("https://url.io")
-		static           = provider.MustNewStatic(ipnet.IP4, "1.1.1.1")
-		staticMulti      = provider.MustNewStatic(ipnet.IP4, "2.2.2.2,1.1.1.1,2.2.2.2")
+		static           = provider.MustNewStatic(ipnet.IP4, 32, "1.1.1.1")
+		staticMulti      = provider.MustNewStatic(ipnet.IP4, 32, "2.2.2.2,1.1.1.1,2.2.2.2")
 		staticEmpty      = provider.NewStaticEmpty()
 		fileProvider     = provider.MustNewFile("/etc/ips.txt")
 		debugUnavailable = provider.NewDebugUnavailable()
@@ -325,7 +325,8 @@ func TestReadProvider(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProvider(mockPP, key, keyDeprecated, tc.ipFamily, &field)
+			defaultPrefixLen := map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}[tc.ipFamily]
+			ok := config.ReadProvider(mockPP, key, keyDeprecated, tc.ipFamily, defaultPrefixLen, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -472,7 +473,7 @@ func TestReadProviderMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProviderMap(mockPP, &field)
+			ok := config.ReadProviderMap(mockPP, map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})

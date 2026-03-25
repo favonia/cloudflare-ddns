@@ -8,6 +8,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -76,6 +77,55 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 
 	case i < 0:
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%d) is negative", key, i)
+		return false
+
+	default:
+		*field = i
+		return true
+	}
+}
+
+// prefixLenRange returns the valid prefix-length bounds for an IP family.
+//
+// The WAF IP-list prefix range snapshot below was adopted on 2026-03-24. Update
+// that date only when
+// scripts/github-actions/cloudflare-doc-watch/config/waf-list-ip-ranges.json
+// changes. According to WAF documentation, the valid CIDR ranges are:
+//   - IPv4: /8 through /32
+//   - IPv6: /12 through /128
+//
+// [WAF documentation]: https://developers.cloudflare.com/waf/tools/lists/lists-api/json-object
+func prefixLenRange(ipFamily ipnet.Family) (int, int) {
+	switch ipFamily {
+	case ipnet.IP4:
+		return 8, 32
+	case ipnet.IP6:
+		return 12, 128
+	default:
+		return 0, 0
+	}
+}
+
+// ReadPrefixLen reads an environment variable as a prefix length for the given
+// IP family. The valid range is derived from the family.
+func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) bool {
+	val := Getenv(key)
+	lo, hi := prefixLenRange(ipFamily)
+	if val == "" {
+		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		return true
+	}
+
+	i, err := strconv.Atoi(val)
+	switch {
+	case err != nil:
+		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
+		return false
+
+	case i < lo || i > hi:
+		ppfmt.Noticef(pp.EmojiUserError,
+			"%s (%d) is not within the range %d-%d for %s",
+			key, i, lo, hi, ipFamily.Describe())
 		return false
 
 	default:

@@ -48,6 +48,10 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	updateConfig.RecordComment = raw.RecordComment
 	updateConfig.WAFListDescription = raw.WAFListDescription
 	updateConfig.WAFListItemComment = raw.WAFListItemComment
+	updateConfig.DefaultPrefixLen = map[ipnet.Family]int{
+		ipnet.IP4: raw.IP4DefaultPrefixLen,
+		ipnet.IP6: raw.IP6DefaultPrefixLen,
+	}
 	updateConfig.DetectionTimeout = raw.DetectionTimeout
 	updateConfig.UpdateTimeout = raw.UpdateTimeout
 
@@ -74,8 +78,10 @@ func TestPrintDefault(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "IPv4-enabled domains:", "(none)"),
 		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv4 default prefix length:", "/32"),
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "(none)"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
 		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
@@ -115,8 +121,10 @@ func TestPrintValues(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "IPv4-enabled domains:", "test4.org, *.test4.org"),
 		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv4 default prefix length:", "/32"),
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "test6.org, *.test6.org"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "^Created by Cloudflare DDNS$"),
@@ -189,8 +197,10 @@ func TestPrintCommentRegexQuotedWhenNeeded(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Domains, IP providers, and WAF lists:"),
 		printItem(t, innerMockPP, "IPv4-enabled domains:", "(none)"),
 		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv4 default prefix length:", "/32"),
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "(none)"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "\"^Created by\\tCloudflare DDNS$\""),
