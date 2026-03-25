@@ -103,7 +103,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
 		ppfmt.InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint,
-			`You are using the undocumented "cloudflare.trace" provider with custom URL`)
+			`You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`)
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,
