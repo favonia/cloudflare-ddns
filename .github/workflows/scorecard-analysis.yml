@@ -7,7 +7,9 @@ on:
   # Weekly on Fridays.
   schedule:
     - cron: "35 15 * * 5"
+
 permissions: read-all
+
 jobs:
   analysis:
     name: Scorecard analysis
@@ -17,6 +19,7 @@ jobs:
       security-events: write
       # Needed for GitHub OIDC token if publish_results is true
       id-token: write
+
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
@@ -24,10 +27,12 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: scorecards
+
       - name: "Checkout code"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
       - name: "Run analysis"
         uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
@@ -39,6 +44,7 @@ jobs:
           # extract the results instead of relying on our own infrastructure to run scans.
           # And it's free for you!
           publish_results: true
+
       # Upload the results to GitHub's code scanning dashboard (optional).
       # Commenting out will disable upload of results to your repo's Code Scanning dashboard
       - name: "Upload to code-scanning"

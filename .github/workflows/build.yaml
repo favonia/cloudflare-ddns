@@ -1,4 +1,5 @@
 name: Docker
+
 on:
   push:
     branches:
@@ -6,10 +7,13 @@ on:
   pull_request:
   release:
     types: [published]
+
 env:
   platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/riscv64,linux/s390x"
+
 permissions:
   contents: read
+
 jobs:
   build:
     name: "Build"
@@ -27,6 +31,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: build
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -82,6 +87,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         run: |
           cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
+
       - name: 📝 Calculate metadata for Docker images with alpine
         if: ${{ github.event_name != 'release' }}
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
