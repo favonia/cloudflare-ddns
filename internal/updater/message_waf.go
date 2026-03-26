@@ -19,6 +19,10 @@ func (s setterWAFListResponses) register(name string, code setter.ResponseCode) 
 	s[code] = append(s[code], name)
 }
 
+// Heartbeat success lines are intentionally terse status labels. Failure lines
+// can be longer because they are the ones users need to inspect. The notifier
+// variants below carry the fuller user-facing prose for Shoutrrr-style
+// channels.
 func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
@@ -30,11 +34,11 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, "Setting list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Updating WAF list(s) "+pp.Join(domains))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, "Set list(s) "+pp.Join(domains))
+		successLines = append(successLines, "Updated WAF list(s) "+pp.Join(domains))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}

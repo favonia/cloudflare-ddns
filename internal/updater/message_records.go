@@ -44,6 +44,10 @@ func describeIPs(ips []netip.Addr) string {
 	return pp.JoinMap(netip.Addr.String, ips)
 }
 
+// Heartbeat success messages stay compact because heartbeat services mainly
+// surface short status text. Failures can spend more words because they are the
+// messages users need to inspect. Notifier messages are more prose-like for
+// Shoutrrr and similar channels, so they use English joins instead.
 func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMap(netip.Addr.String, ips)
 }

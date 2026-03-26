@@ -251,8 +251,8 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			true,
 			[]string{
 				"Set A records for ip4.hello1, ip4.hello3, ip4.hello4 to 127.0.0.1, 127.0.0.2",
-				"Setting list(s) 12341234/list1",
-				"Set list(s) AAAAAAAA/list3, zzz/list4",
+				"Updating WAF list(s) 12341234/list1",
+				"Updated WAF list(s) AAAAAAAA/list3, zzz/list4",
 			},
 			[]string{
 				"Updated A records for ip4.hello1, ip4.hello3, and ip4.hello4 to 127.0.0.1 and 127.0.0.2.",
@@ -455,7 +455,7 @@ func TestUpdateIPs(t *testing.T) {
 		},
 		"ip4-only/clear": {
 			true,
-			[]string{"Cleared A records for ip4.hello", "Set list(s) 12341234/list"},
+			[]string{"Cleared A records for ip4.hello", "Updated WAF list(s) 12341234/list"},
 			[]string{"Cleared A records for ip4.hello.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
@@ -485,7 +485,7 @@ func TestUpdateIPs(t *testing.T) {
 		},
 		"ip4-only/setting": {
 			true,
-			[]string{"Setting A records for ip4.hello to 127.0.0.1", "Setting list(s) 12341234/list"},
+			[]string{"Setting A records for ip4.hello to 127.0.0.1", "Updating WAF list(s) 12341234/list"},
 			[]string{"Updating A records for ip4.hello to 127.0.0.1.", `Updating WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
@@ -500,7 +500,7 @@ func TestUpdateIPs(t *testing.T) {
 		},
 		"ip6-only": {
 			true,
-			[]string{"Set AAAA records for ip6.hello to ::1", "Set list(s) 12341234/list"},
+			[]string{"Set AAAA records for ip6.hello to ::1", "Updated WAF list(s) 12341234/list"},
 			[]string{"Updated AAAA records for ip6.hello to ::1.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
