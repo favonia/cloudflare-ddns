@@ -47,7 +47,8 @@ func hintMismatchedTTL(
 	)
 }
 
-func describeProxied(proxied bool) string {
+// DescribeProxyStatus returns a user-facing description of the Cloudflare proxy status.
+func DescribeProxyStatus(proxied bool) string {
 	if proxied {
 		return "proxied"
 	} else {
@@ -66,7 +67,7 @@ func hintMismatchedProxied(
 	ppfmt.Noticef(pp.EmojiUserWarning,
 		`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`, //nolint:lll
 		ipFamily.RecordType(), domain.Describe(), id,
-		describeProxied(current), describeProxied(target), describeProxied(target), dashboardURL,
+		DescribeProxyStatus(current), DescribeProxyStatus(target), DescribeProxyStatus(target), dashboardURL,
 	)
 }
 

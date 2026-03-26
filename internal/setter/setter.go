@@ -174,8 +174,8 @@ func reconcileAndPartitionRecords(
 			fmt.Sprintf("fallback value %s", fallbackParams.TTL.Describe()))
 	}
 	if proxiedAmbiguous {
-		warnings.warn(ppfmt, len(records), unit, "proxy states",
-			fmt.Sprintf(`fallback value "%t"`, fallbackParams.Proxied))
+		warnings.warn(ppfmt, len(records), unit, "proxy statuses",
+			fmt.Sprintf(`fallback value %q`, api.DescribeProxyStatus(fallbackParams.Proxied)))
 	}
 	if commentAmbiguous {
 		warnings.warn(ppfmt, len(records), unit, "comments",

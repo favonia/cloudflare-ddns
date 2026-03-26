@@ -25,8 +25,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### 🌥️ Cloudflare-specific Features
 
-- 😶‍🌫️ You can toggle [Cloudflare proxying](https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/) for each domain.
-- 📝 You can set [comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/) for DNS records managed by the updater.
+- 📝 The updater will preserve existing [Cloudflare proxy statuses](https://developers.cloudflare.com/dns/proxy-status/), [TTLs](https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl/), [comments](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/). You can specify fallback values for when the updater needs to supply them.
 - 📜 The updater can maintain [lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) of detected IP addresses. These lists can then be referenced in any Cloudflare product that uses [Cloudflare’s Rules language](https://developers.cloudflare.com/ruleset-engine/), such as [Cloudflare Web Application Firewall (WAF)](https://developers.cloudflare.com/waf/) and [Cloudflare Rules](https://developers.cloudflare.com/rules/). (We call the lists “WAF lists”, but their use is not limited to Cloudflare WAF.)
 
 ### 🔔 Integration with Notification Services
@@ -78,9 +77,8 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 <details><summary>🐋 Directly run the Docker image <sup><em>click to expand</em></sup></summary>
 
 ```bash
-# Use Cloudflare's proxy for these domains (optional).
-# Existing DNS records in Cloudflare keep their current proxy setting.
-# Change them once manually if you want to switch them.
+# Leaning toward using Cloudflare's proxy for these domains (optional)
+# Existing DNS records in Cloudflare keep their current proxy statuses
 docker run \
   --network host \
   -e CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
@@ -146,9 +144,8 @@ services:
       - DOMAINS=example.org,www.example.org,example.io
         # Your domains (separated by commas)
       - PROXIED=true
-        # Use Cloudflare's proxy for these domains (optional)
-        # Existing DNS records in Cloudflare keep their current proxy setting
-        # Change them once manually if you want to switch them
+        # Leaning toward using Cloudflare's proxy for these domains (optional)
+        # Existing DNS records in Cloudflare keep their current proxy statuses
 ```
 
 <p id="cloudflare-api-token"><code>CLOUDFLARE_API_TOKEN</code> should be a Cloudflare API token, not the older global API key used by some other tools. Create one from the <a href="https://dash.cloudflare.com/profile/api-tokens">API Tokens page</a>, typically using the <strong>Edit zone DNS</strong> template. If you also use <a href="https://developers.cloudflare.com/waf/tools/lists/custom-lists/">WAF lists</a>, add the <strong>Account - Account Filter Lists - Edit</strong> permission.</p>
@@ -163,9 +160,9 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 </details>
 
 <details>
-<summary>🚨 Remove the optional <code>PROXIED=true</code> line if you are <em>not</em> running a web server <sup><em>click to expand</em></sup></summary>
+<summary>🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server <sup><em>click to expand</em></sup></summary>
 
-The setting `PROXIED=true` makes this updater use Cloudflare’s proxy for these domains, which lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare’s proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
+The fallback setting `PROXIED=true` nudges this updater toward [using Cloudflare’s proxy](https://developers.cloudflare.com/dns/proxy-status/) for your domains when existing proxy statuses are inconsistent. The proxying lets Cloudflare cache webpages and hide your IP addresses. If you already have these DNS records in Cloudflare, they keep the proxy setting they already have. Change them once manually if you want to switch them. If you wish to bypass Cloudflare’s proxy and expose your actual IP addresses, remove `PROXIED=true`. If your traffic is not HTTP(S), then Cloudflare cannot proxy it and you should probably remove `PROXIED=true`. The default value of `PROXIED` is `false`.
 
 </details>
 
