@@ -505,8 +505,8 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"The tags for %s contain duplicates that differ only by letter case; this should not happen and please report it at %s",
-			"AAAA records of sub.test.org", pp.IssueReportingURL,
+			"The tags for %s contain duplicates that differ only by letter case; this should not happen; please report it at %s",
+			"AAAA records for sub.test.org", pp.IssueReportingURL,
 		),
 		expectRecordUpdate(
 			ctx,
@@ -597,8 +597,8 @@ func TestSetIPsWarnsAmbiguousTagsFromOutdatedSources(t *testing.T) {
 		}, true, true),
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
-			"The %d outdated %s disagree on %s; using %s",
-			2, "AAAA records of sub.test.org", "tags", "common subset",
+			"The %d outdated %s disagree on %s; will use %s",
+			2, "AAAA records for sub.test.org", "tags", "common subset",
 		),
 		expectRecordUpdate(
 			ctx,

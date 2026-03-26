@@ -175,7 +175,7 @@ func ValidateAndNormalizeIP(ipFamily Family, ip netip.Addr) (
 func normalizeDetectedIP(t Family, ppfmt pp.PP, ip netip.Addr) (netip.Addr, bool) {
 	if !ip.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
-			`Detected IP address is not valid; this should not happen and please report it at %s`,
+			`Detected IP address is invalid; this should not happen. Please report it at %s`,
 			pp.IssueReportingURL,
 		)
 		return netip.Addr{}, false
@@ -232,7 +232,7 @@ func ParseAddrOrPrefix(ppfmt pp.PP, s string) (netip.Prefix, bool) {
 			// The context is an IP list from Cloudflare. Theoretically, it's impossible to have
 			// invalid IP ranges/addresses.
 			ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", s, errPrefix)
-			ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP address as well: %v", s, errAddr)
+			ppfmt.Noticef(pp.EmojiImpossible, "Also failed to parse %q as an IP address: %v", s, errAddr)
 			return netip.Prefix{}, false
 		}
 		p = netip.PrefixFrom(ip, ip.BitLen())

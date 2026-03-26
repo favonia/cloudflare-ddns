@@ -150,7 +150,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ip4,
 			nil,
 		},
-		"illformed-query": {
+		"malformed-query": {
 			ipnet.IP4, ipnet.IP4, "test",
 			dnsmessage.ClassCHAOS,
 			true,
@@ -444,7 +444,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ip4,
 			nil,
 		},
-		"illformed-ip": {
+		"malformed-ip": {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,

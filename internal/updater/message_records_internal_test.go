@@ -13,6 +13,56 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+func TestGenerateClearHeartbeatMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed-with-followups", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, heartbeat.Message{
+			OK:    false,
+			Lines: []string{"Could not confirm that A records for alpha.example were cleared"},
+		}, generateClearHeartbeatMessage(ipnet.IP4, setterResponses{
+			setter.ResponseFailed:   {"alpha.example"},
+			setter.ResponseUpdating: {"beta.example"},
+			setter.ResponseUpdated:  {"gamma.example"},
+		}))
+	})
+
+	t.Run("updating-and-updated", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, heartbeat.Message{
+			OK: true,
+			Lines: []string{
+				"Clearing A records for alpha.example",
+				"Cleared A records for beta.example",
+			},
+		}, generateClearHeartbeatMessage(ipnet.IP4, setterResponses{
+			setter.ResponseUpdating: {"alpha.example"},
+			setter.ResponseUpdated:  {"beta.example"},
+		}))
+	})
+}
+
+func TestGenerateClearNotifierMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("failed-with-followups", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, notifier.Message{
+			"Could not confirm that A records for alpha.example were cleared; clearing A records for beta.example; cleared A records for gamma.example.",
+		}, generateClearNotifierMessage(ipnet.IP4, setterResponses{
+			setter.ResponseFailed:   {"alpha.example"},
+			setter.ResponseUpdating: {"beta.example"},
+			setter.ResponseUpdated:  {"gamma.example"},
+		}))
+	})
+
+	t.Run("empty-responses", func(t *testing.T) {
+		t.Parallel()
+		require.Nil(t, generateClearNotifierMessage(ipnet.IP4, emptySetterResponses()))
+	})
+}
+
 func TestGenerateUpdateHeartbeatMessage(t *testing.T) {
 	t.Parallel()
 
@@ -21,68 +71,31 @@ func TestGenerateUpdateHeartbeatMessage(t *testing.T) {
 		netip.MustParseAddr("127.0.0.2"),
 	}
 
-	cases := []struct {
-		name string
-		ips  []netip.Addr
-		resp setterResponses
-		want heartbeat.Message
-	}{
-		{
-			name: "clearing-updating-and-updated",
-			ips:  nil,
-			resp: setterResponses{
-				setter.ResponseUpdating: {"alpha.example"},
-				setter.ResponseUpdated:  {"beta.example"},
-			},
-			want: heartbeat.Message{
-				OK: true,
-				Lines: []string{
-					"Clearing A of alpha.example",
-					"Cleared A of beta.example",
-				},
-			},
-		},
-		{
-			name: "clearing-failed",
-			ips:  nil,
-			resp: setterResponses{
-				setter.ResponseFailed: {"alpha.example", "beta.example"},
-			},
-			want: heartbeat.Message{
-				OK:    false,
-				Lines: []string{"Could not confirm clearing A of alpha.example, beta.example"},
-			},
-		},
-		{
-			name: "non-clearing-updating-only",
-			ips:  ip4Targets,
-			resp: setterResponses{
-				setter.ResponseUpdating: {"alpha.example", "beta.example"},
-			},
-			want: heartbeat.Message{
-				OK:    true,
-				Lines: []string{"Setting A (127.0.0.1, 127.0.0.2) of alpha.example, beta.example"},
-			},
-		},
-		{
-			name: "non-clearing-updated-only",
-			ips:  ip4Targets,
-			resp: setterResponses{
-				setter.ResponseUpdated: {"alpha.example", "beta.example"},
-			},
-			want: heartbeat.Message{
-				OK:    true,
-				Lines: []string{"Set A (127.0.0.1, 127.0.0.2) of alpha.example, beta.example"},
-			},
-		},
-	}
+	t.Run("failed-with-followups", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, heartbeat.Message{
+			OK:    false,
+			Lines: []string{"Could not confirm that A records for alpha.example were updated to 127.0.0.1, 127.0.0.2"},
+		}, generateUpdateHeartbeatMessage(ipnet.IP4, ip4Targets, setterResponses{
+			setter.ResponseFailed:   {"alpha.example"},
+			setter.ResponseUpdating: {"beta.example"},
+			setter.ResponseUpdated:  {"gamma.example"},
+		}))
+	})
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tc.want, generateUpdateHeartbeatMessage(ipnet.IP4, tc.ips, tc.resp))
-		})
-	}
+	t.Run("updating-and-updated", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, heartbeat.Message{
+			OK: true,
+			Lines: []string{
+				"Setting A records for alpha.example to 127.0.0.1, 127.0.0.2",
+				"Set A records for beta.example to 127.0.0.1, 127.0.0.2",
+			},
+		}, generateUpdateHeartbeatMessage(ipnet.IP4, ip4Targets, setterResponses{
+			setter.ResponseUpdating: {"alpha.example"},
+			setter.ResponseUpdated:  {"beta.example"},
+		}))
+	})
 }
 
 func TestGenerateUpdateNotifierMessage(t *testing.T) {
@@ -93,89 +106,31 @@ func TestGenerateUpdateNotifierMessage(t *testing.T) {
 		netip.MustParseAddr("127.0.0.2"),
 	}
 
-	cases := []struct {
-		name string
-		ips  []netip.Addr
-		resp setterResponses
-		want notifier.Message
-	}{
-		{
-			name: "updating-only",
-			ips:  ip4Targets,
-			resp: setterResponses{
-				setter.ResponseUpdating: {"alpha.example", "beta.example"},
-			},
-			want: notifier.Message{
-				"Updating A records of alpha.example and beta.example with 127.0.0.1 and 127.0.0.2.",
-			},
-		},
-		{
-			name: "updated-only",
-			ips:  ip4Targets,
-			resp: setterResponses{
-				setter.ResponseUpdated: {"alpha.example", "beta.example"},
-			},
-			want: notifier.Message{
-				"Updated A records of alpha.example and beta.example with 127.0.0.1 and 127.0.0.2.",
-			},
-		},
-		{
-			name: "clearing-updating-only",
-			ips:  nil,
-			resp: setterResponses{
-				setter.ResponseUpdating: {"alpha.example", "beta.example"},
-			},
-			want: notifier.Message{
-				"Clearing A records of alpha.example and beta.example.",
-			},
-		},
-		{
-			name: "clearing-updated-only",
-			ips:  nil,
-			resp: setterResponses{
-				setter.ResponseUpdated: {"alpha.example", "beta.example"},
-			},
-			want: notifier.Message{
-				"Cleared A records of alpha.example and beta.example.",
-			},
-		},
-		{
-			name: "registered-domain-descriptions",
-			ips:  ip4Targets,
-			resp: func() setterResponses {
-				responses := emptySetterResponses()
-				responses.register(domain.FQDN("alpha.example"), setter.ResponseUpdated)
-				responses.register(domain.FQDN("beta.example"), setter.ResponseUpdating)
-				return responses
-			}(),
-			want: notifier.Message{
-				"Updating A records of beta.example with 127.0.0.1 and 127.0.0.2; updated those of alpha.example.",
-			},
-		},
-		{
-			name: "clearing-failed-with-followups",
-			ips:  nil,
-			resp: setterResponses{
-				setter.ResponseFailed:   {"alpha.example"},
-				setter.ResponseUpdating: {"beta.example"},
-				setter.ResponseUpdated:  {"gamma.example"},
-			},
-			want: notifier.Message{
-				"Could not confirm clearing A records of alpha.example; updating those of beta.example; updated those of gamma.example.",
-			},
-		},
-		{
-			name: "empty-responses",
-			ips:  ip4Targets,
-			resp: emptySetterResponses(),
-			want: nil,
-		},
-	}
+	t.Run("registered-domain-descriptions", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tc.want, generateUpdateNotifierMessage(ipnet.IP4, tc.ips, tc.resp))
-		})
-	}
+		responses := emptySetterResponses()
+		responses.register(domain.FQDN("alpha.example"), setter.ResponseUpdated)
+		responses.register(domain.FQDN("beta.example"), setter.ResponseUpdating)
+
+		require.Equal(t, notifier.Message{
+			"Updating A records for beta.example to 127.0.0.1 and 127.0.0.2; updated A records for alpha.example to 127.0.0.1 and 127.0.0.2.",
+		}, generateUpdateNotifierMessage(ipnet.IP4, ip4Targets, responses))
+	})
+
+	t.Run("failed-with-followups", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, notifier.Message{
+			"Could not confirm that A records for alpha.example were updated to 127.0.0.1 and 127.0.0.2; updating A records for beta.example to 127.0.0.1 and 127.0.0.2; updated A records for gamma.example to 127.0.0.1 and 127.0.0.2.",
+		}, generateUpdateNotifierMessage(ipnet.IP4, ip4Targets, setterResponses{
+			setter.ResponseFailed:   {"alpha.example"},
+			setter.ResponseUpdating: {"beta.example"},
+			setter.ResponseUpdated:  {"gamma.example"},
+		}))
+	})
+
+	t.Run("empty-responses", func(t *testing.T) {
+		t.Parallel()
+		require.Nil(t, generateUpdateNotifierMessage(ipnet.IP4, ip4Targets, emptySetterResponses()))
+	})
 }

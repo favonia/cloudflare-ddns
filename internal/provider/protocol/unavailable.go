@@ -34,7 +34,7 @@ func (p Unavailable) GetRawData(
 	_ context.Context, ppfmt pp.PP, _ ipnet.Family, _ int,
 ) DetectionResult {
 	ppfmt.Infof(pp.EmojiError,
-		"The provider %s simulates detection failure (no real detection is attempted)",
+		"The provider %s simulates a detection failure; no real detection is attempted",
 		p.ProviderName)
 	return NewUnavailableDetectionResult()
 }

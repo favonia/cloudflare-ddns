@@ -149,7 +149,7 @@ func TestVerifyUnexpectedAuthorizationFailureIsUncertain(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Unexpected authorization failure while verifying the Cloudflare API token: %v; startup will continue",
+		"Unexpected authorization failure while verifying the Cloudflare API token: %v; the updater will continue",
 		gomock.Any())
 
 	require.True(t, auth.CheckUsability(context.Background(), mockPP))
@@ -287,7 +287,7 @@ func TestCheckUsabilityUnknownStatusIsUncertain(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare reported the API token status as %q during startup verification; startup will continue",
+		"Cloudflare reported the API token status as %q during startup verification; the updater will continue",
 		"mystery")
 
 	require.True(t, auth.CheckUsability(context.Background(), mockPP))

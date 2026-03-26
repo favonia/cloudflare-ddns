@@ -41,8 +41,8 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" || u.RawQuery != "" {
-		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
-		ppfmt.Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
@@ -54,8 +54,8 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 		// HTTPS is good!
 
 	default:
-		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) does not look like a valid URL`)
-		ppfmt.Noticef(pp.EmojiUserError, `A valid example is "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
 		return Healthchecks{}, false //nolint:exhaustruct
 	}
 
@@ -173,12 +173,12 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, endpoint string, me
 	bodyAsString := strings.TrimSpace(string(body))
 	if resp.StatusCode != http.StatusOK || bodyAsString != "OK" {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to ping the %s endpoint of Healthchecks; got response code: %d %s",
+			"Failed to ping the Healthchecks endpoint %s; got %d %s",
 			endpointDescription, resp.StatusCode, bodyAsString,
 		)
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiPing, "Pinged the %s endpoint of Healthchecks", endpointDescription)
+	ppfmt.Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", endpointDescription)
 	return true
 }

@@ -147,7 +147,7 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "Record/list updating:", "30s"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Heartbeats:"),
 		printItem(t, innerMockPP, "Meow:", "purrrr"),
-		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Notification services (via shoutrrr):"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Notification services (via Shoutrrr):"),
 		printItem(t, innerMockPP, "Snake:", "hissss"),
 	)
 

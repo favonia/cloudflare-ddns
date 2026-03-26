@@ -31,7 +31,7 @@ func TestDescribeShoutrrrService(t *testing.T) {
 		"empty": {
 			"", "",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unknown shoutrrr service name %q; please report it at %s", "", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unknown Shoutrrr service name %q; please report it at %s", "", pp.IssueReportingURL)
 			},
 		},
 	} {
@@ -95,16 +95,16 @@ func TestShoutrrrSend(t *testing.T) {
 			notifier.NewMessagef("hello"),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via shoutrrr", "Generic")
+				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via Shoutrrr", "Generic")
 			},
 		},
-		"ill-formed url": {
+		"malformed url": {
 			"", 0,
 			func(_serverURL string) string { return "generic+https://0.0.0.0" },
 			notifier.NewMessagef("hello"),
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to notify shoutrrr service(s): %v", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to send notifications via Shoutrrr: %v", gomock.Any())
 			},
 		},
 		"empty": {

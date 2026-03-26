@@ -68,14 +68,14 @@ func TestDeleteRecord(t *testing.T) {
 			0, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"delete-fails": {
 			2, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of an outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 	} {
@@ -203,10 +203,10 @@ func TestUpdateRecord(t *testing.T) {
 			params,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"update-fails": {
@@ -214,10 +214,10 @@ func TestUpdateRecord(t *testing.T) {
 			params,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatched-attributes": {
@@ -231,34 +231,34 @@ func TestUpdateRecord(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "200", "200", mockDNSRecordsDeeplink(mockID("test.org", 0)), 1,
+					"1 (auto)", "200", "200", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
+					`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 			},
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "200", "200", mockDNSRecordsDeeplink(mockID("test.org", 0)), 1,
+					"1 (auto)", "200", "200", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
+					`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
@@ -433,14 +433,14 @@ func TestCreateRecord(t *testing.T) {
 			0, 0, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any()).Times(2)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any()).Times(2)
 			},
 		},
 		"create-fails": {
 			2, 1, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm creation of new %s record for %s: %v", "AAAA", "sub.test.org", gomock.Any())
 			},
 		},
 	} {
@@ -529,7 +529,7 @@ func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
 			`"featureflag" and ":prod"`,
 			"AAAA",
 			"sub.test.org",
@@ -738,7 +738,7 @@ func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(
 			pp.EmojiError,
-			"Could not confirm creation of new %s record of %s: %v",
+			"Could not confirm creation of new %s record for %s: %v",
 			"AAAA", "sub.test.org", gomock.Any(),
 		)
 	})
@@ -795,7 +795,7 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-			`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
+			`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
 			"AAAA", "sub.test.org", api.ID("record1"),
 			`"unmanaged"`, `"managed"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 		)
@@ -858,7 +858,7 @@ func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
 			`"featureflag"`,
 			"AAAA",
 			"sub.test.org",

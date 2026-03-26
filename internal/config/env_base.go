@@ -34,7 +34,7 @@ func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	val := Getenv(key)
 	if val == "" {
 		if *field != "" {
-			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, *field)
+			ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, *field)
 		}
 		return true
 	}
@@ -47,7 +47,7 @@ func ReadString(ppfmt pp.PP, key string, field *string) bool {
 func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%t", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%t", key, *field)
 		return true
 	}
 
@@ -65,7 +65,7 @@ func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
 		return true
 	}
 
@@ -112,7 +112,7 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 	val := Getenv(key)
 	lo, hi := prefixLenRange(ipFamily)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
 		return true
 	}
 
@@ -147,7 +147,7 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%d", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
 		return true
 	}
 
@@ -171,7 +171,7 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	val := Getenv(key)
 	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%v", key, *field)
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%v", key, *field)
 		return true
 	}
 
@@ -194,7 +194,7 @@ func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
 	switch val := Getenv(key); val {
 	case "":
-		ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, cron.DescribeSchedule(*field))
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, cron.DescribeSchedule(*field))
 		return true
 
 	case "@once":

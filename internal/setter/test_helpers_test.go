@@ -150,7 +150,7 @@ func expectRecordDelete(
 func expectRecordAddedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiCreation,
-		"Added a new %s record of %s (ID: %s)",
+		"Added a new %s record for %s (ID: %s)",
 		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
@@ -160,7 +160,7 @@ func expectRecordAddedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain doma
 func expectRecordUpdatedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiUpdate,
-		"Updated a outdated %s record of %s (ID: %s)",
+		"Updated an outdated %s record for %s (ID: %s)",
 		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
@@ -170,7 +170,7 @@ func expectRecordUpdatedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain do
 func expectRecordOutdatedDeletedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain, id api.ID) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiDeletion,
-		"Deleted a outdated %s record of %s (ID: %s)",
+		"Deleted an outdated %s record for %s (ID: %s)",
 		ipFamily.RecordType(),
 		domain.Describe(),
 		id,
@@ -181,14 +181,14 @@ func expectRecordAlreadyUpdatedInfo(p *mocks.MockPP, ipFamily ipnet.Family, doma
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
-			"The %s records of %s are already up to date (cached)",
+			"The %s records for %s are already up to date (cached)",
 			ipFamily.RecordType(),
 			domain.Describe(),
 		)
 	}
 	return p.EXPECT().Infof(
 		pp.EmojiAlreadyDone,
-		"The %s records of %s are already up to date",
+		"The %s records for %s are already up to date",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)
@@ -198,14 +198,14 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipFamily ipnet.Family, doma
 	if cached {
 		return p.EXPECT().Infof(
 			pp.EmojiAlreadyDone,
-			"The %s records of %s were already deleted (cached)",
+			"The %s records for %s were already deleted (cached)",
 			ipFamily.RecordType(),
 			domain.Describe(),
 		)
 	}
 	return p.EXPECT().Infof(
 		pp.EmojiAlreadyDone,
-		"The %s records of %s were already deleted",
+		"The %s records for %s were already deleted",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)
@@ -214,7 +214,7 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipFamily ipnet.Family, doma
 func expectRecordSetFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
-		"Could not confirm update of %s records of %s; records might be inconsistent",
+		"Could not confirm update of %s records for %s; the records might be inconsistent",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)
@@ -223,7 +223,7 @@ func expectRecordSetFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain 
 func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Noticef(
 		pp.EmojiError,
-		"Could not confirm deletion of %s records of %s; records might be inconsistent",
+		"Could not confirm deletion of %s records for %s; the records might be inconsistent",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)
@@ -232,7 +232,7 @@ func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family,
 func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Infof(
 		pp.EmojiTimeout,
-		"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
+		"Deletion of %s records for %s was aborted by a timeout or signal; the records might be inconsistent",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)

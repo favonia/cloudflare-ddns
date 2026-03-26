@@ -118,16 +118,16 @@ func realMain() int {
 	if !configOK {
 		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Configuration errors"))
 		nt.Send(ctx, ppfmt, notifier.NewMessagef(
-			"Cloudflare DDNS was misconfigured and could not start. Please check the logging for details."))
+			"Cloudflare DDNS was misconfigured and could not start. Please check the logs for details."))
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 	if !builtConfig.Handle.Auth.CheckUsability(ctxWithSignals, ppfmt) {
-		ppfmt.Noticef(pp.EmojiUserError, "Cloudflare DDNS could not start because the Cloudflare API token is unusable")
+		ppfmt.Noticef(pp.EmojiUserError, "Cloudflare DDNS could not start because the Cloudflare API token appears invalid")
 		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Invalid Cloudflare API token"))
 		nt.Send(ctx, ppfmt, notifier.NewMessagef(
 			"Cloudflare DDNS could not start because the Cloudflare API token appears invalid. "+
-				"Please check the logging for details."))
+				"Please check the logs for details."))
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
@@ -135,7 +135,7 @@ func realMain() int {
 	updateConfig := builtConfig.Update
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if lifecycleConfig.UpdateCron != nil {
-		nt.Send(ctx, ppfmt, notifier.NewMessagef("Started running Cloudflare DDNS."))
+		nt.Send(ctx, ppfmt, notifier.NewMessagef("Cloudflare DDNS has started."))
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -157,7 +157,7 @@ func realMain() int {
 
 		// Update the IP addresses
 		if first && !lifecycleConfig.UpdateOnStart {
-			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(true, "Started (no action)"))
+			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(true, "Started (no updates performed yet)"))
 		} else {
 			// Improve readability of the logging by separating each round of checks with blank lines.
 			ppfmt.BlankLineIfVerbose()
@@ -179,17 +179,17 @@ func realMain() int {
 
 		first = false
 
-		// If there's nothing scheduled in near future
+		// If there's nothing scheduled in the near future
 		if next.IsZero() {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"No scheduled updates in near future; consider changing UPDATE_CRON=%s",
+				"No scheduled updates in the near future; consider changing UPDATE_CRON=%s",
 				cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 			)
 			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "No scheduled updates"))
 			nt.Send(ctx, ppfmt,
 				notifier.NewMessagef(
-					"Cloudflare DDNS stopped because there are no scheduled updates in near future. "+
+					"Cloudflare DDNS stopped because no updates are scheduled in the near future. "+
 						"Consider changing the value of UPDATE_CRON (%s).",
 					cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 				),
@@ -207,7 +207,7 @@ func realMain() int {
 			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Exit(ctx, ppfmt, "Stopped")
 			if lifecycleConfig.UpdateCron != nil {
-				nt.Send(ctx, ppfmt, notifier.NewMessagef("Stopped running Cloudflare DDNS."))
+				nt.Send(ctx, ppfmt, notifier.NewMessagef("Cloudflare DDNS has stopped."))
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0

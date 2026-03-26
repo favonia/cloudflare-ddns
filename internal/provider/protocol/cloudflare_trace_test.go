@@ -91,7 +91,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: true, expected: ip4,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The response of %q does not contain an h (host) field; please report this at %s",
+					"The response from %q does not contain an h (host) field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 			},
 		},
@@ -103,7 +103,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The h field %q in the response of %q does not match the expected host %q; please report this at %s",
+					"The h field %q in the response from %q does not match the expected host %q; please report this at %s",
 					"wrong.example.com", gomock.Any(), gomock.Any(), pp.IssueReportingURL)
 			},
 		},
@@ -115,7 +115,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"The response of %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
+					"The response from %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
 					gomock.Any())
 			},
 		},
@@ -127,7 +127,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: true, expected: ip4,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The response of %q does not contain a warp field; please report this at %s",
+					"The response from %q does not contain a warp field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 			},
 		},
@@ -139,7 +139,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"The response of %q does not contain an ip field", gomock.Any())
+					"The response from %q does not contain an ip field", gomock.Any())
 			},
 		},
 		"4/unparseable-ip": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -150,7 +150,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"Failed to parse the IP address in the response of %q (%q)",
+					"Failed to parse the IP address in the response from %q (%q)",
 					gomock.Any(), "not-an-ip")
 			},
 		},
@@ -220,13 +220,13 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available:    false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The response of %q does not contain an h (host) field; please report this at %s",
+					"The response from %q does not contain an h (host) field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The response of %q does not contain a warp field; please report this at %s",
+					"The response from %q does not contain a warp field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 				m.EXPECT().Noticef(pp.EmojiError,
-					"The response of %q does not contain an ip field", gomock.Any())
+					"The response from %q does not contain an ip field", gomock.Any())
 			},
 		},
 		"4/lines-without-equals": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -244,7 +244,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError,
-					"The response of %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
+					"The response from %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
 					gomock.Any())
 			},
 		},
@@ -263,7 +263,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: true, expected: ip6,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The response of %q does not contain an h (host) field; please report this at %s",
+					"The response from %q does not contain an h (host) field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 			},
 		},
@@ -275,7 +275,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The h field %q in the response of %q does not match the expected host %q; please report this at %s",
+					"The h field %q in the response from %q does not match the expected host %q; please report this at %s",
 					"wrong.example.com", gomock.Any(), gomock.Any(), pp.IssueReportingURL)
 			},
 		},

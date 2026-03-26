@@ -119,7 +119,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP4, singleton(invalidIP),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is invalid; this should not happen. Please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"singleton/4-1::2": {
@@ -180,7 +180,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			ipnet.IP6, singleton(invalidIP),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected IP address is invalid; this should not happen. Please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"singleton/6-1::2": {
@@ -271,7 +271,7 @@ func TestNormalizeDetectedIPs(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiImpossible,
-					`Detected IP address is not valid; this should not happen and please report it at %s`,
+					`Detected IP address is invalid; this should not happen. Please report it at %s`,
 					pp.IssueReportingURL,
 				)
 			},
@@ -479,7 +479,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			ipnet.IP4, singleton(invalidEntry),
 			false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected address is not valid; this should not happen and please report it at %s`, pp.IssueReportingURL)
+				m.EXPECT().Noticef(pp.EmojiImpossible, `Detected address is invalid; this should not happen. Please report it at %s`, pp.IssueReportingURL)
 			},
 		},
 		"singleton/4-native": {
@@ -609,7 +609,7 @@ func TestNormalizeDetectedRawEntries(t *testing.T) {
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiImpossible,
-					`Detected address is not valid; this should not happen and please report it at %s`,
+					`Detected address is invalid; this should not happen. Please report it at %s`,
 					pp.IssueReportingURL,
 				)
 			},

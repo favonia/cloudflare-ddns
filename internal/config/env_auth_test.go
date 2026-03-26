@@ -44,7 +44,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Requires either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"conflicting": {

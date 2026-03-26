@@ -72,7 +72,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 
 	// Start from a zero-value RawConfig (not DefaultRaw) to verify that
 	// ReadEnv prints whatever the caller's initial field values are, even
-	// when those values are zero.  This exercises the "Use default" log
+	// when those values are zero.  This exercises the "Using default" log
 	// path without depending on the production defaults.
 	var cfg config.RawConfig
 	mockPP := mocks.NewMockPP(mockCtrl)
@@ -81,17 +81,17 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "IP4_DEFAULT_PREFIX_LEN", 0),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "none"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "UPDATE_CRON", "@once"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "UPDATE_ON_START", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", "DELETE_ON_STOP", false),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", "TTL", api.TTL(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "IP4_DEFAULT_PREFIX_LEN", 0),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "UPDATE_CRON", "@once"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "UPDATE_ON_START", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "DELETE_ON_STOP", false),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%v", "CACHE_EXPIRATION", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "TTL", api.TTL(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%v", "DETECTION_TIMEOUT", time.Duration(0)),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%v", "UPDATE_TIMEOUT", time.Duration(0)),
 	)
 	ok := cfg.ReadEnv(mockPP)
 	require.True(t, ok)
@@ -111,7 +111,7 @@ func TestReadEnvEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Noticef(pp.EmojiUserError,
-			"Needs either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE"),
+			"Requires either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE"),
 	)
 	ok := cfg.ReadEnv(mockPP)
 	require.False(t, ok)

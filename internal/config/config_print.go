@@ -156,7 +156,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 		for name, params := range nt.Describe {
 			count++
 			if count == 1 {
-				section("Notification services (via shoutrrr):")
+				section("Notification services (via Shoutrrr):")
 			}
 			item(name+":", "%s", params)
 		}

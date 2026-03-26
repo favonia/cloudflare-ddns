@@ -37,32 +37,32 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The %s domain in %s (%q) is %q, but it is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, "1st", key, "*", "*")
+				m.EXPECT().Noticef(pp.EmojiUserError, `The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, "1st", key, "*", "*")
 			},
 		},
 		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
 		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
 		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
 		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
-		"illformed1": {
+		"malformed1": {
 			true, "xn--:D.org,a.org",
 			ds{f("random.org")},
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
 			},
 		},
-		"illformed2": {
+		"malformed2": {
 			true, "*.xn--:D.org,a.org",
 			ds{f("random.org")},
 			ds{f("random.org")},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
 			},
 		},
-		"illformed3": {
+		"malformed3": {
 			true, "hi.org,(",
 			ds{},
 			ds{},
@@ -71,7 +71,7 @@ func TestReadDomains(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "hi.org,(", "(")
 			},
 		},
-		"illformed4": {
+		"malformed4": {
 			true, ")",
 			ds{},
 			ds{},
@@ -134,10 +134,10 @@ func TestReadDomainMap(t *testing.T) {
 			true,
 			nil,
 		},
-		"ill-formed": {
+		"malformed": {
 			" ", "   ", "*.*", nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is ill-formed: %v", "1st", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
 			},
 		},
 	} {

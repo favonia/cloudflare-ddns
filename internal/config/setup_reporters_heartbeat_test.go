@@ -145,7 +145,7 @@ func TestSetupReportersHeartbeat(t *testing.T) {
 			uptimeKuma:      "/1234?hello=123",
 			ok:              false,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()

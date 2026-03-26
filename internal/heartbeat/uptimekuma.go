@@ -46,7 +46,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" {
-		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
@@ -58,7 +58,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 		// HTTPS is good!
 
 	default:
-		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
 		return UptimeKuma{}, false //nolint:exhaustruct
 	}
 
@@ -70,7 +70,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	if u.RawQuery != "" {
 		q, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
-			ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) does not look like a valid URL`)
+			ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
 			return UptimeKuma{}, false //nolint:exhaustruct
 		}
 
@@ -82,7 +82,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 
 			default: // problematic case
 				ppfmt.Noticef(pp.EmojiUserError,
-					`The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored`,
+					`The Uptime Kuma URL (redacted) contains an unexpected query parameter %s=...; it will be ignored`,
 					k)
 			}
 		}
@@ -173,6 +173,6 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiPing, "Pinged Uptime Kuma")
+	ppfmt.Infof(pp.EmojiPing, "Successfully sent a ping to Uptime Kuma")
 	return true
 }

@@ -70,8 +70,8 @@ func TestDescribeNonemptyCommentRegex(t *testing.T) {
 		},
 		{
 			name:  "graphic unicode stays raw",
-			regex: "^猫+$",
-			want:  "^猫+$",
+			regex: "^貓+$",
+			want:  "^貓+$",
 		},
 		{
 			name:  "leading whitespace is quoted",

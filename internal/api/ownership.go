@@ -46,7 +46,7 @@ func (p HandleOwnershipPolicy) Sanitize(ppfmt pp.PP) HandleOwnershipPolicy {
 		"DELETE_ON_STOP is enabled, but "+
 			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
 			"the updater will keep the list and delete only items managed by this updater",
-		pp.QuotePreview(p.ManagedWAFListItemsCommentRegex.String(), advisoryValuePreviewLimit),
+		pp.QuotePreviewOrEmptyLabel(p.ManagedWAFListItemsCommentRegex.String(), pp.AdvisoryPreviewLimit, "empty"),
 	)
 	p.AllowWholeWAFListDeleteOnShutdown = false
 	return p

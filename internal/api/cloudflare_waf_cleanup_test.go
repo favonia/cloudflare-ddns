@@ -93,7 +93,7 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			0, 0, 0, 0, nil,
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", gomock.Any())
 			},
 		},
 		"list-not-found": {
@@ -118,8 +118,8 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiClear, "Deleting managed items in list %s asynchronously", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiClear, "Deleting managed items in the list %s asynchronously", "account456/list"),
 				)
 			},
 		},
@@ -130,8 +130,8 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			api.WAFListCleanupNoop,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone, "Managed items in list %s were already deleted", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone, "Managed items in the list %s were already deleted", "account456/list"),
 				)
 			},
 		},
@@ -142,7 +142,7 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve items in the list %s: %v", "account456/list", gomock.Any()),
 				)
 			},
@@ -157,9 +157,9 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 			api.WAFListCleanupFailed,
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that item deletion started in list %s: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of managed items in list %s; list content may be inconsistent", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that item deletion started in the list %s: %v", "account456/list", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of managed items in the list %s; list content may be inconsistent", "account456/list"),
 				)
 			},
 		},
@@ -217,7 +217,7 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 			api.WAFListCleanupUpdating,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiClear,
-					"Deleting managed items in list %s asynchronously", "account456/list")
+					"Deleting managed items in the list %s asynchronously", "account456/list")
 			},
 		},
 		"list-not-found": {
@@ -227,7 +227,7 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 			api.WAFListCleanupNoop,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone,
-					"Managed items in list %s were already deleted", "account456/list")
+					"Managed items in the list %s were already deleted", "account456/list")
 			},
 		},
 		"list-items-fail": {
@@ -293,7 +293,7 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 
 	cleanupPP := f.newPP()
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in list %s were already deleted (cached)", "account456/list")
+		"Managed items in the list %s were already deleted (cached)", "account456/list")
 	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
@@ -322,7 +322,7 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 			deleteItemIDs:    []api.ID{"item-v4"},
 			prepareCleanupPP: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiClear,
-					"Deleting managed IPv4 items in list %s asynchronously", "account456/list")
+					"Deleting managed IPv4 items in the list %s asynchronously", "account456/list")
 			},
 			expectedCode:      api.WAFListCleanupUpdating,
 			expectedCachedRun: false,
@@ -336,7 +336,7 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 			deleteItemIDs:    nil,
 			prepareCleanupPP: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Infof(pp.EmojiAlreadyDone,
-					"Managed IPv6 items in list %s were already deleted (cached)", "account456/list")
+					"Managed IPv6 items in the list %s were already deleted (cached)", "account456/list")
 			},
 			expectedCode:      api.WAFListCleanupNoop,
 			expectedCachedRun: true,
@@ -403,9 +403,9 @@ func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresOutdatedCache(t *test
 	cleanupPP := f.newPP()
 	gomock.InOrder(
 		cleanupPP.EXPECT().Noticef(pp.EmojiError,
-			"Could not confirm deletion of list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+			"Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
 		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-			"Managed items in list %s were already deleted", "account456/list"),
+			"Managed items in the list %s were already deleted", "account456/list"),
 	)
 	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 		cleanupFamilies(ipnet.IP4, ipnet.IP6))
@@ -438,7 +438,7 @@ func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 
 	cleanupPP := mocks.NewMockPP(mockCtrl)
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in list %s were already deleted", "account456/list")
+		"Managed items in the list %s were already deleted", "account456/list")
 	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)
@@ -471,7 +471,7 @@ func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.
 
 	cleanupPP := mocks.NewMockPP(mockCtrl)
 	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in list %s were already deleted", "account456/list")
+		"Managed items in the list %s were already deleted", "account456/list")
 	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 		cleanupFamilies(ipnet.IP4, ipnet.IP6))
 	require.Equal(t, api.WAFListCleanupNoop, code)

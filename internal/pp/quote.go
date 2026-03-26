@@ -6,6 +6,11 @@ import (
 	"unicode"
 )
 
+// AdvisoryPreviewLimit is the centralized advisory preview limit.
+// Keep advisory value previews short in warning logs while preserving
+// full-fidelity values for mismatch diagnostics.
+const AdvisoryPreviewLimit = 48
+
 // QuoteOrEmptyLabel quotes non-empty strings and keeps a caller-defined label
 // for the empty string.
 func QuoteOrEmptyLabel(s string, emptyLabel string) string {
@@ -24,9 +29,14 @@ func QuoteIfNotHumanReadable(s string) string {
 	return strconv.Quote(s)
 }
 
-// QuotePreview quotes a preview string and truncates it (rune-safe) when it
-// is longer than the given limit. Non-positive limits disable truncation.
-func QuotePreview(s string, limit int) string {
+// QuotePreviewOrEmptyLabel quotes a non-empty preview string and truncates it
+// in a rune-safe way when it exceeds the given limit. A non-positive limit
+// disables truncation. For an empty string, it returns the caller-defined
+// label unchanged.
+func QuotePreviewOrEmptyLabel(s string, limit int, emptyLabel string) string {
+	if s == "" {
+		return emptyLabel
+	}
 	preview, _ := truncateForPreview(s, limit)
 	return strconv.Quote(preview)
 }

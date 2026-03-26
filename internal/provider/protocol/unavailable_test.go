@@ -50,7 +50,7 @@ func TestUnavailableGetRawData(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 			mockPP.EXPECT().Infof(pp.EmojiError,
-				"The provider %s simulates detection failure (no real detection is attempted)", "debug.unavailable")
+				"The provider %s simulates a detection failure; no real detection is attempted", "debug.unavailable")
 
 			p := protocol.NewUnavailable("debug.unavailable")
 			rawData := p.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))

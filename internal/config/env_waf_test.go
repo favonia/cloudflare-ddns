@@ -38,7 +38,7 @@ func TestReadWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "hey", Name: "hello"}},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
 			},
 		},
 		"two": {
@@ -47,7 +47,7 @@ func TestReadWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "here", Name: "aloha"}, {AccountID: "hey", Name: "hello"}},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
 			},
 		},
 		"overwrite-old": {
@@ -59,7 +59,7 @@ func TestReadWAFListNames(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
 			},
 		},
 		"duplicate": {
@@ -71,7 +71,7 @@ func TestReadWAFListNames(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
 			},
 		},
 		"invalid-format": {
@@ -80,8 +80,8 @@ func TestReadWAFListNames(t *testing.T) {
 			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
-				m.EXPECT().Noticef(pp.EmojiUserError, `The %s entry of %s (%q) should be in format "account-id/list-name"`, "1st", key, "+++")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().Noticef(pp.EmojiUserError, `The %s entry of %s (%q) should be in the format "account-id/list-name"`, "1st", key, "+++")
 			},
 		},
 		"invalid-name": {
@@ -94,8 +94,8 @@ func TestReadWAFListNames(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You're using the experimental WAF list manipulation feature available since version 1.14.0")
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "The %s entry of %s has list name %q, which contains invalid character %q", "2nd", key, "!!!", "!")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "The %s entry of %s has the list name %q, which contains an invalid character %q", "2nd", key, "!!!", "!")
 			},
 		},
 	} {
