@@ -2,6 +2,7 @@ package heartbeat_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -70,6 +71,26 @@ func TestNewUptimeKuma(t *testing.T) {
 			} else {
 				require.Zero(t, m)
 			}
+		})
+	}
+}
+
+func TestNewUptimeKumaAdditionalInvalidURLs(t *testing.T) {
+	t.Parallel()
+
+	for name, rawURL := range map[string]string{
+		"missing-host": "https:///missing-host",
+		"opaque":       "mailto:user@example.com",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockCtrl := gomock.NewController(t)
+			mockPP := mocks.NewMockPP(mockCtrl)
+			mockPP.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) is not a valid URL")
+
+			_, ok := heartbeat.NewUptimeKuma(mockPP, rawURL)
+			require.False(t, ok)
 		})
 	}
 }
@@ -265,4 +286,23 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 			require.Equal(t, tc.pinged, pinged)
 		})
 	}
+}
+
+func TestUptimeKumaPingRequestCreationFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Noticef(pp.EmojiImpossible, gomock.Any(), gomock.Any()).Do(
+		func(gotEmoji pp.Emoji, format string, args ...any) {
+			assert.Equal(t, pp.EmojiImpossible, gotEmoji)
+			assert.Contains(t, fmt.Sprintf(format, args...), "Failed to prepare HTTP(S) request to Uptime Kuma:")
+		},
+	)
+
+	ok := (heartbeat.UptimeKuma{
+		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct // Unused URL fields are irrelevant to this request-construction failure fixture.
+		Timeout: heartbeat.UptimeKumaDefaultTimeout,
+	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "ignored"))
+	require.False(t, ok)
 }
