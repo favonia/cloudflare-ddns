@@ -3,7 +3,6 @@ package updater
 import (
 	"fmt"
 	"net/netip"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
@@ -99,35 +98,24 @@ func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) noti
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments,
-				fmt.Sprintf("Clearing %s records for %s",
-					ipFamily.RecordType(), pp.EnglishJoin(domains)))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; clearing %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains)))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Clearing %s records for %s",
+			"; clearing %s records for %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains),
+		)
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments, fmt.Sprintf(
-				"Cleared %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains)))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; cleared %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains)))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Cleared %s records for %s",
+			"; cleared %s records for %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains),
+		)
 	}
 
-	if len(fragments) == 0 {
-		return nil
-	} else {
-		fragments = append(fragments, ".")
-		return notifier.Message{strings.Join(fragments, "")}
-	}
+	return finishNotifierMessage(fragments)
 }
 
 func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
@@ -173,35 +161,24 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments,
-				fmt.Sprintf("Updating %s records for %s to %s",
-					ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; updating %s records for %s to %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Updating %s records for %s to %s",
+			"; updating %s records for %s to %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription,
+		)
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments, fmt.Sprintf(
-				"Updated %s records for %s to %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; updated %s records for %s to %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Updated %s records for %s to %s",
+			"; updated %s records for %s to %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription,
+		)
 	}
 
-	if len(fragments) == 0 {
-		return nil
-	} else {
-		fragments = append(fragments, ".")
-		return notifier.Message{strings.Join(fragments, "")}
-	}
+	return finishNotifierMessage(fragments)
 }
 
 func generateClearOrUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) Message {
@@ -259,39 +236,24 @@ func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments, fmt.Sprintf(
-				"Deleting %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains),
-			))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; deleting %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains),
-			))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Deleting %s records for %s",
+			"; deleting %s records for %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains),
+		)
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		if len(fragments) == 0 {
-			fragments = append(fragments, fmt.Sprintf(
-				"Deleted %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains),
-			))
-		} else {
-			fragments = append(fragments, fmt.Sprintf(
-				"; deleted %s records for %s",
-				ipFamily.RecordType(), pp.EnglishJoin(domains),
-			))
-		}
+		fragments = appendNotifierFragmentf(
+			fragments,
+			"Deleted %s records for %s",
+			"; deleted %s records for %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains),
+		)
 	}
 
-	if len(fragments) == 0 {
-		return nil
-	} else {
-		fragments = append(fragments, ".")
-		return notifier.Message{strings.Join(fragments, "")}
-	}
+	return finishNotifierMessage(fragments)
 }
 
 func generateFinalDeleteMessage(ipFamily ipnet.Family, s setterResponses) Message {
