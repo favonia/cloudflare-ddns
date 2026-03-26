@@ -21,10 +21,6 @@ type wafListMeta struct {
 	Description string
 }
 
-// Keep advisory value previews short in warning logs while preserving
-// full-fidelity values for mismatch diagnostics.
-const advisoryValuePreviewLimit = 48
-
 // cloudflareCache holds the previous repsonses from the Cloudflare API.
 type cloudflareCache = struct {
 	// domains to zone IDs
@@ -139,7 +135,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// the token is definitely invalid.
 		if errors.As(err, &authenticationError) {
 			ppfmt.Noticef(pp.EmojiWarning,
-				"Unexpected authorization failure while verifying the Cloudflare API token: %v; startup will continue",
+				"Unexpected authorization failure while verifying the Cloudflare API token: %v; the updater will continue",
 				err)
 			return true
 		}
@@ -177,7 +173,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// an unexpected-but-non-fatal warning until there is real evidence for a
 		// stricter interpretation.
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare reported the API token status as %q during startup verification; startup will continue", res.Status)
+			"Cloudflare reported the API token status as %q during startup verification; the updater will continue", res.Status)
 		return true
 	}
 }
@@ -207,9 +203,4 @@ func (h cloudflareHandle) flushCache() {
 	h.cache.listLists.DeleteAll()
 	h.cache.listID.DeleteAll()
 	h.cache.listListItems.DeleteAll()
-}
-
-// describeFreeFormString essentially quotes a string for printing.
-func describeFreeFormString(str string) string {
-	return pp.QuoteOrEmptyLabel(str, "empty")
 }

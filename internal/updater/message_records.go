@@ -54,25 +54,13 @@ func isTargetSetEmpty(ips []netip.Addr) bool {
 	return len(ips) == 0
 }
 
-func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
-	ipDescription := describeIPs(ips)
-	emptyTargets := isTargetSetEmpty(ips)
-
+func generateClearHeartbeatMessage(ipFamily ipnet.Family, s setterResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		if emptyTargets {
-			return heartbeat.Message{
-				OK: false,
-				Lines: []string{fmt.Sprintf(
-					"Could not confirm clearing %s of %s",
-					ipFamily.RecordType(), pp.Join(domains),
-				)},
-			}
-		}
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
-				"Could not confirm update of %s (%s) for %s",
-				ipFamily.RecordType(), ipDescription, pp.Join(domains),
+				"Could not confirm that %s records for %s were cleared",
+				ipFamily.RecordType(), pp.Join(domains),
 			)},
 		}
 	}
@@ -80,88 +68,52 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		if emptyTargets {
-			successLines = append(successLines, fmt.Sprintf(
-				"Clearing %s of %s",
-				ipFamily.RecordType(), pp.Join(domains),
-			))
-		} else {
-			successLines = append(successLines, fmt.Sprintf(
-				"Setting %s (%s) of %s",
-				ipFamily.RecordType(), ipDescription, pp.Join(domains),
-			))
-		}
+		successLines = append(successLines, fmt.Sprintf(
+			"Clearing %s records for %s",
+			ipFamily.RecordType(), pp.Join(domains),
+		))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		if emptyTargets {
-			successLines = append(successLines, fmt.Sprintf(
-				"Cleared %s of %s",
-				ipFamily.RecordType(), pp.Join(domains),
-			))
-		} else {
-			successLines = append(successLines, fmt.Sprintf(
-				"Set %s (%s) of %s",
-				ipFamily.RecordType(), ipDescription, pp.Join(domains),
-			))
-		}
+		successLines = append(successLines, fmt.Sprintf(
+			"Cleared %s records for %s",
+			ipFamily.RecordType(), pp.Join(domains),
+		))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) notifier.Message {
-	ipDescription := describeIPsInEnglish(ips)
-	emptyTargets := isTargetSetEmpty(ips)
+func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) notifier.Message {
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		if emptyTargets {
-			fragments = append(fragments,
-				"Could not confirm clearing ", ipFamily.RecordType(),
-				" records of ", pp.EnglishJoin(domains),
-			)
-		} else {
-			fragments = append(fragments,
-				"Could not confirm update of ", ipFamily.RecordType(),
-				" records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-			)
-		}
+		fragments = append(fragments, fmt.Sprintf(
+			"Could not confirm that %s records for %s were cleared",
+			ipFamily.RecordType(), pp.EnglishJoin(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			if emptyTargets {
-				fragments = append(fragments,
-					"Clearing ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
-				)
-			} else {
-				fragments = append(fragments,
-					"Updating ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-				)
-			}
-		} else {
 			fragments = append(fragments,
-				"; updating those of ", pp.EnglishJoin(domains),
-			)
+				fmt.Sprintf("Clearing %s records for %s",
+					ipFamily.RecordType(), pp.EnglishJoin(domains)))
+		} else {
+			fragments = append(fragments, fmt.Sprintf(
+				"; clearing %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains)))
 		}
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			if emptyTargets {
-				fragments = append(fragments,
-					"Cleared ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
-				)
-			} else {
-				fragments = append(fragments,
-					"Updated ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains), " with ", ipDescription,
-				)
-			}
+			fragments = append(fragments, fmt.Sprintf(
+				"Cleared %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains)))
 		} else {
-			fragments = append(fragments,
-				"; updated those of ", pp.EnglishJoin(domains),
-			)
+			fragments = append(fragments, fmt.Sprintf(
+				"; cleared %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains)))
 		}
 	}
 
@@ -173,10 +125,91 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 	}
 }
 
-func generateUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) Message {
-	return Message{
-		HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
-		NotifierMessage:  generateUpdateNotifierMessage(ipFamily, ips, s),
+func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) heartbeat.Message {
+	ipDescription := describeIPs(ips)
+
+	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
+		return heartbeat.Message{
+			OK: false,
+			Lines: []string{fmt.Sprintf(
+				"Could not confirm that %s records for %s were updated to %s",
+				ipFamily.RecordType(), pp.Join(domains), ipDescription,
+			)},
+		}
+	}
+
+	var successLines []string
+
+	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
+		successLines = append(successLines, fmt.Sprintf(
+			"Setting %s records for %s to %s",
+			ipFamily.RecordType(), pp.Join(domains), ipDescription,
+		))
+	}
+
+	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
+		successLines = append(successLines, fmt.Sprintf(
+			"Set %s records for %s to %s",
+			ipFamily.RecordType(), pp.Join(domains), ipDescription,
+		))
+	}
+
+	return heartbeat.Message{OK: true, Lines: successLines}
+}
+
+func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) notifier.Message {
+	ipDescription := describeIPsInEnglish(ips)
+	var fragments []string
+
+	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
+		fragments = append(fragments, fmt.Sprintf(
+			"Could not confirm that %s records for %s were updated to %s",
+			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+	}
+
+	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
+		if len(fragments) == 0 {
+			fragments = append(fragments,
+				fmt.Sprintf("Updating %s records for %s to %s",
+					ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+		} else {
+			fragments = append(fragments, fmt.Sprintf(
+				"; updating %s records for %s to %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+		}
+	}
+
+	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
+		if len(fragments) == 0 {
+			fragments = append(fragments, fmt.Sprintf(
+				"Updated %s records for %s to %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+		} else {
+			fragments = append(fragments, fmt.Sprintf(
+				"; updated %s records for %s to %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+		}
+	}
+
+	if len(fragments) == 0 {
+		return nil
+	} else {
+		fragments = append(fragments, ".")
+		return notifier.Message{strings.Join(fragments, "")}
+	}
+}
+
+func generateClearOrUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) Message {
+	if isTargetSetEmpty(ips) {
+		return Message{
+			HeartbeatMessage: generateClearHeartbeatMessage(ipFamily, s),
+			NotifierMessage:  generateClearNotifierMessage(ipFamily, s),
+		}
+	} else {
+		return Message{
+			HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
+			NotifierMessage:  generateUpdateNotifierMessage(ipFamily, ips, s),
+		}
 	}
 }
 
@@ -185,7 +218,7 @@ func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponse
 		return heartbeat.Message{
 			OK: false,
 			Lines: []string{fmt.Sprintf(
-				"Could not confirm deletion of %s of %s",
+				"Could not confirm that %s records for %s were deleted",
 				ipFamily.RecordType(), pp.Join(domains),
 			)},
 		}
@@ -195,14 +228,14 @@ func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponse
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
-			"Deleting %s of %s",
+			"Deleting %s records for %s",
 			ipFamily.RecordType(), pp.Join(domains),
 		))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
-			"Deleted %s of %s",
+			"Deleted %s records for %s",
 			ipFamily.RecordType(), pp.Join(domains),
 		))
 	}
@@ -214,32 +247,36 @@ func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments,
-			"Could not confirm deletion of ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
-		)
+		fragments = append(fragments, fmt.Sprintf(
+			"Could not confirm that %s records for %s were deleted",
+			ipFamily.RecordType(), pp.EnglishJoin(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments,
-				"Deleting ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
-			)
+			fragments = append(fragments, fmt.Sprintf(
+				"Deleting %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains),
+			))
 		} else {
-			fragments = append(fragments,
-				"; deleting those of ", pp.EnglishJoin(domains),
-			)
+			fragments = append(fragments, fmt.Sprintf(
+				"; deleting %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains),
+			))
 		}
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		if len(fragments) == 0 {
-			fragments = append(fragments,
-				"Deleted ", ipFamily.RecordType(), " records of ", pp.EnglishJoin(domains),
-			)
+			fragments = append(fragments, fmt.Sprintf(
+				"Deleted %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains),
+			))
 		} else {
-			fragments = append(fragments,
-				"; deleted those of ", pp.EnglishJoin(domains),
-			)
+			fragments = append(fragments, fmt.Sprintf(
+				"; deleted %s records for %s",
+				ipFamily.RecordType(), pp.EnglishJoin(domains),
+			))
 		}
 	}
 

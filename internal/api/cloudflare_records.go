@@ -27,7 +27,7 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	var authorization *cloudflare.AuthorizationError
 	if errors.As(err, &authentication) || errors.As(err, &authorization) {
 		ppfmt.NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint,
-			"Double check your API token. "+
+			"Double-check your API token. "+
 				`Make sure you granted the "Edit" permission of "Zone - DNS"`)
 	}
 }
@@ -41,10 +41,18 @@ func hintMismatchedTTL(
 	current, target TTL,
 ) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.", //nolint:lll
+		"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.", //nolint:lll
 		ipFamily.RecordType(), domain.Describe(), id,
-		current.Describe(), target.Describe(), target.Describe(), dashboardURL, current.Int(),
+		current.Describe(), target.Describe(), target.Describe(), dashboardURL,
 	)
+}
+
+func describeProxied(proxied bool) string {
+	if proxied {
+		return "proxied"
+	} else {
+		return "not proxied (DNS only)"
+	}
 }
 
 func hintMismatchedProxied(
@@ -55,15 +63,10 @@ func hintMismatchedProxied(
 	dashboardURL string,
 	current, target bool,
 ) {
-	descriptions := map[bool]string{
-		true:  "proxied",
-		false: "not proxied (DNS only)",
-	}
-
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`, //nolint:lll
+		`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`, //nolint:lll
 		ipFamily.RecordType(), domain.Describe(), id,
-		descriptions[current], descriptions[target], descriptions[target], dashboardURL,
+		describeProxied(current), describeProxied(target), describeProxied(target), dashboardURL,
 	)
 }
 
@@ -73,12 +76,14 @@ func hintMismatchedComment(
 	domain domain.Domain,
 	id ID,
 	dashboardURL string,
-	current, target string,
+	current, fallback string,
 ) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`, //nolint:lll
+		`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`, //nolint:lll
 		ipFamily.RecordType(), domain.Describe(), id,
-		describeFreeFormString(current), describeFreeFormString(target), dashboardURL,
+		pp.QuoteOrEmptyLabel(current, "empty"),
+		pp.QuoteOrEmptyLabel(fallback, "(empty)"),
+		dashboardURL,
 	)
 }
 
@@ -87,7 +92,7 @@ func hintUndocumentedTags(ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Doma
 		return
 	}
 	ppfmt.Noticef(pp.EmojiImpossible,
-		"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s", //nolint:lll
+		"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s", //nolint:lll
 		pp.EnglishJoinMap(strconv.Quote, tags), ipFamily.RecordType(), domain.Describe(), id, pp.IssueReportingURL,
 	)
 }
@@ -116,7 +121,7 @@ func (h cloudflareHandle) listZoneMeta(ctx context.Context, ppfmt pp.PP, name st
 
 	res, err := h.cf.ListZonesContext(ctx, cloudflare.WithZoneFilters(name, "", ""))
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", name, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", name, err)
 		hintRecordPermission(ppfmt, err)
 		return nil, false
 	}
@@ -140,7 +145,7 @@ func (h cloudflareHandle) listZoneMeta(ctx context.Context, ppfmt pp.PP, name st
 			zones = append(zones, ref)
 		case
 			"deleted": // archived, pending/moved for too long
-			ppfmt.Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", name, zone.Status)
+			ppfmt.Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account, so it will be skipped", name, zone.Status) //nolint:lll
 		default:
 			ppfmt.Noticef(pp.EmojiImpossible, "DNS zone %s is in an undocumented status %q in your Cloudflare account; please report this at %s", //nolint:lll
 				name, zone.Status, pp.IssueReportingURL)
@@ -216,7 +221,7 @@ zoneSearch:
 		h.cache.listZones.Delete(zoneName)
 	}
 
-	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", domain.Describe())
+	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", domain.Describe())
 
 	return zero, false
 }
@@ -254,7 +259,7 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 		})
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to retrieve %s records of %s: %v",
+			"Failed to retrieve %s records for %s: %v",
 			ipFamily.RecordType(), domain.Describe(), err)
 		hintRecordPermission(ppfmt, err)
 		return nil, false, false
@@ -270,7 +275,7 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 		ip, err := netip.ParseAddr(rawRecord.Content)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiImpossible,
-				"Failed to parse the IP address in an %s record of %s (ID: %s): %v",
+				"Failed to parse the IP address in an %s record for %s (ID: %s): %v",
 				ipFamily.RecordType(), domain.Describe(), id, err)
 			return nil, false, false
 		}
@@ -316,7 +321,7 @@ func (h cloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), string(id)); err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of outdated %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of an outdated %s record for %s (ID: %s): %v",
 			ipFamily.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 		if mode == RegularDeletionMode {
@@ -383,7 +388,7 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), updateRequestParams)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of outdated %s record of %s (ID: %s): %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v",
 			ipFamily.RecordType(), domain.Describe(), id, err)
 		hintRecordPermission(ppfmt, err)
 
@@ -476,7 +481,7 @@ func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), createRequestParams)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record of %s: %v",
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record for %s: %v",
 			ipFamily.RecordType(), domain.Describe(), err)
 		hintRecordPermission(ppfmt, err)
 

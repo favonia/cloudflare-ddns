@@ -73,7 +73,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -94,7 +94,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"2nd")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -115,7 +115,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"The %s non-empty line of SHOUTRRR contains space characters",
+					"The %s non-empty line of SHOUTRRR contains spaces",
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -139,7 +139,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -160,7 +160,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -180,7 +180,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support available since version 1.12.0")
-				m.EXPECT().Noticef(pp.EmojiUserError, `Could not create shoutrrr client: %v`, gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to create a Shoutrrr client: %v`, gomock.Any())
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -194,7 +194,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"2nd")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -215,7 +215,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"5th")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
@@ -236,7 +236,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains space characters that look like multiple URLs were folded onto one line",
+					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,

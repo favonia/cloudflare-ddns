@@ -36,19 +36,19 @@ func TestNewUptimeKuma(t *testing.T) {
 		"unexpected": {
 			"https://user:pass@host/path?random=", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) contains an unexpected query %s=... and it will be ignored", "random")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) contains an unexpected query parameter %s=...; it will be ignored", "random")
 			},
 		},
-		"ill-formed-query": {
+		"malformed-query": {
 			"https://user:pass@host/path?status=up;msg=OK;ping=", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) does not look like a valid URL")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) is not a valid URL")
 			},
 		},
 		"ftp": {
 			"ftp://user:pass@host/", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) does not look like a valid URL")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) is not a valid URL")
 			},
 		},
 	} {
@@ -106,7 +106,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	successPP := func(m *mocks.MockPP) {
 		gomock.InOrder(
 			m.EXPECT().Noticef(pp.EmojiUserWarning, httpUnsafeMsg),
-			m.EXPECT().Infof(pp.EmojiPing, "Pinged Uptime Kuma"),
+			m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to Uptime Kuma"),
 		)
 	}
 

@@ -490,8 +490,8 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				Return([]api.WAFListItem{outdated4, outdated4b}, true, false, true),
 			h.mockPP.EXPECT().Noticef(
 				pp.EmojiWarning,
-				"The %d outdated %s disagree on %s; using %s",
-				2, "IPv4 items in WAF list "+wafList.Describe(), "comments", "fallback value",
+				"The %d outdated %s disagree on %s; will use %s",
+				2, "IPv4 items in the WAF list "+wafList.Describe(), "comments", `fallback value "fallback"`,
 			),
 			h.mockHandle.EXPECT().
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{

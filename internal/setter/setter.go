@@ -39,7 +39,7 @@ func (w ambiguityWarnings) warn(ppfmt pp.PP, count int, unit, field string, fall
 	}
 	w.emitted[key] = true
 	ppfmt.Noticef(pp.EmojiWarning,
-		"The %d outdated %s disagree on %s; using %s",
+		"The %d outdated %s disagree on %s; will use %s",
 		count, unit, field, fallback,
 	)
 }
@@ -47,7 +47,7 @@ func (w ambiguityWarnings) warn(ppfmt pp.PP, count int, unit, field string, fall
 func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit string) {
 	ppfmt.Noticef(pp.EmojiImpossible,
 		"The tags for %s contain duplicates that differ only by letter case; "+
-			"this should not happen and please report it at %s",
+			"this should not happen; please report it at %s",
 		unit, pp.IssueReportingURL,
 	)
 }
@@ -170,13 +170,17 @@ func reconcileAndPartitionRecords(
 	resolvedProxied, proxiedAmbiguous := resolveScalarValue(fallbackParams.Proxied, proxiedValues)
 	resolvedComment, commentAmbiguous := resolveScalarValue(fallbackParams.Comment, commentValues)
 	if ttlAmbiguous {
-		warnings.warn(ppfmt, len(records), unit, "TTL values", "fallback value")
+		warnings.warn(ppfmt, len(records), unit, "TTL values",
+			fmt.Sprintf("fallback value %s", fallbackParams.TTL.Describe()))
 	}
 	if proxiedAmbiguous {
-		warnings.warn(ppfmt, len(records), unit, "proxy states", "fallback value")
+		warnings.warn(ppfmt, len(records), unit, "proxy states",
+			fmt.Sprintf(`fallback value "%t"`, fallbackParams.Proxied))
 	}
 	if commentAmbiguous {
-		warnings.warn(ppfmt, len(records), unit, "comments", "fallback value")
+		warnings.warn(ppfmt, len(records), unit, "comments",
+			fmt.Sprintf("fallback value %s",
+				pp.QuotePreviewOrEmptyLabel(fallbackParams.Comment, pp.AdvisoryPreviewLimit, "(empty)")))
 	}
 
 	// Tags differ from scalar fields: the current config surface has no non-empty
@@ -240,11 +244,11 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	if recordsAlreadyUpToDate(targets, matchedByIP, outdatedRecords) {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
-				"The %s records of %s are already up to date (cached)",
+				"The %s records for %s are already up to date (cached)",
 				recordType, domainDescription)
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone,
-				"The %s records of %s are already up to date",
+				"The %s records for %s are already up to date",
 				recordType, domainDescription)
 		}
 		return ResponseNoop
@@ -254,7 +258,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// 1. recycle one outdated record via update,
 	// 2. otherwise create a new record.
 	warnings := newAmbiguityWarnings()
-	unit := fmt.Sprintf("%s records of %s", recordType, domainDescription)
+	unit := fmt.Sprintf("%s records for %s", recordType, domainDescription)
 	targetsToCreate := unmatchedTargets
 
 	// Stage 1: outdated-first operations for unmatched targets.
@@ -274,12 +278,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				resolvedParamsForNewTargets,
 			); !ok {
 				ppfmt.Noticef(pp.EmojiError,
-					"Could not confirm update of %s records of %s; records might be inconsistent",
+					"Could not confirm update of %s records for %s; the records might be inconsistent",
 					recordType, domainDescription)
 				return ResponseFailed
 			}
 			ppfmt.Noticef(pp.EmojiUpdate,
-				"Updated a outdated %s record of %s (ID: %s)",
+				"Updated an outdated %s record for %s (ID: %s)",
 				recordType, domainDescription, recycled.ID)
 			continue
 		}
@@ -288,12 +292,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, target, resolvedParamsForNewTargets)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm update of %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records for %s; the records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
 		ppfmt.Noticef(pp.EmojiCreation,
-			"Added a new %s record of %s (ID: %s)", recordType, domainDescription, id)
+			"Added a new %s record for %s (ID: %s)", recordType, domainDescription, id)
 	}
 
 	// Stage 2: delete outdated/out-of-target leftovers.
@@ -301,13 +305,13 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		mutated = true
 		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDeletionMode); !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm update of %s records of %s; records might be inconsistent",
+				"Could not confirm update of %s records for %s; the records might be inconsistent",
 				recordType, domainDescription)
 			return ResponseFailed
 		}
 
 		ppfmt.Noticef(pp.EmojiDeletion,
-			"Deleted a outdated %s record of %s (ID: %s)", recordType, domainDescription, r.ID)
+			"Deleted an outdated %s record for %s (ID: %s)", recordType, domainDescription, r.ID)
 	}
 
 	if !mutated {
@@ -337,9 +341,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 
 	if len(unmatchedIDs) == 0 {
 		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted (cached)", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records for %s were already deleted (cached)", recordType, domainDescription) //nolint:lll
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records of %s were already deleted", recordType, domainDescription)
+			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records for %s were already deleted", recordType, domainDescription)
 		}
 		return ResponseNoop
 	}
@@ -351,18 +355,18 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 
 			if ctx.Err() != nil {
 				ppfmt.Infof(pp.EmojiTimeout,
-					"Deletion of %s records of %s aborted by timeout or signals; records might be inconsistent",
+					"Deletion of %s records for %s was aborted by a timeout or signal; the records might be inconsistent",
 					recordType, domainDescription)
 				return ResponseFailed
 			}
 			continue
 		}
 
-		ppfmt.Noticef(pp.EmojiDeletion, "Deleted a outdated %s record of %s (ID: %s)", recordType, domainDescription, id)
+		ppfmt.Noticef(pp.EmojiDeletion, "Deleted an outdated %s record for %s (ID: %s)", recordType, domainDescription, id)
 	}
 	if !allOK {
 		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm deletion of %s records of %s; records might be inconsistent",
+			"Could not confirm deletion of %s records for %s; the records might be inconsistent",
 			recordType, domainDescription)
 		return ResponseFailed
 	}
@@ -446,8 +450,10 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		}
 		resolvedComment, ambiguousComment := resolveScalarValue(fallbackItemComment, commentValues)
 		if ambiguousComment {
-			unit := fmt.Sprintf("%s items in WAF list %s", ipFamily.Describe(), list.Describe())
-			warnings.warn(ppfmt, len(plan.deleteItems), unit, "comments", "fallback value")
+			unit := fmt.Sprintf("%s items in the WAF list %s", ipFamily.Describe(), list.Describe())
+			warnings.warn(ppfmt, len(plan.deleteItems), unit, "comments",
+				fmt.Sprintf("fallback value %s",
+					pp.QuotePreviewOrEmptyLabel(fallbackItemComment, pp.AdvisoryPreviewLimit, "(empty)")))
 		}
 		plan.createComment = resolvedComment
 		plans[ipFamily] = plan

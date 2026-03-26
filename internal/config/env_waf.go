@@ -32,7 +32,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	}
 
 	ppfmt.InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint,
-		"You're using the experimental WAF list manipulation feature available since version 1.14.0")
+		"You are using the experimental WAF list manipulation feature available since version 1.14.0")
 
 	lists := make([]api.WAFList, 0, len(vals))
 
@@ -43,7 +43,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 		parts := strings.SplitN(val, "/", 2)
 		if len(parts) != 2 {
 			ppfmt.Noticef(pp.EmojiUserError,
-				`The %s entry of %s (%q) should be in format "account-id/list-name"`,
+				`The %s entry of %s (%q) should be in the format "account-id/list-name"`,
 				nthEntry, key, val)
 			return false
 		}
@@ -54,7 +54,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 
 		if violated := inverseWAFListNameRegex.FindString(list.Name); violated != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"The %s entry of %s has list name %q, which contains invalid character %q",
+				"The %s entry of %s has the list name %q, which contains an invalid character %q",
 				nthEntry, key, list.Name, violated)
 		}
 

@@ -12,16 +12,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
-// Keep advisory value previews short in ignored-setting warnings while preserving
-// exact quoted values for validation and mismatch diagnostics.
-const ignoredSettingValuePreviewLimit = 48
-
-func describeIgnoredSettingValuePreview(value string) string {
-	return pp.QuotePreview(value, ignoredSettingValuePreviewLimit)
-}
-
-func describeProviderSettingValuePreview(p provider.Provider) string {
-	return describeIgnoredSettingValuePreview(provider.Name(p))
+func previewSettingValue(value string) string {
+	return pp.QuotePreviewOrEmptyLabel(value, pp.AdvisoryPreviewLimit, "empty")
 }
 
 // ReadEnv calls the relevant readers to parse all relevant environment variables except
@@ -167,7 +159,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			if len(domainsForFamily) == 0 && len(c.WAFLists) == 0 {
 				ppfmt.Noticef(pp.EmojiUserWarning,
 					"IP%d_PROVIDER (%s) is ignored because no domains or WAF lists use %s",
-					ipFamily.Int(), describeProviderSettingValuePreview(p), ipFamily.Describe())
+					ipFamily.Int(), previewSettingValue(provider.Name(p)), ipFamily.Describe())
 
 				continue
 			}
@@ -251,34 +243,34 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		if c.ProxiedExpression != "false" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"PROXIED (%s) is ignored because no domains will be updated",
-				describeIgnoredSettingValuePreview(c.ProxiedExpression))
+				previewSettingValue(c.ProxiedExpression))
 		}
 		if c.RecordComment != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"RECORD_COMMENT (%s) is ignored because no domains will be updated",
-				describeIgnoredSettingValuePreview(c.RecordComment))
+				previewSettingValue(c.RecordComment))
 		}
 		if c.ManagedRecordsCommentRegex != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"MANAGED_RECORDS_COMMENT_REGEX (%s) is ignored because no domains will be updated",
-				describeIgnoredSettingValuePreview(c.ManagedRecordsCommentRegex))
+				previewSettingValue(c.ManagedRecordsCommentRegex))
 		}
 	}
 	if len(c.WAFLists) == 0 { // We are only updating domains.
 		if c.WAFListDescription != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"WAF_LIST_DESCRIPTION (%s) is ignored because WAF_LISTS is empty",
-				describeIgnoredSettingValuePreview(c.WAFListDescription))
+				previewSettingValue(c.WAFListDescription))
 		}
 		if c.WAFListItemComment != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"WAF_LIST_ITEM_COMMENT (%s) is ignored because WAF_LISTS is empty",
-				describeIgnoredSettingValuePreview(c.WAFListItemComment))
+				previewSettingValue(c.WAFListItemComment))
 		}
 		if c.ManagedWAFListItemsCommentRegex != "" {
 			ppfmt.Noticef(pp.EmojiUserWarning,
 				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is ignored because WAF_LISTS is empty",
-				describeIgnoredSettingValuePreview(c.ManagedWAFListItemsCommentRegex))
+				previewSettingValue(c.ManagedWAFListItemsCommentRegex))
 		}
 	}
 	if providerMap[ipnet.IP4] == nil && c.IP4DefaultPrefixLen != 32 {

@@ -52,7 +52,8 @@ func (p File) GetRawData(
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation", lineNum, raw, p.Path)
+				"Failed to parse line %d (%q) in %s as an IP address or an IP address in CIDR notation", lineNum, raw,
+				pp.QuoteIfNotHumanReadable(p.Path))
 			return NewUnavailableDetectionResult()
 		}
 
@@ -60,7 +61,7 @@ func (p File) GetRawData(
 		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) of %s %s", lineNum, raw, p.Path, problem)
+				"Line %d (%q) in %s %s", lineNum, raw, pp.QuoteIfNotHumanReadable(p.Path), problem)
 			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return NewUnavailableDetectionResult()
 		}

@@ -117,8 +117,8 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 			sawWarning = true
 		case shoutrrrSpaceFail:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"The %s non-empty line of SHOUTRRR contains space characters "+
-					"that look like multiple URLs were folded onto one line",
+				"The %s non-empty line of SHOUTRRR contains spaces, "+
+					"which suggests that multiple URLs were folded onto one line",
 				pp.Ordinal(line.lineNum))
 			ppfmt.Infof(pp.EmojiHint,
 				"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
@@ -134,7 +134,7 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 		for _, line := range lines {
 			if classifyShoutrrrURLSpace(line.rawURL) == shoutrrrSpaceWarn {
 				ppfmt.Noticef(pp.EmojiUserWarning,
-					"The %s non-empty line of SHOUTRRR contains space characters",
+					"The %s non-empty line of SHOUTRRR contains spaces",
 					pp.Ordinal(line.lineNum))
 			}
 		}

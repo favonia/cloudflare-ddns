@@ -52,13 +52,13 @@ func TestReadProvider(t *testing.T) {
 		"nil": {
 			ipnet.IP4, false, "", false, "", none, none, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "none")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "none")
 			},
 		},
 		"deprecated/empty": {
 			ipnet.IP4, false, "", true, "", local, local, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "local")
 			},
 		},
 		"deprecated/cloudflare": {
@@ -112,7 +112,7 @@ func TestReadProvider(t *testing.T) {
 		"empty": {
 			ipnet.IP4, false, "", false, "", local, local, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "local")
 			},
 		},
 		"cloudflare": {
@@ -125,14 +125,14 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
 			ipnet.IP4, true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`)
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`)
 			},
 		},
 		"cloudflare.trace:": {
 			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`),
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare.trace: must be followed by a URL`, key),
 				)
 			},
@@ -419,7 +419,7 @@ func TestReadProviderMap(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "local")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "local")
 			},
 		},
 		"6": {
@@ -431,7 +431,7 @@ func TestReadProviderMap(t *testing.T) {
 			},
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none")
 			},
 		},
 		"empty": {
@@ -444,12 +444,12 @@ func TestReadProviderMap(t *testing.T) {
 			true,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP4_PROVIDER", "none"),
-					m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", "IP6_PROVIDER", "local"),
+					m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none"),
+					m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "local"),
 				)
 			},
 		},
-		"illformed": {
+		"malformed": {
 			false,
 			" flare", "   ",
 			map[ipnet.Family]provider.Provider{

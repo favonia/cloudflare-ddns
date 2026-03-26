@@ -110,7 +110,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation", 1, "not-an-ip", "/ips.txt")
+					"Failed to parse line %d (%q) in %s as an IP address or an IP address in CIDR notation", 1, "not-an-ip", "/ips.txt")
 			},
 		},
 		"zone-identifier": {
@@ -119,7 +119,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Failed to parse line %d (%q) of %s as an IP address or an IP address in CIDR notation",
+					"Failed to parse line %d (%q) in %s as an IP address or an IP address in CIDR notation",
 					1, "1::1%eth0", "/ips.txt")
 			},
 		},
@@ -130,7 +130,7 @@ func TestFileGetRawData(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserError,
-						"Line %d (%q) of %s %s",
+						"Line %d (%q) in %s %s",
 						1, "::ffff:1.1.1.1", "/ips.txt", "is an IPv4-mapped IPv6 address"),
 					m.EXPECT().InfoOncef(pp.MessageIP4MappedIP6Address, pp.EmojiHint,
 						"An IPv4-mapped IPv6 address is an IPv4 address in disguise. It cannot be used for routing IPv6 traffic. If you need to use it for DNS, please open an issue at %s",
@@ -144,7 +144,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s %s",
+					"Line %d (%q) in %s %s",
 					1, "2001:db8::1", "/ips.txt", "is not a valid IPv4 address")
 			},
 		},
@@ -154,7 +154,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s %s",
+					"Line %d (%q) in %s %s",
 					1, "127.0.0.1", "/ips.txt", "is a loopback address")
 			},
 		},
@@ -164,7 +164,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s %s",
+					"Line %d (%q) in %s %s",
 					1, "0.0.0.0", "/ips.txt", "is an unspecified address")
 			},
 		},
@@ -174,7 +174,7 @@ func TestFileGetRawData(t *testing.T) {
 			false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"Line %d (%q) of %s %s",
+					"Line %d (%q) in %s %s",
 					1, "169.254.1.1", "/ips.txt", "is a link-local address")
 			},
 		},

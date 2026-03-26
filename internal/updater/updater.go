@@ -62,7 +62,7 @@ func detectRawData(
 
 	// Fast path: one detected address.
 	case rawData.Available && len(addresses) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected the %s address %s",
+		ppfmt.Infof(pp.EmojiInternet, "Detected %s address: %s",
 			ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
@@ -77,7 +77,7 @@ func detectRawData(
 	// Failure path: emit hints and timeout guidance.
 	default:
 		rawData = provider.NewUnavailableDetectionResult()
-		ppfmt.Noticef(pp.EmojiError, "Failed to detect valid %s addresses; will try again", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", ipFamily.Describe())
 
 		switch ipFamily {
 		case ipnet.IP6:
@@ -142,7 +142,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	return generateUpdateMessage(ipFamily, ips, resps)
+	return generateClearOrUpdateMessage(ipFamily, ips, resps)
 }
 
 // finalDeleteIP extracts relevant settings from the configuration

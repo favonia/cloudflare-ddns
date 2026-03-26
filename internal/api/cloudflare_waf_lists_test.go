@@ -136,7 +136,7 @@ func TestListWAFLists(t *testing.T) {
 			f.cfHandle.FlushCache()
 
 			mockPP := f.newPP()
-			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
+			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", gomock.Any())
 			lists, ok = f.cfHandle.ListWAFLists(context.Background(), mockPP, mockAccountID)
 			require.False(t, ok)
 			require.Zero(t, lists)
@@ -193,7 +193,7 @@ func TestWAFListID(t *testing.T) {
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-						`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at %s or change the value of WAF_LIST_DESCRIPTION to match the current description.`,
+						`The description for the list %s (ID: %s) is %s, which is different from the fallback description %s. You can change the description at %s.`,
 						"account456/list", mockID("list", 1), `"description"`, `"mismatched description"`,
 						mockWAFListDeeplink(mockID("list", 1))),
 				)
@@ -217,7 +217,7 @@ func TestWAFListID(t *testing.T) {
 			f.cfHandle.FlushCache()
 
 			mockPP := f.newPP()
-			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any())
+			mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", gomock.Any())
 			id, found, ok = f.cfHandle.WAFListID(context.Background(), mockPP, mockWAFList, tc.description)
 			require.False(t, ok)
 			require.Zero(t, found)
@@ -295,8 +295,8 @@ func TestListWAFListsHint(t *testing.T) {
 
 	mockPP := f.newPP()
 	gomock.InOrder(
-		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
-		mockPP.EXPECT().NoticeOncef(pp.MessageWAFListPermission, pp.EmojiHint, `Double check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", gomock.Any()),
+		mockPP.EXPECT().NoticeOncef(pp.MessageWAFListPermission, pp.EmojiHint, `Double-check your API token and account ID. Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`),
 	)
 	lists, ok := f.cfHandle.ListWAFLists(context.Background(), mockPP, mockAccountID)
 	require.False(t, ok)
@@ -319,7 +319,7 @@ func TestFindWAFList(t *testing.T) {
 			false, "",
 			func(ppfmt *mocks.MockPP) {
 				gomock.InOrder(
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to list existing lists: %v", gomock.Any()),
+					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to find the list %s", "account456/list"),
 				)
 			},

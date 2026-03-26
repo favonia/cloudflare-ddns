@@ -103,19 +103,19 @@ func TestReadString(t *testing.T) {
 		"unset": {
 			false, "", "hi", "hi", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hi")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "hi")
 			},
 		},
 		"empty1": {
 			true, " ", "hello", "hello", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "hello")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "hello")
 			},
 		},
 		"empty2": {
 			true, " \t ", "aloha", "aloha", true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "aloha")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "aloha")
 			},
 		},
 		"string": {true, "string ", "hey", "string", true, nil},
@@ -149,25 +149,25 @@ func TestReadBool(t *testing.T) {
 		"nil1": {
 			false, "", true, true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, true)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", key, true)
 			},
 		},
 		"nil2": {
 			false, "", false, false, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, false)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", key, false)
 			},
 		},
 		"empty1": {
 			true, " ", true, true, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, true)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", key, true)
 			},
 		},
 		"empty2": {
 			true, " \t ", false, false, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%t", key, false)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", key, false)
 			},
 		},
 		"true1":  {true, "true ", true, true, true, nil},
@@ -216,13 +216,13 @@ func TestReadNonnegInt(t *testing.T) {
 		"nil": {
 			false, "", 100, 100, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 100)
 			},
 		},
 		"empty": {
 			true, "", 100, 100, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 100)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 100)
 			},
 		},
 		"zero": {true, "0   ", 100, 0, true, nil},
@@ -276,13 +276,13 @@ func TestReadPrefixLen(t *testing.T) {
 		"ip6/nil": {
 			false, "", ipnet.IP6, 64, 64, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 64)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 64)
 			},
 		},
 		"ip6/empty": {
 			true, "", ipnet.IP6, 64, 64, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 64)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 64)
 			},
 		},
 		"ip6/48":  {true, "48", ipnet.IP6, 64, 48, true, nil},
@@ -313,7 +313,7 @@ func TestReadPrefixLen(t *testing.T) {
 		"ip4/nil": {
 			false, "", ipnet.IP4, 32, 32, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, 32)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 32)
 			},
 		},
 		"ip4/24": {true, "24", ipnet.IP4, 32, 24, true, nil},
@@ -365,7 +365,7 @@ func TestReadTTL(t *testing.T) {
 		"empty": {
 			true, "", api.TTLAuto, api.TTLAuto, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%d", key, api.TTLAuto)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, api.TTLAuto)
 			},
 		},
 		"0": {
@@ -430,13 +430,13 @@ func TestReadNonnegDuration(t *testing.T) {
 		"nil": {
 			false, "", time.Second, time.Second, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", key, time.Second)
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%v", key, time.Second)
 			},
 		},
 		"empty": {
 			true, "", 0, 0, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%v", key, time.Duration(0))
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%v", key, time.Duration(0))
 			},
 		},
 		"100s": {true, "    100s\t   ", 0, time.Second * 100, true, nil},
@@ -484,13 +484,13 @@ func TestReadCron(t *testing.T) {
 		"nil": {
 			false, "", cron.MustNew("* * * * *"), cron.MustNew("* * * * *"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "* * * * *")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "* * * * *")
 			},
 		},
 		"empty": {
 			true, "", cron.MustNew("@every 3m"), cron.MustNew("@every 3m"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Use default %s=%s", key, "@every 3m")
+				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", key, "@every 3m")
 			},
 		},
 		"@daily": {true, " @daily  ", cron.MustNew("@yearly"), cron.MustNew("@daily"), true, nil},
@@ -507,7 +507,7 @@ func TestReadCron(t *testing.T) {
 			},
 		},
 		"@once": {true, "\t\t@once", cron.MustNew("@yearly"), nil, true, nil},
-		"illformed": {
+		"malformed": {
 			true, " @ddddd  ", cron.MustNew("*/4 * * * *"), cron.MustNew("*/4 * * * *"), false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a cron expression: %v", key, "@ddddd", gomock.Any())

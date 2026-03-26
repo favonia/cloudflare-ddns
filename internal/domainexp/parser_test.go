@@ -42,10 +42,10 @@ func TestParseList(t *testing.T) {
 				)
 			},
 		},
-		"illformed/1": {
+		"malformed/1": {
 			"&", false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "&", domainexp.ErrSingleAnd)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "&", domainexp.ErrSingleAnd)
 			},
 		},
 	} {
@@ -108,13 +108,13 @@ func TestParseExpression(t *testing.T) {
 		"&&/&/1": {
 			"true & true", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "true & true", domainexp.ErrSingleAnd)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "true & true", domainexp.ErrSingleAnd)
 			},
 		},
 		"&&/&/2": {
 			"true &", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "true &", domainexp.ErrSingleAnd)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "true &", domainexp.ErrSingleAnd)
 			},
 		},
 		"||/1": {"F || 1", true, nil, true, nil},
@@ -127,13 +127,13 @@ func TestParseExpression(t *testing.T) {
 		"||/|/1": {
 			"false | false", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "false | false", domainexp.ErrSingleOr)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "false | false", domainexp.ErrSingleOr)
 			},
 		},
 		"||/|/2": {
 			"false |", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "false |", domainexp.ErrSingleOr)
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "false |", domainexp.ErrSingleOr)
 			},
 		},
 		"is/1":          {"is(example.com)", true, f("example.com"), true, nil},
@@ -201,7 +201,7 @@ func TestParseExpression(t *testing.T) {
 		"utf8/invalid": {
 			"\200\300", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is ill-formed: %v", key, "\200\300", ErrorMatcher{domainexp.ErrUTF8})
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "\200\300", ErrorMatcher{domainexp.ErrUTF8})
 			},
 		},
 	} {

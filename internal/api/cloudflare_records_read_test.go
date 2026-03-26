@@ -164,8 +164,8 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records of %s: %v", "AAAA", "sub.test.org", gomock.Any())
-				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records for %s: %v", "AAAA", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double-check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
 			},
 		},
 		"no-zone": {
@@ -175,7 +175,7 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"invalid-ip": {
@@ -188,7 +188,7 @@ func TestListRecords(t *testing.T) {
 			nil,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse the IP address in an %s record of %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record2"), gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse the IP address in an %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record2"), gomock.Any())
 			},
 		},
 		"managed-record-filtering/unmanaged-invalid-ip-is-skipped": {
@@ -235,17 +235,17 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "100", "100", mockDNSRecordsDeeplink(mockID("test.org", 0)), 1,
+					"1 (auto)", "100", "100", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
+					`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"empty", `"hello"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
@@ -277,17 +277,17 @@ func TestListRecords(t *testing.T) {
 			true,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					"The TTL for the %s record of %s (ID: %s) is %s. However, the preferred TTL is %s. You can either change the TTL to %s in the Cloudflare dashboard at %s or change the preferred TTL with TTL=%d.",
+					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
-					"1 (auto)", "100", "100", mockDNSRecordsDeeplink(mockID("test.org", 0)), 1,
+					"1 (auto)", "100", "100", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The %s record of %s (ID: %s) is %s. However, the preferred proxy setting is %s. You can either change the proxy status to "%s" in the Cloudflare dashboard at %s or change the value of PROXIED to match the current setting.`,
+					`The %s record for %s (ID: %s) is %s, which is different from the fallback proxy setting %q. You can change the proxy status to %q in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					"not proxied (DNS only)", "proxied", "proxied", mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-					`The comment for %s record of %s (ID: %s) is %s. However, the preferred comment is %s. You can either change the comment in the Cloudflare dashboard at %s or change the value of RECORD_COMMENT to match the current comment.`,
+					`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
 					"AAAA", "sub.test.org", api.ID("record1"),
 					`"managed"`, `"expected"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
@@ -338,7 +338,7 @@ func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
 	ppfmt := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(
 			pp.EmojiImpossible,
-			"Found tags %s in an %s record of %s (ID: %s) that are not in Cloudflare's documented name:value form; this should not happen and please report this at %s",
+			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
 			`"env" and ":prod"`,
 			"AAAA",
 			"sub.test.org",

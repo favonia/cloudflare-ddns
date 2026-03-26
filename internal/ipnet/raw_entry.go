@@ -150,7 +150,7 @@ func NormalizeRawEntryIP(family Family, entry RawEntry) (
 func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry, bool) {
 	if !entry.IsValid() {
 		ppfmt.Noticef(pp.EmojiImpossible,
-			`Detected address is not valid; this should not happen and please report it at %s`,
+			`Detected address is invalid; this should not happen. Please report it at %s`,
 			pp.IssueReportingURL,
 		)
 		return RawEntry{}, false //nolint:exhaustruct

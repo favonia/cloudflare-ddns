@@ -151,7 +151,7 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	case tokenFile != "":
 		token = tokenFile
 	default:
-		ppfmt.Noticef(pp.EmojiUserError, "Needs either %s or %s", TokenKey1, TokenFileKey1)
+		ppfmt.Noticef(pp.EmojiUserError, "Requires either %s or %s", TokenKey1, TokenFileKey1)
 		return "", false
 	}
 

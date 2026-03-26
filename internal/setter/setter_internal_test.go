@@ -88,15 +88,15 @@ func TestAmbiguityWarningsWarnDeduplicatesPerUnitAndField(t *testing.T) {
 	ppfmt := pp.New(&buf, false, pp.Verbose)
 	warnings := newAmbiguityWarnings()
 
-	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "comments", "fallback value")
-	warnings.warn(ppfmt, 5, "AAAA records of sub.test.org", "comments", "fallback value")
-	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "TTL values", "fallback value")
-	warnings.warn(ppfmt, 3, "A records of sub.test.org", "comments", "fallback value")
+	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "comments", "fallback value (empty)")
+	warnings.warn(ppfmt, 5, "AAAA records of sub.test.org", "comments", "fallback value (empty)")
+	warnings.warn(ppfmt, 2, "AAAA records of sub.test.org", "TTL values", "fallback value 600")
+	warnings.warn(ppfmt, 3, "A records of sub.test.org", "comments", "fallback value (empty)")
 
 	require.Equal(t,
-		"The 2 outdated AAAA records of sub.test.org disagree on comments; using fallback value\n"+
-			"The 2 outdated AAAA records of sub.test.org disagree on TTL values; using fallback value\n"+
-			"The 3 outdated A records of sub.test.org disagree on comments; using fallback value\n",
+		"The 2 outdated AAAA records of sub.test.org disagree on comments; will use fallback value (empty)\n"+
+			"The 2 outdated AAAA records of sub.test.org disagree on TTL values; will use fallback value 600\n"+
+			"The 3 outdated A records of sub.test.org disagree on comments; will use fallback value (empty)\n",
 		buf.String(),
 	)
 }
@@ -171,8 +171,9 @@ func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.
 	)
 
 	require.Equal(t,
-		"The 2 outdated AAAA records of sub.test.org disagree on tags; using common subset\n"+
-			"The 2 outdated AAAA records of sub.test.org disagree on proxy states; using fallback value\n",
+		`The 2 outdated AAAA records of sub.test.org disagree on tags; will use common subset
+The 2 outdated AAAA records of sub.test.org disagree on proxy states; will use fallback value "false"
+`,
 		buf.String(),
 	)
 	require.Equal(t, api.RecordParams{
@@ -256,10 +257,11 @@ func TestReconcileAndPartitionRecordsFallsBackWhenEverythingDisagrees(t *testing
 	)
 
 	require.Equal(t,
-		"The 3 outdated AAAA records of sub.test.org disagree on tags; using common subset\n"+
-			"The 3 outdated AAAA records of sub.test.org disagree on TTL values; using fallback value\n"+
-			"The 3 outdated AAAA records of sub.test.org disagree on proxy states; using fallback value\n"+
-			"The 3 outdated AAAA records of sub.test.org disagree on comments; using fallback value\n",
+		`The 3 outdated AAAA records of sub.test.org disagree on tags; will use common subset
+The 3 outdated AAAA records of sub.test.org disagree on TTL values; will use fallback value 600
+The 3 outdated AAAA records of sub.test.org disagree on proxy states; will use fallback value "false"
+The 3 outdated AAAA records of sub.test.org disagree on comments; will use fallback value "fallback-comment"
+`,
 		buf.String(),
 	)
 	require.Equal(t, api.RecordParams{

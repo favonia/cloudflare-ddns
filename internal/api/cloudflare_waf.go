@@ -18,16 +18,17 @@ func hintWAFListPermission(ppfmt pp.PP, err error) {
 	var authorization *cloudflare.AuthorizationError
 	if errors.As(err, &authentication) || errors.As(err, &authorization) {
 		ppfmt.NoticeOncef(pp.MessageWAFListPermission, pp.EmojiHint,
-			"Double check your API token and account ID. "+
+			"Double-check your API token and account ID. "+
 				`Make sure you granted the "Edit" permission of "Account - Account Filter Lists"`)
 	}
 }
 
 func hintMismatchedDescription(ppfmt pp.PP, list WAFList, m wafListMeta, fallbackDescription string) {
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		`The description for the list %s (ID: %s) is %s. However, the preferred description is %s. You can either change the description at %s or change the value of WAF_LIST_DESCRIPTION to match the current description.`, //nolint:lll
+		`The description for the list %s (ID: %s) is %s, which is different from the fallback description %s. You can change the description at %s.`, //nolint:lll
 		list.Describe(), m.ID,
-		describeFreeFormString(m.Description), describeFreeFormString(fallbackDescription),
+		pp.QuoteOrEmptyLabel(m.Description, "empty"),
+		pp.QuoteOrEmptyLabel(fallbackDescription, "(empty)"),
 		cloudflareWAFListDeeplink(list.AccountID, m.ID),
 	)
 }
@@ -37,7 +38,8 @@ func hintMismatchedWAFListItemComment(
 ) {
 	mismatchedCount := 0
 	var sampleID ID
-	sampleComment := ""
+	var sampleComment string
+	var sampleDescription string
 
 	for _, item := range managedItems {
 		if item.Comment == fallbackItemComment {
@@ -48,6 +50,7 @@ func hintMismatchedWAFListItemComment(
 		if mismatchedCount == 1 {
 			sampleID = item.ID
 			sampleComment = item.Comment
+			sampleDescription = item.Prefix.String()
 		}
 	}
 
@@ -60,13 +63,14 @@ func hintMismatchedWAFListItemComment(
 	// are not corrected by reconciliation. Keep the message focused on that
 	// observable behavior rather than on internal mutation mechanics.
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"The comment for item ID %s in list %s is %s. However, the preferred comment for WAF list items is %s. "+
-			"Found %d managed WAF list item(s) with mismatched comments. "+
+		"The comment on the item %s (ID: %s) in the list %s is %s, which is different from the fallback comment %s. "+
+			"Found %d managed WAF list item(s) with mismatched comments in the list. "+
 			"These mismatches are reported but not corrected.",
+		sampleDescription,
 		sampleID,
 		list.Describe(),
-		describeFreeFormString(sampleComment),
-		describeFreeFormString(fallbackItemComment),
+		pp.QuoteOrEmptyLabel(sampleComment, "empty"),
+		pp.QuoteOrEmptyLabel(fallbackItemComment, "(empty)"),
 		mismatchedCount,
 	)
 }
@@ -111,7 +115,7 @@ func describeAllowedWAFListItemComments(allowedComments map[string]bool) string 
 
 	comments := make([]string, 0, len(allowedComments))
 	for comment := range allowedComments {
-		comments = append(comments, describeFreeFormString(comment))
+		comments = append(comments, pp.QuoteOrEmptyLabel(comment, "empty"))
 	}
 	slices.Sort(comments)
 	return strings.Join(comments, ", ")
@@ -122,7 +126,8 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 ) {
 	mismatchedCount := 0
 	var sampleID ID
-	sampleComment := ""
+	var sampleComment string
+	var sampleDescription string
 
 	for _, item := range managedItems {
 		beforeComment, hadBefore := beforeCommentsByID[item.ID]
@@ -138,6 +143,7 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 		if mismatchedCount == 1 {
 			sampleID = item.ID
 			sampleComment = item.Comment
+			sampleDescription = item.Prefix.String()
 		}
 	}
 
@@ -146,12 +152,13 @@ func hintUnexpectedWAFListItemCommentAfterMutation(ppfmt pp.PP, list WAFList,
 	}
 
 	ppfmt.Noticef(pp.EmojiUserWarning,
-		"After updating list %s, item ID %s has comment %s, which is unexpected given "+
+		"After updating the list %s, the comment on the item %s (ID: %s) is %s, which is unexpected given "+
 			"allowed post-mutation comments (%s) and pre-update cache state. "+
 			"Found %d managed WAF list item(s) with this anomaly.",
 		list.Describe(),
+		sampleDescription,
 		sampleID,
-		describeFreeFormString(sampleComment),
+		pp.QuoteOrEmptyLabel(sampleComment, `empty`),
 		describeAllowedWAFListItemComments(allowedPostMutationComments),
 		mismatchedCount,
 	)
@@ -165,7 +172,7 @@ func (h cloudflareHandle) listWAFLists(ctx context.Context, ppfmt pp.PP, account
 
 	raw, err := h.cf.ListLists(ctx, cloudflare.AccountIdentifier(string(accountID)), cloudflare.ListListsParams{})
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to list existing lists: %v", err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to retrieve existing lists: %v", err)
 		hintWAFListPermission(ppfmt, err)
 		return nil, false
 	}
@@ -294,7 +301,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 			return WAFListCleanupUpdated
 		} else {
 			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm deletion of list %s; falling back to item deletion: %v", list.Describe(), err)
+				"Could not confirm deletion of the list %s; falling back to item deletion: %v", list.Describe(), err)
 			// Ensure fallback cleanup does not trust outdated managed-item cache.
 			h.cache.listListItems.Delete(list)
 		}
@@ -337,11 +344,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	deletingMessage := finalWAFListManagedItemsDeletingMessage
 	if !allFamiliesInScope {
 		familiesDescription := describeInScopeWAFFamilies(managedFamilies)
-		alreadyDeletedMessage = "Managed " + familiesDescription + " items in list %s were already deleted"
-		alreadyDeletedCachedMessage = "Managed " + familiesDescription + " items in list %s were already deleted (cached)"
+		alreadyDeletedMessage = "Managed " + familiesDescription + " items in the list %s were already deleted"
+		alreadyDeletedCachedMessage = "Managed " + familiesDescription + " items in the list %s were already deleted (cached)"
 		deleteFailedMessage = "Could not confirm deletion of managed " + familiesDescription +
-			" items in list %s; list content may be inconsistent"
-		deletingMessage = "Deleting managed " + familiesDescription + " items in list %s asynchronously"
+			" items in the list %s; list content may be inconsistent"
+		deletingMessage = "Deleting managed " + familiesDescription + " items in the list %s asynchronously"
 	}
 
 	if len(itemsToDelete) == 0 {
@@ -367,11 +374,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 }
 
 const (
-	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in list %s were already deleted"
-	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in list %s were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in list %s; " +
+	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in the list %s were already deleted"
+	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in the list %s were already deleted (cached)"
+	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in the list %s; " +
 		"list content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in list %s asynchronously"
+	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in the list %s asynchronously"
 )
 
 func describeInScopeWAFFamilies(managedFamilies map[ipnet.Family]bool) string {
@@ -439,7 +446,7 @@ func (h cloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, pp
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm that item deletion started in list %s: %v", list.Describe(), err)
+			"Could not confirm that item deletion started in the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -453,12 +460,12 @@ func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem)
 	items := make([]WAFListItem, 0, len(rawItems))
 	for _, rawItem := range rawItems {
 		if rawItem.IP == nil {
-			ppfmt.Noticef(pp.EmojiImpossible, "Found a non-IP in the list %s", list.Describe())
+			ppfmt.Noticef(pp.EmojiImpossible, "Found a non-IP entry in the list %s", list.Describe())
 			return nil, false
 		}
 		p, ok := ipnet.ParseAddrOrPrefix(ppfmt, *rawItem.IP)
 		if !ok {
-			ppfmt.Noticef(pp.EmojiImpossible, "Found an invalid IP range/address %q in the list %s",
+			ppfmt.Noticef(pp.EmojiImpossible, "Found an invalid IP range or IP address %q in the list %s",
 				*rawItem.IP, list.Describe())
 			return nil, false
 		}
@@ -512,7 +519,7 @@ func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 				Kind:        cloudflare.ListTypeIP,
 			})
 		if err != nil {
-			ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of list %s: %v", list.Describe(), err)
+			ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of the list %s: %v", list.Describe(), err)
 			hintWAFListPermission(ppfmt, err)
 			h.cache.listLists.Delete(list.AccountID)
 			return nil, false, false, false
@@ -573,7 +580,7 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm deletion of items from list %s: %v", list.Describe(), err)
+			"Could not confirm deletion of items from the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -633,7 +640,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(
-			pp.EmojiError, "Could not confirm addition of items to list %s: %v",
+			pp.EmojiError, "Could not confirm addition of items to the list %s: %v",
 			list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)

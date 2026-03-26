@@ -20,7 +20,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		// parsing of the deprecated parameter
 		switch valDeprecated := Getenv(keyDeprecated); valDeprecated {
 		case "":
-			ppfmt.Infof(pp.EmojiBullet, "Use default %s=%s", key, provider.Name(*field))
+			ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, provider.Name(*field))
 			return true
 		case "cloudflare":
 			ppfmt.Noticef(
@@ -103,7 +103,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
 		ppfmt.InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint,
-			`You are using the undocumented "cloudflare.trace" provider with custom URL; this will soon be removed`)
+			`You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`)
 		if parts[1] == "" {
 			ppfmt.Noticef(
 				pp.EmojiUserError,

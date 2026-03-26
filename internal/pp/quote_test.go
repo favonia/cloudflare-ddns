@@ -32,8 +32,8 @@ func TestQuoteIfNotHumanReadable(t *testing.T) {
 		},
 		{
 			name:  "graphic unicode stays raw",
-			input: "^猫+$",
-			want:  "^猫+$",
+			input: "^貓+$",
+			want:  "^貓+$",
 		},
 		{
 			name:  "leading whitespace is quoted",
@@ -55,39 +55,50 @@ func TestQuoteIfNotHumanReadable(t *testing.T) {
 	}
 }
 
-func TestQuotePreview(t *testing.T) {
+func TestQuotePreviewOrEmptyLabel(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		input string
-		limit int
-		want  string
+		name       string
+		input      string
+		limit      int
+		emptyLabel string
+		want       string
 	}{
 		{
-			name:  "short value is quoted",
-			input: "hello",
-			limit: 48,
-			want:  `"hello"`,
+			name:       "empty",
+			input:      "",
+			limit:      48,
+			emptyLabel: "nothing",
+			want:       "nothing",
 		},
 		{
-			name:  "rune-safe truncation",
-			input: "猫猫猫",
-			limit: 2,
-			want:  `"猫猫..."`,
+			name:       "short value is quoted",
+			input:      "hello",
+			limit:      48,
+			emptyLabel: "empty",
+			want:       `"hello"`,
 		},
 		{
-			name:  "non-positive limit disables truncation",
-			input: strings.Repeat("a", 5),
-			limit: 0,
-			want:  `"aaaaa"`,
+			name:       "rune-safe truncation",
+			input:      "貓貓貓",
+			limit:      2,
+			emptyLabel: "貓貓不見了",
+			want:       `"貓貓..."`,
+		},
+		{
+			name:       "non-positive limit disables truncation",
+			input:      strings.Repeat("a", 5),
+			limit:      0,
+			emptyLabel: "---",
+			want:       `"aaaaa"`,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, test.want, pp.QuotePreview(test.input, test.limit))
+			require.Equal(t, test.want, pp.QuotePreviewOrEmptyLabel(test.input, test.limit, test.emptyLabel))
 		})
 	}
 }

@@ -115,7 +115,7 @@ func TestStaticGetRawData(t *testing.T) {
 			ipnet.IP6,
 			false, nil,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected address is not valid; this should not happen and please report it at %s", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Detected address is invalid; this should not happen. Please report it at %s", pp.IssueReportingURL)
 			},
 		},
 		"error/6-as-4": {

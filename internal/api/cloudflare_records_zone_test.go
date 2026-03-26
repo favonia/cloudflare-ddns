@@ -127,7 +127,7 @@ func TestListZonesTwo(t *testing.T) {
 				f.cfHandle.FlushCache()
 
 				mockPP := f.newPP()
-				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "test.org", gomock.Any())
+				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "test.org", gomock.Any())
 				output, ok = f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
 				require.False(t, ok)
 				require.Zero(t, output)
@@ -157,7 +157,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			map[string][]string{},
 			3, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
 			},
 		},
 		"none/wildcard": {
@@ -165,7 +165,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			map[string][]string{},
 			2, "", false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "*.test.org")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "*.test.org")
 			},
 		},
 		"multiple": {
@@ -194,8 +194,8 @@ func TestZoneIDOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account and thus skipped", "test.org", "deleted"),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "test.org"),
+					m.EXPECT().Infof(pp.EmojiWarning, "DNS zone %s is %q in your Cloudflare account, so it will be skipped", "test.org", "deleted"),
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "test.org"),
 				)
 			},
 		},
@@ -291,7 +291,7 @@ func TestZoneIDOfDomainClearsEmptyZoneCacheAfterFailedLookup(t *testing.T) {
 
 	zh.setRequestLimit(3)
 	mockPP := f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
 	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
@@ -314,7 +314,7 @@ func TestZoneIDOfDomainFailedLookupDoesNotKeepEmptySuffixCache(t *testing.T) {
 
 	zh.setRequestLimit(3)
 	mockPP := f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
 	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
@@ -322,7 +322,7 @@ func TestZoneIDOfDomainFailedLookupDoesNotKeepEmptySuffixCache(t *testing.T) {
 
 	zh.setRequestLimit(3)
 	mockPP = f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone of %s; will try again", "sub.test.org")
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
 	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)
@@ -376,7 +376,7 @@ func TestZoneIDOfDomainInvalid(t *testing.T) {
 	f := newCloudflareHarness(t)
 	mockPP := f.newPP()
 
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check the existence of a zone named %s: %v", "sub.test.org", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)

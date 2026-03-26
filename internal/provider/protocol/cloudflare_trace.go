@@ -102,11 +102,11 @@ func (p CloudflareTrace) GetRawData(
 	switch {
 	case fields.h == "":
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The response of %q does not contain an h (host) field; please report this at %s",
+			"The response from %q does not contain an h (host) field; please report this at %s",
 			traceURL, pp.IssueReportingURL)
 	case fields.h != parsedURL.Host:
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The h field %q in the response of %q does not match the expected host %q; please report this at %s",
+			"The h field %q in the response from %q does not match the expected host %q; please report this at %s",
 			fields.h, traceURL, parsedURL.Host, pp.IssueReportingURL)
 		return NewUnavailableDetectionResult()
 	}
@@ -117,24 +117,24 @@ func (p CloudflareTrace) GetRawData(
 	switch fields.warp {
 	case "":
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The response of %q does not contain a warp field; please report this at %s",
+			"The response from %q does not contain a warp field; please report this at %s",
 			traceURL, pp.IssueReportingURL)
 	case "on":
 		ppfmt.Noticef(pp.EmojiError,
-			"The response of %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
+			"The response from %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
 			traceURL)
 		return NewUnavailableDetectionResult()
 	}
 
 	// Validate ip: must be present, parseable, and not a Cloudflare egress/proxy IP.
 	if fields.ip == "" {
-		ppfmt.Noticef(pp.EmojiError, "The response of %q does not contain an ip field", traceURL)
+		ppfmt.Noticef(pp.EmojiError, "The response from %q does not contain an ip field", traceURL)
 		return NewUnavailableDetectionResult()
 	}
 	ip, err := netip.ParseAddr(fields.ip)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to parse the IP address in the response of %q (%q)", traceURL, fields.ip)
+			"Failed to parse the IP address in the response from %q (%q)", traceURL, fields.ip)
 		return NewUnavailableDetectionResult()
 	}
 	if ipnet.IsCloudflareIP(ip) {

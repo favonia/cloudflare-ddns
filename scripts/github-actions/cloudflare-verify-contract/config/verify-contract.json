@@ -33,8 +33,8 @@
       "expected_sdk": null
     },
     {
-      "name": "ill-formed bearer with spaces",
-      "kind": "ill-formed",
+      "name": "malformed bearer with spaces",
+      "kind": "malformed",
       "token": "not a token",
       "expected_raw": {
         "status_code": 400,
@@ -61,8 +61,8 @@
       }
     },
     {
-      "name": "ill-formed bearer with hyphen",
-      "kind": "ill-formed",
+      "name": "malformed bearer with hyphen",
+      "kind": "malformed",
       "token": "abc-def",
       "expected_raw": {
         "status_code": 400,

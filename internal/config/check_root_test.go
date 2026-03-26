@@ -20,7 +20,7 @@ func TestCheckRoot(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	if syscall.Geteuid() == 0 {
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is not recommended")
 	}
 	config.CheckRoot(mockPP)
 }

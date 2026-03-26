@@ -53,12 +53,12 @@ func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]d
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFQDN) {
 				ppfmt.Noticef(pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it is probably not fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
+					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, //nolint:lll
 					nthDomain, key, input, d.Describe())
 				return nil, nil
 			} else {
 				ppfmt.Noticef(pp.EmojiUserError,
-					"The %s domain in %s (%q) is %q, but it is ill-formed: %v",
+					"The %s domain in %s (%q) is %q, but it is malformed: %v",
 					nthDomain, key, input, d.Describe(), err)
 				return nil, nil
 			}

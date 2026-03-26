@@ -34,7 +34,7 @@ func getRawEntriesFromHTTP(
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to parse line %d of the response of %q (%q) as an IP address or an IP address in CIDR notation",
+				"Failed to parse line %d in the response from %q (%q) as an IP address or an IP address in CIDR notation",
 				lineNum, url, raw)
 			return nil, false
 		}
@@ -42,7 +42,7 @@ func getRawEntriesFromHTTP(
 		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Line %d of the response of %q (%q) %s", lineNum, url, raw, problem)
+				"Line %d in the response from %q (%q) %s", lineNum, url, raw, problem)
 			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return nil, false
 		}
