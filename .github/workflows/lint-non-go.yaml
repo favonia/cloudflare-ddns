@@ -91,6 +91,43 @@ jobs:
           go install github.com/google/yamlfmt/cmd/yamlfmt@v0.20.0
           yamlfmt .
 
+  jq:
+    name: JSON
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: jq
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🧹 Run jq
+        run: |
+          status=0
+          while IFS= read -r -d '' file; do
+            tmp="$(mktemp)"
+            if ! jq --indent 2 . "$file" >"$tmp"; then
+              echo "Invalid JSON: $file" >&2
+              rm -f "$tmp"
+              status=1
+              continue
+            fi
+            if ! diff -u "$file" "$tmp" >/dev/null; then
+              echo "Not formatted: $file" >&2
+              status=1
+            fi
+            rm -f "$tmp"
+          done < <(git ls-files -z '*.json')
+          exit "$status"
+
   mdformat:
     name: Markdown
     runs-on: ubuntu-latest
