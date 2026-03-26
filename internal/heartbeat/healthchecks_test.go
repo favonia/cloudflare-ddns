@@ -4,6 +4,7 @@ package heartbeat_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -121,7 +122,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `default (root)`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "a ping"),
 				)
 			},
 		},
@@ -136,7 +137,9 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to ping the Healthchecks endpoint %s; got %d %s", `default (root)`, 400, "invalid url format"),
+					m.EXPECT().Noticef(pp.EmojiError,
+						"The %s to Healthchecks returned an unexpected response (%s): got %d %s",
+						"ping", "base URL", http.StatusBadRequest, "invalid url format"),
 				)
 			},
 		},
@@ -150,7 +153,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to the %s endpoint of Healthchecks: %v", `default (root)`, gomock.Any()),
+					m.EXPECT().Noticef(pp.EmojiError, "Failed to send %s to Healthchecks (%s): %v", "a ping", "base URL", gomock.Any()),
 				)
 			},
 		},
@@ -165,7 +168,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `"/fail"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "a failure ping"),
 				)
 			},
 		},
@@ -180,7 +183,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `"/start"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "a start ping"),
 				)
 			},
 		},
@@ -195,7 +198,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `"/0"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "an exit ping"),
 				)
 			},
 		},
@@ -210,7 +213,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `"/log"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "a log ping"),
 				)
 			},
 		},
@@ -225,7 +228,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
-					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent a ping to the Healthchecks endpoint %s", `"/fail"`),
+					m.EXPECT().Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", "a failure ping"),
 				)
 			},
 		},
@@ -297,4 +300,75 @@ func TestHealthchecksEndPoints(t *testing.T) {
 			require.Equal(t, tc.pinged, pinged)
 		})
 	}
+}
+
+func TestHealthchecksPingRequestCreationFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Noticef(pp.EmojiImpossible, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+		func(gotEmoji pp.Emoji, format string, args ...any) {
+			assert.Equal(t, pp.EmojiImpossible, gotEmoji)
+			assert.Contains(t, fmt.Sprintf(format, args...), "Failed to create the request for a ping to Healthchecks (base URL):")
+		},
+	)
+
+	// A space in the host makes net/http reject the URL during request creation before any network I/O happens.
+	ok := (heartbeat.Healthchecks{
+		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct // Unused URL fields are irrelevant to this request-construction failure fixture.
+		Timeout: heartbeat.HealthchecksDefaultTimeout,
+	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello"))
+	require.False(t, ok)
+}
+
+func TestHealthchecksPingResponseReadFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "The Healthchecks URL (redacted) uses HTTP; please consider using HTTPS"),
+		mockPP.EXPECT().Noticef(pp.EmojiError, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+			func(gotEmoji pp.Emoji, format string, args ...any) {
+				assert.Equal(t, pp.EmojiError, gotEmoji)
+				assert.Contains(t, fmt.Sprintf(format, args...), "Failed to read the response from Healthchecks for a ping (base URL):")
+			},
+		),
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/", r.URL.EscapedPath())
+
+		reqBody, err := io.ReadAll(r.Body)
+		if !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
+		assert.Equal(t, "hello", string(reqBody))
+
+		hijacker, ok := w.(http.Hijacker)
+		if !assert.True(t, ok) {
+			panic(http.ErrAbortHandler)
+		}
+
+		conn, bufrw, err := hijacker.Hijack()
+		if !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
+		defer conn.Close()
+
+		_, err = bufrw.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nO")
+		if !assert.NoError(t, err) {
+			panic(http.ErrAbortHandler)
+		}
+		if !assert.NoError(t, bufrw.Flush()) {
+			panic(http.ErrAbortHandler)
+		}
+	}))
+	defer server.Close()
+
+	h, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
+	require.True(t, ok)
+	require.False(t, h.Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello")))
 }
