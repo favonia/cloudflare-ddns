@@ -1,0 +1,72 @@
+name: Link Check
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  schedule:
+    - cron: "30 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=golang-version depName=go versioning=semver
+  GO_VERSION: "1.26.0"
+
+jobs:
+  local-links:
+    name: Local links
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: link-check.local
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: scripts/github-actions/link-check/go.mod
+      - name: 🔎 Check repository-local links
+        working-directory: scripts/github-actions/link-check
+        run: go run . -mode local
+
+  external-links:
+    name: External links
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: link-check.external
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: scripts/github-actions/link-check/go.mod
+      - name: 🌐 Probe external links
+        working-directory: scripts/github-actions/link-check
+        run: go run . -mode external
