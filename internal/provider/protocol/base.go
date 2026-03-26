@@ -18,7 +18,7 @@ type DetectionResult struct {
 	// Available reports whether the raw data is known for this run.
 	// When it is false, the reconciliation intent is "abort" (raw data
 	// unavailable); the current algorithm preserves existing managed content.
-	// See reconciliation-algorithm.markdown for intent handling.
+	// See docs/designs/features/reconciliation-algorithm.markdown for intent handling.
 	//
 	// When it is true, RawEntries stores the current deterministic raw-data carrier.
 	// Each entry is an IP address with prefix length (host bits are preserved).

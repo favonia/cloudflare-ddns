@@ -11,10 +11,10 @@ import (
 //
 // Cloudflare dashboard deeplink provenance:
 //   - DNS records uses the documented "Records" route from
-//     dash-routes/core.json: /:account/:zone/dns/records.
+//     src/content/dash-routes/core.json: /:account/:zone/dns/records.
 //   - WAF lists uses the documented account-level "Configurations" route
-//     prefix from dash-routes/core.json: /:account/configurations, plus the
-//     unofficial /lists/:list-id suffix observed to work in practice.
+//     prefix from src/content/dash-routes/core.json: /:account/configurations,
+//     plus the unofficial /lists/:list-id suffix observed to work in practice.
 func cloudflareDashboardDeeplink(segments ...string) string {
 	escaped := make([]string, 0, len(segments))
 	for _, segment := range segments {

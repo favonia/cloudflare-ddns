@@ -142,7 +142,7 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 // According to [DNS documentation], the valid range is "Auto" and [30, 86400].
 // We thus accept the union of both ranges---1 (auto) and [30, 86400].
 //
-// [API documentation]: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
+// [API documentation]: https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/
 // [DNS documentation]: https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
 func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	val := Getenv(key)
