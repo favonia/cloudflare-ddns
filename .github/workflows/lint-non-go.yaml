@@ -1,10 +1,13 @@
 name: Non-Go Linting
+
 on:
   push:
     branches: ["main"]
   pull_request:
+
 permissions:
   contents: read
+
 jobs:
   actionlint:
     name: GitHub Actions workflows
@@ -19,11 +22,12 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: actionlint
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 📦 Download actionlint
+      - name: 📦️ Download actionlint
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: stable
@@ -35,6 +39,7 @@ jobs:
         continue-on-error: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   hadolint:
     name: Dockerfile
     runs-on: ubuntu-latest
@@ -48,6 +53,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: hadolint
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -56,6 +62,72 @@ jobs:
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: Dockerfile
+
+  yamlfmt:
+    name: YAML
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: yamlfmt
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 📦️ Download yamlfmt
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+      - name: 🧹 Run yamlfmt
+        run: |
+          # renovate: datasource=go depName=github.com/google/yamlfmt versioning=semver
+          go install github.com/google/yamlfmt/cmd/yamlfmt@v0.20.0
+          yamlfmt .
+
+  jq:
+    name: JSON
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: jq
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🧹 Run jq
+        run: |
+          status=0
+          while IFS= read -r -d '' file; do
+            tmp="$(mktemp)"
+            if ! jq --indent 2 . "$file" >"$tmp"; then
+              echo "Invalid JSON: $file" >&2
+              rm -f "$tmp"
+              status=1
+              continue
+            fi
+            if ! diff -u "$file" "$tmp" >/dev/null; then
+              echo "Not formatted: $file" >&2
+              status=1
+            fi
+            rm -f "$tmp"
+          done < <(git ls-files -z '*.json')
+          exit "$status"
+
   mdformat:
     name: Markdown
     runs-on: ubuntu-latest
@@ -69,6 +141,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: mdformat
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -79,7 +152,7 @@ jobs:
           python-version: "3.14"
           cache: pip
           cache-dependency-path: .github/workflows/mdformat-requirements.txt
-      - name: 📦 Install mdformat
+      - name: 📦️ Install mdformat
         run: python -m pip install --require-hashes --requirement .github/workflows/mdformat-requirements.txt
       - name: 🧹 Run mdformat
         run: git ls-files -z '*.md' '*.markdown' | xargs -0r python -m mdformat --check

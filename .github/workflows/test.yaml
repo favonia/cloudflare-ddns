@@ -1,10 +1,13 @@
 name: Go
+
 on:
   push:
     branches: ["main"]
   pull_request:
+
 permissions:
   contents: read
+
 jobs:
   test:
     name: Test
@@ -19,6 +22,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -38,7 +42,7 @@ jobs:
           set -o pipefail # Preserve `go test` failures through `tee`
           coverpkg="$(go list ./... | grep -v 'internal/mocks' | paste -sd,)"
           go test -json "-coverpkg=${coverpkg}" -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
-      - name: 📦 Upload `go test -json` logs
+      - name: 📦️ Upload `go test -json` logs
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -69,6 +73,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test.fuzz
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -94,6 +99,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test.regenerate
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -109,7 +115,7 @@ jobs:
         run: |
           rm ./internal/mocks -rf
           go generate ./...
-      - name: 🔍 Check if any files are changed
+      - name: 🔍️ Check if any files are changed
         run: |
           if ! git diff --exit-code; then
             echo "Please run 'go gonerate ./...'"

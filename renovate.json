@@ -8,7 +8,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)\\.github/workflows/.+\\.ya?ml$/"],
+      "managerFilePatterns": [
+        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+      ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[a-zA-Z0-9-._]+?) depName=(?<depName>[^\\s]+?)(?: (?:lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s+go install \\S+@(?<currentValue>\\S+)\\s"
       ],
@@ -16,7 +18,9 @@
     }
   ],
   "pip-compile": {
-    "managerFilePatterns": ["/(^|/)\\.github/workflows/mdformat-requirements\\.txt$/"],
+    "managerFilePatterns": [
+      "/(^|/)\\.github/workflows/mdformat-requirements\\.txt$/"
+    ],
     "lockFileMaintenance": {
       "enabled": false
     }
@@ -24,26 +28,43 @@
   "pip_requirements": {
     "enabled": false
   },
-  "schedule": ["on the first day instance on friday after 9pm"],
+  "schedule": [
+    "on the first day instance on friday after 9pm"
+  ],
   "vulnerabilityAlerts": {
     "enabled": true
   },
   "packageRules": [
     {
-      "matchPackageNames": ["github.com/cloudflare/cloudflare-go"],
-      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "github.com/cloudflare/cloudflare-go"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "enabled": false
     },
     {
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["docker/dockerfile"],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "docker/dockerfile"
+      ],
       "enabled": false
     },
     {
-      "matchManagers": ["pip-compile"],
-      "matchPackageNames": ["mdformat", "mdformat-gfm"],
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchPackageNames": [
+        "mdformat",
+        "mdformat-gfm"
+      ],
       "groupName": "mdformat"
     }
   ],
-  "postUpdateOptions": ["gomodTidy"]
+  "postUpdateOptions": [
+    "gomodTidy"
+  ]
 }
