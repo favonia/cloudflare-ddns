@@ -84,6 +84,7 @@ func generateClearHeartbeatMessage(ipFamily ipnet.Family, s setterResponses) hea
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
+//nolint:dupl // Keep notifier wording explicit so user-facing clear/delete messages stay easy to audit.
 func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) notifier.Message {
 	var fragments []string
 
@@ -243,6 +244,7 @@ func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponse
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
+//nolint:dupl // Keep notifier wording explicit so user-facing clear/delete messages stay easy to audit.
 func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses) notifier.Message {
 	var fragments []string
 
