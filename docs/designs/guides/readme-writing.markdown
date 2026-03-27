@@ -13,6 +13,7 @@ This note applies project-principle consequences to README readers as operators.
 - Explain behavior through user-visible outcomes, required decisions, and actionable setup or upgrade steps.
 - Prefer plain, concrete wording when it stays accurate enough for the reader to act correctly.
 - Mention internal mechanisms only when they change what the reader must choose, configure, or verify.
+- In early setup text, prefer the common-case operator-visible outcome unless an edge case changes the immediate setup or upgrade decision.
 
 ## Point-Of-Use Clarity
 

@@ -87,7 +87,7 @@ docker run \
   favonia/cloudflare-ddns:1
 ```
 
-⚠️ `PROXIED=true` is not a bulk switch for existing proxy statuses. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
+⚠️ `PROXIED=true` does not change the proxy statuses of existing records. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
 
 </details>
 
@@ -104,7 +104,7 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
 
-⚠️ `PROXIED=true` is not a bulk switch for existing proxy statuses. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
+⚠️ `PROXIED=true` does not change the proxy statuses of existing records. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
 
 </details>
 

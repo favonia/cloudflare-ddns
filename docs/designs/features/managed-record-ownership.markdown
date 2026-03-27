@@ -57,6 +57,7 @@ DNS instantiates the reconciliation algorithm with these resource-specific rules
 
 - the resource unit is `(domain, IP family)`
 - a managed record satisfies a desired target when its record IP equals that desired target IP
+- the common operator-facing case is one desired IP and one managed record per domain
 - matching duplicate managed records may remain
 - duplicate multiplicity is tolerated residue, not desired state
 - already-satisfying record metadata is soft unless another DNS-specific contract overrides it
