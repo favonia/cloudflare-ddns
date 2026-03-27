@@ -76,9 +76,9 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 <details><summary>🐋 Directly run the Docker image <sup><em>click to expand</em></sup></summary>
 
+Create a Cloudflare API token from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens) with the **Zone - DNS - Edit** and **Account - Account Filter Lists - Edit** permissions. You can remove unneeded permissions based on your setup; see [Cloudflare API Tokens](#cloudflare-api-token) for details.
+
 ```bash
-# Prefer Cloudflare's proxy for these domains (optional)
-# Existing DNS records in Cloudflare keep their current proxy statuses
 docker run \
   --network host \
   -e CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
@@ -87,20 +87,24 @@ docker run \
   favonia/cloudflare-ddns:1
 ```
 
+⚠️ `PROXIED=true` does not change the proxy statuses of existing records. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
+
 </details>
 
 <details><summary>🧬 Directly run the updater from its source <sup><em>click to expand</em></sup></summary>
 
+Create a Cloudflare API token from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens) with the **Zone - DNS - Edit** and **Account - Account Filter Lists - Edit** permissions. You can remove unneeded permissions based on your setup; see [Cloudflare API Tokens](#cloudflare-api-token) for details.
+
 You need the [Go tool](https://go.dev/doc/install) to run the updater from its source.
 
 ```bash
-# Prefer Cloudflare's proxy for these domains (optional)
-# Existing DNS records in Cloudflare keep their current proxy statuses
 CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
   DOMAINS=example.org,www.example.org,example.io \
   PROXIED=true \
   go run github.com/favonia/cloudflare-ddns/cmd/ddns@latest
 ```
+
+⚠️ `PROXIED=true` does not change the proxy statuses of existing records. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
 
 </details>
 
@@ -161,7 +165,7 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 <details>
 <summary>🚨 Remove <code>PROXIED=true</code> if you are <em>not</em> running a web server <sup><em>click to expand</em></sup></summary>
 
-The fallback setting `PROXIED=true` tells this updater to prefer [Cloudflare’s proxy](https://developers.cloudflare.com/dns/proxy-status/) for your domains when existing proxy statuses are inconsistent. Proxying lets Cloudflare cache webpages and hide your IP addresses.
+Keep `PROXIED=true` when you want [Cloudflare’s proxy](https://developers.cloudflare.com/dns/proxy-status/) for the domains managed by this updater. Proxying lets Cloudflare cache webpages and hide your IP addresses.
 
 | If you want...                                        | Do this                                                                                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -579,6 +583,8 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `UPDATE_TIMEOUT`    | The timeout of each attempt to update DNS records, per domain and per record type, or per WAF list. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `30s` (30 seconds) |
 
 </details>
+
+<a id="dns-and-waf-fallback-values"></a>
 
 <details>
 <summary>🛟 DNS and WAF Fallback Values <sup><em>click to expand</em></sup></summary>
