@@ -57,7 +57,7 @@ func detectRawData(
 
 	switch {
 	case rawData.Available && len(rawData.RawEntries) == 0:
-		ppfmt.Infof(pp.EmojiInternet, "No %s addresses were detected", ipFamily.Describe())
+		ppfmt.Infof(pp.EmojiClear, "Clearing %s addresses . . .", ipFamily.Describe())
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Fast path: one detected address.

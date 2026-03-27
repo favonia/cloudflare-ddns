@@ -93,16 +93,20 @@ func TestFileGetRawData(t *testing.T) {
 		"empty-file": {
 			"",
 			ipnet.IP4,
-			true,
-			[]ipnet.RawEntry{},
-			nil,
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"No IP addresses were found in %s", "/ips.txt")
+			},
 		},
 		"comment-only": {
 			"# just a comment\n",
 			ipnet.IP4,
-			true,
-			[]ipnet.RawEntry{},
-			nil,
+			false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"No IP addresses were found in %s", "/ips.txt")
+			},
 		},
 		"malformed-entry": {
 			"not-an-ip\n",
