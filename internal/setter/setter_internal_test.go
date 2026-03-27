@@ -172,7 +172,7 @@ func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.
 
 	require.Equal(t,
 		`The 2 outdated AAAA records of sub.test.org disagree on tags; will use common subset
-The 2 outdated AAAA records of sub.test.org disagree on proxy statuses; will use fallback value "not proxied (DNS only)"
+The 2 outdated AAAA records of sub.test.org disagree on proxy statuses; will use fallback proxy setting "not proxied (DNS only)"
 `,
 		buf.String(),
 	)
@@ -258,9 +258,9 @@ func TestReconcileAndPartitionRecordsFallsBackWhenEverythingDisagrees(t *testing
 
 	require.Equal(t,
 		`The 3 outdated AAAA records of sub.test.org disagree on tags; will use common subset
-The 3 outdated AAAA records of sub.test.org disagree on TTL values; will use fallback value 600
-The 3 outdated AAAA records of sub.test.org disagree on proxy statuses; will use fallback value "not proxied (DNS only)"
-The 3 outdated AAAA records of sub.test.org disagree on comments; will use fallback value "fallback-comment"
+The 3 outdated AAAA records of sub.test.org disagree on TTL values; will use fallback TTL 600
+The 3 outdated AAAA records of sub.test.org disagree on proxy statuses; will use fallback proxy setting "not proxied (DNS only)"
+The 3 outdated AAAA records of sub.test.org disagree on comments; will use fallback comment "fallback-comment"
 `,
 		buf.String(),
 	)
