@@ -9,26 +9,27 @@ import (
 	apitags "github.com/favonia/cloudflare-ddns/internal/api/tags"
 )
 
-func TestSummarizeSetsDuplicateKeepsLexicographicallySmallest(t *testing.T) {
+func TestResolveDuplicateKeepsLexicographicallySmallest(t *testing.T) {
 	t.Parallel()
 
-	summary := apitags.SummarizeSets([][]string{{"name:value", "Name:value", "x:two"}})
+	resolved := apitags.Resolve([][]string{{"name:value", "Name:value", "x:two"}})
 
-	require.Equal(t, 1, summary.SetCount)
-	require.True(t, summary.HasDuplicateCanonical)
-	require.False(t, summary.HasAmbiguousCanonical)
-	require.Equal(t, "Name:value", summary.Representative["name:value"])
-	require.Equal(t, "x:two", summary.Representative["x:two"])
-	require.Equal(t, 1, summary.Occurrence["name:value"])
-	require.Equal(t, 1, summary.Occurrence["x:two"])
+	require.Equal(t, []string{"Name:value", "x:two"}, resolved.Inherited)
+	require.Nil(t, resolved.Dropped)
+	require.True(t, resolved.HasDuplicateCanonical)
+	require.False(t, resolved.HasAmbiguousCanonical)
 }
 
-func TestCommonSubset(t *testing.T) {
+func TestResolve(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty-outdated-returns-empty", func(t *testing.T) {
 		t.Parallel()
-		require.Nil(t, apitags.CommonSubset(nil))
+		resolved := apitags.Resolve(nil)
+		require.Nil(t, resolved.Inherited)
+		require.Nil(t, resolved.Dropped)
+		require.False(t, resolved.HasAmbiguousCanonical)
+		require.False(t, resolved.HasDuplicateCanonical)
 	})
 
 	t.Run("returns-unanimous-tags-only", func(t *testing.T) {
@@ -38,7 +39,11 @@ func TestCommonSubset(t *testing.T) {
 			{"X:new", "z:drop"},
 			{"x:new"},
 		}
-		require.Equal(t, []string{"X:new"}, apitags.CommonSubset(outdated))
+		resolved := apitags.Resolve(outdated)
+		require.Equal(t, []string{"X:new"}, resolved.Inherited)
+		require.Equal(t, []string{"y:drop", "z:drop"}, resolved.Dropped)
+		require.True(t, resolved.HasAmbiguousCanonical)
+		require.False(t, resolved.HasDuplicateCanonical)
 	})
 
 	t.Run("name-case-insensitive-value-case-sensitive", func(t *testing.T) {
@@ -48,10 +53,9 @@ func TestCommonSubset(t *testing.T) {
 			{"NAME:Value", "HI:sigma"},
 		}
 
-		resolved := apitags.CommonSubset(outdated)
-		require.Contains(t, resolved, "NAME:Value")
-		require.NotContains(t, resolved, "hi:Sigma")
-		require.NotContains(t, resolved, "HI:sigma")
+		resolved := apitags.Resolve(outdated)
+		require.Equal(t, []string{"NAME:Value"}, resolved.Inherited)
+		require.Equal(t, []string{"hi:Sigma", "HI:sigma"}, resolved.Dropped)
 	})
 
 	t.Run("returns-empty-when-no-canonical-tag-is-unanimous", func(t *testing.T) {
@@ -60,11 +64,14 @@ func TestCommonSubset(t *testing.T) {
 			{"env:prod"},
 			{"team:alpha"},
 		}
-		require.Nil(t, apitags.CommonSubset(outdated))
+		resolved := apitags.Resolve(outdated)
+		require.Nil(t, resolved.Inherited)
+		require.Equal(t, []string{"env:prod", "team:alpha"}, resolved.Dropped)
+		require.True(t, resolved.HasAmbiguousCanonical)
 	})
 }
 
-func TestCommonSubsetOrderInvariant(t *testing.T) {
+func TestResolveOrderInvariant(t *testing.T) {
 	t.Parallel()
 
 	outdated := [][]string{
@@ -72,14 +79,14 @@ func TestCommonSubsetOrderInvariant(t *testing.T) {
 		{"A:1", "x:one"},
 		{"a:1", "x:one"},
 	}
-	original := apitags.CommonSubset(outdated)
+	original := apitags.Resolve(outdated)
 
 	permutedOutdated := [][]string{
 		{"x:one", "a:1"},
 		{"x:one", "A:1"},
 		{"x:one", "A:1"},
 	}
-	permuted := apitags.CommonSubset(permutedOutdated)
+	permuted := apitags.Resolve(permutedOutdated)
 	require.Equal(t, original, permuted)
 }
 
@@ -103,76 +110,74 @@ func TestEqual(t *testing.T) {
 	))
 }
 
-func TestSummarizeSets(t *testing.T) {
+func TestResolveTracksDroppedAndDuplicateCanonicals(t *testing.T) {
 	t.Parallel()
 
-	summary := apitags.SummarizeSets([][]string{
+	resolved := apitags.Resolve([][]string{
 		{"NAME:one", "name:one", "x:two"},
 		{"name:one", "X:two"},
 	})
 
-	require.Equal(t, 2, summary.SetCount)
-	require.Equal(t, 2, summary.Occurrence["name:one"])
-	require.Equal(t, 2, summary.Occurrence["x:two"])
-	require.Equal(t, "NAME:one", summary.Representative["name:one"])
-	require.Equal(t, "X:two", summary.Representative["x:two"])
-	require.False(t, summary.HasAmbiguousCanonical)
-	require.True(t, summary.HasDuplicateCanonical)
+	require.Equal(t, []string{"NAME:one", "X:two"}, resolved.Inherited)
+	require.Nil(t, resolved.Dropped)
+	require.False(t, resolved.HasAmbiguousCanonical)
+	require.True(t, resolved.HasDuplicateCanonical)
 }
 
-func TestSummarizeSetsAmbiguousCanonical(t *testing.T) {
+func TestResolveAmbiguousCanonical(t *testing.T) {
 	t.Parallel()
 
 	t.Run("detects-mismatched-canonical-key-sets", func(t *testing.T) {
 		t.Parallel()
-		summary := apitags.SummarizeSets([][]string{
+		resolved := apitags.Resolve([][]string{
 			{"env:prod", "team:alpha"},
 			{"env:prod"},
 		})
-		require.True(t, summary.HasAmbiguousCanonical)
+		require.Equal(t, []string{"env:prod"}, resolved.Inherited)
+		require.Equal(t, []string{"team:alpha"}, resolved.Dropped)
+		require.True(t, resolved.HasAmbiguousCanonical)
 	})
 
 	t.Run("ignores-representation-only-differences", func(t *testing.T) {
 		t.Parallel()
-		summary := apitags.SummarizeSets([][]string{
+		resolved := apitags.Resolve([][]string{
 			{"TEAM:alpha", "Env:prod"},
 			{"team:alpha", "env:prod"},
 		})
-		require.False(t, summary.HasAmbiguousCanonical)
+		require.Equal(t, []string{"Env:prod", "TEAM:alpha"}, resolved.Inherited)
+		require.False(t, resolved.HasAmbiguousCanonical)
+		require.False(t, resolved.HasDuplicateCanonical)
 	})
 }
 
-func TestSummarizeSetsOrderInvariant(t *testing.T) {
+func TestResolveOrderInvariantAcrossTagSets(t *testing.T) {
 	t.Parallel()
 
 	tagSets := [][]string{
 		{"TEAM:alpha", "env:prod"},
 		{"team:alpha", "env:prod"},
 	}
-	original := apitags.SummarizeSets(tagSets)
+	original := apitags.Resolve(tagSets)
 
 	permutedTagSets := slices.Clone(tagSets)
 	slices.Reverse(permutedTagSets)
-	permuted := apitags.SummarizeSets(permutedTagSets)
+	permuted := apitags.Resolve(permutedTagSets)
 
 	require.Equal(t, original, permuted)
 }
 
-func TestSummarizeSetsUndocumentedTags(t *testing.T) {
+func TestResolveUndocumentedTags(t *testing.T) {
 	t.Parallel()
 
-	summary := apitags.SummarizeSets([][]string{
+	resolved := apitags.Resolve([][]string{
 		{"FeatureFlag", "NAME:value"},
 		{"featureflag", "name:value"},
 	})
 
-	require.Equal(t, 2, summary.SetCount)
-	require.Equal(t, 2, summary.Occurrence["featureflag"])
-	require.Equal(t, 2, summary.Occurrence["name:value"])
-	require.Equal(t, "FeatureFlag", summary.Representative["featureflag"])
-	require.Equal(t, "NAME:value", summary.Representative["name:value"])
-	require.False(t, summary.HasAmbiguousCanonical)
-	require.False(t, summary.HasDuplicateCanonical)
+	require.Equal(t, []string{"FeatureFlag", "NAME:value"}, resolved.Inherited)
+	require.Nil(t, resolved.Dropped)
+	require.False(t, resolved.HasAmbiguousCanonical)
+	require.False(t, resolved.HasDuplicateCanonical)
 }
 
 func TestUndocumented(t *testing.T) {

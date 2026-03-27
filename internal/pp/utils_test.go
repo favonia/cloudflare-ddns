@@ -60,18 +60,21 @@ func TestJoin(t *testing.T) {
 
 func TestEnglishJoin(t *testing.T) {
 	t.Parallel()
+
+	const emptyLabel = "(none)"
+
 	for name, tc := range map[string]struct {
 		input  []string
 		output string
 	}{
-		"none":  {nil, "(none)"},
+		"none":  {nil, emptyLabel},
 		"one":   {[]string{"hello"}, "hello"},
 		"two":   {[]string{"hello", "hey"}, "hello and hey"},
 		"three": {[]string{"hello", "hey", "hi"}, "hello, hey, and hi"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.output, pp.EnglishJoin(tc.input))
+			require.Equal(t, tc.output, pp.EnglishJoinOrEmptyLabel(tc.input, emptyLabel))
 		})
 	}
 }
@@ -99,19 +102,21 @@ func TestJoinMap(t *testing.T) {
 func TestEnglishJoinMap(t *testing.T) {
 	t.Parallel()
 
+	const emptyLabel = "(none)"
+
 	for name, tc := range map[string]struct {
 		input  []int
 		output string
 	}{
-		"none":  {nil, "(none)"},
+		"none":  {nil, emptyLabel},
 		"one":   {[]int{1}, "n=1"},
 		"three": {[]int{1, 2, 3}, "n=1, n=2, and n=3"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.output, pp.EnglishJoinMap(func(v int) string {
+			require.Equal(t, tc.output, pp.EnglishJoinMapOrEmptyLabel(func(v int) string {
 				return fmt.Sprintf("n=%d", v)
-			}, tc.input))
+			}, tc.input, emptyLabel))
 		})
 	}
 }

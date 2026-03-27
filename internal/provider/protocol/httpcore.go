@@ -24,9 +24,10 @@ type httpCore struct {
 }
 
 func (h httpCore) getBody(ctx context.Context, ppfmt pp.PP) ([]byte, bool) {
+	displayURL := pp.QuoteIfUnsafeInSentence(h.url)
 	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %s: %v", displayURL, err)
 		return nil, false
 	}
 
@@ -38,7 +39,7 @@ func (h httpCore) getBody(ctx context.Context, ppfmt pp.PP) ([]byte, bool) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", displayURL, err)
 		return nil, false
 	}
 	defer resp.Body.Close()
@@ -50,7 +51,7 @@ func (h httpCore) getBody(ctx context.Context, ppfmt pp.PP) ([]byte, bool) {
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError, "Failed to read HTTP(S) response from %q: %v", h.url, err)
+		ppfmt.Noticef(pp.EmojiError, "Failed to read HTTP(S) response from %s: %v", displayURL, err)
 		return nil, false
 	}
 

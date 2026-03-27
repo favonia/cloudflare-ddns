@@ -26,6 +26,39 @@ func mustIP(ip string) netip.Addr {
 	return netip.MustParseAddr(ip)
 }
 
+func normalizeVariadicArgs(args []any) []any {
+	if len(args) != 1 {
+		return args
+	}
+	switch wrapped := args[0].(type) {
+	case []any:
+		return wrapped
+	default:
+		return args
+	}
+}
+
+func expectUndocumentedTagsWarning(t *testing.T, mockPP *mocks.MockPP, joinedTags, recordType, recordDomain string, id api.ID) {
+	t.Helper()
+
+	mockPP.EXPECT().Noticef(
+		pp.EmojiImpossible,
+		"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+		gomock.Any(),
+	).Do(func(gotEmoji pp.Emoji, gotFormat string, gotArgs ...any) {
+		require.Equal(t, pp.EmojiImpossible, gotEmoji)
+		require.Equal(t,
+			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
+			gotFormat,
+		)
+		require.Equal(t, []any{joinedTags, recordType, recordDomain, id, pp.IssueReportingURL}, normalizeVariadicArgs(gotArgs))
+	})
+}
+
 // mockID returns a hex string of length 32, suitable for all kinds of IDs
 // used in the Cloudflare API.
 func mockID(seed string, suffix int) ID {

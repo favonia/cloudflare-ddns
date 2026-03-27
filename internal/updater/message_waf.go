@@ -1,6 +1,8 @@
 package updater
 
 import (
+	"fmt"
+
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -25,18 +27,20 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Could not confirm update of WAF list(s) " + pp.Join(domains)},
+			Lines: []string{fmt.Sprintf("Could not confirm update of WAF list(s) %s", pp.Join(domains))},
 		}
 	}
 
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, "Updating WAF list(s) "+pp.Join(domains))
+		successLines = append(successLines, fmt.Sprintf(
+			"Updating WAF list(s) %s", pp.Join(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, "Updated WAF list(s) "+pp.Join(domains))
+		successLines = append(successLines, fmt.Sprintf(
+			"Updated WAF list(s) %s", pp.Join(domains)))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
@@ -46,7 +50,8 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Could not confirm update of WAF list(s) ", pp.EnglishJoin(domains))
+		fragments = append(fragments, fmt.Sprintf(
+			"Could not confirm update of WAF list(s) %s", describeDomainsInEnglish(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -54,7 +59,7 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 			fragments,
 			"Updating WAF list(s) %s",
 			"; updating %s",
-			pp.EnglishJoin(domains),
+			describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -63,7 +68,7 @@ func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Me
 			fragments,
 			"Updated WAF list(s) %s",
 			"; updated %s",
-			pp.EnglishJoin(domains),
+			describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -81,18 +86,20 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Could not confirm cleanup of WAF list(s) " + pp.Join(domains)},
+			Lines: []string{fmt.Sprintf("Could not confirm cleanup of WAF list(s) %s", pp.Join(domains))},
 		}
 	}
 
 	var successLines []string
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, "Cleaning WAF list(s) "+pp.Join(domains))
+		successLines = append(successLines, fmt.Sprintf(
+			"Cleaning WAF list(s) %s", pp.Join(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		successLines = append(successLines, "Cleaned WAF list(s) "+pp.Join(domains))
+		successLines = append(successLines, fmt.Sprintf(
+			"Cleaned WAF list(s) %s", pp.Join(domains)))
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
@@ -102,7 +109,9 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 	var fragments []string
 
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, "Could not confirm cleanup of WAF list(s) "+pp.EnglishJoin(domains))
+		fragments = append(fragments,
+			fmt.Sprintf("Could not confirm cleanup of WAF list(s) %s",
+				describeDomainsInEnglish(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -110,7 +119,7 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 			fragments,
 			"Cleaning WAF list(s) %s",
 			"; cleaning %s",
-			pp.EnglishJoin(domains),
+			describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -119,7 +128,7 @@ func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifie
 			fragments,
 			"Cleaned WAF list(s) %s",
 			"; cleaned %s",
-			pp.EnglishJoin(domains),
+			describeDomainsInEnglish(domains),
 		)
 	}
 

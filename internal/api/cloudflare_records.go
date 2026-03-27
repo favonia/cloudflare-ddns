@@ -94,7 +94,9 @@ func hintUndocumentedTags(ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Doma
 	}
 	ppfmt.Noticef(pp.EmojiImpossible,
 		"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s", //nolint:lll
-		pp.EnglishJoinMap(strconv.Quote, tags), ipFamily.RecordType(), domain.Describe(), id, pp.IssueReportingURL,
+		// Always quote undocumented tags because the format is unknown.
+		pp.EnglishJoinMapOrEmptyLabel(strconv.Quote, tags, "(none)"),
+		ipFamily.RecordType(), domain.Describe(), id, pp.IssueReportingURL,
 	)
 }
 
@@ -202,7 +204,7 @@ zoneSearch:
 			}
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %s (IDs: %s); please report this at %s",
-				zoneName, pp.EnglishJoinMap(ID.String, ids), pp.IssueReportingURL)
+				zoneName, pp.EnglishJoinMapOrEmptyLabel(ID.String, ids, "(none)"), pp.IssueReportingURL)
 			// The suffix walk reached a semantic dead end at zoneName. Retry the
 			// traversed suffixes up to and including that boundary next cycle.
 			for cachedZoneName := range domain.Zones {

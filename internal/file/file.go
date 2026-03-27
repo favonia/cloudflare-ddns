@@ -26,7 +26,8 @@ var FS = os.DirFS("/") //nolint:gochecknoglobals
 func processPath(ppfmt pp.PP, path string) (relPath string, fixedPath string, ok bool) {
 	if !strings.HasPrefix(path, "/") {
 		ppfmt.Noticef(pp.EmojiUserError,
-			"The path %q is not absolute; to use an absolute path, prefix it with /", path)
+			"The path %s is not absolute; to use an absolute path, prefix it with /",
+			pp.QuoteIfUnsafeInSentence(path))
 		return "", "/" + path, false
 	}
 
@@ -53,7 +54,7 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 
 	body, err := fs.ReadFile(FS, relPath)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %s: %v", pp.QuoteIfUnsafeInSentence(path), err)
 		return "", false
 	}
 
@@ -97,7 +98,7 @@ func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool)
 
 	body, err := fs.ReadFile(FS, relPath)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %q: %v", path, err)
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %s: %v", pp.QuoteIfUnsafeInSentence(path), err)
 		return nil, false
 	}
 

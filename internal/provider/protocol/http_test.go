@@ -79,7 +79,7 @@ func TestHTTPGetRawData(t *testing.T) {
 		"nilctx": {
 			true, ipnet.IP4, server4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %q: %v", server4.URL, gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %s: %v", pp.QuoteIfUnsafeInSentence(server4.URL), gomock.Any())
 			},
 		},
 		"4": {false, ipnet.IP4, server4.URL, ipnet.IP4, nil, ip4, nil},
@@ -87,50 +87,50 @@ func TestHTTPGetRawData(t *testing.T) {
 		"4to6": {
 			false, ipnet.IP6, server4via6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Line %d in the response from %q (%q) %s", 1, server4via6.URL, ip4.String(), "is not a valid IPv6 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Line %d in the response from %s (%q) %s", 1, pp.QuoteIfUnsafeInSentence(server4via6.URL), ip4.String(), "is not a valid IPv6 address")
 			},
 		},
 		"6to4": {
 			false, ipnet.IP4, server6via4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Line %d in the response from %q (%q) %s", 1, server6via4.URL, ip6.String(), "is not a valid IPv4 address")
+				m.EXPECT().Noticef(pp.EmojiError, "Line %d in the response from %s (%q) %s", 1, pp.QuoteIfUnsafeInSentence(server6via4.URL), ip6.String(), "is not a valid IPv4 address")
 			},
 		},
 		"4/malformed": {
 			false, ipnet.IP4, malformed4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d in the response from %q (%q) as an IP address or an IP address in CIDR notation", 1, malformed4.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d in the response from %s (%q) as an IP address or an IP address in CIDR notation", 1, pp.QuoteIfUnsafeInSentence(malformed4.URL), "hello")
 			},
 		},
 		"6/malformed": {
 			false, ipnet.IP6, malformed6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d in the response from %q (%q) as an IP address or an IP address in CIDR notation", 1, malformed6.URL, "hello")
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d in the response from %s (%q) as an IP address or an IP address in CIDR notation", 1, pp.QuoteIfUnsafeInSentence(malformed6.URL), "hello")
 			},
 		},
 		"4/empty-response": {
 			false, ipnet.IP4, empty4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", empty4.URL)
+				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %s", pp.QuoteIfUnsafeInSentence(empty4.URL))
 			},
 		},
 		"4/comment-only-response": {
 			false, ipnet.IP4, commentOnly4.URL, ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", commentOnly4.URL)
+				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %s", pp.QuoteIfUnsafeInSentence(commentOnly4.URL))
 			},
 		},
 		"4/request-fail": {
 			false, ipnet.IP4, "", ipnet.IP4, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", "", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", `""`, gomock.Any())
 			},
 		},
 		"6/request-fail": {
 			false,
 			ipnet.IP6, "", ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %q: %v", "", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", `""`, gomock.Any())
 			},
 		},
 		"ip6-detected-via4-transport": {

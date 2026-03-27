@@ -48,7 +48,11 @@ func describeIPs(ips []netip.Addr) string {
 // messages users need to inspect. Notifier messages are more prose-like for
 // Shoutrrr and similar channels, so they use English joins instead.
 func describeIPsInEnglish(ips []netip.Addr) string {
-	return pp.EnglishJoinMap(netip.Addr.String, ips)
+	return pp.EnglishJoinMapOrEmptyLabel(netip.Addr.String, ips, "(none)")
+}
+
+func describeDomainsInEnglish(domains []string) string {
+	return pp.EnglishJoinOrEmptyLabel(domains, "(none)")
 }
 
 // isTargetSetEmpty reports whether the target IP set is empty.
@@ -93,7 +97,7 @@ func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) noti
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments, fmt.Sprintf(
 			"Could not confirm that %s records for %s were cleared",
-			ipFamily.RecordType(), pp.EnglishJoin(domains)))
+			ipFamily.RecordType(), describeDomainsInEnglish(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -101,7 +105,7 @@ func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) noti
 			fragments,
 			"Clearing %s records for %s",
 			"; clearing %s records for %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains),
+			ipFamily.RecordType(), describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -110,7 +114,7 @@ func generateClearNotifierMessage(ipFamily ipnet.Family, s setterResponses) noti
 			fragments,
 			"Cleared %s records for %s",
 			"; cleared %s records for %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains),
+			ipFamily.RecordType(), describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -156,7 +160,7 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments, fmt.Sprintf(
 			"Could not confirm that %s records for %s were updated to %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription))
+			ipFamily.RecordType(), describeDomainsInEnglish(domains), ipDescription))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -164,7 +168,7 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 			fragments,
 			"Updating %s records for %s to %s",
 			"; updating %s records for %s to %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription,
+			ipFamily.RecordType(), describeDomainsInEnglish(domains), ipDescription,
 		)
 	}
 
@@ -173,7 +177,7 @@ func generateUpdateNotifierMessage(ipFamily ipnet.Family, ips []netip.Addr, s se
 			fragments,
 			"Updated %s records for %s to %s",
 			"; updated %s records for %s to %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains), ipDescription,
+			ipFamily.RecordType(), describeDomainsInEnglish(domains), ipDescription,
 		)
 	}
 
@@ -230,7 +234,7 @@ func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		fragments = append(fragments, fmt.Sprintf(
 			"Could not confirm that %s records for %s were deleted",
-			ipFamily.RecordType(), pp.EnglishJoin(domains)))
+			ipFamily.RecordType(), describeDomainsInEnglish(domains)))
 	}
 
 	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
@@ -238,7 +242,7 @@ func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses
 			fragments,
 			"Deleting %s records for %s",
 			"; deleting %s records for %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains),
+			ipFamily.RecordType(), describeDomainsInEnglish(domains),
 		)
 	}
 
@@ -247,7 +251,7 @@ func generateFinalDeleteNotifierMessage(ipFamily ipnet.Family, s setterResponses
 			fragments,
 			"Deleted %s records for %s",
 			"; deleted %s records for %s",
-			ipFamily.RecordType(), pp.EnglishJoin(domains),
+			ipFamily.RecordType(), describeDomainsInEnglish(domains),
 		)
 	}
 

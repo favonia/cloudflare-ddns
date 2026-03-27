@@ -28,21 +28,22 @@ func getRawEntriesFromHTTP(
 	if !ok {
 		return nil, false
 	}
+	displayURL := pp.QuoteIfUnsafeInSentence(url)
 
 	entries := make([]ipnet.RawEntry, 0)
 	for lineNum, raw := range file.ProcessLines(string(body)) {
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiError,
-				"Failed to parse line %d in the response from %q (%q) as an IP address or an IP address in CIDR notation",
-				lineNum, url, raw)
+				"Failed to parse line %d in the response from %s (%q) as an IP address or an IP address in CIDR notation",
+				lineNum, displayURL, raw)
 			return nil, false
 		}
 
 		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
-				"Line %d in the response from %q (%q) %s", lineNum, url, raw, problem)
+				"Line %d in the response from %s (%q) %s", lineNum, displayURL, raw, problem)
 			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return nil, false
 		}
@@ -52,7 +53,7 @@ func getRawEntriesFromHTTP(
 	slices.SortFunc(entries, ipnet.RawEntry.Compare)
 	entries = slices.Compact(entries)
 	if len(entries) == 0 {
-		ppfmt.Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", url)
+		ppfmt.Noticef(pp.EmojiError, "No IP addresses were found in the response from %s", displayURL)
 		return nil, false
 	}
 
