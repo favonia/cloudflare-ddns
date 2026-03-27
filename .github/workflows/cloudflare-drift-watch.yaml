@@ -65,7 +65,7 @@ jobs:
         with:
           go-version: stable
 
-      - name: 🔎 Check the upstream Cloudflare document
+      - name: 🔎 Check the upstream Cloudflare document (${{ matrix.watch.name }})
         working-directory: scripts/github-actions/cloudflare-doc-watch
         run: go run . ${{ matrix.watch.config }}
         env:
