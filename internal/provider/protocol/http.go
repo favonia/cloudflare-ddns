@@ -51,6 +51,10 @@ func getRawEntriesFromHTTP(
 
 	slices.SortFunc(entries, ipnet.RawEntry.Compare)
 	entries = slices.Compact(entries)
+	if len(entries) == 0 {
+		ppfmt.Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", url)
+		return nil, false
+	}
 
 	return entries, true
 }

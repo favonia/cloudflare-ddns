@@ -60,6 +60,12 @@ func TestHTTPGetRawData(t *testing.T) {
 	t.Cleanup(malformed4.Close)
 	malformed6 := newSplitServer(ipnet.IP6, helloWriter)
 	t.Cleanup(malformed6.Close)
+	empty4 := newSplitServer(ipnet.IP4, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	t.Cleanup(empty4.Close)
+	commentOnly4 := newSplitServer(ipnet.IP4, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "# just a comment\n")
+	}))
+	t.Cleanup(commentOnly4.Close)
 
 	for name, tc := range map[string]struct {
 		nilCtx        bool
@@ -100,6 +106,18 @@ func TestHTTPGetRawData(t *testing.T) {
 			false, ipnet.IP6, malformed6.URL, ipnet.IP6, nil, invalidIP,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to parse line %d in the response from %q (%q) as an IP address or an IP address in CIDR notation", 1, malformed6.URL, "hello")
+			},
+		},
+		"4/empty-response": {
+			false, ipnet.IP4, empty4.URL, ipnet.IP4, nil, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", empty4.URL)
+			},
+		},
+		"4/comment-only-response": {
+			false, ipnet.IP4, commentOnly4.URL, ipnet.IP4, nil, invalidIP,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiError, "No IP addresses were found in the response from %q", commentOnly4.URL)
 			},
 		},
 		"4/request-fail": {

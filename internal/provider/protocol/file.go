@@ -70,6 +70,11 @@ func (p File) GetRawData(
 
 	slices.SortFunc(entries, ipnet.RawEntry.Compare)
 	entries = slices.Compact(entries)
+	if len(entries) == 0 {
+		ppfmt.Noticef(pp.EmojiUserError,
+			"No IP addresses were found in %s", pp.QuoteIfNotHumanReadable(p.Path))
+		return NewUnavailableDetectionResult()
+	}
 
 	return NewKnownDetectionResult(entries)
 }
