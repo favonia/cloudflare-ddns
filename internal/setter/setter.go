@@ -171,15 +171,15 @@ func reconcileAndPartitionRecords(
 	resolvedComment, commentAmbiguous := resolveScalarValue(fallbackParams.Comment, commentValues)
 	if ttlAmbiguous {
 		warnings.warn(ppfmt, len(records), unit, "TTL values",
-			fmt.Sprintf("fallback value %s", fallbackParams.TTL.Describe()))
+			fmt.Sprintf("fallback TTL %s", fallbackParams.TTL.Describe()))
 	}
 	if proxiedAmbiguous {
-		warnings.warn(ppfmt, len(records), unit, "proxy states",
-			fmt.Sprintf(`fallback value "%t"`, fallbackParams.Proxied))
+		warnings.warn(ppfmt, len(records), unit, "proxy statuses",
+			fmt.Sprintf(`fallback proxy setting %q`, api.DescribeProxyStatus(fallbackParams.Proxied)))
 	}
 	if commentAmbiguous {
 		warnings.warn(ppfmt, len(records), unit, "comments",
-			fmt.Sprintf("fallback value %s",
+			fmt.Sprintf("fallback comment %s",
 				pp.QuotePreviewOrEmptyLabel(fallbackParams.Comment, pp.AdvisoryPreviewLimit, "(empty)")))
 	}
 
@@ -262,6 +262,9 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	targetsToCreate := unmatchedTargets
 
 	// Stage 1: outdated-first operations for unmatched targets.
+	// Metadata for these new targets is inherited from recyclable outdated records
+	// when they agree; configured fallback values are used only when those records
+	// are absent or disagree.
 	resolvedParamsForNewTargets, outdatedRecords := reconcileAndSortRecords(
 		fallbackParams, outdatedRecords, ppfmt, warnings, unit,
 	)
@@ -269,8 +272,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	mutated := false
 	for _, target := range targetsToCreate {
 		if len(outdatedRecords) > 0 {
-			// Recycle is an optimization of delete+create after metadata reconciliation.
-			// UpdateRecord contract: apply target IP and resolved metadata for new targets.
+			// Recycle is an optimization of delete+create after metadata reconciliation:
+			// apply the target IP plus metadata resolved for the unmatched targets.
 			recycled := outdatedRecords[0]
 			outdatedRecords = outdatedRecords[1:]
 			mutated = true
@@ -452,7 +455,7 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		if ambiguousComment {
 			unit := fmt.Sprintf("%s items in the WAF list %s", ipFamily.Describe(), list.Describe())
 			warnings.warn(ppfmt, len(plan.deleteItems), unit, "comments",
-				fmt.Sprintf("fallback value %s",
+				fmt.Sprintf("fallback comment %s",
 					pp.QuotePreviewOrEmptyLabel(fallbackItemComment, pp.AdvisoryPreviewLimit, "(empty)")))
 		}
 		plan.createComment = resolvedComment
