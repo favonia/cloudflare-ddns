@@ -515,6 +515,44 @@ func normalizeMarkdownLine(value string) string {
 }
 
 func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []string) ([]string, error) {
+	sectionLines, err := extractMarkdownSectionContent(document, watchedHeading)
+	if err != nil {
+		return nil, err
+	}
+	if len(lineFilters) == 0 {
+		return sectionLines, nil
+	}
+
+	filterRegexes := make([]*regexp.Regexp, 0, len(lineFilters))
+	for _, pattern := range lineFilters {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid line filter %q: %w", pattern, err)
+		}
+		filterRegexes = append(filterRegexes, re)
+	}
+
+	filtered := make([]string, 0)
+	for _, line := range sectionLines {
+		for _, re := range filterRegexes {
+			if re.MatchString(line) {
+				filtered = append(filtered, line)
+				break
+			}
+		}
+	}
+	if len(filtered) == 0 {
+		return nil, fmt.Errorf(
+			"no lines in section %q matched the configured filters\nConfigured line filters:\n%s\nObserved section lines:\n%s",
+			watchedHeading,
+			formatBullets(lineFilters),
+			formatBullets(sectionLines),
+		)
+	}
+	return filtered, nil
+}
+
+func extractMarkdownSectionContent(document, watchedHeading string) ([]string, error) {
 	lines := strings.Split(document, "\n")
 	headingIndex := -1
 	for index, line := range lines {
@@ -541,32 +579,7 @@ func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []
 	if len(sectionLines) == 0 {
 		return nil, fmt.Errorf("could not extract any lines from section %q", watchedHeading)
 	}
-	if len(lineFilters) == 0 {
-		return sectionLines, nil
-	}
-
-	filterRegexes := make([]*regexp.Regexp, 0, len(lineFilters))
-	for _, pattern := range lineFilters {
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line filter %q: %w", pattern, err)
-		}
-		filterRegexes = append(filterRegexes, re)
-	}
-
-	filtered := make([]string, 0)
-	for _, line := range sectionLines {
-		for _, re := range filterRegexes {
-			if re.MatchString(line) {
-				filtered = append(filtered, line)
-				break
-			}
-		}
-	}
-	if len(filtered) == 0 {
-		return nil, fmt.Errorf("no lines in section %q matched the configured filters", watchedHeading)
-	}
-	return filtered, nil
+	return sectionLines, nil
 }
 
 func countHeadingLevel(heading string) int {
