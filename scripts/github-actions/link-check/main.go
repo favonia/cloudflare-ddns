@@ -24,7 +24,6 @@ import (
 var root = mustProjectRoot()
 
 var (
-	headingSlugRE        = regexp.MustCompile(`[^\w\- ]+`)
 	markdownInlineLinkRE = regexp.MustCompile(`(?s)\[[^\]]+\]\(([^)\s]+)(?:\s+"[^"]*")?\)`)
 	markdownRefLinkRE    = regexp.MustCompile(`(?s)\[([^\]]+)\]\[([^\]]*)\]`)
 	markdownRefDefRE     = regexp.MustCompile(`(?m)^\[([^\]]+)\]:\s*(\S+)`)
@@ -403,27 +402,11 @@ func markdownIDs(relativePath string) map[string]bool {
 		return nil
 	}
 	ids := map[string]bool{}
-	for _, line := range strings.Split(string(data), "\n") {
-		if !strings.HasPrefix(line, "#") {
-			continue
-		}
-		heading := strings.TrimSpace(strings.TrimLeft(line, "#"))
-		if heading == "" {
-			continue
-		}
-		ids[markdownAnchor(heading)] = true
-	}
+	// Trust only explicit HTML ids in tracked Markdown; renderer-generated heading ids are unstable.
 	for _, match := range htmlIDRE.FindAllStringSubmatch(string(data), -1) {
 		ids[match[1]] = true
 	}
 	return ids
-}
-
-func markdownAnchor(heading string) string {
-	cleaned := strings.ToLower(strings.TrimSpace(heading))
-	cleaned = headingSlugRE.ReplaceAllString(cleaned, "")
-	cleaned = strings.Join(strings.Fields(cleaned), "-")
-	return strings.Trim(cleaned, "-")
 }
 
 func resolveLocalTarget(sourceFile, target string) (string, string) {
