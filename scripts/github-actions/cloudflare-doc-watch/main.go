@@ -103,9 +103,10 @@ func run() error {
 		return fmt.Errorf("usage: %s <config.json>", os.Args[0])
 	}
 
+	configPath := os.Args[1]
 	ctx := context.Background()
 
-	cfg, err := loadConfig(os.Args[1])
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func run() error {
 
 	expectedItems, actualItems, err := collectWatchItems(ctx, cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s\n%s", err, formatCheckContext(cfg, configPath))
 	}
 
 	summaryHeaderLines := []string{
@@ -160,6 +161,7 @@ func run() error {
 	messageLines := []string{
 		fmt.Sprintf("Cloudflare doc watch failed for %s.", cfg.Name),
 	}
+	messageLines = append(messageLines, checkContextLines(cfg, configPath)...)
 	if cfg.Repo != "" {
 		messageLines = append(messageLines,
 			fmt.Sprintf("Source path: %s/%s on %s", cfg.Repo, cfg.Path, cfg.Ref))
@@ -198,6 +200,78 @@ func run() error {
 		"\n\n### Re-check these assumptions\n\n" + formatBullets(cfg.Reminders) +
 		"\n\n### Related repo paths\n\n" + formatBullets(cfg.RelatedPaths) + "\n")
 	return errors.New("watch content drifted")
+}
+
+func formatCheckContext(cfg config, configPath string) string {
+	return strings.Join(checkContextLines(cfg, configPath), "\n")
+}
+
+func checkContextLines(cfg config, configPath string) []string {
+	lines := []string{
+		fmt.Sprintf("Config: %s", configPath),
+	}
+	if cfg.PageURL != "" {
+		lines = append(lines, fmt.Sprintf("Check URL: %s", cfg.PageURL))
+	}
+	if cfg.Repo != "" {
+		lines = append(lines, fmt.Sprintf("Check source: %s/%s on %s", cfg.Repo, cfg.Path, cfg.Ref))
+	}
+	for _, target := range checkTargets(cfg) {
+		lines = append(lines, fmt.Sprintf("Check target: %s", target))
+	}
+	return lines
+}
+
+func checkTargets(cfg config) []string {
+	switch {
+	case len(cfg.JSONPointers) > 0:
+		targets := make([]string, 0, len(cfg.JSONPointers))
+		for _, selector := range cfg.JSONPointers {
+			label := selector.Label
+			if label == "" {
+				label = selector.Pointer
+			}
+			targets = append(targets, fmt.Sprintf("JSON pointer %q (%s)", selector.Pointer, label))
+		}
+		return targets
+	case len(cfg.JSONRouteSelectors) > 0:
+		targets := make([]string, 0, len(cfg.JSONRouteSelectors))
+		for _, selector := range cfg.JSONRouteSelectors {
+			label := selector.Label
+			if label == "" {
+				label = selector.Name
+			}
+			parentLabel := strings.Join(selector.Parent, " / ")
+			if parentLabel == "" {
+				parentLabel = "(root)"
+			}
+			targets = append(targets, fmt.Sprintf("dashboard route %q under parent %q (%s)", selector.Name, parentLabel, label))
+		}
+		return targets
+	case cfg.WatchedHeading != "":
+		targets := []string{fmt.Sprintf("heading %q", cfg.WatchedHeading)}
+		for _, line := range cfg.ExpectedLines {
+			targets = append(targets, fmt.Sprintf("expected phrase %q", line))
+		}
+		return targets
+	case cfg.WatchedSection != "":
+		targets := []string{fmt.Sprintf("HTML section %q", cfg.WatchedSection)}
+		for _, bullet := range cfg.ExpectedBullets {
+			targets = append(targets, fmt.Sprintf("expected bullet %q", bullet))
+		}
+		return targets
+	case cfg.PageURL != "":
+		targets := make([]string, 0, len(cfg.ExpectedLines)+1)
+		if cfg.ExpectedFile != "" {
+			targets = append(targets, fmt.Sprintf("expected lines from %q", cfg.ExpectedFile))
+		}
+		for _, line := range cfg.ExpectedLines {
+			targets = append(targets, fmt.Sprintf("expected line %q", line))
+		}
+		return targets
+	default:
+		return nil
+	}
 }
 
 func loadConfig(path string) (config, error) {
@@ -441,6 +515,44 @@ func normalizeMarkdownLine(value string) string {
 }
 
 func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []string) ([]string, error) {
+	sectionLines, err := extractMarkdownSectionContent(document, watchedHeading)
+	if err != nil {
+		return nil, err
+	}
+	if len(lineFilters) == 0 {
+		return sectionLines, nil
+	}
+
+	filterRegexes := make([]*regexp.Regexp, 0, len(lineFilters))
+	for _, pattern := range lineFilters {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid line filter %q: %w", pattern, err)
+		}
+		filterRegexes = append(filterRegexes, re)
+	}
+
+	filtered := make([]string, 0)
+	for _, line := range sectionLines {
+		for _, re := range filterRegexes {
+			if re.MatchString(line) {
+				filtered = append(filtered, line)
+				break
+			}
+		}
+	}
+	if len(filtered) == 0 {
+		return nil, fmt.Errorf(
+			"no lines in section %q matched the configured filters\nConfigured line filters:\n%s\nObserved section lines:\n%s",
+			watchedHeading,
+			formatBullets(lineFilters),
+			formatBullets(sectionLines),
+		)
+	}
+	return filtered, nil
+}
+
+func extractMarkdownSectionContent(document, watchedHeading string) ([]string, error) {
 	lines := strings.Split(document, "\n")
 	headingIndex := -1
 	for index, line := range lines {
@@ -467,32 +579,7 @@ func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []
 	if len(sectionLines) == 0 {
 		return nil, fmt.Errorf("could not extract any lines from section %q", watchedHeading)
 	}
-	if len(lineFilters) == 0 {
-		return sectionLines, nil
-	}
-
-	filterRegexes := make([]*regexp.Regexp, 0, len(lineFilters))
-	for _, pattern := range lineFilters {
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line filter %q: %w", pattern, err)
-		}
-		filterRegexes = append(filterRegexes, re)
-	}
-
-	filtered := make([]string, 0)
-	for _, line := range sectionLines {
-		for _, re := range filterRegexes {
-			if re.MatchString(line) {
-				filtered = append(filtered, line)
-				break
-			}
-		}
-	}
-	if len(filtered) == 0 {
-		return nil, fmt.Errorf("no lines in section %q matched the configured filters", watchedHeading)
-	}
-	return filtered, nil
+	return sectionLines, nil
 }
 
 func countHeadingLevel(heading string) int {
