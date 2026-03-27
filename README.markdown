@@ -76,6 +76,8 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 <details><summary>🐋 Directly run the Docker image <sup><em>click to expand</em></sup></summary>
 
+Create a Cloudflare API token from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens) with the **Zone - DNS - Edit** and **Account - Account Filter Lists - Edit** permissions. You can remove unneeded permissions based on your setup; see [Cloudflare API Tokens](#cloudflare-api-token) for details.
+
 ```bash
 # Prefer Cloudflare's proxy for these domains (optional)
 # Existing DNS records in Cloudflare keep their current proxy statuses
@@ -90,6 +92,8 @@ docker run \
 </details>
 
 <details><summary>🧬 Directly run the updater from its source <sup><em>click to expand</em></sup></summary>
+
+Create a Cloudflare API token from the [API Tokens page](https://dash.cloudflare.com/profile/api-tokens) with the **Zone - DNS - Edit** and **Account - Account Filter Lists - Edit** permissions. You can remove unneeded permissions based on your setup; see [Cloudflare API Tokens](#cloudflare-api-token) for details.
 
 You need the [Go tool](https://go.dev/doc/install) to run the updater from its source.
 
