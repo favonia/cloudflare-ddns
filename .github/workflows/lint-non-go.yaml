@@ -36,7 +36,7 @@ jobs:
           command -v shellcheck
       - name: 🧹 Run actionlint
         run: |
-          go install github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}
+          go install "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
           actionlint -shellcheck shellcheck
         continue-on-error: false
         env:
@@ -91,7 +91,7 @@ jobs:
           go-version: "1.26.1"
       - name: 🧹 Run yamlfmt
         run: |
-          go install github.com/google/yamlfmt/cmd/yamlfmt@${YAMLFMT_VERSION}
+          go install "github.com/google/yamlfmt/cmd/yamlfmt@${YAMLFMT_VERSION}"
           yamlfmt .
         env:
           # renovate: datasource=go depName=github.com/google/yamlfmt versioning=semver
