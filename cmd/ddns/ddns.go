@@ -130,8 +130,11 @@ func realMain() int {
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
+
+	// We only needs lifecycleConfig and updateConfig from now on, and builtConfig should not be used.
 	lifecycleConfig := builtConfig.Lifecycle
 	updateConfig := builtConfig.Update
+
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if lifecycleConfig.UpdateCron != nil {
 		nt.Send(ctx, ppfmt, notifier.NewMessagef("Cloudflare DDNS has started."))
