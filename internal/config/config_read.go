@@ -283,6 +283,34 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			"IP6_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv6",
 			c.IP6DefaultPrefixLen)
 	}
+	// Warn only on strong cross-resource signals: one side already isolates
+	// ownership, and the other side customizes write-side comments without
+	// narrowing its mutation scope.
+	if len(activeDomainSet) > 0 && len(c.WAFLists) > 0 {
+		if c.ManagedRecordsCommentRegex != "" &&
+			c.WAFListItemComment != "" &&
+			c.ManagedWAFListItemsCommentRegex == "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"DNS ownership isolation is enabled via MANAGED_RECORDS_COMMENT_REGEX (%s), but "+
+					"WAF_LIST_ITEM_COMMENT (%s) is set while MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty; "+
+					"the comment only affects newly written WAF list items, so WAF mutation scope is still not ownership-isolated",
+				previewSettingValue(c.ManagedRecordsCommentRegex),
+				previewSettingValue(c.WAFListItemComment),
+			)
+		}
+
+		if c.ManagedWAFListItemsCommentRegex != "" &&
+			c.RecordComment != "" &&
+			c.ManagedRecordsCommentRegex == "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"WAF ownership isolation is enabled via MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s), but "+
+					"RECORD_COMMENT (%s) is set while MANAGED_RECORDS_COMMENT_REGEX is empty; "+
+					"the comment only affects newly written DNS records, so DNS mutation scope is still not ownership-isolated",
+				previewSettingValue(c.ManagedWAFListItemsCommentRegex),
+				previewSettingValue(c.RecordComment),
+			)
+		}
+	}
 
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,

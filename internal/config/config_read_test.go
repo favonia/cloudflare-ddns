@@ -750,6 +750,228 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"ownership-warning/dns-isolated-waf-not": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:        32,
+				IP6DefaultPrefixLen:        64,
+				UpdateOnStart:              true,
+				RecordComment:              "managed-dns",
+				ManagedRecordsCommentRegex: "^managed-dns$",
+				WAFLists:                   []api.WAFList{{AccountID: "account", Name: "list"}},
+				WAFListItemComment:         "managed-waf",
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        regexp.MustCompile("^managed-dns$"),
+							ManagedWAFListItemsCommentRegex:   nil,
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen:   defaultPrefixLen(),
+					Proxied:            map[domain.Domain]bool{domain.FQDN("a.b.c"): false},
+					RecordComment:      "managed-dns",
+					WAFListItemComment: "managed-waf",
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"DNS ownership isolation is enabled via MANAGED_RECORDS_COMMENT_REGEX (%s), but "+
+							"WAF_LIST_ITEM_COMMENT (%s) is set while MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty; "+
+							"the comment only affects newly written WAF list items, so WAF mutation scope is still not ownership-isolated",
+						`"^managed-dns$"`,
+						`"managed-waf"`,
+					),
+				)
+			},
+		},
+		"ownership-warning/waf-isolated-dns-not": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:             32,
+				IP6DefaultPrefixLen:             64,
+				UpdateOnStart:                   true,
+				RecordComment:                   "managed-dns",
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				WAFListItemComment:              "managed-waf",
+				ManagedWAFListItemsCommentRegex: "^managed-waf$",
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        nil,
+							ManagedWAFListItemsCommentRegex:   regexp.MustCompile("^managed-waf$"),
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen:   defaultPrefixLen(),
+					Proxied:            map[domain.Domain]bool{domain.FQDN("a.b.c"): false},
+					RecordComment:      "managed-dns",
+					WAFListItemComment: "managed-waf",
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"WAF ownership isolation is enabled via MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s), but "+
+							"RECORD_COMMENT (%s) is set while MANAGED_RECORDS_COMMENT_REGEX is empty; "+
+							"the comment only affects newly written DNS records, so DNS mutation scope is still not ownership-isolated",
+						`"^managed-waf$"`,
+						`"managed-dns"`,
+					),
+				)
+			},
+		},
+		"ownership-warning/dns-isolated-waf-not-without-comment-signal": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:        32,
+				IP6DefaultPrefixLen:        64,
+				UpdateOnStart:              true,
+				RecordComment:              "managed-dns",
+				ManagedRecordsCommentRegex: "^managed-dns$",
+				WAFLists:                   []api.WAFList{{AccountID: "account", Name: "list"}},
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        regexp.MustCompile("^managed-dns$"),
+							ManagedWAFListItemsCommentRegex:   nil,
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied:          map[domain.Domain]bool{domain.FQDN("a.b.c"): false},
+					RecordComment:    "managed-dns",
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"ownership-warning/waf-isolated-dns-not-without-comment-signal": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen:             32,
+				IP6DefaultPrefixLen:             64,
+				UpdateOnStart:                   true,
+				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
+				WAFListItemComment:              "managed-waf",
+				ManagedWAFListItemsCommentRegex: "^managed-waf$",
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{
+						CacheExpiration: 0,
+						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
+							ManagedRecordsCommentRegex:        nil,
+							ManagedWAFListItemsCommentRegex:   regexp.MustCompile("^managed-waf$"),
+							AllowWholeWAFListDeleteOnShutdown: false,
+						},
+					},
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
+					DefaultPrefixLen:   defaultPrefixLen(),
+					Proxied:            map[domain.Domain]bool{domain.FQDN("a.b.c"): false},
+					WAFListItemComment: "managed-waf",
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
 		"managed-waf-item-regex/invalid": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart:                   true,
