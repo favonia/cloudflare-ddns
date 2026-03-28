@@ -21,7 +21,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: test
+          policy: smoke-test
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -31,29 +31,18 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: stable
-      - name: 🧪 Run covered `cmd/ddns` shell smoke test
+      - name: 🧪 Run covered `cmd/ddns` smoke tests
         run: |
           tmpdir="$(mktemp -d)"
           go build -cover -o "${tmpdir}/ddns" ./cmd/ddns
-          mkdir "${tmpdir}/gocover"
-
-          set +e
-          output="$(
-            EMOJI=invalid \
-            GOCOVERDIR="${tmpdir}/gocover" \
-            "${tmpdir}/ddns" 2>&1
-          )"
-          exit_code=$?
-          set -e
-
-          test "${exit_code}" -eq 1
-          printf '%s\n' "${output}" | grep -F 'EMOJI ("invalid") is not a boolean'
-          printf '%s\n' "${output}" | grep -F 'Bye!'
-          go tool covdata textfmt -i "${tmpdir}/gocover" -o integration-coverage.txt
+          cd scripts/github-actions/smoke-test
+          go run . \
+            -binary "${tmpdir}/ddns" \
+            -coverprofile "${GITHUB_WORKSPACE}/integration-coverage.txt"
       - name: ☂️ Report smoke-test coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           fail_ci_if_error: true # default: false
           file: ./integration-coverage.txt
-          flags: binarytests
+          flags: smoketests
           token: ${{ secrets.CODECOV_TOKEN }}
