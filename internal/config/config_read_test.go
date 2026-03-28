@@ -19,6 +19,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
 func quotedIgnoredValuePreview(value string) string {
@@ -36,38 +37,11 @@ func defaultPrefixLen() map[ipnet.Family]int {
 	}
 }
 
-func unsetAll(t *testing.T) {
-	t.Helper()
-	unset(t,
-		"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE",
-		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-		"IP4_PROVIDER", "IP6_PROVIDER",
-		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS", "WAF_LISTS",
-		"IP4_DEFAULT_PREFIX_LEN", "IP6_DEFAULT_PREFIX_LEN",
-		"UPDATE_CRON",
-		"UPDATE_ON_START",
-		"DELETE_ON_STOP",
-		"CACHE_EXPIRATION",
-		"TTL",
-		"PROXIED",
-		"RECORD_COMMENT",
-		"MANAGED_RECORDS_COMMENT_REGEX",
-		"WAF_LIST_DESCRIPTION",
-		"WAF_LIST_ITEM_COMMENT",
-		"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX",
-		"DETECTION_TIMEOUT",
-		"UPDATE_TIMEOUT",
-		"HEALTHCHECKS",
-		"UPTIMEKUMA",
-		"SHOUTRRR",
-	)
-}
-
 //nolint:paralleltest // environment variables are global
 func TestReadEnvWithOnlyToken(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	unsetAll(t)
+	testenv.ClearAll(t)
 	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 
 	// Start from a zero-value RawConfig (not DefaultRaw) to verify that
@@ -101,7 +75,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 func TestReadEnvEmpty(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	unsetAll(t)
+	testenv.ClearAll(t)
 
 	var cfg config.RawConfig
 	mockPP := mocks.NewMockPP(mockCtrl)

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -23,7 +24,10 @@ type smokeCase struct {
 	OrderedFragments []string
 }
 
-const usageExitCode = 2
+const (
+	usageExitCode  = 2
+	coverageEnvKey = "GOCOVERDIR"
+)
 
 func main() {
 	binaryPath := flag.String("binary", "", "path to the ddns binary")
@@ -126,11 +130,19 @@ func runCase(definition smokeCase, binaryPath, coverageOutputDir string) error {
 }
 
 func runDDNS(binaryPath, coverageOutputDir string, definition smokeCase) (string, error) {
-	command := exec.CommandContext(context.Background(), binaryPath)
-	command.Env = append(os.Environ(), "GOCOVERDIR="+coverageOutputDir)
+	env, err := childEnv(coverageOutputDir, definition.Env)
+	if err != nil {
+		return "", err
+	}
 
-	for key, value := range definition.Env {
-		command.Env = append(command.Env, key+"="+value)
+	command, err := sandboxCommand(
+		context.Background(),
+		binaryPath,
+		[]string{coverageOutputDir},
+		env,
+	)
+	if err != nil {
+		return "", err
 	}
 
 	output, err := command.CombinedOutput()
@@ -155,6 +167,51 @@ func runDDNS(binaryPath, coverageOutputDir string, definition smokeCase) (string
 	}
 
 	return string(bytes.TrimRight(output, "\n")), nil
+}
+
+func childEnv(coverageOutputDir string, caseEnv map[string]string) ([]string, error) {
+	keys := make([]string, 0, len(caseEnv))
+	for key := range caseEnv {
+		if key == coverageEnvKey {
+			return nil, fmt.Errorf("smoke case cannot override %s", coverageEnvKey)
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	env := make([]string, 0, len(keys)+1)
+	env = append(env, coverageEnvKey+"="+coverageOutputDir)
+	for _, key := range keys {
+		env = append(env, key+"="+caseEnv[key])
+	}
+	return env, nil
+}
+
+func sandboxCommand(
+	ctx context.Context,
+	executable string,
+	writablePaths []string,
+	env []string,
+	args ...string,
+) (*exec.Cmd, error) {
+	bwrapPath, err := exec.LookPath("bwrap")
+	if err != nil {
+		return nil, fmt.Errorf("find bwrap: %w", err)
+	}
+
+	sandboxArgs := []string{
+		"--unshare-net",
+		"--ro-bind", "/", "/",
+	}
+	for _, path := range writablePaths {
+		sandboxArgs = append(sandboxArgs, "--bind", path, path)
+	}
+	sandboxArgs = append(sandboxArgs, executable)
+	sandboxArgs = append(sandboxArgs, args...)
+
+	command := exec.CommandContext(ctx, bwrapPath, sandboxArgs...)
+	command.Env = env
+	return command, nil
 }
 
 func assertInOrder(output string, fragments []string) error {

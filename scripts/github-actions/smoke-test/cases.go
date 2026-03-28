@@ -33,6 +33,18 @@ var allCases = []smokeCase{
 			"strconv.ParseBool: parsing \"invalid\": invalid syntax\nBye!",
 	},
 	{
+		Name: "reporter-invalid",
+		Env: map[string]string{
+			"CLOUDFLARE_API_TOKEN": "deadbeaf",
+			"HEALTHCHECKS":         "\001",
+			"QUIET":                "true",
+		},
+		ExpectedExitCode: 1,
+		OrderedFragments: []string{
+			"Failed to parse the Healthchecks URL (redacted)",
+		},
+	},
+	{
 		Name: "waf-item-comment-regex-mismatch",
 		Env: map[string]string{
 			"CLOUDFLARE_API_TOKEN":                 "deadbeaf",
@@ -48,6 +60,14 @@ var allCases = []smokeCase{
 			"📖 Checking settings . . .",
 			"WAF_LIST_ITEM_COMMENT=\"managed-waf\" does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=\"^other$\"",
 			"👋 Bye!",
+		},
+	},
+	{
+		Name:             "config-invalid",
+		Env:              map[string]string{"QUIET": "true"},
+		ExpectedExitCode: 1,
+		OrderedFragments: []string{
+			"Requires either CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE",
 		},
 	},
 }

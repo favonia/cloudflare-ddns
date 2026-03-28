@@ -13,6 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
 func TestDefaultConfigNotNil(t *testing.T) {
@@ -86,7 +87,7 @@ func summarizeRawConfig(raw *config.RawConfig) rawConfigSummary {
 func readUpdaterSettingsFromDefaultRaw(t *testing.T, env map[string]string) *config.RawConfig {
 	t.Helper()
 
-	unsetAll(t)
+	testenv.ClearAll(t)
 	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 	for key, value := range env {
 		store(t, key, value)
