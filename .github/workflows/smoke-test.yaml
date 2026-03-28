@@ -33,7 +33,8 @@ jobs:
           go-version: stable
       - name: 🔒 Check smoke sandbox prerequisites
         run: |
-          command -v bwrap
+          command -v podman
+          podman info >/dev/null
       - name: 🧪 Run covered `cmd/ddns` smoke tests
         run: |
           tmpdir="$(mktemp -d)"
@@ -41,6 +42,7 @@ jobs:
           cd scripts/github-actions/smoke-test
           go run . \
             -binary "${tmpdir}/ddns" \
+            -podman "$(command -v podman)" \
             -coverprofile "${GITHUB_WORKSPACE}/integration-coverage.txt"
       - name: ☂️ Report smoke-test coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2

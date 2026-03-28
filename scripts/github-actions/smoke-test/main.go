@@ -7,8 +7,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -25,24 +27,26 @@ type smokeCase struct {
 }
 
 const (
-	usageExitCode  = 2
-	coverageEnvKey = "GOCOVERDIR"
+	usageExitCode        = 2
+	coverageEnvKey       = "GOCOVERDIR"
+	containerBinaryDir   = "/app"
+	containerCoverageDir = "/cover"
 )
 
+type options struct {
+	BinaryPath       string
+	CoverProfilePath string
+	PodmanPath       string
+	RunPattern       string
+}
+
 func main() {
-	binaryPath := flag.String("binary", "", "path to the ddns binary")
-	coverProfilePath := flag.String("coverprofile", "", "write combined coverage profile to this file")
-	runPattern := flag.String("run", "", "regular expression selecting smoke cases to run")
-	flag.Parse()
-
-	if *binaryPath == "" {
-		exitf("missing required flag: -binary")
-	}
-	if flag.NArg() != 0 {
-		exitf("unexpected positional arguments: %s", strings.Join(flag.Args(), " "))
+	opts, err := parseOptions(os.Args[1:])
+	if err != nil {
+		exitf("%v", err)
 	}
 
-	cases, err := selectedCases(*runPattern)
+	cases, err := selectedCases(opts.RunPattern)
 	if err != nil {
 		exitf("%v", err)
 	}
@@ -65,16 +69,40 @@ func main() {
 			exitf("create coverage output dir for %s: %v", testCase.Name, err)
 		}
 
-		if err := runCase(testCase, *binaryPath, coverageOutputDir); err != nil {
+		if err := runCase(testCase, opts.PodmanPath, opts.BinaryPath, coverageOutputDir); err != nil {
 			exitf("%s: %v", testCase.Name, err)
 		}
 	}
 
-	if *coverProfilePath != "" {
-		if err := writeCoverProfile(coverageRoot, *coverProfilePath); err != nil {
+	if opts.CoverProfilePath != "" {
+		if err := writeCoverProfile(coverageRoot, opts.CoverProfilePath); err != nil {
 			exitf("write cover profile: %v", err)
 		}
 	}
+}
+
+func parseOptions(args []string) (options, error) {
+	flags := flag.NewFlagSet("smoke-test", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	var opts options
+	flags.StringVar(&opts.BinaryPath, "binary", "", "path to the ddns binary")
+	flags.StringVar(&opts.CoverProfilePath, "coverprofile", "", "write combined coverage profile to this file")
+	flags.StringVar(&opts.PodmanPath, "podman", "", "path to the podman executable")
+	flags.StringVar(&opts.RunPattern, "run", "", "regular expression selecting smoke cases to run")
+	if err := flags.Parse(args); err != nil {
+		return options{}, err
+	}
+	if opts.BinaryPath == "" {
+		return options{}, errors.New("missing required flag: -binary")
+	}
+	if opts.PodmanPath == "" {
+		return options{}, errors.New("missing required flag: -podman")
+	}
+	if flags.NArg() != 0 {
+		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
+	}
+	return opts, nil
 }
 
 func selectedCases(runPattern string) ([]smokeCase, error) {
@@ -100,7 +128,7 @@ func selectedCases(runPattern string) ([]smokeCase, error) {
 	return selected, nil
 }
 
-func runCase(definition smokeCase, binaryPath, coverageOutputDir string) error {
+func runCase(definition smokeCase, podmanPath, binaryPath, coverageOutputDir string) error {
 	if definition.Name == "" {
 		return errors.New("smoke case must define a name")
 	}
@@ -113,7 +141,7 @@ func runCase(definition smokeCase, binaryPath, coverageOutputDir string) error {
 		return errors.New("smoke case cannot define both exact output and ordered fragments")
 	}
 
-	output, err := runDDNS(binaryPath, coverageOutputDir, definition)
+	output, err := runDDNS(podmanPath, binaryPath, coverageOutputDir, definition)
 	if err != nil {
 		return err
 	}
@@ -129,16 +157,25 @@ func runCase(definition smokeCase, binaryPath, coverageOutputDir string) error {
 	return nil
 }
 
-func runDDNS(binaryPath, coverageOutputDir string, definition smokeCase) (string, error) {
-	env, err := childEnv(coverageOutputDir, definition.Env)
+func runDDNS(podmanPath, binaryPath, coverageOutputDir string, definition smokeCase) (string, error) {
+	env, err := childEnv(containerCoverageDir, definition.Env)
 	if err != nil {
 		return "", err
 	}
+	rootfsDir, err := os.MkdirTemp("", "cloudflare-ddns-smoke-rootfs-*")
+	if err != nil {
+		return "", fmt.Errorf("create temporary rootfs dir: %w", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(rootfsDir)
+	}()
 
 	command, err := sandboxCommand(
 		context.Background(),
+		podmanPath,
+		rootfsDir,
 		binaryPath,
-		[]string{coverageOutputDir},
+		coverageOutputDir,
 		env,
 	)
 	if err != nil {
@@ -189,28 +226,45 @@ func childEnv(coverageOutputDir string, caseEnv map[string]string) ([]string, er
 
 func sandboxCommand(
 	ctx context.Context,
+	podmanPath string,
+	rootfsDir string,
 	executable string,
-	writablePaths []string,
+	coverageOutputDir string,
 	env []string,
 	args ...string,
 ) (*exec.Cmd, error) {
-	bwrapPath, err := exec.LookPath("bwrap")
+	executablePath, err := filepath.Abs(executable)
 	if err != nil {
-		return nil, fmt.Errorf("find bwrap: %w", err)
+		return nil, fmt.Errorf("resolve executable path: %w", err)
+	}
+	coveragePath, err := filepath.Abs(coverageOutputDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve coverage output dir: %w", err)
 	}
 
 	sandboxArgs := []string{
-		"--unshare-net",
-		"--ro-bind", "/", "/",
+		"run",
+		"--rm",
+		"--network", "none",
+		"--no-hosts",
+		"--no-hostname",
+		"--read-only",
+		"--read-only-tmpfs=false",
+		"--tmpfs", "/tmp:rw,exec,nosuid,nodev",
+		"--workdir", "/tmp",
+		"--cap-drop=all",
+		"--security-opt", "no-new-privileges",
+		"--volume", filepath.Dir(executablePath) + ":" + containerBinaryDir + ":ro",
+		"--volume", coveragePath + ":" + containerCoverageDir + ":rw",
+		"--rootfs", rootfsDir,
 	}
-	for _, path := range writablePaths {
-		sandboxArgs = append(sandboxArgs, "--bind", path, path)
+	for _, entry := range env {
+		sandboxArgs = append(sandboxArgs, "-e", entry)
 	}
-	sandboxArgs = append(sandboxArgs, executable)
+	sandboxArgs = append(sandboxArgs, path.Join(containerBinaryDir, filepath.Base(executablePath)))
 	sandboxArgs = append(sandboxArgs, args...)
 
-	command := exec.CommandContext(ctx, bwrapPath, sandboxArgs...)
-	command.Env = env
+	command := exec.CommandContext(ctx, podmanPath, sandboxArgs...)
 	return command, nil
 }
 
