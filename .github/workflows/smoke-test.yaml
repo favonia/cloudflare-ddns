@@ -1,0 +1,59 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  binary-smoke-test:
+    name: Binary Smoke Test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: test
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: stable
+      - name: 🧪 Run covered `cmd/ddns` shell smoke test
+        run: |
+          tmpdir="$(mktemp -d)"
+          go build -cover -o "${tmpdir}/ddns" ./cmd/ddns
+          mkdir "${tmpdir}/gocover"
+
+          set +e
+          output="$(
+            EMOJI=invalid \
+            GOCOVERDIR="${tmpdir}/gocover" \
+            "${tmpdir}/ddns" 2>&1
+          )"
+          exit_code=$?
+          set -e
+
+          test "${exit_code}" -eq 1
+          printf '%s\n' "${output}" | grep -F 'EMOJI ("invalid") is not a boolean'
+          printf '%s\n' "${output}" | grep -F 'Bye!'
+          go tool covdata textfmt -i "${tmpdir}/gocover" -o integration-coverage.txt
+      - name: ☂️ Report smoke-test coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          fail_ci_if_error: true # default: false
+          file: ./integration-coverage.txt
+          flags: binarytests
+          token: ${{ secrets.CODECOV_TOKEN }}
