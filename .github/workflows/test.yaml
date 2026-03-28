@@ -8,12 +8,6 @@ on:
 permissions:
   contents: read
 
-env:
-  GO_TEST_IMAGE: localhost/cloudflare-ddns-go-test:latest
-  GOPATH: /tmp/cloudflare-ddns-gopath
-  GOMODCACHE: /tmp/cloudflare-ddns-gomodcache
-  GOCACHE: /tmp/cloudflare-ddns-gocache
-
 jobs:
   test:
     name: Test
@@ -29,7 +23,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -38,13 +31,6 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-      - name: 🔒 Check unit-test sandbox prerequisites
-        run: |
-          command -v podman
-          podman info >/dev/null
-      - name: 🏗️ Build test image
-        run: |
-          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -54,49 +40,11 @@ jobs:
       - name: 🧪 Run `go mod tidy -diff`
         run: |
           go mod tidy -diff
-      - name: 📦 Prime Go module cache for isolated tests
-        run: |
-          podman run --rm --pull=never \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && go mod download && go list -test -deps ./... >/dev/null'
       - name: 🧪 Run `go test`
         run: |
-          podman run --rm --pull=never \
-            --network none \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && coverpkg="$(go list ./... | grep -v "internal/mocks" | paste -sd,)"; go test -json "-coverpkg=${coverpkg}" -coverprofile=coverage.txt -race ./... | tee test-report.jsonl'
+          coverpkg="$(go list ./... | grep -v "internal/mocks" | paste -sd,)"
+          go test -json "-coverpkg=${coverpkg}" -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
       - name: 📦️ Upload `go test -json` logs
-        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: go-test-json
@@ -118,7 +66,7 @@ jobs:
       id-token: write
       contents: read
     concurrency:
-      group: ${{ github.workflow }}-fuzz-${{ github.ref }}
+      group: ${{ github.workflow }}-fuzz-${{ matrix.target.name }}-${{ github.ref }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -144,7 +92,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test.fuzz
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -153,59 +100,13 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-      - name: 🔒 Check fuzz sandbox prerequisites
-        run: |
-          command -v podman
-          podman info >/dev/null
-      - name: 🏗️ Build test image
-        run: |
-          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 🧪 Run `go mod tidy -diff`
         run: |
           go mod tidy -diff
-      - name: 📦 Prime Go module cache for isolated fuzzing
-        run: |
-          podman run --rm --pull=never \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && go mod download && go list -test -deps "${{ matrix.target.package }}" >/dev/null'
       - name: 🧪 Run `go test -fuzz`
         run: |
-          podman run --rm --pull=never \
-            --network none \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && go test "${{ matrix.target.package }}" -fuzz "${{ matrix.target.fuzz }}" -fuzztime "${{ matrix.target.fuzztime }}" -parallel "${{ matrix.target.parallel }}" 2>&1 | tee "fuzz-${{ matrix.target.name }}.log"'
+          go test "${{ matrix.target.package }}" -fuzz "${{ matrix.target.fuzz }}" -fuzztime "${{ matrix.target.fuzztime }}" -parallel "${{ matrix.target.parallel }}" 2>&1 | tee "fuzz-${{ matrix.target.name }}.log"
       - name: 📦️ Upload fuzz logs
-        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: go-fuzz-${{ matrix.target.name }}
@@ -225,7 +126,6 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           policy: test.regenerate
-
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -234,57 +134,13 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-      - name: 🔒 Check regenerate sandbox prerequisites
-        run: |
-          command -v podman
-          podman info >/dev/null
-      - name: 🏗️ Build test image
-        run: |
-          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 🧪 Run `go mod tidy -diff`
         run: |
           go mod tidy -diff
-      - name: 📦 Prime Go module cache for isolated regenerate
-        run: |
-          podman run --rm --pull=never \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && go mod download && go list -test -deps ./... >/dev/null'
       - name: 🧪 Run `go generate`
         run: |
-          podman run --rm --pull=never \
-            --network none \
-            --read-only \
-            --tmpfs /tmp:rw,exec,nosuid,nodev \
-            --userns=keep-id \
-            --user "$(id -u):$(id -g)" \
-            --cap-drop=all \
-            --security-opt no-new-privileges \
-            --volume "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw" \
-            --volume "${GOPATH}:${GOPATH}:rw" \
-            --volume "${GOMODCACHE}:${GOMODCACHE}:rw" \
-            --volume "${GOCACHE}:${GOCACHE}:rw" \
-            --workdir "${GITHUB_WORKSPACE}" \
-            -e GOPATH \
-            -e GOMODCACHE \
-            -e GOCACHE \
-            -e HOME=/tmp/cloudflare-ddns-home \
-            "${GO_TEST_IMAGE}" \
-            bash -euo pipefail -c 'mkdir -p "$HOME" && rm -rf ./internal/mocks && go generate ./...'
+          rm -rf ./internal/mocks
+          go generate ./...
       - name: 🔍️ Check if any files are changed
         run: |
           if ! git diff --exit-code; then
