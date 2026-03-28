@@ -65,6 +65,14 @@ Use `//nolint:gochecknoglobals` only for intentional process-wide values.
 - Shared immutable lookup tables, linker-injected version strings, and shared handles can justify it.
 - Do not use it for convenience globals when a narrower dependency shape would do.
 
+### `unparam`
+
+Do not address `unparam` mechanically by deleting a parameter just because one current call path passes the same value every time.
+
+- First check whether the parameter is part of the helper's honest contract.
+- If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
+- Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
+
 ## Review Checks
 
 When reviewing a new `//nolint`, ask:
@@ -86,3 +94,4 @@ It does not define:
 - which linters are enabled repository-wide
 - feature-specific correctness rules
 - one-off justifications that belong at the suppression site instead of in this note
+- general refactoring policy beyond recurring lint-driven judgments such as the cases above

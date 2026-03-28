@@ -391,7 +391,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 
 					ctx, h := newSetterHarness(t)
 					permutedItems := itemOrder.order(scenario.items)
-					detectedIPs := detected(ip4, ip6)
+					detectedTargets := detected(ip4, ip6)
 
 					readCall := h.mockHandle.EXPECT().
 						ListWAFListItems(ctx, h.mockPP, wafList, listDescription, "").
@@ -418,7 +418,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 					h.mockPP.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-					resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detectedIPs, "")
+					resp := h.setter.SetWAFList(ctx, h.mockPP, wafList, listDescription, detectedTargets, "")
 					require.Equal(t, setter.ResponseUpdated, resp)
 				})
 			}
