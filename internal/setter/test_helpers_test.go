@@ -6,7 +6,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -67,8 +66,7 @@ func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s, ok := setter.New(mockPP, mockHandle)
-	require.True(t, ok)
+	s := setter.New(mockPP, mockHandle)
 
 	return ctx, setterHarness{
 		cancel:     cancel,

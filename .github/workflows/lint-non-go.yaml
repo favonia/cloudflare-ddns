@@ -30,14 +30,18 @@ jobs:
       - name: 📦️ Download actionlint
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: stable
+          go-version: "1.26.1"
+      - name: 🔒 Check shellcheck availability
+        run: |
+          command -v shellcheck
       - name: 🧹 Run actionlint
         run: |
-          # renovate: datasource=go depName=github.com/rhysd/actionlint versioning=semver
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.11
-          actionlint .github/workflows/*.yaml .github/workflows/*.yml
+          go install "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
+          actionlint -shellcheck shellcheck
         continue-on-error: false
         env:
+          # renovate: datasource=go depName=github.com/rhysd/actionlint versioning=semver
+          ACTIONLINT_VERSION: v1.7.11
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   hadolint:
@@ -84,12 +88,14 @@ jobs:
       - name: 📦️ Download yamlfmt
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: stable
+          go-version: "1.26.1"
       - name: 🧹 Run yamlfmt
         run: |
-          # renovate: datasource=go depName=github.com/google/yamlfmt versioning=semver
-          go install github.com/google/yamlfmt/cmd/yamlfmt@v0.20.0
+          go install "github.com/google/yamlfmt/cmd/yamlfmt@${YAMLFMT_VERSION}"
           yamlfmt .
+        env:
+          # renovate: datasource=go depName=github.com/google/yamlfmt versioning=semver
+          YAMLFMT_VERSION: v0.20.0
 
   jq:
     name: JSON

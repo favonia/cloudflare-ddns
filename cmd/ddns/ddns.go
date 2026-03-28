@@ -56,10 +56,7 @@ func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*con
 	}
 
 	// Get the setter.
-	s, ok := setter.New(ppfmt, h)
-	if !ok {
-		return builtConfig, nil, false
-	}
+	s := setter.New(ppfmt, h)
 
 	return builtConfig, s, true
 }

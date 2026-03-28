@@ -17,7 +17,6 @@ func TestNewAcceptsHandle(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s, ok := setter.New(mockPP, mockHandle)
-	require.True(t, ok)
+	s := setter.New(mockPP, mockHandle)
 	require.NotNil(t, s)
 }

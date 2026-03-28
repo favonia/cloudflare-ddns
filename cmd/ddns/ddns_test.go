@@ -19,38 +19,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
+	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
-
-// resetInitConfigEnv clears every environment variable read during startup so
-// the test starts from the command's defaults instead of the caller's shell.
-func resetInitConfigEnv(t *testing.T) {
-	t.Helper()
-
-	for _, key := range []string{
-		"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE",
-		"CF_API_TOKEN", "CF_API_TOKEN_FILE", "CF_ACCOUNT_ID",
-		"IP4_PROVIDER", "IP6_PROVIDER",
-		"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS", "WAF_LISTS",
-		"UPDATE_CRON",
-		"UPDATE_ON_START",
-		"DELETE_ON_STOP",
-		"CACHE_EXPIRATION",
-		"TTL",
-		"PROXIED",
-		"RECORD_COMMENT",
-		"MANAGED_RECORDS_COMMENT_REGEX",
-		"WAF_LIST_DESCRIPTION",
-		"WAF_LIST_ITEM_COMMENT",
-		"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX",
-		"DETECTION_TIMEOUT",
-		"UPDATE_TIMEOUT",
-		"HEALTHCHECKS",
-		"UPTIMEKUMA",
-		"SHOUTRRR",
-	} {
-		t.Setenv(key, "")
-	}
-}
 
 // TestInitConfigManagedRecordsCommentRegex exercises initConfig's successful
 // entry-point path with a minimal valid environment.
@@ -63,7 +33,7 @@ func resetInitConfigEnv(t *testing.T) {
 // settings and constructor success, leaving setter behavior and record-update
 // logic to their own package tests.
 func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
-	resetInitConfigEnv(t)
+	testenv.ClearAll(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
 	t.Setenv("DOMAINS", "example.org")
 	t.Setenv("RECORD_COMMENT", "managed")
@@ -121,7 +91,7 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 
 //nolint:paralleltest // environment variables are global
 func TestInitConfigReadFailure(t *testing.T) {
-	resetInitConfigEnv(t)
+	testenv.ClearAll(t)
 
 	builtConfig, s, ok := initConfig(
 		pp.NewSilent(),
@@ -134,7 +104,7 @@ func TestInitConfigReadFailure(t *testing.T) {
 }
 
 func TestInitConfigBuildFailure(t *testing.T) {
-	resetInitConfigEnv(t)
+	testenv.ClearAll(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
 	t.Setenv("DOMAINS", "example.org")
 	t.Setenv("MANAGED_RECORDS_COMMENT_REGEX", "(")
@@ -149,22 +119,6 @@ func TestInitConfigBuildFailure(t *testing.T) {
 	require.Nil(t, s)
 }
 
-func TestRealMainReporterFailure(t *testing.T) {
-	resetInitConfigEnv(t)
-	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeaf")
-	t.Setenv("HEALTHCHECKS", "\001")
-	t.Setenv("QUIET", "true")
-
-	require.Equal(t, 1, realMain())
-}
-
-func TestRealMainSetupPPFailure(t *testing.T) {
-	resetInitConfigEnv(t)
-	t.Setenv("EMOJI", "invalid")
-
-	require.Equal(t, 1, realMain())
-}
-
 //nolint:paralleltest // Version is a global linker-injected variable
 func TestFormatName(t *testing.T) {
 	oldVersion := Version
@@ -177,13 +131,6 @@ func TestFormatName(t *testing.T) {
 
 	Version = "v1.2.3"
 	require.Equal(t, "Cloudflare DDNS (v1.2.3)", formatName())
-}
-
-func TestRealMainConfigFailure(t *testing.T) {
-	resetInitConfigEnv(t)
-	t.Setenv("QUIET", "true")
-
-	require.Equal(t, 1, realMain())
 }
 
 func TestStopUpdatingDeleteOnStop(t *testing.T) {
