@@ -7,12 +7,16 @@ import (
 )
 
 // AdvisoryPreviewLimit is the centralized advisory preview limit.
-// Keep advisory value previews short in warning logs while preserving
-// full-fidelity values for mismatch diagnostics.
+// Keep advisory value previews short in operator-facing messages while
+// preserving full-fidelity values for mismatch or validation diagnostics.
+// See docs/designs/guides/operator-messages.markdown.
 const AdvisoryPreviewLimit = 48
 
 // QuoteOrEmptyLabel quotes non-empty strings and keeps a caller-defined label
 // for the empty string.
+//
+// This supports the operator-message rule that empty-string state should stay
+// explicit when that is clearer than showing "".
 func QuoteOrEmptyLabel(s string, emptyLabel string) string {
 	if s == "" {
 		return emptyLabel
@@ -22,6 +26,9 @@ func QuoteOrEmptyLabel(s string, emptyLabel string) string {
 
 // QuoteIfNotHumanReadable keeps human-readable single-line strings raw and
 // quotes the rest to keep escaping explicit.
+//
+// This follows the operator-message rule that values should be rendered for
+// operator inspection rather than quoted mechanically.
 func QuoteIfNotHumanReadable(s string) string {
 	if isHumanReadableSingleLine(s) {
 		return s
@@ -50,6 +57,10 @@ func QuoteIfUnsafeInSentence(s string) string {
 // in a rune-safe way when it exceeds the given limit. A non-positive limit
 // disables truncation. For an empty string, it returns the caller-defined
 // label unchanged.
+//
+// This is the advisory-preview form of the operator-message rule from
+// docs/designs/guides/operator-messages.markdown: keep advisory values short,
+// but preserve explicit empty-state labels.
 func QuotePreviewOrEmptyLabel(s string, limit int, emptyLabel string) string {
 	if s == "" {
 		return emptyLabel
@@ -60,6 +71,9 @@ func QuotePreviewOrEmptyLabel(s string, limit int, emptyLabel string) string {
 
 // QuotePreviewIfNotHumanReadable keeps short human-readable strings raw, but
 // quotes non-human-readable previews or truncated previews.
+//
+// Truncated previews are always quoted so the operator can see that the shown
+// value is only a preview, not the full original string.
 func QuotePreviewIfNotHumanReadable(s string, limit int) string {
 	preview, truncated := truncateForPreview(s, limit)
 	if truncated {

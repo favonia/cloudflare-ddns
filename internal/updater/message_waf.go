@@ -22,7 +22,7 @@ func (s setterWAFListResponses) register(name string, code setter.ResponseCode) 
 // Heartbeat success lines are intentionally terse status labels. Failure lines
 // can be longer because they are the ones users need to inspect. The notifier
 // variants below carry the fuller user-facing prose for Shoutrrr-style
-// channels.
+// channels. See docs/designs/guides/operator-messages.markdown.
 func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
