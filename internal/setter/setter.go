@@ -53,8 +53,8 @@ func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit string) 
 }
 
 // New creates a new Setter against one handle-bound ownership scope.
-func New(_ppfmt pp.PP, handle api.Handle) (Setter, bool) {
-	return setter{Handle: handle}, true
+func New(_ppfmt pp.PP, handle api.Handle) Setter {
+	return setter{Handle: handle}
 }
 
 // Record represents a DNS record in this package.
