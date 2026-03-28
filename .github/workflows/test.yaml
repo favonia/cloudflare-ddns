@@ -9,8 +9,7 @@ permissions:
   contents: read
 
 env:
-  # renovate: datasource=docker depName=docker.io/library/golang versioning=semver
-  GO_TEST_IMAGE: docker.io/library/golang:1.26.1@sha256:3d094aa6a818d30fc3773e70d07f412571511feffb35fa4932adf11176f367eb
+  GO_TEST_IMAGE: localhost/cloudflare-ddns-go-test:latest
   GOPATH: /tmp/cloudflare-ddns-gopath
   GOMODCACHE: /tmp/cloudflare-ddns-gomodcache
   GOCACHE: /tmp/cloudflare-ddns-gocache
@@ -38,11 +37,14 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: stable
+          go-version: "1.26.1"
       - name: 🔒 Check unit-test sandbox prerequisites
         run: |
           command -v podman
           podman info >/dev/null
+      - name: 🏗️ Build test image
+        run: |
+          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -54,7 +56,6 @@ jobs:
           go mod tidy -diff
       - name: 📦 Prime Go module cache for isolated tests
         run: |
-          podman pull "${GO_TEST_IMAGE}"
           podman run --rm --pull=never \
             --read-only \
             --tmpfs /tmp:rw,exec,nosuid,nodev \
@@ -151,17 +152,19 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: stable
+          go-version: "1.26.1"
       - name: 🔒 Check fuzz sandbox prerequisites
         run: |
           command -v podman
           podman info >/dev/null
+      - name: 🏗️ Build test image
+        run: |
+          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 🧪 Run `go mod tidy -diff`
         run: |
           go mod tidy -diff
       - name: 📦 Prime Go module cache for isolated fuzzing
         run: |
-          podman pull "${GO_TEST_IMAGE}"
           podman run --rm --pull=never \
             --read-only \
             --tmpfs /tmp:rw,exec,nosuid,nodev \
@@ -230,17 +233,19 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version: stable
+          go-version: "1.26.1"
       - name: 🔒 Check regenerate sandbox prerequisites
         run: |
           command -v podman
           podman info >/dev/null
+      - name: 🏗️ Build test image
+        run: |
+          podman build --pull=never --tag "${GO_TEST_IMAGE}" --file .github/workflows/containers/go-test/Dockerfile .
       - name: 🧪 Run `go mod tidy -diff`
         run: |
           go mod tidy -diff
       - name: 📦 Prime Go module cache for isolated regenerate
         run: |
-          podman pull "${GO_TEST_IMAGE}"
           podman run --rm --pull=never \
             --read-only \
             --tmpfs /tmp:rw,exec,nosuid,nodev \

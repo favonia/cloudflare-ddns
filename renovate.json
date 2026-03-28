@@ -3,19 +3,8 @@
   "extends": [
     "config:best-practices",
     "group:allNonMajor",
-    ":semanticCommitTypeAll(build)"
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-zA-Z0-9-._]+?) depName=(?<depName>[^\\s]+?)(?: (?:lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s+go install \\S+@(?<currentValue>\\S+)\\s"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{/if}}"
-    }
+    ":semanticCommitTypeAll(build)",
+    "customManagers:githubActionsVersions"
   ],
   "pip-compile": {
     "managerFilePatterns": [
