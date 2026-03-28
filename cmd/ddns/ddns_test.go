@@ -158,6 +158,13 @@ func TestRealMainReporterFailure(t *testing.T) {
 	require.Equal(t, 1, realMain())
 }
 
+func TestRealMainSetupPPFailure(t *testing.T) {
+	resetInitConfigEnv(t)
+	t.Setenv("EMOJI", "invalid")
+
+	require.Equal(t, 1, realMain())
+}
+
 //nolint:paralleltest // Version is a global linker-injected variable
 func TestFormatName(t *testing.T) {
 	oldVersion := Version

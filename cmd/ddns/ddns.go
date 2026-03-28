@@ -88,10 +88,12 @@ func realMain() int {
 	sig := signal.Setup()
 	ctxWithSignals, _ := signal.NotifyContext(ctx)
 
-	// Set up pretty printer
+	// Set up pretty printer. SetupPP intentionally still returns a usable
+	// printer on failure so this top-level path can report a final message
+	// after the concrete parse error.
 	ppfmt, ok := config.SetupPP(os.Stdout)
 	if !ok {
-		ppfmt.Infof(pp.EmojiUserError, "Bye!")
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
 
