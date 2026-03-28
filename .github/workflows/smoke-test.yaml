@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   binary-smoke-test:
-    name: Binary Smoke Test
+    name: Smoke Test
     runs-on: ubuntu-latest
     permissions:
       id-token: write
