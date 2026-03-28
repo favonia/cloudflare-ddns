@@ -1,7 +1,7 @@
 // Package main probes negative Authorization cases against Cloudflare's
 // /user/tokens/verify endpoint and compares the observed responses against
-// expected values from a JSON config file. It is intended for GitHub Actions
-// and reports contract drift through stderr, workflow error annotations, and
+// built-in expected values. It is intended for GitHub Actions and reports
+// API behavior drift through stderr, workflow error annotations, and
 // GITHUB_STEP_SUMMARY.
 package main
 
@@ -10,10 +10,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -116,11 +119,12 @@ func main() {
 }
 
 func run() error {
-	if len(os.Args) != 2 {
-		return fmt.Errorf("usage: %s <config.json>", os.Args[0])
+	opts, err := parseOptions(os.Args[1:])
+	if err != nil {
+		return err
 	}
 
-	cfg, err := loadConfig(os.Args[1])
+	cfg, err := builtInConfig(opts.RunPattern)
 	if err != nil {
 		return err
 	}
@@ -155,7 +159,7 @@ func run() error {
 	if len(drifts) > 0 {
 		writeSummary(buildDriftSummary(cfg, lines, drifts))
 		message := fmt.Sprintf(
-			"%s contract drifted:\n%s",
+			"%s API behavior drifted:\n%s",
 			cfg.Name, strings.Join(drifts, "\n"),
 		)
 		fmt.Fprintln(os.Stderr, message)
@@ -164,8 +168,51 @@ func run() error {
 
 	writeSummary(buildMatchSummary(cfg, lines))
 	//nolint:forbidigo // intentional status output
-	fmt.Printf("%s: all probes match the expected contract.\n", cfg.Name)
+	fmt.Printf("%s: all probes match the expected API behavior.\n", cfg.Name)
 	return nil
+}
+
+type options struct {
+	RunPattern string
+}
+
+func parseOptions(args []string) (options, error) {
+	flags := flag.NewFlagSet("cloudflare-token-verify-watch", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	var opts options
+	flags.StringVar(&opts.RunPattern, "run", "", "regular expression selecting built-in probes to run")
+	if err := flags.Parse(args); err != nil {
+		return options{}, err
+	}
+	if flags.NArg() != 0 {
+		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
+	}
+	return opts, nil
+}
+
+func builtInConfig(runPattern string) (config, error) {
+	cfg := defaultConfig()
+	if runPattern == "" {
+		return cfg, nil
+	}
+
+	pattern, err := regexp.Compile(runPattern)
+	if err != nil {
+		return config{}, fmt.Errorf("invalid -run pattern: %w", err)
+	}
+
+	selected := make([]probe, 0, len(cfg.Probes))
+	for _, entry := range cfg.Probes {
+		if pattern.MatchString(entry.Name) {
+			selected = append(selected, entry)
+		}
+	}
+	if len(selected) == 0 {
+		return config{}, fmt.Errorf("no built-in probes match -run %q", runPattern)
+	}
+	cfg.Probes = slices.Clone(selected)
+	return cfg, nil
 }
 
 func runRawProbe(cfg config, entry probe, timeout time.Duration) ([]string, []string) {
@@ -221,19 +268,6 @@ func runSDKProbe(entry probe, timeout time.Duration) ([]string, []string) {
 		entry.Name, entry.Kind, sdkObserved,
 	)
 	return drifts, []string{line}
-}
-
-func loadConfig(path string) (config, error) {
-	var cfg config
-	//nolint:gosec // intentional config file read
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg, fmt.Errorf("failed to read config %s: %w", path, err)
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return cfg, fmt.Errorf("failed to parse config %s: %w", path, err)
-	}
-	return cfg, nil
 }
 
 // --- probers ---
@@ -425,8 +459,8 @@ func formatNullableString(value *string) string {
 func buildMatchSummary(cfg config, lines []string) string {
 	var builder strings.Builder
 	writeHeader(&builder, cfg)
-	builder.WriteString("- Status: all probes match\n")
-	builder.WriteString("\n### Observed contract\n\n")
+	builder.WriteString("- Status: all probes match the expected API behavior\n")
+	builder.WriteString("\n### Observed API behavior\n\n")
 	for _, line := range lines {
 		builder.WriteString(line)
 		builder.WriteByte('\n')
@@ -437,8 +471,8 @@ func buildMatchSummary(cfg config, lines []string) string {
 func buildDriftSummary(cfg config, lines, drifts []string) string {
 	var builder strings.Builder
 	writeHeader(&builder, cfg)
-	builder.WriteString("- Status: **contract drifted**\n")
-	builder.WriteString("\n### Observed contract\n\n")
+	builder.WriteString("- Status: **API behavior drifted**\n")
+	builder.WriteString("\n### Observed API behavior\n\n")
 	for _, line := range lines {
 		builder.WriteString(line)
 		builder.WriteByte('\n')

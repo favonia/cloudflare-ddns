@@ -10,40 +10,8 @@ permissions:
 
 jobs:
   doc-watch:
-    name: Watch Cloudflare WAF docs drift (${{ matrix.watch.name }})
+    name: Watch Cloudflare drift
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        watch:
-          - name: dashboard deeplinks
-            config: config/dashboard-deeplinks.json
-          - name: DNS TTL semantics
-            config: config/dns-ttl.json
-          - name: DNS record attributes
-            config: config/dns-record-attributes.json
-          - name: OpenAPI DNS record schema
-            config: config/openapi-dns-record-schema.json
-          - name: OpenAPI lists schema
-            config: config/openapi-lists-schema.json
-          - name: OpenAPI zones schema
-            config: config/openapi-zones-schema.json
-          - name: zone status docs
-            config: config/zone-status-docs.json
-          - name: list IP ranges
-            config: config/waf-list-ip-ranges.json
-          - name: list availability
-            config: config/waf-list-availability.json
-          - name: list deletion rule
-            config: config/waf-list-deletion-rule.json
-          - name: list JSON-object name rules
-            config: config/waf-list-json-object-name-rules.json
-          - name: list name rules
-            config: config/waf-list-name-rules.json
-          - name: Cloudflare IP ranges (IPv4)
-            config: config/cloudflare-ips-v4.json
-          - name: Cloudflare IP ranges (IPv6)
-            config: config/cloudflare-ips-v6.json
     permissions:
       id-token: write
       contents: read
@@ -65,13 +33,13 @@ jobs:
         with:
           go-version: "1.26.1"
 
-      - name: 🔎 Check the upstream Cloudflare document (${{ matrix.watch.name }})
+      - name: 🔎 Check the built-in Cloudflare drift watches
         working-directory: scripts/github-actions/cloudflare-doc-watch
-        run: go run . ${{ matrix.watch.config }}
+        run: go run .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  token-verify-contract:
+  token-verify-watch:
     name: Watch Cloudflare /user/tokens/verify drift
     runs-on: ubuntu-latest
     permissions:
@@ -94,8 +62,8 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-          cache-dependency-path: scripts/github-actions/cloudflare-verify-contract/go.sum
+          cache-dependency-path: scripts/github-actions/cloudflare-token-verify-watch/go.sum
 
-      - name: 🧪 Run /user/tokens/verify contract probe
-        working-directory: scripts/github-actions/cloudflare-verify-contract
-        run: go run . config/verify-contract.json
+      - name: 🧪 Run /user/tokens/verify drift watch
+        working-directory: scripts/github-actions/cloudflare-token-verify-watch
+        run: go run .

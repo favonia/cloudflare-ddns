@@ -1,4 +1,4 @@
-module github.com/favonia/cloudflare-ddns/scripts/github-actions/cloudflare-verify-contract
+module github.com/favonia/cloudflare-ddns/scripts/github-actions/cloudflare-token-verify-watch
 
 go 1.26.0
 
