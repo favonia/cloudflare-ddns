@@ -55,6 +55,129 @@ func TestQuoteIfNotHumanReadable(t *testing.T) {
 	}
 }
 
+func TestQuoteIfUnsafeInSentence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "letters stay raw",
+			input: "abc",
+			want:  "abc",
+		},
+		{
+			name:  "letters and digits stay raw",
+			input: "abc123",
+			want:  "abc123",
+		},
+		{
+			name:  "url stays raw",
+			input: "https://example.com/path?q=x#frag",
+			want:  "https://example.com/path?q=x#frag",
+		},
+		{
+			name:  "windows path stays raw",
+			input: `C:\Users\alice`,
+			want:  `C:\Users\alice`,
+		},
+		{
+			name:  "windows directory stays raw",
+			input: `C:\Users\alice\`,
+			want:  `C:\Users\alice\`,
+		},
+		{
+			name:  "regex stays raw",
+			input: "^hello$",
+			want:  "^hello$",
+		},
+		{
+			name:  "dotfile stays raw",
+			input: ".env",
+			want:  ".env",
+		},
+		{
+			name:  "handle stays raw",
+			input: "@alice",
+			want:  "@alice",
+		},
+		{
+			name:  "empty string is quoted",
+			input: "",
+			want:  `""`,
+		},
+		{
+			name:  "single punctuation is quoted",
+			input: "/",
+			want:  `"/"`,
+		},
+		{
+			name:  "whitespace is quoted",
+			input: "abc d",
+			want:  `"abc d"`,
+		},
+		{
+			name:  "quotes are quoted",
+			input: `"`,
+			want:  `"\""`,
+		},
+		{
+			name:  "hyphen in middle stays raw",
+			input: "abc-def",
+			want:  "abc-def",
+		},
+		{
+			name:  "trailing slash stays raw",
+			input: "https://example.com/",
+			want:  "https://example.com/",
+		},
+		{
+			name:  "trailing backslash stays raw",
+			input: `C:\Users\alice\`,
+			want:  `C:\Users\alice\`,
+		},
+		{
+			name:  "trailing colon is quoted",
+			input: "note:",
+			want:  `"note:"`,
+		},
+		{
+			name:  "trailing period is quoted",
+			input: "example.com.",
+			want:  `"example.com."`,
+		},
+		{
+			name:  "trailing question mark is quoted",
+			input: "path?",
+			want:  `"path?"`,
+		},
+		{
+			name:  "trailing equals is quoted",
+			input: "key=",
+			want:  `"key="`,
+		},
+		{
+			name:  "leading percent is quoted",
+			input: "%TEMP%",
+			want:  `"%TEMP%"`,
+		},
+		{
+			name:  "comma is quoted",
+			input: "hello,world",
+			want:  `"hello,world"`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, test.want, pp.QuoteIfUnsafeInSentence(test.input))
+		})
+	}
+}
+
 func TestQuotePreviewOrEmptyLabel(t *testing.T) {
 	t.Parallel()
 

@@ -336,15 +336,7 @@ func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
 	zh.setRequestLimit(2)
 	lrh.setRequestLimit(1)
 	ppfmt := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		ppfmt.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
-			`"env" and ":prod"`,
-			"AAAA",
-			"sub.test.org",
-			api.ID("record1"),
-			pp.IssueReportingURL,
-		)
+		expectUndocumentedTagsWarning(t, ppfmt, `"env" and ":prod"`, "AAAA", "sub.test.org", api.ID("record1"))
 	})
 	rs, cached, ok := f.handle.ListRecords(context.Background(), ppfmt, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 	require.True(t, ok)

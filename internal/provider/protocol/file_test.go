@@ -213,7 +213,7 @@ func TestFileGetRawDataMissingFile(t *testing.T) {
 	useMemFS(t, fstest.MapFS{})
 
 	mockPP := mocks.NewMockPP(mockCtrl)
-	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/missing.txt", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/missing.txt", gomock.Any())
 
 	p := protocol.NewFile("file:/missing.txt", "/missing.txt")
 	result := p.GetRawData(context.Background(), mockPP, ipnet.IP4, 32)

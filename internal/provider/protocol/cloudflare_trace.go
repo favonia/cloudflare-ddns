@@ -90,10 +90,11 @@ func (p CloudflareTrace) GetRawData(
 	}
 
 	fields := parseTraceBody(body)
+	displayTraceURL := pp.QuoteIfUnsafeInSentence(traceURL)
 
 	parsedURL, err := url.Parse(traceURL)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse the provider URL %q: %v", traceURL, err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to parse the provider URL %s: %v", displayTraceURL, err)
 		return NewUnavailableDetectionResult()
 	}
 
@@ -102,12 +103,12 @@ func (p CloudflareTrace) GetRawData(
 	switch {
 	case fields.h == "":
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The response from %q does not contain an h (host) field; please report this at %s",
-			traceURL, pp.IssueReportingURL)
+			"The response from %s does not contain an h (host) field; please report this at %s",
+			displayTraceURL, pp.IssueReportingURL)
 	case fields.h != parsedURL.Host:
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The h field %q in the response from %q does not match the expected host %q; please report this at %s",
-			fields.h, traceURL, parsedURL.Host, pp.IssueReportingURL)
+			"The h field %q in the response from %s does not match the expected host %q; please report this at %s",
+			fields.h, displayTraceURL, parsedURL.Host, pp.IssueReportingURL)
 		return NewUnavailableDetectionResult()
 	}
 
@@ -117,24 +118,24 @@ func (p CloudflareTrace) GetRawData(
 	switch fields.warp {
 	case "":
 		ppfmt.Noticef(pp.EmojiImpossible,
-			"The response from %q does not contain a warp field; please report this at %s",
-			traceURL, pp.IssueReportingURL)
+			"The response from %s does not contain a warp field; please report this at %s",
+			displayTraceURL, pp.IssueReportingURL)
 	case "on":
 		ppfmt.Noticef(pp.EmojiError,
-			"The response from %q has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
-			traceURL)
+			"The response from %s has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
+			displayTraceURL)
 		return NewUnavailableDetectionResult()
 	}
 
 	// Validate ip: must be present, parseable, and not a Cloudflare egress/proxy IP.
 	if fields.ip == "" {
-		ppfmt.Noticef(pp.EmojiError, "The response from %q does not contain an ip field", traceURL)
+		ppfmt.Noticef(pp.EmojiError, "The response from %s does not contain an ip field", displayTraceURL)
 		return NewUnavailableDetectionResult()
 	}
 	ip, err := netip.ParseAddr(fields.ip)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Failed to parse the IP address in the response from %q (%q)", traceURL, fields.ip)
+			"Failed to parse the IP address in the response from %s (%q)", displayTraceURL, fields.ip)
 		return NewUnavailableDetectionResult()
 	}
 	if ipnet.IsCloudflareIP(ip) {

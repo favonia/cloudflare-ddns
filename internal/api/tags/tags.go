@@ -67,23 +67,23 @@ func canonicalize(tags []string) canonicalSet {
 	}
 }
 
-// Summary describes the canonical relationship across multiple tag sets.
-type Summary struct {
-	Representative        map[string]string
-	Occurrence            map[string]int
-	SetCount              int
-	HasAmbiguousCanonical bool
-	HasDuplicateCanonical bool
+// tagSetsSummary describes the canonical relationship across multiple tag sets.
+type tagSetsSummary struct {
+	representative        map[string]string
+	occurrence            map[string]int
+	setCount              int
+	hasAmbiguousCanonical bool
+	hasDuplicateCanonical bool
 }
 
-// SummarizeSets analyzes tag sets by Cloudflare tag semantics.
-func SummarizeSets(tagSets [][]string) Summary {
-	summary := Summary{
-		Representative:        make(map[string]string),
-		Occurrence:            make(map[string]int),
-		SetCount:              len(tagSets),
-		HasAmbiguousCanonical: false,
-		HasDuplicateCanonical: false,
+// summarizeSets analyzes tag sets by Cloudflare tag semantics.
+func summarizeSets(tagSets [][]string) tagSetsSummary {
+	summary := tagSetsSummary{
+		representative:        make(map[string]string),
+		occurrence:            make(map[string]int),
+		setCount:              len(tagSets),
+		hasAmbiguousCanonical: false,
+		hasDuplicateCanonical: false,
 	}
 	var firstCanonicalKeys []string
 	for i, tags := range tagSets {
@@ -91,46 +91,66 @@ func SummarizeSets(tagSets [][]string) Summary {
 		if i == 0 {
 			firstCanonicalKeys = canonical.keys
 		} else if !slices.Equal(firstCanonicalKeys, canonical.keys) {
-			summary.HasAmbiguousCanonical = true
+			summary.hasAmbiguousCanonical = true
 		}
 		if canonical.hasDuplicateCanonical {
-			summary.HasDuplicateCanonical = true
+			summary.hasDuplicateCanonical = true
 		}
 		for _, key := range canonical.keys {
 			value := canonical.representative[key]
-			summary.Occurrence[key]++
-			if existing, ok := summary.Representative[key]; !ok || value < existing {
-				summary.Representative[key] = value
+			summary.occurrence[key]++
+			if existing, exists := summary.representative[key]; !exists || value < existing {
+				summary.representative[key] = value
 			}
 		}
 	}
 	return summary
 }
 
-// CommonSubset computes the greatest canonical subset of tags across tag sets.
-//
-// This is the tag reconciliation result used when there is no configured
-// fallback tag set to merge in: only tags present in every input set survive.
-func CommonSubset(tagSets [][]string) []string {
-	if len(tagSets) == 0 {
-		return nil
+// Resolved describes the canonical reconciliation of tags across multiple tag
+// sets.
+type Resolved struct {
+	Inherited             []string
+	Dropped               []string
+	HasAmbiguousCanonical bool
+	HasDuplicateCanonical bool
+}
+
+// Resolve computes the canonical reconciliation result across tag sets.
+// When no configured fallback tag set is merged in, only tags present in every
+// input set survive in Inherited and the remaining canonical tags are reported
+// in Dropped.
+func Resolve(tags [][]string) Resolved {
+	summary := summarizeSets(tags)
+	resolved := Resolved{
+		Inherited:             nil,
+		Dropped:               nil,
+		HasAmbiguousCanonical: summary.hasAmbiguousCanonical,
+		HasDuplicateCanonical: summary.hasDuplicateCanonical,
 	}
 
-	summary := SummarizeSets(tagSets)
-
-	inheritedKeys := make([]string, 0, len(summary.Representative))
-	for key := range summary.Representative {
-		if summary.Occurrence[key] == summary.SetCount {
+	inheritedKeys := make([]string, 0, len(summary.representative))
+	droppedKeys := make([]string, 0, len(summary.representative))
+	for key := range summary.representative {
+		if summary.occurrence[key] == summary.setCount {
 			inheritedKeys = append(inheritedKeys, key)
+		} else {
+			droppedKeys = append(droppedKeys, key)
 		}
 	}
-	if len(inheritedKeys) == 0 {
-		return nil
+	if len(inheritedKeys) > 0 {
+		slices.Sort(inheritedKeys)
+		resolved.Inherited = make([]string, 0, len(inheritedKeys))
+		for _, key := range inheritedKeys {
+			resolved.Inherited = append(resolved.Inherited, summary.representative[key])
+		}
 	}
-	slices.Sort(inheritedKeys)
-	resolved := make([]string, 0, len(inheritedKeys))
-	for _, key := range inheritedKeys {
-		resolved = append(resolved, summary.Representative[key])
+	if len(droppedKeys) > 0 {
+		slices.Sort(droppedKeys)
+		resolved.Dropped = make([]string, 0, len(droppedKeys))
+		for _, key := range droppedKeys {
+			resolved.Dropped = append(resolved.Dropped, summary.representative[key])
+		}
 	}
 	return resolved
 }

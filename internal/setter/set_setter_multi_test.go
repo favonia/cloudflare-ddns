@@ -598,7 +598,8 @@ func TestSetIPsWarnsAmbiguousTagsFromOutdatedSources(t *testing.T) {
 		h.mockPP.EXPECT().Noticef(
 			pp.EmojiWarning,
 			"The %d outdated %s disagree on %s; will use %s",
-			2, "AAAA records for sub.test.org", "tags", "common subset",
+			2, "AAAA records for sub.test.org", "tags",
+			"common set (no tags), dropping env:prod and team:alpha",
 		),
 		expectRecordUpdate(
 			ctx,

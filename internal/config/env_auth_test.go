@@ -164,7 +164,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "/wrong.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/wrong.txt", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/wrong.txt", gomock.Any())
 			},
 		},
 		"file/wrong.path/2": {
@@ -172,7 +172,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "/wrong.txt", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/wrong.txt", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/wrong.txt", gomock.Any())
 			},
 		},
 		"file/invalid-directory": {
@@ -180,7 +180,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "/dir", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %q: %v", "/dir", gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/dir", gomock.Any())
 			},
 		},
 	} {

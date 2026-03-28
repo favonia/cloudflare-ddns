@@ -527,15 +527,7 @@ func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 
 	f := newCloudflareHarness(t)
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		ppfmt.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
-			`"featureflag" and ":prod"`,
-			"AAAA",
-			"sub.test.org",
-			api.ID("record1"),
-			pp.IssueReportingURL,
-		)
+		expectUndocumentedTagsWarning(t, ppfmt, `"featureflag" and ":prod"`, "AAAA", "sub.test.org", api.ID("record1"))
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	zh.setRequestLimit(2)
@@ -856,15 +848,7 @@ func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 
 	f := newCloudflareHarness(t)
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		ppfmt.EXPECT().Noticef(
-			pp.EmojiImpossible,
-			"Found tags %s in an %s record for %s (ID: %s) that do not use Cloudflare's documented name:value format; this should not happen. Please report this at %s",
-			`"featureflag"`,
-			"AAAA",
-			"sub.test.org",
-			api.ID("record1"),
-			pp.IssueReportingURL,
-		)
+		expectUndocumentedTagsWarning(t, ppfmt, `"featureflag"`, "AAAA", "sub.test.org", api.ID("record1"))
 	})
 
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})

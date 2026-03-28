@@ -174,7 +174,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			2, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL),
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoinOrEmptyLabel(mockIDsAsStrings("test.org", 0, 1), "(none)"), pp.IssueReportingURL),
 				)
 			},
 		},
@@ -184,7 +184,7 @@ func TestZoneIDOfDomain(t *testing.T) {
 			1, "", false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL),
+					m.EXPECT().Noticef(pp.EmojiImpossible, "Found multiple active zones named %s (IDs: %s); please report this at %s", "test.org", pp.EnglishJoinOrEmptyLabel(mockIDsAsStrings("test.org", 0, 1), "(none)"), pp.IssueReportingURL),
 				)
 			},
 		},
@@ -349,7 +349,7 @@ func TestZoneIDOfDomainClearsZoneCacheAfterDuplicateZoneFailure(t *testing.T) {
 	mockPP := f.newPP()
 	mockPP.EXPECT().Noticef(pp.EmojiImpossible,
 		"Found multiple active zones named %s (IDs: %s); please report this at %s",
-		"test.org", pp.EnglishJoin(mockIDsAsStrings("test.org", 0, 1)), pp.IssueReportingURL)
+		"test.org", pp.EnglishJoinOrEmptyLabel(mockIDsAsStrings("test.org", 0, 1), "(none)"), pp.IssueReportingURL)
 	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
 	require.False(t, ok)
 	require.Zero(t, zoneID)

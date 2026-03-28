@@ -48,12 +48,13 @@ func (p File) GetRawData(
 	}
 
 	entries := make([]ipnet.RawEntry, 0)
+	displayPath := pp.QuoteIfUnsafeInSentence(p.Path)
 	for lineNum, raw := range lines {
 		entry, err := ipnet.ParseRawEntry(raw, defaultPrefixLen)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Failed to parse line %d (%q) in %s as an IP address or an IP address in CIDR notation", lineNum, raw,
-				pp.QuoteIfNotHumanReadable(p.Path))
+				"Failed to parse line %d (%q) in %s as an IP address or an IP address in CIDR notation",
+				lineNum, raw, displayPath)
 			return NewUnavailableDetectionResult()
 		}
 
@@ -61,7 +62,7 @@ func (p File) GetRawData(
 		normalized, problem, is4in6Hint, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
 		if !ok {
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d (%q) in %s %s", lineNum, raw, pp.QuoteIfNotHumanReadable(p.Path), problem)
+				"Line %d (%q) in %s %s", lineNum, raw, displayPath, problem)
 			ipnet.Emit4in6Hint(ppfmt, is4in6Hint)
 			return NewUnavailableDetectionResult()
 		}
@@ -72,7 +73,7 @@ func (p File) GetRawData(
 	entries = slices.Compact(entries)
 	if len(entries) == 0 {
 		ppfmt.Noticef(pp.EmojiUserError,
-			"No IP addresses were found in %s", pp.QuoteIfNotHumanReadable(p.Path))
+			"No IP addresses were found in %s", displayPath)
 		return NewUnavailableDetectionResult()
 	}
 

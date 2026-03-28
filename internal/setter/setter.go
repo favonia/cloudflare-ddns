@@ -148,6 +148,7 @@ func reconcileAndPartitionRecords(
 	warnings ambiguityWarnings,
 	unit string,
 ) (resolvedParams api.RecordParams, matching []Record, nonMatching []Record) {
+	// Collect all the attributes we want to resolve.
 	ttlValues := make([]api.TTL, 0, len(records))
 	proxiedValues := make([]bool, 0, len(records))
 	commentValues := make([]string, 0, len(records))
@@ -158,17 +159,13 @@ func reconcileAndPartitionRecords(
 		commentValues = append(commentValues, record.Comment)
 		tagSets = append(tagSets, record.Tags)
 	}
-	tagSummary := apitags.SummarizeSets(tagSets)
-	if tagSummary.HasDuplicateCanonical {
-		warnings.warnDuplicateCanonicalTags(ppfmt, unit)
-	}
-	if tagSummary.HasAmbiguousCanonical {
-		warnings.warn(ppfmt, len(records), unit, "tags", "common subset")
-	}
 
+	// Actually resolve them.
+	// Note: the fallback tag set mentioned in design documents is always empty.
 	resolvedTTL, ttlAmbiguous := resolveScalarValue(fallbackParams.TTL, ttlValues)
 	resolvedProxied, proxiedAmbiguous := resolveScalarValue(fallbackParams.Proxied, proxiedValues)
 	resolvedComment, commentAmbiguous := resolveScalarValue(fallbackParams.Comment, commentValues)
+	resolvedTags := apitags.Resolve(tagSets)
 	if ttlAmbiguous {
 		warnings.warn(ppfmt, len(records), unit, "TTL values",
 			fmt.Sprintf("fallback TTL %s", fallbackParams.TTL.Describe()))
@@ -182,6 +179,15 @@ func reconcileAndPartitionRecords(
 			fmt.Sprintf("fallback comment %s",
 				pp.QuotePreviewOrEmptyLabel(fallbackParams.Comment, pp.AdvisoryPreviewLimit, "(empty)")))
 	}
+	if resolvedTags.HasDuplicateCanonical {
+		warnings.warnDuplicateCanonicalTags(ppfmt, unit)
+	}
+	if resolvedTags.HasAmbiguousCanonical {
+		warnings.warn(ppfmt, len(records), unit, "tags",
+			fmt.Sprintf("common set (%s), dropping %s",
+				pp.EnglishJoinMapOrEmptyLabel(pp.QuoteIfUnsafeInSentence, resolvedTags.Inherited, "no tags"),
+				pp.EnglishJoinMapOrEmptyLabel(pp.QuoteIfUnsafeInSentence, resolvedTags.Dropped, "none")))
+	}
 
 	// Tags differ from scalar fields: the current config surface has no non-empty
 	// fallback tag value, so reconciliation preserves only the canonical tags that
@@ -191,7 +197,7 @@ func reconcileAndPartitionRecords(
 		TTL:     resolvedTTL,
 		Proxied: resolvedProxied,
 		Comment: resolvedComment,
-		Tags:    apitags.CommonSubset(tagSets),
+		Tags:    resolvedTags.Inherited,
 	}
 	matching = make([]Record, 0, len(records))
 	nonMatching = make([]Record, 0, len(records))

@@ -108,7 +108,7 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 	if allOK {
 		ppfmt.Infof(pp.EmojiNotify,
 			"Notified %s via Shoutrrr",
-			pp.EnglishJoin(s.ServiceDescriptions))
+			pp.EnglishJoinOrEmptyLabel(s.ServiceDescriptions, "(none)"))
 	}
 	return allOK
 }
