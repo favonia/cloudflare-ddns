@@ -10,6 +10,7 @@ linters:
     - gochecknoglobals # okay for a small script
     - mnd # okay for a small script
     - perfsprint # okay for a small script
+    - wrapcheck # okay for a small script
 
     - nlreturn # I disagree with the linter
     - noinlineerr # I disagree with the linter
