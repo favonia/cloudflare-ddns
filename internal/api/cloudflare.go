@@ -113,9 +113,10 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// "broken token" cases as fatal.
 		//
 		// The expected snapshot for this observed behavior was adopted on
-		// 2026-03-22. Update that date only when the drift watch in
-		// scripts/github-actions/cloudflare-token-verify-watch
-		// changes the expected behavior. The drift watch currently observes:
+		// 2026-03-22. Update that date only when the Cloudflare
+		// /user/tokens/verify drift watch case in
+		// scripts/github-actions/cloudflare-token-verify-watch/cases.go changes
+		// the expected behavior. That drift watch currently observes:
 		// - 400 for malformed or missing Authorization headers
 		// - 401 for well-formed but invalid bearer tokens
 		// cloudflare-go maps those to RequestError and AuthorizationError.

@@ -134,6 +134,7 @@ var allWatches = []config{
 		WatchLabel: "Watched TTL lines",
 		Reminders: []string{
 			"Re-check ReadTTL and any user guidance if Cloudflare changes the editable TTL range.",
+			"Re-check TTLAuto and any operator-facing TTL wording if Cloudflare changes whether 1 still means automatic TTL.",
 			"Re-check whether proxied records still force Auto/300.",
 			"Re-check whether non-Enterprise records still have a 60-second floor while Enterprise records allow 30 seconds.",
 		},

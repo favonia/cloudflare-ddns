@@ -6,8 +6,8 @@ import (
 )
 
 // The published dashboard-route anchor snapshot below was adopted on
-// 2026-03-22 and is watched by
-// scripts/github-actions/cloudflare-doc-watch/config/dashboard-deeplinks.json.
+// 2026-03-22 and is watched by the Cloudflare dashboard deeplink anchors case
+// in scripts/github-actions/cloudflare-doc-watch/cases.go.
 //
 // Cloudflare dashboard deeplink provenance:
 //   - DNS records uses the documented "Records" route from

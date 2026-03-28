@@ -1,4 +1,4 @@
-// Package main checks whether selected upstream docs/content still match the
+// Package main checks whether selected upstream documentation content still match the
 // assumptions recorded in a local JSON config. It is intended for GitHub
 // Actions and reports drift through stderr, workflow error annotations, and
 // GITHUB_STEP_SUMMARY.
