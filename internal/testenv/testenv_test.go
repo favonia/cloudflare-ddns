@@ -9,7 +9,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
-//nolint:paralleltest // environment variables are global
 func TestClearAllClearsAndRestoresEnvironment(t *testing.T) {
 	const presentKey = "TESTENV_PRESENT_KEY"
 	const absentKey = "TESTENV_ABSENT_KEY"
