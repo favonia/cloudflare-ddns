@@ -1,4 +1,4 @@
-name: Scorecard Analysis Workflow
+name: Scorecard
 on:
   push:
     # # Only the default branch is supported.
@@ -12,7 +12,7 @@ permissions: read-all
 
 jobs:
   analysis:
-    name: Scorecard analysis
+    name: Analysis
     runs-on: ubuntu-latest
     permissions:
       # Needed for Code scanning upload

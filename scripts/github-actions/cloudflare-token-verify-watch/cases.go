@@ -20,15 +20,17 @@ func defaultConfig() config {
 			{
 				Name:                 "missing Authorization",
 				Kind:                 "missing-header",
-				IncludeAuthorization: boolPtr(false),
+				Token:                "",
+				IncludeAuthorization: new(bool),
 				ExpectedRaw: expectedRaw{
 					StatusCode:   400,
 					Success:      false,
 					ResultStatus: nil,
 					Errors: []apiError{
 						{
-							Code:    1001,
-							Message: "Missing \"Authorization\" header",
+							Code:       1001,
+							Message:    "Missing \"Authorization\" header",
+							ErrorChain: nil,
 						},
 					},
 					Messages: []apiMessageInfo{},
@@ -36,9 +38,10 @@ func defaultConfig() config {
 				ExpectedSDK: nil,
 			},
 			{
-				Name:  "malformed bearer with spaces",
-				Kind:  "malformed",
-				Token: "not a token",
+				Name:                 "malformed bearer with spaces",
+				Kind:                 "malformed",
+				Token:                "not a token",
+				IncludeAuthorization: nil,
 				ExpectedRaw: expectedRaw{
 					StatusCode:   400,
 					Success:      false,
@@ -64,9 +67,10 @@ func defaultConfig() config {
 				},
 			},
 			{
-				Name:  "malformed bearer with hyphen",
-				Kind:  "malformed",
-				Token: "abc-def",
+				Name:                 "malformed bearer with hyphen",
+				Kind:                 "malformed",
+				Token:                "abc-def",
+				IncludeAuthorization: nil,
 				ExpectedRaw: expectedRaw{
 					StatusCode:   400,
 					Success:      false,
@@ -92,17 +96,20 @@ func defaultConfig() config {
 				},
 			},
 			{
-				Name:  "official API token example",
-				Kind:  "well-formed-looking, same family, wrong token",
-				Token: "Sn3lZJTBX6kkg7OdcBUAxOO963GEIyGQqnFTOFYY",
+				Name:                 "official API token example",
+				Kind:                 "well-formed-looking, same family, wrong token",
+				// #nosec G101 -- intentional documented example token for a negative probe
+				Token:                "Sn3lZJTBX6kkg7OdcBUAxOO963GEIyGQqnFTOFYY",
+				IncludeAuthorization: nil,
 				ExpectedRaw: expectedRaw{
 					StatusCode:   401,
 					Success:      false,
 					ResultStatus: nil,
 					Errors: []apiError{
 						{
-							Code:    1000,
-							Message: "Invalid API Token",
+							Code:       1000,
+							Message:    "Invalid API Token",
+							ErrorChain: nil,
 						},
 					},
 					Messages: []apiMessageInfo{},
@@ -115,8 +122,4 @@ func defaultConfig() config {
 			},
 		},
 	}
-}
-
-func boolPtr(value bool) *bool {
-	return &value
 }

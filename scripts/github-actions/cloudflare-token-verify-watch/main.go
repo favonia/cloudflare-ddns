@@ -179,7 +179,7 @@ func parseOptions(args []string) (options, error) {
 	var opts options
 	flags.StringVar(&opts.RunPattern, "run", "", "regular expression selecting built-in probes to run")
 	if err := flags.Parse(args); err != nil {
-		return options{}, err
+		return options{}, fmt.Errorf("parse flags: %w", err)
 	}
 	if flags.NArg() != 0 {
 		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))

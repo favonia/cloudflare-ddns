@@ -1,4 +1,4 @@
-name: Go
+name: Test
 
 on:
   push:
@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test
+  unit-ddns:
+    name: "Unit: core"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -58,7 +58,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   fuzz:
-    name: Fuzz (${{ matrix.target.name }})
+    name: "Fuzz: ${{ matrix.target.name }}"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: ${{ matrix.target.experimental }}
@@ -73,13 +73,13 @@ jobs:
       max-parallel: 2
       matrix:
         target:
-          - name: parse-list
+          - name: "parse list"
             package: ./test/fuzzer
             fuzz: FuzzParseList
             fuzztime: "60s"
             parallel: 1
             experimental: false
-          - name: parse-expression
+          - name: "parse expression"
             package: ./test/fuzzer
             fuzz: FuzzParseExpression
             fuzztime: "60s"
@@ -112,8 +112,46 @@ jobs:
           name: go-fuzz-${{ matrix.target.name }}
           path: fuzz-${{ matrix.target.name }}.log
 
+  smoke:
+    name: Smoke
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: test.smoke
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+      - name: 🧪 Run covered `cmd/ddns` smoke tests
+        run: |
+          tmpdir="$(mktemp -d)"
+          go build -cover -o "${tmpdir}/ddns" ./cmd/ddns
+          cd scripts/github-actions/smoke-test
+          go run . \
+            -binary "${tmpdir}/ddns" \
+            -coverprofile "${GITHUB_WORKSPACE}/integration-coverage.txt"
+      - name: ☂️ Report smoke-test coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          fail_ci_if_error: true # default: false
+          file: ./integration-coverage.txt
+          flags: smoketests
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   regenerate:
-    name: Regenerate
+    name: Gegenerated files
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -147,3 +185,52 @@ jobs:
             echo "Please run 'go gonerate ./...'"
             exit 1
           fi
+
+  test-scripts:
+    name: "Unit: scripts (${{ matrix.module.name }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - name: "doc watch"
+            directory: scripts/github-actions/cloudflare-doc-watch
+          - name: "token verify watch"
+            directory: scripts/github-actions/cloudflare-token-verify-watch
+          - name: "link check"
+            directory: scripts/github-actions/link-check
+          - name: "smoke test"
+            directory: scripts/github-actions/smoke-test
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: test
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+          cache-dependency-path: ${{ matrix.module.directory }}/go.mod
+      - name: 📡 Run `go telemetry on`
+        working-directory: ${{ matrix.module.directory }}
+        run: |
+          go telemetry on
+      - name: 🧪 Run `go mod tidy -diff`
+        working-directory: ${{ matrix.module.directory }}
+        run: |
+          go mod tidy -diff
+      - name: 🧪 Run `go test`
+        working-directory: ${{ matrix.module.directory }}
+        run: |
+          go test ./...

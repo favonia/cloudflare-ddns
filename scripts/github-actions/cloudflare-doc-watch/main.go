@@ -132,7 +132,7 @@ func parseOptions(args []string) (options, error) {
 	var opts options
 	flags.StringVar(&opts.RunPattern, "run", "", "regular expression selecting built-in watches to run")
 	if err := flags.Parse(args); err != nil {
-		return options{}, err
+		return options{}, fmt.Errorf("parse flags: %w", err)
 	}
 	if flags.NArg() != 0 {
 		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
@@ -181,7 +181,7 @@ func runWatch(ctx context.Context, cfg config) error {
 
 	expectedItems, actualItems, err := collectWatchItems(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("%s\n%s", err, formatCheckContext(cfg))
+		return fmt.Errorf("%w\n%s", err, formatCheckContext(cfg))
 	}
 
 	summaryHeaderLines := []string{
@@ -505,7 +505,6 @@ func loadExpectedLines(cfg config) ([]string, error) {
 	if cfg.ExpectedFile == "" {
 		return cfg.ExpectedLines, nil
 	}
-	//nolint:gosec // this is intentional
 	data, err := os.ReadFile(cfg.ExpectedFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read expected file %s: %w", cfg.ExpectedFile, err)
@@ -516,7 +515,7 @@ func loadExpectedLines(cfg config) ([]string, error) {
 // extractPlainTextLines splits a document into non-empty trimmed lines.
 func extractPlainTextLines(document string) []string {
 	var lines []string
-	for _, line := range strings.Split(document, "\n") {
+	for line := range strings.SplitSeq(document, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
 			lines = append(lines, trimmed)

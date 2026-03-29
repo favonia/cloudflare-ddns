@@ -1,4 +1,4 @@
-name: Docker
+name: Build
 
 on:
   push:
@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: "Build"
+  docker:
+    name: Docker image
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-build-${{ github.ref }}
