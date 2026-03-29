@@ -1,4 +1,4 @@
-package main
+package external
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/extract"
 )
 
 var (
@@ -24,7 +26,7 @@ type probeResult struct {
 	Status  int
 	Err     string
 	Hops    []probeHop
-	Sources []linkSource
+	Sources []extract.LinkSource
 }
 
 type probeHop struct {
@@ -32,7 +34,9 @@ type probeHop struct {
 	Status int
 }
 
-func runExternalProbe(urls []externalLink, cfg externalProbeConfig) ([]probeResult, []probeResult) {
+// runProbe probes the collected external URLs and classifies each outcome as a
+// failure or warning according to probe policy.
+func runProbe(urls []extract.ExternalLink, cfg probeConfig) ([]probeResult, []probeResult) {
 	warningStatuses := map[int]bool{}
 	for _, status := range cfg.WarningStatuses {
 		warningStatuses[status] = true
@@ -40,13 +44,13 @@ func runExternalProbe(urls []externalLink, cfg externalProbeConfig) ([]probeResu
 	warningPatterns := compileRegexps(cfg.WarningURLPatterns)
 	workerCount := max(cfg.MaxWorkers, 1)
 
-	jobs := make(chan externalLink)
+	jobs := make(chan extract.ExternalLink)
 	results := make(chan probeResult)
 	var workers sync.WaitGroup
 	for range workerCount {
 		workers.Go(func() {
 			for target := range jobs {
-				results <- probeExternalURL(target, cfg.TimeoutSeconds, cfg.Retries, cfg.UserAgent)
+				results <- probeURL(target, cfg.TimeoutSeconds, cfg.Retries, cfg.UserAgent)
 			}
 		})
 	}
@@ -63,7 +67,7 @@ func runExternalProbe(urls []externalLink, cfg externalProbeConfig) ([]probeResu
 	failures := make([]probeResult, 0)
 	warnings := make([]probeResult, 0)
 	for result := range results {
-		if shouldSuppressExternalWarning(result) {
+		if shouldSuppressWarning(result) {
 			continue
 		}
 		softWarning := anyRegexpMatch(warningPatterns, result.URL)
@@ -88,17 +92,20 @@ func runExternalProbe(urls []externalLink, cfg externalProbeConfig) ([]probeResu
 	return failures, warnings
 }
 
-func writeExternalFindings(stderr io.Writer, failures, warnings []probeResult) bool {
+// writeFindings writes warnings and failures in operator-facing diagnostic
+// form and reports whether failures were present.
+func writeFindings(stderr io.Writer, failures, warnings []probeResult) bool {
 	for _, warning := range warnings {
-		_, _ = fmt.Fprintln(stderr, formatExternalResult("warning", warning))
+		_, _ = fmt.Fprintln(stderr, formatResult("warning", warning))
 	}
 	for _, failure := range failures {
-		_, _ = fmt.Fprintln(stderr, formatExternalResult("failure", failure))
+		_, _ = fmt.Fprintln(stderr, formatResult("failure", failure))
 	}
 	return len(failures) > 0
 }
 
-func probeExternalURL(link externalLink, timeoutSeconds float64, retries int, userAgent string) probeResult {
+// probeURL runs the configured HEAD/GET probe cycle with retries for one URL.
+func probeURL(link extract.ExternalLink, timeoutSeconds float64, retries int, userAgent string) probeResult {
 	var last probeResult
 	for attempt := 0; attempt <= retries; attempt++ {
 		for _, method := range []string{http.MethodHead, http.MethodGet} {
@@ -116,6 +123,8 @@ func probeExternalURL(link externalLink, timeoutSeconds float64, retries int, us
 	return last
 }
 
+// fetchURL performs one probe attempt while recording the redirect chain
+// without following redirects automatically.
 func fetchURL(target, method string, timeoutSeconds float64, userAgent string) probeResult {
 	client := &http.Client{
 		Timeout: time.Duration(timeoutSeconds * float64(time.Second)),
@@ -177,6 +186,8 @@ func fetchURL(target, method string, timeoutSeconds float64, userAgent string) p
 	return probeResult{URL: target, Err: "too many redirects", Hops: hops}
 }
 
+// classifyRequestError unwraps url.Error so operator diagnostics focus on the
+// transport failure that actually mattered.
 func classifyRequestError(err error) string {
 	var urlError *url.Error
 	if errors.As(err, &urlError) {
@@ -187,7 +198,8 @@ func classifyRequestError(err error) string {
 	return err.Error()
 }
 
-func formatExternalResult(prefix string, result probeResult) string {
+// formatResult renders one probe outcome for stderr diagnostics.
+func formatResult(prefix string, result probeResult) string {
 	locationText := formatLinkSources(result.Sources)
 	if result.Err != "" {
 		return fmt.Sprintf("%s: network error: %s [%s]", prefix, formatProbeChain(result), locationText)
@@ -195,7 +207,9 @@ func formatExternalResult(prefix string, result probeResult) string {
 	return fmt.Sprintf("%s: %s [%s]", prefix, formatProbeChain(result), locationText)
 }
 
-func formatLinkSources(sources []linkSource) string {
+// formatLinkSources formats all tracked-file occurrences that referenced one
+// probed URL.
+func formatLinkSources(sources []extract.LinkSource) string {
 	if len(sources) == 0 {
 		return "source unknown"
 	}
@@ -206,6 +220,8 @@ func formatLinkSources(sources []linkSource) string {
 	return strings.Join(rendered, ", ")
 }
 
+// formatProbeChain renders the observed redirect chain or terminal probe
+// result.
 func formatProbeChain(result probeResult) string {
 	if len(result.Hops) == 0 {
 		if result.Err != "" {

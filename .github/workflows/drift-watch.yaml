@@ -21,7 +21,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: cloudflare-drift-watch.doc
+          policy: cloudflare-watch
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -51,7 +51,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: cloudflare-drift-watch.token
+          policy: cloudflare-watch
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -80,7 +80,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: link-check.external
+          policy: external-http-probing
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -93,4 +93,4 @@ jobs:
           cache-dependency-path: scripts/github-actions/link-check/go.mod
       - name: 🌐 Probe external links
         working-directory: scripts/github-actions/link-check
-        run: go run . -mode external
+        run: go run . external

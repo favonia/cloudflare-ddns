@@ -27,6 +27,9 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -71,6 +74,9 @@ jobs:
         with:
           go-version: "1.26.1"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
       - name: 🧹 Run golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
@@ -89,17 +95,20 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: actionlint
+          policy: go-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 📦️ Download actionlint
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-      - name: 🔒 Check shellcheck availability
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+      - name: 🔎 Check shellcheck availability
         run: |
           command -v shellcheck
       - name: 🧹 Run actionlint
@@ -124,7 +133,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: hadolint
+          policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -147,16 +156,19 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: yamlfmt
+          policy: go-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 📦️ Download yamlfmt
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
       - name: 🧹 Run yamlfmt
         run: |
           go install "github.com/google/yamlfmt/cmd/yamlfmt@${YAMLFMT_VERSION}"
@@ -177,7 +189,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: local
+          policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -214,7 +226,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: mdformat
+          policy: python-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

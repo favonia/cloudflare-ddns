@@ -1,18 +1,20 @@
-package main
+package external
 
 import (
 	"net/url"
 	"strings"
 )
 
-type externalWarningSuppressor func(probeResult) bool
+type warningSuppressor func(probeResult) bool
 
-var externalWarningSuppressors = []externalWarningSuppressor{
+var warningSuppressors = []warningSuppressor{
 	suppressTrailingSlashRedirectWarning,
 }
 
-func shouldSuppressExternalWarning(result probeResult) bool {
-	for _, suppressor := range externalWarningSuppressors {
+// shouldSuppressWarning applies policy hooks that intentionally hide specific
+// low-value warning classes from operator output.
+func shouldSuppressWarning(result probeResult) bool {
+	for _, suppressor := range warningSuppressors {
 		if suppressor(result) {
 			return true
 		}
@@ -20,6 +22,8 @@ func shouldSuppressExternalWarning(result probeResult) bool {
 	return false
 }
 
+// suppressTrailingSlashRedirectWarning hides simple path-normalization
+// redirects so external-link output stays focused on actionable degradation.
 func suppressTrailingSlashRedirectWarning(result probeResult) bool {
 	if len(result.Hops) != 2 {
 		return false
@@ -50,6 +54,8 @@ func suppressTrailingSlashRedirectWarning(result probeResult) bool {
 	return true
 }
 
+// pathsDifferOnlyByTrailingSlash reports whether two URL paths differ only by a
+// single trailing slash normalization.
 func pathsDifferOnlyByTrailingSlash(fromPath, toPath string) bool {
 	return toPath == fromPath+"/" || (strings.HasSuffix(fromPath, "/") && strings.TrimSuffix(fromPath, "/") == toPath)
 }
