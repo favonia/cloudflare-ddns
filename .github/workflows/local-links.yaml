@@ -1,16 +1,16 @@
-name: golangci-lint
+name: Links
 
 on:
+  pull_request:
   push:
     branches: ["main"]
-  pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  local-links:
+    name: In-repo
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -21,17 +21,20 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: golangci-lint
+          policy: go-tooling
 
-      - name: 🏗️ Set up Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
-        with:
-          go-version: "1.26.1"
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 🧹 Run golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          version: v2.11.3
+          go-version: "1.26.1"
+          cache-dependency-path: scripts/github-actions/link-check/go.mod
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+      - name: 🔎 Check repository-local links
+        working-directory: scripts/github-actions/link-check
+        run: go run . local

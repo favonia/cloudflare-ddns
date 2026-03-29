@@ -1,50 +1,105 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
+	"bytes"
+	"strings"
 	"testing"
+
+	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/testutil"
 )
 
-func TestMarkdownIDsUsesExplicitHTMLIDs(t *testing.T) {
-	oldRoot := root
-	root = t.TempDir()
-	t.Cleanup(func() { root = oldRoot })
+func TestRunRequiresSubcommand(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
-	writeTestFile(t, "docs/example.markdown", `<a id="alpha"></a><p id="beta">text</p>`)
+	exitCode := run(nil, &stdout, &stderr)
 
-	ids := markdownIDs("docs/example.markdown")
-
-	if !ids["alpha"] {
-		t.Fatal("expected explicit anchor id to be collected")
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
 	}
-	if !ids["beta"] {
-		t.Fatal("expected non-anchor HTML element id to be collected")
+	if stdout.Len() != 0 {
+		t.Fatalf("expected no stdout, got %q", stdout.String())
 	}
-}
-
-func TestMarkdownIDsIgnoresMarkdownHeadingSlugs(t *testing.T) {
-	oldRoot := root
-	root = t.TempDir()
-	t.Cleanup(func() { root = oldRoot })
-
-	writeTestFile(t, "docs/example.markdown", "## Docker Compose Special Setups\n")
-
-	ids := markdownIDs("docs/example.markdown")
-
-	if ids["docker-compose-special-setups"] {
-		t.Fatal("expected Markdown heading slug to be ignored")
+	if !strings.Contains(stderr.String(), "Usage: link-check <local|external>") {
+		t.Fatalf("expected root usage in stderr, got %q", stderr.String())
 	}
 }
 
-func writeTestFile(t *testing.T, relativePath string, contents string) {
-	t.Helper()
+func TestRunRejectsUnknownSubcommand(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
-	fullPath := filepath.Join(root, filepath.FromSlash(relativePath))
-	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
-		t.Fatalf("create parent directory: %v", err)
+	exitCode := run([]string{"all"}, &stdout, &stderr)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
 	}
-	if err := os.WriteFile(fullPath, []byte(contents), 0o644); err != nil {
-		t.Fatalf("write test file: %v", err)
+	if !strings.Contains(stderr.String(), `unknown subcommand "all"`) {
+		t.Fatalf("expected unknown subcommand message, got %q", stderr.String())
+	}
+}
+
+func TestRunHelpWritesUsageToStdout(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{"-h"}, &stdout, &stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "Usage: link-check <local|external>") {
+		t.Fatalf("expected root usage in stdout, got %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr, got %q", stderr.String())
+	}
+}
+
+func TestRunLocalSubcommand(t *testing.T) {
+	oldRoot := root
+	root = testutil.InitTrackedRepo(t)
+	t.Cleanup(func() { root = oldRoot })
+
+	testutil.WriteTrackedFile(t, root, "docs/example.markdown", "No links here.\n")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := run([]string{"local"}, &stdout, &stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	if strings.TrimSpace(stdout.String()) != "Local link checks passed." {
+		t.Fatalf("unexpected stdout %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr, got %q", stderr.String())
+	}
+}
+
+func TestRunExternalSubcommand(t *testing.T) {
+	oldRoot := root
+	root = testutil.InitTrackedRepo(t)
+	t.Cleanup(func() { root = oldRoot })
+
+	testutil.WriteTrackedFile(t, root, "docs/example.markdown", "No URLs here.\n")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := run([]string{"external"}, &stdout, &stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "Collected 0 external URLs.") {
+		t.Fatalf("expected collected count, got %q", output)
+	}
+	if !strings.Contains(output, "External link probes passed.") {
+		t.Fatalf("expected success message, got %q", output)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr, got %q", stderr.String())
 	}
 }

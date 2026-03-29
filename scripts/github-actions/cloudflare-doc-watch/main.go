@@ -1,5 +1,5 @@
-// Package main checks whether selected upstream docs/content still match the
-// assumptions recorded in a local JSON config. It is intended for GitHub
+// Package main checks whether selected upstream documentation content still match the
+// assumptions recorded in built-in watch definitions. It is intended for GitHub
 // Actions and reports drift through stderr, workflow error annotations, and
 // GITHUB_STEP_SUMMARY.
 package main
@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"html"
 	"io"
@@ -22,40 +23,38 @@ import (
 	"strings"
 )
 
-//nolint:tagliatelle // GitHub-specific
 type config struct {
-	Name               string                `json:"name"`
-	Repo               string                `json:"repo"`
-	Ref                string                `json:"ref"`
-	Path               string                `json:"path"`
-	SnapshotDate       string                `json:"snapshot_date"`
-	HistoryURL         string                `json:"history_url"`
-	PageURL            string                `json:"page_url"`
-	WatchedHeading     string                `json:"watched_heading"`
-	LineFilters        []string              `json:"line_filters"`
-	ExpectedLines      []string              `json:"expected_lines"`
-	WatchedSection     string                `json:"watched_section"`
-	ExpectedBullets    []string              `json:"expected_bullets"`
-	ExpectedFile       string                `json:"expected_file"`
-	WatchLabel         string                `json:"watch_label"`
-	Reminders          []string              `json:"reminders"`
-	RelatedPaths       []string              `json:"related_paths"`
-	JSONRouteSelectors []jsonRouteSelector   `json:"json_route_selectors"`
-	JSONPointers       []jsonPointerSelector `json:"json_pointers"`
+	Name               string
+	Repo               string
+	Ref                string
+	Path               string
+	SnapshotDate       string
+	HistoryURL         string
+	PageURL            string
+	WatchedHeading     string
+	LineFilters        []string
+	ExpectedLines      []string
+	WatchedSection     string
+	ExpectedBullets    []string
+	ExpectedFile       string
+	WatchLabel         string
+	Reminders          []string
+	RelatedPaths       []string
+	JSONRouteSelectors []jsonRouteSelector
+	JSONPointers       []jsonPointerSelector
 }
 
-//nolint:tagliatelle // GitHub-specific
 type jsonRouteSelector struct {
-	Label            string   `json:"label"`
-	Name             string   `json:"name"`
-	Parent           []string `json:"parent"`
-	ExpectedDeeplink string   `json:"expected_deeplink"`
+	Label            string
+	Name             string
+	Parent           []string
+	ExpectedDeeplink string
 }
 
 type jsonPointerSelector struct {
-	Label    string `json:"label"`
-	Pointer  string `json:"pointer"`
-	Expected any    `json:"expected"`
+	Label    string
+	Pointer  string
+	Expected any
 }
 
 //nolint:tagliatelle // GitHub-specific
@@ -99,20 +98,77 @@ func main() {
 }
 
 func run() error {
-	if len(os.Args) != 2 {
-		return fmt.Errorf("usage: %s <config.json>", os.Args[0])
-	}
-
-	configPath := os.Args[1]
-	ctx := context.Background()
-
-	cfg, err := loadConfig(configPath)
+	opts, err := parseOptions(os.Args[1:])
 	if err != nil {
 		return err
 	}
+	ctx := context.Background()
+
+	watches, err := selectedWatches(opts.RunPattern)
+	if err != nil {
+		return err
+	}
+
+	var watchErrors []string
+	for _, cfg := range watches {
+		if err := runWatch(ctx, cfg); err != nil {
+			watchErrors = append(watchErrors, err.Error())
+		}
+	}
+	if len(watchErrors) > 0 {
+		return errors.New(strings.Join(watchErrors, "\n\n"))
+	}
+	return nil
+}
+
+type options struct {
+	RunPattern string
+}
+
+func parseOptions(args []string) (options, error) {
+	flags := flag.NewFlagSet("cloudflare-doc-watch", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	var opts options
+	flags.StringVar(&opts.RunPattern, "run", "", "regular expression selecting built-in watches to run")
+	if err := flags.Parse(args); err != nil {
+		return options{}, fmt.Errorf("parse flags: %w", err)
+	}
+	if flags.NArg() != 0 {
+		return options{}, fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
+	}
+	return opts, nil
+}
+
+func selectedWatches(runPattern string) ([]config, error) {
+	watches := slices.Clone(allWatches)
+	if runPattern == "" {
+		return watches, nil
+	}
+
+	pattern, err := regexp.Compile(runPattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid -run pattern: %w", err)
+	}
+
+	selected := make([]config, 0, len(watches))
+	for _, watch := range watches {
+		if pattern.MatchString(watch.Name) {
+			selected = append(selected, watch)
+		}
+	}
+	if len(selected) == 0 {
+		return nil, fmt.Errorf("no built-in watches match -run %q", runPattern)
+	}
+	return selected, nil
+}
+
+func runWatch(ctx context.Context, cfg config) error {
 	if cfg.WatchLabel == "" {
 		cfg.WatchLabel = "Watched content"
 	}
+
+	_, _ = fmt.Fprintf(os.Stdout, "Running watch: %s\n", cfg.Name)
 
 	var latest latestCommit
 	if cfg.Repo != "" {
@@ -125,7 +181,7 @@ func run() error {
 
 	expectedItems, actualItems, err := collectWatchItems(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("%s\n%s", err, formatCheckContext(cfg, configPath))
+		return fmt.Errorf("%w\n%s", err, formatCheckContext(cfg))
 	}
 
 	summaryHeaderLines := []string{
@@ -161,7 +217,7 @@ func run() error {
 	messageLines := []string{
 		fmt.Sprintf("Cloudflare doc watch failed for %s.", cfg.Name),
 	}
-	messageLines = append(messageLines, checkContextLines(cfg, configPath)...)
+	messageLines = append(messageLines, checkContextLines(cfg)...)
 	if cfg.Repo != "" {
 		messageLines = append(messageLines,
 			fmt.Sprintf("Source path: %s/%s on %s", cfg.Repo, cfg.Path, cfg.Ref))
@@ -199,16 +255,16 @@ func run() error {
 		"\n\n### Observed watched content\n\n" + formatBullets(actualItems) +
 		"\n\n### Re-check these assumptions\n\n" + formatBullets(cfg.Reminders) +
 		"\n\n### Related repo paths\n\n" + formatBullets(cfg.RelatedPaths) + "\n")
-	return errors.New("watch content drifted")
+	return fmt.Errorf("%s: watch content drifted", cfg.Name)
 }
 
-func formatCheckContext(cfg config, configPath string) string {
-	return strings.Join(checkContextLines(cfg, configPath), "\n")
+func formatCheckContext(cfg config) string {
+	return strings.Join(checkContextLines(cfg), "\n")
 }
 
-func checkContextLines(cfg config, configPath string) []string {
+func checkContextLines(cfg config) []string {
 	lines := []string{
-		fmt.Sprintf("Config: %s", configPath),
+		fmt.Sprintf("Watch: %s", cfg.Name),
 	}
 	if cfg.PageURL != "" {
 		lines = append(lines, fmt.Sprintf("Check URL: %s", cfg.PageURL))
@@ -272,19 +328,6 @@ func checkTargets(cfg config) []string {
 	default:
 		return nil
 	}
-}
-
-func loadConfig(path string) (config, error) {
-	var cfg config
-	//nolint:gosec // this is intentional
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg, fmt.Errorf("failed to read config %s: %w", path, err)
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return cfg, fmt.Errorf("failed to parse config %s: %w", path, err)
-	}
-	return cfg, nil
 }
 
 func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, error) {
@@ -455,14 +498,13 @@ func fetchDocument(ctx context.Context, repo, ref, path string) (string, error) 
 	return "", fmt.Errorf("GitHub returned unexpected content metadata for %s:%s:%s", repo, ref, path)
 }
 
-// loadExpectedLines returns the expected lines from the config. When
+// loadExpectedLines returns the expected lines from a watch definition. When
 // ExpectedFile is set, it reads the file and uses its non-empty trimmed
 // lines; otherwise it falls back to the inline ExpectedLines field.
 func loadExpectedLines(cfg config) ([]string, error) {
 	if cfg.ExpectedFile == "" {
 		return cfg.ExpectedLines, nil
 	}
-	//nolint:gosec // this is intentional
 	data, err := os.ReadFile(cfg.ExpectedFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read expected file %s: %w", cfg.ExpectedFile, err)
@@ -473,7 +515,7 @@ func loadExpectedLines(cfg config) ([]string, error) {
 // extractPlainTextLines splits a document into non-empty trimmed lines.
 func extractPlainTextLines(document string) []string {
 	var lines []string
-	for _, line := range strings.Split(document, "\n") {
+	for line := range strings.SplitSeq(document, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
 			lines = append(lines, trimmed)

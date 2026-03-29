@@ -14,4 +14,8 @@ linters:
     - noinlineerr # I disagree with the linter
     - wsl # I disagree with the linter
     - wsl_v5 # I disagree with the linter
-
+  exclusions:
+    rules:
+      - path: cases.go
+        linters:
+          - lll

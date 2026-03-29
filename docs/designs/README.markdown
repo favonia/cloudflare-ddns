@@ -14,6 +14,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/go-lint-suppressions.markdown`](guides/go-lint-suppressions.markdown): read when adding or reviewing Go inline `//nolint`.
+- [`guides/policy-for-scripts.markdown`](guides/policy-for-scripts.markdown): read when changing code, module boundaries, or module-wide `golangci-lint` policy in `scripts/github-actions/*`.
 - [`guides/enforcement-point-explanations.markdown`](guides/enforcement-point-explanations.markdown): read when writing code comments, design-note pointers, or other non-README explanatory text at an enforcement point.
 - [`guides/naming-conventions.markdown`](guides/naming-conventions.markdown): read when renaming code identifiers, config fields, or user-facing setting names.
 - [`guides/operator-messages.markdown`](guides/operator-messages.markdown): read when editing operator-facing runtime messages outside `README.markdown`.

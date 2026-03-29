@@ -1,4 +1,4 @@
-name: Non-Go Linting
+name: Lint
 
 on:
   push:
@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  actionlint:
-    name: GitHub Actions workflows
+  golangci-ddns:
+    name: "Go: core"
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -21,17 +21,94 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: actionlint
+          policy: golangci-lint
+
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🧹 Run golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.11.3
+
+  golangci-scripts:
+    name: "Go: scripts (${{ matrix.module.name }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - name: "doc watch"
+            directory: scripts/github-actions/cloudflare-doc-watch
+          - name: "token verify watch"
+            directory: scripts/github-actions/cloudflare-token-verify-watch
+          - name: "link check"
+            directory: scripts/github-actions/link-check
+          - name: "smoke test"
+            directory: scripts/github-actions/smoke-test
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: golangci-lint
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+          cache-dependency-path: ${{ matrix.module.directory }}/go.mod
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+      - name: 🧹 Run golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.11.3
+          working-directory: ${{ matrix.module.directory }}
+
+  actionlint:
+    name: GitHub Actions
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          policy: go-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 📦️ Download actionlint
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
-      - name: 🔒 Check shellcheck availability
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+      - name: 🔎 Check shellcheck availability
         run: |
           command -v shellcheck
       - name: 🧹 Run actionlint
@@ -56,7 +133,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: hadolint
+          policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -79,16 +156,19 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: yamlfmt
+          policy: go-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 📦️ Download yamlfmt
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.26.1"
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
       - name: 🧹 Run yamlfmt
         run: |
           go install "github.com/google/yamlfmt/cmd/yamlfmt@${YAMLFMT_VERSION}"
@@ -109,7 +189,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: jq
+          policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -146,7 +226,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: mdformat
+          policy: python-tooling
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

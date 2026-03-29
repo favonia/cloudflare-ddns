@@ -5,7 +5,7 @@ import "strconv"
 // A TTL represents a time-to-live value of a DNS record.
 type TTL int
 
-// TTLAuto represents the "auto" value for Cloudflare servers.
+// TTLAuto represents Cloudflare's "automatic" TTL sentinel value.
 const TTLAuto TTL = 1
 
 // Int converts a TTL into its raw integer value.

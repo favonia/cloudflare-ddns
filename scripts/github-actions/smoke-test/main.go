@@ -216,7 +216,7 @@ func testCommand(
 	if err != nil {
 		return nil, fmt.Errorf("resolve executable path: %w", err)
 	}
-	command := exec.CommandContext(ctx, executablePath, args...)
+	command := exec.CommandContext(ctx, executablePath, args...) //nolint:gosec // This is intentional
 	command.Env = env
 	return command, nil
 }

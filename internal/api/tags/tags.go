@@ -3,7 +3,8 @@
 // The helpers here implement Cloudflare-shaped tag semantics shared by
 // API-side verification and setter-side reconciliation. The expected snapshot
 // for these semantics was adopted on 2026-03-22; update that date only when
-// scripts/github-actions/cloudflare-doc-watch/config/dns-record-attributes.json changes:
+// the Cloudflare DNS record attributes case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go changes:
 //   - tag names are canonicalized case-insensitively
 //   - tag values remain case-sensitive
 //   - representation-only differences such as order or duplicate canonical forms

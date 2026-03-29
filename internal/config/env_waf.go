@@ -10,7 +10,8 @@ import (
 )
 
 // The watched name-rule snapshot below was adopted on 2026-03-22. Update that
-// date only when scripts/github-actions/cloudflare-doc-watch/config/waf-list-name-rules.json changes.
+// date only when the Cloudflare OpenAPI lists schema case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go changes.
 // Cloudflare documentation for that snapshot says:
 //   - The name uses only lowercase letters, numbers, and the underscore (_) character in the name.
 //     A valid name satisfies this regular expression: ^[a-z0-9_]+$.
@@ -19,12 +20,14 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 // ReadWAFListNames reads an environment variable as a comma-separated list of IP list names.
 //
 // The quota snapshot below was adopted on 2026-03-22. Update that date only
-// when scripts/github-actions/cloudflare-doc-watch/config/waf-list-availability.json changes.
+// when the Cloudflare WAF list availability case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go changes.
 // This intentionally stays a simple comma-separated input surface instead of a
 // more structured format because the watched Cloudflare quota snapshot is still
 // small for most accounts: Free allows 1 custom list, Pro/Business allow 10,
-// and Enterprise allows 1,000. That quota snapshot is watched by
-// scripts/github-actions/cloudflare-doc-watch/config/waf-list-availability.json.
+// and Enterprise allows 1,000. That quota snapshot is watched by the
+// Cloudflare WAF list availability case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go.
 func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	vals := GetenvAsList(key, ",")
 	if len(vals) == 0 {

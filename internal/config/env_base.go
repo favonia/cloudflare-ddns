@@ -88,9 +88,9 @@ func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
 // prefixLenRange returns the valid prefix-length bounds for an IP family.
 //
 // The WAF IP-list prefix range snapshot below was adopted on 2026-03-24. Update
-// that date only when
-// scripts/github-actions/cloudflare-doc-watch/config/waf-list-ip-ranges.json
-// changes. According to WAF documentation, the valid CIDR ranges are:
+// that date only when the Cloudflare WAF IP list item format case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go changes. According to
+// WAF documentation, the valid CIDR ranges are:
 //   - IPv4: /8 through /32
 //   - IPv6: /12 through /128
 //
@@ -137,10 +137,13 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 // ReadTTL reads a valid TTL value.
 //
 // The TTL snapshot below was adopted on 2026-03-22. Update that date only when
-// scripts/github-actions/cloudflare-doc-watch/config/dns-ttl.json changes.
-// According to [API documentation], the valid range is 1 (auto) and [60, 86400].
-// According to [DNS documentation], the valid range is "Auto" and [30, 86400].
-// We thus accept the union of both ranges---1 (auto) and [30, 86400].
+// the Cloudflare DNS TTL semantics case in
+// scripts/github-actions/cloudflare-doc-watch/cases.go changes.
+// According to the current [API documentation] and [DNS documentation], TTL
+// uses 1 for "automatic" and otherwise accepts 30 through 86400 seconds, with
+// the 30-second minimum limited to Enterprise zones and 60 seconds applying to
+// non-Enterprise zones. We accept the documented union here: 1 (automatic) or
+// 30 through 86400.
 //
 // [API documentation]: https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/
 // [DNS documentation]: https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
