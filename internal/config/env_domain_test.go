@@ -40,10 +40,20 @@ func TestReadDomains(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, "1st", key, "*", "*")
 			},
 		},
-		"wildcard1": {true, "*.a", ds{}, ds{w("a")}, true, nil},
-		"wildcard2": {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
-		"test1":     {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
-		"test2":     {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
+		"wildcard1":      {true, "*.a", ds{}, ds{w("a")}, true, nil},
+		"wildcard2":      {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
+		"trailing-comma": {true, "a.org,", ds{}, ds{f("a.org")}, true, nil},
+		"double-comma-warning": {
+			true, "a.org,,b.org",
+			ds{},
+			ds{f("a.org"), f("b.org")},
+			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `"a.org,,b.org"`)
+			},
+		},
+		"test1": {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
+		"test2": {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
 		"malformed1": {
 			true, "xn--:D.org,a.org",
 			ds{f("random.org")},

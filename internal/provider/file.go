@@ -11,6 +11,15 @@ import (
 // NewFile creates a [protocol.File] provider that reads IPs from a file on every detection cycle.
 // The path must be absolute.
 func NewFile(ppfmt pp.PP, key string, path string) (Provider, bool) {
+	if strings.TrimSpace(path) == "" {
+		ppfmt.Noticef(
+			pp.EmojiUserError,
+			`%s=file: must be followed by a file path`,
+			key,
+		)
+		return nil, false
+	}
+
 	fixedPath, ok := file.RequireAbsolutePath(ppfmt, path)
 	if !ok {
 		ppfmt.Noticef(pp.EmojiHint, "Try setting %s=file:%s", key, fixedPath)

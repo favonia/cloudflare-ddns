@@ -24,7 +24,7 @@ func TestMustStatic(t *testing.T) {
 		{ipnet.IP6, 64, "1.1.1.1,1::1", false},
 		{ipnet.IP4, 32, "  2.2.2.2,1.1.1.1,2.2.2.2 ", true},
 		{ipnet.IP6, 64, "1::1%1", false},
-		{ipnet.IP4, 32, "1.1.1.1,", false},
+		{ipnet.IP4, 32, "1.1.1.1,", true},
 		{ipnet.IP4, 32, "1.1.1.1,,2.2.2.2", false},
 		{ipnet.IP4, 32, "", false},
 		{ipnet.IP6, 64, "blah", false},
@@ -50,6 +50,7 @@ func TestStaticName(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t, "static:1.1.1.1,2.2.2.2", provider.Name(provider.MustNewStatic(ipnet.IP4, 32, "2.2.2.2,1.1.1.1,2.2.2.2")))
+	require.Equal(t, "static:1.1.1.1", provider.Name(provider.MustNewStatic(ipnet.IP4, 32, "1.1.1.1,")))
 }
 
 func TestStaticEmptyName(t *testing.T) {

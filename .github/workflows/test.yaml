@@ -54,7 +54,7 @@ jobs:
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           fail_ci_if_error: true # default: false
-          file: ./coverage.txt
+          files: ./coverage.txt
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -154,7 +154,7 @@ jobs:
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           fail_ci_if_error: true # default: false
-          file: ./integration-coverage.txt
+          files: ./integration-coverage.txt
           flags: smoketests
           token: ${{ secrets.CODECOV_TOKEN }}
 

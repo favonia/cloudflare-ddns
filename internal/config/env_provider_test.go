@@ -24,9 +24,9 @@ func TestReadProvider(t *testing.T) {
 		none             provider.Provider
 		doh              = provider.NewCloudflareDOH()
 		trace            = provider.NewCloudflareTrace()
-		traceCustom      = provider.NewCloudflareTraceCustom("https://1.1.1.1/cdn-cgi/trace")
+		traceCustom      = provider.MustNewCloudflareTraceCustom("https://1.1.1.1/cdn-cgi/trace")
 		local            = provider.NewLocal()
-		localLoopback    = provider.NewLocalWithInterface("lo")
+		localLoopback    = provider.MustNewLocalWithInterface("lo")
 		ipify            = provider.NewIpify()
 		custom           = provider.MustNewCustomURL("https://url.io")
 		customVia4       = provider.MustNewCustomURLVia4("https://url.io")
@@ -125,14 +125,14 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
 			ipnet.IP4, true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`)
+				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`)
 			},
 		},
 		"cloudflare.trace:": {
 			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`),
+					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare.trace: must be followed by a URL`, key),
 				)
 			},
@@ -143,18 +143,39 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			ipnet.IP4, true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface" provider available since version 1.15.0`)
+				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface:..." provider available since version 1.15.0`)
 			},
 		},
 		"local.iface:": {
 			ipnet.IP4, true, "   local.iface: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key)
+				gomock.InOrder(
+					m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface:..." provider available since version 1.15.0`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key),
+				)
 			},
 		},
 		"custom":      {ipnet.IP4, true, "   url:https://url.io   ", false, "", trace, custom, true, nil},
 		"custom via4": {ipnet.IP4, true, "   url.via4:https://url.io   ", false, "", trace, customVia4, true, nil},
 		"custom via6": {ipnet.IP4, true, "   url.via6:https://url.io   ", false, "", trace, customVia6, true, nil},
+		"custom invalid": {
+			ipnet.IP4, true, "url:relative/path.txt", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", key, "url:(redacted)")
+			},
+		},
+		"custom via4 invalid": {
+			ipnet.IP4, true, "url.via4:relative/path.txt", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", key, "url.via4:(redacted)")
+			},
+		},
+		"custom via6 invalid": {
+			ipnet.IP4, true, "url.via6:relative/path.txt", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s=%s does not contain a valid URL", key, "url.via6:(redacted)")
+			},
+		},
 		"static:1.1.1.1": {
 			ipnet.IP4, true, "   static   :  1.1.1.1 ", false, "", trace, static, true,
 			nil,
@@ -167,13 +188,7 @@ func TestReadProvider(t *testing.T) {
 			ipnet.IP4, true, "   static.empty   ", false, "", trace, staticEmpty, true,
 			nil,
 		},
-		"static:trailing-comma": {
-			ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, trace, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s entry in %s is empty (check for extra commas)`, "2nd", key)
-			},
-		},
+		"static:trailing-comma": {ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, static, true, nil},
 		"static:double-comma": {
 			ipnet.IP4, true, "static:1.1.1.1,,2.2.2.2", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
@@ -240,6 +255,12 @@ func TestReadProvider(t *testing.T) {
 		},
 		"static": {
 			ipnet.IP4, true, "   static: ", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s=static: must be followed by at least one IP address`, key)
+			},
+		},
+		"static:comma-only": {
+			ipnet.IP4, true, "static:,", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s=static: must be followed by at least one IP address`, key)
 			},

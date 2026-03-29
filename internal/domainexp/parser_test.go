@@ -27,10 +27,37 @@ func TestParseList(t *testing.T) {
 		expected      ds
 		prepareMockPP func(m *mocks.MockPP)
 	}{
-		"a.a":         {"a.a", true, ds{f("a.a")}, nil},
-		"a.a,a.b":     {" a.a ,  a.b ", true, ds{f("a.a"), f("a.b")}, nil},
-		"a.a,a.b,a.c": {" a.a ,  a.b ,,,,,, a.c ", true, ds{f("a.a"), f("a.b"), f("a.c")}, nil},
-		"wildcard":    {" a.a ,  a.b ,,,,,, *.c ", true, ds{f("a.a"), f("a.b"), w("c")}, nil},
+		"a.a":     {"a.a", true, ds{f("a.a")}, nil},
+		"a.a,a.b": {" a.a ,  a.b ", true, ds{f("a.a"), f("a.b")}, nil},
+		"a.a,a.b,a.c": {
+			" a.a ,  a.b ,,,,,, a.c ", true,
+			ds{f("a.a"), f("a.b"), f("a.c")},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `" a.a ,  a.b ,,,,,, a.c "`)
+			},
+		},
+		"trailing-comma": {"a.a,", true, ds{f("a.a")}, nil},
+		"double-comma-warning": {
+			"a.a,,a.b", true,
+			ds{f("a.a"), f("a.b")},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `"a.a,,a.b"`)
+			},
+		},
+		"leading-comma-warning": {
+			",a.a", true,
+			ds{f("a.a")},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `",a.a"`)
+			},
+		},
+		"wildcard": {
+			" a.a ,  a.b ,,,,,, *.c ", true,
+			ds{f("a.a"), f("a.b"), w("c")},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `" a.a ,  a.b ,,,,,, *.c "`)
+			},
+		},
 		"missing-comma": {
 			" a.a a.b a.c a.d ", true,
 			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
@@ -136,9 +163,16 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "false |", domainexp.ErrSingleOr)
 			},
 		},
-		"is/1":          {"is(example.com)", true, f("example.com"), true, nil},
-		"is/2":          {"is(example.com)", true, f("sub.example.com"), false, nil},
-		"is/3":          {"is(example.org)", true, f("example.com"), false, nil},
+		"is/1":              {"is(example.com)", true, f("example.com"), true, nil},
+		"is/2":              {"is(example.com)", true, f("sub.example.com"), false, nil},
+		"is/3":              {"is(example.org)", true, f("example.com"), false, nil},
+		"is/trailing-comma": {"is(example.com,)", true, f("example.com"), true, nil},
+		"is/double-comma-warning": {
+			"is(a,,b)", true, f("b"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a,,b)"`)
+			},
+		},
 		"is/wildcard/1": {"is(example.com)", true, w("example.com"), false, nil},
 		"is/wildcard/2": {"is(*.example.com)", true, w("example.com"), true, nil},
 		"is/wildcard/3": {"is(*.example.com)", true, f("example.com"), false, nil},
@@ -163,11 +197,17 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, "is", "(")
 			},
 		},
-		"sub/1":     {"sub(example.com)", true, f("example.com"), false, nil},
-		"sub/2":     {"sub(example.com)", true, w("example.com"), true, nil},
-		"sub/3":     {"sub(example.com)", true, f("sub.example.com"), true, nil},
-		"sub/4":     {"sub(example.com)", true, f("subexample.com"), false, nil},
-		"sub/5":     {"sub(example.com)", true, f("sub.sub.example.com"), true, nil},
+		"sub/1": {"sub(example.com)", true, f("example.com"), false, nil},
+		"sub/2": {"sub(example.com)", true, w("example.com"), true, nil},
+		"sub/3": {"sub(example.com)", true, f("sub.example.com"), true, nil},
+		"sub/4": {"sub(example.com)", true, f("subexample.com"), false, nil},
+		"sub/5": {"sub(example.com)", true, f("sub.sub.example.com"), true, nil},
+		"sub/leading-comma-warning": {
+			"sub(,example.com)", true, f("www.example.com"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"sub(,example.com)"`)
+			},
+		},
 		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/2": {"sub(Xn--53H.de)", true, f("www.xn--53h.de"), true, nil},
 		"sub/idn/3": {"sub(Xn--53H.de)", true, w("xn--53h.de"), true, nil},

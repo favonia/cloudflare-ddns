@@ -32,6 +32,15 @@ func TestReadWAFListNames(t *testing.T) {
 		"empty": {
 			true, "", nil, nil, true, nil,
 		},
+		"trailing-comma": {
+			true, "hey/hello,",
+			nil,
+			[]api.WAFList{{AccountID: "hey", Name: "hello"}},
+			true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
+			},
+		},
 		"one": {
 			true, "hey/hello",
 			nil,
@@ -72,6 +81,21 @@ func TestReadWAFListNames(t *testing.T) {
 			true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0")
+			},
+		},
+		"double-comma-warning": {
+			true, "here/aloha,,hey/hello",
+			nil,
+			[]api.WAFList{
+				{AccountID: "here", Name: "aloha"},
+				{AccountID: "hey", Name: "hello"},
+			},
+			true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint, "You are using the experimental WAF list manipulation feature available since version 1.14.0"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `"here/aloha,,hey/hello"`),
+				)
 			},
 		},
 		"invalid-format": {

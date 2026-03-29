@@ -17,14 +17,14 @@ func Getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-// GetenvAsList reads an environment variable, split it by sep, and trim the space.
+// GetenvAsList reads an environment variable, splits it by sep, and trims each item.
+// Empty trimmed entries are preserved. Callers remain responsible for assigning any
+// higher-level meaning to empty items, including comma-placement policy.
 func GetenvAsList(key string, sep string) []string {
 	vals := []string{}
 	for v := range strings.SplitSeq(os.Getenv(key), sep) {
 		v = strings.TrimSpace(v)
-		if v != "" {
-			vals = append(vals, v)
-		}
+		vals = append(vals, v)
 	}
 	return vals
 }
