@@ -36,7 +36,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *mode != "local" && *mode != "external" && *mode != "all" {
-		fmt.Fprintf(stderr, "unknown mode %q\n", *mode)
+		_, _ = fmt.Fprintf(stderr, "unknown mode %q\n", *mode)
 		return 1
 	}
 
@@ -44,7 +44,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	files, err := gitTrackedFiles()
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 1
 	}
 
@@ -73,12 +73,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 				return strings.Compare(a.Render(), b.Render())
 			})
 			for _, issue := range localIssues {
-				fmt.Fprintln(stderr, issue.Render())
+				_, _ = fmt.Fprintln(stderr, issue.Render())
 			}
 			exitCode = 1
 		} else {
-			//nolint:forbidigo // intentional status output for a small script
-			fmt.Fprintln(stdout, "Local link checks passed.")
+			_, _ = fmt.Fprintln(stdout, "Local link checks passed.")
 		}
 	}
 
@@ -88,14 +87,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			cfg.External.TargetURLs.IgnoreExact,
 			cfg.External.TargetURLs.IgnorePatterns,
 		)
-		//nolint:forbidigo // intentional status output for a small script
-		fmt.Fprintf(stdout, "Collected %d external URLs.\n", len(externalURLs))
+		_, _ = fmt.Fprintf(stdout, "Collected %d external URLs.\n", len(externalURLs))
 		failures, warnings := runExternalProbe(externalURLs, cfg.ExternalProbe)
 		if writeExternalFindings(stderr, failures, warnings) {
 			exitCode = 1
 		} else {
-			//nolint:forbidigo // intentional status output for a small script
-			fmt.Fprintln(stdout, "External link probes passed.")
+			_, _ = fmt.Fprintln(stdout, "External link probes passed.")
 		}
 	}
 

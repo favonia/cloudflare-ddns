@@ -72,6 +72,8 @@ jobs:
             directory: scripts/github-actions/cloudflare-doc-watch
           - name: cloudflare-token-verify-watch
             directory: scripts/github-actions/cloudflare-token-verify-watch
+          - name: link-check
+            directory: scripts/github-actions/link-check
           - name: smoke-test
             directory: scripts/github-actions/smoke-test
     steps:

@@ -90,10 +90,10 @@ func runExternalProbe(urls []externalLink, cfg externalProbeConfig) ([]probeResu
 
 func writeExternalFindings(stderr io.Writer, failures, warnings []probeResult) bool {
 	for _, warning := range warnings {
-		fmt.Fprintln(stderr, formatExternalResult("warning", warning))
+		_, _ = fmt.Fprintln(stderr, formatExternalResult("warning", warning))
 	}
 	for _, failure := range failures {
-		fmt.Fprintln(stderr, formatExternalResult("failure", failure))
+		_, _ = fmt.Fprintln(stderr, formatExternalResult("failure", failure))
 	}
 	return len(failures) > 0
 }
@@ -137,7 +137,11 @@ func fetchURL(target, method string, timeoutSeconds float64, userAgent string) p
 
 		response, err := client.Do(request)
 		if err != nil {
-			return probeResult{URL: target, Err: classifyRequestError(err), Hops: append(slices.Clone(hops), probeHop{URL: currentURL})}
+			return probeResult{
+				URL:  target,
+				Err:  classifyRequestError(err),
+				Hops: append(slices.Clone(hops), probeHop{URL: currentURL}),
+			}
 		}
 		hops = append(hops, probeHop{
 			URL:    currentURL,

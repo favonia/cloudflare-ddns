@@ -1,59 +1,53 @@
 // Package main checks repository-local and external links for CI.
 package main
 
-//nolint:tagliatelle // underscore-separated config keys keep the config structure explicit
 type config struct {
-	LocalMarkdown localMarkdownConfig `json:"local_markdown"`
-	RepoPaths     repoPathsConfig     `json:"repo_paths"`
-	External      externalConfig      `json:"external"`
-	ExternalProbe externalProbeConfig `json:"external_probe"`
+	LocalMarkdown localMarkdownConfig
+	RepoPaths     repoPathsConfig
+	External      externalConfig
+	ExternalProbe externalProbeConfig
 }
 
 // This tool checks for link degradation: whether a link that works today is
 // likely to stop working later. Source files are selected before any extracted
 // link targets are filtered, and each check owns its own source-file rules so
 // the evaluation order stays local.
-//
-//nolint:tagliatelle // underscore-separated config keys keep the config structure explicit
 type sourceFilesConfig struct {
-	IncludeGlobs []string `json:"include_globs"`
-	ExcludeGlobs []string `json:"exclude_globs"`
+	IncludeGlobs []string
+	ExcludeGlobs []string
 }
 
 type localMarkdownConfig struct {
-	SourceFiles sourceFilesConfig `json:"source_files"`
+	SourceFiles sourceFilesConfig
 }
 
 type repoPathsConfig struct {
-	SourceFiles sourceFilesConfig `json:"source_files"`
-	TargetPaths targetPathsConfig `json:"target_paths"`
+	SourceFiles sourceFilesConfig
+	TargetPaths targetPathsConfig
 }
 
-//nolint:tagliatelle // underscore-separated config keys keep the config structure explicit
 type targetPathsConfig struct {
-	IgnoreExact []string `json:"ignore_exact"`
+	IgnoreExact []string
 }
 
 type externalConfig struct {
-	SourceFiles sourceFilesConfig `json:"source_files"`
-	TargetURLs  targetURLsConfig  `json:"target_urls"`
+	SourceFiles sourceFilesConfig
+	TargetURLs  targetURLsConfig
 }
 
-//nolint:tagliatelle // underscore-separated config keys keep the config structure explicit
 type targetURLsConfig struct {
-	IgnoreExact    []string `json:"ignore_exact"`
-	IgnorePatterns []string `json:"ignore_patterns"`
+	IgnoreExact    []string
+	IgnorePatterns []string
 }
 
-//nolint:tagliatelle // underscore-separated config keys match the prior JSON config shape
 type externalProbeConfig struct {
-	TimeoutSeconds          float64  `json:"timeout_seconds"`
-	Retries                 int      `json:"retries"`
-	MaxWorkers              int      `json:"max_workers"`
-	UserAgent               string   `json:"user_agent"`
-	NetworkErrorsAreWarning bool     `json:"network_errors_are_warnings"`
-	WarningStatuses         []int    `json:"warning_statuses"`
-	WarningURLPatterns      []string `json:"warning_url_patterns"`
+	TimeoutSeconds          float64
+	Retries                 int
+	MaxWorkers              int
+	UserAgent               string
+	NetworkErrorsAreWarning bool
+	WarningStatuses         []int
+	WarningURLPatterns      []string
 }
 
 func defaultConfig() config {

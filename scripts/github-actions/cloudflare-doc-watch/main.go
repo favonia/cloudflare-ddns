@@ -1,5 +1,5 @@
 // Package main checks whether selected upstream documentation content still match the
-// assumptions recorded in a local JSON config. It is intended for GitHub
+// assumptions recorded in built-in watch definitions. It is intended for GitHub
 // Actions and reports drift through stderr, workflow error annotations, and
 // GITHUB_STEP_SUMMARY.
 package main
@@ -23,40 +23,38 @@ import (
 	"strings"
 )
 
-//nolint:tagliatelle // GitHub-specific
 type config struct {
-	Name               string                `json:"name"`
-	Repo               string                `json:"repo"`
-	Ref                string                `json:"ref"`
-	Path               string                `json:"path"`
-	SnapshotDate       string                `json:"snapshot_date"`
-	HistoryURL         string                `json:"history_url"`
-	PageURL            string                `json:"page_url"`
-	WatchedHeading     string                `json:"watched_heading"`
-	LineFilters        []string              `json:"line_filters"`
-	ExpectedLines      []string              `json:"expected_lines"`
-	WatchedSection     string                `json:"watched_section"`
-	ExpectedBullets    []string              `json:"expected_bullets"`
-	ExpectedFile       string                `json:"expected_file"`
-	WatchLabel         string                `json:"watch_label"`
-	Reminders          []string              `json:"reminders"`
-	RelatedPaths       []string              `json:"related_paths"`
-	JSONRouteSelectors []jsonRouteSelector   `json:"json_route_selectors"`
-	JSONPointers       []jsonPointerSelector `json:"json_pointers"`
+	Name               string
+	Repo               string
+	Ref                string
+	Path               string
+	SnapshotDate       string
+	HistoryURL         string
+	PageURL            string
+	WatchedHeading     string
+	LineFilters        []string
+	ExpectedLines      []string
+	WatchedSection     string
+	ExpectedBullets    []string
+	ExpectedFile       string
+	WatchLabel         string
+	Reminders          []string
+	RelatedPaths       []string
+	JSONRouteSelectors []jsonRouteSelector
+	JSONPointers       []jsonPointerSelector
 }
 
-//nolint:tagliatelle // GitHub-specific
 type jsonRouteSelector struct {
-	Label            string   `json:"label"`
-	Name             string   `json:"name"`
-	Parent           []string `json:"parent"`
-	ExpectedDeeplink string   `json:"expected_deeplink"`
+	Label            string
+	Name             string
+	Parent           []string
+	ExpectedDeeplink string
 }
 
 type jsonPointerSelector struct {
-	Label    string `json:"label"`
-	Pointer  string `json:"pointer"`
-	Expected any    `json:"expected"`
+	Label    string
+	Pointer  string
+	Expected any
 }
 
 //nolint:tagliatelle // GitHub-specific
@@ -500,7 +498,7 @@ func fetchDocument(ctx context.Context, repo, ref, path string) (string, error) 
 	return "", fmt.Errorf("GitHub returned unexpected content metadata for %s:%s:%s", repo, ref, path)
 }
 
-// loadExpectedLines returns the expected lines from the config. When
+// loadExpectedLines returns the expected lines from a watch definition. When
 // ExpectedFile is set, it reads the file and uses its non-empty trimmed
 // lines; otherwise it falls back to the inline ExpectedLines field.
 func loadExpectedLines(cfg config) ([]string, error) {

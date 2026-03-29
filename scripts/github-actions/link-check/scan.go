@@ -114,7 +114,6 @@ func validateLocalMarkdownLinks(files []string) []linkIssue {
 	issues := make([]linkIssue, 0)
 	idCache := map[string]map[string]bool{}
 	for _, file := range files {
-		//nolint:gosec // repository-tracked relative paths only
 		text, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
 		if err != nil {
 			issues = append(issues, linkIssue{Kind: "read-error", Path: file, Detail: err.Error()})
@@ -167,7 +166,6 @@ func validateRepoPaths(files, trackedFiles, ignoredPaths []string) []linkIssue {
 	}
 	issues := make([]linkIssue, 0)
 	for _, file := range files {
-		//nolint:gosec // repository-tracked relative paths only
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
 		if err != nil {
 			issues = append(issues, linkIssue{Kind: "read-error", Path: file, Detail: err.Error()})
@@ -179,8 +177,7 @@ func validateRepoPaths(files, trackedFiles, ignoredPaths []string) []linkIssue {
 				if ignored[candidate] {
 					continue
 				}
-				//nolint:gosec // repo path candidates come from tracked source comments
-				if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(candidate))); err != nil {
+				if _, err := statRepoPath(candidate); err != nil {
 					issues = append(issues, linkIssue{
 						Kind:   "broken-repo-path",
 						Path:   file,
@@ -231,7 +228,6 @@ func collectExternalURLs(files, ignoredURLs, ignoredPatterns []string) []externa
 	ignoredURLPatterns := compileRegexps(ignoredPatterns)
 	found := map[string]map[string]linkSource{}
 	for _, file := range files {
-		//nolint:gosec // repository-tracked relative paths only
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
 		if err != nil {
 			continue
@@ -298,7 +294,7 @@ func lineNumberAtOffset(text string, offset int) int {
 }
 
 func collectTextURLs(text string) []textTarget {
-	targets := make([]textTarget, 0)
+	targets := make([]textTarget, 0, len(urlRE.FindAllStringIndex(text, -1)))
 	for _, match := range urlRE.FindAllStringIndex(text, -1) {
 		targets = append(targets, textTarget{
 			Target: strings.TrimRight(text[match[0]:match[1]], ".,:;"),
@@ -351,7 +347,6 @@ func collectMarkdownTargets(text string) []textTarget {
 }
 
 func markdownIDs(relativePath string) map[string]bool {
-	//nolint:gosec // repository-relative Markdown path selected from tracked files
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relativePath)))
 	if err != nil {
 		return nil
@@ -362,6 +357,29 @@ func markdownIDs(relativePath string) map[string]bool {
 		ids[match[1]] = true
 	}
 	return ids
+}
+
+func statRepoPath(relativePath string) (os.FileInfo, error) {
+	cleaned := path.Clean(relativePath)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || path.IsAbs(cleaned) {
+		return nil, fmt.Errorf("invalid repo path %q", relativePath)
+	}
+
+	fullPath := filepath.Join(root, filepath.FromSlash(cleaned))
+	relativeToRoot, err := filepath.Rel(root, fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve repo path %q relative to root: %w", relativePath, err)
+	}
+	relativeToRoot = filepath.ToSlash(relativeToRoot)
+	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, "../") {
+		return nil, fmt.Errorf("repo path escapes root %q", relativePath)
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("stat repo path %q: %w", relativePath, err)
+	}
+	return info, nil
 }
 
 func resolveLocalTarget(sourceFile, target string) (string, string) {

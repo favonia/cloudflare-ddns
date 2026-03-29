@@ -25,43 +25,39 @@ import (
 
 // --- config types ---
 
-//nolint:tagliatelle // underscore-separated JSON keys for config readability
 type config struct {
-	Name             string   `json:"name"`
-	SnapshotDate     string   `json:"snapshot_date"`
-	URL              string   `json:"url"`
-	UserAgent        string   `json:"user_agent"`
-	PauseBetweenRuns string   `json:"pause_between_runs"`
-	RequestTimeout   string   `json:"request_timeout"`
-	Reminders        []string `json:"reminders"`
-	RelatedPaths     []string `json:"related_paths"`
-	Probes           []probe  `json:"probes"`
+	Name             string
+	SnapshotDate     string
+	URL              string
+	UserAgent        string
+	PauseBetweenRuns string
+	RequestTimeout   string
+	Reminders        []string
+	RelatedPaths     []string
+	Probes           []probe
 }
 
-//nolint:tagliatelle // underscore-separated JSON keys for config readability
 type probe struct {
-	Name                 string       `json:"name"`
-	Kind                 string       `json:"kind"`
-	Token                string       `json:"token"`
-	IncludeAuthorization *bool        `json:"include_authorization"`
-	ExpectedRaw          expectedRaw  `json:"expected_raw"`
-	ExpectedSDK          *expectedSDK `json:"expected_sdk"`
+	Name                 string
+	Kind                 string
+	Token                string
+	IncludeAuthorization *bool
+	ExpectedRaw          expectedRaw
+	ExpectedSDK          *expectedSDK
 }
 
-//nolint:tagliatelle // underscore-separated JSON keys for config readability
 type expectedRaw struct {
-	StatusCode   int              `json:"status_code"`
-	Success      bool             `json:"success"`
-	ResultStatus *string          `json:"result_status"`
-	Errors       []apiError       `json:"errors"`
-	Messages     []apiMessageInfo `json:"messages"`
+	StatusCode   int
+	Success      bool
+	ResultStatus *string
+	Errors       []apiError
+	Messages     []apiMessageInfo
 }
 
-//nolint:tagliatelle // underscore-separated JSON keys for config readability
 type expectedSDK struct {
-	ErrorType    string `json:"error_type"`
-	ErrorCode    int    `json:"error_code"`
-	ErrorMessage string `json:"error_message"`
+	ErrorType    string
+	ErrorCode    int
+	ErrorMessage string
 }
 
 // --- API response types ---

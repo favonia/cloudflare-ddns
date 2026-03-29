@@ -165,7 +165,10 @@ func TestDefaultConfigExcludesCloudflareDocWatchCasesFromRepoPathScan(t *testing
 func TestDefaultConfigIgnoresSameRepoIssueURLs(t *testing.T) {
 	cfg := defaultConfig()
 
-	if !slices.Contains(cfg.External.TargetURLs.IgnorePatterns, "^https://github\\.com/favonia/cloudflare-ddns/issues/[0-9]+$") {
+	if !slices.Contains(
+		cfg.External.TargetURLs.IgnorePatterns,
+		"^https://github\\.com/favonia/cloudflare-ddns/issues/[0-9]+$",
+	) {
 		t.Fatal("expected default config to ignore same-repo issue URLs")
 	}
 }
@@ -193,7 +196,10 @@ func TestDefaultConfigHasNoOperationalWarningURLPatterns(t *testing.T) {
 	cfg := defaultConfig()
 
 	if len(cfg.ExternalProbe.WarningURLPatterns) != 0 {
-		t.Fatalf("expected operational endpoints to be ignored instead of downgraded, got %#v", cfg.ExternalProbe.WarningURLPatterns)
+		t.Fatalf(
+			"expected operational endpoints to be ignored instead of downgraded, got %#v",
+			cfg.ExternalProbe.WarningURLPatterns,
+		)
 	}
 }
 
@@ -274,7 +280,9 @@ func TestFormatExternalResultUsesClearCategories(t *testing.T) {
 				Line: 12,
 			}},
 		})
-		want := "warning: network error: https://api6.ipify.org (network error: dial tcp [2607:f2d8:1:3c::4]:443: connect: network is unreachable) [docs/example.markdown:12]"
+		want := "warning: network error: https://api6.ipify.org " +
+			"(network error: dial tcp [2607:f2d8:1:3c::4]:443: connect: network is unreachable) " +
+			"[docs/example.markdown:12]"
 		if got != want {
 			t.Fatalf("unexpected formatted result:\nwant %q\ngot  %q", want, got)
 		}
@@ -344,7 +352,10 @@ func TestWriteExternalFindingsWritesDiagnosticsToStderr(t *testing.T) {
 	}
 
 	output := strings.TrimSpace(stderr.String())
-	if !strings.Contains(output, "warning: https://example.com/old (302) -> https://example.com/new (200) [docs/example.markdown:8]") {
+	if !strings.Contains(
+		output,
+		"warning: https://example.com/old (302) -> https://example.com/new (200) [docs/example.markdown:8]",
+	) {
 		t.Fatalf("expected warning in stderr, got %q", output)
 	}
 	if !strings.Contains(output, "failure: https://example.com/fail (500) [source unknown]") {
