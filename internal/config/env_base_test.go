@@ -75,12 +75,13 @@ func TestGetenvAsList(t *testing.T) {
 		sep      string
 		expected []string
 	}{
-		"nil":         {false, "", "\n", []string{}},
-		"empty":       {true, "", "\n", []string{}},
-		"only-spaces": {true, "\n   \n  \n \t", "\n", []string{}},
-		"simple":      {true, "VAL", "\n", []string{"VAL"}},
-		"space1":      {true, "    VAL1 \nVAL2    ", "\n", []string{"VAL1", "VAL2"}},
-		"space2":      {true, "     VAL1 \n   VAL2 ", "\n", []string{"VAL1", "VAL2"}},
+		"nil":           {false, "", "\n", []string{""}},
+		"empty":         {true, "", "\n", []string{""}},
+		"only-spaces":   {true, "\n   \n  \n \t", "\n", []string{"", "", "", ""}},
+		"simple":        {true, "VAL", "\n", []string{"VAL"}},
+		"space1":        {true, "    VAL1 \nVAL2    ", "\n", []string{"VAL1", "VAL2"}},
+		"space2":        {true, "     VAL1 \n   VAL2 ", "\n", []string{"VAL1", "VAL2"}},
+		"comma-empties": {true, " a ,, b , ", ",", []string{"a", "", "b", ""}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)

@@ -30,9 +30,10 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 // scripts/github-actions/cloudflare-doc-watch/cases.go.
 func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	vals := GetenvAsList(key, ",")
-	if len(vals) == 0 {
+	if len(vals) == 1 && vals[0] == "" {
 		return true
 	}
+	hasNonCanonicalEmptyEntry := false
 
 	ppfmt.InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint,
 		"You are using the experimental WAF list manipulation feature available since version 1.14.0")
@@ -40,6 +41,13 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	lists := make([]api.WAFList, 0, len(vals))
 
 	for i, val := range vals {
+		if val == "" {
+			if i != len(vals)-1 {
+				hasNonCanonicalEmptyEntry = true
+			}
+			continue
+		}
+
 		nthEntry := pp.Ordinal(i + 1)
 		var list api.WAFList
 
@@ -62,6 +70,13 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 		}
 
 		lists = append(lists, list)
+	}
+
+	if hasNonCanonicalEmptyEntry {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s (%s) contains extra commas; "+
+				"this is accepted for now but will be rejected in version 2.0.0",
+			key, pp.QuotePreviewOrEmptyLabel(Getenv(key), pp.AdvisoryPreviewLimit, "empty"))
 	}
 
 	*field = sliceutil.SortAndCompact(lists, api.CompareWAFList)

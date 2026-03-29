@@ -11,13 +11,25 @@ import (
 
 // NewStatic creates a [protocol.Static] provider.
 func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixLen int, raw string) (Provider, bool) {
+	if strings.Trim(raw, ", \t\r\n") == "" {
+		ppfmt.Noticef(
+			pp.EmojiUserError,
+			`%s=static: must be followed by at least one IP address`,
+			envKey,
+		)
+		return nil, false
+	}
+
 	entries := make([]ipnet.RawEntry, 0)
-	entryNum := 0
-	for rawEntry := range strings.SplitSeq(raw, ",") {
-		entryNum++
+	rawEntries := strings.Split(raw, ",")
+	for i, rawEntry := range rawEntries {
+		entryNum := i + 1
 		rawEntry = strings.TrimSpace(rawEntry)
 
 		if rawEntry == "" {
+			if i == len(rawEntries)-1 && i > 0 {
+				continue
+			}
 			ppfmt.Noticef(pp.EmojiUserError,
 				`The %s entry in %s is empty (check for extra commas)`, pp.Ordinal(entryNum), envKey)
 			return nil, false

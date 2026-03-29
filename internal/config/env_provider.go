@@ -103,16 +103,12 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
 		ppfmt.InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint,
-			`You are using the undocumented "cloudflare.trace" provider with a custom URL; this will soon be removed`)
-		if parts[1] == "" {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`%s=cloudflare.trace: must be followed by a URL`,
-				key,
-			)
+			`You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`)
+		p, ok := provider.NewCloudflareTraceCustom(ppfmt, key, parts[1])
+		if !ok {
 			return false
 		}
-		*field = provider.NewCloudflareTraceCustom(parts[1])
+		*field = p
 		return true
 	case len(parts) == 1 && parts[0] == "cloudflare.doh":
 		*field = provider.NewCloudflareDOH()
@@ -129,48 +125,39 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		*field = provider.NewLocal()
 		return true
 	case len(parts) == 2 && parts[0] == "local.iface":
-		if parts[1] == "" {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`%s=local.iface: must be followed by a network interface name`,
-				key,
-			)
+		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint,
+			`You are using the experimental "local.iface:..." provider available since version 1.15.0`)
+		p, ok := provider.NewLocalWithInterface(ppfmt, key, parts[1])
+		if !ok {
 			return false
 		}
-		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint,
-			`You are using the experimental "local.iface" provider available since version 1.15.0`)
-		*field = provider.NewLocalWithInterface(parts[1])
+		*field = p
 		return true
 	case len(parts) == 2 && parts[0] == "url":
 		p, ok := provider.NewCustomURL(ppfmt, key, parts[1])
-		if ok {
-			*field = p
+		if !ok {
+			return false
 		}
-		return ok
+		*field = p
+		return true
 	case len(parts) == 2 && parts[0] == "url.via4":
 		p, ok := provider.NewCustomURLVia4(ppfmt, key, parts[1])
-		if ok {
-			*field = p
+		if !ok {
+			return false
 		}
-		return ok
+		*field = p
+		return true
 	case len(parts) == 2 && parts[0] == "url.via6":
 		p, ok := provider.NewCustomURLVia6(ppfmt, key, parts[1])
-		if ok {
-			*field = p
+		if !ok {
+			return false
 		}
-		return ok
+		*field = p
+		return true
 	case len(parts) == 1 && parts[0] == "static.empty":
 		*field = provider.NewStaticEmpty()
 		return true
 	case len(parts) == 2 && parts[0] == "static":
-		if parts[1] == "" {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`%s=static: must be followed by at least one IP address`,
-				key,
-			)
-			return false
-		}
 		p, ok := provider.NewStatic(ppfmt, key, ipFamily, defaultPrefixLen, parts[1])
 		if !ok {
 			return false
@@ -178,14 +165,6 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		*field = p
 		return true
 	case len(parts) == 2 && parts[0] == "file":
-		if parts[1] == "" {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				`%s=file: must be followed by a file path`,
-				key,
-			)
-			return false
-		}
 		p, ok := provider.NewFile(ppfmt, key, parts[1])
 		if !ok {
 			return false

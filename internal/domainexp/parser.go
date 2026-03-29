@@ -10,12 +10,23 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-func scanList(ppfmt pp.PP, key string, input string, tokens []string) ([]string, []string) {
+type parseContext struct {
+	nonCanonicalListSyntax bool
+}
+
+func listSyntaxPreview(input string) string {
+	return pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty")
+}
+
+func scanList(ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext) ([]string, []string) {
 	var list []string
 	readyForNext := true
 	for len(tokens) > 0 {
 		switch tokens[0] {
 		case ",":
+			if readyForNext && ctx != nil {
+				ctx.nonCanonicalListSyntax = true
+			}
 			readyForNext = true
 		case ")":
 			return list, tokens
@@ -35,8 +46,10 @@ func scanList(ppfmt pp.PP, key string, input string, tokens []string) ([]string,
 	return list, tokens
 }
 
-func scanASCIIDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]string, []string) {
-	list, tokens := scanList(ppfmt, key, input, tokens)
+func scanASCIIDomainList(
+	ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext,
+) ([]string, []string) {
+	list, tokens := scanList(ppfmt, key, input, tokens, ctx)
 	domains := make([]string, 0, len(list))
 	for _, raw := range list {
 		domains = append(domains, domain.StringToASCII(raw))
@@ -44,8 +57,10 @@ func scanASCIIDomainList(ppfmt pp.PP, key string, input string, tokens []string)
 	return domains, tokens
 }
 
-func scanDomainList(ppfmt pp.PP, key string, input string, tokens []string) ([]domain.Domain, []string) {
-	list, tokens := scanList(ppfmt, key, input, tokens)
+func scanDomainList(
+	ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext,
+) ([]domain.Domain, []string) {
+	list, tokens := scanList(ppfmt, key, input, tokens, ctx)
 	domains := make([]domain.Domain, 0, len(list))
 	for i, raw := range list {
 		nthDomain := pp.Ordinal(i + 1)
@@ -100,7 +115,7 @@ func hasStrictSuffix(s, suffix string) bool {
 // scanFactor mimics ParseBool, call scanFunction, and then check parenthesized expressions.
 //
 //	<factor> --> true | false | <fun> | ! <factor> | ( <expression> )
-func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predicate, []string) {
+func scanFactor(ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext) (predicate, []string) {
 	// fmt.Printf("scanFactor(tokens = %#v)\n", tokens)
 
 	if _, newTokens := scanConstants(ppfmt, key, input, tokens,
@@ -119,7 +134,7 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 			if newTokens == nil {
 				return nil, nil
 			}
-			ASCIIDomains, newTokens := scanASCIIDomainList(ppfmt, key, input, newTokens)
+			ASCIIDomains, newTokens := scanASCIIDomainList(ppfmt, key, input, newTokens, ctx)
 			if newTokens == nil {
 				return nil, nil
 			}
@@ -146,7 +161,7 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 	{
 		_, newTokens := scanConstants(ppfmt, key, input, tokens, []string{"!"})
 		if newTokens != nil {
-			if pred, newTokens := scanFactor(ppfmt, key, input, newTokens); newTokens != nil {
+			if pred, newTokens := scanFactor(ppfmt, key, input, newTokens, ctx); newTokens != nil {
 				return func(d domain.Domain) bool { return !(pred(d)) }, newTokens
 			}
 			return nil, nil
@@ -156,7 +171,7 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 	{
 		_, newTokens := scanConstants(ppfmt, key, input, tokens, []string{"("})
 		if newTokens != nil {
-			pred, newTokens := scanExpression(ppfmt, key, input, newTokens)
+			pred, newTokens := scanExpression(ppfmt, key, input, newTokens, ctx)
 			if newTokens == nil {
 				return nil, nil
 			}
@@ -180,10 +195,10 @@ func scanFactor(ppfmt pp.PP, key string, input string, tokens []string) (predica
 // scanTerm scans a term with this grammar:
 //
 //	<term> --> <factor> "&&" <term> | <factor>
-func scanTerm(ppfmt pp.PP, key string, input string, tokens []string) (predicate, []string) {
+func scanTerm(ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext) (predicate, []string) {
 	// fmt.Printf("scanTerm(tokens = %#v)\n", tokens)
 
-	pred1, tokens := scanFactor(ppfmt, key, input, tokens)
+	pred1, tokens := scanFactor(ppfmt, key, input, tokens, ctx)
 	if tokens == nil {
 		return nil, nil
 	}
@@ -193,7 +208,7 @@ func scanTerm(ppfmt pp.PP, key string, input string, tokens []string) (predicate
 		return pred1, tokens
 	}
 
-	pred2, newTokens := scanTerm(ppfmt, key, input, newTokens)
+	pred2, newTokens := scanTerm(ppfmt, key, input, newTokens, ctx)
 	if newTokens != nil {
 		return func(d domain.Domain) bool { return pred1(d) && pred2(d) }, newTokens
 	}
@@ -204,8 +219,8 @@ func scanTerm(ppfmt pp.PP, key string, input string, tokens []string) (predicate
 // scanExpression scans an expression with this grammar:
 //
 //	<expression> --> <term> "||" <expression> | <term>
-func scanExpression(ppfmt pp.PP, key string, input string, tokens []string) (predicate, []string) {
-	pred1, tokens := scanTerm(ppfmt, key, input, tokens)
+func scanExpression(ppfmt pp.PP, key string, input string, tokens []string, ctx *parseContext) (predicate, []string) {
+	pred1, tokens := scanTerm(ppfmt, key, input, tokens, ctx)
 	if tokens == nil {
 		return nil, nil
 	}
@@ -215,7 +230,7 @@ func scanExpression(ppfmt pp.PP, key string, input string, tokens []string) (pre
 		return pred1, tokens
 	}
 
-	pred2, newTokens := scanExpression(ppfmt, key, input, newTokens)
+	pred2, newTokens := scanExpression(ppfmt, key, input, newTokens, ctx)
 	if newTokens != nil {
 		return func(d domain.Domain) bool { return pred1(d) || pred2(d) }, newTokens
 	}
@@ -230,12 +245,18 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 		return nil, false
 	}
 
-	list, tokens := scanDomainList(ppfmt, key, input, tokens)
+	ctx := &parseContext{nonCanonicalListSyntax: false}
+	list, tokens := scanDomainList(ppfmt, key, input, tokens, ctx)
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, tokens[0])
 		return nil, false
+	}
+	if ctx.nonCanonicalListSyntax {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
+			key, listSyntaxPreview(input))
 	}
 
 	return list, true
@@ -261,12 +282,19 @@ func ParseExpression(ppfmt pp.PP, key string, input string) (predicate, bool) {
 		return nil, false
 	}
 
-	pred, tokens := scanExpression(ppfmt, key, input, tokens)
+	ctx := &parseContext{nonCanonicalListSyntax: false}
+	pred, tokens := scanExpression(ppfmt, key, input, tokens, ctx)
 	if tokens == nil {
 		return nil, false
 	} else if len(tokens) > 0 {
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, input, tokens[0])
 		return nil, false
+	}
+	if ctx.nonCanonicalListSyntax {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s (%s) contains extra commas inside is(...) or sub(...); "+
+				"this is accepted for now but will be rejected in version 2.0.0",
+			key, listSyntaxPreview(input))
 	}
 
 	return pred, true
