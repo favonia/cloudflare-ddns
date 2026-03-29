@@ -473,7 +473,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `CLOUDFLARE_API_TOKEN`                                    | The [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API                                          |
 | `CLOUDFLARE_API_TOKEN_FILE`                               | An absolute path to a file that contains the [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) to access the Cloudflare API |
 | `CF_API_TOKEN` (will be deprecated in version 2.0.0)      | Same as `CLOUDFLARE_API_TOKEN`                                                                                                                   |
-| `CF_API_TOKEN_FILE` (will be deprecated version in 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                              |
+| `CF_API_TOKEN_FILE` (will be deprecated in version 2.0.0) | Same as `CLOUDFLARE_API_TOKEN_FILE`                                                                                                              |
 
 > 🚂 Cloudflare is updating its tools to use environment variables starting with `CLOUDFLARE_*` instead of `CF_*`. It is recommended to align your setting with this new convention. However, the updater will fully support both `CLOUDFLARE_*` and `CF_*` environment variables until version 2.0.0.
 >
