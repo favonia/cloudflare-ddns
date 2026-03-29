@@ -78,7 +78,7 @@ func validateLocalMarkdownLinks(root string, files []string) []extract.Issue {
 	issues := make([]extract.Issue, 0)
 	targetInfoCache := map[string]extract.LocalTargetInfo{}
 	for _, file := range files {
-		text, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+		text, err := readRepoFile(root, file)
 		if err != nil {
 			issues = append(issues, extract.Issue{Kind: "read-error", Path: file, Detail: err.Error()})
 			continue
@@ -101,7 +101,7 @@ func validateLocalMarkdownLinks(root string, files []string) []extract.Issue {
 			if fragment != "" {
 				targetInfo, ok := targetInfoCache[targetPath]
 				if !ok {
-					targetText, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(targetPath)))
+					targetText, err := readRepoFile(root, targetPath)
 					if err != nil {
 						issues = append(issues, extract.Issue{
 							Kind:   "read-error",
@@ -218,7 +218,7 @@ func validateCommentRepoPaths(root string, files, trackedFiles, ignoredPaths []s
 	}
 	issues := make([]extract.Issue, 0)
 	for _, file := range files {
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+		data, err := readRepoFile(root, file)
 		if err != nil {
 			issues = append(issues, extract.Issue{Kind: "read-error", Path: file, Detail: err.Error()})
 			continue
@@ -240,4 +240,21 @@ func validateCommentRepoPaths(root string, files, trackedFiles, ignoredPaths []s
 		}
 	}
 	return issues
+}
+
+func readRepoFile(root, relativePath string) ([]byte, error) {
+	info, err := statRepoPath(root, relativePath)
+	if err != nil {
+		return nil, err
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("read repo path %q: is a directory", relativePath)
+	}
+
+	fullPath := filepath.Join(root, filepath.FromSlash(path.Clean(relativePath)))
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("read repo path %q: %w", relativePath, err)
+	}
+	return data, nil
 }

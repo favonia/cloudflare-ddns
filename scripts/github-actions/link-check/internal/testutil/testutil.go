@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// WriteFile creates one test file relative to root.
 func WriteFile(t *testing.T, root, relativePath, contents string) {
 	t.Helper()
 
@@ -20,6 +21,7 @@ func WriteFile(t *testing.T, root, relativePath, contents string) {
 	}
 }
 
+// InitTrackedRepo creates an empty temporary Git repository for tests.
 func InitTrackedRepo(t *testing.T) string {
 	t.Helper()
 
@@ -32,6 +34,7 @@ func InitTrackedRepo(t *testing.T) string {
 	return repoRoot
 }
 
+// WriteTrackedFile writes one file and stages it in the test repository.
 func WriteTrackedFile(t *testing.T, root, relativePath, contents string) {
 	t.Helper()
 

@@ -1,3 +1,5 @@
+// Package scope selects tracked repository files for individual link-check
+// passes.
 package scope
 
 import (
@@ -32,7 +34,7 @@ func newCompiledPatterns(patterns []string) compiledPatterns {
 	return compiledPatterns{regexps: regexps}
 }
 
-func (patterns compiledPatterns) Match(candidate string) bool {
+func (patterns compiledPatterns) match(candidate string) bool {
 	for _, compiled := range patterns.regexps {
 		if compiled.MatchString(candidate) {
 			return true
@@ -90,10 +92,10 @@ func FilterFiles(files, includePatterns, excludePatterns []string) []string {
 	exclude := newCompiledPatterns(excludePatterns)
 	selected := make([]string, 0, len(files))
 	for _, file := range files {
-		if len(includePatterns) > 0 && !include.Match(file) {
+		if len(includePatterns) > 0 && !include.match(file) {
 			continue
 		}
-		if len(excludePatterns) > 0 && exclude.Match(file) {
+		if len(excludePatterns) > 0 && exclude.match(file) {
 			continue
 		}
 		selected = append(selected, file)

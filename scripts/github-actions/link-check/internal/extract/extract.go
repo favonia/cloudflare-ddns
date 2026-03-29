@@ -1,3 +1,5 @@
+// Package extract classifies tracked-file content into link and comment data
+// for the link-check script.
 package extract
 
 import (
@@ -107,10 +109,7 @@ func collectMarkdownLinks(text string) FileLinks {
 		case hasURIScheme(target.Target):
 			continue
 		default:
-			links.LocalReferences = append(links.LocalReferences, LocalReference{
-				Target: target.Target,
-				Line:   target.Line,
-			})
+			links.LocalReferences = append(links.LocalReferences, LocalReference(target))
 		}
 	}
 	return links

@@ -12,5 +12,5 @@ func mustProjectRoot() string {
 	if !ok {
 		panic("cannot determine source path")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(sourceFile)))
+	return filepath.Clean(filepath.Dir(sourceFile))
 }

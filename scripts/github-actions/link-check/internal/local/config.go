@@ -1,3 +1,4 @@
+// Package local validates repository-local links and repo-path references.
 package local
 
 import "github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/scope"
