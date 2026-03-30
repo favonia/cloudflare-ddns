@@ -10,7 +10,7 @@ This note records maintainer-facing conventions for preparing releases, especial
 4. Before the release, remove duplicates, tighten wording, and group entries by type.
 5. For each release section, verify the version header, compare link, and release date.
 6. If release prep changes `README.markdown`, verify the release-specific notes there as well: availability notes and experimental markers should match actual feature state. For generic README-writing rules, use [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown).
-7. Optional but preferred: add one line per user-visible change during pull requests to reduce release-day editing.
+7. Verify that all experimental features emit a warning at runtime. Check that the code warns users when they enable a feature still marked experimental in `README.markdown`.
 
 ## Feature-Note Lifecycle
 
