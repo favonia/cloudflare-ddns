@@ -10,6 +10,7 @@ Despite the gap of over a year since the last release, we are not aware of any s
 4. **New `file:` provider.** Reads IP addresses from a local file, re-reading each detection cycle. This enables integration with external scripts or monitoring systems without restarting the updater. (Multi-address support is experimental.)
 5. **New variants of `url:` (`url.via4:` and `url.via6:`) for transport overrides.** By default, `url:<url>` uses same-family transport. Override the IP family used to connect with `url.via4:<url>` or `url.via6:<url>` (e.g., get an IPv6 address over an IPv4 connection). (Multi-address support in URL-based providers is experimental.)
 6. **Rewritten user-facing messages.** Many log messages have been reworded into clearer, more natural English.
+7. **Shoutrrr support graduated from experimental.** The shoutrrr notification integration (introduced in 1.12.0) is now considered stable.
 
 ## Your Feedback Wanted
 
