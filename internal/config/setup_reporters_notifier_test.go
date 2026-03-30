@@ -34,8 +34,9 @@ func TestSetupReportersNotifier(t *testing.T) {
 			},
 		},
 		"single": {
-			shoutrrr: "generic+https://example.com/api/v1/postStuff",
-			ok:       true,
+			shoutrrr:      "generic+https://example.com/api/v1/postStuff",
+			ok:            true,
+			prepareMockPP: nil,
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
 				require.Equal(t, heartbeat.NewComposed(), hb)
@@ -48,8 +49,9 @@ func TestSetupReportersNotifier(t *testing.T) {
 			},
 		},
 		"multiple": {
-			shoutrrr: "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
-			ok:       true,
+			shoutrrr:      "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
+			ok:            true,
+			prepareMockPP: nil,
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
 				require.Equal(t, heartbeat.NewComposed(), hb)

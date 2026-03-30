@@ -101,7 +101,8 @@ func (p HTTP) GetRawData(
 
 	if len(rawEntries) > 1 {
 		ppfmt.InfoOncef(pp.MessageExperimentalMultipleAddressesURL, pp.EmojiExperimental,
-			"The URL response contains multiple addresses; this multi-address support is experimental (available since version 1.16.0)")
+			"The URL response contains multiple addresses; "+
+				"this multi-address support is experimental (available since version 1.16.0)")
 	}
 
 	return NewKnownDetectionResult(rawEntries)
