@@ -1,3 +1,75 @@
+# [1.16.0](https://github.com/favonia/cloudflare-ddns/compare/v1.15.1...v1.16.0) (2026-03-30)
+
+Despite the gap of over a year since the last release, we are not aware of any security vulnerability affecting the default configuration. As always, please review the changelog and watch for warnings or errors when upgrading.
+
+## Highlights
+
+1. **WAF lists now support /128 IPv6 entries.** Cloudflare’s API now accepts individual IPv6 addresses in WAF lists. New `IP4_DEFAULT_PREFIX_LEN` (default `/32`) and `IP6_DEFAULT_PREFIX_LEN` (default `/64`) control how bare addresses are stored in WAF lists. Users can now set `IP6_DEFAULT_PREFIX_LEN` to `128` for per-address granularity. DNS records currently ignore prefix lengths, but will use these in the future.
+2. **Multi-instance support via comment-based selection.** New `MANAGED_RECORDS_COMMENT_REGEX` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` let multiple updater instances safely share the same domain or WAF list, each managing only records or items with matching comments. New `WAF_LIST_ITEM_COMMENT` provides a fallback comment for WAF list items, similar to how `RECORD_COMMENT` serves as a fallback for DNS records.
+3. **Multi-IP detection and reconciliation.** Providers now return multiple IP addresses, each with a CIDR prefix length, and the reconciliation algorithm has been redesigned to handle them correctly. The experimental `local.iface` provider now collects all matching global unicast addresses from the specified interface, instead of just the first one. Multi-address support in `url:` and `file:` providers is also experimental.
+4. **New `file:` provider.** Reads IP addresses from a local file, re-reading each detection cycle. This enables integration with external scripts or monitoring systems without restarting the updater. (Multi-address support is experimental.)
+5. **New variants of `url:` (`url.via4:` and `url.via6:`) for transport overrides.** By default, `url:<url>` connects using the same IP family as the address being detected. Override the IP family used to connect with `url.via4:<url>` or `url.via6:<url>` (e.g., get an IPv6 address over an IPv4 connection). (Multi-address support in URL-based providers is experimental.)
+6. **Rewritten user-facing messages.** Many log messages have been reworded into clearer, more natural English.
+
+## Your Feedback Wanted
+
+The IP prefix length work in this release lays the groundwork for several upcoming features. We’d love your input on the proposed configuration syntax:
+
+- **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)):
+  - `IP6_DOMAINS=sub.example.com{hostid6=::2}`
+  - `IP6_DOMAINS=sub.example.com{hostid6=preserve}` (keep the detected host IDs)
+  - `IP6_DOMAINS=sub.example.com{hostid6=mac(77:cc:a7:f9:45:94)}` (compute an [EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Modified_EUI-64) host ID from a MAC address)
+  - `DOMAINS=sub1.example.com{hostid6=::aad1},sub2.example.com{hostid6=preserve}`
+- **Detection IP filtering** ([#1138](https://github.com/favonia/cloudflare-ddns/issues/1138)):
+  - `IP6_DETECTION_FILTER=keep-all`
+  - `IP6_DETECTION_FILTER=!addr-in(fc00::/7)`
+  - `IP6_DETECTION_FILTER=subnet-in(2001:db8:abcd::/48)`
+  - `IP4_DETECTION_FILTER=!addr-in(10.0.0.0/8) && !addr-in(192.168.0.0/16)`
+  - `IP6_DETECTION_FILTER=contains(2002:dead:beef::/100) || contains(2005:dead:beef::/100)`
+
+| input        | `addr-in(1.1.0.0/16)`              | `subnet-in(1.1.0.0/16)` | `contains(1.1.0.0/16)` |
+| ------------ | ---------------------------------- | ----------------------- | ---------------------- |
+| `1.1.1.1/8`  | ✔️                                 | ❌️                      | ✔️                     |
+| `1.1.1.1/16` | ✔️                                 | ✔️                      | ✔️                     |
+| `1.1.1.1/24` | ✔️                                 | ✔️                      | ❌️                     |
+| `1.2.2.2/8`  | ❌️ (`1.2.2.2` not in `1.1.0.0/16`) | ❌️                      | ✔️                     |
+
+Also planned: a linter for boolean expressions targeting advanced usage of `PROXIED` and the upcoming `IP4/6_DETECTION_FILTER`, and further robustness improvements to the default `cloudflare.trace` provider.
+
+## Reminder from the Past
+
+As a reminder, since 1.13.0, **the updater no longer drops privileges internally, and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+
+## Other Notes
+
+**Shoutrrr support is no longer experimental.** The shoutrrr notification integration, introduced in 1.12.0, is now considered stable.
+
+## Detailed Changes
+
+### Features
+
+- The detection model has been redesigned so that providers return multiple IP addresses, each with a CIDR prefix length. New `IP4_DEFAULT_PREFIX_LEN` and `IP6_DEFAULT_PREFIX_LEN` settings control how bare addresses are stored in WAF lists. ([#1144](https://github.com/favonia/cloudflare-ddns/issues/1144)) ([#1156](https://github.com/favonia/cloudflare-ddns/issues/1156))
+- The reconciliation algorithm has been redesigned to handle complex metadata mismatches when multiple IP addresses result in multiple records. ([#1015](https://github.com/favonia/cloudflare-ddns/issues/1015)) ([#1020](https://github.com/favonia/cloudflare-ddns/issues/1020)) ([#1022](https://github.com/favonia/cloudflare-ddns/issues/1022)) ([#1115](https://github.com/favonia/cloudflare-ddns/issues/1115))
+- New `file:` provider reads IP addresses from a local file. ([#1148](https://github.com/favonia/cloudflare-ddns/issues/1148))
+- New `static:<ip1>,<ip2>,...` and `static.empty` providers have been added. `static.empty` actively clears managed content for a given IP family. ([#1102](https://github.com/favonia/cloudflare-ddns/issues/1102)) ([#1135](https://github.com/favonia/cloudflare-ddns/issues/1135))
+- The `url:`, `file:`, and `static:` providers now accept addresses in CIDR notation (e.g., `198.51.100.1/24`). ([#1159](https://github.com/favonia/cloudflare-ddns/issues/1159)) ([#1169](https://github.com/favonia/cloudflare-ddns/issues/1169))
+- The experimental `local.iface` provider now collects all matching global unicast addresses. ([#1095](https://github.com/favonia/cloudflare-ddns/issues/1095))
+- New `MANAGED_RECORDS_COMMENT_REGEX` selects only DNS records whose comments match a regex. ([#1103](https://github.com/favonia/cloudflare-ddns/issues/1103))
+- New `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` and `WAF_LIST_ITEM_COMMENT` provide the same comment-based selection for WAF list items. ([#1106](https://github.com/favonia/cloudflare-ddns/issues/1106))
+- New `url.via4:<url>` and `url.via6:<url>` providers override the IP family used to connect to a custom URL. ([#1131](https://github.com/favonia/cloudflare-ddns/issues/1131))
+- The updater now warns about likely misconfigured `SHOUTRRR` values. ([#1111](https://github.com/favonia/cloudflare-ddns/issues/1111))
+
+### Bug Fixes
+
+- The configuration parser now warns about extra commas in lists (e.g., `a,,b`) except for trailing commas, which were silently ignored. ([#1177](https://github.com/favonia/cloudflare-ddns/issues/1177))
+- The updater now exits gracefully when `EMOJI` or `QUIET` is invalid. ([#1174](https://github.com/favonia/cloudflare-ddns/issues/1174))
+- The updater invalidates relevant zone search cache entries when a zone cannot be found for faster recovery. ([#1125](https://github.com/favonia/cloudflare-ddns/issues/1125))
+- API token verification is now stricter, catching malformed tokens before any update attempts. ([#1126](https://github.com/favonia/cloudflare-ddns/issues/1126))
+- Providers (especially `cloudflare.trace` and `cloudflare.doh`) now validate detected IP addresses more strictly. ([#1097](https://github.com/favonia/cloudflare-ddns/issues/1097)) ([#1099](https://github.com/favonia/cloudflare-ddns/issues/1099)) ([#1101](https://github.com/favonia/cloudflare-ddns/issues/1101)) ([#1151](https://github.com/favonia/cloudflare-ddns/issues/1151))
+- WAF list entries in the configuration are now deduplicated. ([#1091](https://github.com/favonia/cloudflare-ddns/issues/1091))
+- The updater now warns when a configured domain does not look like a fully qualified domain name. ([#1019](https://github.com/favonia/cloudflare-ddns/issues/1019))
+- The updater now warns when DNS records and WAF list items for the same domain have mixed ownership (some managed, some not). ([#1173](https://github.com/favonia/cloudflare-ddns/issues/1173))
+
 # [1.15.1](https://github.com/favonia/cloudflare-ddns/compare/v1.15.0...v1.15.1) (2024-12-16)
 
 This is a minor release that modifies the Cloudflare URLs used by the IP providers `cloudflare.trace` (the default) and `cloudflare.doh`. The IP provider `cloudflare.trace` was updated to address [recent mysterious 1034 errors from Cloudflare servers.](https://github.com/favonia/cloudflare-ddns/issues/985) Additionally, both providers have been switched away from `1.1.1.1`, eliminating the need for a detection algorithm to determine whether `1.0.0.1` is a more suitable alternative. This simplification results in cleaner code and potentially lower resource usage.

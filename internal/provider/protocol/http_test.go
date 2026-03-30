@@ -199,6 +199,37 @@ func TestHTTPGetRawData(t *testing.T) {
 	}
 }
 
+func TestHTTPGetRawDataMultipleAddresses(t *testing.T) {
+	t.Parallel()
+
+	multiIP4Writer := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "1.1.1.1\n2.2.2.2\n")
+	})
+	multiIP4Server := newSplitServer(ipnet.IP4, multiIP4Writer)
+	t.Cleanup(multiIP4Server.Close)
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().InfoOncef(pp.MessageExperimentalMultipleAddressesURL, pp.EmojiExperimental,
+		"The URL response contains multiple addresses; "+
+			"this multi-address support is experimental (available since version 1.16.0)")
+
+	provider := &protocol.HTTP{
+		ProviderName: "test",
+		URL: map[ipnet.Family]string{
+			ipnet.IP4: multiIP4Server.URL,
+		},
+		ForcedTransportIPFamily: nil,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	rawData := provider.GetRawData(ctx, mockPP, ipnet.IP4, 32)
+	require.True(t, rawData.Available)
+	require.Equal(t, []ipnet.RawEntry{mustRawEntry("1.1.1.1/32"), mustRawEntry("2.2.2.2/32")}, rawData.RawEntries)
+}
+
 func TestHTTPIsExplicitEmpty(t *testing.T) {
 	t.Parallel()
 

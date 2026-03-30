@@ -35,7 +35,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	}
 	hasNonCanonicalEmptyEntry := false
 
-	ppfmt.InfoOncef(pp.MessageExperimentalWAF, pp.EmojiHint,
+	ppfmt.InfoOncef(pp.MessageExperimentalWAF, pp.EmojiExperimental,
 		"You are using the experimental WAF list manipulation feature available since version 1.14.0")
 
 	lists := make([]api.WAFList, 0, len(vals))

@@ -32,7 +32,7 @@ If you have code ready, please make a pull request. Before you do:
 
 5. Open the pull request.
 
-   Keep the summary focused on behavior and include test evidence when relevant. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title.
+   Keep the summary focused on behavior and include test evidence when relevant. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title. Use `fix:` for bugs in released code, `fixup:` for bugs introduced during the current development cycle, and `ux:` for UI/UX improvements.
 
 ## 🧑‍⚖️ Who’s in Charge
 

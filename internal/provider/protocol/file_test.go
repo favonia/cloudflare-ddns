@@ -74,14 +74,20 @@ func TestFileGetRawData(t *testing.T) {
 			ipnet.IP4,
 			true,
 			[]ipnet.RawEntry{mustRawEntry("1.1.1.1/32"), mustRawEntry("2.2.2.2/32")},
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalMultipleAddressesFile, pp.EmojiExperimental,
+					"The file contains multiple addresses; this multi-address support is experimental (available since version 1.16.0)")
+			},
 		},
 		"duplicates": {
 			"1.1.1.1\n2.2.2.2\n1.1.1.1\n",
 			ipnet.IP4,
 			true,
 			[]ipnet.RawEntry{mustRawEntry("1.1.1.1/32"), mustRawEntry("2.2.2.2/32")},
-			nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().InfoOncef(pp.MessageExperimentalMultipleAddressesFile, pp.EmojiExperimental,
+					"The file contains multiple addresses; this multi-address support is experimental (available since version 1.16.0)")
+			},
 		},
 		"comments-and-blanks": {
 			"# header comment\n\n1.1.1.1 # home\n\n# footer\n",

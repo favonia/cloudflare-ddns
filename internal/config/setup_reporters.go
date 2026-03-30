@@ -182,9 +182,6 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 	}
 
 	if len(shoutrrrURLs) > 0 {
-		ppfmt.InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint,
-			"You are using the experimental shoutrrr support available since version 1.12.0")
-
 		s, senderOK := notifier.NewShoutrrr(ppfmt, shoutrrrURLs)
 		if !senderOK {
 			return emptyHeartbeat, emptyNotifier, false

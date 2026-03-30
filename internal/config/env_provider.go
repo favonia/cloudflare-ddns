@@ -125,7 +125,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		*field = provider.NewLocal()
 		return true
 	case len(parts) == 2 && parts[0] == "local.iface":
-		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint,
+		ppfmt.InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiExperimental,
 			`You are using the experimental "local.iface:..." provider available since version 1.15.0`)
 		p, ok := provider.NewLocalWithInterface(ppfmt, key, parts[1])
 		if !ok {
