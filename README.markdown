@@ -696,13 +696,9 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 <details>
 <summary>I am migrating from timothymiller/cloudflare-ddns <sup><em>click to expand</em></sup></summary>
 
-Since [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) 2.0.0, many setting names and features look very close to this updater. However, similar names do not necessarily mean identical semantics. There are too many settings to list every difference here, and most mismatches will produce a clear startup error, but some differences are silent. If you only set a few options, checking the [documentation for those specific settings](#all-settings) should be quick and worthwhile.
-
-**Known silent semantic differences:**
+Since [timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns) 2.0.0, many setting names and features look very close to this updater. However, similar names do not necessarily mean identical semantics. Most mismatches will produce a clear startup error, but some differences are silent. If you only set a few options, checking the [documentation for those specific settings](#all-settings) should be quick and worthwhile. Here are two notable differences:
 
 - ⚠️ **`sub()` in `PROXIED` expressions:** In this updater, `sub(example.com)` matches _strict subdomains only_—it does **not** match `example.com` itself. In timothymiller/cloudflare-ddns, `sub(example.com)` matches `example.com` _and_ all its subdomains. Copying a `PROXIED` expression verbatim may silently change which domains are proxied. If you need to match a domain and all its subdomains, use `is(example.com) || sub(example.com)`.
-
-**Known naming differences that will cause startup errors:**
 
 - `literal:` (timothymiller/cloudflare-ddns) is called `static:` in this updater (_e.g._, `IP4_PROVIDER=static:1.2.3.4`).
 
