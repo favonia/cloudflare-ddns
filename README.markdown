@@ -277,38 +277,42 @@ services:
 
 After removing `network_mode: host`, follow the [official Docker instructions for enabling IPv6](https://docs.docker.com/engine/daemon/ipv6/) on your Docker bridge network.
 
-<a id="docker-network-routing"></a>
+<a id="docker-interface-routing"></a>
 
-#### Route outbound requests through a specific Docker network
+#### Route through a specific host interface
 
-Use this when the updater runs in Docker and must send requests through one specific network path so Cloudflare sees the right public IP address.
+Use this when the updater runs in Docker and should route all outbound requests through a particular host network interface. This is useful when you want Cloudflare-based providers (`cloudflare.doh`, `cloudflare.dot`) or other IP detection websites (`url:<url>`) to see the public IPs via a specific interface.
 
-If you want all outbound requests from the container to use a specific Docker-attached network, one solution is to create a [MacVLAN network](https://docs.docker.com/engine/network/drivers/macvlan/):
+One possible approach is to use [IPvlan network driver](https://docs.docker.com/engine/network/drivers/ipvlan/) to create a virtual network attached to that host interface, and then attach this updater to it. Add the following snippet to your Compose file where `<iface>` is the name of the host interface:
 
-```bash
-docker network create \
-  -d macvlan \
-  -o parent=eth0 \
-  --subnet=192.168.1.0/24 \
-  --gateway=192.168.1.1 \
-  --ip-range=192.168.1.128/25 \
-  LAN0
+```yaml
+networks:
+  ddns:
+    driver: ipvlan
+    driver_opts:
+      parent: <iface>
+      ipvlan_mode: l2
+    ipam:
+      config:
+        - subnet: <subnet>
+          gateway: <gateway>
 ```
+
+Replace `<iface>`, `<subnet>`, and `<gateway>` to match the host interface you want the container to use.
+
+- On the host, run `ip route show dev <iface> proto kernel` and use the subnet in CIDR notation as your `<subnet>`, such as `192.168.1.0/24`.
+- On the host, run `ip route show default dev <iface>` and use the `via` address as your `<gateway>`, such as `192.168.1.1`.
 
 Then attach the service to that network instead of using `network_mode: host`:
 
 ```yaml
 services:
   cloudflare-ddns:
-    networks: [LAN0]
-
-networks:
-  LAN0:
-    external: true
-    name: LAN0
+    # This line replaces "network_mode: host"
+    networks: [ddns]
 ```
 
-⚠️ [MacVLAN](https://docs.docker.com/engine/network/drivers/macvlan/) can bypass parts of your host firewall setup, so host `iptables` or `nftables` rules may not see this traffic.
+⚠️ `ipvlan` does not use Docker’s usual bridge-network firewall rules, and the host is not directly reachable from the container on this network. Make sure your host firewall expects the new traffic.
 
 #### 🧪 Read addresses from one host interface
 
@@ -320,7 +324,7 @@ environment:
   - IP6_PROVIDER=local.iface:eth0
 ```
 
-If you want to change where outbound requests leave the container instead, see [Route outbound requests through a specific Docker network](#docker-network-routing).
+If you want to change where outbound requests leave the container instead, see [Route through a specific host interface](#interface-routing).
 
 🧪 `local.iface:<iface>` is still experimental.
 
