@@ -4,7 +4,7 @@ Despite the gap of over a year since the last release, we are not aware of any s
 
 ## Highlights
 
-1. **WAF lists now support /128 IPv6 entries.** Cloudflare's API now accepts individual IPv6 addresses in WAF lists. New `IP4_DEFAULT_PREFIX_LEN` (default `/32`) and `IP6_DEFAULT_PREFIX_LEN` (default `/64`) control how bare addresses are stored in WAF lists. Users can now set `IP6_DEFAULT_PREFIX_LEN` to `128` for per-address granularity. DNS records currently ignore prefix lengths, but will use these in the future.
+1. **WAF lists now support /128 IPv6 entries.** Cloudflare’s API now accepts individual IPv6 addresses in WAF lists. New `IP4_DEFAULT_PREFIX_LEN` (default `/32`) and `IP6_DEFAULT_PREFIX_LEN` (default `/64`) control how bare addresses are stored in WAF lists. Users can now set `IP6_DEFAULT_PREFIX_LEN` to `128` for per-address granularity. DNS records currently ignore prefix lengths, but will use these in the future.
 2. **Multi-instance support via comment-based selection.** New `MANAGED_RECORDS_COMMENT_REGEX` and `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` let multiple updater instances safely share the same domain or WAF list, each managing only records or items with matching comments. New `WAF_LIST_ITEM_COMMENT` provides a fallback comment for WAF list items, similar to how `RECORD_COMMENT` serves as a fallback for DNS records.
 3. **Multi-IP detection and reconciliation.** Providers now return multiple IP addresses, each with a CIDR prefix length, and the reconciliation algorithm has been redesigned to handle them correctly. The experimental `local.iface` provider now collects all matching global unicast addresses from the specified interface, instead of just the first one.
 4. **New `file:` provider.** Reads IP addresses from a local file, re-reading each detection cycle. This enables integration with external scripts or monitoring systems without restarting the updater.
@@ -13,7 +13,7 @@ Despite the gap of over a year since the last release, we are not aware of any s
 
 ## Your Feedback Wanted
 
-The IP prefix length work in this release lays the groundwork for several upcoming features. We'd love your input on the proposed configuration syntax:
+The IP prefix length work in this release lays the groundwork for several upcoming features. We’d love your input on the proposed configuration syntax:
 
 - **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)):
   - `IP6_DOMAINS=sub.example.com{hostid6=::2}`
@@ -29,7 +29,7 @@ Also planned: a linter for boolean expressions targeting advanced usage of `PROX
 
 ## Reminder from the Past
 
-As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker's built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
 
 ## Detailed Changes
 
