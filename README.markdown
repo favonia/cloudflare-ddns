@@ -13,7 +13,6 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 ### ⚡️ Efficiency
 
 - <img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"> The default Docker image stays small.
-- 🔁 The Go runtime re-uses existing HTTP connections.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
 ### ✅️ Comprehensive Support of Domain Names
@@ -35,9 +34,11 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### 📐 Attention to Correctness and Security
 
-- <img src="https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns?label=" alt="Codecov" align="top"> The testing coverage is high (though the coverage itself doesn’t say much).
+- <img src="https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns?label=" alt="Codecov" align="top"> The code is extensively tested.
 
-- 📚 The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
+- 🔬 Compatibility with the Cloudflare API is verified periodically with [dedicated scripts](scripts/README.markdown).
+
+- 📚️ The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
 
 - 🙈 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records.
 
