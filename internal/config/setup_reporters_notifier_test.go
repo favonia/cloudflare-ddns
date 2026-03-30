@@ -37,7 +37,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			shoutrrr: "generic+https://example.com/api/v1/postStuff",
 			ok:       true,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support available since version 1.12.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiExperimental, "You are using the experimental shoutrrr support available since version 1.12.0")
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -54,7 +54,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			shoutrrr: "generic+https://example.com/api/v1/postStuff\npushover://shoutrrr:token@userKey",
 			ok:       true,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support available since version 1.12.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiExperimental, "You are using the experimental shoutrrr support available since version 1.12.0")
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -120,7 +120,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"Percent-encode spaces to suppress this warning")
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support available since version 1.12.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiExperimental, "You are using the experimental shoutrrr support available since version 1.12.0")
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -179,7 +179,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			shoutrrr: "meow-meow-meow://cute",
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiHint, "You are using the experimental shoutrrr support available since version 1.12.0")
+				m.EXPECT().InfoOncef(pp.MessageExperimentalShoutrrr, pp.EmojiExperimental, "You are using the experimental shoutrrr support available since version 1.12.0")
 				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to create a Shoutrrr client: %v`, gomock.Any())
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {

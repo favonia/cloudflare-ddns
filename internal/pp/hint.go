@@ -17,6 +17,8 @@ const (
 	MessageExperimentalShoutrrr                                // New feature introduced in 1.12.0 on 2024/6/28
 	MessageExperimentalWAF                                     // New feature introduced in 1.14.0 on 2024/8/25
 	MessageExperimentalLocalWithInterface                      // New feature introduced in 1.15.0
+	MessageExperimentalMultipleAddressesURL                    // Multi-address URL response introduced in 1.16.0
+	MessageExperimentalMultipleAddressesFile                   // Multi-address file content introduced in 1.16.0
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
 )

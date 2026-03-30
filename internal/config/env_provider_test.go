@@ -143,14 +143,14 @@ func TestReadProvider(t *testing.T) {
 		"local.iface:lo": {
 			ipnet.IP4, true, "   local.iface   :  lo ", false, "", trace, localLoopback, true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface:..." provider available since version 1.15.0`)
+				m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiExperimental, `You are using the experimental "local.iface:..." provider available since version 1.15.0`)
 			},
 		},
 		"local.iface:": {
 			ipnet.IP4, true, "   local.iface: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiHint, `You are using the experimental "local.iface:..." provider available since version 1.15.0`),
+					m.EXPECT().InfoOncef(pp.MessageExperimentalLocalWithInterface, pp.EmojiExperimental, `You are using the experimental "local.iface:..." provider available since version 1.15.0`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s=local.iface: must be followed by a network interface name`, key),
 				)
 			},

@@ -77,5 +77,10 @@ func (p File) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
+	if len(entries) > 1 {
+		ppfmt.InfoOncef(pp.MessageExperimentalMultipleAddressesFile, pp.EmojiExperimental,
+			"The file contains multiple addresses; this multi-address support is experimental (available since version 1.16.0)")
+	}
+
 	return NewKnownDetectionResult(entries)
 }
