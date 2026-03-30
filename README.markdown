@@ -10,11 +10,6 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ## ✨️ Highlights
 
-### ⚡️ Efficiency
-
-- <img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"> The default Docker image stays small.
-- 🗃️ Cloudflare API responses are cached to reduce the API usage.
-
 ### ✅️ Comprehensive Support of Domain Names
 
 - 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
@@ -32,13 +27,13 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 - 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
 - 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
 
-### 📐 Attention to Correctness and Security
+### 🧱 Reliability
 
 - <img src="https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns?label=" alt="Codecov" align="top"> The code is extensively tested.
-
 - 🔬 Compatibility with the Cloudflare API is verified periodically with [dedicated scripts](scripts/README.markdown).
+- 🧰 The updater is designed to recover from transient network failures.
 
-- 📚️ The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
+### 🔒️ Security and Privacy
 
 - 🙈 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records.
 
@@ -56,7 +51,11 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
   </details>
 
-- <details><summary>📚️ The updater uses only a small set of established external Go packages <sup><em>click to expand</em></sup></summary>
+### 🧭 Principled Design
+
+- 📚️ The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
+
+- <details><summary>📦️ The updater uses only a small set of established external Go packages <sup><em>click to expand</em></sup></summary>
   <ul>
     <li><a href="https://github.com/cloudflare/cloudflare-go">cloudflare-go</a>: official Go binding of Cloudflare API v4.</li>
     <li><a href="https://github.com/robfig/cron">cron</a>: parsing of Cron expressions.</li>
@@ -70,6 +69,11 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
     <li><a href="https://github.com/stretchr/testify">testify</a> (for testing only): tool set for testing Go programs.</li>
   </ul>
   </details>
+
+### ⚡️ Efficiency
+
+- <img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"> The default Docker image stays small.
+- 🗃️ Cloudflare API responses are cached to reduce the API usage.
 
 <a id="quick-start"></a>
 
