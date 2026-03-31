@@ -106,13 +106,11 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 
 	// Part 2: check UpdateOnStart.
-	if c.UpdateCron == nil {
-		if !c.UpdateOnStart {
-			ppfmt.Noticef(
-				pp.EmojiUserError,
-				"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
-			return nil, false
-		}
+	if c.UpdateCron == nil && !c.UpdateOnStart {
+		ppfmt.Noticef(
+			pp.EmojiUserError,
+			"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
+		return nil, false
 	}
 
 	// Step 2.5: compile the ownership selectors for managed DNS records and WAF list items.
