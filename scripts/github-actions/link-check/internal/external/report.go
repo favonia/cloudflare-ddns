@@ -3,8 +3,8 @@ package external
 import (
 	"fmt"
 	"io"
-	"os"
-	"strings"
+
+	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/githubactions"
 )
 
 // writeFindings writes warnings and failures in operator-facing diagnostic
@@ -22,49 +22,52 @@ func writeFindings(stderr io.Writer, failures, warnings []probeResult) bool {
 // writeFindingsForGithub writes a GitHub Actions step summary and workflow
 // command annotations so findings surface in the GitHub UI.
 func writeFindingsForGithub(output io.Writer, failures, warnings []probeResult) {
-	githubSummaryFilepath := strings.TrimSpace(os.Getenv("GITHUB_STEP_SUMMARY"))
-	if githubSummaryFilepath == "" {
-		return
-	}
-
-	//nolint:gosec // path from trusted GITHUB_STEP_SUMMARY env var
-	githubSummaryFile, err := os.OpenFile(
-		githubSummaryFilepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o666)
-	if err != nil {
-		_, _ = fmt.Fprintln(output, err)
-		return
-	}
-	defer githubSummaryFile.Close()
-
+	sections := make([]githubactions.SummarySection, 0, 2)
 	if len(failures) > 0 {
-		_, _ = fmt.Fprintf(githubSummaryFile, "# Failures (%d)\n", len(failures))
-		for _, failure := range failures {
-			_, _ = fmt.Fprintln(githubSummaryFile, "- "+formatResultInMarkdown(failure))
-		}
-		_, _ = fmt.Fprintln(githubSummaryFile)
+		sections = append(sections, summarySectionForResults("Failures", failures))
 	}
 	if len(warnings) > 0 {
-		_, _ = fmt.Fprintf(githubSummaryFile, "# Warnings (%d)\n", len(warnings))
-		for _, warning := range warnings {
-			_, _ = fmt.Fprintln(githubSummaryFile, "- "+formatResultInMarkdown(warning))
-		}
-		_, _ = fmt.Fprintln(githubSummaryFile)
+		sections = append(sections, summarySectionForResults("Warnings", warnings))
 	}
+	githubactions.WriteSummaryFromEnv(output, sections)
 
+	annotations := make([]githubactions.Annotation, 0)
 	for _, failure := range failures {
-		writeGitHubAnnotations(output, "error", failure)
+		annotations = append(annotations, annotationsForResult("error", failure)...)
 	}
 	for _, warning := range warnings {
-		writeGitHubAnnotations(output, "warning", warning)
+		annotations = append(annotations, annotationsForResult("warning", warning)...)
+	}
+	githubactions.WriteAnnotations(output, annotations)
+}
+
+func summarySectionForResults(heading string, results []probeResult) githubactions.SummarySection {
+	items := make([]string, 0, len(results))
+	for _, result := range results {
+		items = append(items, formatResultInMarkdown(result))
+	}
+	return githubactions.SummarySection{
+		Heading: fmt.Sprintf("%s (%d)", heading, len(results)),
+		Items:   items,
 	}
 }
 
-// writeGitHubAnnotations emits GitHub Actions workflow commands for one
-// finding so it appears as an inline annotation in the PR diff view.
-// See https://docs.github.com/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
-func writeGitHubAnnotations(output io.Writer, level string, result probeResult) {
+func annotationsForResult(level string, result probeResult) []githubactions.Annotation {
 	message := formatProbeChain(result)
-	for _, source := range result.Sources {
-		_, _ = fmt.Fprintf(output, "::%s file=%s:%d::%s\n", level, source.Path, source.Line, message)
+	if len(result.Sources) == 0 {
+		return []githubactions.Annotation{{
+			Level:   level,
+			Message: message,
+		}}
 	}
+	annotations := make([]githubactions.Annotation, 0, len(result.Sources))
+	for _, source := range result.Sources {
+		annotations = append(annotations, githubactions.Annotation{
+			Level:   level,
+			File:    source.Path,
+			Line:    source.Line,
+			Message: message,
+		})
+	}
+	return annotations
 }

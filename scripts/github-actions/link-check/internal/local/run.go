@@ -65,10 +65,10 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 	}
 
 	slices.SortFunc(localIssues, func(a, b extract.Issue) int {
-		return strings.Compare(a.Render(), b.Render())
+		return strings.Compare(formatIssue(a), formatIssue(b))
 	})
 	for _, issue := range localIssues {
-		_, _ = fmt.Fprintln(stderr, issue.Render())
+		_, _ = fmt.Fprintln(stderr, formatIssue(issue))
 	}
 	writeIssuesForGithub(stdout, localIssues)
 	return 1

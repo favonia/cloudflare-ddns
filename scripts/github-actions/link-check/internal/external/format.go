@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/extract"
+	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/githubactions"
 )
 
 // probeRenderer parameterizes how probe results are formatted so the same
@@ -42,16 +43,36 @@ var plainRenderer = probeRenderer{
 }
 
 var markdownRenderer = probeRenderer{
-	renderSource: extract.LinkSource.RenderInMarkdown,
-	noSource:     "*source unknown*",
+	renderSource: func(source extract.LinkSource) string {
+		return fmt.Sprintf(
+			"%s:%d",
+			githubactions.SummaryLink(source.Path, source.Path),
+			source.Line,
+		)
+	},
+	noSource: "*source unknown*",
 	formatHop: func(u string, s int) string {
-		return fmt.Sprintf("<%s> — %d %s", u, s, http.StatusText(s))
+		return fmt.Sprintf(
+			"%s - %d %s",
+			githubactions.SummaryLink(u, u),
+			s,
+			githubactions.EscapeSummaryText(http.StatusText(s)),
+		)
 	},
 	formatTerminal: func(u string, s int) string {
-		return fmt.Sprintf("<%s> — %d %s", u, s, http.StatusText(s))
+		return fmt.Sprintf(
+			"%s - %d %s",
+			githubactions.SummaryLink(u, u),
+			s,
+			githubactions.EscapeSummaryText(http.StatusText(s)),
+		)
 	},
 	formatError: func(u, e string) string {
-		return fmt.Sprintf("<%s> — network error: %s", u, e)
+		return fmt.Sprintf(
+			"%s - network error: %s",
+			githubactions.SummaryLink(u, u),
+			githubactions.EscapeSummaryText(e),
+		)
 	},
 	chainSep: " → ",
 	combineResult: func(chain, sources string, isErr bool) string {
