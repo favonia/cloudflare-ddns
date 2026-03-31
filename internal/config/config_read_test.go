@@ -183,6 +183,29 @@ func TestBuildConfig(t *testing.T) {
 				)
 			},
 		},
+		"once/delete-on-stop/ip6-only-invalid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				DeleteOnStop:  true,
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewCloudflareDOH(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP6_PROVIDER to be static.empty or none; got IP6_PROVIDER=%q", "cloudflare.doh"),
+				)
+			},
+		},
 		"once/delete-on-stop/explicit-empty-single-family": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				DeleteOnStop:        true,
