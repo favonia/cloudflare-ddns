@@ -3,13 +3,10 @@ package external
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/extract"
@@ -43,93 +40,6 @@ type probeResult struct {
 type probeHop struct {
 	URL    string
 	Status int
-}
-
-// runProbe probes the collected external URLs and classifies each outcome as a
-// failure or warning according to probe policy.
-func runProbe(urls []extract.ExternalLink, cfg probeConfig, stdout io.Writer) ([]probeResult, []probeResult) {
-	warningStatuses := map[int]bool{}
-	for _, status := range cfg.WarningStatuses {
-		warningStatuses[status] = true
-	}
-	warningPatterns := compileRegexps(cfg.WarningURLPatterns)
-	workerCount := max(cfg.MaxWorkers, 1)
-	throttle := newHostThrottle(urls, cfg.MaxPerHost, cfg.PerHostDelay)
-
-	jobs := make(chan extract.ExternalLink)
-	results := make(chan probeResult)
-	var workers sync.WaitGroup
-	for range workerCount {
-		workers.Go(func() {
-			for target := range jobs {
-				host := hostFromURL(target.URL)
-				throttle.acquire(host)
-				result := probeURL(target, cfg.Timeout, cfg.Retries, cfg.UserAgent)
-				throttle.release(host)
-				results <- result
-			}
-		})
-	}
-
-	go func() {
-		for _, target := range urls {
-			jobs <- target
-		}
-		close(jobs)
-		workers.Wait()
-		close(results)
-	}()
-
-	total := len(urls)
-	completed := 0
-	width := len(fmt.Sprint(total))
-	failures := make([]probeResult, 0)
-	warnings := make([]probeResult, 0)
-	for result := range results {
-		completed++
-		progress := fmt.Sprintf("[%*d/%d]", width, completed, total)
-		if shouldSuppressWarning(result) {
-			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
-			continue
-		}
-		softWarning := anyRegexpMatch(warningPatterns, result.URL)
-		switch {
-		case softWarning || (cfg.NetworkErrorsAreWarning && result.Status == 0):
-			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("warning", result))
-			warnings = append(warnings, result)
-		case result.Status == 0:
-			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("FAILURE", result))
-			failures = append(failures, result)
-		case result.Status >= 400 && !warningStatuses[result.Status]:
-			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("FAILURE", result))
-			failures = append(failures, result)
-		case warningStatuses[result.Status] || len(result.Hops) > 1:
-			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("warning", result))
-			warnings = append(warnings, result)
-		default:
-			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
-		}
-	}
-
-	slices.SortFunc(failures, func(a, b probeResult) int {
-		return strings.Compare(a.URL, b.URL)
-	})
-	slices.SortFunc(warnings, func(a, b probeResult) int {
-		return strings.Compare(a.URL, b.URL)
-	})
-	return failures, warnings
-}
-
-// writeFindings writes warnings and failures in operator-facing diagnostic
-// form and reports whether failures were present.
-func writeFindings(stderr io.Writer, failures, warnings []probeResult) bool {
-	for _, warning := range warnings {
-		_, _ = fmt.Fprintln(stderr, formatResult("warning", warning))
-	}
-	for _, failure := range failures {
-		_, _ = fmt.Fprintln(stderr, formatResult("failure", failure))
-	}
-	return len(failures) > 0
 }
 
 // probeURL runs the configured HEAD/GET probe cycle with retries for one URL.
@@ -224,47 +134,4 @@ func classifyRequestError(err error) string {
 		}
 	}
 	return err.Error()
-}
-
-// formatResult renders one probe outcome for stderr diagnostics.
-func formatResult(prefix string, result probeResult) string {
-	locationText := formatLinkSources(result.Sources)
-	if result.Err != "" {
-		return fmt.Sprintf("%s: network error: %s [%s]", prefix, formatProbeChain(result), locationText)
-	}
-	return fmt.Sprintf("%s: %s [%s]", prefix, formatProbeChain(result), locationText)
-}
-
-// formatLinkSources formats all tracked-file occurrences that referenced one
-// probed URL.
-func formatLinkSources(sources []extract.LinkSource) string {
-	if len(sources) == 0 {
-		return "source unknown"
-	}
-	rendered := make([]string, 0, len(sources))
-	for _, source := range sources {
-		rendered = append(rendered, source.Render())
-	}
-	return strings.Join(rendered, ", ")
-}
-
-// formatProbeChain renders the observed redirect chain or terminal probe
-// result.
-func formatProbeChain(result probeResult) string {
-	if len(result.Hops) == 0 {
-		if result.Err != "" {
-			return fmt.Sprintf("%s (network error: %s)", result.URL, result.Err)
-		}
-		return fmt.Sprintf("%s (HTTP %d %s)", result.URL, result.Status, http.StatusText(result.Status))
-	}
-	parts := make([]string, 0, len(result.Hops))
-	lastIndex := len(result.Hops) - 1
-	for index, hop := range result.Hops {
-		if result.Err != "" && index == lastIndex && hop.Status == 0 {
-			parts = append(parts, fmt.Sprintf("%s (network error: %s)", hop.URL, result.Err))
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("%s (%d %s)", hop.URL, hop.Status, http.StatusText(hop.Status)))
-	}
-	return strings.Join(parts, " -> ")
 }

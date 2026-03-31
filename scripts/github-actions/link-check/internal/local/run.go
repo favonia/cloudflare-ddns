@@ -70,6 +70,7 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 	for _, issue := range localIssues {
 		_, _ = fmt.Fprintln(stderr, issue.Render())
 	}
+	writeIssuesForGithub(stdout, localIssues)
 	return 1
 }
 

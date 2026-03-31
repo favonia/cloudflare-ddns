@@ -33,6 +33,11 @@ func (source LinkSource) Render() string {
 	return fmt.Sprintf("%s:%d", source.Path, source.Line)
 }
 
+// RenderInMarkdown formats the source as a Markdown link with line number.
+func (source LinkSource) RenderInMarkdown() string {
+	return fmt.Sprintf("[%s](%s):%d", source.Path, source.Path, source.Line)
+}
+
 // Compare orders sources by path and then by line number.
 func (source LinkSource) Compare(other LinkSource) int {
 	if diff := strings.Compare(source.Path, other.Path); diff != 0 {

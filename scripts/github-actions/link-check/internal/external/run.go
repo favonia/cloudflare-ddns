@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/extract"
 	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/scope"
@@ -78,7 +79,11 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 	_, _ = fmt.Fprintf(stdout, "Probing %d URLs across %d hosts (max %d per host, %v delay)...\n",
 		len(externalURLs), countUniqueHosts(externalURLs), cfg.Probe.MaxPerHost, cfg.Probe.PerHostDelay)
 	failures, warnings := runProbe(externalURLs, cfg.Probe, stdout)
-	if writeFindings(stderr, failures, warnings) {
+
+	writeFindings(stderr, failures, warnings)
+	writeFindingsForGithub(stdout, failures, warnings)
+
+	if len(failures) > 0 {
 		return 1
 	}
 
@@ -137,4 +142,79 @@ func recordLink(found map[string]map[string]extract.LinkSource, target string, s
 		found[target] = map[string]extract.LinkSource{}
 	}
 	found[target][source.Render()] = source
+}
+
+// runProbe probes the collected external URLs and classifies each outcome as a
+// failure or warning according to probe policy.
+func runProbe(urls []extract.ExternalLink, cfg probeConfig, stdout io.Writer) ([]probeResult, []probeResult) {
+	warningStatuses := map[int]bool{}
+	for _, status := range cfg.WarningStatuses {
+		warningStatuses[status] = true
+	}
+	warningPatterns := compileRegexps(cfg.WarningURLPatterns)
+	workerCount := max(cfg.MaxWorkers, 1)
+	throttle := newHostThrottle(urls, cfg.MaxPerHost, cfg.PerHostDelay)
+
+	jobs := make(chan extract.ExternalLink)
+	results := make(chan probeResult)
+	var workers sync.WaitGroup
+	for range workerCount {
+		workers.Go(func() {
+			for target := range jobs {
+				host := hostFromURL(target.URL)
+				throttle.acquire(host)
+				result := probeURL(target, cfg.Timeout, cfg.Retries, cfg.UserAgent)
+				throttle.release(host)
+				results <- result
+			}
+		})
+	}
+
+	go func() {
+		for _, target := range urls {
+			jobs <- target
+		}
+		close(jobs)
+		workers.Wait()
+		close(results)
+	}()
+
+	total := len(urls)
+	completed := 0
+	width := len(fmt.Sprint(total))
+	failures := make([]probeResult, 0)
+	warnings := make([]probeResult, 0)
+	for result := range results {
+		completed++
+		progress := fmt.Sprintf("[%*d/%d]", width, completed, total)
+		if shouldSuppressWarning(result) {
+			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
+			continue
+		}
+		softWarning := anyRegexpMatch(warningPatterns, result.URL)
+		switch {
+		case softWarning || (cfg.NetworkErrorsAreWarning && result.Status == 0):
+			_, _ = fmt.Fprintf(stdout, "%s warning: %s\n", progress, formatResult(result))
+			warnings = append(warnings, result)
+		case result.Status == 0:
+			_, _ = fmt.Fprintf(stdout, "%s FAILURE: %s\n", progress, formatResult(result))
+			failures = append(failures, result)
+		case result.Status >= 400 && !warningStatuses[result.Status]:
+			_, _ = fmt.Fprintf(stdout, "%s FAILURE: %s\n", progress, formatResult(result))
+			failures = append(failures, result)
+		case warningStatuses[result.Status] || len(result.Hops) > 1:
+			_, _ = fmt.Fprintf(stdout, "%s warning: %s\n", progress, formatResult(result))
+			warnings = append(warnings, result)
+		default:
+			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
+		}
+	}
+
+	slices.SortFunc(failures, func(a, b probeResult) int {
+		return strings.Compare(a.URL, b.URL)
+	})
+	slices.SortFunc(warnings, func(a, b probeResult) int {
+		return strings.Compare(a.URL, b.URL)
+	})
+	return failures, warnings
 }
