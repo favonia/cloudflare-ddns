@@ -329,7 +329,7 @@ environment:
   - IP6_PROVIDER=local.iface:eth0
 ```
 
-If you want to change where outbound requests leave the container instead, see [Route through a specific host interface](#interface-routing).
+If you want to change where outbound requests leave the container instead, see [Route through a specific host interface](#docker-interface-routing).
 
 🧪 `local.iface:<iface>` is still experimental.
 
