@@ -199,7 +199,7 @@ func fetchURL(target, method string, timeout time.Duration, userAgent string) pr
 			}
 			currentURL = location.String()
 			if response.StatusCode == http.StatusSeeOther {
-				currentMethod = http.MethodGet
+				currentMethod = http.MethodHead
 			}
 			continue
 		}
