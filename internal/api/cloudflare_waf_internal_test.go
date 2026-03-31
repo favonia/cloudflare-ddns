@@ -77,3 +77,14 @@ func TestDescribeInScopeWAFFamilies(t *testing.T) {
 	}))
 	require.Equal(t, "no", describeInScopeWAFFamilies(map[ipnet.Family]bool{}))
 }
+
+func TestDescribeAllowedWAFListItemComments(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "none", describeAllowedWAFListItemComments(map[string]bool{}))
+	require.Equal(t, `"a", "z", empty`, describeAllowedWAFListItemComments(map[string]bool{
+		"z": true,
+		"":  true,
+		"a": true,
+	}))
+}

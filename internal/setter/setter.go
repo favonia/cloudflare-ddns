@@ -403,14 +403,11 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		deleteItems    []api.WAFListItem
 	}
 
-	items, alreadyExisting, cached, ok := s.Handle.ListWAFListItems(
+	items, _, cached, ok := s.Handle.ListWAFListItems(
 		ctx, ppfmt, list, listDescription, fallbackItemComment,
 	)
 	if !ok {
 		return ResponseFailed
-	}
-	if !alreadyExisting {
-		ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 	}
 
 	warnings := newAmbiguityWarnings()

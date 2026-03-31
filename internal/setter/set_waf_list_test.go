@@ -119,6 +119,16 @@ func TestSetWAFList(t *testing.T) {
 			},
 		},
 		{
+			name:     "list-missing/explicit-empty-does-not-create-list/response-noop",
+			detected: detectedSets([]netip.Addr{}, nil),
+			resp:     setter.ResponseNoop,
+			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
+				expectWAFListNoop(ctx, p, m, wafList,
+					wafListNoopExpectation(listDescription, itemComment, false, false),
+					nil)
+			},
+		},
+		{
 			name:     "list-state-unknown/list-items/response-failed",
 			detected: detected(ip4, ip6),
 			resp:     setter.ResponseFailed,

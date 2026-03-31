@@ -293,11 +293,8 @@ func expectWAFListNoop(
 ) {
 	calls := []any{
 		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, items, want.alreadyExisting, want.cached, true),
+		expectWAFListNoopNotice(p, list, want.cached),
 	}
-	if !want.alreadyExisting {
-		calls = append(calls, expectWAFListCreatedNotice(p, list))
-	}
-	calls = append(calls, expectWAFListNoopNotice(p, list, want.cached))
 	gomock.InOrder(calls...)
 }
 
@@ -320,9 +317,6 @@ func expectWAFListMutation(
 
 	calls := []any{
 		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, want.items, want.alreadyExisting, want.cached, true),
-	}
-	if !want.alreadyExisting {
-		calls = append(calls, expectWAFListCreatedNotice(p, list))
 	}
 
 	if len(createItems) > 0 || !want.createOK {
@@ -353,10 +347,6 @@ func wafListCreatePrefixes(items []api.WAFListCreateItem) []netip.Prefix {
 		prefixes = append(prefixes, item.Prefix)
 	}
 	return prefixes
-}
-
-func expectWAFListCreatedNotice(p *mocks.MockPP, list api.WAFList) any {
-	return p.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
 }
 
 func expectWAFListNoopNotice(p *mocks.MockPP, list api.WAFList, cached bool) any {

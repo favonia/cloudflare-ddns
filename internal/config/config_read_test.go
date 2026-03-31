@@ -143,7 +143,11 @@ func TestBuildConfig(t *testing.T) {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				DeleteOnStop:  true,
 				UpdateOnStart: true,
-				IP4Domains:    []domain.Domain{domain.FQDN("a.b.c")},
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewCloudflareTrace(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
 			},
 			ok:       false,
 			expected: nil,
@@ -152,7 +156,149 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once would immediately delete managed domains and WAF content"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER to be static.empty or none; got IP4_PROVIDER=%q", "cloudflare.trace"),
+				)
+			},
+		},
+		"once/delete-on-stop/both-families-invalid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				DeleteOnStop:  true,
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewCloudflareTrace(),
+					ipnet.IP6: provider.NewCloudflareDOH(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER and IP6_PROVIDER to be static.empty or none; got IP4_PROVIDER=%q and IP6_PROVIDER=%q", "cloudflare.trace", "cloudflare.doh"),
+				)
+			},
+		},
+		"once/delete-on-stop/ip6-only-invalid": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				DeleteOnStop:  true,
+				UpdateOnStart: true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewCloudflareDOH(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok:       false,
+			expected: nil,
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserError, "DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP6_PROVIDER to be static.empty or none; got IP6_PROVIDER=%q", "cloudflare.doh"),
+				)
+			},
+		},
+		"once/delete-on-stop/explicit-empty-single-family": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				DeleteOnStop:        true,
+				UpdateOnStart:       true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+					DeleteOnStop:  true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: nil,
+					},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
+						"managed DNS records for the configured domains", "none"),
+				)
+			},
+		},
+		"once/delete-on-stop/explicit-empty-both-families": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				DeleteOnStop:        true,
+				UpdateOnStart:       true,
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP4: provider.NewStaticEmpty(),
+					ipnet.IP6: provider.NewStaticEmpty(),
+				},
+				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				ProxiedExpression: "false",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+					DeleteOnStop:  true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP4: provider.NewStaticEmpty(),
+						ipnet.IP6: provider.NewStaticEmpty(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: {domain.FQDN("a.b.c")},
+						ipnet.IP6: {domain.FQDN("d.e.f")},
+					},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+						domain.FQDN("d.e.f"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s",
+						"managed DNS records for the configured domains"),
 				)
 			},
 		},

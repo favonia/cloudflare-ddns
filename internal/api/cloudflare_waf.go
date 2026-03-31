@@ -252,6 +252,46 @@ func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 	return listID, true
 }
 
+// ensureWAFList returns the ID of the IP list with the given name, creating it if needed.
+func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
+	fallbackDescription string,
+) (ID, bool) {
+	listID, found, ok := h.wafListID(ctx, ppfmt, list, fallbackDescription)
+	if !ok {
+		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %s", list.Describe())
+		return "", false
+	}
+	if found {
+		return listID, true
+	}
+
+	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
+		cloudflare.ListCreateParams{
+			Name:        list.Name,
+			Description: fallbackDescription,
+			Kind:        cloudflare.ListTypeIP,
+		})
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiError, "Could not confirm that the list %s was created: %v", list.Describe(), err)
+		hintWAFListPermission(ppfmt, err)
+		h.cache.listLists.Delete(list.AccountID)
+		return "", false
+	}
+
+	listID = ID(r.ID)
+	if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
+		*ls.Value() = append([]wafListMeta{{
+			ID:          listID,
+			Description: fallbackDescription,
+			Name:        list.Name,
+		}}, *ls.Value()...)
+	}
+	h.cache.listID.DeleteExpired()
+	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
+	ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
+	return listID, true
+}
+
 // FinalCleanWAFList removes managed WAF content during shutdown.
 //
 // Whole-list ownership tries deleting the list first, then falls back to async
@@ -512,34 +552,7 @@ func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 		return nil, false, false, false
 	}
 	if !found {
-		r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
-			cloudflare.ListCreateParams{
-				Name:        list.Name,
-				Description: fallbackDescription,
-				Kind:        cloudflare.ListTypeIP,
-			})
-		if err != nil {
-			ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of the list %s: %v", list.Describe(), err)
-			hintWAFListPermission(ppfmt, err)
-			h.cache.listLists.Delete(list.AccountID)
-			return nil, false, false, false
-		}
-
-		listID = ID(r.ID)
-		var items []WAFListItem
-
-		if ls := h.cache.listLists.Get(list.AccountID); ls != nil {
-			*ls.Value() = append([]wafListMeta{{
-				ID:          listID,
-				Description: fallbackDescription,
-				Name:        list.Name,
-			}}, *ls.Value()...)
-		}
-		h.cache.listID.DeleteExpired()
-		h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
-		managedItems := h.cacheManagedWAFListItems(list, items)
-		hintMismatchedWAFListItemComment(ppfmt, list, managedItems, fallbackItemComment)
-		return managedItems, false, false, true
+		return nil, false, false, true
 	}
 
 	items, ok := h.listWAFListItemsByID(ctx, ppfmt, list, listID)
@@ -580,7 +593,7 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm deletion of items from the list %s: %v", list.Describe(), err)
+			"Could not confirm that items were deleted from the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -593,6 +606,9 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	managedItems := h.cacheManagedWAFListItems(list, items)
 	if hasBeforeComments {
+		// Delete-only mutations have no "new expected comment" set. Without a
+		// cached pre-mutation snapshot, every surviving managed item would look
+		// suspicious here simply because we cannot prove its old comment.
 		hintUnexpectedWAFListItemCommentAfterMutation(
 			ppfmt,
 			list,
@@ -615,7 +631,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
-	listID, ok := h.findWAFList(ctx, ppfmt, list, fallbackDescription)
+	listID, ok := h.ensureWAFList(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
 		return false
 	}
@@ -640,7 +656,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	)
 	if err != nil {
 		ppfmt.Noticef(
-			pp.EmojiError, "Could not confirm addition of items to the list %s: %v",
+			pp.EmojiError, "Could not confirm that items were added to the list %s: %v",
 			list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
@@ -654,6 +670,10 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	managedItems := h.cacheManagedWAFListItems(list, items)
 	if hasBeforeComments {
+		// Create mutations may return the whole post-mutation list, not only the
+		// newly created items. Without a cached pre-mutation snapshot, older
+		// managed items with different comments would be indistinguishable from
+		// suspicious post-mutation drift and would trigger false warnings here.
 		hintUnexpectedWAFListItemCommentAfterMutation(
 			ppfmt,
 			list,
