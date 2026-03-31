@@ -31,7 +31,14 @@ func writeFindingsForGithub(output io.Writer, failures, warnings []probeResult) 
 	}
 	githubactions.WriteSummaryFromEnv(output, sections)
 
-	annotations := make([]githubactions.Annotation, 0)
+	annotationCapacity := 0
+	for _, failure := range failures {
+		annotationCapacity += max(1, len(failure.Sources))
+	}
+	for _, warning := range warnings {
+		annotationCapacity += max(1, len(warning.Sources))
+	}
+	annotations := make([]githubactions.Annotation, 0, annotationCapacity)
 	for _, failure := range failures {
 		annotations = append(annotations, annotationsForResult("error", failure)...)
 	}
