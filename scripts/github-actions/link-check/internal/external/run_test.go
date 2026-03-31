@@ -180,7 +180,7 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 				Line: 7,
 			}},
 		})
-		want := "warning: https://containrrr.dev/shoutrrr (301) -> https://containrrr.dev/shoutrrr/ (200) [README.markdown:7]"
+		want := "warning: https://containrrr.dev/shoutrrr (301 Moved Permanently) -> https://containrrr.dev/shoutrrr/ (200 OK) [README.markdown:7]"
 		if got != want {
 			t.Fatalf("unexpected formatted result:\nwant %q\ngot  %q", want, got)
 		}
@@ -198,7 +198,7 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 				Line: 375,
 			}},
 		})
-		want := "failure: https://example.com/missing (404) [CHANGELOG.markdown:375]"
+		want := "failure: https://example.com/missing (404 Not Found) [CHANGELOG.markdown:375]"
 		if got != want {
 			t.Fatalf("unexpected formatted result:\nwant %q\ngot  %q", want, got)
 		}
@@ -233,11 +233,11 @@ func TestWriteFindingsWritesDiagnosticsToStderr(t *testing.T) {
 	output := strings.TrimSpace(stderr.String())
 	if !strings.Contains(
 		output,
-		"warning: https://example.com/old (302) -> https://example.com/new (200) [docs/example.markdown:8]",
+		"warning: https://example.com/old (302 Found) -> https://example.com/new (200 OK) [docs/example.markdown:8]",
 	) {
 		t.Fatalf("expected warning in stderr, got %q", output)
 	}
-	if !strings.Contains(output, "failure: https://example.com/fail (500) [source unknown]") {
+	if !strings.Contains(output, "failure: https://example.com/fail (500 Internal Server Error) [source unknown]") {
 		t.Fatalf("expected failure in stderr, got %q", output)
 	}
 }

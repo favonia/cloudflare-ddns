@@ -52,6 +52,8 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 		cfg.Links.TargetURLs.IgnorePatterns,
 	)
 	_, _ = fmt.Fprintf(stdout, "Collected %d external URLs.\n", len(externalURLs))
+	_, _ = fmt.Fprintf(stdout, "Probing %d URLs across %d hosts (max %d per host, %v delay)...\n",
+		len(externalURLs), countUniqueHosts(externalURLs), cfg.Probe.MaxPerHost, cfg.Probe.PerHostDelay)
 	failures, warnings := runProbe(externalURLs, cfg.Probe)
 	if writeFindings(stderr, failures, warnings) {
 		return 1

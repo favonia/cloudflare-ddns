@@ -1,6 +1,11 @@
 package external
 
-import "github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/scope"
+import (
+	"net/http"
+	"time"
+
+	"github.com/favonia/cloudflare-ddns/scripts/github-actions/link-check/internal/scope"
+)
 
 type targetURLsConfig struct {
 	// IgnoreExact suppresses exact extracted external URLs from probing.
@@ -19,14 +24,20 @@ type linksConfig struct {
 }
 
 type probeConfig struct {
-	// TimeoutSeconds is the per-request timeout for each HEAD or GET probe.
-	TimeoutSeconds float64
+	// Timeout is the per-request timeout for each HEAD or GET probe.
+	Timeout time.Duration
 	// Retries is the number of additional probe attempts after the first probe
 	// cycle returns only network errors.
 	Retries int
 	// MaxWorkers bounds concurrent external probes; values below 1 still run
 	// with one worker.
 	MaxWorkers int
+	// MaxPerHost bounds concurrent probes to the same host; values below 1
+	// still allow one concurrent probe per host.
+	MaxPerHost int
+	// PerHostDelay is the minimum delay between starting consecutive probes
+	// to the same host.
+	PerHostDelay time.Duration
 	// UserAgent is sent with every outbound probe request.
 	UserAgent string
 	// NetworkErrorsAreWarning downgrades final network errors from failures to
@@ -103,14 +114,16 @@ func defaultConfig() config {
 			},
 		},
 		Probe: probeConfig{
-			TimeoutSeconds:          10,
+			Timeout:                 10 * time.Second,
 			Retries:                 1,
 			MaxWorkers:              8,
+			MaxPerHost:              2,
+			PerHostDelay:            500 * time.Millisecond,
 			UserAgent:               "cloudflare-ddns-link-check/1.0",
 			NetworkErrorsAreWarning: false,
 			WarningStatuses: []int{
-				403,
-				429,
+				http.StatusForbidden,
+				http.StatusTooManyRequests,
 			},
 			WarningURLPatterns: []string{},
 		},
