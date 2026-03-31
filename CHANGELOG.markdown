@@ -1,3 +1,28 @@
+# [1.16.1](https://github.com/favonia/cloudflare-ddns/compare/v1.16.0...v1.16.1) (2026-03-31)
+
+This is a bugfix release for the new `static.empty` provider introduced in 1.16.0. If you are not using `static.empty`, this release should not affect you. A nice consequence of these fixes is the following one-shot wipe-all workflow:
+
+- Set `UPDATE_CRON=@once` for a single-run execution.
+- Set `IP4_PROVIDER=static.empty` and `IP6_PROVIDER=static.empty` to clear all managed DNS records and WAF items.
+- Optionally set `DELETE_ON_STOP=true` to make the updater also try to delete the WAF lists themselves.
+
+Note: this workflow is for using the updater as a single-run command, not as a long-running Docker deployment.
+
+## Reminders from the Past
+
+Please provide feedback on the proposed syntax of upcoming features:
+
+- **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)): `IP6_DOMAINS=sub.example.com{hostid6=::2}`
+- **Detection IP filtering** ([#1138](https://github.com/favonia/cloudflare-ddns/issues/1138)): `IP4_DETECTION_FILTER=!addr-in(10.0.0.0/8)`
+
+If you are still using `PUID` and `PGID`, please migrate to Docker’s built-in security mechanism; see the changelogs of previous versions.
+
+## Detailed Changes
+
+### Bug Fixes
+
+- `static.empty` no longer creates a missing WAF list. In addition, `DELETE_ON_STOP=true` with `UPDATE_CRON=@once` is now accepted when every managed IP family uses `static.empty` or `none`. ([#1190](https://github.com/favonia/cloudflare-ddns/pull/1190))
+
 # [1.16.0](https://github.com/favonia/cloudflare-ddns/compare/v1.15.1...v1.16.0) (2026-03-30)
 
 Despite the gap of over a year since the last release, we are not aware of any security vulnerability affecting the default configuration. As always, please review the changelog and watch for warnings or errors when upgrading.
