@@ -49,7 +49,7 @@ func TestHostThrottleConcurrencyLimit(t *testing.T) {
 		var current atomic.Int32
 		var wg sync.WaitGroup
 
-		for range len(urls) {
+		for range urls {
 			wg.Go(func() {
 				host := "example.com"
 				throttle.acquire(host)

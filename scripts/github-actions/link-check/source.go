@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os/exec"
 	"strings"
 )
@@ -8,7 +9,7 @@ import (
 var root = mustProjectRoot()
 
 func mustProjectRoot() string {
-	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	out, err := exec.CommandContext(context.Background(), "git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		panic("cannot determine repo root: " + err.Error())
 	}
