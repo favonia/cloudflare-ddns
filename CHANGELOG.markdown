@@ -12,8 +12,8 @@ Note: this workflow is for using the updater as a single-run command, not as a l
 
 Please provide feedback on the syntax of upcoming features:
 
-- **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)):
-- **Detection IP filtering** ([#1138](https://github.com/favonia/cloudflare-ddns/issues/1138)):
+- **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)): `IP6_DOMAINS=sub.example.com{hostid6=::2}`
+- **Detection IP filtering** ([#1138](https://github.com/favonia/cloudflare-ddns/issues/1138)): `IP4_DETECTION_FILTER=!addr-in(10.0.0.0/8)`
 
 If you are still using `PUID` and `PGID`, please migrate to Docker’s built-in security mechanism; see the changelogs of previous versions.
 
