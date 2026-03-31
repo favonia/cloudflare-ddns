@@ -38,7 +38,7 @@ Also planned: a linter for boolean expressions targeting advanced usage of `PROX
 
 ## Reminder from the Past
 
-As a reminder, since 1.13.0, **the updater no longer drops privileges internally, and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+As a reminder, since 1.13.0, **the updater no longer drops privileges internally, and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
 
 ## Other Notes
 
@@ -76,7 +76,7 @@ This is a minor release that modifies the Cloudflare URLs used by the IP provide
 
 For enhanced debugging capabilities, we have introduced a new Docker tag, `edge-alpine`. This tag provides a full Alpine Linux environment, offering basic system tools and libraries. Please note that this image is larger than the standard development tag `edge` and is not minimal.
 
-As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
 
 ### Bug Fixes
 
@@ -96,9 +96,9 @@ This is a major release with many improvements:
 1. **New `CLOUDFLARE_*` variables**: Cloudflare is transitioning its tools to use the new prefix `CLOUDFLARE_*`. Therefore, the updater now accepts `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_API_TOKEN_FILE`. The old `CF_API_TOKEN` and `CF_API_TOKEN_FILE` will still be fully supported until 2.0.0, then deprecated (but still supported) until 3.0.0.
 2. **Improved custom IP providers**: The updater now forces IPv4 or IPv6 when connecting to custom IP providers `url:<URL>`. This solves a long-standing issue where custom providers couldn't be used on dual-stack machines supporting both IPv4 and IPv6. This enforcement ensures predictable IPv4/IPv6 detection on such machines.
 3. **Stricter IP validation**: The updater now rejects unusual IP addresses for updating DNS records, such as link-local addresses or IPv4-mapped IPv6 addresses for AAAA records. These addresses are unsuitable and may cause trouble.
-4. **Experimental support of using a network interface’s IP address** (not finalized until 1.16.0): Experimental support lets you use the address assigned to a specific network interface, bypassing the routing table used by the `local` provider. The syntax for this feature is under development and will not be finalized until 1.16.0. Please refer to [README](./README.markdown) and join the discussion on [GitHub issue #713](https://github.com/favonia/cloudflare-ddns/issues/713) if you are interested.
+4. **Experimental support of using a network interface’s IP address** (not finalized until 1.16.0): Experimental support lets you use the address assigned to a specific network interface, bypassing the routing table used by the `local` provider. The syntax for this feature is under development and will not be finalized until 1.16.0. Please refer to [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) and join the discussion on [GitHub issue #713](https://github.com/favonia/cloudflare-ddns/issues/713) if you are interested.
 
-As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](./README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
+As a reminder, since 1.13.0, **the updater no longer drops superuser privileges and `PUID` and `PGID` are ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant unneeded privileges to the new updater, which is not recommended. Please review the new, simpler, and more secure template in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown). In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. Similar options may exist for systems not using Docker Compose.
 
 ### Bug Fixes
 
@@ -139,15 +139,15 @@ This is a minor release that addresses minor issues and improves the usability o
 
 # [1.14.0](https://github.com/favonia/cloudflare-ddns/compare/v1.13.2...v1.14.0) (2024-08-25)
 
-This is a major release with many improvements! The most significant new feature is the ability to maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/) of detected IP addresses; you can then refer to the list in your firewall rules. Please consult the [README](./README.markdown). The second most important update is to use a variant of [the Happy Eyeballs (Fast Fallback) algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to detect the blockage of 1.1.1.1. As the name of the new algorithm suggests, you should not notice any delay due to the detection, being happy. 😄
+This is a major release with many improvements! The most significant new feature is the ability to maintain a [WAF list](https://developers.cloudflare.com/waf/tools/lists/) of detected IP addresses; you can then refer to the list in your firewall rules. Please consult the [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown). The second most important update is to use a variant of [the Happy Eyeballs (Fast Fallback) algorithm](https://en.wikipedia.org/wiki/Happy_Eyeballs) to detect the blockage of 1.1.1.1. As the name of the new algorithm suggests, you should not notice any delay due to the detection, being happy. 😄
 
-As a reminder, since 1.13.0, **the updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant the new updater unneeded privileges, which is not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. If you are not using Docker Compose, chances are your system supports similar options under different names.
+As a reminder, since 1.13.0, **the updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old Docker Compose template may grant the new updater unneeded privileges, which is not recommended. Please review the new template in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove the `cap_add` attribute and replace the environment variables `PUID` and `PGID` with the [`user: "UID:GID"` attribute](https://docs.docker.com/reference/compose-file/services/#user)**. If you are not using Docker Compose, chances are your system supports similar options under different names.
 
 Other notable changes:
 
 1. The global Cloudflare account ID will no longer be used when searching for DNS zones. `CF_ACCOUNT_ID` will be ignored.
 2. To reduce network traffic and delay, the Cloudflare API token will no longer be additionally verified via [Cloudflare’s token verification API](https://developers.cloudflare.com/api/operations/user-api-tokens-verify-token). Instead, the updater will locally check whether the token looks like a valid [Bearer Token](https://oauth.net/2/bearer-tokens/) before using the API.
-3. Many parts of the [README](./README.markdown) have been rewritten to improve clarity and to document the support of WAF lists.
+3. Many parts of the [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) have been rewritten to improve clarity and to document the support of WAF lists.
 4. The DNS record updating algorithm was revised to be more deterministic, which means the updater will not give up updating stale DNS records (and create new ones) when there are errors; it will simply try again next time. As a result, in very rare cases, the updater may need more rounds to recover from errors.
 
 ### Bug Fixes
@@ -168,7 +168,7 @@ Other notable changes:
 
 # [1.13.2](https://github.com/favonia/cloudflare-ddns/compare/v1.13.1...v1.13.2) (2024-07-23)
 
-This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](./README.markdown)) with `user: ...` (not `PUID` or `PGID`) to explicitly set the user and group IDs, this release does not affect you.
+This is a quick release to change the default user/group IDs of the shipped Docker images to 1000 (instead of 0, the `root`). The change will help _many_ people use the Docker images more safely. You are still encouraged to review whether the default ID 1000 is what you want. If you have already adopted the new recommended Docker template (in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)) with `user: ...` (not `PUID` or `PGID`) to explicitly set the user and group IDs, this release does not affect you.
 
 # [1.13.1](https://github.com/favonia/cloudflare-ddns/compare/v1.13.0...v1.13.1) (2024-07-19)
 
@@ -180,11 +180,11 @@ This is a very minor release that improves the error messages produced by the ne
 
 # [1.13.0](https://github.com/favonia/cloudflare-ddns/compare/v1.12.0...v1.13.0) (2024-07-16)
 
-This is a major release that no longer drops superuser privileges. Please review the instructions in [README](./README.markdown) for the new recommended setup.
+This is a major release that no longer drops superuser privileges. Please review the instructions in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) for the new recommended setup.
 
 ### BREAKING CHANGES
 
-- **The updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old, hacky Docker Compose template will grant the new updater unneeded privileges, which is less secure and not recommended. Please review the new template in [README](./README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove `cap_add` completely and add `user: ...`** as
+- **The updater will no longer drop superuser privileges and `PUID` and `PGID` will be ignored.** Please use Docker’s built-in mechanism to drop privileges. The old, hacky Docker Compose template will grant the new updater unneeded privileges, which is less secure and not recommended. Please review the new template in [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) that is simpler and more secure when combined with the new updater. In a nutshell, **remove `cap_add` completely and add `user: ...`** as
 
   ```yaml
   user: "1000:1000"
