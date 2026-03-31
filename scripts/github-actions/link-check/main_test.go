@@ -70,7 +70,10 @@ func TestRunLocalSubcommand(t *testing.T) {
 	if exitCode != 0 {
 		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
 	}
-	if strings.TrimSpace(stdout.String()) != "Local link checks passed." {
+	if !strings.Contains(stdout.String(), "Repo root:") {
+		t.Fatalf("expected repo root in stdout, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "Local link checks passed.") {
 		t.Fatalf("unexpected stdout %q", stdout.String())
 	}
 	if stderr.Len() != 0 {
@@ -93,6 +96,9 @@ func TestRunExternalSubcommand(t *testing.T) {
 		t.Fatalf("expected exit code 0, got %d with stderr %q", exitCode, stderr.String())
 	}
 	output := stdout.String()
+	if !strings.Contains(output, "Repo root:") {
+		t.Fatalf("expected repo root in stdout, got %q", output)
+	}
 	if !strings.Contains(output, "Collected 0 external URLs.") {
 		t.Fatalf("expected collected count, got %q", output)
 	}

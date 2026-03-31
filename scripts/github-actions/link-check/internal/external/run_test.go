@@ -41,17 +41,6 @@ func TestCollectURLsKeepsSourceLocations(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigIgnoresSameRepoIssueURLs(t *testing.T) {
-	cfg := defaultConfig()
-
-	if !slices.Contains(
-		cfg.Links.TargetURLs.IgnorePatterns,
-		"^https://github\\.com/favonia/cloudflare-ddns/issues/[0-9]+$",
-	) {
-		t.Fatal("expected default config to ignore same-repo issue URLs")
-	}
-}
-
 func TestDefaultConfigIgnoresOperationalEndpoints(t *testing.T) {
 	cfg := defaultConfig()
 
@@ -150,7 +139,7 @@ func TestShouldSuppressWarningUsesPolicyHooks(t *testing.T) {
 
 func TestFormatResultUsesClearCategories(t *testing.T) {
 	t.Run("network error", func(t *testing.T) {
-		got := formatResult("warning", probeResult{
+		got := formatResult(probeResult{
 			URL:  "https://api6.ipify.org",
 			Err:  "dial tcp [2607:f2d8:1:3c::4]:443: connect: network is unreachable",
 			Hops: []probeHop{{URL: "https://api6.ipify.org"}},
@@ -159,7 +148,7 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 				Line: 12,
 			}},
 		})
-		want := "warning: network error: https://api6.ipify.org " +
+		want := "network error: https://api6.ipify.org " +
 			"(network error: dial tcp [2607:f2d8:1:3c::4]:443: connect: network is unreachable) " +
 			"[docs/example.markdown:12]"
 		if got != want {
@@ -168,7 +157,7 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 	})
 
 	t.Run("redirect", func(t *testing.T) {
-		got := formatResult("warning", probeResult{
+		got := formatResult(probeResult{
 			URL:    "https://containrrr.dev/shoutrrr",
 			Status: 200,
 			Hops: []probeHop{
@@ -180,14 +169,14 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 				Line: 7,
 			}},
 		})
-		want := "warning: https://containrrr.dev/shoutrrr (301) -> https://containrrr.dev/shoutrrr/ (200) [README.markdown:7]"
+		want := "https://containrrr.dev/shoutrrr (301 Moved Permanently) -> https://containrrr.dev/shoutrrr/ (200 OK) [README.markdown:7]"
 		if got != want {
 			t.Fatalf("unexpected formatted result:\nwant %q\ngot  %q", want, got)
 		}
 	})
 
 	t.Run("status", func(t *testing.T) {
-		got := formatResult("failure", probeResult{
+		got := formatResult(probeResult{
 			URL:    "https://example.com/missing",
 			Status: 404,
 			Hops: []probeHop{
@@ -198,7 +187,7 @@ func TestFormatResultUsesClearCategories(t *testing.T) {
 				Line: 375,
 			}},
 		})
-		want := "failure: https://example.com/missing (404) [CHANGELOG.markdown:375]"
+		want := "https://example.com/missing (404 Not Found) [CHANGELOG.markdown:375]"
 		if got != want {
 			t.Fatalf("unexpected formatted result:\nwant %q\ngot  %q", want, got)
 		}
@@ -233,11 +222,11 @@ func TestWriteFindingsWritesDiagnosticsToStderr(t *testing.T) {
 	output := strings.TrimSpace(stderr.String())
 	if !strings.Contains(
 		output,
-		"warning: https://example.com/old (302) -> https://example.com/new (200) [docs/example.markdown:8]",
+		"warning: https://example.com/old (302 Found) -> https://example.com/new (200 OK) [docs/example.markdown:8]",
 	) {
 		t.Fatalf("expected warning in stderr, got %q", output)
 	}
-	if !strings.Contains(output, "failure: https://example.com/fail (500) [source unknown]") {
+	if !strings.Contains(output, "failure: https://example.com/fail (500 Internal Server Error) [source unknown]") {
 		t.Fatalf("expected failure in stderr, got %q", output)
 	}
 }
