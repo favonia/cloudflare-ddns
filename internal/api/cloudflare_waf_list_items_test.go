@@ -216,19 +216,7 @@ func TestListWAFListItems(t *testing.T) {
 			"",
 			nil,
 		},
-		"create": {
-			nil,
-			[]listMeta{},
-			1,
-			listMeta{name: "list", size: 5, kind: cloudflare.ListTypeIP},
-			1,
-			nil,
-			0,
-			true, false, nil,
-			"",
-			nil,
-		},
-		"create-fail": {
+		"missing": {
 			nil,
 			[]listMeta{},
 			1,
@@ -236,11 +224,9 @@ func TestListWAFListItems(t *testing.T) {
 			0,
 			nil,
 			0,
-			false, false, nil,
+			true, false, nil,
 			"",
-			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm creation of the list %s: %v", "account456/list", gomock.Any())
-			},
+			nil,
 		},
 		"list-fail": {
 			nil,
@@ -617,7 +603,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of items from the list %s: %v", "account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that items were deleted from the list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {
@@ -724,7 +710,9 @@ func TestCreateWAFListItems(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
+		lists                 []listMeta
 		listRequestLimit      int
+		createListLimit       int
 		itemsToCreate         []api.WAFListCreateItem
 		createRequestLimit    int
 		listItemsResponse     []listItem
@@ -733,20 +721,37 @@ func TestCreateWAFListItems(t *testing.T) {
 		prepareMocks          func(*mocks.MockPP)
 	}{
 		"success": {
-			1,
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			1, 0,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
 				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
 			},
 			1,
-			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: ""}, {ID: "", Prefix: "2001:db8::/32", Comment: ""}, {ID: "", Prefix: "10.0.0.0/20", Comment: ""}},
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: "item comment"}, {ID: "", Prefix: "2001:db8::/32", Comment: "item comment"}, {ID: "", Prefix: "10.0.0.0/20", Comment: "item comment"}},
 			1,
 			true,
 			nil,
 		},
-		"empty": {0, nil, 0, nil, 0, true, nil},
+		"missing-list/create-list-and-items": {
+			nil,
+			1, 1,
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
+			},
+			1,
+			[]listItem{{ID: "", Prefix: "10.0.0.1/32", Comment: "item comment"}, {ID: "", Prefix: "2001:db8::/32", Comment: "item comment"}},
+			1,
+			true,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", "account456/list")
+			},
+		},
+		"empty": {nil, 0, 0, nil, 0, nil, 0, true, nil},
 		"list-fail": {
-			0,
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			0, 0,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
 				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
@@ -760,8 +765,9 @@ func TestCreateWAFListItems(t *testing.T) {
 				)
 			},
 		},
-		"create-fail": {
-			1,
+		"create-list-fail": {
+			nil,
+			1, 0,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
 				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
@@ -769,11 +775,25 @@ func TestCreateWAFListItems(t *testing.T) {
 			0, nil, 0,
 			false,
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm addition of items to the list %s: %v", "account456/list", gomock.Any())
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that the list %s was created: %v", "account456/list", gomock.Any())
+			},
+		},
+		"create-fail": {
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			1, 0,
+			[]api.WAFListCreateItem{
+				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
+				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
+			},
+			0, nil, 0,
+			false,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that items were added to the list %s: %v", "account456/list", gomock.Any())
 			},
 		},
 		"list-items-invalid": {
-			1,
+			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
+			1, 0,
 			[]api.WAFListCreateItem{
 				{Prefix: netip.MustParsePrefix("10.0.0.1/16"), Comment: "item comment"},
 				{Prefix: netip.MustParsePrefix("2001:db8::1/96"), Comment: "item comment"},
@@ -795,23 +815,33 @@ func TestCreateWAFListItems(t *testing.T) {
 			t.Parallel()
 
 			f := newCloudflareHarness(t)
-			lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}})
+			lh := newListListsHandler(t, f.serveMux, tc.lists)
+			clh := newCreateListHandler(t, f.serveMux,
+				cloudflare.ListCreateRequest{
+					Name:        mockWAFList.Name,
+					Description: "description",
+					Kind:        cloudflare.ListTypeIP,
+				},
+				listMeta{name: "list", size: 0, kind: cloudflare.ListTypeIP},
+			)
 			cih := newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.itemsToCreate)
 			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItemsResponse)
 
 			lh.setRequestLimit(tc.listRequestLimit)
+			clh.setRequestLimit(tc.createListLimit)
 			cih.setRequestLimit(tc.createRequestLimit)
 			lih.setRequestLimit(tc.listItemsRequestLimit)
 			ok := f.cfHandle.CreateWAFListItems(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description", tc.itemsToCreate)
 			require.Equal(t, tc.ok, ok)
-			assertHandlersExhausted(t, lh, cih, lih)
+			assertHandlersExhausted(t, lh, clh, cih, lih)
 
 			if tc.ok {
+				clh.setRequestLimit(0)
 				cih.setRequestLimit(tc.createRequestLimit)
 				lih.setRequestLimit(tc.listItemsRequestLimit)
 				ok = f.cfHandle.CreateWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", tc.itemsToCreate)
 				require.Equal(t, tc.ok, ok)
-				assertHandlersExhausted(t, lh, cih, lih)
+				assertHandlersExhausted(t, lh, clh, cih, lih)
 			}
 		})
 	}
@@ -851,16 +881,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 	require.Empty(t, managedItems)
 
 	ppfmt := f.newPP()
-	ppfmt.EXPECT().Noticef(
-		pp.EmojiUserWarning,
-		"After updating the list %s, the comment on the item %s (ID: %s) is %s, which is unexpected given allowed post-mutation comments (%s) and pre-update cache state. Found %d managed WAF list item(s) with this anomaly.",
-		"account456/list",
-		"10.0.0.1/32",
-		api.ID("new-item"),
-		`"unexpected"`,
-		`"expected"`,
-		1,
-	)
+	ppfmt.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", "account456/list")
 
 	ok = f.cfHandle.CreateWAFListItems(context.Background(), ppfmt, mockWAFList, "description", itemsToCreate)
 	require.True(t, ok)

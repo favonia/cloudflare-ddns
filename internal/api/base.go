@@ -136,7 +136,7 @@ type Handle interface {
 	) bool
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
-	// It creates the list if it does not exist.
+	// It does not create the list if it does not exist.
 	//
 	// The managed-item selector is bound into the handle options because
 	// implementations may cache filtered items by WAF-list scope.

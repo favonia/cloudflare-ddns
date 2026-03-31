@@ -79,6 +79,8 @@ type Setter interface {
 	//   intent for that family
 	// - present + Available=true with a non-empty target list carries a deterministic
 	//   target set (sorted, deduplicated)
+	// - when the list is missing, preserve/unavailable/explicit-empty families do
+	//   not force structural creation by themselves
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,

@@ -59,6 +59,7 @@ WAF instantiates the reconciliation algorithm with these resource-specific rules
 - overlapping managed coverage may remain
 - retained coverage sets may stay history-dependent
 - already-satisfying item metadata is soft unless another WAF-specific contract overrides it
+- empty desired managed content is satisfied by either a missing list or an existing empty list
 
 ### Metadata for New Creates
 
@@ -85,6 +86,8 @@ WAF refines the shared residual-risk policy with these tiers:
 ### Failure and Shutdown Semantics
 
 WAF uses the shared reconciliation-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
+
+Ordinary reconciliation may clear managed items from an existing list, but it does not actively delete the whole list.
 
 ## Deletion Eligibility
 
