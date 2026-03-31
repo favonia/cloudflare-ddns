@@ -293,8 +293,8 @@ func expectWAFListNoop(
 ) {
 	calls := []any{
 		expectWAFListRead(ctx, p, m, list, want.listDescription, want.createComment, items, want.alreadyExisting, want.cached, true),
+		expectWAFListNoopNotice(p, list, want.cached),
 	}
-	calls = append(calls, expectWAFListNoopNotice(p, list, want.cached))
 	gomock.InOrder(calls...)
 }
 

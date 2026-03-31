@@ -201,13 +201,14 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		}
 	}
 
-	if c.UpdateCron == nil && c.DeleteOnStop && !(ip4Off && ip6Off) {
+	if c.UpdateCron == nil && c.DeleteOnStop && (!ip4Off || !ip6Off) {
 		switch {
 		case providerMap[ipnet.IP4] != nil && !providerMap[ipnet.IP4].IsExplicitEmpty() &&
 			providerMap[ipnet.IP6] != nil && !providerMap[ipnet.IP6].IsExplicitEmpty():
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER and IP6_PROVIDER to be static.empty or none; got IP4_PROVIDER=%q and IP6_PROVIDER=%q",
+				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER and IP6_PROVIDER "+
+					"to be static.empty or none; got IP4_PROVIDER=%q and IP6_PROVIDER=%q",
 				provider.Name(providerMap[ipnet.IP4]),
 				provider.Name(providerMap[ipnet.IP6]),
 			)
