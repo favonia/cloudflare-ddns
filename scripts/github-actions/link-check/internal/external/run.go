@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -19,8 +20,9 @@ import (
 func Run(root string, args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("link-check external", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	runPattern := flags.String("run", "", "probe only URLs matching this regexp (like go test -run)")
 	flags.Usage = func() {
-		_, _ = fmt.Fprintln(stderr, "Usage: link-check external")
+		_, _ = fmt.Fprintln(stderr, "Usage: link-check external [-run pattern]")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -33,12 +35,23 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	var runFilter *regexp.Regexp
+	if *runPattern != "" {
+		var err error
+		runFilter, err = regexp.Compile(*runPattern)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "invalid -run pattern: %v\n", err)
+			return 1
+		}
+	}
+
 	trackedFiles, err := scope.TrackedFiles(root)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 1
 	}
 
+	_, _ = fmt.Fprintf(stdout, "Repo root: %s\n", root)
 	cfg := defaultConfig()
 	externalFiles := scope.FilterFiles(
 		trackedFiles,
@@ -52,9 +65,19 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 		cfg.Links.TargetURLs.IgnorePatterns,
 	)
 	_, _ = fmt.Fprintf(stdout, "Collected %d external URLs.\n", len(externalURLs))
+	if runFilter != nil {
+		filtered := externalURLs[:0]
+		for _, link := range externalURLs {
+			if runFilter.MatchString(link.URL) {
+				filtered = append(filtered, link)
+			}
+		}
+		externalURLs = filtered
+		_, _ = fmt.Fprintf(stdout, "Filtered to %d URLs matching %q.\n", len(externalURLs), runFilter.String())
+	}
 	_, _ = fmt.Fprintf(stdout, "Probing %d URLs across %d hosts (max %d per host, %v delay)...\n",
 		len(externalURLs), countUniqueHosts(externalURLs), cfg.Probe.MaxPerHost, cfg.Probe.PerHostDelay)
-	failures, warnings := runProbe(externalURLs, cfg.Probe)
+	failures, warnings := runProbe(externalURLs, cfg.Probe, stdout)
 	if writeFindings(stderr, failures, warnings) {
 		return 1
 	}

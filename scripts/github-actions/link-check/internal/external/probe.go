@@ -47,7 +47,7 @@ type probeHop struct {
 
 // runProbe probes the collected external URLs and classifies each outcome as a
 // failure or warning according to probe policy.
-func runProbe(urls []extract.ExternalLink, cfg probeConfig) ([]probeResult, []probeResult) {
+func runProbe(urls []extract.ExternalLink, cfg probeConfig, stdout io.Writer) ([]probeResult, []probeResult) {
 	warningStatuses := map[int]bool{}
 	for _, status := range cfg.WarningStatuses {
 		warningStatuses[status] = true
@@ -80,22 +80,34 @@ func runProbe(urls []extract.ExternalLink, cfg probeConfig) ([]probeResult, []pr
 		close(results)
 	}()
 
+	total := len(urls)
+	completed := 0
+	width := len(fmt.Sprint(total))
 	failures := make([]probeResult, 0)
 	warnings := make([]probeResult, 0)
 	for result := range results {
+		completed++
+		progress := fmt.Sprintf("[%*d/%d]", width, completed, total)
 		if shouldSuppressWarning(result) {
+			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
 			continue
 		}
 		softWarning := anyRegexpMatch(warningPatterns, result.URL)
 		switch {
 		case softWarning || (cfg.NetworkErrorsAreWarning && result.Status == 0):
+			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("warning", result))
 			warnings = append(warnings, result)
 		case result.Status == 0:
+			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("FAILURE", result))
 			failures = append(failures, result)
 		case result.Status >= 400 && !warningStatuses[result.Status]:
+			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("FAILURE", result))
 			failures = append(failures, result)
 		case warningStatuses[result.Status] || len(result.Hops) > 1:
+			_, _ = fmt.Fprintf(stdout, "%s %s\n", progress, formatResult("warning", result))
 			warnings = append(warnings, result)
+		default:
+			_, _ = fmt.Fprintf(stdout, "%s ok: %s\n", progress, formatProbeChain(result))
 		}
 	}
 

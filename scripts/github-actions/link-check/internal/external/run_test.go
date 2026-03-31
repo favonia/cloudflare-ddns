@@ -41,17 +41,6 @@ func TestCollectURLsKeepsSourceLocations(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigIgnoresSameRepoIssueURLs(t *testing.T) {
-	cfg := defaultConfig()
-
-	if !slices.Contains(
-		cfg.Links.TargetURLs.IgnorePatterns,
-		"^https://github\\.com/favonia/cloudflare-ddns/issues/[0-9]+$",
-	) {
-		t.Fatal("expected default config to ignore same-repo issue URLs")
-	}
-}
-
 func TestDefaultConfigIgnoresOperationalEndpoints(t *testing.T) {
 	cfg := defaultConfig()
 

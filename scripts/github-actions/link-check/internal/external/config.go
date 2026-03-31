@@ -101,9 +101,6 @@ func defaultConfig() config {
 					"^https?:///",
 					"^https?://(?:0\\.0\\.0\\.0|1\\.2\\.3\\.4)(?:[/:?]|$)",
 					"^https?://[^/\\s]*example(?:\\.com)?(?:[/:?]|$)",
-					// Same-repo GitHub issue URLs are stable identifiers, so probing them adds
-					// rate-limit noise rather than meaningful link-rot coverage.
-					"^https://github\\.com/favonia/cloudflare-ddns/issues/[0-9]+$",
 					"^https://(?:healthchecks|uptime)\\.example(?:[/:?]|$)",
 					"^https://hc-ping\\.com/01234567-0123-0123-0123-0123456789abc$",
 					"^https://localhost(?:[/:?]|$)",

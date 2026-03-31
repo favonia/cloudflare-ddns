@@ -1,16 +1,16 @@
 package main
 
 import (
-	"path/filepath"
-	"runtime"
+	"os/exec"
+	"strings"
 )
 
 var root = mustProjectRoot()
 
 func mustProjectRoot() string {
-	_, sourceFile, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("cannot determine source path")
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		panic("cannot determine repo root: " + err.Error())
 	}
-	return filepath.Clean(filepath.Dir(sourceFile))
+	return strings.TrimSpace(string(out))
 }

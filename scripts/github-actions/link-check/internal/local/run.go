@@ -41,6 +41,7 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	_, _ = fmt.Fprintf(stdout, "Repo root: %s\n", root)
 	cfg := defaultConfig()
 	markdownFiles := scope.FilterFiles(
 		trackedFiles,
