@@ -8,11 +8,13 @@ Does not define: `README.markdown` writing rules, feature semantics, or exact pa
 
 This note records the durable operator-message consequences of the project principles. It is not a general prose style guide.
 
-## Draft The Message First
+## Design From The Final Message
 
-- Start by drafting the final operator-visible message in plain, clear, natural English.
-- Then write or refactor the code so it generates that message shape intentionally, instead of letting implementation details dictate the wording.
-- Use the later sections of this note as constraints on that drafting process. They refine what "plain, clear, natural English" means in this repository when honesty, consistency, or channel-specific formatting matters.
+- Design operator-facing wording from the final operator-visible message, not from internal implementation structure.
+- You do not need to literally draft the message first, but the final wording must be equivalent to having started there.
+- Refactor the code as needed so it generates that message shape intentionally.
+- If the wording sounds driven by parser tokens, placeholders, helper names, or other implementation details, rewrite it.
+- Use the later sections of this note as constraints on that outcome.
 
 ## One-Time Detail When It Helps
 

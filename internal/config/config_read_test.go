@@ -94,6 +94,8 @@ func TestReadEnvEmpty(t *testing.T) {
 func TestBuildConfig(t *testing.T) {
 	t.Parallel()
 
+	// Keep PROXIED coverage here minimal and integration-focused:
+	// parser behavior is tested comprehensively in internal/domainexp/parser_test.go.
 	keyProxied := "PROXIED"
 	keyManagedRecordsCommentRegex := "MANAGED_RECORDS_COMMENT_REGEX"
 	keyManagedWAFListItemsCommentRegex := "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX"
@@ -1425,6 +1427,50 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
+				)
+			},
+		},
+		"proxied/empty-list": {
+			input: &config.RawConfig{ //nolint:exhaustruct
+				IP4DefaultPrefixLen: 32,
+				IP6DefaultPrefixLen: 64,
+				UpdateOnStart:       true,
+				Provider: map[ipnet.Family]provider.Provider{
+					ipnet.IP6: provider.NewCloudflareTrace(),
+				},
+				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				ProxiedExpression: "is()",
+			},
+			ok: true,
+			expected: &builtConfig{
+				handle: &config.HandleConfig{ //nolint:exhaustruct
+					Options: api.HandleOptions{}, //nolint:exhaustruct
+				},
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+					UpdateOnStart: true,
+				},
+				update: &config.UpdateConfig{ //nolint:exhaustruct
+					Provider: map[ipnet.Family]provider.Provider{
+						ipnet.IP6: provider.NewCloudflareTrace(),
+					},
+					Domains: map[ipnet.Family][]domain.Domain{
+						ipnet.IP4: nil,
+						ipnet.IP6: {domain.FQDN("a.b.c")},
+					},
+					DefaultPrefixLen: defaultPrefixLen(),
+					Proxied: map[domain.Domain]bool{
+						domain.FQDN("a.b.c"): false,
+					},
+				},
+			},
+			prepareMockPP: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().IsShowing(pp.Info).Return(true),
+					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
+					m.EXPECT().Indent().Return(m),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
+						keyProxied, "is()", "is"),
 				)
 			},
 		},
