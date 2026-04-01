@@ -37,7 +37,7 @@ func tokenHasMatchingQuotes(token string) bool {
 	}
 }
 
-func rejectQuotedToken(ppfmt pp.PP, token, tokenKey string) bool {
+func ensureTokenNotQuoted(ppfmt pp.PP, token, tokenKey string) bool {
 	if !tokenHasMatchingQuotes(token) {
 		return true
 	}
@@ -72,7 +72,7 @@ func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 		return "", "", false
 	}
 
-	if !rejectQuotedToken(ppfmt, token, tokenKey) {
+	if !ensureTokenNotQuoted(ppfmt, token, tokenKey) {
 		return "", "", false
 	}
 
@@ -95,7 +95,7 @@ func readAuthTokenFile(ppfmt pp.PP, key string) (string, bool) {
 		return "", false
 	}
 
-	if !rejectQuotedToken(ppfmt, token, key) {
+	if !ensureTokenNotQuoted(ppfmt, token, key) {
 		return "", false
 	}
 
