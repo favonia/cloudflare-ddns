@@ -686,7 +686,7 @@ func TestBuildConfig(t *testing.T) {
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-							ManagedRecordsCommentRegex:        regexp.MustCompile("he"),
+							ManagedRecordsCommentRegex:        regexp.MustCompile(""),
 							ManagedWAFListItemsCommentRegex:   nil,
 							AllowWholeWAFListDeleteOnShutdown: false,
 						},
@@ -1202,11 +1202,7 @@ func TestBuildConfig(t *testing.T) {
 			ok: true,
 			expected: &builtConfig{
 				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{ //nolint:exhaustruct
-						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-							ManagedWAFListItemsCommentRegex: regexp.MustCompile(strings.Repeat(".", 49)),
-						},
-					},
+					Options: api.HandleOptions{}, //nolint:exhaustruct
 				},
 				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
 					UpdateOnStart: true,
@@ -1513,8 +1509,6 @@ func TestBuildConfig(t *testing.T) {
 				require.NotNil(t, builtConfig.Update)
 				require.NotNil(t, builtConfig.Handle.Options.ManagedRecordsCommentRegex)
 				require.NotNil(t, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex)
-				require.Equal(t, raw.ManagedRecordsCommentRegex, builtConfig.Handle.Options.ManagedRecordsCommentRegex.String())
-				require.Equal(t, raw.ManagedWAFListItemsCommentRegex, builtConfig.Handle.Options.ManagedWAFListItemsCommentRegex.String())
 
 				expectedHandle := *tc.expected.handle
 				if expectedHandle.Options.ManagedRecordsCommentRegex == nil {

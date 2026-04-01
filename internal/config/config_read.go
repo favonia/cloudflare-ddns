@@ -1,5 +1,7 @@
 package config
 
+// vim:foldmethod=marker
+
 import (
 	"regexp"
 
@@ -97,53 +99,24 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		ppfmt = ppfmt.Indent()
 	}
 
+	// Normalizing domains for Check 1
 	domains := normalizeDomainMap(c)
 
-	// Step 1: is there something to do?
+	// Check 1: is there anything to do? {{{
 	if len(domains[ipnet.IP4]) == 0 && len(domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
 		ppfmt.Noticef(pp.EmojiUserError, "Nothing was specified in DOMAINS, IP4_DOMAINS, IP6_DOMAINS, or WAF_LISTS")
 		return nil, false
 	}
-
-	// Part 2: check UpdateOnStart.
 	if c.UpdateCron == nil && !c.UpdateOnStart {
-		ppfmt.Noticef(
-			pp.EmojiUserError,
-			"UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
+		ppfmt.Noticef(pp.EmojiUserError, "UPDATE_ON_START=false is incompatible with UPDATE_CRON=@once")
 		return nil, false
 	}
+	// }}}
 
-	// Step 2.5: compile the ownership selectors for managed DNS records and WAF list items.
-	managedRecordsCommentRegex, err := regexp.Compile(c.ManagedRecordsCommentRegex)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"MANAGED_RECORDS_COMMENT_REGEX=%q is invalid: %v",
-			c.ManagedRecordsCommentRegex, err)
-		return nil, false
-	}
-	if !managedRecordsCommentRegex.MatchString(c.RecordComment) {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
-			c.RecordComment, c.ManagedRecordsCommentRegex)
-		return nil, false
-	}
-	managedWAFListItemsCommentRegex, err := regexp.Compile(c.ManagedWAFListItemsCommentRegex)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q is invalid: %v",
-			c.ManagedWAFListItemsCommentRegex, err)
-		return nil, false
-	}
-	if !managedWAFListItemsCommentRegex.MatchString(c.WAFListItemComment) {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q",
-			c.WAFListItemComment, c.ManagedWAFListItemsCommentRegex)
-		return nil, false
-	}
-
-	// Step 3: normalize domains and providers.
+	// Check 2: after changing unused IP4/6_PROVIDER to 'none', is there even anything to do? {{{
 	providerMap := map[ipnet.Family]provider.Provider{}
 	activeDomainSet := map[domain.Domain]bool{}
+	// Check 2a: changing unused providers to 'none'
 	for ipFamily, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
 			domainsForFamily := domains[ipFamily]
@@ -162,75 +135,136 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			}
 		}
 	}
-
-	// Step 3.2a: check if all providers were turned off.
-	// Step 3.2b: check if UPDATE_CRON=@once and DELETE_ON_STOP=true and not all providers are off.
-
-	if providerMap[ipnet.IP4] == nil && providerMap[ipnet.IP6] == nil {
+	// Check 2b: after changing unused providers to 'none', are all providers 'none'?
+	ip4Managed := providerMap[ipnet.IP4] != nil
+	ip6Managed := providerMap[ipnet.IP6] != nil
+	if !ip4Managed && !ip6Managed {
 		ppfmt.Noticef(pp.EmojiUserError, "Nothing to update because both IP4_PROVIDER and IP6_PROVIDER are %q",
 			provider.Name(nil))
 		return nil, false
 	}
 
-	ip4Off := providerMap[ipnet.IP4] == nil || providerMap[ipnet.IP4].IsExplicitEmpty()
-	ip6Off := providerMap[ipnet.IP6] == nil || providerMap[ipnet.IP6].IsExplicitEmpty()
-	switch {
-	case ip4Off && ip6Off:
-		var targetDesc string
-		switch {
-		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
-			targetDesc = "managed DNS records and WAF IP items for the configured scope"
-		case len(activeDomainSet) > 0:
-			targetDesc = "managed DNS records for the configured domains"
-		case len(c.WAFLists) > 0:
-			targetDesc = "managed WAF IP items for the configured lists"
-		}
-
-		ip4Managed := providerMap[ipnet.IP4] != nil
-		ip6Managed := providerMap[ipnet.IP6] != nil
-		switch {
-		case ip4Managed && ip6Managed:
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s", targetDesc)
-		case ip4Managed:
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
-				targetDesc, provider.Name(nil))
-		case ip6Managed:
-			ppfmt.Noticef(pp.EmojiUserWarning,
-				"IP6_PROVIDER is configured to clear %s while IP4_PROVIDER is %q",
-				targetDesc, provider.Name(nil))
-		}
-
-	case c.UpdateCron == nil && c.DeleteOnStop:
+	// Check 2c: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?
+	ip4Off := !ip4Managed || providerMap[ipnet.IP4].IsExplicitEmpty()
+	ip6Off := !ip6Managed || providerMap[ipnet.IP6].IsExplicitEmpty()
+	if c.UpdateCron == nil && c.DeleteOnStop && (!ip4Off || !ip6Off) {
 		// Not all the providers are static.empty or none.
-		// However, UPDATE_CRON=@once && DELETE_ON_STOP=true.
+		// However, UPDATE_CRON=@once && DELETE_ON_STOP=true, which means all IP detection
+		// will be totally useless. This is likely a misconfiguration.
 		switch {
 		case !ip4Off && !ip6Off:
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER and IP6_PROVIDER "+
-					"to be static.empty or none; got IP4_PROVIDER=%q and IP6_PROVIDER=%q",
+				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires "+
+					"IP4_PROVIDER and IP6_PROVIDER to be static.empty or none; "+
+					"got IP4_PROVIDER=%q and IP6_PROVIDER=%q",
 				provider.Name(providerMap[ipnet.IP4]),
 				provider.Name(providerMap[ipnet.IP6]),
 			)
 		case !ip4Off:
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP4_PROVIDER to be static.empty or none; got IP4_PROVIDER=%q",
+				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires "+
+					"IP4_PROVIDER to be static.empty or none; got IP4_PROVIDER=%q",
 				provider.Name(providerMap[ipnet.IP4]),
 			)
 		case !ip6Off:
 			ppfmt.Noticef(
 				pp.EmojiUserError,
-				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires IP6_PROVIDER to be static.empty or none; got IP6_PROVIDER=%q",
+				"DELETE_ON_STOP=true with UPDATE_CRON=@once requires "+
+					"IP6_PROVIDER to be static.empty or none; got IP6_PROVIDER=%q",
 				provider.Name(providerMap[ipnet.IP6]),
 			)
 		}
 		return nil, false
 	}
+	// }}}
 
-	// Step 3.3: check if some domains are unused.
+	// Check 3: are proxy expressions and regular expressions valid? {{{
+	proxiedMap := map[domain.Domain]bool{}
+	if len(activeDomainSet) > 0 {
+		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedExpression)
+		if !ok {
+			return nil, false
+		}
+
+		for dom := range activeDomainSet {
+			proxiedMap[dom] = proxiedPredicate(dom)
+		}
+	}
+	// MANAGED_RECORDS_COMMENT_REGEX
+	managedRecordsCommentRegex := regexp.MustCompile("")
+	if len(activeDomainSet) > 0 {
+		regex, err := regexp.Compile(c.ManagedRecordsCommentRegex)
+		if err != nil {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"MANAGED_RECORDS_COMMENT_REGEX=%q is invalid: %v",
+				c.ManagedRecordsCommentRegex, err)
+			return nil, false
+		}
+		if !regex.MatchString(c.RecordComment) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"RECORD_COMMENT=%q does not match MANAGED_RECORDS_COMMENT_REGEX=%q",
+				c.RecordComment, c.ManagedRecordsCommentRegex)
+			return nil, false
+		}
+		managedRecordsCommentRegex = regex
+	}
+	// MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX
+	managedWAFListItemsCommentRegex := regexp.MustCompile("")
+	allowWholeWAFListDeleteOnShutdown := true
+	if len(c.WAFLists) > 0 {
+		regex, err := regexp.Compile(c.ManagedWAFListItemsCommentRegex)
+		if err != nil {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q is invalid: %v",
+				c.ManagedWAFListItemsCommentRegex, err)
+			return nil, false
+		}
+		if !regex.MatchString(c.WAFListItemComment) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"WAF_LIST_ITEM_COMMENT=%q does not match MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX=%q",
+				c.WAFListItemComment, c.ManagedWAFListItemsCommentRegex)
+			return nil, false
+		}
+		managedWAFListItemsCommentRegex = regex
+		allowWholeWAFListDeleteOnShutdown = regex.String() == ""
+	}
+	// }}}
+
+	// Check 4: are DNS and WAF's shared ownership settings suspicious? {{{
+	// Warn only on strong cross-resource signals: one side already isolates
+	// ownership, and the other side customizes write-side comments without
+	// narrowing its mutation scope.
+	if len(activeDomainSet) > 0 && len(c.WAFLists) > 0 {
+		if c.ManagedRecordsCommentRegex != "" &&
+			c.WAFListItemComment != "" &&
+			c.ManagedWAFListItemsCommentRegex == "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"DNS ownership isolation is enabled via MANAGED_RECORDS_COMMENT_REGEX (%s), but "+
+					"WAF_LIST_ITEM_COMMENT (%s) is set while MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty; "+
+					"the comment only affects newly written WAF list items, so WAF mutation scope is still not ownership-isolated",
+				previewSettingValue(c.ManagedRecordsCommentRegex),
+				previewSettingValue(c.WAFListItemComment),
+			)
+		}
+
+		if c.ManagedWAFListItemsCommentRegex != "" &&
+			c.RecordComment != "" &&
+			c.ManagedRecordsCommentRegex == "" {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"WAF ownership isolation is enabled via MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s), but "+
+					"RECORD_COMMENT (%s) is set while MANAGED_RECORDS_COMMENT_REGEX is empty; "+
+					"the comment only affects newly written DNS records, so DNS mutation scope is still not ownership-isolated",
+				previewSettingValue(c.ManagedWAFListItemsCommentRegex),
+				previewSettingValue(c.RecordComment),
+			)
+		}
+	}
+	// }}}
+
+	// Check 5: are there other unused settings? {{{
+	// Check 5.1: unused domains in DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
 	for ipFamily, domainsForFamily := range ipnet.Bindings(domains) {
 		if providerMap[ipFamily] == nil {
 			for _, domain := range domainsForFamily {
@@ -244,21 +278,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			}
 		}
 	}
-
-	// Step 4: regenerate proxiedMap from the raw PROXIED expression.
-	proxiedMap := map[domain.Domain]bool{}
-	if len(activeDomainSet) > 0 {
-		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedExpression)
-		if !ok {
-			return nil, false
-		}
-
-		for dom := range activeDomainSet {
-			proxiedMap[dom] = proxiedPredicate(dom)
-		}
-	}
-
-	// Step 5: check if new parameters are unused.
+	// Check 5.2: unused fallback values and selectors
 	if len(activeDomainSet) == 0 { // We are only updating WAF lists.
 		if c.TTL != api.TTLAuto {
 			ppfmt.Noticef(pp.EmojiUserWarning, "TTL=%v is ignored because no domains will be updated", c.TTL)
@@ -296,44 +316,49 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 				previewSettingValue(c.ManagedWAFListItemsCommentRegex))
 		}
 	}
-	if providerMap[ipnet.IP4] == nil && c.IP4DefaultPrefixLen != 32 {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"IP4_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv4",
-			c.IP4DefaultPrefixLen)
-	}
-	if providerMap[ipnet.IP6] == nil && c.IP6DefaultPrefixLen != 64 {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"IP6_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv6",
-			c.IP6DefaultPrefixLen)
-	}
-	// Warn only on strong cross-resource signals: one side already isolates
-	// ownership, and the other side customizes write-side comments without
-	// narrowing its mutation scope.
-	if len(activeDomainSet) > 0 && len(c.WAFLists) > 0 {
-		if c.ManagedRecordsCommentRegex != "" &&
-			c.WAFListItemComment != "" &&
-			c.ManagedWAFListItemsCommentRegex == "" {
+	if providerMap[ipnet.IP4] == nil {
+		if c.IP4DefaultPrefixLen != 32 {
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"DNS ownership isolation is enabled via MANAGED_RECORDS_COMMENT_REGEX (%s), but "+
-					"WAF_LIST_ITEM_COMMENT (%s) is set while MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX is empty; "+
-					"the comment only affects newly written WAF list items, so WAF mutation scope is still not ownership-isolated",
-				previewSettingValue(c.ManagedRecordsCommentRegex),
-				previewSettingValue(c.WAFListItemComment),
-			)
+				"IP4_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv4",
+				c.IP4DefaultPrefixLen)
+		}
+	}
+	if providerMap[ipnet.IP6] == nil {
+		if c.IP6DefaultPrefixLen != 64 {
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"IP6_DEFAULT_PREFIX_LEN=%d is ignored because no domains or WAF lists use IPv6",
+				c.IP6DefaultPrefixLen)
+		}
+	}
+	// }}}
+
+	// Check 6: are we doing cleaning up only? {{{
+	if ip4Off && ip6Off {
+		var targetDesc string
+		switch {
+		case len(activeDomainSet) > 0 && len(c.WAFLists) > 0:
+			targetDesc = "managed DNS records and WAF IP items for the configured scope"
+		case len(activeDomainSet) > 0:
+			targetDesc = "managed DNS records for the configured domains"
+		case len(c.WAFLists) > 0:
+			targetDesc = "managed WAF IP items for the configured lists"
 		}
 
-		if c.ManagedWAFListItemsCommentRegex != "" &&
-			c.RecordComment != "" &&
-			c.ManagedRecordsCommentRegex == "" {
+		switch {
+		case ip4Managed && ip6Managed:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"WAF ownership isolation is enabled via MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s), but "+
-					"RECORD_COMMENT (%s) is set while MANAGED_RECORDS_COMMENT_REGEX is empty; "+
-					"the comment only affects newly written DNS records, so DNS mutation scope is still not ownership-isolated",
-				previewSettingValue(c.ManagedWAFListItemsCommentRegex),
-				previewSettingValue(c.RecordComment),
-			)
+				"Both IP4_PROVIDER and IP6_PROVIDER are configured to clear %s", targetDesc)
+		case ip4Managed:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"IP4_PROVIDER is configured to clear %s while IP6_PROVIDER is %q",
+				targetDesc, provider.Name(nil))
+		case ip6Managed:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"IP6_PROVIDER is configured to clear %s while IP4_PROVIDER is %q",
+				targetDesc, provider.Name(nil))
 		}
 	}
+	// }}}
 
 	handleConfig := &HandleConfig{
 		Auth: c.Auth,
@@ -342,7 +367,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			HandleOwnershipPolicy: api.HandleOwnershipPolicy{
 				ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
 				ManagedWAFListItemsCommentRegex:   managedWAFListItemsCommentRegex,
-				AllowWholeWAFListDeleteOnShutdown: c.ManagedWAFListItemsCommentRegex == "",
+				AllowWholeWAFListDeleteOnShutdown: allowWholeWAFListDeleteOnShutdown,
 			},
 		},
 	}

@@ -82,7 +82,7 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	require.NotNil(t, handleConfig.Options.ManagedRecordsCommentRegex)
 	require.Equal(t, "^managed$", handleConfig.Options.ManagedRecordsCommentRegex.String())
 	require.NotNil(t, handleConfig.Options.ManagedWAFListItemsCommentRegex)
-	require.Equal(t, "^managed-waf$", handleConfig.Options.ManagedWAFListItemsCommentRegex.String())
+	require.Empty(t, handleConfig.Options.ManagedWAFListItemsCommentRegex.String())
 	require.Empty(t, updateConfig.WAFListDescription)
 	require.Equal(t, "managed-waf", updateConfig.WAFListItemComment)
 	require.Equal(t, 5*time.Second, updateConfig.DetectionTimeout)
