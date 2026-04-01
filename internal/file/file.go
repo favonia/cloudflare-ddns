@@ -12,13 +12,24 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// FS represents the file system in use. By default, it points to the actual file system,
+// fileSystem represents the file system in use. By default, it points to the actual file system,
 // and can be modified to a virtual file system for testing.
-var FS = os.DirFS("/") //nolint:gochecknoglobals
+var fileSystem fs.FS = os.DirFS("/") //nolint:gochecknoglobals
 
-// processPath validates that path starts with "/" and converts it to a relative form for [FS].
+// SetFSForTesting replaces the backing file system used by this package.
+// It exists to support tests in dependent packages.
+func SetFSForTesting(vfs fs.FS) {
+	fileSystem = vfs
+}
+
+// ResetFSForTesting restores the default backing file system after tests.
+func ResetFSForTesting() {
+	fileSystem = os.DirFS("/")
+}
+
+// processPath validates that path starts with "/" and converts it to a relative form for [fileSystem].
 // If the path does not start with "/", fixedPath holds the suggested correction ("/"+path)
-// and ok is false. If it starts with "/", relPath is for use with [FS] and fixedPath equals path.
+// and ok is false. If it starts with "/", relPath is for use with [fileSystem] and fixedPath equals path.
 //
 // This uses [path.Clean] (forward-slash only) instead of filepath.IsAbs and filepath.Rel
 // so that the behavior is OS-independent: the app targets Linux (Docker), and all valid
@@ -52,7 +63,7 @@ func ReadString(ppfmt pp.PP, path string) (string, bool) {
 		return "", false
 	}
 
-	body, err := fs.ReadFile(FS, relPath)
+	body, err := fs.ReadFile(fileSystem, relPath)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %s: %v", pp.QuoteIfUnsafeInSentence(path), err)
 		return "", false
@@ -96,7 +107,7 @@ func ReadLines(ppfmt pp.PP, path string) (lines iter.Seq2[int, string], ok bool)
 		return nil, false
 	}
 
-	body, err := fs.ReadFile(FS, relPath)
+	body, err := fs.ReadFile(fileSystem, relPath)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %s: %v", pp.QuoteIfUnsafeInSentence(path), err)
 		return nil, false

@@ -33,9 +33,9 @@ func (LocalAuto) IsExplicitEmpty() bool {
 	return false
 }
 
-// ExtractUDPAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
+// extractUDPAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
 // The address will be unmapped.
-func ExtractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
+func extractUDPAddr(ppfmt pp.PP, addr net.Addr) (netip.Addr, bool) {
 	switch v := addr.(type) {
 	case *net.UDPAddr:
 		ip := v.AddrPort().Addr().Unmap()
@@ -81,7 +81,7 @@ func (p LocalAuto) getRawDataWithDialContext(
 	}
 	defer conn.Close()
 
-	ip, ok := ExtractUDPAddr(ppfmt, conn.LocalAddr())
+	ip, ok := extractUDPAddr(ppfmt, conn.LocalAddr())
 	if !ok {
 		return NewUnavailableDetectionResult()
 	}

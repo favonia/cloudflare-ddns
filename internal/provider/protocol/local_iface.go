@@ -28,9 +28,9 @@ func (LocalWithInterface) IsExplicitEmpty() bool {
 	return false
 }
 
-// ExtractInterfaceAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
+// extractInterfaceAddr converts an address from [net.Interface.Addrs] to [netip.Addr].
 // The address will be unmapped.
-func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr, bool) {
+func extractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr, bool) {
 	switch v := addr.(type) {
 	case *net.IPAddr:
 		ip, ok := netip.AddrFromSlice(v.IP)
@@ -54,14 +54,14 @@ func ExtractInterfaceAddr(ppfmt pp.PP, iface string, addr net.Addr) (netip.Addr,
 	}
 }
 
-// SelectAndNormalizeInterfaceIPs takes a list of unicast [net.Addr], keeps all
+// selectAndNormalizeInterfaceIPs takes a list of unicast [net.Addr], keeps all
 // matching global-unicast addresses, and lifts them to [DetectionResult].
-func SelectAndNormalizeInterfaceIPs(
+func selectAndNormalizeInterfaceIPs(
 	ppfmt pp.PP, iface string, ipFamily ipnet.Family, defaultPrefixLen int, addrs []net.Addr,
 ) DetectionResult {
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, addr := range addrs {
-		ip, ok := ExtractInterfaceAddr(ppfmt, iface, addr)
+		ip, ok := extractInterfaceAddr(ppfmt, iface, addr)
 		// Fail fast on malformed interface data instead of proceeding with a partial snapshot.
 		if !ok {
 			return NewUnavailableDetectionResult()
@@ -125,5 +125,5 @@ func (p LocalWithInterface) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
-	return SelectAndNormalizeInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, defaultPrefixLen, addrs)
+	return selectAndNormalizeInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, defaultPrefixLen, addrs)
 }

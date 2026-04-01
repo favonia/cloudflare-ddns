@@ -4,7 +4,6 @@ package protocol_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -21,8 +20,8 @@ import (
 
 func useMemFS(t *testing.T, memfs fstest.MapFS) {
 	t.Helper()
-	file.FS = memfs
-	t.Cleanup(func() { file.FS = os.DirFS("/") })
+	file.SetFSForTesting(memfs)
+	t.Cleanup(file.ResetFSForTesting)
 }
 
 func memFile(data string) *fstest.MapFile {
