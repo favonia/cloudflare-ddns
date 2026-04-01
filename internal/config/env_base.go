@@ -12,15 +12,15 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-// Getenv reads an environment variable and trim the space.
-func Getenv(key string) string {
+// getenv reads an environment variable and trim the space.
+func getenv(key string) string {
 	return strings.TrimSpace(os.Getenv(key))
 }
 
-// GetenvAsList reads an environment variable, splits it by sep, and trims each item.
+// getenvAsList reads an environment variable, splits it by sep, and trims each item.
 // Empty trimmed entries are preserved. Callers remain responsible for assigning any
 // higher-level meaning to empty items, including comma-placement policy.
-func GetenvAsList(key string, sep string) []string {
+func getenvAsList(key string, sep string) []string {
 	vals := []string{}
 	for v := range strings.SplitSeq(os.Getenv(key), sep) {
 		v = strings.TrimSpace(v)
@@ -29,9 +29,11 @@ func GetenvAsList(key string, sep string) []string {
 	return vals
 }
 
-// ReadString reads an environment variable as a plain string.
-func ReadString(ppfmt pp.PP, key string, field *string) bool {
-	val := Getenv(key)
+// readString reads an environment variable as a plain string.
+//
+//nolint:unparam // Keep the read* helper signature uniform for ReadEnv.
+func readString(ppfmt pp.PP, key string, field *string) bool {
+	val := getenv(key)
 	if val == "" {
 		if *field != "" {
 			ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, *field)
@@ -43,9 +45,9 @@ func ReadString(ppfmt pp.PP, key string, field *string) bool {
 	return true
 }
 
-// ReadBool reads an environment variable as a boolean value.
-func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
-	val := Getenv(key)
+// readBool reads an environment variable as a boolean value.
+func readBool(ppfmt pp.PP, key string, field *bool) bool {
+	val := getenv(key)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%t", key, *field)
 		return true
@@ -59,30 +61,6 @@ func ReadBool(ppfmt pp.PP, key string, field *bool) bool {
 
 	*field = b
 	return true
-}
-
-// ReadNonnegInt reads an environment variable as a non-negative integer.
-func ReadNonnegInt(ppfmt pp.PP, key string, field *int) bool {
-	val := Getenv(key)
-	if val == "" {
-		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
-		return true
-	}
-
-	i, err := strconv.Atoi(val)
-	switch {
-	case err != nil:
-		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, val, err)
-		return false
-
-	case i < 0:
-		ppfmt.Noticef(pp.EmojiUserError, "%s (%d) is negative", key, i)
-		return false
-
-	default:
-		*field = i
-		return true
-	}
 }
 
 // prefixLenRange returns the valid prefix-length bounds for an IP family.
@@ -106,10 +84,10 @@ func prefixLenRange(ipFamily ipnet.Family) (int, int) {
 	}
 }
 
-// ReadPrefixLen reads an environment variable as a prefix length for the given
+// readPrefixLen reads an environment variable as a prefix length for the given
 // IP family. The valid range is derived from the family.
-func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) bool {
-	val := Getenv(key)
+func readPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) bool {
+	val := getenv(key)
 	lo, hi := prefixLenRange(ipFamily)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
@@ -134,7 +112,7 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 	}
 }
 
-// ReadTTL reads a valid TTL value.
+// readTTL reads a valid TTL value.
 //
 // The TTL snapshot below was adopted on 2026-03-22. Update that date only when
 // the Cloudflare DNS TTL semantics case in
@@ -147,8 +125,8 @@ func ReadPrefixLen(ppfmt pp.PP, key string, field *int, ipFamily ipnet.Family) b
 //
 // [API documentation]: https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/
 // [DNS documentation]: https://developers.cloudflare.com/dns/manage-dns-records/reference/ttl
-func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
-	val := Getenv(key)
+func readTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
+	val := getenv(key)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%d", key, *field)
 		return true
@@ -170,9 +148,9 @@ func ReadTTL(ppfmt pp.PP, key string, field *api.TTL) bool {
 	}
 }
 
-// ReadNonnegDuration reads an environment variable and parses it as a time duration.
-func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
-	val := Getenv(key)
+// readNonnegDuration reads an environment variable and parses it as a time duration.
+func readNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
+	val := getenv(key)
 	if val == "" {
 		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%v", key, *field)
 		return true
@@ -193,9 +171,9 @@ func ReadNonnegDuration(ppfmt pp.PP, key string, field *time.Duration) bool {
 	return true
 }
 
-// ReadCron reads an environment variable and parses it as a Cron expression.
-func ReadCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
-	switch val := Getenv(key); val {
+// readCron reads an environment variable and parses it as a Cron expression.
+func readCron(ppfmt pp.PP, key string, field *cron.Schedule) bool {
+	switch val := getenv(key); val {
 	case "":
 		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, cron.DescribeSchedule(*field))
 		return true

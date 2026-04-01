@@ -1,4 +1,5 @@
-package config_test
+//nolint:testpackage // These tests cover unexported domain readers directly because they validate helper behavior rather than exported contract.
+package config
 
 // vim: nowrap
 
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -100,7 +100,7 @@ func TestReadDomains(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			ok := config.ReadDomains(mockPP, key, &field)
+			ok := readDomains(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -163,7 +163,7 @@ func TestReadDomainMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadDomainMap(mockPP, &field)
+			ok := readDomainMap(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
 			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])

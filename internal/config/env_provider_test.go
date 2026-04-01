@@ -1,4 +1,5 @@
-package config_test
+//nolint:testpackage // These tests need direct access to unexported provider readers; same-package tests are the intended shape for helper parsing logic.
+package config
 
 // vim: nowrap
 
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -347,7 +347,7 @@ func TestReadProvider(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 			defaultPrefixLen := map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}[tc.ipFamily]
-			ok := config.ReadProvider(mockPP, key, keyDeprecated, tc.ipFamily, defaultPrefixLen, &field)
+			ok := readProvider(mockPP, key, keyDeprecated, tc.ipFamily, defaultPrefixLen, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -494,7 +494,7 @@ func TestReadProviderMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadProviderMap(mockPP, map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}, &field)
+			ok := readProviderMap(mockPP, map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)
 		})

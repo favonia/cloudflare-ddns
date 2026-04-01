@@ -14,16 +14,16 @@ type Message struct {
 	NotifierMessage  notifier.Message
 }
 
-// NewMessage creates a new, empty message.
-func NewMessage() Message {
+// newMessage creates a new, empty message.
+func newMessage() Message {
 	return Message{
 		HeartbeatMessage: heartbeat.NewMessage(),
 		NotifierMessage:  notifier.NewMessage(),
 	}
 }
 
-// MergeMessages combines multiple compound messages.
-func MergeMessages(msgs ...Message) Message {
+// mergeMessages combines multiple compound messages.
+func mergeMessages(msgs ...Message) Message {
 	hms := make([]heartbeat.Message, len(msgs))
 	nms := make([]notifier.Message, len(msgs))
 

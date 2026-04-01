@@ -12,15 +12,15 @@ var oauthBearerRegex = regexp.MustCompile(`^[-a-zA-Z0-9._~+/]+=*$`)
 
 // Keys of environment variables.
 const (
-	TokenKey1     string = "CLOUDFLARE_API_TOKEN"
-	TokenKey2     string = "CF_API_TOKEN"
-	TokenFileKey1 string = "CLOUDFLARE_API_TOKEN_FILE"
-	TokenFileKey2 string = "CF_API_TOKEN_FILE"
+	tokenKey1     string = "CLOUDFLARE_API_TOKEN"
+	tokenKey2     string = "CF_API_TOKEN"
+	tokenFileKey1 string = "CLOUDFLARE_API_TOKEN_FILE"
+	tokenFileKey2 string = "CF_API_TOKEN_FILE"
 )
 
-// HintAuthTokenNewPrefix contains the hint about the transition from
+// hintAuthTokenNewPrefix contains the hint about the transition from
 // CF_* to CLOUDFLARE_*.
-const HintAuthTokenNewPrefix string = "Cloudflare is switching to the CLOUDFLARE_* prefix for its tools. Use CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE instead of CF_* (fully supported until 2.0.0 and then minimally supported until 3.0.0)." //nolint:lll
+const hintAuthTokenNewPrefix string = "Cloudflare is switching to the CLOUDFLARE_* prefix for its tools. Use CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE instead of CF_* (fully supported until 2.0.0 and then minimally supported until 3.0.0)." //nolint:lll
 
 func tokenHasMatchingQuotes(token string) bool {
 	if len(token) < 2 {
@@ -48,8 +48,8 @@ func ensureTokenNotQuoted(ppfmt pp.PP, token, tokenKey string) bool {
 }
 
 func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
-	token1 := Getenv(TokenKey1)
-	token2 := Getenv(TokenKey2)
+	token1 := getenv(tokenKey1)
+	token2 := getenv(tokenKey2)
 
 	var token, tokenKey string
 	switch {
@@ -57,13 +57,13 @@ func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 		return "", "", true
 	case token1 != "" && token2 != "" && token1 != token2:
 		ppfmt.Noticef(pp.EmojiUserError,
-			"The values of %s and %s do not match; they must specify the same token", TokenKey1, TokenKey2)
+			"The values of %s and %s do not match; they must specify the same token", tokenKey1, tokenKey2)
 		return "", "", false
 	case token1 != "":
-		token, tokenKey = token1, TokenKey1
+		token, tokenKey = token1, tokenKey1
 	case token2 != "":
-		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, HintAuthTokenNewPrefix)
-		token, tokenKey = token2, TokenKey2
+		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, hintAuthTokenNewPrefix)
+		token, tokenKey = token2, tokenKey2
 	}
 
 	// foolproof check: the sample value in README
@@ -80,7 +80,7 @@ func readPlainAuthTokens(ppfmt pp.PP) (string, string, bool) {
 }
 
 func readAuthTokenFile(ppfmt pp.PP, key string) (string, bool) {
-	tokenFile := Getenv(key)
+	tokenFile := getenv(key)
 	if tokenFile == "" {
 		return "", true
 	}
@@ -103,12 +103,12 @@ func readAuthTokenFile(ppfmt pp.PP, key string) (string, bool) {
 }
 
 func readAuthTokenFiles(ppfmt pp.PP) (string, string, bool) {
-	token1, ok := readAuthTokenFile(ppfmt, TokenFileKey1)
+	token1, ok := readAuthTokenFile(ppfmt, tokenFileKey1)
 	if !ok {
 		return "", "", false
 	}
 
-	token2, ok := readAuthTokenFile(ppfmt, TokenFileKey2)
+	token2, ok := readAuthTokenFile(ppfmt, tokenFileKey2)
 	if !ok {
 		return "", "", false
 	}
@@ -116,13 +116,13 @@ func readAuthTokenFiles(ppfmt pp.PP) (string, string, bool) {
 	switch {
 	case token1 != "" && token2 != "" && token1 != token2:
 		ppfmt.Noticef(pp.EmojiUserError,
-			"The files specified by %s and %s have conflicting tokens; their content must match", TokenFileKey1, TokenFileKey2)
+			"The files specified by %s and %s have conflicting tokens; their content must match", tokenFileKey1, tokenFileKey2)
 		return "", "", false
 	case token1 != "":
-		return token1, TokenFileKey1, true
+		return token1, tokenFileKey1, true
 	case token2 != "":
-		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, HintAuthTokenNewPrefix)
-		return token2, TokenFileKey2, true
+		ppfmt.NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, hintAuthTokenNewPrefix)
+		return token2, tokenFileKey2, true
 	default:
 		return "", "", true
 	}
@@ -151,7 +151,7 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	case tokenFile != "":
 		token = tokenFile
 	default:
-		ppfmt.Noticef(pp.EmojiUserError, "Requires either %s or %s", TokenKey1, TokenFileKey1)
+		ppfmt.Noticef(pp.EmojiUserError, "Requires either %s or %s", tokenKey1, tokenFileKey1)
 		return "", false
 	}
 
@@ -163,15 +163,15 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	return token, true
 }
 
-// ReadAuth reads environment variables CLOUDFLARE_API_TOKEN, CLOUDFLARE_API_TOKEN_FILE,
+// readAuth reads environment variables CLOUDFLARE_API_TOKEN, CLOUDFLARE_API_TOKEN_FILE,
 // CF_API_TOKEN, CF_API_TOKEN_FILE, and CF_ACCOUNT_ID and creates an [api.CloudflareAuth].
-func ReadAuth(ppfmt pp.PP, field *api.Auth) bool {
+func readAuth(ppfmt pp.PP, field *api.Auth) bool {
 	token, ok := readAuthToken(ppfmt)
 	if !ok {
 		return false
 	}
 
-	if Getenv("CF_ACCOUNT_ID") != "" {
+	if getenv("CF_ACCOUNT_ID") != "" {
 		ppfmt.Noticef(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
 	}
 

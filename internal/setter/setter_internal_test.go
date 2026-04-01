@@ -46,9 +46,9 @@ func TestPartitionRecordsTreatsIPv4MappedIPv6AsMatchingCanonicalIPv4(t *testing.
 	matched, unmatched, outdated := partitionRecords(targets, records)
 	require.Len(t, matched, 1)
 	require.Contains(t, matched, target)
-	require.Equal(t, []Record{{ID: "mapped", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, matched[target])
+	require.Equal(t, []record{{ID: "mapped", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, matched[target])
 	require.Empty(t, unmatched)
-	require.Equal(t, []Record{{ID: "invalid", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, outdated)
+	require.Equal(t, []record{{ID: "invalid", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, outdated)
 }
 
 func TestResolveScalarValue(t *testing.T) {
@@ -105,7 +105,7 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	t.Parallel()
 
 	fallback := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "hello", Tags: nil}
-	records := []Record{
+	records := []record{
 		{ID: "record3", RecordParams: fallback},
 		{ID: "record1", RecordParams: fallback},
 		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
@@ -120,11 +120,11 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	)
 
 	require.Equal(t, fallback, resolved)
-	require.Equal(t, []Record{
+	require.Equal(t, []record{
 		{ID: "record1", RecordParams: fallback},
 		{ID: "record3", RecordParams: fallback},
 	}, matching)
-	require.Equal(t, []Record{
+	require.Equal(t, []record{
 		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
 	}, nonMatching)
 }
@@ -138,7 +138,7 @@ func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.
 		Comment: "fallback-comment",
 		Tags:    []string{"region:us"},
 	}
-	records := []Record{
+	records := []record{
 		{
 			ID: "record-b",
 			RecordParams: api.RecordParams{
@@ -182,7 +182,7 @@ The 2 outdated AAAA records of sub.test.org disagree on tags; will use common se
 		Comment: "carry-me",
 		Tags:    []string{"env:prod"},
 	}, resolved)
-	require.Equal(t, []Record{
+	require.Equal(t, []record{
 		{
 			ID: "record-a",
 			RecordParams: api.RecordParams{
@@ -193,7 +193,7 @@ The 2 outdated AAAA records of sub.test.org disagree on tags; will use common se
 			},
 		},
 	}, matching)
-	require.Equal(t, []Record{
+	require.Equal(t, []record{
 		{
 			ID: "record-b",
 			RecordParams: api.RecordParams{
@@ -215,7 +215,7 @@ func TestReconcileAndPartitionRecordsFallsBackWhenEverythingDisagrees(t *testing
 		Comment: "fallback-comment",
 		Tags:    []string{"region:us"},
 	}
-	records := []Record{
+	records := []record{
 		{
 			ID: "record-c",
 			RecordParams: api.RecordParams{
@@ -271,7 +271,7 @@ The 3 outdated AAAA records of sub.test.org disagree on tags; will use common se
 		Tags:    []string{"env:prod"},
 	}, resolved)
 	require.Empty(t, matching)
-	require.Equal(t, []Record{
+	require.Equal(t, []record{
 		{
 			ID: "record-a",
 			RecordParams: api.RecordParams{

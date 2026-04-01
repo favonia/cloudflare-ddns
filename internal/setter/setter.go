@@ -57,8 +57,8 @@ func New(_ppfmt pp.PP, handle api.Handle) Setter {
 	return setter{Handle: handle}
 }
 
-// Record represents a DNS record in this package.
-type Record struct {
+// record represents a DNS record in this package.
+type record struct {
 	api.ID
 	api.RecordParams
 }
@@ -68,24 +68,24 @@ type Record struct {
 // unmatched keeps the original target order.
 func partitionRecords(
 	targets []netip.Addr, rs []api.Record,
-) (matched map[netip.Addr][]Record, unmatched []netip.Addr, outdated []Record) {
+) (matched map[netip.Addr][]record, unmatched []netip.Addr, outdated []record) {
 	targetSet := make(map[netip.Addr]bool, len(targets))
 	for _, target := range targets {
 		targetSet[target] = true
 	}
-	matched = make(map[netip.Addr][]Record, len(targetSet))
-	outdated = make([]Record, 0, len(rs))
+	matched = make(map[netip.Addr][]record, len(targetSet))
+	outdated = make([]record, 0, len(rs))
 	for _, r := range rs {
 		// Unmap so IPv4-mapped IPv6 records match canonical IPv4 targets.
 		// Invalid or non-target records are intentionally treated as outdated.
 		ip := r.IP.Unmap()
 		if ip.IsValid() {
 			if targetSet[ip] {
-				matched[ip] = append(matched[ip], Record{ID: r.ID, RecordParams: r.RecordParams})
+				matched[ip] = append(matched[ip], record{ID: r.ID, RecordParams: r.RecordParams})
 				continue
 			}
 		}
-		outdated = append(outdated, Record{ID: r.ID, RecordParams: r.RecordParams})
+		outdated = append(outdated, record{ID: r.ID, RecordParams: r.RecordParams})
 	}
 
 	unmatched = make([]netip.Addr, 0, len(targets))
@@ -98,7 +98,7 @@ func partitionRecords(
 	return matched, unmatched, outdated
 }
 
-func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]Record, outdated []Record) bool {
+func recordsAlreadyUpToDate(targets []netip.Addr, matched map[netip.Addr][]record, outdated []record) bool {
 	if len(outdated) != 0 {
 		return false
 	}
@@ -119,8 +119,8 @@ func sameDNSRecordParams(left, right api.RecordParams) bool {
 		apitags.Equal(left.Tags, right.Tags)
 }
 
-func sortRecordsByID(records []Record) {
-	slices.SortFunc(records, func(left, right Record) int {
+func sortRecordsByID(records []record) {
+	slices.SortFunc(records, func(left, right record) int {
 		return cmp.Compare(left.ID, right.ID)
 	})
 }
@@ -143,11 +143,11 @@ func resolveScalarValue[T comparable](fallback T, outdatedValues []T) (T, bool) 
 
 func reconcileAndPartitionRecords(
 	fallbackParams api.RecordParams,
-	records []Record,
+	records []record,
 	ppfmt pp.PP,
 	warnings ambiguityWarnings,
 	unit string,
-) (resolvedParams api.RecordParams, matching []Record, nonMatching []Record) {
+) (resolvedParams api.RecordParams, matching []record, nonMatching []record) {
 	// Collect all the attributes we want to resolve.
 	ttlValues := make([]api.TTL, 0, len(records))
 	proxiedValues := make([]bool, 0, len(records))
@@ -199,8 +199,8 @@ func reconcileAndPartitionRecords(
 		Comment: resolvedComment,
 		Tags:    resolvedTags.Inherited,
 	}
-	matching = make([]Record, 0, len(records))
-	nonMatching = make([]Record, 0, len(records))
+	matching = make([]record, 0, len(records))
+	nonMatching = make([]record, 0, len(records))
 	for _, record := range records {
 		if sameDNSRecordParams(record.RecordParams, resolvedParams) {
 			matching = append(matching, record)
@@ -215,11 +215,11 @@ func reconcileAndPartitionRecords(
 
 func reconcileAndSortRecords(
 	fallbackParams api.RecordParams,
-	records []Record,
+	records []record,
 	ppfmt pp.PP,
 	warnings ambiguityWarnings,
 	unit string,
-) (resolvedParams api.RecordParams, sorted []Record) {
+) (resolvedParams api.RecordParams, sorted []record) {
 	resolvedParams, matching, nonMatching := reconcileAndPartitionRecords(
 		fallbackParams, records, ppfmt, warnings, unit,
 	)

@@ -8,23 +8,23 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
-// ReadDomains reads an environment variable as a comma-separated list of domains.
-func ReadDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
-	if list, ok := domainexp.ParseList(ppfmt, key, Getenv(key)); ok {
+// readDomains reads an environment variable as a comma-separated list of domains.
+func readDomains(ppfmt pp.PP, key string, field *[]domain.Domain) bool {
+	if list, ok := domainexp.ParseList(ppfmt, key, getenv(key)); ok {
 		*field = list
 		return true
 	}
 	return false
 }
 
-// ReadDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
+// readDomainMap reads environment variables DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
 // and consolidate the domains into a map.
-func ReadDomainMap(ppfmt pp.PP, field *map[ipnet.Family][]domain.Domain) bool {
+func readDomainMap(ppfmt pp.PP, field *map[ipnet.Family][]domain.Domain) bool {
 	var domains, ip4Domains, ip6Domains []domain.Domain
 
-	if !ReadDomains(ppfmt, "DOMAINS", &domains) ||
-		!ReadDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
-		!ReadDomains(ppfmt, "IP6_DOMAINS", &ip6Domains) {
+	if !readDomains(ppfmt, "DOMAINS", &domains) ||
+		!readDomains(ppfmt, "IP4_DOMAINS", &ip4Domains) ||
+		!readDomains(ppfmt, "IP6_DOMAINS", &ip6Domains) {
 		return false
 	}
 

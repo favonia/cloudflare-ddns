@@ -1,4 +1,5 @@
-package config_test
+//nolint:testpackage // These tests target unexported auth-reading helpers and verify package-local parsing behavior directly.
+package config
 
 // vim: nowrap
 
@@ -11,7 +12,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -60,7 +60,7 @@ func TestReadAuth(t *testing.T) {
 			"", "token2", "", "", "",
 			true, "token2",
 			func(m *mocks.MockPP) {
-				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, config.HintAuthTokenNewPrefix)
+				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, hintAuthTokenNewPrefix)
 			},
 		},
 		"old/same": {
@@ -151,7 +151,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "/token.txt", "",
 			true, "hello",
 			func(m *mocks.MockPP) {
-				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, config.HintAuthTokenNewPrefix)
+				m.EXPECT().NoticeOncef(pp.MessageAuthTokenNewPrefix, pp.EmojiHint, hintAuthTokenNewPrefix)
 			},
 		},
 		"file/old/same": {
@@ -209,7 +209,7 @@ func TestReadAuth(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadAuth(mockPP, &field)
+			ok := readAuth(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			if tc.expected != "" {
 				require.Equal(t, &api.CloudflareAuth{Token: tc.expected, BaseURL: ""}, field)
