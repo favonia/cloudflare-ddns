@@ -1,8 +1,7 @@
-package config_test
+//nolint:testpackage // These tests exercise unexported parsing helpers directly; same-package tests are the intended boundary for helper-unit logic here.
+package config
 
 import (
-	"net/url"
-	"os"
 	"testing"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -18,32 +16,6 @@ import (
 )
 
 const keyPrefix = "TEST-11D39F6A9A97AFAFD87CCEB-"
-
-func set(t *testing.T, key string, set bool, val string) {
-	t.Helper()
-
-	if set {
-		t.Setenv(key, val)
-	} else {
-		t.Setenv(key, "")
-		os.Unsetenv(key)
-	}
-}
-
-func store(t *testing.T, key string, val string) { t.Helper(); set(t, key, true, val) }
-func unset(t *testing.T, keys ...string) {
-	t.Helper()
-	for _, k := range keys {
-		set(t, k, false, "")
-	}
-}
-
-func urlMustParse(t *testing.T, u string) *url.URL {
-	t.Helper()
-	url, err := url.Parse(u)
-	require.NoError(t, err)
-	return url
-}
 
 //nolint:paralleltest // environment vars are global
 func TestGetenv(t *testing.T) {
@@ -61,7 +33,7 @@ func TestGetenv(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
-			require.Equal(t, tc.expected, config.Getenv(key))
+			require.Equal(t, tc.expected, getenv(key))
 		})
 	}
 }
@@ -85,7 +57,7 @@ func TestGetenvAsList(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			set(t, key, tc.set, tc.val)
-			require.Equal(t, tc.expected, config.GetenvAsList(key, tc.sep))
+			require.Equal(t, tc.expected, getenvAsList(key, tc.sep))
 		})
 	}
 }
@@ -129,7 +101,7 @@ func TestReadString(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadString(mockPP, key, &field)
+			ok := readString(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -196,66 +168,7 @@ func TestReadBool(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadBool(mockPP, key, &field)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
-		})
-	}
-}
-
-//nolint:paralleltest // environment vars are global
-func TestReadNonnegInt(t *testing.T) {
-	key := keyPrefix + "INT"
-	for name, tc := range map[string]struct {
-		set           bool
-		val           string
-		oldField      int
-		newField      int
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
-	}{
-		"nil": {
-			false, "", 100, 100, true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 100)
-			},
-		},
-		"empty": {
-			true, "", 100, 100, true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", key, 100)
-			},
-		},
-		"zero": {true, "0   ", 100, 0, true, nil},
-		"-1": {
-			true, "   -1", 100, 100, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%d) is negative", key, -1)
-			},
-		},
-		"1": {true, "   1   ", 100, 1, true, nil},
-		"1.0": {
-			true, "   1.0   ", 100, 100, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "1.0", gomock.Any())
-			},
-		},
-		"words": {
-			true, "   word   ", 100, 100, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a number: %v", key, "word", gomock.Any())
-			},
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			set(t, key, tc.set, tc.val)
-			field := tc.oldField
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-			ok := config.ReadNonnegInt(mockPP, key, &field)
+			ok := readBool(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -345,7 +258,7 @@ func TestReadPrefixLen(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadPrefixLen(mockPP, key, &field, tc.ipFamily)
+			ok := readPrefixLen(mockPP, key, &field, tc.ipFamily)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -409,7 +322,7 @@ func TestReadTTL(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadTTL(mockPP, key, &field)
+			ok := readTTL(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -463,7 +376,7 @@ func TestReadNonnegDuration(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadNonnegDuration(mockPP, key, &field)
+			ok := readNonnegDuration(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})
@@ -523,7 +436,7 @@ func TestReadCron(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadCron(mockPP, key, &field)
+			ok := readCron(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

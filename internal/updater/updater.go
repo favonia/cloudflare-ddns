@@ -241,7 +241,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, targetsForWAF))
 	}
 
-	return MergeMessages(msgs...)
+	return mergeMessages(msgs...)
 }
 
 // FinalDeleteIPs removes all DNS records of managed domains.
@@ -257,5 +257,5 @@ func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s 
 	// Clear WAF lists
 	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s))
 
-	return MergeMessages(msgs...)
+	return mergeMessages(msgs...)
 }

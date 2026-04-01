@@ -25,12 +25,12 @@ type Shoutrrr struct {
 var _ Notifier = Shoutrrr{} //nolint:exhaustruct
 
 const (
-	// ShoutrrrDefaultTimeout is the default timeout for a UptimeKuma ping.
-	ShoutrrrDefaultTimeout = 10 * time.Second
+	// shoutrrrDefaultTimeout is the default timeout for a Shoutrrr notification.
+	shoutrrrDefaultTimeout = 10 * time.Second
 )
 
-// DescribeShoutrrrService gives a human-readable description for a service.
-func DescribeShoutrrrService(ppfmt pp.PP, proto string) string {
+// describeShoutrrrService gives a human-readable description for a service.
+func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 	name, known := map[string]string{
 		"bark":       "Bark",
 		"discord":    "Discord",
@@ -71,12 +71,12 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 		return Shoutrrr{}, false //nolint:exhaustruct
 	}
 
-	r.Timeout = ShoutrrrDefaultTimeout
+	r.Timeout = shoutrrrDefaultTimeout
 
 	serviceDescriptions := make([]string, 0, len(rawURLs))
 	for _, u := range rawURLs {
 		s, _, _ := r.ExtractServiceName(u)
-		serviceDescriptions = append(serviceDescriptions, DescribeShoutrrrService(ppfmt, s))
+		serviceDescriptions = append(serviceDescriptions, describeShoutrrrService(ppfmt, s))
 	}
 
 	return Shoutrrr{Router: r, ServiceDescriptions: serviceDescriptions}, true

@@ -24,7 +24,7 @@ import (
 func SetupPP(output io.Writer) (pp.PP, bool) {
 	emoji, verbosity := true, pp.Verbose
 
-	valEmoji, valQuiet := Getenv("EMOJI"), Getenv("QUIET")
+	valEmoji, valQuiet := getenv("EMOJI"), getenv("QUIET")
 
 	if valEmoji != "" {
 		b, err := strconv.ParseBool(valEmoji)

@@ -17,7 +17,7 @@ import (
 //     A valid name satisfies this regular expression: ^[a-z0-9_]+$.
 var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 
-// ReadWAFListNames reads an environment variable as a comma-separated list of IP list names.
+// readWAFListNames reads an environment variable as a comma-separated list of IP list names.
 //
 // The quota snapshot below was adopted on 2026-03-22. Update that date only
 // when the Cloudflare WAF list availability case in
@@ -28,8 +28,8 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 // and Enterprise allows 1,000. That quota snapshot is watched by the
 // Cloudflare WAF list availability case in
 // scripts/github-actions/cloudflare-doc-watch/cases.go.
-func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
-	vals := GetenvAsList(key, ",")
+func readWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
+	vals := getenvAsList(key, ",")
 	if len(vals) == 1 && vals[0] == "" {
 		return true
 	}
@@ -76,7 +76,7 @@ func ReadWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains extra commas; "+
 				"this is accepted for now but will be rejected in version 2.0.0",
-			key, pp.QuotePreviewOrEmptyLabel(Getenv(key), pp.AdvisoryPreviewLimit, "empty"))
+			key, pp.QuotePreviewOrEmptyLabel(getenv(key), pp.AdvisoryPreviewLimit, "empty"))
 	}
 
 	*field = sliceutil.SortAndCompact(lists, api.CompareWAFList)

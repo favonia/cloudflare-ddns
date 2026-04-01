@@ -160,7 +160,7 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 	hb := emptyHeartbeat
 	nt := emptyNotifier
 
-	if healthchecksURL := Getenv("HEALTHCHECKS"); healthchecksURL != "" {
+	if healthchecksURL := getenv("HEALTHCHECKS"); healthchecksURL != "" {
 		h, ok := heartbeat.NewHealthchecks(ppfmt, healthchecksURL)
 		if !ok {
 			return emptyHeartbeat, emptyNotifier, false
@@ -168,7 +168,7 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
-	if uptimeKumaURL := Getenv("UPTIMEKUMA"); uptimeKumaURL != "" {
+	if uptimeKumaURL := getenv("UPTIMEKUMA"); uptimeKumaURL != "" {
 		h, ok := heartbeat.NewUptimeKuma(ppfmt, uptimeKumaURL)
 		if !ok {
 			return emptyHeartbeat, emptyNotifier, false

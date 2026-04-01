@@ -1,4 +1,5 @@
-package config_test
+//nolint:testpackage // These tests exercise the unexported WAF-list reader directly because it is package-local helper logic.
+package config
 
 // vim: nowrap
 
@@ -9,7 +10,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
-	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -131,7 +131,7 @@ func TestReadWAFListNames(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
-			ok := config.ReadWAFListNames(mockPP, key, &field)
+			ok := readWAFListNames(mockPP, key, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.newField, field)
 		})

@@ -8,17 +8,17 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
 
-// ReadProvider reads an environment variable and parses it as a provider.
+// readProvider reads an environment variable and parses it as a provider.
 //
 // keyDeprecated was the name of the deprecated parameters IP4/6_POLICY.
-func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
+func readProvider(ppfmt pp.PP, key, keyDeprecated string,
 	ipFamily ipnet.Family, defaultPrefixLen int, field *provider.Provider,
 ) bool {
-	val := Getenv(key)
+	val := getenv(key)
 
 	if val == "" {
 		// parsing of the deprecated parameter
-		switch valDeprecated := Getenv(keyDeprecated); valDeprecated {
+		switch valDeprecated := getenv(keyDeprecated); valDeprecated {
 		case "":
 			ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, provider.Name(*field))
 			return true
@@ -76,7 +76,7 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 		}
 	}
 
-	if Getenv(keyDeprecated) != "" {
+	if getenv(keyDeprecated) != "" {
 		ppfmt.Noticef(
 			pp.EmojiUserError,
 			`Cannot have both %s and %s set`,
@@ -185,16 +185,16 @@ func ReadProvider(ppfmt pp.PP, key, keyDeprecated string,
 	}
 }
 
-// ReadProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
+// readProviderMap reads the environment variables IP4_PROVIDER and IP6_PROVIDER,
 // with support of deprecated environment variables IP4_POLICY and IP6_POLICY.
-func ReadProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
+func readProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
 	field *map[ipnet.Family]provider.Provider,
 ) bool {
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
-	if !ReadProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, defaultPrefixLen[ipnet.IP4], &ip4Provider) ||
-		!ReadProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, defaultPrefixLen[ipnet.IP6], &ip6Provider) {
+	if !readProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, defaultPrefixLen[ipnet.IP4], &ip4Provider) ||
+		!readProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, defaultPrefixLen[ipnet.IP6], &ip6Provider) {
 		return false
 	}
 

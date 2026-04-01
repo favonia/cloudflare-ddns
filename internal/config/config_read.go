@@ -37,30 +37,30 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 		ppfmt = ppfmt.Indent()
 	}
 
-	if !ReadAuth(ppfmt, &c.Auth) ||
-		!ReadPrefixLen(ppfmt, "IP4_DEFAULT_PREFIX_LEN", &c.IP4DefaultPrefixLen, ipnet.IP4) ||
-		!ReadPrefixLen(ppfmt, "IP6_DEFAULT_PREFIX_LEN", &c.IP6DefaultPrefixLen, ipnet.IP6) ||
-		!ReadProviderMap(ppfmt, map[ipnet.Family]int{
+	if !readAuth(ppfmt, &c.Auth) ||
+		!readPrefixLen(ppfmt, "IP4_DEFAULT_PREFIX_LEN", &c.IP4DefaultPrefixLen, ipnet.IP4) ||
+		!readPrefixLen(ppfmt, "IP6_DEFAULT_PREFIX_LEN", &c.IP6DefaultPrefixLen, ipnet.IP6) ||
+		!readProviderMap(ppfmt, map[ipnet.Family]int{
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,
 		}, &c.Provider) ||
-		!ReadDomains(ppfmt, "DOMAINS", &c.Domains) ||
-		!ReadDomains(ppfmt, "IP4_DOMAINS", &c.IP4Domains) ||
-		!ReadDomains(ppfmt, "IP6_DOMAINS", &c.IP6Domains) ||
-		!ReadWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
-		!ReadCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
-		!ReadBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
-		!ReadBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
-		!ReadNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
-		!ReadTTL(ppfmt, "TTL", &c.TTL) ||
-		!ReadString(ppfmt, "PROXIED", &c.ProxiedExpression) ||
-		!ReadString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
-		!ReadString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegex) ||
-		!ReadString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
-		!ReadString(ppfmt, "WAF_LIST_ITEM_COMMENT", &c.WAFListItemComment) ||
-		!ReadString(ppfmt, "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX", &c.ManagedWAFListItemsCommentRegex) ||
-		!ReadNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
-		!ReadNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) {
+		!readDomains(ppfmt, "DOMAINS", &c.Domains) ||
+		!readDomains(ppfmt, "IP4_DOMAINS", &c.IP4Domains) ||
+		!readDomains(ppfmt, "IP6_DOMAINS", &c.IP6Domains) ||
+		!readWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
+		!readCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
+		!readBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
+		!readBool(ppfmt, "DELETE_ON_STOP", &c.DeleteOnStop) ||
+		!readNonnegDuration(ppfmt, "CACHE_EXPIRATION", &c.CacheExpiration) ||
+		!readTTL(ppfmt, "TTL", &c.TTL) ||
+		!readString(ppfmt, "PROXIED", &c.ProxiedExpression) ||
+		!readString(ppfmt, "RECORD_COMMENT", &c.RecordComment) ||
+		!readString(ppfmt, "MANAGED_RECORDS_COMMENT_REGEX", &c.ManagedRecordsCommentRegex) ||
+		!readString(ppfmt, "WAF_LIST_DESCRIPTION", &c.WAFListDescription) ||
+		!readString(ppfmt, "WAF_LIST_ITEM_COMMENT", &c.WAFListItemComment) ||
+		!readString(ppfmt, "MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX", &c.ManagedWAFListItemsCommentRegex) ||
+		!readNonnegDuration(ppfmt, "DETECTION_TIMEOUT", &c.DetectionTimeout) ||
+		!readNonnegDuration(ppfmt, "UPDATE_TIMEOUT", &c.UpdateTimeout) {
 		return false
 	}
 

@@ -25,7 +25,7 @@ func (s setterResponses) register(d domain.Domain, code setter.ResponseCode) {
 func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 	switch {
 	default:
-		return NewMessage()
+		return newMessage()
 	case !ok:
 		return Message{
 			HeartbeatMessage: heartbeat.Message{
