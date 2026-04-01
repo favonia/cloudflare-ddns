@@ -26,7 +26,10 @@ func NewFile(ppfmt pp.PP, key string, path string) (Provider, bool) {
 		return nil, false
 	}
 
-	return protocol.NewFile("file:"+path, path), true
+	return protocol.File{
+		ProviderName: "file:" + path,
+		Path:         path,
+	}, true
 }
 
 // MustNewFile creates a [protocol.File] provider and panics if the path is not absolute.

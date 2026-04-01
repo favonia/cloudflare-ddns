@@ -13,11 +13,6 @@ type Unavailable struct {
 	ProviderName string
 }
 
-// NewUnavailable creates a synthetic unavailable provider.
-func NewUnavailable(providerName string) Unavailable {
-	return Unavailable{ProviderName: providerName}
-}
-
 // Name of the detection protocol.
 func (p Unavailable) Name() string {
 	return p.ProviderName

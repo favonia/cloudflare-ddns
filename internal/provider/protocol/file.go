@@ -18,14 +18,6 @@ type File struct {
 	Path string
 }
 
-// NewFile creates a file-backed provider.
-func NewFile(providerName string, path string) File {
-	return File{
-		ProviderName: providerName,
-		Path:         path,
-	}
-}
-
 // Name of the detection protocol.
 func (p File) Name() string {
 	return p.ProviderName
