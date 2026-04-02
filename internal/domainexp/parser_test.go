@@ -107,6 +107,8 @@ func (m ErrorMatcher) String() string {
 
 func TestParseExpression(t *testing.T) {
 	t.Parallel()
+	// ParseExpression has comprehensive coverage for grammar, semantics, and parser-level notices.
+	// Config.Normalize only needs a few smoke tests to ensure these notices surface in config flow.
 	key := "key"
 	type f = domain.FQDN
 	type w = domain.Wildcard
@@ -173,6 +175,14 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a,,b)"`)
 			},
 		},
+		"is/empty": {
+			"is()", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
+					key, "is()", "is")
+			},
+		},
 		"is/wildcard/1": {"is(example.com)", true, w("example.com"), false, nil},
 		"is/wildcard/2": {"is(*.example.com)", true, w("example.com"), true, nil},
 		"is/wildcard/3": {"is(*.example.com)", true, f("example.com"), false, nil},
@@ -206,6 +216,14 @@ func TestParseExpression(t *testing.T) {
 			"sub(,example.com)", true, f("www.example.com"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"sub(,example.com)"`)
+			},
+		},
+		"sub/empty": {
+			"sub()", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
+					key, "sub()", "sub")
 			},
 		},
 		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},
