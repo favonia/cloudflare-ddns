@@ -1,3 +1,15 @@
+# [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
+
+This is a quick bugfix release for users affected by a startup regression in 1.16.0. If 1.16.0 or 1.16.1 reports that your Cloudflare API token is invalid during startup even though the token had worked before 1.16.0, upgrade to 1.16.2. If version 1.16.0 or 1.16.1 is working well for you, there is no rush.
+
+We will continue investigating the unexpected behavior around Cloudflare’s token-verification endpoint; see [#1197](https://github.com/favonia/cloudflare-ddns/issues/1197).
+
+## Detailed Changes
+
+### Bug Fixes
+
+- Relax startup token verification so inconsistent failures from Cloudflare’s token-verify endpoint no longer stop the updater immediately. ([#1198](https://github.com/favonia/cloudflare-ddns/pull/1198))
+
 # [1.16.1](https://github.com/favonia/cloudflare-ddns/compare/v1.16.0...v1.16.1) (2026-03-31)
 
 This is a bugfix release for the new `static.empty` provider introduced in 1.16.0. If you are not using `static.empty`, this release should not affect you. A nice consequence of these fixes is the following one-shot wipe-all workflow:
