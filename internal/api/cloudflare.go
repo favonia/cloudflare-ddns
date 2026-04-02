@@ -88,17 +88,20 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	return h, true
 }
 
-// CheckUsability performs an early token check so obviously bad credentials
-// fail with a targeted message, while ambiguous network failures still allow
-// startup.
-//
-// The return contract is intentionally boolean because the caller only needs to
-// know whether startup must stop. This method keeps the finer Cloudflare-
-// specific classification local and reports the operator-facing details here.
-func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
-	handle, ok := t.newClient(ppfmt)
-	if !ok {
-		return false
+// CheckUsability performs an early token check and emits warnings for
+// suspicious results while allowing startup to continue.
+func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
+	handle, err := cloudflare.NewWithAPIToken(t.Token)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiWarning,
+			"Cloudflare API token preflight could not create a client: %v; the updater will continue",
+			err)
+		return
+	}
+
+	// set the base URL (mostly for testing)
+	if t.BaseURL != "" {
+		handle.BaseURL = t.BaseURL
 	}
 
 	quickCtx, cancel := context.WithTimeout(ctx, authVerifyTimeout)
@@ -109,8 +112,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		var authorizationError *cloudflare.AuthorizationError
 		var authenticationError *cloudflare.AuthenticationError
 		var requestError *cloudflare.RequestError
-		// Startup verification intentionally classifies only evidence-backed
-		// "broken token" cases as fatal.
+		// Startup verification is warn-only by design.
 		//
 		// The expected snapshot for this observed behavior was adopted on
 		// 2026-03-22. Update that date only when the Cloudflare
@@ -121,14 +123,14 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// - 401 for well-formed but invalid bearer tokens
 		// cloudflare-go maps those to RequestError and AuthorizationError.
 		//
-		// Everything else is treated as non-fatal unless Cloudflare explicitly
-		// says the token status is bad below. This keeps temporary outages and
-		// undocumented server behavior from being mislabeled as misconfiguration.
+		// Everything here is treated as non-fatal. This keeps temporary outages,
+		// undocumented server behavior, and token issues from blocking startup.
 		if errors.As(err, &authorizationError) || errors.As(err, &requestError) {
-			ppfmt.Noticef(pp.EmojiUserError, "The Cloudflare API token appears to be invalid: %v", err)
-			ppfmt.Noticef(pp.EmojiUserError,
+			ppfmt.Noticef(pp.EmojiWarning,
+				"The Cloudflare API token appears to be invalid: %v; the updater will continue", err)
+			ppfmt.Noticef(pp.EmojiWarning,
 				"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
-			return false
+			return
 		}
 		// cloudflare-go reserves AuthenticationError for HTTP 403. We did not
 		// find a documented or observed 403 variant for /user/tokens/verify, so
@@ -138,7 +140,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 			ppfmt.Noticef(pp.EmojiWarning,
 				"Unexpected authorization failure while verifying the Cloudflare API token: %v; the updater will continue",
 				err)
-			return true
+			return
 		}
 		// This startup probe intentionally uses a short fixed budget. If the
 		// probe context is already done here, treat the result as ambiguous and
@@ -147,7 +149,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 			ppfmt.Noticef(pp.EmojiWarning,
 				"Cloudflare API token verification timed out after %v; the updater will continue",
 				authVerifyTimeout)
-			return true
+			return
 		}
 
 		// Other errors here are usually transport failures, timeouts, or future
@@ -155,19 +157,19 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// let later operations provide more context if the problem persists.
 		ppfmt.Noticef(pp.EmojiWarning,
 			"Cloudflare API token verification failed: %v; the updater will continue", err)
-		return true
+		return
 	}
 
 	switch res.Status {
 	case "active":
-		return true
+		return
 	case "disabled", "expired":
-		// These statuses come from Cloudflare's success response and are safe to
-		// classify as fatal startup configuration errors.
-		ppfmt.Noticef(pp.EmojiUserError, "The Cloudflare API token is %s", res.Status)
-		ppfmt.Noticef(pp.EmojiUserError,
+		ppfmt.Noticef(pp.EmojiWarning,
+			"The Cloudflare API token is %s during startup verification; the updater will continue",
+			res.Status)
+		ppfmt.Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
-		return false
+		return
 	default:
 		// Cloudflare documents "active", and we have seen "disabled" and
 		// "expired" in the client contract. Anything else should be preserved as
@@ -175,7 +177,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) bool {
 		// stricter interpretation.
 		ppfmt.Noticef(pp.EmojiWarning,
 			"Cloudflare reported the API token status as %q during startup verification; the updater will continue", res.Status)
-		return true
+		return
 	}
 }
 

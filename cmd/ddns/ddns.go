@@ -121,15 +121,7 @@ func realMain() int {
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
-	if !builtConfig.Handle.Auth.CheckUsability(ctxWithSignals, ppfmt) {
-		ppfmt.Noticef(pp.EmojiUserError, "Cloudflare DDNS could not start because the Cloudflare API token appears invalid")
-		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Invalid Cloudflare API token"))
-		nt.Send(ctx, ppfmt, notifier.NewMessagef(
-			"Cloudflare DDNS could not start because the Cloudflare API token appears invalid. "+
-				"Please check the logs for details."))
-		ppfmt.Infof(pp.EmojiBye, "Bye!")
-		return 1
-	}
+	builtConfig.Handle.Auth.CheckUsability(ctxWithSignals, ppfmt)
 
 	// We only needs lifecycleConfig and updateConfig from now on, and builtConfig should not be used.
 	lifecycleConfig := builtConfig.Lifecycle
