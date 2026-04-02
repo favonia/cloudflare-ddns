@@ -1,7 +1,6 @@
 package file_test
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -17,8 +16,8 @@ import (
 
 func useMemFS(t *testing.T, memfs fstest.MapFS) {
 	t.Helper()
-	file.FS = memfs
-	t.Cleanup(func() { file.FS = os.DirFS("/") })
+	file.SetFSForTesting(memfs)
+	t.Cleanup(file.ResetFSForTesting)
 }
 
 //nolint:paralleltest // changing global var file.FS

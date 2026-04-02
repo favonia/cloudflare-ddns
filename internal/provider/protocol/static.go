@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"context"
-	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -18,14 +17,6 @@ type Static struct {
 	// in GetRawData because the provider contract is enforced per requested
 	// family at the point the raw data is consumed.
 	RawEntries []ipnet.RawEntry
-}
-
-// NewStatic creates a static provider with a defensive copy of rawEntries.
-func NewStatic(providerName string, rawEntries []ipnet.RawEntry) Static {
-	return Static{
-		ProviderName: providerName,
-		RawEntries:   slices.Clone(rawEntries),
-	}
 }
 
 // Name of the detection protocol.

@@ -18,7 +18,7 @@ import (
 )
 
 func useMemFS(memfs fstest.MapFS) {
-	file.FS = memfs
+	file.SetFSForTesting(memfs)
 }
 
 //nolint:paralleltest // environment vars and file system are global
@@ -186,6 +186,7 @@ func TestReadAuth(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
+			t.Cleanup(file.ResetFSForTesting)
 
 			store(t, "CLOUDFLARE_API_TOKEN", tc.token1)
 			store(t, "CLOUDFLARE_API_TOKEN_FILE", tc.fileToken1Path)

@@ -30,24 +30,23 @@ func mustRawEntry(s string) ipnet.RawEntry {
 	return ipnet.RawEntry(netip.MustParsePrefix(s))
 }
 
-func TestNewStatic(t *testing.T) {
+func TestStaticFields(t *testing.T) {
 	t.Parallel()
 
 	original := []ipnet.RawEntry{mustRawEntry("1.1.1.1/32"), mustRawEntry("2.2.2.2/32")}
-	p := protocol.NewStatic("test", original)
+	p := protocol.Static{
+		ProviderName: "test",
+		RawEntries:   original,
+	}
 
 	require.Equal(t, "test", p.ProviderName)
 	require.Equal(t, original, p.RawEntries)
-
-	// Verify defensive copy: mutating the original slice should not affect the provider.
-	original[0] = mustRawEntry("3.3.3.3/32")
-	require.Equal(t, mustRawEntry("1.1.1.1/32"), p.RawEntries[0])
 }
 
 func TestNewStaticNil(t *testing.T) {
 	t.Parallel()
 
-	p := protocol.NewStatic("empty", nil)
+	p := protocol.Static{ProviderName: "empty", RawEntries: nil}
 	require.Equal(t, "empty", p.ProviderName)
 	require.Empty(t, p.RawEntries)
 }

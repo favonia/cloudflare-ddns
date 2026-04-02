@@ -4,7 +4,6 @@ package protocol_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -21,8 +20,8 @@ import (
 
 func useMemFS(t *testing.T, memfs fstest.MapFS) {
 	t.Helper()
-	file.FS = memfs
-	t.Cleanup(func() { file.FS = os.DirFS("/") })
+	file.SetFSForTesting(memfs)
+	t.Cleanup(file.ResetFSForTesting)
 }
 
 func memFile(data string) *fstest.MapFile {
@@ -36,13 +35,13 @@ func memFile(data string) *fstest.MapFile {
 
 //nolint:paralleltest // changing global var file.FS
 func TestFileName(t *testing.T) {
-	p := protocol.NewFile("file:/etc/ips.txt", "/etc/ips.txt")
+	p := protocol.File{ProviderName: "file:/etc/ips.txt", Path: "/etc/ips.txt"}
 	require.Equal(t, "file:/etc/ips.txt", p.Name())
 }
 
 //nolint:paralleltest // changing global var file.FS
 func TestFileIsExplicitEmpty(t *testing.T) {
-	p := protocol.NewFile("file:/etc/ips.txt", "/etc/ips.txt")
+	p := protocol.File{ProviderName: "file:/etc/ips.txt", Path: "/etc/ips.txt"}
 	require.False(t, p.IsExplicitEmpty())
 }
 
@@ -201,7 +200,7 @@ func TestFileGetRawData(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			p := protocol.NewFile("file:/ips.txt", "/ips.txt")
+			p := protocol.File{ProviderName: "file:/ips.txt", Path: "/ips.txt"}
 			result := p.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))
 			require.Equal(t, tc.ok, result.Available)
 			if tc.ok {
@@ -221,7 +220,7 @@ func TestFileGetRawDataMissingFile(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/missing.txt", gomock.Any())
 
-	p := protocol.NewFile("file:/missing.txt", "/missing.txt")
+	p := protocol.File{ProviderName: "file:/missing.txt", Path: "/missing.txt"}
 	result := p.GetRawData(context.Background(), mockPP, ipnet.IP4, 32)
 	require.False(t, result.Available)
 	require.Empty(t, result.RawEntries)

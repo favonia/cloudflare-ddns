@@ -104,14 +104,14 @@ func (h UptimeKuma) Describe(yield func(name, params string) bool) {
 	yield("Uptime Kuma", "(URL redacted)")
 }
 
-// UptimeKumaResponse is for parsing the response from Uptime Kuma.
-type UptimeKumaResponse struct {
+// uptimeKumaResponse is for parsing the response from Uptime Kuma.
+type uptimeKumaResponse struct {
 	OK  bool   `json:"ok"`
 	Msg string `json:"msg"`
 }
 
-// UptimeKumaRequest is for assembling the request to Uptime Kuma.
-type UptimeKumaRequest struct {
+// uptimeKumaRequest is for assembling the request to Uptime Kuma.
+type uptimeKumaRequest struct {
 	Status string `url:"status"`
 	Msg    string `url:"msg"`
 	Ping   string `url:"ping"`
@@ -123,7 +123,7 @@ func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 		// Pings the server with status=up. Messages are ignored and "OK" is used instead.
 		// The reason is that Uptime Kuma seems to show only the first success message
 		// and it could be misleading if an outdated message stays in the UI.
-		return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
+		return h.ping(ctx, ppfmt, uptimeKumaRequest{Status: "up", Msg: "OK", Ping: ""})
 	}
 
 	formatted := msg.Format()
@@ -135,11 +135,11 @@ func (h UptimeKuma) Ping(ctx context.Context, ppfmt pp.PP, msg Message) bool {
 		// We can send a non-empty message to overwrite it.
 		formatted = "Failing"
 	}
-	return h.ping(ctx, ppfmt, UptimeKumaRequest{Status: "down", Msg: formatted, Ping: ""})
+	return h.ping(ctx, ppfmt, uptimeKumaRequest{Status: "down", Msg: formatted, Ping: ""})
 }
 
 // ping implements the low-level details of Ping.
-func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaRequest) bool {
+func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param uptimeKumaRequest) bool {
 	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 	defer cancel()
 
@@ -163,7 +163,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param UptimeKumaReque
 	}
 	defer resp.Body.Close()
 
-	var parsedResp UptimeKumaResponse
+	var parsedResp uptimeKumaResponse
 	if err = json.NewDecoder(io.LimitReader(resp.Body, maxReadLength)).Decode(&parsedResp); err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to parse the response from Uptime Kuma: %v", err)
 		return false

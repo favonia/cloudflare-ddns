@@ -63,15 +63,15 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixL
 	for _, entry := range entries {
 		names = append(names, entry.Describe(defaultPrefixLen))
 	}
-	return protocol.NewStatic(
-		"static:"+strings.Join(names, ","),
-		entries,
-	), true
+	return protocol.Static{
+		ProviderName: "static:" + strings.Join(names, ","),
+		RawEntries:   slices.Clone(entries),
+	}, true
 }
 
 // NewStaticEmpty creates an explicit-empty [protocol.Static] provider.
 func NewStaticEmpty() Provider {
-	return protocol.NewStatic("static.empty", nil)
+	return protocol.Static{ProviderName: "static.empty", RawEntries: nil}
 }
 
 // MustNewStatic creates a [protocol.Static] provider and panics if it fails.

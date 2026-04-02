@@ -18,7 +18,7 @@ import (
 func TestNewUnavailable(t *testing.T) {
 	t.Parallel()
 
-	p := protocol.NewUnavailable("test-unavailable")
+	p := protocol.Unavailable{ProviderName: "test-unavailable"}
 	require.Equal(t, "test-unavailable", p.ProviderName)
 }
 
@@ -52,7 +52,7 @@ func TestUnavailableGetRawData(t *testing.T) {
 			mockPP.EXPECT().Infof(pp.EmojiError,
 				"The provider %s simulates a detection failure; no real detection is attempted", "debug.unavailable")
 
-			p := protocol.NewUnavailable("debug.unavailable")
+			p := protocol.Unavailable{ProviderName: "debug.unavailable"}
 			rawData := p.GetRawData(context.Background(), mockPP, tc.ipFamily, testDefaultPrefixLen(tc.ipFamily))
 			require.False(t, rawData.Available)
 			require.Empty(t, rawData.RawEntries)
