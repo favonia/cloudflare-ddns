@@ -174,8 +174,6 @@ type Auth interface {
 
 	// CheckUsability performs an early credential usability check.
 	//
-	// It returns false only for conclusive credential failures. Ambiguous
-	// failures such as timeouts still return true after logging a warning, so
-	// temporary outages do not block startup.
-	CheckUsability(ctx context.Context, ppfmt pp.PP) bool
+	// The check is warning-only and should not block startup.
+	CheckUsability(ctx context.Context, ppfmt pp.PP)
 }
