@@ -88,7 +88,7 @@ func TestVerifyFailedInvalidToken(t *testing.T) {
 
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
-			"The Cloudflare API token appears to be invalid: %v; the updater will continue",
+			"Cloudflare API token preflight check suggests the token is invalid: %v; the updater will continue",
 			gomock.Any()),
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE"),
@@ -123,7 +123,7 @@ func TestVerifyFailedInvalidAuthorizationHeader(t *testing.T) {
 
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
-			"The Cloudflare API token appears to be invalid: %v; the updater will continue",
+			"Cloudflare API token preflight check suggests the token is invalid: %v; the updater will continue",
 			gomock.Any()),
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE"),
@@ -153,7 +153,7 @@ func TestVerifyUnexpectedAuthorizationFailureIsUncertain(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Unexpected authorization failure while verifying the Cloudflare API token: %v; the updater will continue",
+		"Cloudflare API token preflight check returned an unexpected authorization failure: %v; the updater will continue",
 		gomock.Any())
 
 	auth.CheckUsability(context.Background(), mockPP)
@@ -185,7 +185,7 @@ func TestVerifyFailedExpiredToken(t *testing.T) {
 
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
-			"The Cloudflare API token is %s during startup verification; the updater will continue",
+			"The Cloudflare API token is %s during preflight check; the updater will continue",
 			"expired"),
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE"),
@@ -208,7 +208,7 @@ func TestCheckUsabilityTimeout(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare API token verification timed out after %v; the updater will continue",
+		"Cloudflare API token preflight check timed out after %v; the updater will continue",
 		time.Second)
 
 	auth.CheckUsability(context.Background(), mockPP)
@@ -229,7 +229,7 @@ func TestCheckUsabilityUnexpectedVerifyFailureIsUncertain(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare API token verification failed: %v; the updater will continue",
+		"Cloudflare API token preflight check failed: %v; the updater will continue",
 		gomock.Any())
 
 	auth.CheckUsability(context.Background(), mockPP)
@@ -261,7 +261,7 @@ func TestCheckUsabilityDisabledToken(t *testing.T) {
 
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
-			"The Cloudflare API token is %s during startup verification; the updater will continue",
+			"The Cloudflare API token is %s during preflight check; the updater will continue",
 			"disabled"),
 		mockPP.EXPECT().Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE"),
@@ -295,7 +295,7 @@ func TestCheckUsabilityUnknownStatusIsUncertain(t *testing.T) {
 	})
 
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare reported the API token status as %q during startup verification; the updater will continue",
+		"Cloudflare reported the API token status as %q during preflight check; the updater will continue",
 		"mystery")
 
 	auth.CheckUsability(context.Background(), mockPP)
@@ -311,7 +311,7 @@ func TestCheckUsabilityNewClientFailure(t *testing.T) {
 		BaseURL: "",
 	}
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare API token preflight could not create a client: %v; the updater will continue",
+		"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
 		gomock.Any())
 
 	auth.CheckUsability(context.Background(), mockPP)

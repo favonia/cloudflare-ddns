@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -62,8 +63,9 @@ type CloudflareAuth struct {
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	handle, ok := t.newClient(ppfmt)
-	if !ok {
+	handle, err := t.newClient()
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
 		return nil, false
 	}
 
@@ -91,17 +93,12 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 // CheckUsability performs an early token check and emits warnings for
 // suspicious results while allowing startup to continue.
 func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
-	handle, err := cloudflare.NewWithAPIToken(t.Token)
+	handle, err := t.newClient()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token preflight could not create a client: %v; the updater will continue",
+			"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
 			err)
 		return
-	}
-
-	// set the base URL (mostly for testing)
-	if t.BaseURL != "" {
-		handle.BaseURL = t.BaseURL
 	}
 
 	quickCtx, cancel := context.WithTimeout(ctx, authVerifyTimeout)
@@ -127,7 +124,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		// undocumented server behavior, and token issues from blocking startup.
 		if errors.As(err, &authorizationError) || errors.As(err, &requestError) {
 			ppfmt.Noticef(pp.EmojiWarning,
-				"The Cloudflare API token appears to be invalid: %v; the updater will continue", err)
+				"Cloudflare API token preflight check suggests the token is invalid: %v; the updater will continue", err)
 			ppfmt.Noticef(pp.EmojiWarning,
 				"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
 			return
@@ -138,7 +135,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		// the token is definitely invalid.
 		if errors.As(err, &authenticationError) {
 			ppfmt.Noticef(pp.EmojiWarning,
-				"Unexpected authorization failure while verifying the Cloudflare API token: %v; the updater will continue",
+				"Cloudflare API token preflight check returned an unexpected authorization failure: %v; the updater will continue",
 				err)
 			return
 		}
@@ -147,7 +144,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		// continue startup instead of mislabeling the token as invalid.
 		if quickCtx.Err() != nil {
 			ppfmt.Noticef(pp.EmojiWarning,
-				"Cloudflare API token verification timed out after %v; the updater will continue",
+				"Cloudflare API token preflight check timed out after %v; the updater will continue",
 				authVerifyTimeout)
 			return
 		}
@@ -156,7 +153,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		// undocumented client-library/server behavior. Keep startup running and
 		// let later operations provide more context if the problem persists.
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token verification failed: %v; the updater will continue", err)
+			"Cloudflare API token preflight check failed: %v; the updater will continue", err)
 		return
 	}
 
@@ -165,7 +162,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		return
 	case "disabled", "expired":
 		ppfmt.Noticef(pp.EmojiWarning,
-			"The Cloudflare API token is %s during startup verification; the updater will continue",
+			"The Cloudflare API token is %s during preflight check; the updater will continue",
 			res.Status)
 		ppfmt.Noticef(pp.EmojiWarning,
 			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
@@ -176,16 +173,15 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 		// an unexpected-but-non-fatal warning until there is real evidence for a
 		// stricter interpretation.
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare reported the API token status as %q during startup verification; the updater will continue", res.Status)
+			"Cloudflare reported the API token status as %q during preflight check; the updater will continue", res.Status)
 		return
 	}
 }
 
-func (t CloudflareAuth) newClient(ppfmt pp.PP) (*cloudflare.API, bool) {
+func (t CloudflareAuth) newClient() (*cloudflare.API, error) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
-		return nil, false
+		return nil, fmt.Errorf("create Cloudflare API client: %w", err)
 	}
 
 	// set the base URL (mostly for testing)
@@ -193,7 +189,7 @@ func (t CloudflareAuth) newClient(ppfmt pp.PP) (*cloudflare.API, bool) {
 		handle.BaseURL = t.BaseURL
 	}
 
-	return handle, true
+	return handle, nil
 }
 
 // flushCache flushes the API cache.
