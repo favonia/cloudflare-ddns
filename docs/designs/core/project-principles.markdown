@@ -38,6 +38,7 @@ Examples:
 ### 4. Operator Clarity
 
 - Detect operator misconfigurations early.
+- Implicit defaults must be semantically identical to some explicit value, so operators can restate the default choice explicitly without changing behavior.
 - Explain behavior through observable outcomes, operator decisions, and actionable next steps.
 - Mention internal mechanisms only when they change operator decisions.
 

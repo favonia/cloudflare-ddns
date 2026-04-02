@@ -118,7 +118,7 @@ type Resolved struct {
 }
 
 // Resolve computes the canonical reconciliation result across tag sets.
-// When no configured fallback tag set is merged in, only tags present in every
+// When the effective fallback tag set is empty, only tags present in every
 // input set survive in Inherited and the remaining canonical tags are reported
 // in Dropped. This is the DNS tag-specific instantiation of the managed-record
 // reconciliation rule from docs/designs/features/managed-record-ownership.markdown.

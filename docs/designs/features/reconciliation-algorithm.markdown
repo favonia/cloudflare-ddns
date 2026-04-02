@@ -56,9 +56,9 @@ Resource-specific notes define:
 
 When reconciliation needs metadata for newly created objects, it resolves that metadata from recyclable owned objects only.
 
-- An empty source set uses the configured fallback value.
+- An empty source set uses the effective fallback value.
 - A unanimous source value is inherited.
-- A non-unanimous source value uses the configured fallback value and emits one ambiguity warning for that field.
+- A non-unanimous source value uses the effective fallback value and emits one ambiguity warning for that field.
 
 Set-valued metadata fields may apply the same rule per element instead of per whole field. In that case, each element is inherited only when its source values agree under the resource-specific equality rule; otherwise the fallback for that element is used.
 

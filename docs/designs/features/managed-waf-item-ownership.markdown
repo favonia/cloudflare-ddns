@@ -2,9 +2,9 @@
 
 Read when: changing WAF list ownership, managed-item filtering, or ownership-aware WAF cleanup semantics tied to WAF list items.
 
-Defines: the WAF instantiation of the ownership model, including WAF attribute-based ownership via `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` and `WAF_LIST_ITEM_COMMENT`, plus ownership-aware WAF reconciliation.
+Defines: the WAF instantiation of the ownership model, including WAF attribute-based ownership via `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` and `WAF_LIST_ITEM_COMMENT`, WAF-side admissibility, and ownership-aware WAF reconciliation.
 
-Does not define: WAF target projection policy, exact warning text, or repository-wide naming policy.
+Does not define: exact Cloudflare request payload shapes, exact warning text, or repository-wide naming policy.
 
 `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` lets each updater instance decide which WAF list items it recognizes as its own.
 
@@ -22,7 +22,7 @@ Within the ownership model:
 
 - resource ownership is defined elsewhere
 - IP-family ownership is defined in [Ownership Model](ownership-model.markdown)
-- this note defines WAF attribute-based ownership
+- this note defines WAF attribute-based ownership and WAF-side admissibility
 - reconciliation semantics are defined in [Reconciliation Algorithm](reconciliation-algorithm.markdown)
 
 The selector uses Go `regexp` RE2 syntax with `MatchString` semantics, not implicit full-match behavior.
@@ -49,6 +49,14 @@ Only matched items participate in:
 - `DELETE_ON_STOP`
 
 Unmatched items are invisible to WAF mutation logic, so the updater may create a new managed item even if an unmanaged item already covers the desired target prefix.
+
+### WAF Admissibility
+
+WAF admissibility is defined by whether raw data can be validly derived into managed WAF targets for the in-scope WAF resources.
+
+Current WAF derivation uses the masked subnet of each raw entry.
+
+A raw entry is WAF-admissible only if that derived WAF target is valid for the managed WAF resource. Resource-specific target restrictions therefore belong here as WAF admissibility constraints rather than in provider internals or generic lifecycle text.
 
 ### WAF Instantiation
 
@@ -121,4 +129,5 @@ This design applies only to WAF list item ownership based on WAF list item comme
 
 - If one process ever needs multiple ownership scopes for the same WAF list, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to WAF list items.
+- If future work changes WAF-side target validity rules or adds new WAF-specific target restrictions, this note should define the resulting WAF admissibility constraints.
 - If future work changes the broader ownership model, this note should continue to own only the WAF attribute-based ownership layer instead of coupling itself to unrelated ownership rules.
