@@ -191,7 +191,7 @@ func reconcileAndPartitionRecords(
 
 	// Tags differ from scalar fields: the current config surface has no non-empty
 	// fallback tag value, so reconciliation preserves only the canonical tags that
-	// every recyclable managed record already has. With today's configured
+	// every recyclable managed record already has. With today's effective
 	// fallback Tags=nil, this is exactly the canonical intersection/common subset.
 	resolvedParams = api.RecordParams{
 		TTL:     resolvedTTL,
@@ -269,7 +269,7 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 
 	// Stage 1: outdated-first operations for unmatched targets.
 	// Metadata for these new targets is inherited from recyclable outdated records
-	// when they agree; configured fallback values are used only when those records
+	// when they agree; effective fallback values are used only when those records
 	// are absent or disagree.
 	resolvedParamsForNewTargets, outdatedRecords := reconcileAndSortRecords(
 		fallbackParams, outdatedRecords, ppfmt, warnings, unit,

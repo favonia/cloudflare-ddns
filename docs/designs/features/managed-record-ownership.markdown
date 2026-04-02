@@ -2,7 +2,7 @@
 
 Read when: changing DNS ownership, managed-record filtering, or DNS reconciliation semantics tied to DNS record ownership.
 
-Defines: the DNS instantiation of the ownership model, including DNS attribute-based ownership via `MANAGED_RECORDS_COMMENT_REGEX` and `RECORD_COMMENT`, plus ownership-aware DNS reconciliation.
+Defines: the DNS instantiation of the ownership model, including DNS attribute-based ownership via `MANAGED_RECORDS_COMMENT_REGEX` and `RECORD_COMMENT`, DNS-side admissibility, and ownership-aware DNS reconciliation.
 
 Does not define: exact Cloudflare request payload shapes or local warning text.
 
@@ -22,7 +22,7 @@ Within the ownership model:
 
 - resource ownership is defined elsewhere
 - IP-family ownership is defined in [Ownership Model](ownership-model.markdown)
-- this note defines DNS attribute-based ownership
+- this note defines DNS attribute-based ownership and DNS-side admissibility
 - reconciliation semantics are defined in [Reconciliation Algorithm](reconciliation-algorithm.markdown)
 
 The selector uses Go `regexp` RE2 syntax with `MatchString` semantics. It is not an implicit full-match pattern.
@@ -50,6 +50,14 @@ Only matched records participate in:
 - `DELETE_ON_STOP`
 
 Unmatched records are invisible to DNS mutation logic, so the updater may create a new managed record even if an unmanaged record already has the desired IP address.
+
+### DNS Admissibility
+
+DNS admissibility is defined by whether raw data can be validly derived into DNS targets for the in-scope DNS resources.
+
+Under current shipped behavior, DNS derivation forgets prefix length, so provider-valid family-matching raw entries are DNS-admissible.
+
+Future DNS-side derivation may impose narrower admissibility constraints per resource. In particular, future host-ID derivation is expected to use observed IPv6 prefixes while requiring some raw entries to be rejected as DNS-inadmissible when they cannot produce valid targets for an in-scope DNS resource.
 
 ### DNS Instantiation
 
@@ -126,4 +134,5 @@ This design applies only to DNS record ownership based on DNS record comments.
 
 - If one process ever needs multiple ownership scopes for the same domain and IP family, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to DNS records.
+- If future DNS-side derivation adds host-ID or similar target-construction policy, this note should define the resulting DNS admissibility constraints rather than pushing them into generic lifecycle text.
 - If future work changes the broader ownership model, this note should continue to own only the DNS attribute-based ownership layer instead of absorbing unrelated ownership rules.

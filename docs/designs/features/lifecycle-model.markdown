@@ -56,7 +56,7 @@ This phase covers immediate start, future scheduling, and shutdown requests.
 
 ## Detection
 
-Detection yields per-resource reconciliation intents for the current round. A reconciliation intent expresses what ownership and observation together lead to; the actual action is decided by the reconciliation algorithm.
+Detection yields per-resource reconciliation intents for the current round. A reconciliation intent expresses what ownership and admissible observation together lead to; the actual action is decided by the reconciliation algorithm.
 
 If a resource is out of scope, there is only one intent:
 
@@ -64,17 +64,17 @@ If a resource is out of scope, there is only one intent:
 
 If a resource is in scope, detection yields one of these three intents:
 
-- `abort`: raw data is unavailable for this run; normal update is aborted and further handling is up to reconciliation
-- `clear`: known empty raw data
-- `update`: known non-empty raw data
+- `abort`: admissible raw data is unavailable for this run; normal update is aborted and further handling is up to reconciliation
+- `clear`: known empty admissible raw data
+- `update`: known non-empty admissible raw data
 
-The current concrete raw-data representation is a set of IP addresses with prefix lengths. The default prefix lengths are 32 for bare IPv4 observations and 64 for bare IPv6 observations. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
+The current concrete raw-data representation is a set of IP addresses with prefix lengths. Detection must yield only raw data admissible for all in-scope resources for that round. Bare observations are lifted using the effective default prefix lengths: 32 for IPv4 and 64 for IPv6 unless set otherwise; configurations where this can yield inadmissible raw data are invalid. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 
 Concrete detection and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection security is owned by [Network Security Model](network-security-model.markdown).
 
 ## Derivation
 
-Derivation transforms raw data into the resource-specific target state consumed by reconciliation.
+Derivation defines the admissibility requirements for raw data, per resource, and transforms admissible raw data into the resource-specific target state consumed by reconciliation.
 
 - DNS derivation turns each raw IP address with prefix length into a DNS address target by forgetting the prefix length.
 - WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
@@ -97,13 +97,13 @@ Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and
 
 These boundaries should remain explicit:
 
-- detection discovers raw data; it does not decide mutation authority
-- derivation changes raw data into resource-specific targets; it does not mutate remote state
+- detection yields admissible raw data for all in-scope resources; it does not decide mutation authority
+- derivation defines admissibility requirements and changes admissible raw data into resource-specific targets; it does not mutate remote state
 - reconciliation mutates toward the desired steady state for this round
 - cleanup mutates under shutdown authority, not ordinary steady-state authority
 
 ## Extension Points
 
-- If future work adds more resource kinds, they should plug into this lifecycle by defining their derivation needs, reconciliation instantiation, and cleanup eligibility instead of inventing a parallel lifecycle.
+- If future work adds more resource kinds, they should plug into this lifecycle by defining their admissibility requirements, derivation needs, reconciliation instantiation, and cleanup eligibility instead of inventing a parallel lifecycle.
 - If target derivation stops being identity, update this note and the resource notes so the derivation boundary stays explicit.
 - If scheduling or startup ever become materially more complex, extend this note by refining phase boundaries instead of folding process-lifecycle rules into reconciliation notes.

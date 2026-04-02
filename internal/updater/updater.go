@@ -135,7 +135,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 					Proxied: c.Proxied[domain],
 					Comment: c.RecordComment,
 					// The config surface does not expose non-empty fallback DNS tags yet.
-					// Nil here therefore means "no configured fallback tags", not "clear tags".
+					// Nil here therefore means "the effective fallback tag set is empty", not "clear tags".
 					Tags: nil,
 				})
 			}),

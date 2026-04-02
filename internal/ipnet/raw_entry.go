@@ -42,8 +42,8 @@ func (r RawEntry) String() string { return netip.Prefix(r).String() }
 // Describe returns a human-readable representation of the raw entry.
 // The CIDR suffix is omitted only when the entry is a single host
 // (prefix length == address bit length) AND that full-host length is also
-// the configured default. This keeps output familiar: users who leave the
-// default at /32 see bare "1.2.3.4", while users who set /24 always see
+// the effective default. This keeps output familiar: users whose effective
+// default is /32 see bare "1.2.3.4", while users whose effective default is /24 always see
 // the explicit "/24" or "/32" suffix so the distinction is never ambiguous.
 func (r RawEntry) Describe(defaultPrefixLen int) string {
 	p := netip.Prefix(r)
