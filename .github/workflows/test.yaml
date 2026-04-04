@@ -49,6 +49,10 @@ jobs:
         with:
           name: go-test-json
           path: test-report.jsonl
+      - name: ✂️ Drop zero-statement blocks from the coverage profile
+        run: |
+          awk '$2 != "0"' coverage.txt > coverage.txt.filtered
+          mv coverage.txt.filtered coverage.txt
       - name: ☂️ Report coverage rates to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
@@ -147,6 +151,10 @@ jobs:
           go run . \
             -binary "${tmpdir}/ddns" \
             -coverprofile "${GITHUB_WORKSPACE}/integration-coverage.txt"
+      - name: ✂️ Drop zero-statement blocks from the coverage profile
+        run: |
+          awk '$2 != "0"' integration-coverage.txt > integration-coverage.txt.filtered
+          mv integration-coverage.txt.filtered integration-coverage.txt
       - name: ☂️ Report smoke-test coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
