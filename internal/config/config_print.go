@@ -107,8 +107,8 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 	// Hide inactive filters to keep the default output focused.
 	if managedRecordsCommentRegex != "" || managedWAFListItemsCommentRegex != "" {
 		section("Ownership filters:")
-		// These regexes select which existing DNS records and WAF list items this
-		// instance considers managed.
+		// These regexes select which DNS records and WAF list items this
+		// instance considers managed (both existing and newly created).
 		if managedRecordsCommentRegex != "" {
 			item("DNS record comment regex:", "%s", describeDNSRecordCommentRegex(managedRecordsCommentRegex))
 		}
