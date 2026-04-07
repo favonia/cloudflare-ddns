@@ -44,7 +44,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "Requires either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "Either %s or %s must be set", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"conflicting": {
@@ -82,7 +82,7 @@ func TestReadAuth(t *testing.T) {
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The token provided by %s appears to include surrounding quotation marks; remove the extra quotes",
+					"The value of %s appears to include surrounding quotation marks; remove the extra quotes",
 					"CLOUDFLARE_API_TOKEN")
 			},
 		},
@@ -99,7 +99,7 @@ func TestReadAuth(t *testing.T) {
 			"YOUR-CLOUDFLARE-API-TOKEN", "", "", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "You need to provide a real API token as %s", "CLOUDFLARE_API_TOKEN")
+				m.EXPECT().Noticef(pp.EmojiUserError, "You need to provide a real API token as the value of %s", "CLOUDFLARE_API_TOKEN")
 			},
 		},
 		"file/success": {
@@ -121,7 +121,7 @@ func TestReadAuth(t *testing.T) {
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					"The token provided by %s appears to include surrounding quotation marks; remove the extra quotes",
+					"The value of %s appears to include surrounding quotation marks; remove the extra quotes",
 					"CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
@@ -130,7 +130,7 @@ func TestReadAuth(t *testing.T) {
 			"", "", "/token1.txt", "/token2.txt", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The files specified by %s and %s have conflicting tokens; their content must match", "CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The files specified by %s and %s have different tokens; their content must match", "CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN_FILE")
 			},
 		},
 		"file/conflicting/non-file": {
@@ -173,6 +173,30 @@ func TestReadAuth(t *testing.T) {
 			false, "",
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/wrong.txt", gomock.Any())
+			},
+		},
+		"file/copycat": {
+			map[string]string{"token.txt": "YOUR-CLOUDFLARE-API-TOKEN"},
+			"", "", "/token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "You need to provide a real API token as the value of %s", "CLOUDFLARE_API_TOKEN_FILE")
+			},
+		},
+		"file/env-file/cloudflare": {
+			map[string]string{"token.txt": "CLOUDFLARE_API_TOKEN=hello"},
+			"", "", "/token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `The token file appears to be an environment file with "CLOUDFLARE_API_TOKEN=..."; the file should contain only the token itself`)
+			},
+		},
+		"file/env-file/cf": {
+			map[string]string{"token.txt": "CF_API_TOKEN=hello"},
+			"", "", "/token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `The token file appears to be an environment file with "CF_API_TOKEN=..."; the file should contain only the token itself`)
 			},
 		},
 		"file/invalid-directory": {

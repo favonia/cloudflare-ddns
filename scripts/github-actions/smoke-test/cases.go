@@ -67,7 +67,7 @@ var allCases = []smokeCase{
 		Env:              map[string]string{"QUIET": "true"},
 		ExpectedExitCode: 1,
 		OrderedFragments: []string{
-			"Requires either CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE",
+			"Either CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE must be set",
 		},
 	},
 }

@@ -85,7 +85,7 @@ func TestReadEnvEmpty(t *testing.T) {
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Reading settings . . ."),
 		mockPP.EXPECT().Indent().Return(innerMockPP),
 		innerMockPP.EXPECT().Noticef(pp.EmojiUserError,
-			"Requires either %s or %s", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE"),
+			"Either %s or %s must be set", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_FILE"),
 	)
 	ok := cfg.ReadEnv(mockPP)
 	require.False(t, ok)
