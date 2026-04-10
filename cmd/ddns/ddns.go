@@ -153,6 +153,10 @@ func realMain() int {
 		if first && !lifecycleConfig.UpdateOnStart {
 			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(true, "Started (no updates performed yet)"))
 		} else {
+			// Spread API calls across clients sharing the same nominal interval to
+			// reduce synchronized traffic spikes at Cloudflare's DNS API.
+			time.Sleep(cron.JitterDuration(time.Until(next)))
+
 			// Improve readability of the logging by separating each round of checks with blank lines.
 			ppfmt.BlankLineIfVerbose()
 
