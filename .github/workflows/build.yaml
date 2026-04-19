@@ -22,7 +22,7 @@ jobs:
       group: ${{ github.workflow }}-build-${{ github.ref }}
       cancel-in-progress: true
     permissions:
-      id-token: write
+      id-token: write # for cosign keyless signing via GitHub OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
