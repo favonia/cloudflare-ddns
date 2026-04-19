@@ -13,7 +13,6 @@ jobs:
     name: In-repo
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
     steps:
       - name: 🛡️ Harden Runner
