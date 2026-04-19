@@ -193,22 +193,23 @@ func runWatch(ctx context.Context, cfg config) error {
 			fmt.Sprintf("- Source path: `%s/%s` on `%s`", cfg.Repo, cfg.Path, cfg.Ref))
 	}
 	if cfg.SnapshotDate != "" {
-		summaryHeaderLines = append(summaryHeaderLines, fmt.Sprintf("- Expected snapshot date: %s", cfg.SnapshotDate))
+		summaryHeaderLines = append(summaryHeaderLines,
+			fmt.Sprintf("- Expected snapshot date: `%s`", cfg.SnapshotDate))
 	}
 	if cfg.PageURL != "" {
-		summaryHeaderLines = append(summaryHeaderLines, fmt.Sprintf("- Rendered page: %s", cfg.PageURL))
+		summaryHeaderLines = append(summaryHeaderLines, fmt.Sprintf("- Rendered page: <%s>", cfg.PageURL))
 	}
 	if cfg.Repo != "" {
 		summaryHeaderLines = append(summaryHeaderLines,
-			fmt.Sprintf("- Latest source path commit: [`%s`](%s) on %s", latest.SHA[:12], latest.URL, latest.Date),
-			fmt.Sprintf("- Latest source path commit subject: `%s`", latest.Message),
-			fmt.Sprintf("- History: %s", cfg.HistoryURL),
+			fmt.Sprintf("- Latest source path commit: [`%s`](%s) on `%s`", latest.SHA[:12], latest.URL, latest.Date),
+			fmt.Sprintf("- Latest source path commit subject: %s", inlineCode(latest.Message)),
+			fmt.Sprintf("- History: <%s>", cfg.HistoryURL),
 		)
 	}
 	summaryHeader := strings.Join(summaryHeaderLines, "\n") + "\n"
 
 	if slices.Equal(actualItems, expectedItems) {
-		writeSummary(summaryHeader + "\n### " + cfg.WatchLabel + "\n\n" + formatBullets(actualItems) + "\n")
+		writeSummary(summaryHeader + "\n### " + cfg.WatchLabel + "\n\n" + formatBulletsMarkdown(actualItems) + "\n")
 		//nolint:forbidigo // this is okay for a small script
 		fmt.Printf("%s: watched upstream content still matches the expected assumptions.\n", cfg.Name)
 		return nil
@@ -251,10 +252,10 @@ func runWatch(ctx context.Context, cfg config) error {
 	//nolint:forbidigo // this is okay for a small script
 	fmt.Printf("::error title=%s changed::%s\n", cfg.Name, message)
 	writeSummary(summaryHeader +
-		"\n### Expected watched content\n\n" + formatBullets(expectedItems) +
-		"\n\n### Observed watched content\n\n" + formatBullets(actualItems) +
-		"\n\n### Re-check these assumptions\n\n" + formatBullets(cfg.Reminders) +
-		"\n\n### Related repo paths\n\n" + formatBullets(cfg.RelatedPaths) + "\n")
+		"\n### Expected watched content\n\n" + formatBulletsMarkdown(expectedItems) +
+		"\n\n### Observed watched content\n\n" + formatBulletsMarkdown(actualItems) +
+		"\n\n### Re-check these assumptions\n\n" + formatBulletsMarkdown(cfg.Reminders) +
+		"\n\n### Related repo paths\n\n" + formatBulletsMarkdown(cfg.RelatedPaths) + "\n")
 	return fmt.Errorf("%s: watch content drifted", cfg.Name)
 }
 
@@ -777,6 +778,47 @@ func formatBullets(items []string) string {
 	return strings.TrimSuffix(buffer.String(), "\n")
 }
 
+// formatBulletsMarkdown renders items as a Markdown bullet list where each
+// item is wrapped in inline code so that its contents are preserved verbatim
+// and cannot disturb the surrounding Markdown structure.
+func formatBulletsMarkdown(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	var buffer bytes.Buffer
+	for _, item := range items {
+		buffer.WriteString("- ")
+		buffer.WriteString(inlineCode(item))
+		buffer.WriteByte('\n')
+	}
+	return strings.TrimSuffix(buffer.String(), "\n")
+}
+
+// inlineCode wraps s as a Markdown inline code span, picking a backtick
+// delimiter long enough to survive any backticks inside s and padding with a
+// space when s starts or ends with a backtick, per the GFM spec. Embedded
+// newlines are replaced with spaces because inline code must stay on one line.
+func inlineCode(code string) string {
+	code = strings.ReplaceAll(code, "\n", " ")
+	maxRun, run := 0, 0
+	for _, r := range code {
+		if r == '`' {
+			run++
+			if run > maxRun {
+				maxRun = run
+			}
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", maxRun+1)
+	pad := ""
+	if strings.HasPrefix(code, "`") || strings.HasSuffix(code, "`") {
+		pad = " "
+	}
+	return fence + pad + code + pad + fence
+}
+
 func writeSummary(text string) {
 	summaryPath := os.Getenv("GITHUB_STEP_SUMMARY")
 	if summaryPath == "" {
@@ -793,7 +835,9 @@ func writeSummary(text string) {
 		}
 	}()
 
-	if _, err := file.WriteString(text); err != nil {
+	// Prepend a blank line so the top-level heading is separated from any
+	// content written by previous steps (or previous summary blocks).
+	if _, err := file.WriteString("\n" + text); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write GITHUB_STEP_SUMMARY: %v\n", err)
 		return
 	}
