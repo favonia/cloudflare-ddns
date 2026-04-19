@@ -42,6 +42,7 @@ jobs:
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           version: latest
+          cache-binary: false
       - name: 🔑 Log in to Docker
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         if: ${{ github.event_name != 'pull_request' }}
@@ -86,7 +87,9 @@ jobs:
       - name: ✍️ Sign the minimal Docker images
         if: ${{ github.event_name == 'release' }}
         run: |
-          cosign sign --recursive --yes "favonia/cloudflare-ddns@${{ steps.build.outputs.digest }}"
+          cosign sign --recursive --yes "favonia/cloudflare-ddns@${STEPS_BUILD_OUTPUTS_DIGEST}"
+        env:
+          STEPS_BUILD_OUTPUTS_DIGEST: ${{ steps.build.outputs.digest }}
 
       - name: 📝 Calculate metadata for Docker images with alpine
         if: ${{ github.event_name != 'release' }}
