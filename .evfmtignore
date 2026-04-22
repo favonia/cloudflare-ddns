@@ -1,0 +1,2 @@
+internal/domain/*_test.go
+scripts/github-actions/*/cases.go

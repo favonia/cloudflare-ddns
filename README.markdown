@@ -8,12 +8,12 @@
 
 A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It detects your machine’s public IP addresses and updates DNS records through the Cloudflare API.
 
-## ✨️ Highlights
+## ✨ Highlights
 
-### ✅️ Comprehensive Support of Domain Names
+### ✅ Comprehensive Support of Domain Names
 
 - 😌 You can simply list domains (_e.g._, `www.a.org, hello.io`) without knowing their DNS zones.
-- 🌍️ [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
+- 🌍 [Internationalized domain names](https://en.wikipedia.org/wiki/Internationalized_domain_name) (_e.g._, `🐱.example.org` and `日本｡co｡jp`) are fully supported.
 - 🃏 [Wildcard domains](https://en.wikipedia.org/wiki/Wildcard_DNS_record) (_e.g._, `*.example.org`) are also supported.
 - 🕹️ You can toggle IPv4 (`A` records) and IPv6 (`AAAA` records) for each domain.
 
@@ -33,7 +33,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 - 🔬 Compatibility with the Cloudflare API is verified periodically with [dedicated scripts](scripts/README.markdown).
 - 🧰 The updater is designed to recover from transient network failures.
 
-### 🔒️ Security and Privacy
+### 🔒 Security and Privacy
 
 - 🙈 By default, public IP addresses are obtained via [Cloudflare’s debugging page](https://one.one.one.one/cdn-cgi/trace). This minimizes the impact on privacy because we are already using the Cloudflare API to update DNS records.
 
@@ -53,9 +53,9 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### 🧭 Principled Design
 
-- 📚️ The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
+- 📚 The updater is guided by detailed and principled [design documents](./docs/designs/README.markdown).
 
-- <details><summary>📦️ The updater uses only a small set of established external Go packages <sup><em>click to expand</em></sup></summary>
+- <details><summary>📦 The updater uses only a small set of established external Go packages <sup><em>click to expand</em></sup></summary>
   <ul>
     <li><a href="https://github.com/cloudflare/cloudflare-go">cloudflare-go</a>: official Go binding of Cloudflare API v4.</li>
     <li><a href="https://github.com/robfig/cron">cron</a>: parsing of Cron expressions.</li>
@@ -70,7 +70,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
   </ul>
   </details>
 
-### ⚡️ Efficiency
+### ⚡ Efficiency
 
 - <img src="https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest?label=" alt="Docker Image Size" align="top"> The default Docker image stays small.
 - 🗃️ Cloudflare API responses are cached to reduce the API usage.
@@ -117,7 +117,7 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 <a id="docker-compose-template"></a>
 
-### 📦️ Step 1: Updating the Compose File
+### 📦 Step 1: Updating the Compose File
 
 Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template looks a bit scary only because it includes various optional flags for extra security protection.
 
@@ -200,7 +200,7 @@ The updater should now be running in the background. Check the logs with `docker
 
 These setups are additive changes on top of the basic Docker Compose template in [Step 1: Updating the Compose File](#docker-compose-template). Each setup shows a minimal delta. For the exact behavior of each environment variable, see [All Settings](#all-settings).
 
-### ✅️ Validation and Testing
+### ✅ Validation and Testing
 
 #### Test a new setup with explicit IPs
 
@@ -488,7 +488,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 >
 > 🌐 To update DNS records, the updater needs the **Zone - DNS - Edit** permission.
 >
-> 📋️ To manipulate WAF lists, the updater needs the **Account - Account Filter Lists - Edit** permission.
+> 📋 To manipulate WAF lists, the updater needs the **Account - Account Filter Lists - Edit** permission.
 >
 > 💡 `CLOUDFLARE_API_TOKEN_FILE` works well with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/) where secrets will be mounted as files at `/run/secrets/<secret-name>`.
 >
@@ -517,7 +517,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary>📋️ WAF List Scope <sup><em>click to expand</em></sup></summary>
+<summary>📋 WAF List Scope <sup><em>click to expand</em></sup></summary>
 
 > The updater can maintain [WAF lists](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) to match detected IP addresses. By default, IPv4 addresses are stored individually and IPv6 addresses are stored as `/64` ranges.
 
@@ -535,7 +535,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 <a id="ip-detection"></a>
 
 <details>
-<summary>🔍️ IP Detection <sup><em>click to expand</em></sup></summary>
+<summary>🔍 IP Detection <sup><em>click to expand</em></sup></summary>
 
 | Name                                                         | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Default Value      |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -544,7 +544,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | 🧪 `IP4_DEFAULT_PREFIX_LEN` (available since version 1.16.0) | 🧪 The default CIDR prefix length for detected bare IPv4 addresses. When a provider discovers a bare address (without CIDR notation), this prefix length is attached. DNS records currently ignore this setting, but future features may use it. WAF lists use the prefix length to determine the stored range: for example, `24` stores each bare detection as a `/24` range. Valid range: 8–32.                                                                                                                                                                                       | `32`               |
 | 🧪 `IP6_DEFAULT_PREFIX_LEN` (available since version 1.16.0) | 🧪 The default CIDR prefix length for detected bare IPv6 addresses. When a provider discovers a bare address (without CIDR notation), this prefix length is attached. DNS records currently ignore this setting, but future features may use it. WAF lists use the prefix length to determine the stored range: for example, `48` stores each bare detection as a `/48` range. Valid range: 12–128. 🤖 See [IPv6 Default Prefix Length Policy](docs/designs/features/ipv6-default-prefix-length-policy.markdown) for the design rationale behind the `/64` default (instead of `/128`). | `64`               |
 
-> 👉️ The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
+> 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
 | Provider Name                                             | Explanation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -590,7 +590,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 </details>
 
 <details>
-<summary>⏳️ Operation Timeouts <sup><em>click to expand</em></sup></summary>
+<summary>⏳ Operation Timeouts <sup><em>click to expand</em></sup></summary>
 
 | Name                | Meaning                                                                                                                                                                                                                                  | Default Value      |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -692,8 +692,8 @@ If you are using Docker Compose, run `docker-compose up --detach` to reload sett
 | `RRTYPE=AAAA`                          | ✔️  | Both IPv4 and IPv6 are enabled by default; use `IP4_PROVIDER=none` to stop managing IPv4                                                                                                                                                                                                                                                                                                            |
 | `DELETE_ON_STOP=true`                  | ✔️  | Same (`DELETE_ON_STOP=true`)                                                                                                                                                                                                                                                                                                                                                                        |
 | `INTERFACE=<iface>`                    | ✔️  | To automatically select the local address, use `IP4/6_PROVIDER=local`. 🧪 To select addresses of a specific network interface, use `IP4/6_PROVIDER=local.iface:<iface>` (available since version 1.15.0). Since version 1.16.0, the updater collects all matching global unicast addresses instead of just the first one, then reconciles DNS records and WAF lists against that full detected set. |
-| `CUSTOM_LOOKUP_CMD=cmd`                | ❌️  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                                                                                                                                                   |
-| `DNS_SERVER=server`                    | ❌️  | For DNS-based IP detection, the updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`. To detect IP addresses via HTTPS by querying other servers, use `IP4/6_PROVIDER=url:<url>`                                                                                                                            |
+| `CUSTOM_LOOKUP_CMD=cmd`                | ❌  | Custom commands are not supported because there are no other programs in the minimal Docker image                                                                                                                                                                                                                                                                                                   |
+| `DNS_SERVER=server`                    | ❌  | For DNS-based IP detection, the updater only supports secure DNS queries using Cloudflare’s DNS over HTTPS (DoH) server. To enable this, set `IP4/6_PROVIDER=cloudflare.doh`. To detect IP addresses via HTTPS by querying other servers, use `IP4/6_PROVIDER=url:<url>`                                                                                                                            |
 
 </details>
 
