@@ -66,10 +66,10 @@ The IP prefix length work in this release lays the groundwork for several upcomi
 
 | input        | `addr-in(1.1.0.0/16)`              | `subnet-in(1.1.0.0/16)` | `contains(1.1.0.0/16)` |
 | ------------ | ---------------------------------- | ----------------------- | ---------------------- |
-| `1.1.1.1/8`  | ✔️                                 | ❌️                      | ✔️                     |
+| `1.1.1.1/8`  | ✔️                                 | ❌                      | ✔️                     |
 | `1.1.1.1/16` | ✔️                                 | ✔️                      | ✔️                     |
-| `1.1.1.1/24` | ✔️                                 | ✔️                      | ❌️                     |
-| `1.2.2.2/8`  | ❌️ (`1.2.2.2` not in `1.1.0.0/16`) | ❌️                      | ✔️                     |
+| `1.1.1.1/24` | ✔️                                 | ✔️                      | ❌                     |
+| `1.2.2.2/8`  | ❌ (`1.2.2.2` not in `1.1.0.0/16`) | ❌                      | ✔️                     |
 
 Also planned: a linter for boolean expressions targeting advanced usage of `PROXIED` and the upcoming `IP4/6_DETECTION_FILTER`, and further robustness improvements to the default `cloudflare.trace` provider.
 

@@ -4,9 +4,9 @@
 
 | Surface                     | Docker tags    | Supported | Notes                                       |
 | --------------------------- | -------------- | --------- | ------------------------------------------- |
-| latest development build    | `edge`         | ✅️        |                                             |
-| latest stable major version | `1`            | ✅️        | includes `latest` and other equivalent tags |
-| other versions              | all other tags | ❌️        |                                             |
+| latest development build    | `edge`         | ✅        |                                             |
+| latest stable major version | `1`            | ✅        | includes `latest` and other equivalent tags |
+| other versions              | all other tags | ❌        |                                             |
 
 ## Reporting a Vulnerability
 
