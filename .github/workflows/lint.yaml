@@ -252,7 +252,7 @@ jobs:
           python-version: "3.14"
           cache: pip
           cache-dependency-path: .github/workflows/mdformat-requirements.txt
-      - name: 📦️ Install mdformat
+      - name: 📦 Install mdformat
         run: python -m pip install --require-hashes --requirement .github/workflows/mdformat-requirements.txt
       - name: 🧹 Run mdformat
         run: git ls-files -z '*.md' '*.markdown' | xargs -0r python -m mdformat --check
