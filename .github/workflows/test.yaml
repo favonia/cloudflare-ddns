@@ -17,7 +17,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -30,7 +30,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -45,7 +45,7 @@ jobs:
           coverpkg="$(go list ./... | grep -v "internal/mocks" | paste -sd,)"
           go test -json "-coverpkg=${coverpkg}" -coverprofile=coverage.txt -race ./... | tee test-report.jsonl
       - name: 📦 Upload `go test -json` logs
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-test-json
           path: test-report.jsonl
@@ -86,7 +86,7 @@ jobs:
             experimental: false
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -99,7 +99,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -110,7 +110,7 @@ jobs:
         run: |
           go test "${{ matrix.target.package }}" -fuzz "${{ matrix.target.fuzz }}" -fuzztime "${{ matrix.target.fuzztime }}" -parallel "${{ matrix.target.parallel }}" 2>&1 | tee "fuzz-${{ matrix.target.name }}.log"
       - name: 📦 Upload fuzz logs
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-fuzz-${{ matrix.target.name }}
           path: fuzz-${{ matrix.target.name }}.log
@@ -122,7 +122,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -135,7 +135,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -163,7 +163,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -176,7 +176,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -202,7 +202,7 @@ jobs:
       contents: read
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -215,7 +215,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -249,7 +249,7 @@ jobs:
             directory: scripts/github-actions/smoke-test
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -262,7 +262,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
       - name: 📡 Run `go telemetry on`
         run: |
@@ -296,7 +296,7 @@ jobs:
             directory: scripts/github-actions/smoke-test
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -309,7 +309,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.1"
+          go-version: "1.26.3"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
       - name: 📡 Run `go telemetry on`
         run: |

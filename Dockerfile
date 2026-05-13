@@ -4,7 +4,7 @@
 # `TARGETOS`, `TARGETARCH`, and `TARGETVARIANT`). The legacy builder is
 # unsupported.
 # We use cross-compilation because QEMU is slow.
-FROM --platform=${BUILDPLATFORM} golang:1.26.1-alpine3.22@sha256:07e91d24f6330432729082bb580983181809e0a48f0f38ecde26868d4568c6ac AS build
+FROM --platform=${BUILDPLATFORM} golang:1.26.3-alpine3.22@sha256:be93003ee861b3b91b6ebcb22678524947e0cd786c2df3f32af520006b1e54f5 AS build
 
 ARG GIT_DESCRIBE
 ARG TARGETOS
@@ -26,7 +26,7 @@ RUN \
   -o /bin/ddns ./cmd/ddns
 
 # The "alpine" stage can be used directly for debugging network issues.
-FROM alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS alpine
+FROM alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 AS alpine
 COPY --from=build /bin/ddns /bin/
 USER 1000:1000
 ENTRYPOINT ["/bin/ddns"]
