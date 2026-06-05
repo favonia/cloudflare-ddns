@@ -8,114 +8,162 @@ on:
   release:
     types: [published]
 
-env:
-  platforms: "linux/386,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/amd64,linux/ppc64le,linux/riscv64,linux/s390x"
+concurrency:
+  group: ${{ github.workflow }}-build-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  docker:
-    name: Docker image
+  # Caller-side prep: compute GIT_DESCRIBE from full git history (the reusable
+  # build workflow does its own checkout, so this has to happen here and be
+  # passed via build-args). harden-runner is applied here since it cannot
+  # apply to the @docker reusable workflow's runner.
+  prep:
+    name: Prepare build metadata
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-build-${{ github.ref }}
-      cancel-in-progress: true
     permissions:
-      id-token: write # for cosign keyless signing via GitHub OIDC
       contents: read
+    outputs:
+      git-describe: ${{ steps.git-describe.outputs.GIT_DESCRIBE }}
     steps:
       - name: 🛡️ Harden Runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
           disable-sudo: true
-          policy: docker-build-publish-sign
-
       - name: 🚚 Check out the repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: 🤖 Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
-      - name: 🏗️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-        with:
-          version: latest
-          cache-binary: false
-      - name: 🔑 Log in to Docker
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
-        if: ${{ github.event_name != 'pull_request' }}
-        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: 📝 Run `git describe` and save its output
+        id: git-describe
+        run: echo "GIT_DESCRIBE=$(git describe --tags --always --long)" >> "$GITHUB_OUTPUT"
+
+  # Minimal target: built and published on every push/release; cosign-signed
+  # on release events (matches the existing release-only signing behavior).
+  build-minimal:
+    name: Build & publish minimal image
+    needs: prep
+    uses: docker/github-builder/.github/workflows/build.yml@70ac3fc303efa83d2b94905e6ab78bb83cbdc2ae # v1.11.0
+    permissions:
+      contents: read       # Git context
+      id-token: write      # cosign keyless + signed cache via OIDC
+      packages: write      # GHCR push
+    with:
+      target: minimal
+      output: image
+      push: ${{ github.event_name != 'pull_request' }}
+      sign: ${{ github.event_name == 'release' && 'true' || 'false' }}
+      platforms: |
+        linux/386
+        linux/arm/v6
+        linux/arm/v7
+        linux/arm64/v8
+        linux/amd64
+        linux/ppc64le
+        linux/riscv64
+        linux/s390x
+      setup-qemu: true
+      cache: true
+      cache-mode: max
+      build-args: |
+        GIT_DESCRIBE=${{ needs.prep.outputs.git-describe }}
+      meta-images: |
+        favonia/cloudflare-ddns
+        ghcr.io/favonia/cloudflare-ddns
+      meta-tags: |
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}
+        type=edge
+      annotations: |
+        io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
+        io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
+        io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
+      set-meta-annotations: true
+      set-meta-labels: true
+    secrets:
+      registry-auths: |
+        - registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: 🏷️ Fetch git tags for `git describe`
-        run: "git fetch --force --prune --unshallow --tags"
-      - name: 📝 Run `git describe` and save its output
-        run: echo "GIT_DESCRIBE=$(git describe --tags --always --long)" >> "$GITHUB_OUTPUT"
-        id: git-describe
-      - name: 📝 Calculate metadata for minimal Docker images
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
-        id: meta
-        with:
-          images: ${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}
-            type=edge
-          annotations: |
-            io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
-            io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
-      - name: 🚀 Build and deploy minimal Docker images
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        id: build
-        with:
-          target: "minimal"
-          push: ${{ github.event_name != 'pull_request' }}
-          build-args: |
-            ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
-          platforms: ${{ env.platforms }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          provenance: "mode=max"
-      - name: ✍️ Install Cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-      - name: ✍️ Sign the minimal Docker images
-        if: ${{ github.event_name == 'release' }}
-        run: |
-          cosign sign --recursive --yes "favonia/cloudflare-ddns@${STEPS_BUILD_OUTPUTS_DIGEST}"
-        env:
-          STEPS_BUILD_OUTPUTS_DIGEST: ${{ steps.build.outputs.digest }}
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 📝 Calculate metadata for Docker images with alpine
-        if: ${{ github.event_name != 'release' }}
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
-        id: meta-alpine
-        with:
-          images: ${{ github.repository }}
-          tags: |
-            type=edge,suffix=-alpine
-          annotations: |
-            io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
-            io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
-      - name: 🚀 Build and deploy Docker images with alpine
-        if: ${{ github.event_name != 'release' }}
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        id: build-alpine
-        with:
-          target: "alpine"
-          push: ${{ github.event_name != 'pull_request' }}
-          build-args: |
-            ${{ format('GIT_DESCRIBE={0}', steps.git-describe.outputs.GIT_DESCRIBE) }}
-          platforms: ${{ env.platforms }}
-          tags: ${{ steps.meta-alpine.outputs.tags }}
-          labels: ${{ steps.meta-alpine.outputs.labels }}
-          annotations: ${{ steps.meta-alpine.outputs.annotations }}
-          provenance: "mode=max"
+  # Alpine target: built on every non-release push (matches existing behavior),
+  # never signed (also matches existing behavior). Separate cache scope so it
+  # doesn't poison the minimal target's cache.
+  build-alpine:
+    name: Build & publish alpine image
+    needs: prep
+    if: ${{ github.event_name != 'release' }}
+    uses: docker/github-builder/.github/workflows/build.yml@70ac3fc303efa83d2b94905e6ab78bb83cbdc2ae # v1.11.0
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    with:
+      target: alpine
+      output: image
+      push: ${{ github.event_name != 'pull_request' }}
+      sign: 'false'
+      platforms: |
+        linux/386
+        linux/arm/v6
+        linux/arm/v7
+        linux/arm64/v8
+        linux/amd64
+        linux/ppc64le
+        linux/riscv64
+        linux/s390x
+      setup-qemu: true
+      cache: true
+      cache-mode: max
+      cache-scope: alpine
+      build-args: |
+        GIT_DESCRIBE=${{ needs.prep.outputs.git-describe }}
+      meta-images: |
+        favonia/cloudflare-ddns
+        ghcr.io/favonia/cloudflare-ddns
+      meta-tags: |
+        type=edge,suffix=-alpine
+      annotations: |
+        io.artifacthub.package.license=Apache-2.0 WITH LLVM-exception
+        io.artifacthub.package.readme-url=https://raw.githubusercontent.com/favonia/cloudflare-ddns/main/build/SUMMARY.markdown
+        io.artifacthub.package.maintainers=[{"name":"favonia","email":"favonia@email.com"}]
+      set-meta-annotations: true
+      set-meta-labels: true
+    secrets:
+      registry-auths: |
+        - registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+  # Automated cosign verify for release-signed images. Adds an audit step the
+  # current workflow does not have (signs but never verifies its own signatures).
+  verify-minimal:
+    name: Verify signed minimal image
+    needs: build-minimal
+    if: ${{ github.event_name == 'release' }}
+    uses: docker/github-builder/.github/workflows/verify.yml@70ac3fc303efa83d2b94905e6ab78bb83cbdc2ae # v1.11.0
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    with:
+      builder-outputs: ${{ toJSON(needs.build-minimal.outputs) }}
+    secrets:
+      registry-auths: |
+        - registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}

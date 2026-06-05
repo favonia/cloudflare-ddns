@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7-labs
+# syntax=docker/dockerfile:1.24.0-labs@sha256:7d49dad25a050e14338ba7028b0460243f9d911dedc160a8fe20c34738fef3af
 # This Dockerfile requires BuildKit (for example via `docker buildx build`).
 # It depends on BuildKit automatic platform arguments (`BUILDPLATFORM`,
 # `TARGETOS`, `TARGETARCH`, and `TARGETVARIANT`). The legacy builder is
