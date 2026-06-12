@@ -12,6 +12,7 @@ This note records one repository-wide explanation rule. Use [Project Principles]
 
 At the enforcement point, prefer the shortest comment or design-note pointer that preserves the intended rule.
 
+- During other code changes, preserve existing explanations and update them to match the changed code; remove them only when they no longer apply or their information has moved to a smaller correct durable home.
 - Prefer a short code comment when the rule is local and the required context fits there.
 - Prefer a design-note pointer when the full rule is shared across sites or needs durable cross-file context.
 - Do not add explanatory padding that only restates obvious code, anticipates unlikely objections, or defends the decision against readers who are not the target audience.

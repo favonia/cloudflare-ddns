@@ -27,6 +27,7 @@ func TestParseList(t *testing.T) {
 		expected      ds
 		prepareMockPP func(m *mocks.MockPP)
 	}{
+		"empty":   {"", true, ds{}, nil},
 		"a.a":     {"a.a", true, ds{f("a.a")}, nil},
 		"a.a,a.b": {" a.a ,  a.b ", true, ds{f("a.a"), f("a.b")}, nil},
 		"a.a,a.b,a.c": {
@@ -62,17 +63,49 @@ func TestParseList(t *testing.T) {
 			" a.a a.b a.c a.d ", true,
 			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
 			func(m *mocks.MockPP) {
-				gomock.InOrder(
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.b"),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.c"),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing a comma "," before %q`, key, " a.a a.b a.c a.d ", "a.d"),
-				)
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+					key, `" a.a a.b a.c a.d "`)
+			},
+		},
+		"missing-and-explicit-commas": {
+			"a.a a.b,a.c a.d", true,
+			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+					key, `"a.a a.b,a.c a.d"`)
 			},
 		},
 		"malformed/1": {
 			"&", false, nil,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, "&", domainexp.ErrSingleAnd)
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					"1st", key, "&", "&")
+			},
+		},
+		"malformed-domain": {
+			"xn--:D.org", false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"The %s domain in %s (%q) is %q, but it is malformed: %v",
+					"1st", key, "xn--:D.org", "xn--:d.org", gomock.Any())
+			},
+		},
+		"not-fqdn": {
+			"localhost", false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					"1st", key, "localhost", "localhost")
+			},
+		},
+		"invalid-utf8": {
+			"good.org,\200", false, nil,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v",
+					key, "good.org,\200", ErrorMatcher{domainexp.ErrUTF8})
 			},
 		},
 	} {
@@ -125,9 +158,11 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is not a boolean expression`, key, "")
 			},
 		},
-		"const/1": {"true", true, nil, true, nil},
-		"const/2": {"f", true, nil, false, nil},
-		"&&/1":    {"t && 0", true, nil, false, nil},
+		"const/1":      {"true", true, nil, true, nil},
+		"const/2":      {"f", true, nil, false, nil},
+		"&&/1":         {"t && 0", true, nil, false, nil},
+		"precedence/1": {"true || false && false", true, nil, true, nil},
+		"precedence/2": {"false && true || true", true, nil, true, nil},
 		"&&/2": {
 			"t &&", false, nil, false,
 			func(m *mocks.MockPP) {
@@ -175,12 +210,63 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a,,b)"`)
 			},
 		},
+		"is/missing-comma": {
+			"is(a b c)", true, f("b"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+					key, `"is(a b c)"`)
+			},
+		},
+		"is/missing-comma/with-boolean-tail": {
+			"is(a b) && true", true, f("b"), true,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning,
+					"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+					key, `"is(a b) && true"`)
+			},
+		},
 		"is/empty": {
 			"is()", true, f("example.com"), false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
 					key, "is()", "is")
+			},
+		},
+		"is/comma-only": {
+			"is(,)", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
+						key, "is(,)", "is"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(,)"`),
+				)
+			},
+		},
+		"sub/comma-only": {
+			"sub(,,)", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
+						key, "sub(,,)", "sub"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"sub(,,)"`),
+				)
+			},
+		},
+		"empty-calls/deduplicated-combined-before-comma-warning": {
+			"sub() || is(,) || sub()", true, f("example.com"), false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						`%s (%q) uses %s with empty domain lists, which always evaluate to false`,
+						key, "sub() || is(,) || sub()", "sub() and is()"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						key, `"sub() || is(,) || sub()"`),
+				)
 			},
 		},
 		"is/wildcard/1": {"is(example.com)", true, w("example.com"), false, nil},
@@ -205,6 +291,18 @@ func TestParseExpression(t *testing.T) {
 			"is", false, nil, false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, "is", "(")
+			},
+		},
+		"is/error/4": {
+			"is(", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, "is(", ")")
+			},
+		},
+		"is/error/non-list-expression": {
+			"is(true && false)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, "is(true && false)", "&&")
 			},
 		},
 		"sub/1": {"sub(example.com)", true, f("example.com"), false, nil},
@@ -250,10 +348,168 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is missing %q at the end", key, "(true", ")")
 			},
 		},
-		"error/extra": {
+		"error/adjacent-booleans": {
 			"0 1", false, nil, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "0 1", "1")
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "0 1", "1")
+			},
+		},
+		"error/adjacent-calls": {
+			"is(a) is(b)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "is(a) is(b)", "is")
+			},
+		},
+		"error/adjacent-boolean-call": {
+			"true is(a)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true is(a)", "is")
+			},
+		},
+		"error/adjacent-call-boolean": {
+			"is(a) true", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "is(a) true", "true")
+			},
+		},
+		"error/adjacent-groups": {
+			"(true) (false)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "(true) (false)", "(")
+			},
+		},
+		"error/adjacent-not": {
+			"true !false", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true !false", "!")
+			},
+		},
+		"error/adjacent-boolean-and": {
+			// The reported token must be the left operand of &&, not the && itself.
+			"true false && true", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true false && true", "false")
+			},
+		},
+		"error/adjacent-boolean-grouped-pair": {
+			"true (false false)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true (false false)", "(")
+			},
+		},
+		"error/leading-comma": {
+			",true", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, ",true", ",")
+			},
+		},
+		"error/trailing-comma": {
+			"true,", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true,", ",")
+			},
+		},
+		"error/missing-comma-does-not-hide-operator": {
+			"is(a b && true)", false, nil, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						key, `"is(a b && true)"`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
+						key, "is(a b && true)", "&&"),
+				)
+			},
+		},
+		"error/missing-comma-does-not-hide-group": {
+			"is(a (b))", false, nil, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						key, `"is(a (b))"`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
+						key, "is(a (b))", "("),
+				)
+			},
+		},
+		"error/missing-comma-does-not-hide-left-group": {
+			"is((a) b)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
+					key, "is((a) b)", "(")
+			},
+		},
+		"error/missing-comma-does-not-hide-call": {
+			"is(a sub(b))", false, nil, false,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning,
+						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						key, `"is(a sub(b))"`),
+					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
+						key, "is(a sub(b))", "sub"),
+				)
+			},
+		},
+		"error/unexpected-boolean-token": {
+			"unknown", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "unknown", "unknown")
+			},
+		},
+		"error/unexpected-boolean-token/nested-not": {
+			"!unknown", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "!unknown", "unknown")
+			},
+		},
+		"error/unexpected-boolean-token/nested-and-left": {
+			"unknown && true", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "unknown && true", "unknown")
+			},
+		},
+		"error/unexpected-boolean-token/nested-and-right": {
+			"true && unknown", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "true && unknown", "unknown")
+			},
+		},
+		"error/unexpected-boolean-token/nested-group": {
+			"(unknown)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					"%s (%q) is not a boolean expression: got unexpected token %q",
+					key, "(unknown)", "unknown")
 			},
 		},
 		"utf8/invalid": {
@@ -272,11 +528,17 @@ func TestParseExpression(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			pred, ok := domainexp.ParseExpression(mockPP, "key", tc.input)
+			expr, ok := domainexp.ParseExpression(mockPP, key, tc.input)
 			require.Equal(t, tc.ok, ok)
 			if ok {
-				require.Equal(t, tc.expected, pred(tc.domain))
+				require.Equal(t, tc.expected, domainexp.Evaluate(expr, tc.domain))
 			}
 		})
 	}
+}
+
+func TestEvaluateNil(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, domainexp.Evaluate(nil, nil))
 }

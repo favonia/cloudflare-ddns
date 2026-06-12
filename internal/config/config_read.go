@@ -183,13 +183,13 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	// Check 3: are proxy expressions and regular expressions valid? {{{
 	proxiedMap := map[domain.Domain]bool{}
 	if len(activeDomainSet) > 0 {
-		proxiedPredicate, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedExpression)
+		expr, ok := domainexp.ParseExpression(ppfmt, "PROXIED", c.ProxiedExpression)
 		if !ok {
 			return nil, false
 		}
 
 		for dom := range activeDomainSet {
-			proxiedMap[dom] = proxiedPredicate(dom)
+			proxiedMap[dom] = domainexp.Evaluate(expr, dom)
 		}
 	}
 	// MANAGED_RECORDS_COMMENT_REGEX

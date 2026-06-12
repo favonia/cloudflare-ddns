@@ -78,7 +78,9 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, "hi.org,(", "(")
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					"2nd", key, "hi.org,(", "(")
 			},
 		},
 		"malformed4": {
@@ -87,7 +89,9 @@ func TestReadDomains(t *testing.T) {
 			ds{},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) has unexpected token %q", key, ")", ")")
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					"1st", key, ")", ")")
 			},
 		},
 	} {
