@@ -154,19 +154,25 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 
 //nolint:paralleltest // environment vars are global
 func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
-	const value = "example.org{hostid6=[::1,,::2]}"
-	store(t, "DOMAINS", value)
-	oldField := []domainexp.Entry{oldEntry()}
-	field := oldField
-	mockPP := mocks.NewMockPP(gomock.NewController(t))
-	mockPP.EXPECT().Noticef(
-		pp.EmojiUserError,
-		`%s (%q) has unexpected token %q`,
-		"DOMAINS", value, ",",
-	)
+	for _, value := range []string{
+		"example.org{hostid6=[::1,,::2]}",
+		"example.org{hostid6=::1,,hostid6=::2}",
+	} {
+		t.Run(value, func(t *testing.T) {
+			store(t, "DOMAINS", value)
+			oldField := []domainexp.Entry{oldEntry()}
+			field := oldField
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(
+				pp.EmojiUserError,
+				`%s (%q) has unexpected token %q`,
+				"DOMAINS", value, ",",
+			)
 
-	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+			ok := readDomains(mockPP, "DOMAINS", nil, &field)
 
-	require.False(t, ok)
-	require.Equal(t, oldField, field)
+			require.False(t, ok)
+			require.Equal(t, oldField, field)
+		})
+	}
 }

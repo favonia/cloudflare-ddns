@@ -73,6 +73,21 @@ func TestParseEntriesHostID6Sets(t *testing.T) {
 	require.Equal(t, []string{"::3"}, describeSet(entries[0].HostID6Opinions[2]))
 }
 
+func TestParseEntriesAcceptsUniversalTrailingCommas(t *testing.T) {
+	t.Parallel()
+
+	input := "example.org{hostid6=[preserve,],},"
+	entries, diagnostics, err := domainexp.ParseEntries(input)
+
+	require.Nil(t, err)
+	require.Empty(t, diagnostics)
+	require.Equal(t, []domainexp.Entry{{
+		Domain:          domain.FQDN("example.org"),
+		HostID6Opinions: []hostid6.Set{hostid6.DefaultSet()},
+		Span:            syntax.Span{Start: 0, End: len(input) - 1},
+	}}, entries)
+}
+
 func TestParseEntriesSemanticDiagnosticsAndRecovery(t *testing.T) {
 	t.Parallel()
 
@@ -107,15 +122,36 @@ func TestParseEntriesRejectsQuotedCommaList(t *testing.T) {
 	require.Equal(t, syntax.Span{Start: 25, End: 29}, err.Span)
 }
 
-func TestParseEntriesStopsOnMalformedNesting(t *testing.T) {
+func TestParseEntriesStopsOnAmbiguousMalformedNesting(t *testing.T) {
 	t.Parallel()
 
-	entries, diagnostics, err := domainexp.ParseEntries("localhost,example.org{hostid6=[::1,,::2]},good.example")
+	for _, tc := range []struct {
+		name  string
+		input string
+		span  syntax.Span
+	}{
+		{
+			name:  "value list interior empty",
+			input: "localhost,example.org{hostid6=[::1,,::2]},good.example",
+			span:  syntax.Span{Start: 35, End: 36},
+		},
+		{
+			name:  "field block interior empty",
+			input: "localhost,example.org{hostid6=::1,,hostid6=::2},good.example",
+			span:  syntax.Span{Start: 34, End: 35},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.Nil(t, entries)
-	require.Empty(t, diagnostics)
-	require.NotNil(t, err)
-	require.Equal(t, syntax.Span{Start: 35, End: 36}, err.Span)
+			entries, diagnostics, err := domainexp.ParseEntries(tc.input)
+
+			require.Nil(t, entries)
+			require.Empty(t, diagnostics)
+			require.NotNil(t, err)
+			require.Equal(t, tc.span, err.Span)
+		})
+	}
 }
 
 func TestParseEntriesReturnsCompatibilityDiagnostics(t *testing.T) {

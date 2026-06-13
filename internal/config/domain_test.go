@@ -69,6 +69,23 @@ func TestBuildConfigMergesHostID6OpinionsAndDefaults(t *testing.T) {
 	require.NotContains(t, built.Update.HostID6, domain.FQDN("v4-only.example"))
 }
 
+func TestBuildConfigAcceptsCanonicalEquivalentRepeatedHostID6Opinions(t *testing.T) {
+	t.Parallel()
+
+	built, ok := buildDomainConfig(t,
+		"example.org{hostid6=[0:0::1,mac(00:11:22:33:44:AA)],hostid6=[::1,mac(00-11-22-33-44-aa)]},"+
+			"example.org{hostid6=[mac(00-11-22-33-44-AA),::1]}",
+		"",
+		"",
+		pp.NewSilent(),
+	)
+	require.True(t, ok)
+	require.Equal(t,
+		[]string{"::1", "mac(00-11-22-33-44-aa)"},
+		describeHostID6Set(built.Update.HostID6[domain.FQDN("example.org")]),
+	)
+}
+
 func TestBuildConfigRejectsConflictingHostID6Opinions(t *testing.T) {
 	t.Parallel()
 
