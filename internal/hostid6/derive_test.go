@@ -101,3 +101,28 @@ func TestDeriveMACIncompatibility(t *testing.T) {
 		}, problem)
 	}
 }
+
+func TestDeriveRejectsInvalidRawEntry(t *testing.T) {
+	t.Parallel()
+
+	require.PanicsWithValue(t,
+		"hostid6.Derive received an invalid raw entry; this should not happen; please report it",
+		func() {
+			hostid6.Derive(ipnet.RawEntry{}, hostid6.Preserve())
+		},
+	)
+}
+
+func TestDeriveRejectsIPv4RawEntry(t *testing.T) {
+	t.Parallel()
+
+	require.PanicsWithValue(t,
+		"hostid6.Derive received a non-IPv6 raw entry; this should not happen; please report it",
+		func() {
+			hostid6.Derive(
+				ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 24),
+				hostid6.Preserve(),
+			)
+		},
+	)
+}

@@ -27,7 +27,16 @@ type Incompatibility struct {
 }
 
 // Derive applies one intentional host-ID derivation to an observed IPv6 prefix.
+// The raw entry must be valid and contain an IPv6 address.
+// Derive panics when this internal precondition is violated.
 func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibility) {
+	if !raw.IsValid() {
+		panic("hostid6.Derive received an invalid raw entry; this should not happen; please report it")
+	}
+	if !raw.Addr().Is6() || raw.Addr().Is4In6() {
+		panic("hostid6.Derive received a non-IPv6 raw entry; this should not happen; please report it")
+	}
+
 	switch derivation.kind {
 	case kindPreserve:
 		return raw.Addr(), nil

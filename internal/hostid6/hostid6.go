@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"iter"
 	"net/netip"
 	"slices"
 )
@@ -28,8 +29,14 @@ type Derivation struct {
 	mac     [6]byte
 }
 
-// Set is a sorted, deduplicated, non-empty set of derivations.
-type Set []Derivation
+// Set is an immutable canonical set of derivations.
+//
+// The zero value is empty and represents omission or internal absence.
+// Sets returned by [NewSet] and [DefaultSet] are sorted, deduplicated,
+// and non-empty.
+type Set struct {
+	values []Derivation
+}
 
 // Preserve constructs a derivation that preserves observed host bits.
 func Preserve() Derivation {
@@ -58,7 +65,8 @@ func NewSet(values ...Derivation) Set {
 
 	set := slices.Clone(values)
 	slices.SortFunc(set, Compare)
-	return slices.Compact(set)
+	set = slices.Compact(set)
+	return Set{values: slices.Clip(set)}
 }
 
 // DefaultSet returns the default derivation set.
@@ -86,7 +94,27 @@ func Compare(left, right Derivation) int {
 
 // EqualSet reports whether two canonical derivation sets are equal.
 func EqualSet(left, right Set) bool {
-	return slices.Equal(left, right)
+	return slices.Equal(left.values, right.values)
+}
+
+// IsZero reports whether a set represents omission or internal absence.
+func (s Set) IsZero() bool {
+	return len(s.values) == 0
+}
+
+// Len returns the number of derivations in the set.
+func (s Set) Len() int {
+	return len(s.values)
+}
+
+// Values returns a copy of the canonical derivations in the set.
+func (s Set) Values() []Derivation {
+	return slices.Clone(s.values)
+}
+
+// All enumerates the canonical derivations in the set.
+func (s Set) All() iter.Seq[Derivation] {
+	return slices.Values(s.values)
 }
 
 // Describe returns the canonical description of a derivation.
