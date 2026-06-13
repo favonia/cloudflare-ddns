@@ -36,6 +36,8 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
+	ip4 := ipnet.IP4
+	ip6 := ipnet.IP6
 
 	if !readAuth(ppfmt, &c.Auth) ||
 		!readPrefixLen(ppfmt, "IP4_DEFAULT_PREFIX_LEN", &c.IP4DefaultPrefixLen, ipnet.IP4) ||
@@ -44,9 +46,9 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,
 		}, &c.Provider) ||
-		!readDomains(ppfmt, "DOMAINS", &c.Domains) ||
-		!readDomains(ppfmt, "IP4_DOMAINS", &c.IP4Domains) ||
-		!readDomains(ppfmt, "IP6_DOMAINS", &c.IP6Domains) ||
+		!readDomains(ppfmt, "DOMAINS", nil, &c.Domains) ||
+		!readDomains(ppfmt, "IP4_DOMAINS", &ip4, &c.IP4Domains) ||
+		!readDomains(ppfmt, "IP6_DOMAINS", &ip6, &c.IP6Domains) ||
 		!readWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!readCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!readBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
@@ -67,15 +69,23 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
+func projectDomains(entries []domainexp.Entry) []domain.Domain {
+	domains := make([]domain.Domain, 0, len(entries))
+	for _, entry := range entries {
+		domains = append(domains, entry.Domain)
+	}
+	return domains
+}
+
 func normalizeDomainMap(raw *RawConfig) map[ipnet.Family][]domain.Domain {
 	var ip4Domains []domain.Domain
-	ip4Domains = append(ip4Domains, raw.IP4Domains...)
-	ip4Domains = append(ip4Domains, raw.Domains...)
+	ip4Domains = append(ip4Domains, projectDomains(raw.IP4Domains)...)
+	ip4Domains = append(ip4Domains, projectDomains(raw.Domains)...)
 	ip4Domains = sliceutil.SortAndCompact(ip4Domains, domain.CompareDomain)
 
 	var ip6Domains []domain.Domain
-	ip6Domains = append(ip6Domains, raw.IP6Domains...)
-	ip6Domains = append(ip6Domains, raw.Domains...)
+	ip6Domains = append(ip6Domains, projectDomains(raw.IP6Domains)...)
+	ip6Domains = append(ip6Domains, projectDomains(raw.Domains)...)
 	ip6Domains = sliceutil.SortAndCompact(ip6Domains, domain.CompareDomain)
 
 	return map[ipnet.Family][]domain.Domain{

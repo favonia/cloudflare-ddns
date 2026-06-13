@@ -1,6 +1,7 @@
 package domainexp
 
 import (
+	"errors"
 	"fmt"
 	"net/netip"
 
@@ -20,6 +21,31 @@ type Entry struct {
 type EntryDiagnostic struct {
 	Span  syntax.Span
 	Cause error
+}
+
+// Description renders the source-specific semantic failure without setting context.
+func (diagnostic EntryDiagnostic) Description(input string) string {
+	source := input[diagnostic.Span.Start:diagnostic.Span.End]
+	detail := diagnostic.Cause
+	if causes, ok := diagnostic.Cause.(interface{ Unwrap() []error }); ok {
+		unwrapped := causes.Unwrap()
+		if len(unwrapped) > 1 {
+			detail = unwrapped[1]
+		}
+	}
+
+	switch {
+	case errors.Is(diagnostic.Cause, ErrInvalidDomain):
+		return fmt.Sprintf("invalid domain %q: %v", source, detail)
+	case errors.Is(diagnostic.Cause, ErrUnknownDomainField):
+		return fmt.Sprintf("unknown domain field %q", source)
+	case errors.Is(diagnostic.Cause, ErrInvalidHostID6):
+		return fmt.Sprintf("invalid hostid6 value %q: %v", source, detail)
+	case errors.Is(diagnostic.Cause, ErrInvalidMAC):
+		return fmt.Sprintf("invalid hostid6 MAC address %q: %v", source, detail)
+	default:
+		return diagnostic.Cause.Error()
+	}
 }
 
 // ParseEntries parses structured domain entries without merging declarations or assignments.

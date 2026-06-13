@@ -1,7 +1,5 @@
-//nolint:testpackage // These tests cover unexported domain readers directly because they validate helper behavior rather than exported contract.
+//nolint:testpackage // These tests cover the unexported domain reader directly because they validate helper behavior.
 package config
-
-// vim: nowrap
 
 import (
 	"testing"
@@ -10,167 +8,165 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
+func oldEntry() domainexp.Entry {
+	return domainexp.Entry{
+		Domain:          domain.FQDN("old.example"),
+		HostID6Opinions: nil,
+		Span:            syntax.Span{Start: 0, End: 0},
+	}
+}
+
+func family(value ipnet.Family) *ipnet.Family {
+	return new(value)
+}
+
 //nolint:paralleltest // environment vars are global
-func TestReadDomains(t *testing.T) {
+func TestReadDomainsPlainLists(t *testing.T) {
 	key := keyPrefix + "DOMAINS"
-	type ds = []domain.Domain
-	type f = domain.FQDN
-	type w = domain.Wildcard
 	for name, tc := range map[string]struct {
-		set           bool
-		val           string
-		oldField      ds
-		newField      ds
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
+		set      bool
+		value    string
+		oldField []domainexp.Entry
+		expected []domainexp.Entry
 	}{
-		"nil":   {false, "", ds{f("test.org")}, ds{}, true, nil},
-		"empty": {true, "", ds{f("test.org")}, ds{}, true, nil},
-		"star": {
-			true, "*",
-			ds{},
-			ds{},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`, "1st", key, "*", "*")
-			},
+		"nil": {
+			set:      false,
+			value:    "",
+			oldField: []domainexp.Entry{oldEntry()},
+			expected: nil,
 		},
-		"wildcard1":      {true, "*.a", ds{}, ds{w("a")}, true, nil},
-		"wildcard2":      {true, "*.a.b", ds{}, ds{w("a.b")}, true, nil},
-		"trailing-comma": {true, "a.org,", ds{}, ds{f("a.org")}, true, nil},
-		"double-comma-warning": {
-			true, "a.org,,b.org",
-			ds{},
-			ds{f("a.org"), f("b.org")},
-			true,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0", key, `"a.org,,b.org"`)
-			},
+		"empty": {
+			set:      true,
+			value:    "",
+			oldField: []domainexp.Entry{oldEntry()},
+			expected: nil,
 		},
-		"test1": {true, "書.org ,  Bücher.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
-		"test2": {true, "  \txn--rov.org    ,   xn--Bcher-kva.org  ", ds{f("random.org")}, ds{f("xn--rov.org"), f("xn--bcher-kva.org")}, true, nil},
-		"malformed1": {
-			true, "xn--:D.org,a.org",
-			ds{f("random.org")},
-			ds{f("random.org")},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", key, "xn--:D.org,a.org", "xn--:d.org", gomock.Any())
-			},
-		},
-		"malformed2": {
-			true, "*.xn--:D.org,a.org",
-			ds{f("random.org")},
-			ds{f("random.org")},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", key, "*.xn--:D.org,a.org", "*.xn--:d.org", gomock.Any())
-			},
-		},
-		"malformed3": {
-			true, "hi.org,(",
-			ds{},
-			ds{},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
-					"2nd", key, "hi.org,(", "(")
-			},
-		},
-		"malformed4": {
-			true, ")",
-			ds{},
-			ds{},
-			false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
-					"1st", key, ")", ")")
+		"plain": {
+			set:      true,
+			value:    " 書.org ,  Bücher.org  ",
+			oldField: []domainexp.Entry{oldEntry()},
+			expected: []domainexp.Entry{
+				{Domain: domain.FQDN("xn--rov.org"), HostID6Opinions: nil, Span: syntax.Span{Start: 0, End: 7}},
+				{Domain: domain.FQDN("xn--bcher-kva.org"), HostID6Opinions: nil, Span: syntax.Span{Start: 11, End: 22}},
 			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			set(t, key, tc.set, tc.val)
+			set(t, key, tc.set, tc.value)
 			field := tc.oldField
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
 
-			ok := readDomains(mockPP, key, &field)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.newField, field)
+			ok := readDomains(mockPP, key, nil, &field)
+
+			require.True(t, ok)
+			require.Equal(t, tc.expected, field)
 		})
 	}
 }
 
 //nolint:paralleltest // environment vars are global
-func TestReadDomainMap(t *testing.T) {
-	for name, tc := range map[string]struct {
-		domains       string
-		ip4Domains    string
-		ip6Domains    string
-		expected      map[ipnet.Family][]domain.Domain
-		ok            bool
-		prepareMockPP func(*mocks.MockPP)
+func TestReadDomainsAcceptsHostID6ForMixedAndIPv6Settings(t *testing.T) {
+	for _, tc := range []struct {
+		key    string
+		family *ipnet.Family
 	}{
-		"full": {
-			"  a1.com, a2.com", "b1.com,  b2.com,b2.com", "c1.com,c2.com",
-			map[ipnet.Family][]domain.Domain{
-				ipnet.IP4: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("b1.com"), domain.FQDN("b2.com")},
-				ipnet.IP6: {domain.FQDN("a1.com"), domain.FQDN("a2.com"), domain.FQDN("c1.com"), domain.FQDN("c2.com")},
-			},
-			true,
-			nil,
-		},
-		"duplicate": {
-			"  a1.com, a1.com", "a1.com,  a1.com,a1.com", "*.a1.com,a1.com,*.a1.com,*.a1.com",
-			map[ipnet.Family][]domain.Domain{
-				ipnet.IP4: {domain.FQDN("a1.com")},
-				ipnet.IP6: {domain.FQDN("a1.com"), domain.Wildcard("a1.com")},
-			},
-			true,
-			nil,
-		},
-		"empty": {
-			" ", "   ", "",
-			map[ipnet.Family][]domain.Domain{
-				ipnet.IP4: {},
-				ipnet.IP6: {},
-			},
-			true,
-			nil,
-		},
-		"malformed": {
-			" ", "   ", "*.*", nil, false,
-			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v", "1st", "IP6_DOMAINS", "*.*", "*.*", gomock.Any())
-			},
-		},
+		{key: "DOMAINS", family: nil},
+		{key: "IP6_DOMAINS", family: family(ipnet.IP6)},
 	} {
-		t.Run(name, func(t *testing.T) {
-			mockCtrl := gomock.NewController(t)
+		t.Run(tc.key, func(t *testing.T) {
+			store(t, tc.key, "example.org{hostid6=::1}")
+			var field []domainexp.Entry
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
 
-			store(t, "DOMAINS", tc.domains)
-			store(t, "IP4_DOMAINS", tc.ip4Domains)
-			store(t, "IP6_DOMAINS", tc.ip6Domains)
+			ok := readDomains(mockPP, tc.key, tc.family, &field)
 
-			var field map[ipnet.Family][]domain.Domain
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-			ok := readDomainMap(mockPP, &field)
-			require.Equal(t, tc.ok, ok)
-			require.ElementsMatch(t, tc.expected[ipnet.IP4], field[ipnet.IP4])
-			require.ElementsMatch(t, tc.expected[ipnet.IP6], field[ipnet.IP6])
+			require.True(t, ok)
+			require.Len(t, field, 1)
+			require.Equal(t, domain.FQDN("example.org"), field[0].Domain)
+			require.Len(t, field[0].HostID6Opinions, 1)
 		})
 	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainsRejectsHostID6ForIPv4Setting(t *testing.T) {
+	const value = "example.org{hostid6=::1}"
+	store(t, "IP4_DOMAINS", value)
+	oldField := []domainexp.Entry{oldEntry()}
+	field := oldField
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	mockPP.EXPECT().Noticef(
+		pp.EmojiUserError,
+		`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; move this declaration to DOMAINS or IP6_DOMAINS`,
+		"IP4_DOMAINS", value, "example.org",
+	)
+
+	ok := readDomains(mockPP, "IP4_DOMAINS", family(ipnet.IP4), &field)
+
+	require.False(t, ok)
+	require.Equal(t, oldField, field)
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainsReportsSemanticDiagnosticsInSourceOrder(t *testing.T) {
+	const value = "localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}"
+	store(t, "DOMAINS", value)
+	oldField := []domainexp.Entry{oldEntry()}
+	field := oldField
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `unknown domain field "unknown"`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid hostid6 value "192.0.2.1": host-ID literal must be an unzoned IPv6 address`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid hostid6 MAC address "bad": invalid 48-bit MAC address`),
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.False(t, ok)
+	require.Equal(t, oldField, field)
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticError(t *testing.T) {
+	const value = ",good.example bad.example,localhost"
+	store(t, "DOMAINS", value)
+	var field []domainexp.Entry
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%q) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", value),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%q) contains missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", value),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.False(t, ok)
+	require.Nil(t, field)
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
+	const value = "example.org{hostid6=[::1,,::2]}"
+	store(t, "DOMAINS", value)
+	oldField := []domainexp.Entry{oldEntry()}
+	field := oldField
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	mockPP.EXPECT().Noticef(
+		pp.EmojiUserError,
+		`%s (%q) has unexpected token %q`,
+		"DOMAINS", value, ",",
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.False(t, ok)
+	require.Equal(t, oldField, field)
 }
