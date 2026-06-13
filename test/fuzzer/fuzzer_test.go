@@ -38,7 +38,7 @@ func FuzzParseEntries(f *testing.F) {
 	} {
 		f.Add(seed)
 	}
-	f.Fuzz(func(t *testing.T, input string) {
+	f.Fuzz(func(_ *testing.T, input string) {
 		_, _, _ = domainexp.ParseEntries(input)
 	})
 }
