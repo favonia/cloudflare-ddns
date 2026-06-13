@@ -1,7 +1,6 @@
 package domainexp
 
 import (
-	"errors"
 	"fmt"
 	"net/netip"
 
@@ -30,88 +29,90 @@ func ParseEntries(input string) ([]Entry, []EntryDiagnostic, *syntax.ParseError)
 		return nil, nil, err
 	}
 
-	entries, diagnostics, _ := buildEntryList(tree)
-	return entries, deduplicateCompatibilityDiagnostics(diagnostics), nil
+	state := entryBuildState{
+		entries:      nil,
+		diagnostics:  nil,
+		extraComma:   false,
+		missingComma: false,
+	}
+	state.buildEntryList(tree)
+	return state.entries, state.diagnostics, nil
+}
+
+type entryBuildState struct {
+	entries      []Entry
+	diagnostics  []EntryDiagnostic
+	extraComma   bool
+	missingComma bool
 }
 
 // buildEntryList reports whether conversion failed semantically. Explicit
 // top-level commas are the only points where conversion resumes after failure.
-func buildEntryList(tree syntax.Tree[entryFormID]) ([]Entry, []EntryDiagnostic, bool) {
+func (state *entryBuildState) buildEntryList(tree syntax.Tree[entryFormID]) bool {
 	switch tree := tree.(type) {
 	case syntax.EmptyTree[entryFormID]:
-		return nil, nil, false
+		return false
 	case syntax.Atom[entryFormID]:
 		entry, diagnostic := buildEntry(tree)
 		if diagnostic != nil {
-			return nil, []EntryDiagnostic{*diagnostic}, true
+			state.diagnostics = append(state.diagnostics, *diagnostic)
+			return true
 		}
-		return []Entry{entry}, nil, false
+		state.entries = append(state.entries, entry)
+		return false
 	case syntax.Op[entryFormID]:
 		//nolint:exhaustive // Only top-level entry-list forms are valid here.
 		switch tree.ID {
 		case entryFormFieldsEmpty, entryFormFields:
 			entry, diagnostic := buildEntry(tree)
 			if diagnostic != nil {
-				return nil, []EntryDiagnostic{*diagnostic}, true
+				state.diagnostics = append(state.diagnostics, *diagnostic)
+				return true
 			}
-			return []Entry{entry}, nil, false
+			state.entries = append(state.entries, entry)
+			return false
 		case entryFormComma:
-			leftEntries, leftDiagnostics, leftFailed := buildEntryList(tree.Args[0])
-			rightEntries, rightDiagnostics, rightFailed := buildEntryList(tree.Args[1])
-			return append(leftEntries, rightEntries...),
-				append(leftDiagnostics, rightDiagnostics...),
-				leftFailed || rightFailed
+			leftFailed := state.buildEntryList(tree.Args[0])
+			rightFailed := state.buildEntryList(tree.Args[1])
+			return leftFailed || rightFailed
 		case entryFormMissingComma:
-			leftEntries, leftDiagnostics, leftFailed := buildEntryList(tree.Args[0])
-			leftDiagnostics = append(leftDiagnostics, EntryDiagnostic{
-				Span: syntax.Span{
-					Start: tree.Args[0].Span().End,
-					End:   tree.Args[1].Span().Start,
-				},
-				Cause: ErrMissingComma,
+			leftFailed := state.buildEntryList(tree.Args[0])
+			state.recordMissingComma(syntax.Span{
+				Start: tree.Args[0].Span().End,
+				End:   tree.Args[1].Span().Start,
 			})
 			if leftFailed {
-				return leftEntries, leftDiagnostics, true
+				return true
 			}
-			rightEntries, rightDiagnostics, rightFailed := buildEntryList(tree.Args[1])
-			return append(leftEntries, rightEntries...), append(leftDiagnostics, rightDiagnostics...), rightFailed
+			return state.buildEntryList(tree.Args[1])
 		case entryFormTrailingComma:
-			return buildEntryList(tree.Args[0])
+			return state.buildEntryList(tree.Args[0])
 		case entryFormLeadingComma:
-			entries, diagnostics, failed := buildEntryList(tree.Args[0])
-			return entries, append([]EntryDiagnostic{{
-				Span: tree.Tokens[0].Span, Cause: ErrExtraComma,
-			}}, diagnostics...), failed
+			state.recordExtraComma(tree.Tokens[0].Span)
+			return state.buildEntryList(tree.Args[0])
 		case entryFormCommaOnly:
-			return nil, []EntryDiagnostic{{
-				Span: tree.Tokens[0].Span, Cause: ErrExtraComma,
-			}}, false
+			state.recordExtraComma(tree.Tokens[0].Span)
+			return false
 		}
 	}
 
 	panic("domainexp: invalid parsed entry-list tree; this should not happen; please report it")
 }
 
-func deduplicateCompatibilityDiagnostics(diagnostics []EntryDiagnostic) []EntryDiagnostic {
-	result := make([]EntryDiagnostic, 0, len(diagnostics))
-	extraComma := false
-	missingComma := false
-	for _, diagnostic := range diagnostics {
-		switch {
-		case errors.Is(diagnostic.Cause, ErrExtraComma):
-			if extraComma {
-				continue
-			}
-			extraComma = true
-		case errors.Is(diagnostic.Cause, ErrMissingComma):
-			if missingComma {
-				continue
-			}
-			missingComma = true
-		}
-		result = append(result, diagnostic)
+func (state *entryBuildState) recordExtraComma(span syntax.Span) {
+	if state.extraComma {
+		return
 	}
-	return result
+	state.extraComma = true
+	state.diagnostics = append(state.diagnostics, EntryDiagnostic{Span: span, Cause: ErrExtraComma})
+}
+
+func (state *entryBuildState) recordMissingComma(span syntax.Span) {
+	if state.missingComma {
+		return
+	}
+	state.missingComma = true
+	state.diagnostics = append(state.diagnostics, EntryDiagnostic{Span: span, Cause: ErrMissingComma})
 }
 
 func buildEntry(tree syntax.Tree[entryFormID]) (Entry, *EntryDiagnostic) {
@@ -187,12 +188,6 @@ func buildAssignment(tree syntax.Op[entryFormID]) (hostid6.Set, *EntryDiagnostic
 	values, diagnostic := buildHostID6Values(tree.Args[1])
 	if diagnostic != nil {
 		return hostid6.Set{}, diagnostic
-	}
-	if len(values) == 0 {
-		return hostid6.Set{}, &EntryDiagnostic{
-			Span:  tree.Args[1].Span(),
-			Cause: ErrEmptyHostID6Set,
-		}
 	}
 	return hostid6.NewSet(values...), nil
 }

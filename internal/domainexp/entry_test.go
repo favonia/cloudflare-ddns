@@ -1,6 +1,7 @@
 package domainexp_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -142,6 +143,24 @@ func TestParseEntriesReturnsCompatibilityDiagnostics(t *testing.T) {
 	require.ErrorIs(t, diagnostics[1].Cause, domainexp.ErrMissingComma)
 }
 
+func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	const commaCount = 4096
+	entries, diagnostics, err := domainexp.ParseEntries(strings.Repeat(",", commaCount) + "example.org")
+
+	require.Nil(t, err)
+	require.Equal(t, []domainexp.Entry{{
+		Domain:          domain.FQDN("example.org"),
+		HostID6Opinions: nil,
+		Span:            syntax.Span{Start: commaCount, End: commaCount + len("example.org")},
+	}}, entries)
+	require.Equal(t, []domainexp.EntryDiagnostic{{
+		Span:  syntax.Span{Start: 0, End: 1},
+		Cause: domainexp.ErrExtraComma,
+	}}, diagnostics)
+}
+
 func TestParseEntriesAcceptsTrailingCommaWithoutDiagnostic(t *testing.T) {
 	t.Parallel()
 
@@ -164,7 +183,6 @@ func TestParseEntriesTypedCauses(t *testing.T) {
 		domainexp.ErrUnknownDomainField,
 		domainexp.ErrInvalidHostID6,
 		domainexp.ErrInvalidMAC,
-		domainexp.ErrEmptyHostID6Set,
 		domainexp.ErrExtraComma,
 		domainexp.ErrMissingComma,
 	} {
