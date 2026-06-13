@@ -55,9 +55,19 @@ Unmatched records are invisible to DNS mutation logic, so the updater may create
 
 DNS admissibility is defined by whether raw data can be validly derived into DNS targets for the in-scope DNS resources.
 
-Under current shipped behavior, DNS derivation forgets prefix length, so provider-valid family-matching raw entries are DNS-admissible.
+IPv4 DNS derivation forgets prefix length, so provider-valid IPv4 raw entries are DNS-admissible.
 
-Future DNS-side derivation may impose narrower admissibility constraints per resource. In particular, future host-ID derivation is expected to use observed IPv6 prefixes while requiring some raw entries to be rejected as DNS-inadmissible when they cannot produce valid targets for an in-scope DNS resource.
+For IPv6, let `r` be a raw entry, `d` an in-scope DNS domain, and `h` a member of the effective `hostid6` set for `d`. The raw IPv6 set is DNS-admissible exactly when every `r` is compatible with every effective `h` for every in-scope `d`.
+
+Compatibility is static:
+
+- `preserve` is compatible with every valid raw IPv6 entry and produces its observed address
+- an IPv6 literal is compatible when its non-zero bits do not overlap the observed prefix
+- `mac(...)` is compatible when the observed prefix is no longer than `/64`; it produces a Modified EUI-64 host ID from the configured EUI-48 address
+
+For each domain, the desired DNS target set is the union of targets produced by the cross-product of its effective `hostid6` set and the raw IPv6 set. Equal target addresses collapse under set semantics.
+
+Any incompatibility makes the raw IPv6 set inadmissible for the family-wide contract. The resulting whole-family consequence is defined in [Lifecycle Model](lifecycle-model.markdown).
 
 ### DNS Instantiation
 
@@ -134,5 +144,5 @@ This design applies only to DNS record ownership based on DNS record comments.
 
 - If one process ever needs multiple ownership scopes for the same domain and IP family, the cache design must change so filter identity becomes part of the caching model.
 - Future configuration and UI work should continue to keep ownership selection separate from the parameters written to DNS records.
-- If future DNS-side derivation adds host-ID or similar target-construction policy, this note should define the resulting DNS admissibility constraints rather than pushing them into generic lifecycle text.
+- If future DNS-side derivation adds another target-construction policy, this note should define the resulting DNS admissibility constraints rather than pushing them into generic lifecycle text.
 - If future work changes the broader ownership model, this note should continue to own only the DNS attribute-based ownership layer instead of absorbing unrelated ownership rules.
