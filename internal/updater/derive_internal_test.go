@@ -100,7 +100,7 @@ func TestDeriveIP6DNSTargetsGroupsAllProblems(t *testing.T) {
 			alpha: hostid6.NewSet(hostid6.Preserve(), literal126b, literal127, macA),
 			beta:  hostid6.NewSet(literal126a, literal126b, macB),
 		},
-		provider.NewKnownDetectionResult([]ipnet.RawEntry{rawA, rawB}),
+		provider.NewKnownDetectionResult([]ipnet.RawEntry{rawB, rawA}),
 	)
 
 	require.Nil(t, targets)
