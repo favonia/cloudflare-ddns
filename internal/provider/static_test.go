@@ -1,6 +1,7 @@
 package provider_test
 
 import (
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -64,4 +65,26 @@ func TestStaticIsExplicitEmpty(t *testing.T) {
 
 	require.True(t, provider.NewStaticEmpty().IsExplicitEmpty())
 	require.False(t, provider.MustNewStatic(ipnet.IP4, 32, "1.1.1.1").IsExplicitEmpty())
+}
+
+func TestKnownRawData(t *testing.T) {
+	t.Parallel()
+
+	static := provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/65")
+	rawData, known := provider.KnownRawData(static)
+	require.True(t, known)
+	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, rawData)
+
+	rawData[0] = ipnet.RawEntry{}
+	again, known := provider.KnownRawData(static)
+	require.True(t, known)
+	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, again)
+
+	empty, known := provider.KnownRawData(provider.NewStaticEmpty())
+	require.True(t, known)
+	require.Empty(t, empty)
+
+	dynamic, known := provider.KnownRawData(provider.NewCloudflareTrace())
+	require.False(t, known)
+	require.Empty(t, dynamic)
 }
