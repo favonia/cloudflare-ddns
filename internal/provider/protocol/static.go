@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"context"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -27,6 +28,11 @@ func (p Static) Name() string {
 // IsExplicitEmpty reports whether the provider intentionally clears the family.
 func (p Static) IsExplicitEmpty() bool {
 	return len(p.RawEntries) == 0
+}
+
+// KnownRawData returns a defensive copy of the configuration-time known raw data.
+func (p Static) KnownRawData() []ipnet.RawEntry {
+	return slices.Clone(p.RawEntries)
 }
 
 // GetRawData returns the static raw entries as deterministic raw data.

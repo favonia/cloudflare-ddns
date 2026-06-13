@@ -12,6 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
@@ -171,4 +172,68 @@ func TestBuildConfigWarnsOncePerSuspiciousMAC(t *testing.T) {
 			"hostid6=mac(ff-ff-ff-ff-ff-ff) for a.example uses the Ethernet broadcast destination and cannot identify one host\n",
 		output.String(),
 	)
+}
+
+func TestBuildConfigRejectsKnownIncompatibleIPv6RawData(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider[ipnet.IP4] = nil
+	raw.Provider[ipnet.IP6] = provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/65,2001:db8:1::1/65")
+	raw.Domains = mustEntries(t,
+		"alpha.example{hostid6=[2001::1,mac(00-11-22-33-44-55)]},"+
+			"beta.example{hostid6=[2001::1,mac(aa-bb-cc-dd-ee-ff)]}",
+	)
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+
+	require.False(t, ok)
+	require.Nil(t, built)
+	require.Equal(t,
+		"IP6_PROVIDER=static:2001:db8::1/65,2001:db8:1::1/65 is incompatible with hostid6=2001::1 "+
+			"for alpha.example and beta.example: requires prefixes no longer than /2, but includes "+
+			"2001:db8::1/65 and 2001:db8:1::1/65; change the listed hostid6 setting or IP6_PROVIDER\n"+
+			"IP6_PROVIDER=static:2001:db8::1/65,2001:db8:1::1/65 is incompatible with "+
+			"hostid6=[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)] for alpha.example and beta.example: "+
+			"requires prefixes no longer than /64, but includes 2001:db8::1/65 and 2001:db8:1::1/65; "+
+			"change the listed hostid6 setting or IP6_PROVIDER\n",
+		output.String(),
+	)
+}
+
+func TestBuildConfigAcceptsIPv6RawDataWithoutProvableIncompatibility(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		provider provider.Provider
+	}{
+		{
+			name:     "compatible-static",
+			provider: provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/64"),
+		},
+		{
+			name:     "static-empty",
+			provider: provider.NewStaticEmpty(),
+		},
+		{
+			name:     "dynamic",
+			provider: provider.NewCloudflareTrace(),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			raw := config.DefaultRaw()
+			raw.Provider[ipnet.IP4] = nil
+			raw.Provider[ipnet.IP6] = tc.provider
+			raw.Domains = mustEntries(t, "example.org{hostid6=mac(00-11-22-33-44-55)}")
+
+			built, ok := raw.BuildConfig(pp.NewSilent())
+
+			require.True(t, ok)
+			require.NotNil(t, built)
+		})
+	}
 }

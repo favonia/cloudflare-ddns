@@ -67,6 +67,20 @@ type Provider interface {
 	// - explicit-empty modes use Available=true with an empty list
 }
 
+type knownRawDataProvider interface {
+	KnownRawData() []ipnet.RawEntry
+}
+
+// KnownRawData returns configuration-time known raw data when p exposes it.
+// Dynamic providers return false.
+func KnownRawData(p Provider) ([]ipnet.RawEntry, bool) {
+	known, ok := p.(knownRawDataProvider)
+	if !ok {
+		return nil, false
+	}
+	return known.KnownRawData(), true
+}
+
 // Name gets the protocol name. It returns "none" for nil.
 func Name(p Provider) string {
 	if p == nil {

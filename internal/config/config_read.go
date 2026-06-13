@@ -132,7 +132,15 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		return nil, false
 	}
 
-	// Check 2c: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?
+	// Check 2c: are configuration-time known IPv6 entries compatible with effective host-ID policies?
+	if known, available := provider.KnownRawData(providerMap[ipnet.IP6]); available &&
+		!validateKnownIP6HostIDCompatibility(
+			ppfmt, provider.Name(providerMap[ipnet.IP6]), domains[ipnet.IP6], normalized.HostID6, known,
+		) {
+		return nil, false
+	}
+
+	// Check 2d: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?
 	ip4Off := !ip4Managed || providerMap[ipnet.IP4].IsExplicitEmpty()
 	ip6Off := !ip6Managed || providerMap[ipnet.IP6].IsExplicitEmpty()
 	if c.UpdateCron == nil && c.DeleteOnStop && (!ip4Off || !ip6Off) {
