@@ -1,7 +1,6 @@
 package config
 
 import (
-	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -22,14 +21,6 @@ type normalizedDomains struct {
 type hostID6Opinion struct {
 	set    hostid6.Set
 	source string
-}
-
-type hostID6CompatibilityGroup struct {
-	kind         hostid6.IncompatibilityKind
-	maxPrefixLen int
-	domains      map[domain.Domain]struct{}
-	derivations  []hostid6.Derivation
-	observed     []ipnet.RawEntry
 }
 
 func describeHostID6Set(set hostid6.Set) string {
@@ -55,73 +46,19 @@ func validateKnownIP6HostIDCompatibility(
 	policies map[domain.Domain]hostid6.Set,
 	rawEntries []ipnet.RawEntry,
 ) bool {
-	groups := map[struct {
-		kind         hostid6.IncompatibilityKind
-		maxPrefixLen int
-	}]*hostID6CompatibilityGroup{}
-
-	for _, configuredDomain := range domains {
-		for _, raw := range rawEntries {
-			for derivation := range policies[configuredDomain].All() {
-				_, problem := hostid6.Derive(raw, derivation)
-				if problem == nil {
-					continue
-				}
-
-				key := struct {
-					kind         hostid6.IncompatibilityKind
-					maxPrefixLen int
-				}{problem.Kind, problem.MaxPrefixLen}
-				group := groups[key]
-				if group == nil {
-					group = &hostID6CompatibilityGroup{
-						kind:         problem.Kind,
-						maxPrefixLen: problem.MaxPrefixLen,
-						domains:      map[domain.Domain]struct{}{},
-						derivations:  nil,
-						observed:     nil,
-					}
-					groups[key] = group
-				}
-				group.domains[configuredDomain] = struct{}{}
-				group.derivations = append(group.derivations, derivation)
-				group.observed = append(group.observed, raw)
-			}
-		}
-	}
-
-	ordered := make([]*hostID6CompatibilityGroup, 0, len(groups))
-	for _, group := range groups {
-		ordered = append(ordered, group)
-	}
-	slices.SortFunc(ordered, func(left, right *hostID6CompatibilityGroup) int {
-		if order := cmp.Compare(left.kind, right.kind); order != 0 {
-			return order
-		}
-		return cmp.Compare(left.maxPrefixLen, right.maxPrefixLen)
-	})
-
-	for _, group := range ordered {
-		groupDomains := make([]domain.Domain, 0, len(group.domains))
-		for configuredDomain := range group.domains {
-			groupDomains = append(groupDomains, configuredDomain)
-		}
-		domain.SortDomains(groupDomains)
-
-		derivations := hostid6.NewSet(group.derivations...)
-		slices.SortFunc(group.observed, ipnet.RawEntry.Compare)
-		observed := slices.Compact(group.observed)
+	_, problems := hostid6.DeriveDomains(domains, policies, rawEntries)
+	for _, problem := range problems {
 		ppfmt.Noticef(pp.EmojiUserError,
 			"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
 				"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
 			providerName,
-			describeHostID6Derivations(derivations),
-			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, groupDomains, "(none)"),
-			group.maxPrefixLen,
-			pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, observed, "(none)"),
+			describeHostID6Derivations(problem.Derivations),
+			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)"),
+			problem.MaxPrefixLen,
+			pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)"),
 		)
 	}
-	return len(ordered) == 0
+	return len(problems) == 0
 }
 
 func mergeHostID6Opinions(

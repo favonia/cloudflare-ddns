@@ -71,20 +71,24 @@ func TestKnownRawData(t *testing.T) {
 	t.Parallel()
 
 	static := provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/65")
-	rawData, known := provider.KnownRawData(static)
+	rawData, known, err := provider.KnownRawData(static, ipnet.IP6)
 	require.True(t, known)
+	require.NoError(t, err)
 	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, rawData)
 
 	rawData[0] = ipnet.RawEntry{}
-	again, known := provider.KnownRawData(static)
+	again, known, err := provider.KnownRawData(static, ipnet.IP6)
 	require.True(t, known)
+	require.NoError(t, err)
 	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, again)
 
-	empty, known := provider.KnownRawData(provider.NewStaticEmpty())
+	empty, known, err := provider.KnownRawData(provider.NewStaticEmpty(), ipnet.IP6)
 	require.True(t, known)
+	require.NoError(t, err)
 	require.Empty(t, empty)
 
-	dynamic, known := provider.KnownRawData(provider.NewCloudflareTrace())
+	dynamic, known, err := provider.KnownRawData(provider.NewCloudflareTrace(), ipnet.IP6)
 	require.False(t, known)
+	require.NoError(t, err)
 	require.Empty(t, dynamic)
 }
