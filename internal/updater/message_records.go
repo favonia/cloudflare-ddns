@@ -39,6 +39,18 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 	}
 }
 
+func generateIP6DerivationFailureMessage() Message {
+	return Message{
+		HeartbeatMessage: heartbeat.Message{
+			OK:    false,
+			Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+		},
+		NotifierMessage: notifier.Message{
+			"Failed to derive IPv6 DNS targets from the detected prefixes.",
+		},
+	}
+}
+
 func describeIPs(ips []netip.Addr) string {
 	return pp.JoinMap(netip.Addr.String, ips)
 }
