@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"bytes"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
@@ -234,6 +236,68 @@ func TestBuildConfigAcceptsIPv6RawDataWithoutProvableIncompatibility(t *testing.
 
 			require.True(t, ok)
 			require.NotNil(t, built)
+		})
+	}
+}
+
+func TestBuildConfigOrdersKnownIPv6IncompatibilitiesDeterministically(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider[ipnet.IP4] = nil
+	raw.Provider[ipnet.IP6] = provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/128")
+	raw.Domains = mustEntries(t, "example.org{hostid6=[::1,::2]}")
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+
+	require.False(t, ok)
+	require.Nil(t, built)
+	require.Equal(t,
+		"IP6_PROVIDER=static:2001:db8::1/128 is incompatible with hostid6=::2 for example.org: "+
+			"requires prefixes no longer than /126, but includes 2001:db8::1/128; "+
+			"change the listed hostid6 setting or IP6_PROVIDER\n"+
+			"IP6_PROVIDER=static:2001:db8::1/128 is incompatible with hostid6=::1 for example.org: "+
+			"requires prefixes no longer than /127, but includes 2001:db8::1/128; "+
+			"change the listed hostid6 setting or IP6_PROVIDER\n",
+		output.String(),
+	)
+}
+
+func TestBuildConfigRejectsBrokenKnownIPv6RawDataWithoutPanicking(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		entries  []ipnet.RawEntry
+		expected string
+	}{
+		{
+			name:     "invalid",
+			entries:  []ipnet.RawEntry{{}},
+			expected: "IP6_PROVIDER=broken exposed invalid configuration-time known raw data; this should not happen. Please report it at " + pp.IssueReportingURL + "\n",
+		},
+		{
+			name:     "wrong-family",
+			entries:  []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 32)},
+			expected: "IP6_PROVIDER=broken exposed configuration-time known raw data 192.0.2.1/32 that is not valid IPv6; this should not happen. Please report it at " + pp.IssueReportingURL + "\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			raw := config.DefaultRaw()
+			raw.Provider[ipnet.IP4] = nil
+			raw.Provider[ipnet.IP6] = protocol.Static{ProviderName: "broken", RawEntries: tc.entries}
+			raw.Domains = mustEntries(t, "example.org{hostid6=::1}")
+
+			var output bytes.Buffer
+			require.NotPanics(t, func() {
+				built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+				require.False(t, ok)
+				require.Nil(t, built)
+			})
+			require.Equal(t, tc.expected, output.String())
 		})
 	}
 }

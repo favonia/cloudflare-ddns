@@ -133,10 +133,16 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 
 	// Check 2c: are configuration-time known IPv6 entries compatible with effective host-ID policies?
-	if known, available := provider.KnownRawData(providerMap[ipnet.IP6]); available &&
-		!validateKnownIP6HostIDCompatibility(
-			ppfmt, provider.Name(providerMap[ipnet.IP6]), domains[ipnet.IP6], normalized.HostID6, known,
-		) {
+	known, available, err := provider.KnownRawData(providerMap[ipnet.IP6], ipnet.IP6)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiImpossible,
+			"IP6_PROVIDER=%s exposed %v; this should not happen. Please report it at %s",
+			provider.Name(providerMap[ipnet.IP6]), err, pp.IssueReportingURL)
+		return nil, false
+	}
+	if available && !validateKnownIP6HostIDCompatibility(
+		ppfmt, provider.Name(providerMap[ipnet.IP6]), domains[ipnet.IP6], normalized.HostID6, known,
+	) {
 		return nil, false
 	}
 
