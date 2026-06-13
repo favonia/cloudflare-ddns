@@ -2,6 +2,7 @@ package hostid6_test
 
 import (
 	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -48,9 +49,10 @@ func TestCanonicalSet(t *testing.T) {
 	mac := hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
 
 	actual := hostid6.NewSet(two, mac, one, hostid6.Preserve(), one)
-	expected := hostid6.Set{hostid6.Preserve(), one, two, mac}
+	expected := hostid6.NewSet(hostid6.Preserve(), one, two, mac)
 
-	require.Equal(t, expected, actual)
+	require.True(t, hostid6.EqualSet(expected, actual))
+	require.Equal(t, []hostid6.Derivation{hostid6.Preserve(), one, two, mac}, slices.Collect(actual.All()))
 	require.True(t, hostid6.EqualSet(
 		hostid6.NewSet(hostid6.Preserve(), mustLiteral(t, "::1"), mustLiteral(t, "0:0::1")),
 		hostid6.NewSet(mustLiteral(t, "::1"), hostid6.Preserve()),
@@ -62,6 +64,53 @@ func TestNewSetRejectsEmptySet(t *testing.T) {
 	t.Parallel()
 
 	require.Panics(t, func() { hostid6.NewSet() })
+}
+
+func TestZeroSetRepresentsAbsence(t *testing.T) {
+	t.Parallel()
+
+	var zero hostid6.Set
+
+	require.True(t, zero.IsZero())
+	require.Zero(t, zero.Len())
+	require.Empty(t, zero.Values())
+	require.Empty(t, slices.Collect(zero.All()))
+	require.True(t, hostid6.EqualSet(zero, hostid6.Set{}))
+	require.False(t, hostid6.EqualSet(zero, hostid6.DefaultSet()))
+	require.False(t, hostid6.DefaultSet().IsZero())
+}
+
+func TestSetDoesNotShareInputStorage(t *testing.T) {
+	t.Parallel()
+
+	one := mustLiteral(t, "::1")
+	input := []hostid6.Derivation{one, hostid6.Preserve()}
+	set := hostid6.NewSet(input...)
+
+	input[0] = hostid6.MAC([6]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
+	input[1] = one
+
+	require.Equal(t, []hostid6.Derivation{hostid6.Preserve(), one}, set.Values())
+}
+
+func TestSetDoesNotExposeMutableStorage(t *testing.T) {
+	t.Parallel()
+
+	one := mustLiteral(t, "::1")
+	set := hostid6.NewSet(hostid6.Preserve(), one)
+	values := set.Values()
+
+	values[0] = one
+	values[1] = hostid6.Preserve()
+
+	require.Equal(t, []hostid6.Derivation{hostid6.Preserve(), one}, set.Values())
+	require.Equal(t, []string{"preserve", "::1"}, slices.Collect(func(yield func(string) bool) {
+		for derivation := range set.All() {
+			if !yield(derivation.Describe()) {
+				return
+			}
+		}
+	}))
 }
 
 func TestDescribe(t *testing.T) {
