@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -243,6 +244,24 @@ func TestReadEnvDomainDiagnosticSeverityAndOrder(t *testing.T) {
 		"😦 DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n"+
 			"😦 DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
 			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+		output.String(),
+	)
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvDomainCompatibilityWarningUsesBoundedPreview(t *testing.T) {
+	value := "," + strings.Repeat("a", 60) + ".example"
+	testenv.ClearAll(t)
+	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
+	store(t, "DOMAINS", value)
+	cfg := config.DefaultRaw()
+	var output bytes.Buffer
+
+	ok := cfg.ReadEnv(pp.New(&output, true, pp.Quiet))
+
+	require.True(t, ok)
+	require.Equal(t,
+		"😦 DOMAINS (\",aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n",
 		output.String(),
 	)
 }

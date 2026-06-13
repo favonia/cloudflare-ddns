@@ -13,13 +13,13 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 	switch {
 	case errors.Is(diagnostic.Cause, domainexp.ErrExtraComma):
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s (%q) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
-			key, input)
+			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
+			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
 	case errors.Is(diagnostic.Cause, domainexp.ErrMissingComma):
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s (%q) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
-			key, input)
+			"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
