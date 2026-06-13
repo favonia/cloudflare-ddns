@@ -17,6 +17,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -68,6 +69,9 @@ func initUpdateConfig() *config.UpdateConfig {
 		ipnet.IP4: nil,
 		ipnet.IP6: nil,
 	}
+	conf.HostID6 = map[domain.Domain]hostid6.Set{
+		domain6: hostid6.DefaultSet(),
+	}
 	conf.Proxied = map[domain.Domain]bool{
 		domain4:   false,
 		domain4_1: false,
@@ -77,6 +81,18 @@ func initUpdateConfig() *config.UpdateConfig {
 		domain6:   false,
 	}
 	return conf
+}
+
+func hostID6Literal(t *testing.T, text string) hostid6.Derivation {
+	t.Helper()
+
+	derivation, err := hostid6.Literal(netip.MustParseAddr(text))
+	require.NoError(t, err)
+	return derivation
+}
+
+func rawDetectionResult(entries ...ipnet.RawEntry) provider.DetectionResult {
+	return provider.NewKnownDetectionResult(entries)
 }
 
 func hintIP6DetectionFails(p *mocks.MockPP) *mocks.MockPPNoticeOncefCall {
@@ -153,6 +169,31 @@ func runUpdateIPsScenario(
 	}
 
 	return updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+}
+
+func runConfiguredUpdateIPsScenario(
+	t *testing.T,
+	enabled providerEnablers,
+	configure func(*config.UpdateConfig),
+	prepareMocks func(*mocks.MockPP, mockProviders, *mocks.MockSetter),
+) updater.Message {
+	t.Helper()
+
+	mockCtrl := gomock.NewController(t)
+	conf := initUpdateConfig()
+	configure(conf)
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockProviders := make(mockProviders)
+	for ipFamily := range enabled {
+		mockProvider := mocks.NewMockProvider(mockCtrl)
+		conf.Provider[ipFamily] = mockProvider
+		mockProviders[ipFamily] = mockProvider
+	}
+	mockSetter := mocks.NewMockSetter(mockCtrl)
+	prepareMocks(mockPP, mockProviders, mockSetter)
+
+	return updater.UpdateIPs(context.Background(), mockPP, conf, mockSetter)
 }
 
 func runFinalDeleteIPsScenario(
@@ -668,6 +709,203 @@ func TestUpdateIPs(t *testing.T) {
 			}, resp)
 		})
 	}
+}
+
+func TestUpdateIPsHostID6Preflight(t *testing.T) {
+	t.Parallel()
+
+	const (
+		alpha = domain.FQDN("alpha.example")
+		beta  = domain.FQDN("beta.example")
+		gamma = domain.FQDN("gamma.example")
+	)
+	params := api.RecordParams{
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: recordComment,
+		Tags:    nil,
+	}
+	list := api.WAFList{AccountID: "12341234", Name: "list"}
+
+	t.Run("default-preserve", func(t *testing.T) {
+		t.Parallel()
+
+		raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::abcd"), 64)
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha}
+				conf.HostID6[alpha] = hostid6.DefaultSet()
+				conf.WAFLists = []api.WAFList{list}
+			},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw)),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::abcd/64"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{raw.Addr()}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
+						familyTargets{ipnet.IP6: setter.NewAvailableWAFTargets([]netip.Prefix{raw.Masked()})},
+						wafItemComment).Return(setter.ResponseNoop),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
+			NotifierMessage:  nil,
+		}, resp)
+	})
+
+	t.Run("per-domain-targets-and-deduplication", func(t *testing.T) {
+		t.Parallel()
+
+		raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::abcd"), 64)
+		literal1 := hostID6Literal(t, "::1")
+		literalABCD := hostID6Literal(t, "::abcd")
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha, beta, gamma}
+				conf.HostID6[alpha] = hostid6.DefaultSet()
+				conf.HostID6[beta] = hostid6.NewSet(literal1)
+				conf.HostID6[gamma] = hostid6.NewSet(hostid6.Preserve(), literalABCD)
+			},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw)),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::abcd/64"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha,
+						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, beta,
+						[]netip.Addr{netip.MustParseAddr("2001:db8::1")}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, gamma,
+						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.ResponseNoop),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
+			NotifierMessage:  nil,
+		}, resp)
+	})
+
+	t.Run("empty-available-clears-every-domain-and-waf", func(t *testing.T) {
+		t.Parallel()
+
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha, beta}
+				conf.HostID6[alpha] = hostid6.DefaultSet()
+				conf.HostID6[beta] = hostid6.NewSet(hostID6Literal(t, "::1"))
+				conf.WAFLists = []api.WAFList{list}
+			},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult()),
+					p.EXPECT().Infof(pp.EmojiClear, "Clearing %s addresses . . .", "IPv6"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{}, params).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, beta, []netip.Addr{}, params).Return(setter.ResponseUpdated),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
+						familyTargets{ipnet.IP6: setter.NewAvailableWAFTargets([]netip.Prefix{})},
+						wafItemComment).Return(setter.ResponseUpdated),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{
+				OK: true,
+				Lines: []string{
+					"Cleared AAAA records for alpha.example, beta.example",
+					"Updated WAF list(s) 12341234/list",
+				},
+			},
+			NotifierMessage: notifier.Message{
+				"Cleared AAAA records for alpha.example and beta.example.",
+				"Updated WAF list(s) 12341234/list.",
+			},
+		}, resp)
+	})
+
+	t.Run("only-ipv6-inadmissible-reports-all-groups-without-mutation", func(t *testing.T) {
+		t.Parallel()
+
+		rawA := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)
+		rawB := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1::1"), 65)
+		literal := hostID6Literal(t, "2001::1")
+		macA := hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
+		macB := hostid6.MAC([6]byte{0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff})
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha, beta}
+				conf.HostID6[alpha] = hostid6.NewSet(literal, macA)
+				conf.HostID6[beta] = hostid6.NewSet(literal, macB)
+				conf.WAFLists = []api.WAFList{list}
+			},
+			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(rawA, rawB)),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
+						2, "IPv6", "2001:db8::1/65, 2001:db8:1::1/65"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					p.EXPECT().Noticef(pp.EmojiError, "%s",
+						"Cannot derive IPv6 DNS targets for alpha.example and beta.example: hostid6=2001::1 requires detected prefixes no longer than /2, but detected 2001:db8::1/65 and 2001:db8:1::1/65; change the listed hostid6 setting or provide compatible prefixes; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					p.EXPECT().Noticef(pp.EmojiError, "%s",
+						"Cannot derive IPv6 DNS targets for alpha.example and beta.example: hostid6=[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)] requires detected prefixes no longer than /64, but detected 2001:db8::1/65 and 2001:db8:1::1/65; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{
+				OK:    false,
+				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+			},
+			NotifierMessage: notifier.Message{
+				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+			},
+		}, resp)
+	})
+
+	t.Run("ipv4-proceeds-while-ipv6-inadmissible", func(t *testing.T) {
+		t.Parallel()
+
+		ip4 := netip.MustParseAddr("127.0.0.1")
+		raw6 := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha}
+				conf.HostID6[alpha] = hostid6.NewSet(hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}))
+				conf.WAFLists = []api.WAFList{list}
+			},
+			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
+						Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
+					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4}, params).
+						Return(setter.ResponseNoop),
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw6)),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::1/65"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					p.EXPECT().Noticef(pp.EmojiError, "%s",
+						"Cannot derive IPv6 DNS targets for alpha.example: hostid6=mac(00-11-22-33-44-55) requires detected prefixes no longer than /64, but detected 2001:db8::1/65; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
+						withUnavailableTargets(wafTargets([]netip.Addr{ip4}, nil), ipnet.IP6),
+						wafItemComment).Return(setter.ResponseNoop),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{
+				OK:    false,
+				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+			},
+			NotifierMessage: notifier.Message{
+				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+			},
+		}, resp)
+	})
 }
 
 func TestUpdateIPsTimeouts(t *testing.T) {
