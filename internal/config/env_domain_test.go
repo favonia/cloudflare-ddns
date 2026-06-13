@@ -141,8 +141,8 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 	var field []domainexp.Entry
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%q) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", value),
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%q) contains missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", value),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
 	)
 
