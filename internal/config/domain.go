@@ -41,6 +41,12 @@ func mergeHostID6Opinions(
 	for declarationIndex, entry := range entries {
 		for assignmentIndex, set := range entry.HostID6Opinions {
 			source := fmt.Sprintf("%s declaration %d hostid6 assignment %d", setting, declarationIndex+1, assignmentIndex+1)
+			if set.IsZero() {
+				ppfmt.Noticef(pp.EmojiImpossible,
+					"%s for %s contains an empty host-ID set; this should not happen. Please report it at %s",
+					source, entry.Domain.Describe(), pp.IssueReportingURL)
+				return false
+			}
 			previous, present := opinions[entry.Domain]
 			if present && !hostid6.EqualSet(previous.set, set) {
 				ppfmt.Noticef(pp.EmojiUserError,

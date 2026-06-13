@@ -12,6 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
 func mustEntries(t *testing.T, input string) []domainexp.Entry {
@@ -112,6 +113,27 @@ func TestBuildConfigRejectsConflictingHostID6Opinions(t *testing.T) {
 			require.Equal(t, tc.message, output.String())
 		})
 	}
+}
+
+func TestBuildConfigRejectsZeroExplicitHostID6OpinionAsImpossible(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Domains = []domainexp.Entry{{
+		Domain:          domain.FQDN("example.org"),
+		HostID6Opinions: []hostid6.Set{{}},
+		Span:            syntax.Span{Start: 0, End: 0},
+	}}
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.False(t, ok)
+	require.Nil(t, built)
+	require.Equal(t,
+		"DOMAINS declaration 1 hostid6 assignment 1 for example.org contains an empty host-ID set; "+
+			"this should not happen. Please report it at "+pp.IssueReportingURL+"\n",
+		output.String(),
+	)
 }
 
 func TestBuildConfigWarnsOncePerSuspiciousMAC(t *testing.T) {
