@@ -63,7 +63,7 @@ Compatibility is static:
 
 - `preserve` is compatible with every valid raw IPv6 entry and produces its observed address
 - an IPv6 literal is compatible when its non-zero bits do not overlap the observed prefix
-- `mac(...)` is compatible when the observed prefix is no longer than `/64`; it produces a Modified EUI-64 host ID from the configured EUI-48 address
+- `mac(...)` is compatible when the observed prefix is no longer than `/64`; it produces a Modified EUI-64 host ID from the configured 48-bit MAC address
 
 For each domain, the desired DNS target set is the union of targets produced by the cross-product of its effective `hostid6` set and the raw IPv6 set. Equal target addresses collapse under set semantics.
 

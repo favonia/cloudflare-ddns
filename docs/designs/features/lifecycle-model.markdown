@@ -68,7 +68,7 @@ If a resource is in scope, detection yields one of these three intents:
 - `clear`: known empty admissible raw data
 - `update`: known non-empty admissible raw data
 
-The current concrete raw-data representation is a set of IP addresses with prefix lengths. Known raw data must be admissible for all in-scope resources for that family and round. Bare observations are lifted using the effective default prefix lengths: 32 for IPv4 and 64 for IPv6 unless set otherwise; configurations where this can yield inadmissible raw data are invalid. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
+The current concrete raw-data representation is a set of IP addresses with prefix lengths. Known raw data must be admissible for all in-scope resources for that family and round. Bare observations are lifted using the effective default prefix lengths: 32 for IPv4 and 64 for IPv6 unless set otherwise. Problems provable from configuration alone make startup invalid. A valid configuration may still encounter observations that are inadmissible for a particular round; the affected family then yields `abort`. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 
 Concrete detection and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection security is owned by [Network Security Model](network-security-model.markdown).
 
