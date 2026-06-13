@@ -2,12 +2,15 @@ package config
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -65,6 +68,34 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
+func describeHostID6Policy(set hostid6.Set) string {
+	descriptions := make([]string, 0, set.Len())
+	for derivation := range set.All() {
+		descriptions = append(descriptions, derivation.Describe())
+	}
+	return strings.Join(descriptions, ", ")
+}
+
+func nondefaultHostID6Policies(policies map[domain.Domain]hostid6.Set) ([]string, map[string][]domain.Domain) {
+	domainsByPolicy := map[string][]domain.Domain{}
+	defaultSet := hostid6.DefaultSet()
+	for dom, policy := range policies {
+		if !hostid6.EqualSet(policy, defaultSet) {
+			description := describeHostID6Policy(policy)
+			domainsByPolicy[description] = append(domainsByPolicy[description], dom)
+		}
+	}
+
+	descriptions := make([]string, 0, len(domainsByPolicy))
+	for description, domains := range domainsByPolicy {
+		domain.SortDomains(domains)
+		domainsByPolicy[description] = domains
+		descriptions = append(descriptions, description)
+	}
+	slices.Sort(descriptions)
+	return descriptions, domainsByPolicy
+}
+
 // Print prints a human-facing summary of the validated config and the reporting
 // services currently wired into the process.
 func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
@@ -92,6 +123,11 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+" provider:", "%s", provider.Name(p))
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
 		}
+	}
+	descriptions, domainsByPolicy := nondefaultHostID6Policies(update.HostID6)
+	for _, description := range descriptions {
+		domainList := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domainsByPolicy[description], "(none)")
+		item("IPv6 host IDs for "+domainList+":", "%s", description)
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))
 

@@ -1,0 +1,135 @@
+package config_test
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
+)
+
+func mustEntries(t *testing.T, input string) []domainexp.Entry {
+	t.Helper()
+
+	entries, diagnostics, err := domainexp.ParseEntries(input)
+	require.Nil(t, err)
+	require.Empty(t, diagnostics)
+	return entries
+}
+
+func buildDomainConfig(t *testing.T, domains, ip4Domains, ip6Domains string, ppfmt pp.PP) (*config.BuiltConfig, bool) {
+	t.Helper()
+
+	raw := config.DefaultRaw()
+	raw.Domains = mustEntries(t, domains)
+	raw.IP4Domains = mustEntries(t, ip4Domains)
+	raw.IP6Domains = mustEntries(t, ip6Domains)
+	return raw.BuildConfig(ppfmt)
+}
+
+func describeHostID6Set(set hostid6.Set) []string {
+	values := set.Values()
+	descriptions := make([]string, 0, len(values))
+	for _, value := range values {
+		descriptions = append(descriptions, value.Describe())
+	}
+	return descriptions
+}
+
+func TestBuildConfigMergesHostID6OpinionsAndDefaults(t *testing.T) {
+	t.Parallel()
+
+	built, ok := buildDomainConfig(t,
+		"b.example{hostid6=[::2,::1]},a.example{},b.example{hostid6=[::1,::2]},v4.example",
+		"v4-only.example",
+		"a.example{hostid6=::3},v6-only.example",
+		pp.NewSilent(),
+	)
+	require.True(t, ok)
+
+	require.Equal(t,
+		[]string{"a.example", "b.example", "v4-only.example", "v4.example"},
+		summarizeDomains(built.Update.Domains[ipnet.IP4]),
+	)
+	require.Equal(t,
+		[]string{"a.example", "b.example", "v4.example", "v6-only.example"},
+		summarizeDomains(built.Update.Domains[ipnet.IP6]),
+	)
+	require.Equal(t, []string{"::3"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("a.example")]))
+	require.Equal(t, []string{"::1", "::2"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("b.example")]))
+	require.Equal(t, []string{"preserve"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("v4.example")]))
+	require.Equal(t, []string{"preserve"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("v6-only.example")]))
+	require.NotContains(t, built.Update.HostID6, domain.FQDN("v4-only.example"))
+}
+
+func TestBuildConfigRejectsConflictingHostID6Opinions(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name       string
+		domains    string
+		ip6Domains string
+		message    string
+	}{
+		{
+			name:       "within declaration",
+			domains:    "example.org{hostid6=[::1,::2],hostid6=[::2,::3]}",
+			ip6Domains: "",
+			message:    "Conflicting hostid6 settings for example.org: DOMAINS declaration 1 hostid6 assignment 1 configures [::1,::2], while DOMAINS declaration 1 hostid6 assignment 2 configures [::2,::3]; configure exactly the same hostid6 set in every declaration or omit it from partial declarations\n",
+		},
+		{
+			name:       "within setting",
+			domains:    "example.org{hostid6=preserve},example.org{hostid6=::1}",
+			ip6Domains: "",
+			message:    "Conflicting hostid6 settings for example.org: DOMAINS declaration 1 hostid6 assignment 1 configures [preserve], while DOMAINS declaration 2 hostid6 assignment 1 configures [::1]; configure exactly the same hostid6 set in every declaration or omit it from partial declarations\n",
+		},
+		{
+			name:       "across settings",
+			domains:    "example.org{hostid6=[::1,::2]}",
+			ip6Domains: "example.org{hostid6=[::2,::3]}",
+			message:    "Conflicting hostid6 settings for example.org: DOMAINS declaration 1 hostid6 assignment 1 configures [::1,::2], while IP6_DOMAINS declaration 1 hostid6 assignment 1 configures [::2,::3]; configure exactly the same hostid6 set in every declaration or omit it from partial declarations\n",
+		},
+		{
+			name:       "intentional literal and MAC identities differ",
+			domains:    "example.org{hostid6=::211:22ff:fe33:4455},example.org{hostid6=mac(00-11-22-33-44-55)}",
+			ip6Domains: "",
+			message:    "Conflicting hostid6 settings for example.org: DOMAINS declaration 1 hostid6 assignment 1 configures [::211:22ff:fe33:4455], while DOMAINS declaration 2 hostid6 assignment 1 configures [mac(00-11-22-33-44-55)]; configure exactly the same hostid6 set in every declaration or omit it from partial declarations\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var output bytes.Buffer
+			built, ok := buildDomainConfig(t, tc.domains, "", tc.ip6Domains, pp.New(&output, false, pp.Quiet))
+			require.False(t, ok)
+			require.Nil(t, built)
+			require.Equal(t, tc.message, output.String())
+		})
+	}
+}
+
+func TestBuildConfigWarnsOncePerSuspiciousMAC(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	built, ok := buildDomainConfig(t,
+		"z.example{hostid6=mac(01:11:22:33:44:55)},a.example{hostid6=[mac(01-11-22-33-44-55),mac(00-00-00-00-00-00),mac(ff-ff-ff-ff-ff-ff),mac(02-11-22-33-44-55)]}",
+		"",
+		"z.example{hostid6=mac(01-11-22-33-44-55)}",
+		pp.New(&output, false, pp.Quiet),
+	)
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t,
+		"hostid6=mac(00-00-00-00-00-00) for a.example uses the all-zero MAC address, which commonly represents an unset, placeholder, deliberately configured, or broken identity\n"+
+			"hostid6=mac(01-11-22-33-44-55) for a.example and z.example uses a group MAC address; the derived IPv6 address is still unicast, but this MAC may not uniquely identify the intended host\n"+
+			"hostid6=mac(ff-ff-ff-ff-ff-ff) for a.example uses the Ethernet broadcast destination and cannot identify one host\n",
+		output.String(),
+	)
+}

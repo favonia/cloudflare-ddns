@@ -132,3 +132,8 @@ func (d Derivation) Describe() string {
 		panic("invalid host-ID derivation kind")
 	}
 }
+
+// MACAddress returns the configured MAC address when this is a MAC derivation.
+func (d Derivation) MACAddress() ([6]byte, bool) {
+	return d.mac, d.kind == kindMAC
+}
