@@ -13,6 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -80,6 +81,7 @@ type UpdateConfig struct {
 	// Map absence means the family is out of scope for this updater.
 	Provider map[ipnet.Family]provider.Provider
 	Domains  map[ipnet.Family][]domain.Domain
+	HostID6  map[domain.Domain]hostid6.Set
 	WAFLists []api.WAFList
 	// DefaultPrefixLen stores the derivation default prefix length for each family
 	// when lifting bare detected addresses into raw data.

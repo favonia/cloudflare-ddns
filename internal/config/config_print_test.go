@@ -1,14 +1,17 @@
 package config_test
 
 import (
+	"net/netip"
 	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -42,6 +45,7 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 		ipnet.IP4: nil,
 		ipnet.IP6: nil,
 	}
+	updateConfig.HostID6 = map[domain.Domain]hostid6.Set{}
 	updateConfig.WAFLists = raw.WAFLists
 	updateConfig.TTL = raw.TTL
 	updateConfig.Proxied = map[domain.Domain]bool{}
@@ -125,6 +129,7 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "test6.org, *.test6.org"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
+		printItem(t, innerMockPP, "IPv6 host IDs for test6.org:", "::1, mac(00-11-22-33-44-55)"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "^Created by Cloudflare DDNS$"),
@@ -160,6 +165,10 @@ func TestPrintValues(t *testing.T) {
 	builtConfig := defaultPrintedConfig(raw)
 	builtConfig.Update.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("test4.org"), domain.Wildcard("test4.org")}
 	builtConfig.Update.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("test6.org"), domain.Wildcard("test6.org")}
+	literal, err := hostid6.Literal(netip.MustParseAddr("::1"))
+	require.NoError(t, err)
+	builtConfig.Update.HostID6[domain.FQDN("test6.org")] = hostid6.NewSet(literal, hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}))
+	builtConfig.Update.HostID6[domain.Wildcard("test6.org")] = hostid6.DefaultSet()
 	builtConfig.Update.TTL = 30000
 	builtConfig.Update.Proxied[domain.FQDN("a")] = true
 	builtConfig.Update.Proxied[domain.FQDN("b")] = true

@@ -16,6 +16,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -1580,6 +1581,12 @@ func TestBuildConfig(t *testing.T) {
 				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown = expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
+				if tc.expected.update.HostID6 == nil {
+					tc.expected.update.HostID6 = map[domain.Domain]hostid6.Set{}
+					for _, dom := range tc.expected.update.Domains[ipnet.IP6] {
+						tc.expected.update.HostID6[dom] = hostid6.DefaultSet()
+					}
+				}
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)
