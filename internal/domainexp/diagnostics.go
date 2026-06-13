@@ -8,6 +8,23 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
+var (
+	// ErrInvalidDomain reports a malformed or non-fully-qualified domain.
+	ErrInvalidDomain = errors.New("invalid domain")
+	// ErrUnknownDomainField reports an unsupported structured-domain field.
+	ErrUnknownDomainField = errors.New("unknown domain field")
+	// ErrInvalidHostID6 reports an invalid IPv6 host-ID literal.
+	ErrInvalidHostID6 = errors.New("invalid IPv6 host ID")
+	// ErrInvalidMAC reports an invalid 48-bit MAC address.
+	ErrInvalidMAC = errors.New("invalid 48-bit MAC address")
+	// ErrEmptyHostID6Set reports an explicitly empty host-ID derivation set.
+	ErrEmptyHostID6Set = errors.New("hostid6 set must not be empty")
+	// ErrExtraComma reports extra top-level commas accepted for compatibility.
+	ErrExtraComma = errors.New("extra comma")
+	// ErrMissingComma reports missing top-level commas accepted for compatibility.
+	ErrMissingComma = errors.New("missing comma")
+)
+
 type parserState struct {
 	// Empty-call functions are kept in first-occurrence order and deduplicated.
 	emptyCallFunctions []string
