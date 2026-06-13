@@ -227,6 +227,26 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // environment variables are global
+func TestReadEnvDomainDiagnosticSeverityAndOrder(t *testing.T) {
+	const value = ",good.example bad.example,localhost"
+	testenv.ClearAll(t)
+	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
+	store(t, "DOMAINS", value)
+	cfg := config.DefaultRaw()
+	var output bytes.Buffer
+
+	ok := cfg.ReadEnv(pp.New(&output, true, pp.Quiet))
+
+	require.False(t, ok)
+	require.Equal(t,
+		"😦 DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n"+
+			"😦 DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
+			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+		output.String(),
+	)
+}
+
 type authSummary struct {
 	token   string
 	baseURL string
