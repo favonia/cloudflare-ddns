@@ -58,6 +58,7 @@ func MAC(addr [6]byte) Derivation {
 }
 
 // NewSet constructs a canonical non-empty derivation set.
+// NewSet panics if no derivations are provided.
 func NewSet(values ...Derivation) Set {
 	if len(values) == 0 {
 		panic("hostid6.NewSet requires at least one derivation")
