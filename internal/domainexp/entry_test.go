@@ -189,3 +189,23 @@ func TestParseEntriesTypedCauses(t *testing.T) {
 		require.NotErrorIs(t, cause, syntax.ErrUnexpectedToken)
 	}
 }
+
+func TestEntryDiagnosticDescriptions(t *testing.T) {
+	t.Parallel()
+
+	input := "localhost,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}"
+	_, diagnostics, err := domainexp.ParseEntries(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []string{
+		`invalid domain "localhost": not fully qualified`,
+		`unknown domain field "unknown"`,
+		`invalid hostid6 value "192.0.2.1": host-ID literal must be an unzoned IPv6 address`,
+		`invalid hostid6 MAC address "bad": invalid 48-bit MAC address`,
+	}, []string{
+		diagnostics[0].Description(input),
+		diagnostics[1].Description(input),
+		diagnostics[2].Description(input),
+		diagnostics[3].Description(input),
+	})
+}
