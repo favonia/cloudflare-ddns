@@ -89,10 +89,9 @@ func validateEntryList(tree syntax.Tree[entryFormID]) *syntax.ParseError {
 		case entryFormCommaOnly:
 			return nil
 		case entryFormMissingComma:
-			if !isPlainEntryList(tree.Args[0]) {
-				return invalidEntryTree(tree.Args[0])
-			}
-			if _, ok := tree.Args[1].(syntax.Atom[entryFormID]); !ok {
+			// Explicit commas bind more tightly than missing commas, so either
+			// side can contain a mixed explicit/missing plain-domain list.
+			if !isPlainEntryList(tree.Args[0]) || !isPlainEntryList(tree.Args[1]) {
 				return invalidEntryTree(tree.Args[1])
 			}
 			return nil
@@ -187,5 +186,21 @@ func isPlainEntryList(tree syntax.Tree[entryFormID]) bool {
 }
 
 func invalidEntryTree(tree syntax.Tree[entryFormID]) *syntax.ParseError {
-	return &syntax.ParseError{Span: tree.Span(), Cause: syntax.ErrUnexpectedToken}
+	return &syntax.ParseError{Span: firstEntryTree(tree).Span(), Cause: syntax.ErrUnexpectedToken}
+}
+
+// firstEntryTree returns the first token-bearing subtree in source order.
+func firstEntryTree(tree syntax.Tree[entryFormID]) syntax.Tree[entryFormID] {
+	switch tree := tree.(type) {
+	case syntax.Atom[entryFormID]:
+		return tree
+	case syntax.Op[entryFormID]:
+		if len(tree.Tokens) != 0 &&
+			(len(tree.Args) == 0 || tree.Tokens[0].Span.Start < tree.Args[0].Span().Start) {
+			return syntax.Atom[entryFormID]{Token: tree.Tokens[0]}
+		}
+		return firstEntryTree(tree.Args[0])
+	default:
+		return tree
+	}
 }
