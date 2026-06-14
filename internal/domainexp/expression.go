@@ -256,21 +256,17 @@ func Evaluate(expr Expr, dom domain.Domain) bool {
 			return slices.ContainsFunc(expr.domains, func(pattern string) bool {
 				return hasStrictSuffix(asciiDomain, pattern)
 			})
-		default:
-			return false
 		}
 	case unaryExpr:
 		return !Evaluate(expr.operand, dom)
 	case binaryExpr:
+		//nolint:exhaustive // Unrecognized expression forms fall through to false below.
 		switch expr.operator {
 		case "&&":
 			return Evaluate(expr.left, dom) && Evaluate(expr.right, dom)
 		case "||":
 			return Evaluate(expr.left, dom) || Evaluate(expr.right, dom)
-		default:
-			return false
 		}
-	default:
-		return false
 	}
+	return false
 }
