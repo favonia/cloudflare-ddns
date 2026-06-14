@@ -66,11 +66,10 @@ func parseEntrySyntax(input string) (syntax.Tree[entryFormID], *syntax.ParseErro
 
 func validateEntryList(tree syntax.Tree[entryFormID]) *syntax.ParseError {
 	switch tree := tree.(type) {
-	case syntax.EmptyTree[entryFormID]:
-		return nil
-	case syntax.Atom[entryFormID]:
+	case syntax.EmptyTree[entryFormID], syntax.Atom[entryFormID]:
 		return nil
 	case syntax.Op[entryFormID]:
+		//nolint:exhaustive // Unrecognized entry-list forms fall through to invalidEntryTree below.
 		switch tree.ID {
 		case entryFormFieldsEmpty:
 			return requireEntryAtom(tree.Args[0])
@@ -95,12 +94,9 @@ func validateEntryList(tree syntax.Tree[entryFormID]) *syntax.ParseError {
 				return invalidEntryTree(tree.Args[1])
 			}
 			return nil
-		default:
-			return invalidEntryTree(tree)
 		}
-	default:
-		return invalidEntryTree(tree)
 	}
+	return invalidEntryTree(tree)
 }
 
 func validateFieldList(tree syntax.Tree[entryFormID]) *syntax.ParseError {
