@@ -153,10 +153,31 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 }
 
 //nolint:paralleltest // environment vars are global
+func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
+	const value = "example.org,,,,,,"
+	store(t, "DOMAINS", value)
+	var field []domainexp.Entry
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	mockPP.EXPECT().Noticef(
+		pp.EmojiUserWarning,
+		`%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`,
+		"DOMAINS", `"`+value+`"`,
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.True(t, ok)
+	require.Len(t, field, 1)
+	require.Equal(t, domain.FQDN("example.org"), field[0].Domain)
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
 	for _, value := range []string{
 		"example.org{hostid6=[::1,,::2]}",
 		"example.org{hostid6=::1,,hostid6=::2}",
+		"example.org{hostid6=[::1,,,,,,]}",
+		"example.org{hostid6=::1,,,,,,}",
 	} {
 		t.Run(value, func(t *testing.T) {
 			store(t, "DOMAINS", value)

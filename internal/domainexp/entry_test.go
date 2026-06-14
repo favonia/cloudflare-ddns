@@ -211,6 +211,41 @@ func TestParseEntriesAcceptsTrailingCommaWithoutDiagnostic(t *testing.T) {
 	}}, entries)
 }
 
+func TestParseEntriesReportsExtraTrailingCommas(t *testing.T) {
+	t.Parallel()
+
+	input := "example.org,,,,,,"
+	entries, diagnostics, err := domainexp.ParseEntries(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domainexp.Entry{{
+		Domain:          domain.FQDN("example.org"),
+		HostID6Opinions: nil,
+		Span:            syntax.Span{Start: 0, End: 11},
+	}}, entries)
+	require.Len(t, diagnostics, 1)
+	require.ErrorIs(t, diagnostics[0].Cause, domainexp.ErrExtraComma)
+}
+
+func TestParseEntriesRejectsExtraTrailingCommasInStrictLists(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{
+		"example.org{hostid6=::1,,,,,,}",
+		"example.org{hostid6=[::1,,,,,,]}",
+	} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainexp.ParseEntries(input)
+
+			require.Nil(t, entries)
+			require.Empty(t, diagnostics)
+			require.ErrorIs(t, err, syntax.ErrUnexpectedToken)
+		})
+	}
+}
+
 func TestParseEntriesTypedCauses(t *testing.T) {
 	t.Parallel()
 

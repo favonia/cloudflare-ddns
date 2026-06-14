@@ -189,6 +189,13 @@ func TestReadProvider(t *testing.T) {
 			nil,
 		},
 		"static:trailing-comma": {ipnet.IP4, true, "static:1.1.1.1,", false, "", trace, static, true, nil},
+		"static:extra-trailing-commas": {
+			ipnet.IP4, true, "static:1.1.1.1,,,,,,", false, "", trace, trace, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`The %s entry in %s is empty (check for extra commas)`, "2nd", key)
+			},
+		},
 		"static:double-comma": {
 			ipnet.IP4, true, "static:1.1.1.1,,2.2.2.2", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
