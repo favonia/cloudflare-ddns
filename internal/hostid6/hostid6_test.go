@@ -121,6 +121,19 @@ func TestDescribe(t *testing.T) {
 	require.Equal(t, "mac(00-11-22-33-44-55)", hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}).Describe())
 }
 
+func TestDescribeSet(t *testing.T) {
+	t.Parallel()
+
+	one := mustLiteral(t, "::1")
+	two := mustLiteral(t, "::2")
+
+	require.Equal(t, "[::1,::2]", hostid6.DescribeSet(hostid6.NewSet(two, one)))
+	require.Equal(t, "::1", hostid6.DescribeSetOrScalar(hostid6.NewSet(one)))
+	require.Equal(t, "[::1,::2]", hostid6.DescribeSetOrScalar(hostid6.NewSet(two, one)))
+	require.Panics(t, func() { hostid6.DescribeSet(hostid6.Set{}) })
+	require.Panics(t, func() { hostid6.DescribeSetOrScalar(hostid6.Set{}) })
+}
+
 func TestParseMACAcceptedForms(t *testing.T) {
 	t.Parallel()
 

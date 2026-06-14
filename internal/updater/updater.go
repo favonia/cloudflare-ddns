@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/netip"
 	"slices"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
@@ -178,22 +177,10 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 	return mergeMessages(msgs...)
 }
 
-func describeHostID6ProblemDerivations(set hostid6.Set) string {
-	values := set.Values()
-	descriptions := make([]string, 0, len(values))
-	for _, derivation := range values {
-		descriptions = append(descriptions, derivation.Describe())
-	}
-	if set.Len() == 1 {
-		return descriptions[0]
-	}
-	return "[" + strings.Join(descriptions, ",") + "]"
-}
-
 func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 	for _, problem := range problems {
 		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
-		derivations := describeHostID6ProblemDerivations(problem.Derivations)
+		derivations := hostid6.DescribeSetOrScalar(problem.Derivations)
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
 		action := ""

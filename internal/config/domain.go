@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
@@ -23,22 +22,6 @@ type hostID6Opinion struct {
 	source string
 }
 
-func describeHostID6Set(set hostid6.Set) string {
-	values := set.Values()
-	descriptions := make([]string, 0, len(values))
-	for _, value := range values {
-		descriptions = append(descriptions, value.Describe())
-	}
-	return "[" + strings.Join(descriptions, ",") + "]"
-}
-
-func describeHostID6Derivations(set hostid6.Set) string {
-	if set.Len() == 1 {
-		return set.Values()[0].Describe()
-	}
-	return describeHostID6Set(set)
-}
-
 func validateKnownIP6HostIDCompatibility(
 	ppfmt pp.PP,
 	providerName string,
@@ -52,7 +35,7 @@ func validateKnownIP6HostIDCompatibility(
 			"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
 				"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
 			providerName,
-			describeHostID6Derivations(problem.Derivations),
+			hostid6.DescribeSetOrScalar(problem.Derivations),
 			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)"),
 			problem.MaxPrefixLen,
 			pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)"),
@@ -81,7 +64,7 @@ func mergeHostID6Opinions(
 				ppfmt.Noticef(pp.EmojiUserError,
 					"Conflicting hostid6 settings for %s: %s configures %s, while %s configures %s; "+
 						"configure exactly the same hostid6 set in every declaration or omit it from partial declarations",
-					entry.Domain.Describe(), previous.source, describeHostID6Set(previous.set), source, describeHostID6Set(set))
+					entry.Domain.Describe(), previous.source, hostid6.DescribeSet(previous.set), source, hostid6.DescribeSet(set))
 				return false
 			}
 			if !present {

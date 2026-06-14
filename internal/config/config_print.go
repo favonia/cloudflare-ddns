@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
@@ -69,11 +68,7 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 }
 
 func describeHostID6Policy(set hostid6.Set) string {
-	descriptions := make([]string, 0, set.Len())
-	for derivation := range set.All() {
-		descriptions = append(descriptions, derivation.Describe())
-	}
-	return strings.Join(descriptions, ", ")
+	return pp.JoinMap(hostid6.Derivation.Describe, set.Values())
 }
 
 func nondefaultHostID6Policies(policies map[domain.Domain]hostid6.Set) ([]string, map[string][]domain.Domain) {

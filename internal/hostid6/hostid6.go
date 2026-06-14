@@ -9,6 +9,7 @@ import (
 	"iter"
 	"net/netip"
 	"slices"
+	"strings"
 )
 
 // Kind identifies one host-ID derivation kind.
@@ -116,6 +117,35 @@ func (s Set) Values() []Derivation {
 // All enumerates the canonical derivations in the set.
 func (s Set) All() iter.Seq[Derivation] {
 	return slices.Values(s.values)
+}
+
+// DescribeSet returns the canonical compact syntax for a non-empty set.
+func DescribeSet(set Set) string {
+	if set.IsZero() {
+		panic("hostid6.DescribeSet requires a non-empty set")
+	}
+
+	return "[" + strings.Join(describeSetValues(set), ",") + "]"
+}
+
+// DescribeSetOrScalar returns canonical scalar syntax for a singleton set and
+// canonical compact set syntax otherwise.
+func DescribeSetOrScalar(set Set) string {
+	if set.IsZero() {
+		panic("hostid6.DescribeSetOrScalar requires a non-empty set")
+	}
+	if set.Len() == 1 {
+		return set.values[0].Describe()
+	}
+	return DescribeSet(set)
+}
+
+func describeSetValues(set Set) []string {
+	descriptions := make([]string, 0, set.Len())
+	for derivation := range set.All() {
+		descriptions = append(descriptions, derivation.Describe())
+	}
+	return descriptions
 }
 
 // Describe returns the canonical description of a derivation.
