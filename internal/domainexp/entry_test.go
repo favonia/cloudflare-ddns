@@ -154,6 +154,26 @@ func TestParseEntriesStopsOnAmbiguousMalformedNesting(t *testing.T) {
 	}
 }
 
+func TestParseEntriesRejectsStructuredDomainExpressions(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{
+		"mac(foo){}",
+		"mac(foo){hostid6=::1}",
+	} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainexp.ParseEntries(input)
+
+			require.Nil(t, entries)
+			require.Empty(t, diagnostics)
+			require.ErrorIs(t, err, syntax.ErrUnexpectedToken)
+			require.Equal(t, syntax.Span{Start: 0, End: 3}, err.Span)
+		})
+	}
+}
+
 func TestParseEntriesReturnsCompatibilityDiagnostics(t *testing.T) {
 	t.Parallel()
 
