@@ -51,6 +51,16 @@ func generateIP6DerivationFailureMessage() Message {
 	}
 }
 
+func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Domain) Message {
+	domainDescription := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)")
+	message := fmt.Sprintf("Could not update %s records for %s because no target set was provided",
+		ipFamily.RecordType(), domainDescription)
+	return Message{
+		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{message}},
+		NotifierMessage:  notifier.Message{message + "."},
+	}
+}
+
 func describeIPs(ips []netip.Addr) string {
 	return pp.JoinMap(netip.Addr.String, ips)
 }

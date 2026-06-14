@@ -141,11 +141,16 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 		resps setterResponses
 	}
 	var groups []targetGroup
+	var missingDomains []domain.Domain
 
 	for _, configuredDomain := range c.Domains[ipFamily] {
 		ips, ok := targets[configuredDomain]
 		if !ok {
-			panic("setIPs received no targets for a managed domain; this should not happen; please report it")
+			ppfmt.Noticef(pp.EmojiImpossible,
+				"No target set was provided for managed domain %s; this should not happen. Please report it at %s",
+				configuredDomain.Describe(), pp.IssueReportingURL)
+			missingDomains = append(missingDomains, configuredDomain)
+			continue
 		}
 
 		groupIndex := slices.IndexFunc(groups, func(group targetGroup) bool {
@@ -170,7 +175,10 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	msgs := make([]Message, 0, len(groups))
+	msgs := make([]Message, 0, len(groups)+1)
+	if len(missingDomains) > 0 {
+		msgs = append(msgs, generateMissingTargetSetsMessage(ipFamily, missingDomains))
+	}
 	for _, group := range groups {
 		msgs = append(msgs, generateClearOrUpdateMessage(ipFamily, group.ips, group.resps))
 	}
@@ -293,9 +301,6 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 					}
 					shouldUpdateWAF = true
 					msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, targets))
-
-				default:
-					panic("invalid IP family")
 				}
 			} else {
 				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
