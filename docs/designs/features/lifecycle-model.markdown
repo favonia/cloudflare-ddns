@@ -68,16 +68,19 @@ If a resource is in scope, detection yields one of these three intents:
 - `clear`: known empty admissible raw data
 - `update`: known non-empty admissible raw data
 
-The current concrete raw-data representation is a set of IP addresses with prefix lengths. Detection must yield only raw data admissible for all in-scope resources for that round. Bare observations are lifted using the effective default prefix lengths: 32 for IPv4 and 64 for IPv6 unless set otherwise; configurations where this can yield inadmissible raw data are invalid. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
+The current concrete raw-data representation is a set of IP addresses with prefix lengths. Known raw data must be admissible for all in-scope resources for that family and round. Bare observations are lifted using the effective default prefix lengths: 32 for IPv4 and 64 for IPv6 unless set otherwise. Problems provable from configuration-time known raw data, including static-provider incompatibilities, make startup invalid. A valid configuration may still encounter runtime-dependent observations that are inadmissible for a particular round; the affected family then yields `abort`. The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 
 Concrete detection and provider contracts are owned by [Provider Raw-Data Contract](provider-raw-data-contract.markdown). Detection security is owned by [Network Security Model](network-security-model.markdown).
 
 ## Derivation
 
-Derivation defines the admissibility requirements for raw data, per resource, and transforms admissible raw data into the resource-specific target state consumed by reconciliation.
+Admissibility is semantically prior to target derivation: the raw data must be suitable for every in-scope resource before any derived target may authorize mutation. A pure operation may decide admissibility and produce candidate targets together, provided it discards those targets when the raw data is inadmissible.
 
-- DNS derivation turns each raw IP address with prefix length into a DNS address target by forgetting the prefix length.
+- IPv4 DNS derivation turns each raw entry into a DNS address target by forgetting the prefix length.
+- IPv6 DNS derivation uses each observed prefix and each domain's effective `hostid6` set under the compatibility and target-set rules in [DNS Ownership Instantiation](managed-record-ownership.markdown).
 - WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
+
+Admissibility preflight for one IP family must finish before any mutation for that family. If any raw entry is inadmissible for any in-scope resource, that family yields `abort`: existing DNS and WAF content for the family is preserved for the round. The other IP family remains independent. This preflight rule does not claim transactional mutation after preflight succeeds.
 
 ## Reconciliation
 
@@ -97,8 +100,9 @@ Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and
 
 These boundaries should remain explicit:
 
-- detection yields admissible raw data for all in-scope resources; it does not decide mutation authority
-- derivation defines admissibility requirements and changes admissible raw data into resource-specific targets; it does not mutate remote state
+- detection and derivation together yield only raw data and targets admissible for all in-scope resources; they do not decide mutation authority
+- admissibility preflight completes before mutation for the affected IP family
+- derivation changes admissible raw data into resource-specific targets; it does not mutate remote state
 - reconciliation mutates toward the desired steady state for this round
 - cleanup mutates under shutdown authority, not ordinary steady-state authority
 

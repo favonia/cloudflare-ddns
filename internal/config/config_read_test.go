@@ -15,12 +15,27 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/syntax"
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
+
+func entries(domains ...domain.Domain) []domainexp.Entry {
+	result := make([]domainexp.Entry, 0, len(domains))
+	for _, dom := range domains {
+		result = append(result, domainexp.Entry{
+			Domain:          dom,
+			HostID6Opinions: nil,
+			Span:            syntax.Span{Start: 0, End: 0},
+		})
+	}
+	return result
+}
 
 func quotedIgnoredValuePreview(value string) string {
 	runes := []rune(value)
@@ -128,7 +143,7 @@ func TestBuildConfig(t *testing.T) {
 		"once/update-on-start": {
 			input: &config.RawConfig{ //nolint:exhaustruct
 				UpdateOnStart: false,
-				IP4Domains:    []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:    entries(domain.FQDN("a.b.c")),
 			},
 			ok:       false,
 			expected: nil,
@@ -148,7 +163,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok:       false,
@@ -170,8 +185,8 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareDOH(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
-				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
+				IP6Domains:        entries(domain.FQDN("d.e.f")),
 				ProxiedExpression: "false",
 			},
 			ok:       false,
@@ -193,8 +208,8 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewCloudflareDOH(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
-				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
+				IP6Domains:        entries(domain.FQDN("d.e.f")),
 				ProxiedExpression: "false",
 			},
 			ok:       false,
@@ -217,7 +232,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -264,8 +279,8 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
-				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
+				IP6Domains:        entries(domain.FQDN("d.e.f")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -311,7 +326,7 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: nil,
 					ipnet.IP6: nil,
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok:       false,
@@ -335,7 +350,7 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewCloudflareTrace(),
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -376,7 +391,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP4Domains: []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains: entries(domain.FQDN("a.b.c")),
 			},
 			ok:       false,
 			expected: nil,
@@ -399,8 +414,8 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
-				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
+				IP6Domains:        entries(domain.FQDN("d.e.f")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -447,7 +462,7 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP4: provider.NewStaticEmpty(),
 					ipnet.IP6: provider.NewStaticEmpty(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				WAFLists:          []api.WAFList{{AccountID: "account", Name: "list"}},
 				ProxiedExpression: "false",
 			},
@@ -541,7 +556,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewStaticEmpty(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("d.e.f")},
+				IP6Domains:        entries(domain.FQDN("d.e.f")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -585,7 +600,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewStaticEmpty(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -630,8 +645,8 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("d.e.f")},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("g.h.i")},
+				IP4Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("d.e.f")),
+				IP6Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("g.h.i")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -735,7 +750,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:                 entries(domain.FQDN("a.b.c")),
 				ProxiedExpression:          "false",
 				ManagedRecordsCommentRegex: `^hello-[0-9]+$`,
 			},
@@ -784,7 +799,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:                 entries(domain.FQDN("a.b.c")),
 				ProxiedExpression:          "false",
 				ManagedRecordsCommentRegex: "(",
 			},
@@ -806,7 +821,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:                 []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:                 entries(domain.FQDN("a.b.c")),
 				ProxiedExpression:          "false",
 				ManagedRecordsCommentRegex: "^world$",
 			},
@@ -884,7 +899,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -944,7 +959,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1003,7 +1018,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1054,7 +1069,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1149,7 +1164,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "true",
 			},
 			ok: true,
@@ -1198,7 +1213,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1255,7 +1270,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1303,7 +1318,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: provider.NewCloudflareTrace(),
 				},
-				IP4Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP4Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1351,7 +1366,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "false",
 			},
 			ok: true,
@@ -1394,7 +1409,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				IP6Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")),
 				ProxiedExpression: ` true && !is(a.bb.c) `,
 			},
 			ok: true,
@@ -1438,7 +1453,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: "is()",
 			},
 			ok: true,
@@ -1480,7 +1495,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")},
+				IP6Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")),
 				ProxiedExpression: `range`,
 			},
 			ok:       false,
@@ -1500,7 +1515,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: `999`,
 			},
 			ok:       false,
@@ -1520,7 +1535,7 @@ func TestBuildConfig(t *testing.T) {
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
-				IP6Domains:        []domain.Domain{domain.FQDN("a.b.c")},
+				IP6Domains:        entries(domain.FQDN("a.b.c")),
 				ProxiedExpression: `is(12345`,
 			},
 			ok:       false,
@@ -1566,6 +1581,12 @@ func TestBuildConfig(t *testing.T) {
 				expectedHandle.Options.AllowWholeWAFListDeleteOnShutdown = expectedHandle.Options.ManagedWAFListItemsCommentRegex.String() == ""
 				require.Equal(t, &expectedHandle, builtConfig.Handle)
 				require.Equal(t, tc.expected.lifecycle, builtConfig.Lifecycle)
+				if tc.expected.update.HostID6 == nil {
+					tc.expected.update.HostID6 = map[domain.Domain]hostid6.Set{}
+					for _, dom := range tc.expected.update.Domains[ipnet.IP6] {
+						tc.expected.update.HostID6[dom] = hostid6.DefaultSet()
+					}
+				}
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)

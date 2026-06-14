@@ -1,6 +1,8 @@
 package config_test
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,9 +12,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/syntax"
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
@@ -25,9 +29,9 @@ func TestDefaultConfigNotNil(t *testing.T) {
 type rawConfigSummary struct {
 	ip4Provider                     string
 	ip6Provider                     string
-	domains                         []string
-	ip4Domains                      []string
-	ip6Domains                      []string
+	domains                         []rawEntrySummary
+	ip4Domains                      []rawEntrySummary
+	ip6Domains                      []rawEntrySummary
 	wafLists                        []string
 	updateCron                      string
 	updateOnStart                   bool
@@ -42,6 +46,31 @@ type rawConfigSummary struct {
 	cacheExpiration                 time.Duration
 	detectionTimeout                time.Duration
 	updateTimeout                   time.Duration
+}
+
+type rawEntrySummary struct {
+	domain          string
+	hostID6Opinions [][]string
+}
+
+func summarizeEntries(entries []domainexp.Entry) []rawEntrySummary {
+	summary := make([]rawEntrySummary, 0, len(entries))
+	for _, entry := range entries {
+		opinions := make([][]string, 0, len(entry.HostID6Opinions))
+		for _, opinion := range entry.HostID6Opinions {
+			values := opinion.Values()
+			descriptions := make([]string, 0, len(values))
+			for _, value := range values {
+				descriptions = append(descriptions, value.Describe())
+			}
+			opinions = append(opinions, descriptions)
+		}
+		summary = append(summary, rawEntrySummary{
+			domain:          entry.Domain.Describe(),
+			hostID6Opinions: opinions,
+		})
+	}
+	return summary
 }
 
 func summarizeDomains(domains []domain.Domain) []string {
@@ -64,9 +93,9 @@ func summarizeRawConfig(raw *config.RawConfig) rawConfigSummary {
 	return rawConfigSummary{
 		ip4Provider:                     provider.Name(raw.Provider[ipnet.IP4]),
 		ip6Provider:                     provider.Name(raw.Provider[ipnet.IP6]),
-		domains:                         summarizeDomains(raw.Domains),
-		ip4Domains:                      summarizeDomains(raw.IP4Domains),
-		ip6Domains:                      summarizeDomains(raw.IP6Domains),
+		domains:                         summarizeEntries(raw.Domains),
+		ip4Domains:                      summarizeEntries(raw.IP4Domains),
+		ip6Domains:                      summarizeEntries(raw.IP6Domains),
 		wafLists:                        summarizeWAFLists(raw.WAFLists),
 		updateCron:                      cron.DescribeSchedule(raw.UpdateCron),
 		updateOnStart:                   raw.UpdateOnStart,
@@ -132,6 +161,109 @@ func TestOptionalUpdaterSettingsOmissionMatchesCanonicalExplicitValues(t *testin
 	explicitDefaultsRaw := readUpdaterSettingsFromDefaultRaw(t, explicitDefaults)
 
 	require.Equal(t, summarizeRawConfig(implicitDefaults), summarizeRawConfig(explicitDefaultsRaw))
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvDomainDiagnostics(t *testing.T) {
+	for name, tc := range map[string]struct {
+		key      string
+		value    string
+		expected string
+	}{
+		"malformed-entry": {
+			key:      "DOMAINS",
+			value:    "example.org{hostid6=[::1,,::2]}",
+			expected: "DOMAINS (\"example.org{hostid6=[::1,,::2]}\") has unexpected token \",\"\n",
+		},
+		"compatibility-warnings-before-recovered-error": {
+			key:   "DOMAINS",
+			value: ",good.example bad.example,localhost",
+			expected: "DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n" +
+				"DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n" +
+				"DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+		},
+		"ordered-recovered-semantic-errors": {
+			key:   "DOMAINS",
+			value: "localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}",
+			expected: "DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid domain \"localhost\": not fully qualified\n" +
+				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has unknown domain field \"unknown\"\n" +
+				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid hostid6 value \"192.0.2.1\": host-ID literal must be an unzoned IPv6 address\n" +
+				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid hostid6 MAC address \"bad\": invalid 48-bit MAC address\n",
+		},
+		"ipv4-hostid6": {
+			key:      "IP4_DOMAINS",
+			value:    "example.org{hostid6=::1}",
+			expected: "IP4_DOMAINS (\"example.org{hostid6=::1}\") configures hostid6 for example.org, but hostid6 only affects IPv6; move this declaration to DOMAINS or IP6_DOMAINS\n",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			testenv.ClearAll(t)
+			store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
+			store(t, tc.key, tc.value)
+			cfg := config.DefaultRaw()
+			oldEntries := []domainexp.Entry{{
+				Domain:          domain.FQDN("old.example"),
+				HostID6Opinions: nil,
+				Span:            syntax.Span{Start: 0, End: 0},
+			}}
+			switch tc.key {
+			case "DOMAINS":
+				cfg.Domains = oldEntries
+			case "IP4_DOMAINS":
+				cfg.IP4Domains = oldEntries
+			}
+			var output bytes.Buffer
+
+			ok := cfg.ReadEnv(pp.New(&output, false, pp.Quiet))
+
+			require.False(t, ok)
+			require.Equal(t, tc.expected, output.String())
+			switch tc.key {
+			case "DOMAINS":
+				require.Equal(t, oldEntries, cfg.Domains)
+			case "IP4_DOMAINS":
+				require.Equal(t, oldEntries, cfg.IP4Domains)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvDomainDiagnosticSeverityAndOrder(t *testing.T) {
+	const value = ",good.example bad.example,localhost"
+	testenv.ClearAll(t)
+	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
+	store(t, "DOMAINS", value)
+	cfg := config.DefaultRaw()
+	var output bytes.Buffer
+
+	ok := cfg.ReadEnv(pp.New(&output, true, pp.Quiet))
+
+	require.False(t, ok)
+	require.Equal(t,
+		"😦 DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n"+
+			"😦 DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
+			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+		output.String(),
+	)
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvDomainCompatibilityWarningUsesBoundedPreview(t *testing.T) {
+	value := "," + strings.Repeat("a", 60) + ".example"
+	testenv.ClearAll(t)
+	store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
+	store(t, "DOMAINS", value)
+	cfg := config.DefaultRaw()
+	var output bytes.Buffer
+
+	ok := cfg.ReadEnv(pp.New(&output, true, pp.Quiet))
+
+	require.True(t, ok)
+	require.Equal(t,
+		"😦 DOMAINS (\",aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n",
+		output.String(),
+	)
 }
 
 type authSummary struct {
@@ -266,4 +398,14 @@ func TestOptionalUpdaterSettingsBuiltConfigOmissionMatchesCanonicalExplicitValue
 	explicitBuilt := readAndBuildUpdaterConfig(t, explicitEnv)
 
 	require.Equal(t, summarizeBuiltConfig(t, implicitBuilt), summarizeBuiltConfig(t, explicitBuilt))
+}
+
+//nolint:paralleltest // environment variables are global
+func TestBuildConfigProjectsStructuredDomainEntries(t *testing.T) {
+	built := readAndBuildUpdaterConfig(t, map[string]string{
+		"DOMAINS": "example.org{hostid6=::1}",
+	})
+
+	require.Equal(t, []string{"example.org"}, summarizeDomains(built.Update.Domains[ipnet.IP4]))
+	require.Equal(t, []string{"example.org"}, summarizeDomains(built.Update.Domains[ipnet.IP6]))
 }

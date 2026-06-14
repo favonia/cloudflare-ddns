@@ -11,7 +11,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
-	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
 func previewSettingValue(value string) string {
@@ -36,6 +35,8 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 		ppfmt.Infof(pp.EmojiEnvVars, "Reading settings . . .")
 		ppfmt = ppfmt.Indent()
 	}
+	ip4 := ipnet.IP4
+	ip6 := ipnet.IP6
 
 	if !readAuth(ppfmt, &c.Auth) ||
 		!readPrefixLen(ppfmt, "IP4_DEFAULT_PREFIX_LEN", &c.IP4DefaultPrefixLen, ipnet.IP4) ||
@@ -44,9 +45,9 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,
 		}, &c.Provider) ||
-		!readDomains(ppfmt, "DOMAINS", &c.Domains) ||
-		!readDomains(ppfmt, "IP4_DOMAINS", &c.IP4Domains) ||
-		!readDomains(ppfmt, "IP6_DOMAINS", &c.IP6Domains) ||
+		!readDomains(ppfmt, "DOMAINS", nil, &c.Domains) ||
+		!readDomains(ppfmt, "IP4_DOMAINS", &ip4, &c.IP4Domains) ||
+		!readDomains(ppfmt, "IP6_DOMAINS", &ip6, &c.IP6Domains) ||
 		!readWAFListNames(ppfmt, "WAF_LISTS", &c.WAFLists) ||
 		!readCron(ppfmt, "UPDATE_CRON", &c.UpdateCron) ||
 		!readBool(ppfmt, "UPDATE_ON_START", &c.UpdateOnStart) ||
@@ -67,23 +68,6 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 	return true
 }
 
-func normalizeDomainMap(raw *RawConfig) map[ipnet.Family][]domain.Domain {
-	var ip4Domains []domain.Domain
-	ip4Domains = append(ip4Domains, raw.IP4Domains...)
-	ip4Domains = append(ip4Domains, raw.Domains...)
-	ip4Domains = sliceutil.SortAndCompact(ip4Domains, domain.CompareDomain)
-
-	var ip6Domains []domain.Domain
-	ip6Domains = append(ip6Domains, raw.IP6Domains...)
-	ip6Domains = append(ip6Domains, raw.Domains...)
-	ip6Domains = sliceutil.SortAndCompact(ip6Domains, domain.CompareDomain)
-
-	return map[ipnet.Family][]domain.Domain{
-		ipnet.IP4: ip4Domains,
-		ipnet.IP6: ip6Domains,
-	}
-}
-
 // BuildConfig checks and derives configuration invariants, including:
 // - provider and domain canonicalization
 // - [HandleConfig.Options]'s managed-record selector compilation
@@ -100,7 +84,11 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 
 	// Normalizing domains for Check 1
-	domains := normalizeDomainMap(c)
+	normalized, ok := normalizeDomains(ppfmt, c)
+	if !ok {
+		return nil, false
+	}
+	domains := normalized.ByFamily
 
 	// Check 1: is there anything to do? {{{
 	if len(domains[ipnet.IP4]) == 0 && len(domains[ipnet.IP6]) == 0 && len(c.WAFLists) == 0 {
@@ -144,7 +132,21 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		return nil, false
 	}
 
-	// Check 2c: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?
+	// Check 2c: are configuration-time known IPv6 entries compatible with effective host-ID policies?
+	known, available, err := provider.KnownRawData(providerMap[ipnet.IP6], ipnet.IP6)
+	if err != nil {
+		ppfmt.Noticef(pp.EmojiImpossible,
+			"IP6_PROVIDER=%s exposed %v; this should not happen. Please report it at %s",
+			provider.Name(providerMap[ipnet.IP6]), err, pp.IssueReportingURL)
+		return nil, false
+	}
+	if available && !validateKnownIP6HostIDCompatibility(
+		ppfmt, provider.Name(providerMap[ipnet.IP6]), domains[ipnet.IP6], normalized.HostID6, known,
+	) {
+		return nil, false
+	}
+
+	// Check 2d: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?
 	ip4Off := !ip4Managed || providerMap[ipnet.IP4].IsExplicitEmpty()
 	ip6Off := !ip6Managed || providerMap[ipnet.IP6].IsExplicitEmpty()
 	if c.UpdateCron == nil && c.DeleteOnStop && (!ip4Off || !ip6Off) {
@@ -379,6 +381,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	updateConfig := &UpdateConfig{
 		Provider: providerMap,
 		Domains:  domains,
+		HostID6:  normalized.HostID6,
 		WAFLists: c.WAFLists,
 		DefaultPrefixLen: map[ipnet.Family]int{
 			ipnet.IP4: c.IP4DefaultPrefixLen,

@@ -8,6 +8,8 @@ package provider
 
 import (
 	"context"
+	"errors"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -65,6 +67,48 @@ type Provider interface {
 	// - dynamic providers use Available=false when they cannot produce a usable
 	//   raw-data set for the requested family
 	// - explicit-empty modes use Available=true with an empty list
+}
+
+type knownRawDataProvider interface {
+	KnownRawData() []ipnet.RawEntry
+}
+
+var errInvalidKnownRawData = errors.New("invalid configuration-time known raw data")
+
+type wrongFamilyKnownRawDataError struct {
+	entry    ipnet.RawEntry
+	ipFamily ipnet.Family
+}
+
+func (e wrongFamilyKnownRawDataError) Error() string {
+	return "configuration-time known raw data " + e.entry.String() + " that is not valid " + e.ipFamily.Describe()
+}
+
+// KnownRawData returns configuration-time known raw data when p exposes it.
+// Returned entries are normalized for ipFamily, sorted, deduplicated, and valid.
+// Dynamic providers return known=false. A non-nil error means the optional
+// capability violated its internal raw-data contract.
+func KnownRawData(p Provider, ipFamily ipnet.Family) ([]ipnet.RawEntry, bool, error) {
+	known, ok := p.(knownRawDataProvider)
+	if !ok {
+		return nil, false, nil
+	}
+
+	rawEntries := known.KnownRawData()
+	normalized := make([]ipnet.RawEntry, 0, len(rawEntries))
+	for _, entry := range rawEntries {
+		if !entry.IsValid() {
+			return nil, true, errInvalidKnownRawData
+		}
+		original := entry
+		entry, _, _, ok := ipnet.NormalizeRawEntryIP(ipFamily, entry)
+		if !ok {
+			return nil, true, wrongFamilyKnownRawDataError{entry: original, ipFamily: ipFamily}
+		}
+		normalized = append(normalized, entry)
+	}
+	slices.SortFunc(normalized, ipnet.RawEntry.Compare)
+	return slices.Compact(normalized), true, nil
 }
 
 // Name gets the protocol name. It returns "none" for nil.
