@@ -197,6 +197,51 @@ func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
 	}}, diagnostics)
 }
 
+func TestParseEntriesManyMissingCommasReturnOneDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainexp.ParseEntries("example.org example.net example.com")
+
+	require.Nil(t, err)
+	require.Equal(t, []domainexp.Entry{
+		{Domain: domain.FQDN("example.org"), HostID6Opinions: nil, Span: syntax.Span{Start: 0, End: 11}},
+		{Domain: domain.FQDN("example.net"), HostID6Opinions: nil, Span: syntax.Span{Start: 12, End: 23}},
+		{Domain: domain.FQDN("example.com"), HostID6Opinions: nil, Span: syntax.Span{Start: 24, End: 35}},
+	}, entries)
+	require.Equal(t, []domainexp.EntryDiagnostic{{
+		Span:  syntax.Span{Start: 11, End: 12},
+		Cause: domainexp.ErrMissingComma,
+	}}, diagnostics)
+}
+
+func TestParseEntriesStopsMissingCommaRecoveryAfterSemanticError(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainexp.ParseEntries("localhost good.example")
+
+	require.Nil(t, err)
+	require.Empty(t, entries)
+	require.Len(t, diagnostics, 2)
+	require.ErrorIs(t, diagnostics[0].Cause, domainexp.ErrInvalidDomain)
+	require.ErrorIs(t, diagnostics[1].Cause, domainexp.ErrMissingComma)
+}
+
+func TestParseEntriesRecoversAtTopLevelCommaAfterFirstFieldError(t *testing.T) {
+	t.Parallel()
+
+	input := "example.org{unknown=::1,hostid6=bad},good.example"
+	entries, diagnostics, err := domainexp.ParseEntries(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domainexp.Entry{{
+		Domain:          domain.FQDN("good.example"),
+		HostID6Opinions: nil,
+		Span:            syntax.Span{Start: 37, End: 49},
+	}}, entries)
+	require.Len(t, diagnostics, 1)
+	require.ErrorIs(t, diagnostics[0].Cause, domainexp.ErrUnknownDomainField)
+}
+
 func TestParseEntriesAcceptsTrailingCommaWithoutDiagnostic(t *testing.T) {
 	t.Parallel()
 

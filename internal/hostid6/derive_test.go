@@ -23,12 +23,27 @@ func TestDerivePreserve(t *testing.T) {
 func TestDeriveLiteral(t *testing.T) {
 	t.Parallel()
 
-	raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234:5678::abcd"), 48)
-	literal := mustLiteral(t, "::1")
-	target, problem := hostid6.Derive(raw, literal)
+	for _, tc := range [...]struct {
+		raw      ipnet.RawEntry
+		literal  string
+		expected netip.Addr
+	}{
+		{
+			ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234:5678::abcd"), 48),
+			"::1",
+			netip.MustParseAddr("2001:db8:1234::1"),
+		},
+		{
+			ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::abcd"), 128),
+			"::",
+			netip.MustParseAddr("2001:db8::abcd"),
+		},
+	} {
+		target, problem := hostid6.Derive(tc.raw, mustLiteral(t, tc.literal))
 
-	require.Nil(t, problem)
-	require.Equal(t, netip.MustParseAddr("2001:db8:1234::1"), target)
+		require.Nil(t, problem)
+		require.Equal(t, tc.expected, target)
+	}
 }
 
 func TestDeriveLiteralIncompatibility(t *testing.T) {

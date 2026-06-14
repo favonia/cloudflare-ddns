@@ -96,6 +96,22 @@ func TestReadDomainsAcceptsHostID6ForMixedAndIPv6Settings(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
+func TestReadDomainsAcceptsPlainIPv4Entry(t *testing.T) {
+	store(t, "IP4_DOMAINS", "example.org")
+	var field []domainexp.Entry
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+
+	ok := readDomains(mockPP, "IP4_DOMAINS", family(ipnet.IP4), &field)
+
+	require.True(t, ok)
+	require.Equal(t, []domainexp.Entry{{
+		Domain:          domain.FQDN("example.org"),
+		HostID6Opinions: nil,
+		Span:            syntax.Span{Start: 0, End: 11},
+	}}, field)
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadDomainsRejectsHostID6ForIPv4Setting(t *testing.T) {
 	const value = "example.org{hostid6=::1}"
 	store(t, "IP4_DOMAINS", value)
@@ -189,6 +205,62 @@ func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
 				`%s (%q) has unexpected token %q`,
 				"DOMAINS", value, ",",
 			)
+
+			ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+			require.False(t, ok)
+			require.Equal(t, oldField, field)
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
+func TestReadDomainsReportsStructuredEntryParseErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		value      string
+		prepareLog func(*mocks.MockPP)
+	}{
+		{
+			name:  "unexpected token",
+			value: "example.org{hostid6=mac)}",
+			prepareLog: func(mockPP *mocks.MockPP) {
+				mockPP.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`%s (%q) has unexpected token %q when %q is expected`,
+					"DOMAINS", "example.org{hostid6=mac)}", ")", "(",
+				)
+			},
+		},
+		{
+			name:  "missing token",
+			value: "example.org{hostid6=::1",
+			prepareLog: func(mockPP *mocks.MockPP) {
+				mockPP.EXPECT().Noticef(
+					pp.EmojiUserError,
+					`%s (%q) is missing %q at the end`,
+					"DOMAINS", "example.org{hostid6=::1", "}",
+				)
+			},
+		},
+		{
+			name:  "malformed",
+			value: string([]byte{0x80}),
+			prepareLog: func(mockPP *mocks.MockPP) {
+				mockPP.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"%s (%q) is malformed: %v",
+					"DOMAINS", string([]byte{0x80}), syntax.ErrInvalidUTF8,
+				)
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store(t, "DOMAINS", tc.value)
+			oldField := []domainexp.Entry{oldEntry()}
+			field := oldField
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			tc.prepareLog(mockPP)
 
 			ok := readDomains(mockPP, "DOMAINS", nil, &field)
 

@@ -26,6 +26,9 @@ func TestIntentionalIdentity(t *testing.T) {
 
 	require.NotEqual(t, literal, mac)
 	require.False(t, hostid6.EqualSet(hostid6.NewSet(literal), hostid6.NewSet(mac)))
+	address, ok := literal.MACAddress()
+	require.False(t, ok)
+	require.Equal(t, [6]byte{}, address)
 }
 
 func TestLiteralValidation(t *testing.T) {
@@ -48,7 +51,7 @@ func TestCanonicalSet(t *testing.T) {
 	two := mustLiteral(t, "::2")
 	mac := hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
 
-	actual := hostid6.NewSet(two, mac, one, hostid6.Preserve(), one)
+	actual := hostid6.NewSet(two, mac, one, hostid6.Preserve(), one, hostid6.Preserve())
 	expected := hostid6.NewSet(hostid6.Preserve(), one, two, mac)
 
 	require.True(t, hostid6.EqualSet(expected, actual))
@@ -172,6 +175,7 @@ func TestParseMACRejectedForms(t *testing.T) {
 		"00-11-22-33-44-55-66-77",
 		"00-11:22-33-44-55",
 		"0-11-22-33-44-55",
+		"00.11.22.33.44.55",
 	} {
 		_, err := hostid6.ParseMAC(text)
 		require.Error(t, err, text)
