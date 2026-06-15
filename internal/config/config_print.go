@@ -98,9 +98,8 @@ func hostID6DerivationDomains(
 	}
 
 	derivations := make([]hostid6.Derivation, 0, len(domainsByDerivation))
-	for derivation, domains := range domainsByDerivation {
-		domain.SortDomains(domains)
-		domainsByDerivation[derivation] = domains
+	for derivation := range domainsByDerivation {
+		domain.SortDomains(domainsByDerivation[derivation])
 		derivations = append(derivations, derivation)
 	}
 	slices.SortFunc(derivations, hostid6.Compare)
