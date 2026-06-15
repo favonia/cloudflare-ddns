@@ -510,11 +510,19 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > 🔗 `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS` are additive; they do not override each other. For example, setting `DOMAINS=a.org` and `IP4_DOMAINS=b.org` means the updater manages `A` records for both `a.org` and `b.org` (and `AAAA` records for `a.org`).
 >
-> Plain domain lists such as `DOMAINS=example.org,www.example.org` are the ordinary setup; omitting `hostid6` defaults to `preserve`. For advanced IPv6 DNS setups, a domain in `DOMAINS` or `IP6_DOMAINS` may specify `hostid6`, such as `example.org{hostid6=::1}` or `example.org{hostid6=[preserve,::1,mac(00-11-22-33-44-55),]}`. `hostid6` is rejected in `IP4_DOMAINS`. A scalar value is shorthand for a one-item set; bracketed sets must be non-empty. Trailing commas are accepted in the domain list, field block, and bracketed set.
+> 🧪 (unreleased) Advanced IPv6 setups can set the host bits of `AAAA` records per domain with a `hostid6` field, such as `example.org{hostid6=::1}`. `hostid6` is valid only in `DOMAINS` and `IP6_DOMAINS` and is rejected in `IP4_DOMAINS`. Omitting it keeps the default, `preserve`.
 >
-> Each `hostid6` value tells DNS how to combine every detected IPv6 prefix with a host ID. `preserve` keeps the detected address unchanged. An IPv6 literal such as `::1` supplies the host bits shown by that literal. `mac(...)` accepts exactly a 48-bit MAC address in six-octet hyphen or colon notation, with one separator used throughout and octets kept in the written order; dotted notation and 64-bit addresses are rejected. It derives a Modified EUI-64 host ID from that MAC address. The updater warns about exceptional all-zero, broadcast, and group MAC addresses.
+> For example, if the updater detects `2001:db8:1:2:aaaa:bbbb:cccc:dddd` (a `/64` prefix), the `hostid6` value decides the `AAAA` record:
 >
-> The final DNS address set for a domain is the deduplicated cross-product of all detected IPv6 prefixes and the domain's effective `hostid6` set. Repeated declarations for the same domain must specify exactly the same `hostid6` set; omitting `hostid6` from a partial declaration expresses no opinion. A literal is compatible only when all its bits outside the observed host region are zero; `mac(...)` requires an observed prefix of `/64` or shorter. Incompatibility with a static provider is rejected during startup. If runtime-dependent detection produces an incompatible prefix, the updater preserves all existing IPv6 DNS records and IPv6 WAF list items for that update. IPv4 continues independently. `hostid6` changes only DNS targets; WAF lists still use the detected IPv6 prefixes directly.
+> | `hostid6` value | Meaning | Resulting `AAAA` |
+> | --- | --- | --- |
+> | `preserve` (the default) | Keep the detected address | `2001:db8:1:2:aaaa:bbbb:cccc:dddd` |
+> | `::1` | An IPv6 literal used as host bits | `2001:db8:1:2::1` |
+> | `mac(00-11-22-33-44-55)` | [Modified EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Modified_EUI-64) host ID from a 48-bit MAC | `2001:db8:1:2:211:22ff:fe33:4455` |
+>
+> To apply more than one host ID to a domain, use the bracketed set form, such as `example.org{hostid6=[::1,mac(00-11-22-33-44-55)]}`; the updater then writes one `AAAA` record per combination of a detected prefix and a listed host ID.
+>
+> 🤖 The exact compatibility rules (when a literal or MAC fits a detected prefix) and the runtime behavior when a detected prefix is incompatible are defined in [DNS Ownership Instantiation](docs/designs/features/managed-record-ownership.markdown) and [Lifecycle Model](docs/designs/features/lifecycle-model.markdown). `hostid6` changes only DNS targets; WAF lists still use the detected IPv6 prefixes directly.
 >
 > 🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 >

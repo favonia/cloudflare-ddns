@@ -29,6 +29,16 @@ This improves operator clarity by distinguishing "the value this updater writes 
 - Use plural selector names for settings that define the scope of a managed set, such as `MANAGED_RECORDS_COMMENT_REGEX` or `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`.
 - Keep selector names distinct from write-side value names so operators can scan environment-heavy setups without confusing "what this updater writes" with "what this updater may mutate".
 
+## Canonical `String` Versus Human `Describe`
+
+When a value has both a canonical, parseable form and an annotated human form, split them: `String()` for canonical, `Describe()` for human. `api.TTL` is the precedent (`String()` → `1`; `Describe()` → `1 (auto)`).
+
+This keeps diagnostics quoting syntax operators can copy back while summaries stay readable.
+
+- `String()` is the round-trippable syntax a user writes and diagnostics quote back (`hostid6.Derivation.String()` → `preserve`; `hostid6.Set.String()` → `[::1,::2]`).
+- `Describe()` is human prose that may add annotations not meant to be parsed (`hostid6.Derivation.Describe()` → `preserve (using detected)`); keep such annotations out of any value an error quotes as the syntax to edit.
+- With a single rendering, name by intent; a `Describe()` that is also valid syntax (`api.WAFList.Describe()` → `account/name`) is fine when no separate human form exists.
+
 ## Scope Boundary
 
 This note applies only to naming choices that recur across unrelated code and docs.
