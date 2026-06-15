@@ -40,7 +40,7 @@ func validateKnownIP6HostIDCompatibility(
 			ppfmt.Noticef(pp.EmojiUserError,
 				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
 					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
-				providerName, derivations, domains, problem.MaxPrefixLen, observed)
+				providerName, derivations, domains, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooShort:
 			ppfmt.Noticef(pp.EmojiUserError,
 				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires a /64 prefix, "+

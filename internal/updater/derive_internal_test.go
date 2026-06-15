@@ -106,25 +106,25 @@ func TestDeriveIP6DNSTargetsGroupsAllProblems(t *testing.T) {
 	require.Nil(t, targets)
 	require.Equal(t, []hostID6ProblemGroup{
 		{
-			Kind:         hostid6.LiteralIncompatibility,
-			MaxPrefixLen: 126,
-			Domains:      []domain.Domain{alpha, beta},
-			Derivations:  hostid6.NewSet(literal126a, literal126b),
-			Observed:     []ipnet.RawEntry{rawA, rawB},
+			Kind:           hostid6.LiteralIncompatibility,
+			PrefixLenBound: 126,
+			Domains:        []domain.Domain{alpha, beta},
+			Derivations:    hostid6.NewSet(literal126a, literal126b),
+			Observed:       []ipnet.RawEntry{rawA, rawB},
 		},
 		{
-			Kind:         hostid6.LiteralIncompatibility,
-			MaxPrefixLen: 127,
-			Domains:      []domain.Domain{alpha},
-			Derivations:  hostid6.NewSet(literal127),
-			Observed:     []ipnet.RawEntry{rawA, rawB},
+			Kind:           hostid6.LiteralIncompatibility,
+			PrefixLenBound: 127,
+			Domains:        []domain.Domain{alpha},
+			Derivations:    hostid6.NewSet(literal127),
+			Observed:       []ipnet.RawEntry{rawA, rawB},
 		},
 		{
-			Kind:         hostid6.MACPrefixTooLong,
-			MaxPrefixLen: 64,
-			Domains:      []domain.Domain{alpha, beta},
-			Derivations:  hostid6.NewSet(macA, macB),
-			Observed:     []ipnet.RawEntry{rawA, rawB},
+			Kind:           hostid6.MACPrefixTooLong,
+			PrefixLenBound: 64,
+			Domains:        []domain.Domain{alpha, beta},
+			Derivations:    hostid6.NewSet(macA, macB),
+			Observed:       []ipnet.RawEntry{rawA, rawB},
 		},
 	}, problems)
 }

@@ -67,7 +67,7 @@ func TestDeriveLiteralIncompatibility(t *testing.T) {
 			Kind:           hostid6.LiteralIncompatibility,
 			Derivation:     derivation,
 			ObservedPrefix: raw,
-			MaxPrefixLen:   tc.maxPrefixLen,
+			PrefixLenBound: tc.maxPrefixLen,
 		}, problem)
 	}
 }
@@ -104,7 +104,7 @@ func TestDeriveMACIncompatibility(t *testing.T) {
 			Kind:           hostid6.MACPrefixTooLong,
 			Derivation:     derivation,
 			ObservedPrefix: raw,
-			MaxPrefixLen:   64,
+			PrefixLenBound: 64,
 		}, problem)
 	}
 }
@@ -122,7 +122,7 @@ func TestDeriveMACRejectsShorterThan64(t *testing.T) {
 			Kind:           hostid6.MACPrefixTooShort,
 			Derivation:     derivation,
 			ObservedPrefix: raw,
-			MaxPrefixLen:   64,
+			PrefixLenBound: 64,
 		}, problem)
 	}
 }

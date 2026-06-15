@@ -25,10 +25,16 @@ const (
 
 // Incompatibility describes a derivation that cannot be applied to an observed prefix.
 type Incompatibility struct {
-	Kind           IncompatibilityKind
-	Derivation     Derivation
+	// Kind identifies why the derivation is incompatible with the prefix.
+	Kind IncompatibilityKind
+	// Derivation is the host-ID derivation that could not be applied.
+	Derivation Derivation
+	// ObservedPrefix is the detected prefix that triggered the incompatibility.
 	ObservedPrefix ipnet.RawEntry
-	MaxPrefixLen   int
+	// PrefixLenBound is the prefix-length boundary involved: a maximum for
+	// LiteralIncompatibility and MACPrefixTooLong, and the required /64 for
+	// MACPrefixTooShort (where the prefix is instead too short).
+	PrefixLenBound int
 }
 
 // Derive applies one intentional host-ID derivation to an observed IPv6 prefix.
@@ -53,7 +59,7 @@ func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibi
 				Kind:           LiteralIncompatibility,
 				Derivation:     derivation,
 				ObservedPrefix: raw,
-				MaxPrefixLen:   maxPrefixLen,
+				PrefixLenBound: maxPrefixLen,
 			}
 		}
 		return combine(raw, derivation.literal.As16()), nil
@@ -70,14 +76,14 @@ func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibi
 				Kind:           MACPrefixTooLong,
 				Derivation:     derivation,
 				ObservedPrefix: raw,
-				MaxPrefixLen:   exactPrefixLen,
+				PrefixLenBound: exactPrefixLen,
 			}
 		case raw.PrefixLen() < exactPrefixLen:
 			return netip.Addr{}, &Incompatibility{
 				Kind:           MACPrefixTooShort,
 				Derivation:     derivation,
 				ObservedPrefix: raw,
-				MaxPrefixLen:   exactPrefixLen,
+				PrefixLenBound: exactPrefixLen,
 			}
 		}
 		return combine(raw, macHost(derivation.mac)), nil

@@ -14,16 +14,16 @@ type TargetsByDomain map[domain.Domain][]netip.Addr
 
 // ProblemGroup groups incompatible derivations with the same corrective bound.
 type ProblemGroup struct {
-	Kind         IncompatibilityKind
-	MaxPrefixLen int
-	Domains      []domain.Domain
-	Derivations  Set
-	Observed     []ipnet.RawEntry
+	Kind           IncompatibilityKind
+	PrefixLenBound int
+	Domains        []domain.Domain
+	Derivations    Set
+	Observed       []ipnet.RawEntry
 }
 
 type problemGroupKey struct {
-	kind         IncompatibilityKind
-	maxPrefixLen int
+	kind           IncompatibilityKind
+	prefixLenBound int
 }
 
 type problemGroupBuilder struct {
@@ -57,7 +57,7 @@ func DeriveDomains(
 					continue
 				}
 
-				key := problemGroupKey{kind: problem.Kind, maxPrefixLen: problem.MaxPrefixLen}
+				key := problemGroupKey{kind: problem.Kind, prefixLenBound: problem.PrefixLenBound}
 				builder := problemBuilders[key]
 				if builder == nil {
 					builder = &problemGroupBuilder{
@@ -91,18 +91,18 @@ func DeriveDomains(
 
 		slices.SortFunc(builder.observed, ipnet.RawEntry.Compare)
 		problems = append(problems, ProblemGroup{
-			Kind:         key.kind,
-			MaxPrefixLen: key.maxPrefixLen,
-			Domains:      groupDomains,
-			Derivations:  NewSet(builder.derivations...),
-			Observed:     slices.Compact(builder.observed),
+			Kind:           key.kind,
+			PrefixLenBound: key.prefixLenBound,
+			Domains:        groupDomains,
+			Derivations:    NewSet(builder.derivations...),
+			Observed:       slices.Compact(builder.observed),
 		})
 	}
 	slices.SortFunc(problems, func(left, right ProblemGroup) int {
 		if order := cmp.Compare(left.Kind, right.Kind); order != 0 {
 			return order
 		}
-		return cmp.Compare(left.MaxPrefixLen, right.MaxPrefixLen)
+		return cmp.Compare(left.PrefixLenBound, right.PrefixLenBound)
 	})
 
 	// Deliberately discard all derived targets when any derivation is incompatible:

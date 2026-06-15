@@ -197,12 +197,12 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
 					"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
 					"existing IPv6 DNS records and WAF list items will be preserved for this update",
-				domains, derivations, problem.MaxPrefixLen, observed)
+				domains, derivations, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiError,
 				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
 					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-				domains, derivations, problem.MaxPrefixLen, observed)
+				domains, derivations, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooShort:
 			ppfmt.Noticef(pp.EmojiError,
 				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
