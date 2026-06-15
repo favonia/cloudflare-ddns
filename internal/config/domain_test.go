@@ -204,6 +204,31 @@ func TestBuildConfigRejectsKnownIncompatibleIPv6RawData(t *testing.T) {
 	)
 }
 
+func TestBuildConfigRejectsKnownMACHostIDUnderShortPrefix(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider[ipnet.IP4] = nil
+	raw.Provider[ipnet.IP6] = provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/56")
+	raw.Domains = mustEntries(t, "example.org{hostid6=mac(00-11-22-33-44-55)}")
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+
+	require.False(t, ok)
+	require.Nil(t, built)
+	require.Equal(t,
+		"IP6_PROVIDER=static:2001:db8::1/56 is incompatible with hostid6=mac(00-11-22-33-44-55) for example.org: "+
+			"requires a /64 prefix, but includes 2001:db8::1/56; change the listed hostid6 setting or IP6_PROVIDER\n"+
+			"Modified EUI-64 host IDs are only defined within a /64 prefix. "+
+			"Assuming the subnet bits are all zero, mac(00-11-22-33-44-55) gives ::211:22ff:fe33:4455; "+
+			"look up the subnet bits between your prefix and /64 (often zero on a single-subnet network), "+
+			"prepend them, and use the result as a literal hostid6 until shorter prefixes are supported. "+
+			"Please open an issue at "+pp.IssueReportingURL+" if you need this\n",
+		output.String(),
+	)
+}
+
 func TestBuildConfigAcceptsIPv6RawDataWithoutProvableIncompatibility(t *testing.T) {
 	t.Parallel()
 

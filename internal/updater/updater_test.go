@@ -865,6 +865,42 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 		}, resp)
 	})
 
+	t.Run("only-ipv6-mac-short-prefix-hints-literal-workaround", func(t *testing.T) {
+		t.Parallel()
+
+		raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234::abcd"), 56)
+		mac := hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
+		resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP6: true},
+			func(conf *config.UpdateConfig) {
+				conf.DefaultPrefixLen[ipnet.IP6] = 56
+				conf.Domains[ipnet.IP6] = []domain.Domain{alpha}
+				conf.HostID6[alpha] = hostid6.NewSet(mac)
+			},
+			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
+				gomock.InOrder(
+					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 56).Return(rawDetectionResult(raw)),
+					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8:1234::abcd/56"),
+					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
+					p.EXPECT().Noticef(pp.EmojiError, "%s",
+						"Cannot derive IPv6 DNS targets for alpha.example: hostid6=mac(00-11-22-33-44-55) requires a detected /64 prefix, but detected 2001:db8:1234::abcd/56; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
+						"Modified EUI-64 host IDs are only defined within a /64 prefix. Assuming the subnet bits are all zero, %s; look up the subnet bits between your prefix and /64 (often zero on a single-subnet network), prepend them, and use the result as a literal hostid6 until shorter prefixes are supported. Please open an issue at %s if you need this",
+						"mac(00-11-22-33-44-55) gives ::211:22ff:fe33:4455",
+						pp.IssueReportingURL),
+				)
+			})
+
+		require.Equal(t, updater.Message{
+			HeartbeatMessage: heartbeat.Message{
+				OK:    false,
+				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+			},
+			NotifierMessage: notifier.Message{
+				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+			},
+		}, resp)
+	})
+
 	t.Run("ipv4-proceeds-while-ipv6-inadmissible", func(t *testing.T) {
 		t.Parallel()
 

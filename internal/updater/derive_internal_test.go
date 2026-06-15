@@ -120,7 +120,7 @@ func TestDeriveIP6DNSTargetsGroupsAllProblems(t *testing.T) {
 			Observed:     []ipnet.RawEntry{rawA, rawB},
 		},
 		{
-			Kind:         hostid6.MACIncompatibility,
+			Kind:         hostid6.MACPrefixTooLong,
 			MaxPrefixLen: 64,
 			Domains:      []domain.Domain{alpha, beta},
 			Derivations:  hostid6.NewSet(macA, macB),

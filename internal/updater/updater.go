@@ -191,18 +191,27 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 		derivations := problem.Derivations.StringOrScalar()
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
-		action := ""
 		switch problem.Kind {
 		case hostid6.LiteralIncompatibility:
-			action = "; change the listed hostid6 setting or provide compatible prefixes"
-		case hostid6.MACIncompatibility:
+			ppfmt.Noticef(pp.EmojiError, "%s", fmt.Sprintf(
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+					"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
+					"existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, problem.MaxPrefixLen, observed))
+		case hostid6.MACPrefixTooLong:
+			ppfmt.Noticef(pp.EmojiError, "%s", fmt.Sprintf(
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, problem.MaxPrefixLen, observed))
+		case hostid6.MACPrefixTooShort:
+			ppfmt.Noticef(pp.EmojiError, "%s", fmt.Sprintf(
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
+					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, observed))
+			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations)
 		default:
 			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))
 		}
-		ppfmt.Noticef(pp.EmojiError, "%s", fmt.Sprintf(
-			"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-				"but detected %s%s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-			domains, derivations, problem.MaxPrefixLen, observed, action))
 	}
 }
 

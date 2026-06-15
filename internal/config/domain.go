@@ -31,15 +31,25 @@ func validateKnownIP6HostIDCompatibility(
 ) bool {
 	_, problems := hostid6.DeriveDomains(domains, policies, rawEntries)
 	for _, problem := range problems {
-		ppfmt.Noticef(pp.EmojiUserError,
-			"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
-				"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
-			providerName,
-			problem.Derivations.StringOrScalar(),
-			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)"),
-			problem.MaxPrefixLen,
-			pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)"),
-		)
+		derivations := problem.Derivations.StringOrScalar()
+		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
+		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
+
+		switch problem.Kind {
+		case hostid6.LiteralIncompatibility, hostid6.MACPrefixTooLong:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
+					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
+				providerName, derivations, domains, problem.MaxPrefixLen, observed)
+		case hostid6.MACPrefixTooShort:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires a /64 prefix, "+
+					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
+				providerName, derivations, domains, observed)
+			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations)
+		default:
+			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))
+		}
 	}
 	return len(problems) == 0
 }

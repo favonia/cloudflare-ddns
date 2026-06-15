@@ -81,14 +81,6 @@ func TestDeriveModifiedEUI64(t *testing.T) {
 		expected netip.Addr
 	}{
 		{
-			ipnet.RawEntryFrom(netip.MustParseAddr("ffff::"), 0),
-			netip.MustParseAddr("::211:22ff:fe33:4455"),
-		},
-		{
-			ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234:5678::abcd"), 48),
-			netip.MustParseAddr("2001:db8:1234:0:211:22ff:fe33:4455"),
-		},
-		{
 			ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234:5678::abcd"), 64),
 			netip.MustParseAddr("2001:db8:1234:5678:211:22ff:fe33:4455"),
 		},
@@ -109,12 +101,41 @@ func TestDeriveMACIncompatibility(t *testing.T) {
 
 		require.Equal(t, netip.Addr{}, target)
 		require.Equal(t, &hostid6.Incompatibility{
-			Kind:           hostid6.MACIncompatibility,
+			Kind:           hostid6.MACPrefixTooLong,
 			Derivation:     derivation,
 			ObservedPrefix: raw,
 			MaxPrefixLen:   64,
 		}, problem)
 	}
+}
+
+func TestDeriveMACRejectsShorterThan64(t *testing.T) {
+	t.Parallel()
+
+	derivation := hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
+	for _, prefixLen := range [...]int{0, 48, 63} {
+		raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234:5678::abcd"), prefixLen)
+		target, problem := hostid6.Derive(raw, derivation)
+
+		require.Equal(t, netip.Addr{}, target)
+		require.Equal(t, &hostid6.Incompatibility{
+			Kind:           hostid6.MACPrefixTooShort,
+			Derivation:     derivation,
+			ObservedPrefix: raw,
+			MaxPrefixLen:   64,
+		}, problem)
+	}
+}
+
+func TestMACHostID(t *testing.T) {
+	t.Parallel()
+
+	addr, ok := hostid6.MACHostID(hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}))
+	require.True(t, ok)
+	require.Equal(t, netip.MustParseAddr("::211:22ff:fe33:4455"), addr)
+
+	_, ok = hostid6.MACHostID(hostid6.Preserve())
+	require.False(t, ok)
 }
 
 func TestDeriveRejectsInvalidRawEntry(t *testing.T) {
