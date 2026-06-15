@@ -20,8 +20,13 @@ import (
 // "WAF list item comment regex:".
 const itemTitleWidth = 28
 
-// Keep host-ID sub-item titles aligned. Must be at least as wide as the longest
-// sub-label, "preserve (using detected):", and no narrower than itemTitleWidth.
+// Width for host-ID sub-item titles. Two constraints:
+//   - at least the longest sub-label "preserve (using detected):" (26), so the
+//     sub-items' own values stay column-aligned;
+//   - large enough that the sub-value column sits clearly right of the item
+//     value column (sub-value - item-value = indentPrefix + subItemTitleWidth -
+//     itemTitleWidth = 3 + 28 - 28 = +3), so nesting stays visible when scanning
+//     the value column, not just the indented titles.
 const subItemTitleWidth = 28
 
 // These helpers format values for the human-facing startup summary.
