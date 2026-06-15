@@ -847,10 +847,15 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
 						2, "IPv6", "2001:db8::1/65, 2001:db8:1::1/65"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					p.EXPECT().Noticef(pp.EmojiError, "%s",
-						"Cannot derive IPv6 DNS targets for alpha.example and beta.example: hostid6=2001::1 requires detected prefixes no longer than /2, but detected 2001:db8::1/65 and 2001:db8:1::1/65; change the listed hostid6 setting or provide compatible prefixes; existing IPv6 DNS records and WAF list items will be preserved for this update"),
-					p.EXPECT().Noticef(pp.EmojiError, "%s",
-						"Cannot derive IPv6 DNS targets for alpha.example and beta.example: hostid6=[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)] requires detected prefixes no longer than /64, but detected 2001:db8::1/65 and 2001:db8:1::1/65; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					p.EXPECT().Noticef(pp.EmojiError,
+						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+							"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
+							"existing IPv6 DNS records and WAF list items will be preserved for this update",
+						"alpha.example and beta.example", "2001::1", 2, "2001:db8::1/65 and 2001:db8:1::1/65"),
+					p.EXPECT().Noticef(pp.EmojiError,
+						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+						"alpha.example and beta.example", "[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]", 64, "2001:db8::1/65 and 2001:db8:1::1/65"),
 				)
 			})
 
@@ -881,8 +886,10 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 56).Return(rawDetectionResult(raw)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8:1234::abcd/56"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					p.EXPECT().Noticef(pp.EmojiError, "%s",
-						"Cannot derive IPv6 DNS targets for alpha.example: hostid6=mac(00-11-22-33-44-55) requires a detected /64 prefix, but detected 2001:db8:1234::abcd/56; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					p.EXPECT().Noticef(pp.EmojiError,
+						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
+							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+						"alpha.example", "mac(00-11-22-33-44-55)", "2001:db8:1234::abcd/56"),
 					p.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 						"Modified EUI-64 host IDs are only defined within a /64 prefix. Assuming the subnet bits are all zero, %s; look up the subnet bits between your prefix and /64 (often zero on a single-subnet network), prepend them, and use the result as a literal hostid6 until shorter prefixes are supported. Please open an issue at %s if you need this",
 						"mac(00-11-22-33-44-55) gives ::211:22ff:fe33:4455",
@@ -924,8 +931,10 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw6)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::1/65"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					p.EXPECT().Noticef(pp.EmojiError, "%s",
-						"Cannot derive IPv6 DNS targets for alpha.example: hostid6=mac(00-11-22-33-44-55) requires detected prefixes no longer than /64, but detected 2001:db8::1/65; existing IPv6 DNS records and WAF list items will be preserved for this update"),
+					p.EXPECT().Noticef(pp.EmojiError,
+						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+						"alpha.example", "mac(00-11-22-33-44-55)", 64, "2001:db8::1/65"),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						withUnavailableTargets(wafTargets([]netip.Addr{ip4}, nil), ipnet.IP6),
 						wafItemComment).Return(setter.ResponseNoop),
