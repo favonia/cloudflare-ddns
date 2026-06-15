@@ -59,11 +59,11 @@ IPv4 DNS derivation forgets prefix length, so provider-valid IPv4 raw entries ar
 
 For IPv6, let `r` be a raw entry, `d` an in-scope DNS domain, and `h` a member of the effective `hostid6` set for `d`. The raw IPv6 set is DNS-admissible exactly when every `r` is compatible with every effective `h` for every in-scope `d`.
 
-Compatibility is static:
+Each derivation combines the observed prefix with host bits: the result keeps the network bits inside the observed prefix and replaces everything below it with the derivation's host bits, so any bit that neither the prefix nor the host bits set becomes zero. Compatibility is the static rule that keeps this combination well-defined:
 
 - `preserve` is compatible with every valid raw IPv6 entry and produces its observed address
 - an IPv6 literal is compatible when its non-zero bits do not overlap the observed prefix
-- `mac(...)` is compatible when the observed prefix is no longer than `/64`; it produces a Modified EUI-64 host ID from the configured 48-bit MAC address
+- `mac(...)` is compatible only when the observed prefix is exactly `/64`, and produces a Modified EUI-64 host ID from the configured 48-bit MAC address. A Modified EUI-64 interface identifier is defined only within a `/64`: a longer prefix leaves fewer than 64 host bits, and a shorter prefix leaves the subnet bits between the prefix and `/64` undefined by the MAC. The two failures are reported distinctly, because only the short-prefix case has a literal workaround: the MAC determines the interface identifier, but the operator must supply the subnet bits, which the tool cannot infer and should not silently assume.
 
 For each domain, the desired DNS target set is the union of targets produced by the cross-product of its effective `hostid6` set and the raw IPv6 set. Equal target addresses collapse under set semantics.
 
