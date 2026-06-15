@@ -12,16 +12,26 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/sliceutil"
 )
 
+// normalizedDomains is the resolved view of all domain settings. HostID6 covers
+// exactly the IPv6 domains in ByFamily[ipnet.IP6] and is always populated, using
+// the default set for domains that carry no explicit hostid6 opinion.
 type normalizedDomains struct {
 	ByFamily map[ipnet.Family][]domain.Domain
 	HostID6  map[domain.Domain]hostid6.Set
 }
 
+// hostID6Opinion is a host-ID set together with a human-readable provenance
+// string (e.g. "IP6_DOMAINS declaration 2 hostid6 assignment 1") so that a later
+// conflicting declaration can be reported against the one that set it first.
 type hostID6Opinion struct {
 	set    hostid6.Set
 	source string
 }
 
+// validateKnownIP6HostIDCompatibility reports whether the host-ID policies are
+// compatible with the IPv6 prefixes already known at configuration time (those a
+// static provider exposes without a network query). Incompatibilities are user
+// errors; it returns false after describing every one of them.
 func validateKnownIP6HostIDCompatibility(
 	ppfmt pp.PP,
 	providerName string,
@@ -54,6 +64,10 @@ func validateKnownIP6HostIDCompatibility(
 	return len(problems) == 0
 }
 
+// mergeHostID6Opinions folds one setting's entries into opinions, keyed by
+// domain. The first opinion for a domain wins; a later one is accepted only if it
+// is identical, otherwise the conflict is a user error. This lets a domain appear
+// in both DOMAINS and IP6_DOMAINS as long as every declaration agrees.
 func mergeHostID6Opinions(
 	ppfmt pp.PP,
 	setting string,
@@ -85,6 +99,8 @@ func mergeHostID6Opinions(
 	return true
 }
 
+// projectDomains collects the domains from one or more settings into a single
+// sorted, deduplicated list.
 func projectDomains(entries ...[]domainexp.Entry) []domain.Domain {
 	var domains []domain.Domain
 	for _, settingEntries := range entries {
@@ -95,6 +111,11 @@ func projectDomains(entries ...[]domainexp.Entry) []domain.Domain {
 	return sliceutil.SortAndCompact(domains, domain.CompareDomain)
 }
 
+// warnSuspiciousMACs emits advisory warnings (never errors) for MAC-based host
+// IDs that are unlikely to identify a single host: the all-zero address, the
+// Ethernet broadcast address, and group (multicast-bit) addresses. Domains are
+// grouped by MAC so each suspicious address is reported once, listing every
+// domain that uses it, in a deterministic order.
 func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 	domainsByMAC := map[[6]byte][]domain.Domain{}
 	for dom, set := range policies {
@@ -137,6 +158,11 @@ func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 	}
 }
 
+// normalizeDomains resolves the raw domain settings into a normalizedDomains:
+// it projects the per-family domain lists, merges the hostid6 opinions from
+// DOMAINS and IP6_DOMAINS (reporting conflicts), assigns the default set to every
+// IPv6 domain without an explicit opinion, and warns about suspicious MACs. It
+// returns false if any opinion conflict makes the configuration invalid.
 func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 	result := normalizedDomains{
 		ByFamily: map[ipnet.Family][]domain.Domain{
