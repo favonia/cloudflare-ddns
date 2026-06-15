@@ -514,11 +514,11 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 >
 > For example, if the updater detects `2001:db8:1:2:aaaa:bbbb:cccc:dddd` (a `/64` prefix), the `hostid6` value decides the `AAAA` record:
 >
-> | `hostid6` value | Meaning | Resulting `AAAA` |
-> | --- | --- | --- |
-> | `preserve` (the default) | Keep the detected address | `2001:db8:1:2:aaaa:bbbb:cccc:dddd` |
-> | `::1` | An IPv6 literal used as host bits | `2001:db8:1:2::1` |
-> | `mac(00-11-22-33-44-55)` | [Modified EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Modified_EUI-64) host ID from a 48-bit MAC | `2001:db8:1:2:211:22ff:fe33:4455` |
+> | `hostid6` value          | Meaning                                                                                                 | Resulting `AAAA`                   |
+> | ------------------------ | ------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+> | `preserve` (the default) | Keep the detected address                                                                               | `2001:db8:1:2:aaaa:bbbb:cccc:dddd` |
+> | `::1`                    | An IPv6 literal used as host bits                                                                       | `2001:db8:1:2::1`                  |
+> | `mac(00-11-22-33-44-55)` | [Modified EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Modified_EUI-64) host ID from a 48-bit MAC | `2001:db8:1:2:211:22ff:fe33:4455`  |
 >
 > To apply more than one host ID to a domain, use the bracketed set form, such as `example.org{hostid6=[::1,mac(00-11-22-33-44-55)]}`; the updater then writes one `AAAA` record per combination of a detected prefix and a listed host ID.
 >
