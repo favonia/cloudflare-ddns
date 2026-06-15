@@ -188,7 +188,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 	for _, problem := range problems {
 		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
-		derivations := hostid6.DescribeSetOrScalar(problem.Derivations)
+		derivations := problem.Derivations.StringOrScalar()
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
 		action := ""

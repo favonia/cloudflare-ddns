@@ -37,13 +37,13 @@ func buildDomainConfig(t *testing.T, domains, ip4Domains, ip6Domains string, ppf
 	return raw.BuildConfig(ppfmt)
 }
 
-func describeHostID6Set(set hostid6.Set) []string {
+func hostID6SetStrings(set hostid6.Set) []string {
 	values := set.Values()
-	descriptions := make([]string, 0, len(values))
+	syntaxes := make([]string, 0, len(values))
 	for _, value := range values {
-		descriptions = append(descriptions, value.Describe())
+		syntaxes = append(syntaxes, value.String())
 	}
-	return descriptions
+	return syntaxes
 }
 
 func TestBuildConfigMergesHostID6OpinionsAndDefaults(t *testing.T) {
@@ -65,10 +65,10 @@ func TestBuildConfigMergesHostID6OpinionsAndDefaults(t *testing.T) {
 		[]string{"a.example", "b.example", "v4.example", "v6-only.example"},
 		summarizeDomains(built.Update.Domains[ipnet.IP6]),
 	)
-	require.Equal(t, []string{"::3"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("a.example")]))
-	require.Equal(t, []string{"::1", "::2"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("b.example")]))
-	require.Equal(t, []string{"preserve"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("v4.example")]))
-	require.Equal(t, []string{"preserve"}, describeHostID6Set(built.Update.HostID6[domain.FQDN("v6-only.example")]))
+	require.Equal(t, []string{"::3"}, hostID6SetStrings(built.Update.HostID6[domain.FQDN("a.example")]))
+	require.Equal(t, []string{"::1", "::2"}, hostID6SetStrings(built.Update.HostID6[domain.FQDN("b.example")]))
+	require.Equal(t, []string{"preserve"}, hostID6SetStrings(built.Update.HostID6[domain.FQDN("v4.example")]))
+	require.Equal(t, []string{"preserve"}, hostID6SetStrings(built.Update.HostID6[domain.FQDN("v6-only.example")]))
 	require.NotContains(t, built.Update.HostID6, domain.FQDN("v4-only.example"))
 }
 
@@ -85,7 +85,7 @@ func TestBuildConfigAcceptsCanonicalEquivalentRepeatedHostID6Opinions(t *testing
 	require.True(t, ok)
 	require.Equal(t,
 		[]string{"::1", "mac(00-11-22-33-44-aa)"},
-		describeHostID6Set(built.Update.HostID6[domain.FQDN("example.org")]),
+		hostID6SetStrings(built.Update.HostID6[domain.FQDN("example.org")]),
 	)
 }
 

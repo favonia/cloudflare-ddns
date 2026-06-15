@@ -35,7 +35,7 @@ func validateKnownIP6HostIDCompatibility(
 			"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
 				"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
 			providerName,
-			hostid6.DescribeSetOrScalar(problem.Derivations),
+			problem.Derivations.StringOrScalar(),
 			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)"),
 			problem.MaxPrefixLen,
 			pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)"),
@@ -64,7 +64,7 @@ func mergeHostID6Opinions(
 				ppfmt.Noticef(pp.EmojiUserError,
 					"Conflicting hostid6 settings for %s: %s configures %s, while %s configures %s; "+
 						"configure exactly the same hostid6 set in every declaration or omit it from partial declarations",
-					entry.Domain.Describe(), previous.source, hostid6.DescribeSet(previous.set), source, hostid6.DescribeSet(set))
+					entry.Domain.Describe(), previous.source, previous.set.String(), source, set.String())
 				return false
 			}
 			if !present {
@@ -107,7 +107,7 @@ func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 	for _, mac := range macs {
 		domains := sliceutil.SortAndCompact(domainsByMAC[mac], domain.CompareDomain)
 		domainList := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)")
-		description := hostid6.MAC(mac).Describe()
+		description := hostid6.MAC(mac).String()
 		switch {
 		case mac == [6]byte{}:
 			ppfmt.Noticef(pp.EmojiUserWarning,

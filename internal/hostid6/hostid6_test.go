@@ -109,32 +109,40 @@ func TestSetDoesNotExposeMutableStorage(t *testing.T) {
 	require.Equal(t, []hostid6.Derivation{hostid6.Preserve(), one}, set.Values())
 	require.Equal(t, []string{"preserve", "::1"}, slices.Collect(func(yield func(string) bool) {
 		for derivation := range set.All() {
-			if !yield(derivation.Describe()) {
+			if !yield(derivation.String()) {
 				return
 			}
 		}
 	}))
 }
 
+func TestString(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "preserve", hostid6.Preserve().String())
+	require.Equal(t, "::1", mustLiteral(t, "0:0::1").String())
+	require.Equal(t, "mac(00-11-22-33-44-55)", hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}).String())
+}
+
 func TestDescribe(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "preserve", hostid6.Preserve().Describe())
+	require.Equal(t, "preserve (using detected)", hostid6.Preserve().Describe())
 	require.Equal(t, "::1", mustLiteral(t, "0:0::1").Describe())
 	require.Equal(t, "mac(00-11-22-33-44-55)", hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}).Describe())
 }
 
-func TestDescribeSet(t *testing.T) {
+func TestSetString(t *testing.T) {
 	t.Parallel()
 
 	one := mustLiteral(t, "::1")
 	two := mustLiteral(t, "::2")
 
-	require.Equal(t, "[::1,::2]", hostid6.DescribeSet(hostid6.NewSet(two, one)))
-	require.Equal(t, "::1", hostid6.DescribeSetOrScalar(hostid6.NewSet(one)))
-	require.Equal(t, "[::1,::2]", hostid6.DescribeSetOrScalar(hostid6.NewSet(two, one)))
-	require.Panics(t, func() { hostid6.DescribeSet(hostid6.Set{}) })
-	require.Panics(t, func() { hostid6.DescribeSetOrScalar(hostid6.Set{}) })
+	require.Equal(t, "[::1,::2]", hostid6.NewSet(two, one).String())
+	require.Equal(t, "::1", hostid6.NewSet(one).StringOrScalar())
+	require.Equal(t, "[::1,::2]", hostid6.NewSet(two, one).StringOrScalar())
+	require.Panics(t, func() { _ = hostid6.Set{}.String() })
+	require.Panics(t, func() { _ = hostid6.Set{}.StringOrScalar() })
 }
 
 func TestParseMACAcceptedForms(t *testing.T) {
@@ -151,10 +159,10 @@ func TestParseMACAcceptedForms(t *testing.T) {
 		require.NoError(t, err)
 		if text[len(text)-2:] == "AA" {
 			require.Equal(t, [6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0xaa}, actual)
-			require.Equal(t, "mac(00-11-22-33-44-aa)", hostid6.MAC(actual).Describe())
+			require.Equal(t, "mac(00-11-22-33-44-aa)", hostid6.MAC(actual).String())
 		} else {
 			require.Equal(t, expected, actual)
-			require.Equal(t, "mac(00-11-22-33-44-55)", hostid6.MAC(actual).Describe())
+			require.Equal(t, "mac(00-11-22-33-44-55)", hostid6.MAC(actual).String())
 		}
 	}
 

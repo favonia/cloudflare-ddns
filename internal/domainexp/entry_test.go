@@ -16,7 +16,7 @@ func describeSet(set hostid6.Set) []string {
 	values := set.Values()
 	descriptions := make([]string, len(values))
 	for i, value := range values {
-		descriptions[i] = value.Describe()
+		descriptions[i] = value.String()
 	}
 	return descriptions
 }

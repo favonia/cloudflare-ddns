@@ -119,37 +119,37 @@ func (s Set) All() iter.Seq[Derivation] {
 	return slices.Values(s.values)
 }
 
-// DescribeSet returns the canonical compact syntax for a non-empty set.
-func DescribeSet(set Set) string {
-	if set.IsZero() {
-		panic("hostid6.DescribeSet requires a non-empty set")
+// String returns the canonical compact syntax for a non-empty set.
+func (s Set) String() string {
+	if s.IsZero() {
+		panic("hostid6.Set.String requires a non-empty set")
 	}
 
-	return "[" + strings.Join(describeSetValues(set), ",") + "]"
+	return "[" + strings.Join(setSyntaxValues(s), ",") + "]"
 }
 
-// DescribeSetOrScalar returns canonical scalar syntax for a singleton set and
+// StringOrScalar returns canonical scalar syntax for a singleton set and
 // canonical compact set syntax otherwise.
-func DescribeSetOrScalar(set Set) string {
-	if set.IsZero() {
-		panic("hostid6.DescribeSetOrScalar requires a non-empty set")
+func (s Set) StringOrScalar() string {
+	if s.IsZero() {
+		panic("hostid6.Set.StringOrScalar requires a non-empty set")
 	}
-	if set.Len() == 1 {
-		return set.values[0].Describe()
+	if s.Len() == 1 {
+		return s.values[0].String()
 	}
-	return DescribeSet(set)
+	return s.String()
 }
 
-func describeSetValues(set Set) []string {
-	descriptions := make([]string, 0, set.Len())
+func setSyntaxValues(set Set) []string {
+	syntaxes := make([]string, 0, set.Len())
 	for derivation := range set.All() {
-		descriptions = append(descriptions, derivation.Describe())
+		syntaxes = append(syntaxes, derivation.String())
 	}
-	return descriptions
+	return syntaxes
 }
 
-// Describe returns the canonical description of a derivation.
-func (d Derivation) Describe() string {
+// String returns the canonical syntax of a derivation.
+func (d Derivation) String() string {
 	switch d.kind {
 	case kindPreserve:
 		return "preserve"
@@ -161,6 +161,16 @@ func (d Derivation) Describe() string {
 	default:
 		panic("invalid host-ID derivation kind")
 	}
+}
+
+// Describe returns a human-readable description of a derivation. It matches
+// [Derivation.String] except that the host-bit-preserving derivation is
+// annotated for the human-facing configuration summary.
+func (d Derivation) Describe() string {
+	if d.kind == kindPreserve {
+		return "preserve (using detected)"
+	}
+	return d.String()
 }
 
 // MACAddress returns the configured MAC address when this is a MAC derivation.
