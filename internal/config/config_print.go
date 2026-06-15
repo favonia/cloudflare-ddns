@@ -20,6 +20,10 @@ import (
 // "WAF list item comment regex:".
 const itemTitleWidth = 28
 
+// Keep host-ID sub-item titles aligned. Must be at least as wide as the longest
+// sub-label, "preserve (using detected):", and no narrower than itemTitleWidth.
+const subItemTitleWidth = 28
+
 // These helpers format values for the human-facing startup summary.
 // They are display helpers, not serialization helpers.
 // Show literal text as quoted text so humans can see exact boundaries and
@@ -67,28 +71,35 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
-func describeHostID6Policy(set hostid6.Set) string {
-	return pp.JoinMap(hostid6.Derivation.Describe, set.Values())
-}
-
-func nondefaultHostID6Policies(policies map[domain.Domain]hostid6.Set) ([]string, map[string][]domain.Domain) {
-	domainsByPolicy := map[string][]domain.Domain{}
+// hostID6DerivationDomains groups every IPv6 domain by each host-ID derivation
+// it carries. It returns nil when no domain has a non-default set, so the
+// host-ID summary stays hidden in the ordinary case where nobody configures it.
+func hostID6DerivationDomains(
+	policies map[domain.Domain]hostid6.Set,
+) ([]hostid6.Derivation, map[hostid6.Derivation][]domain.Domain) {
 	defaultSet := hostid6.DefaultSet()
-	for dom, policy := range policies {
-		if !hostid6.EqualSet(policy, defaultSet) {
-			description := describeHostID6Policy(policy)
-			domainsByPolicy[description] = append(domainsByPolicy[description], dom)
+	hasNonDefault := false
+	domainsByDerivation := map[hostid6.Derivation][]domain.Domain{}
+	for dom, set := range policies {
+		if !hostid6.EqualSet(set, defaultSet) {
+			hasNonDefault = true
+		}
+		for derivation := range set.All() {
+			domainsByDerivation[derivation] = append(domainsByDerivation[derivation], dom)
 		}
 	}
-
-	descriptions := make([]string, 0, len(domainsByPolicy))
-	for description, domains := range domainsByPolicy {
-		domain.SortDomains(domains)
-		domainsByPolicy[description] = domains
-		descriptions = append(descriptions, description)
+	if !hasNonDefault {
+		return nil, nil
 	}
-	slices.Sort(descriptions)
-	return descriptions, domainsByPolicy
+
+	derivations := make([]hostid6.Derivation, 0, len(domainsByDerivation))
+	for derivation, domains := range domainsByDerivation {
+		domain.SortDomains(domains)
+		domainsByDerivation[derivation] = domains
+		derivations = append(derivations, derivation)
+	}
+	slices.SortFunc(derivations, hostid6.Compare)
+	return derivations, domainsByDerivation
 }
 
 // Print prints a human-facing summary of the validated config and the reporting
@@ -119,10 +130,14 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
 		}
 	}
-	descriptions, domainsByPolicy := nondefaultHostID6Policies(update.HostID6)
-	for _, description := range descriptions {
-		domainList := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domainsByPolicy[description], "(none)")
-		item("IPv6 host IDs for "+domainList+":", "%s", description)
+	if derivations, domainsByDerivation := hostID6DerivationDomains(update.HostID6); derivations != nil {
+		inner.Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:")
+		subInner := inner.Indent()
+		for _, derivation := range derivations {
+			subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
+				derivation.Describe()+":",
+				pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
+		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))
 

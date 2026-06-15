@@ -24,6 +24,11 @@ func printItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.
 	return ppfmt.EXPECT().Infof(pp.EmojiBullet, "%-*s %s", 28, key, value)
 }
 
+func printSubItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *mocks.MockPPInfofCall {
+	t.Helper()
+	return ppfmt.EXPECT().Infof(pp.EmojiSubBullet, "%-*s %s", 28, key, value)
+}
+
 func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	handleConfig := &config.HandleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
 	handleConfig.Auth = raw.Auth
@@ -117,6 +122,7 @@ func TestPrintValues(t *testing.T) {
 
 	mockPP := mocks.NewMockPP(mockCtrl)
 	innerMockPP := mocks.NewMockPP(mockCtrl)
+	subInnerMockPP := mocks.NewMockPP(mockCtrl)
 	gomock.InOrder(
 		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
 		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
@@ -129,7 +135,11 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "test6.org, *.test6.org"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
-		printItem(t, innerMockPP, "IPv6 host IDs for test6.org:", "::1, mac(00-11-22-33-44-55)"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:"),
+		innerMockPP.EXPECT().Indent().Return(subInnerMockPP),
+		printSubItem(t, subInnerMockPP, "preserve (using detected):", "*.test6.org"),
+		printSubItem(t, subInnerMockPP, "::1:", "test6.org"),
+		printSubItem(t, subInnerMockPP, "mac(00-11-22-33-44-55):", "test6.org"),
 		printItem(t, innerMockPP, "WAF lists:", "(none)"),
 		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Ownership filters:"),
 		printItem(t, innerMockPP, "DNS record comment regex:", "^Created by Cloudflare DDNS$"),

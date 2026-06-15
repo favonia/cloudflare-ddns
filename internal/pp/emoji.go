@@ -5,8 +5,9 @@ type Emoji string
 
 // Various constants defining emojis used in the updater.
 const (
-	EmojiStar   Emoji = "🌟" // stars attached to the updater name
-	EmojiBullet Emoji = "🔸" // generic bullet points
+	EmojiStar      Emoji = "🌟" // stars attached to the updater name
+	EmojiBullet    Emoji = "🔸" // generic bullet points
+	EmojiSubBullet Emoji = "🔹" // sub-items under a generic bullet point
 
 	EmojiEnvVars      Emoji = "📖" // reading configuration
 	EmojiConfig       Emoji = "🔧" // showing configuration
