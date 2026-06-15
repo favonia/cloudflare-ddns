@@ -77,11 +77,11 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 }
 
 // hostID6DerivationDomains groups every IPv6 domain by each host-ID derivation
-// it carries. It returns nil when no domain has a non-default set, so the
+// it carries. It reports false when no domain has a non-default set, so the
 // host-ID summary stays hidden in the ordinary case where nobody configures it.
 func hostID6DerivationDomains(
 	policies map[domain.Domain]hostid6.Set,
-) ([]hostid6.Derivation, map[hostid6.Derivation][]domain.Domain) {
+) ([]hostid6.Derivation, map[hostid6.Derivation][]domain.Domain, bool) {
 	defaultSet := hostid6.DefaultSet()
 	hasNonDefault := false
 	domainsByDerivation := map[hostid6.Derivation][]domain.Domain{}
@@ -94,7 +94,7 @@ func hostID6DerivationDomains(
 		}
 	}
 	if !hasNonDefault {
-		return nil, nil
+		return nil, nil, false
 	}
 
 	derivations := make([]hostid6.Derivation, 0, len(domainsByDerivation))
@@ -103,7 +103,7 @@ func hostID6DerivationDomains(
 		derivations = append(derivations, derivation)
 	}
 	slices.SortFunc(derivations, hostid6.Compare)
-	return derivations, domainsByDerivation
+	return derivations, domainsByDerivation, true
 }
 
 // Print prints a human-facing summary of the validated config and the reporting
@@ -134,7 +134,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
 		}
 	}
-	if derivations, domainsByDerivation := hostID6DerivationDomains(update.HostID6); derivations != nil {
+	if derivations, domainsByDerivation, ok := hostID6DerivationDomains(update.HostID6); ok {
 		inner.Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:")
 		subInner := inner.Indent()
 		for _, derivation := range derivations {
