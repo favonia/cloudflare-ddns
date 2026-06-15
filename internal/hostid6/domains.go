@@ -105,5 +105,8 @@ func DeriveDomains(
 		return cmp.Compare(left.MaxPrefixLen, right.MaxPrefixLen)
 	})
 
+	// Deliberately discard all derived targets when any derivation is incompatible:
+	// callers preserve every existing IPv6 record and WAF item for the whole update
+	// rather than apply a partial set, so returning the survivors would be misleading.
 	return nil, problems
 }
