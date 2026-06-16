@@ -65,10 +65,11 @@ func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibi
 		return combine(raw, derivation.literal.As16()), nil
 
 	case kindMAC:
-		// A Modified EUI-64 host ID is a 64-bit interface identifier that only has
-		// a defined meaning within a /64: a longer prefix leaves fewer than 64 host
-		// bits, and a shorter prefix leaves the subnet bits between the prefix and
-		// /64 undefined. So the MAC derivation requires exactly a /64.
+		// A Modified EUI-64 host ID is a 64-bit interface identifier (RFC 4291,
+		// §2.5.1, "Interface Identifiers") that only has a defined meaning within a
+		// /64: a longer prefix leaves fewer than 64 host bits, and a shorter prefix
+		// leaves the subnet bits between the prefix and /64 undefined. So the MAC
+		// derivation requires exactly a /64.
 		const exactPrefixLen = 64
 		switch {
 		case raw.PrefixLen() > exactPrefixLen:
@@ -93,6 +94,10 @@ func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibi
 	}
 }
 
+// literalMaxPrefixLen returns the longest prefix the literal can sit in without
+// any of its set bits overlapping the prefix: the bit position of the literal's
+// highest set bit. An all-zero literal has no set bits and so fits any prefix,
+// up to the full 128-bit address length.
 func literalMaxPrefixLen(literal netip.Addr) int {
 	for i, octet := range literal.As16() {
 		if octet != 0 {
@@ -118,6 +123,14 @@ func MACHostID(derivation Derivation) (netip.Addr, bool) {
 // MAC address in the lower half of a 128-bit host-bit block.
 func macHost(mac [6]byte) [16]byte {
 	var host [16]byte
+	// The interface identifier occupies the lower 64 bits (bytes 8..15); the
+	// upper 64 bits stay zero for the caller to fill with the prefix.
+	//
+	// Per RFC 4291, Appendix A ("Creating Modified EUI-64 Format Interface
+	// Identifiers"), Modified EUI-64 builds those 64 bits from the 48-bit MAC by
+	// splitting it into its two 24-bit halves and inserting 0xff 0xfe in the
+	// middle, then flipping the universal/local bit (0x02, bit 1 of the first
+	// octet).
 	host[8] = mac[0] ^ 0x02
 	host[9] = mac[1]
 	host[10] = mac[2]

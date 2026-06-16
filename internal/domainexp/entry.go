@@ -10,6 +10,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
+var (
+	// ErrInvalidHostID6 reports an invalid IPv6 host-ID literal.
+	ErrInvalidHostID6 = errors.New("invalid IPv6 host ID")
+	// ErrInvalidMAC reports an invalid 48-bit MAC address.
+	ErrInvalidMAC = errors.New("invalid 48-bit MAC address")
+)
+
 // Entry is one parsed domain declaration.
 type Entry struct {
 	Domain          domain.Domain

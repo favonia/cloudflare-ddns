@@ -1,5 +1,13 @@
 package domainexp
 
+// This file holds the operator-facing diagnostics for the parse-and-report
+// parsers (ParseList in list.go and ParseExpression in expression.go), which
+// emit messages directly through a pp.PP as they parse.
+//
+// The entry parser (ParseEntries in entry.go) uses a different model: it returns
+// structured EntryDiagnostic values for the caller to render, so its diagnostics
+// live in entry.go, not here.
+
 import (
 	"errors"
 	"slices"
@@ -13,10 +21,6 @@ var (
 	ErrInvalidDomain = errors.New("invalid domain")
 	// ErrUnknownDomainField reports an unsupported structured-domain field.
 	ErrUnknownDomainField = errors.New("unknown domain field")
-	// ErrInvalidHostID6 reports an invalid IPv6 host-ID literal.
-	ErrInvalidHostID6 = errors.New("invalid IPv6 host ID")
-	// ErrInvalidMAC reports an invalid 48-bit MAC address.
-	ErrInvalidMAC = errors.New("invalid 48-bit MAC address")
 	// ErrExtraComma reports extra top-level commas accepted for compatibility.
 	ErrExtraComma = errors.New("extra comma")
 	// ErrMissingComma reports missing top-level commas accepted for compatibility.
