@@ -3,10 +3,6 @@ package domainexp
 // This file holds the operator-facing diagnostics for the parse-and-report
 // parsers (ParseList in list.go and ParseExpression in expression.go), which
 // emit messages directly through a pp.PP as they parse.
-//
-// The entry parser (ParseEntries in entry.go) uses a different model: it returns
-// structured EntryDiagnostic values for the caller to render, so its diagnostics
-// live in entry.go, not here.
 
 import (
 	"errors"
@@ -14,17 +10,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
-)
-
-var (
-	// ErrInvalidDomain reports a malformed or non-fully-qualified domain.
-	ErrInvalidDomain = errors.New("invalid domain")
-	// ErrUnknownDomainField reports an unsupported structured-domain field.
-	ErrUnknownDomainField = errors.New("unknown domain field")
-	// ErrExtraComma reports extra top-level commas accepted for compatibility.
-	ErrExtraComma = errors.New("extra comma")
-	// ErrMissingComma reports missing top-level commas accepted for compatibility.
-	ErrMissingComma = errors.New("missing comma")
 )
 
 type parserState struct {

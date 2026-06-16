@@ -3,20 +3,20 @@ package config
 import (
 	"errors"
 
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic domainexp.EntryDiagnostic) bool {
+func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic domainentry.Diagnostic) bool {
 	switch {
-	case errors.Is(diagnostic.Cause, domainexp.ErrExtraComma):
+	case errors.Is(diagnostic.Cause, domainentry.ErrExtraComma):
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
-	case errors.Is(diagnostic.Cause, domainexp.ErrMissingComma):
+	case errors.Is(diagnostic.Cause, domainentry.ErrMissingComma):
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
@@ -45,9 +45,9 @@ func reportEntryParseError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 }
 
 // readDomains reads an environment variable as structured domain entries.
-func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domainexp.Entry) bool {
+func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domainentry.Entry) bool {
 	input := getenv(key)
-	entries, diagnostics, err := domainexp.ParseEntries(input)
+	entries, diagnostics, err := domainentry.Parse(input)
 	if err != nil {
 		reportEntryParseError(ppfmt, key, input, err)
 		return false

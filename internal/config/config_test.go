@@ -12,7 +12,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -53,7 +53,7 @@ type rawEntrySummary struct {
 	hostID6Opinions [][]string
 }
 
-func summarizeEntries(entries []domainexp.Entry) []rawEntrySummary {
+func summarizeEntries(entries []domainentry.Entry) []rawEntrySummary {
 	summary := make([]rawEntrySummary, 0, len(entries))
 	for _, entry := range entries {
 		opinions := make([][]string, 0, len(entry.HostID6Opinions))
@@ -201,7 +201,7 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 			store(t, "CLOUDFLARE_API_TOKEN", "deadbeaf")
 			store(t, tc.key, tc.value)
 			cfg := config.DefaultRaw()
-			oldEntries := []domainexp.Entry{{
+			oldEntries := []domainentry.Entry{{
 				Domain:          domain.FQDN("old.example"),
 				HostID6Opinions: nil,
 				Span:            syntax.Span{Start: 0, End: 0},

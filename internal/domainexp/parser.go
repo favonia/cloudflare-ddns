@@ -1,4 +1,7 @@
-// Package domainexp parses expressions containing domains.
+// Package domainexp parses comma-separated domain lists (ParseList) and boolean
+// domain expressions (ParseExpression), reporting any problems directly through
+// a pp.PP as it parses. Structured per-domain declarations are parsed by the
+// separate internal/domainentry package.
 package domainexp
 
 import (

@@ -1,4 +1,4 @@
-package domainexp
+package domainentry
 
 import (
 	"fmt"
@@ -10,16 +10,16 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-func renderEntrySyntax(tree syntax.Tree[entryFormID]) string {
+func renderSyntax(tree syntax.Tree[formID]) string {
 	switch tree := tree.(type) {
-	case syntax.EmptyTree[entryFormID]:
+	case syntax.EmptyTree[formID]:
 		return "empty"
-	case syntax.Atom[entryFormID]:
+	case syntax.Atom[formID]:
 		return tree.Token.Text
-	case syntax.Op[entryFormID]:
+	case syntax.Op[formID]:
 		args := make([]string, 0, len(tree.Args))
 		for _, arg := range tree.Args {
-			args = append(args, renderEntrySyntax(arg))
+			args = append(args, renderSyntax(arg))
 		}
 		return fmt.Sprintf("%s(%s)", tree.ID, strings.Join(args, ", "))
 	default:
@@ -46,9 +46,9 @@ func TestEntrySyntaxAccepts(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			tree, err := parseEntrySyntax(input)
+			tree, err := parseSyntax(input)
 			require.Nil(t, err)
-			require.Equal(t, expected, renderEntrySyntax(tree))
+			require.Equal(t, expected, renderSyntax(tree))
 		})
 	}
 }
@@ -67,7 +67,7 @@ func TestEntrySyntaxRejects(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			tree, err := parseEntrySyntax(input)
+			tree, err := parseSyntax(input)
 			require.Nil(t, tree)
 			require.NotNil(t, err)
 		})
@@ -87,7 +87,7 @@ func TestEntrySyntaxRejectSpans(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			tree, err := parseEntrySyntax(tc.input)
+			tree, err := parseSyntax(tc.input)
 			require.Nil(t, tree)
 			require.NotNil(t, err)
 			require.Equal(t, tc.span, err.Span)

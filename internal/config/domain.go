@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -71,7 +71,7 @@ func validateKnownIP6HostIDCompatibility(
 func mergeHostID6Opinions(
 	ppfmt pp.PP,
 	setting string,
-	entries []domainexp.Entry,
+	entries []domainentry.Entry,
 	opinions map[domain.Domain]hostID6Opinion,
 ) bool {
 	for declarationIndex, entry := range entries {
@@ -101,7 +101,7 @@ func mergeHostID6Opinions(
 
 // projectDomains collects the domains from one or more settings into a single
 // sorted, deduplicated list.
-func projectDomains(entries ...[]domainexp.Entry) []domain.Domain {
+func projectDomains(entries ...[]domainentry.Entry) []domain.Domain {
 	var domains []domain.Domain
 	for _, settingEntries := range entries {
 		for _, entry := range settingEntries {

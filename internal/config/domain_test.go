@@ -9,7 +9,7 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -18,10 +18,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-func mustEntries(t *testing.T, input string) []domainexp.Entry {
+func mustEntries(t *testing.T, input string) []domainentry.Entry {
 	t.Helper()
 
-	entries, diagnostics, err := domainexp.ParseEntries(input)
+	entries, diagnostics, err := domainentry.Parse(input)
 	require.Nil(t, err)
 	require.Empty(t, diagnostics)
 	return entries
@@ -139,7 +139,7 @@ func TestBuildConfigRejectsZeroExplicitHostID6OpinionAsImpossible(t *testing.T) 
 	t.Parallel()
 
 	raw := config.DefaultRaw()
-	raw.Domains = []domainexp.Entry{{
+	raw.Domains = []domainentry.Entry{{
 		Domain:          domain.FQDN("example.org"),
 		HostID6Opinions: []hostid6.Set{{}},
 		Span:            syntax.Span{Start: 0, End: 0},

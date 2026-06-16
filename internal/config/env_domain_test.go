@@ -8,15 +8,15 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-func oldEntry() domainexp.Entry {
-	return domainexp.Entry{
+func oldEntry() domainentry.Entry {
+	return domainentry.Entry{
 		Domain:          domain.FQDN("old.example"),
 		HostID6Opinions: nil,
 		Span:            syntax.Span{Start: 0, End: 0},
@@ -33,26 +33,26 @@ func TestReadDomainsPlainLists(t *testing.T) {
 	for name, tc := range map[string]struct {
 		set      bool
 		value    string
-		oldField []domainexp.Entry
-		expected []domainexp.Entry
+		oldField []domainentry.Entry
+		expected []domainentry.Entry
 	}{
 		"nil": {
 			set:      false,
 			value:    "",
-			oldField: []domainexp.Entry{oldEntry()},
+			oldField: []domainentry.Entry{oldEntry()},
 			expected: nil,
 		},
 		"empty": {
 			set:      true,
 			value:    "",
-			oldField: []domainexp.Entry{oldEntry()},
+			oldField: []domainentry.Entry{oldEntry()},
 			expected: nil,
 		},
 		"plain": {
 			set:      true,
 			value:    " 書.org ,  Bücher.org  ",
-			oldField: []domainexp.Entry{oldEntry()},
-			expected: []domainexp.Entry{
+			oldField: []domainentry.Entry{oldEntry()},
+			expected: []domainentry.Entry{
 				{Domain: domain.FQDN("xn--rov.org"), HostID6Opinions: nil, Span: syntax.Span{Start: 0, End: 7}},
 				{Domain: domain.FQDN("xn--bcher-kva.org"), HostID6Opinions: nil, Span: syntax.Span{Start: 11, End: 22}},
 			},
@@ -82,7 +82,7 @@ func TestReadDomainsAcceptsHostID6ForMixedAndIPv6Settings(t *testing.T) {
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			store(t, tc.key, "example.org{hostid6=::1}")
-			var field []domainexp.Entry
+			var field []domainentry.Entry
 			mockPP := mocks.NewMockPP(gomock.NewController(t))
 
 			ok := readDomains(mockPP, tc.key, tc.family, &field)
@@ -98,13 +98,13 @@ func TestReadDomainsAcceptsHostID6ForMixedAndIPv6Settings(t *testing.T) {
 //nolint:paralleltest // environment vars are global
 func TestReadDomainsAcceptsPlainIPv4Entry(t *testing.T) {
 	store(t, "IP4_DOMAINS", "example.org")
-	var field []domainexp.Entry
+	var field []domainentry.Entry
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 
 	ok := readDomains(mockPP, "IP4_DOMAINS", family(ipnet.IP4), &field)
 
 	require.True(t, ok)
-	require.Equal(t, []domainexp.Entry{{
+	require.Equal(t, []domainentry.Entry{{
 		Domain:          domain.FQDN("example.org"),
 		HostID6Opinions: nil,
 		Span:            syntax.Span{Start: 0, End: 11},
@@ -115,7 +115,7 @@ func TestReadDomainsAcceptsPlainIPv4Entry(t *testing.T) {
 func TestReadDomainsRejectsHostID6ForIPv4Setting(t *testing.T) {
 	const value = "example.org{hostid6=::1}"
 	store(t, "IP4_DOMAINS", value)
-	oldField := []domainexp.Entry{oldEntry()}
+	oldField := []domainentry.Entry{oldEntry()}
 	field := oldField
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	mockPP.EXPECT().Noticef(
@@ -134,7 +134,7 @@ func TestReadDomainsRejectsHostID6ForIPv4Setting(t *testing.T) {
 func TestReadDomainsReportsSemanticDiagnosticsInSourceOrder(t *testing.T) {
 	const value = "localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}"
 	store(t, "DOMAINS", value)
-	oldField := []domainexp.Entry{oldEntry()}
+	oldField := []domainentry.Entry{oldEntry()}
 	field := oldField
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
@@ -154,7 +154,7 @@ func TestReadDomainsReportsSemanticDiagnosticsInSourceOrder(t *testing.T) {
 func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticError(t *testing.T) {
 	const value = ",good.example bad.example,localhost"
 	store(t, "DOMAINS", value)
-	var field []domainexp.Entry
+	var field []domainentry.Entry
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
@@ -172,7 +172,7 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
 	const value = "example.org,,,,,,"
 	store(t, "DOMAINS", value)
-	var field []domainexp.Entry
+	var field []domainentry.Entry
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	mockPP.EXPECT().Noticef(
 		pp.EmojiUserWarning,
@@ -197,7 +197,7 @@ func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
 	} {
 		t.Run(value, func(t *testing.T) {
 			store(t, "DOMAINS", value)
-			oldField := []domainexp.Entry{oldEntry()}
+			oldField := []domainentry.Entry{oldEntry()}
 			field := oldField
 			mockPP := mocks.NewMockPP(gomock.NewController(t))
 			mockPP.EXPECT().Noticef(
@@ -257,7 +257,7 @@ func TestReadDomainsReportsStructuredEntryParseErrors(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			store(t, "DOMAINS", tc.value)
-			oldField := []domainexp.Entry{oldEntry()}
+			oldField := []domainentry.Entry{oldEntry()}
 			field := oldField
 			mockPP := mocks.NewMockPP(gomock.NewController(t))
 			tc.prepareLog(mockPP)

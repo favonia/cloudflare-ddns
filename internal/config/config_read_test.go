@@ -15,7 +15,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
-	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
@@ -25,10 +25,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
-func entries(domains ...domain.Domain) []domainexp.Entry {
-	result := make([]domainexp.Entry, 0, len(domains))
+func entries(domains ...domain.Domain) []domainentry.Entry {
+	result := make([]domainentry.Entry, 0, len(domains))
 	for _, dom := range domains {
-		result = append(result, domainexp.Entry{
+		result = append(result, domainentry.Entry{
 			Domain:          dom,
 			HostID6Opinions: nil,
 			Span:            syntax.Span{Start: 0, End: 0},
