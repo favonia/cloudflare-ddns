@@ -129,18 +129,15 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		return nil, false
 	}
 
-	// Check 2c: are configuration-time known IPv6 entries compatible with effective host-ID policies?
-	known, available, err := provider.KnownRawData(providerMap[ipnet.IP6], ipnet.IP6)
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible,
-			"IP6_PROVIDER=%s exposed %v; this should not happen. Please report it at %s",
-			provider.Name(providerMap[ipnet.IP6]), err, pp.IssueReportingURL)
-		return nil, false
-	}
-	if available && !validateKnownIP6HostIDCompatibility(
-		ppfmt, provider.Name(providerMap[ipnet.IP6]), domains[ipnet.IP6], normalized.HostID6, known,
-	) {
-		return nil, false
+	// Check 2c: are configuration-time static IPv6 entries compatible with effective host-ID policies?
+	// Only static providers expose raw data before a detection round; the entries are already
+	// canonical for IPv6 (see provider.NewStatic), so they are trusted without revalidation.
+	if sp, ok := providerMap[ipnet.IP6].(provider.StaticProvider); ok {
+		if !validateStaticIP6HostIDCompatibility(
+			ppfmt, provider.Name(sp), domains[ipnet.IP6], normalized.HostID6, sp.StaticRawData(),
+		) {
+			return nil, false
+		}
 	}
 
 	// Check 2d: if UPDATE_CRON=@once and DELETE_ON_STOP=true, are all providers 'none' or 'static.empty'?

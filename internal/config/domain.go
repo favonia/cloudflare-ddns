@@ -28,11 +28,11 @@ type hostID6Opinion struct {
 	source string
 }
 
-// validateKnownIP6HostIDCompatibility reports whether the host-ID policies are
+// validateStaticIP6HostIDCompatibility reports whether the host-ID policies are
 // compatible with the IPv6 prefixes already known at configuration time (those a
 // static provider exposes without a network query). Incompatibilities are user
 // errors; it returns false after describing every one of them.
-func validateKnownIP6HostIDCompatibility(
+func validateStaticIP6HostIDCompatibility(
 	ppfmt pp.PP,
 	providerName string,
 	domains []domain.Domain,

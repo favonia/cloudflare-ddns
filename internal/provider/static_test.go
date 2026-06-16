@@ -67,28 +67,27 @@ func TestStaticIsExplicitEmpty(t *testing.T) {
 	require.False(t, provider.MustNewStatic(ipnet.IP4, 32, "1.1.1.1").IsExplicitEmpty())
 }
 
-func TestKnownRawData(t *testing.T) {
+func TestStaticRawData(t *testing.T) {
 	t.Parallel()
 
 	static := provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/65")
-	rawData, known, err := provider.KnownRawData(static, ipnet.IP6)
-	require.True(t, known)
-	require.NoError(t, err)
-	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, rawData)
+	sp, ok := static.(provider.StaticProvider)
+	require.True(t, ok)
 
-	rawData[0] = ipnet.RawEntry{}
-	again, known, err := provider.KnownRawData(static, ipnet.IP6)
-	require.True(t, known)
-	require.NoError(t, err)
-	require.Equal(t, []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}, again)
+	want := []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}
+	require.Equal(t, want, sp.StaticRawData())
 
-	empty, known, err := provider.KnownRawData(provider.NewStaticEmpty(), ipnet.IP6)
-	require.True(t, known)
-	require.NoError(t, err)
-	require.Empty(t, empty)
+	// The returned slice is a defensive clone: mutating it must not affect the provider.
+	got := sp.StaticRawData()
+	got[0] = ipnet.RawEntry{}
+	require.Equal(t, want, sp.StaticRawData())
 
-	dynamic, known, err := provider.KnownRawData(provider.NewCloudflareTrace(), ipnet.IP6)
-	require.False(t, known)
-	require.NoError(t, err)
-	require.Empty(t, dynamic)
+	// static.empty is a StaticProvider exposing an empty set.
+	empty, ok := provider.NewStaticEmpty().(provider.StaticProvider)
+	require.True(t, ok)
+	require.Empty(t, empty.StaticRawData())
+
+	// Dynamic providers do not implement StaticProvider.
+	_, ok = provider.NewCloudflareTrace().(provider.StaticProvider)
+	require.False(t, ok)
 }

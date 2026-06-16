@@ -30,8 +30,11 @@ func (p Static) IsExplicitEmpty() bool {
 	return len(p.RawEntries) == 0
 }
 
-// KnownRawData returns a defensive copy of the configuration-time known raw data.
-func (p Static) KnownRawData() []ipnet.RawEntry {
+// StaticRawData returns a defensive copy of the configuration-time raw data.
+// The entries are fixed across runs and already canonical for this provider's
+// family (see provider.NewStatic); this is a pure accessor, not a detection
+// round like GetRawData. See provider.StaticProvider for the contract.
+func (p Static) StaticRawData() []ipnet.RawEntry {
 	return slices.Clone(p.RawEntries)
 }
 
