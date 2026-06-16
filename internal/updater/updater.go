@@ -144,6 +144,11 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 	var missingDomains []domain.Domain
 
 	for _, configuredDomain := range c.Domains[ipFamily] {
+		// A present-but-empty target set legitimately means "clear this domain's
+		// records" (for example, when no address is detected), so an absent key
+		// must not collapse into the same empty slice: that would let a future
+		// regression desynchronizing this map from c.Domains silently delete real
+		// DNS records instead of failing loudly. Treat absence as a reportable fault.
 		ips, ok := targets[configuredDomain]
 		if !ok {
 			ppfmt.Noticef(pp.EmojiImpossible,
