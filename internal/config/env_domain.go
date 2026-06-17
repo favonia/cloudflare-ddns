@@ -10,13 +10,13 @@ import (
 )
 
 func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic domainentry.Diagnostic) bool {
-	switch {
-	case errors.Is(diagnostic.Cause, domainentry.ErrExtraComma):
+	switch diagnostic.Kind {
+	case domainentry.KindExtraComma:
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
-	case errors.Is(diagnostic.Cause, domainentry.ErrMissingComma):
+	case domainentry.KindMissingComma:
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))

@@ -8,7 +8,6 @@
 package domainentry
 
 import (
-	"errors"
 	"fmt"
 	"net/netip"
 
@@ -17,19 +16,25 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-var (
-	// ErrInvalidHostID6 reports an invalid IPv6 host-ID literal.
-	ErrInvalidHostID6 = errors.New("invalid IPv6 host ID")
-	// ErrInvalidMAC reports an invalid 48-bit MAC address.
-	ErrInvalidMAC = errors.New("invalid 48-bit MAC address")
-	// ErrInvalidDomain reports a malformed or non-fully-qualified domain.
-	ErrInvalidDomain = errors.New("invalid domain")
-	// ErrUnknownDomainField reports an unsupported structured-domain field.
-	ErrUnknownDomainField = errors.New("unknown domain field")
-	// ErrExtraComma reports extra top-level commas accepted for compatibility.
-	ErrExtraComma = errors.New("extra comma")
-	// ErrMissingComma reports missing top-level commas accepted for compatibility.
-	ErrMissingComma = errors.New("missing comma")
+// DiagnosticKind classifies a semantic failure in a parsed domain entry. It is
+// a plain enum rather than an error so that classification stays separate from
+// the underlying detail: the detail (when any) lives in Diagnostic.Detail, and
+// Description can switch exhaustively over the kind without unwrapping anything.
+type DiagnosticKind int
+
+const (
+	// KindInvalidDomain reports a malformed or non-fully-qualified domain.
+	KindInvalidDomain DiagnosticKind = iota
+	// KindUnknownDomainField reports an unsupported structured-domain field.
+	KindUnknownDomainField
+	// KindInvalidHostID6 reports an invalid IPv6 host-ID literal.
+	KindInvalidHostID6
+	// KindInvalidMAC reports an invalid 48-bit MAC address.
+	KindInvalidMAC
+	// KindExtraComma reports extra top-level commas accepted for compatibility.
+	KindExtraComma
+	// KindMissingComma reports missing top-level commas accepted for compatibility.
+	KindMissingComma
 )
 
 // Entry is one parsed domain declaration.
@@ -39,35 +44,35 @@ type Entry struct {
 	Span            syntax.Span
 }
 
-// Diagnostic describes one semantic failure in a parsed domain entry.
+// Diagnostic describes one semantic failure in a parsed domain entry. Kind is
+// the classification; Detail carries the underlying error for kinds that have
+// one (it is nil for KindUnknownDomainField and the comma kinds).
 type Diagnostic struct {
-	Span  syntax.Span
-	Cause error
+	Span   syntax.Span
+	Kind   DiagnosticKind
+	Detail error
 }
 
 // Description renders the source-specific semantic failure without setting context.
 func (diagnostic Diagnostic) Description(input string) string {
 	source := input[diagnostic.Span.Start:diagnostic.Span.End]
-	detail := diagnostic.Cause
-	if causes, ok := diagnostic.Cause.(interface{ Unwrap() []error }); ok {
-		unwrapped := causes.Unwrap()
-		if len(unwrapped) > 1 {
-			detail = unwrapped[1]
-		}
+
+	switch diagnostic.Kind {
+	case KindInvalidDomain:
+		return fmt.Sprintf("invalid domain %q: %v", source, diagnostic.Detail)
+	case KindUnknownDomainField:
+		return fmt.Sprintf("unknown domain field %q", source)
+	case KindInvalidHostID6:
+		return fmt.Sprintf("invalid hostid6 value %q: %v", source, diagnostic.Detail)
+	case KindInvalidMAC:
+		return fmt.Sprintf("invalid hostid6 MAC address %q: %v", source, diagnostic.Detail)
+	case KindExtraComma:
+		return "extra comma"
+	case KindMissingComma:
+		return "missing comma"
 	}
 
-	switch {
-	case errors.Is(diagnostic.Cause, ErrInvalidDomain):
-		return fmt.Sprintf("invalid domain %q: %v", source, detail)
-	case errors.Is(diagnostic.Cause, ErrUnknownDomainField):
-		return fmt.Sprintf("unknown domain field %q", source)
-	case errors.Is(diagnostic.Cause, ErrInvalidHostID6):
-		return fmt.Sprintf("invalid hostid6 value %q: %v", source, detail)
-	case errors.Is(diagnostic.Cause, ErrInvalidMAC):
-		return fmt.Sprintf("invalid hostid6 MAC address %q: %v", source, detail)
-	default:
-		return diagnostic.Cause.Error()
-	}
+	panic("domainentry: unknown diagnostic kind; this should not happen; please report it")
 }
 
 // Parse parses structured domain entries without merging declarations or assignments.
@@ -152,7 +157,7 @@ func (state *buildState) recordExtraComma(span syntax.Span) {
 		return
 	}
 	state.extraComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Cause: ErrExtraComma})
+	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindExtraComma, Detail: nil})
 }
 
 func (state *buildState) recordMissingComma(span syntax.Span) {
@@ -160,7 +165,7 @@ func (state *buildState) recordMissingComma(span syntax.Span) {
 		return
 	}
 	state.missingComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Cause: ErrMissingComma})
+	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindMissingComma, Detail: nil})
 }
 
 func buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
@@ -184,8 +189,9 @@ func buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
 	if err != nil {
 		var noEntry Entry
 		return noEntry, &Diagnostic{
-			Span:  domainAtom.Span(),
-			Cause: fmt.Errorf("%w: %w", ErrInvalidDomain, err),
+			Span:   domainAtom.Span(),
+			Kind:   KindInvalidDomain,
+			Detail: err,
 		}
 	}
 
@@ -228,8 +234,9 @@ func buildAssignment(tree syntax.Op[formID]) (hostid6.Set, *Diagnostic) {
 	field := mustAtom(tree.Args[0])
 	if field.Token.Text != "hostid6" {
 		return hostid6.Set{}, &Diagnostic{
-			Span:  field.Span(),
-			Cause: ErrUnknownDomainField,
+			Span:   field.Span(),
+			Kind:   KindUnknownDomainField,
+			Detail: nil,
 		}
 	}
 
@@ -256,8 +263,9 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			}
 		}
 		return nil, &Diagnostic{
-			Span:  tree.Span(),
-			Cause: fmt.Errorf("%w: %w", ErrInvalidHostID6, err),
+			Span:   tree.Span(),
+			Kind:   KindInvalidHostID6,
+			Detail: err,
 		}
 	case syntax.Op[formID]:
 		//nolint:exhaustive // Only structured host-ID values are valid here.
@@ -267,8 +275,9 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			mac, err := hostid6.ParseMAC(atom.Token.Text)
 			if err != nil {
 				return nil, &Diagnostic{
-					Span:  atom.Span(),
-					Cause: fmt.Errorf("%w: %w", ErrInvalidMAC, err),
+					Span:   atom.Span(),
+					Kind:   KindInvalidMAC,
+					Detail: err,
 				}
 			}
 			return []hostid6.Derivation{hostid6.MAC(mac)}, nil

@@ -102,13 +102,13 @@ func TestParseEntriesSemanticDiagnosticsAndRecovery(t *testing.T) {
 	}}, entries)
 	require.Len(t, diagnostics, 4)
 	require.Equal(t, syntax.Span{Start: 0, End: 9}, diagnostics[0].Span)
-	require.ErrorIs(t, diagnostics[0].Cause, domainentry.ErrInvalidDomain)
+	require.Equal(t, domainentry.KindInvalidDomain, diagnostics[0].Kind)
 	require.Equal(t, syntax.Span{Start: 35, End: 42}, diagnostics[1].Span)
-	require.ErrorIs(t, diagnostics[1].Cause, domainentry.ErrUnknownDomainField)
+	require.Equal(t, domainentry.KindUnknownDomainField, diagnostics[1].Kind)
 	require.Equal(t, syntax.Span{Start: 68, End: 77}, diagnostics[2].Span)
-	require.ErrorIs(t, diagnostics[2].Cause, domainentry.ErrInvalidHostID6)
+	require.Equal(t, domainentry.KindInvalidHostID6, diagnostics[2].Kind)
 	require.Equal(t, syntax.Span{Start: 103, End: 106}, diagnostics[3].Span)
-	require.ErrorIs(t, diagnostics[3].Cause, domainentry.ErrInvalidMAC)
+	require.Equal(t, domainentry.KindInvalidMAC, diagnostics[3].Kind)
 }
 
 func TestParseEntriesRejectsQuotedCommaList(t *testing.T) {
@@ -201,9 +201,9 @@ func TestParseEntriesReturnsCompatibilityDiagnostics(t *testing.T) {
 	}, entries)
 	require.Len(t, diagnostics, 2)
 	require.Equal(t, syntax.Span{Start: 0, End: 1}, diagnostics[0].Span)
-	require.ErrorIs(t, diagnostics[0].Cause, domainentry.ErrExtraComma)
+	require.Equal(t, domainentry.KindExtraComma, diagnostics[0].Kind)
 	require.Equal(t, syntax.Span{Start: 12, End: 13}, diagnostics[1].Span)
-	require.ErrorIs(t, diagnostics[1].Cause, domainentry.ErrMissingComma)
+	require.Equal(t, domainentry.KindMissingComma, diagnostics[1].Kind)
 }
 
 func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
@@ -219,8 +219,9 @@ func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
 		Span:            syntax.Span{Start: commaCount, End: commaCount + len("example.org")},
 	}}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:  syntax.Span{Start: 0, End: 1},
-		Cause: domainentry.ErrExtraComma,
+		Span:   syntax.Span{Start: 0, End: 1},
+		Kind:   domainentry.KindExtraComma,
+		Detail: nil,
 	}}, diagnostics)
 }
 
@@ -236,8 +237,9 @@ func TestParseEntriesManyMissingCommasReturnOneDiagnostic(t *testing.T) {
 		{Domain: domain.FQDN("example.com"), HostID6Opinions: nil, Span: syntax.Span{Start: 24, End: 35}},
 	}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:  syntax.Span{Start: 11, End: 12},
-		Cause: domainentry.ErrMissingComma,
+		Span:   syntax.Span{Start: 11, End: 12},
+		Kind:   domainentry.KindMissingComma,
+		Detail: nil,
 	}}, diagnostics)
 }
 
@@ -249,8 +251,8 @@ func TestParseEntriesStopsMissingCommaRecoveryAfterSemanticError(t *testing.T) {
 	require.Nil(t, err)
 	require.Empty(t, entries)
 	require.Len(t, diagnostics, 2)
-	require.ErrorIs(t, diagnostics[0].Cause, domainentry.ErrInvalidDomain)
-	require.ErrorIs(t, diagnostics[1].Cause, domainentry.ErrMissingComma)
+	require.Equal(t, domainentry.KindInvalidDomain, diagnostics[0].Kind)
+	require.Equal(t, domainentry.KindMissingComma, diagnostics[1].Kind)
 }
 
 func TestParseEntriesRecoversAtTopLevelCommaAfterFirstFieldError(t *testing.T) {
@@ -266,7 +268,7 @@ func TestParseEntriesRecoversAtTopLevelCommaAfterFirstFieldError(t *testing.T) {
 		Span:            syntax.Span{Start: 37, End: 49},
 	}}, entries)
 	require.Len(t, diagnostics, 1)
-	require.ErrorIs(t, diagnostics[0].Cause, domainentry.ErrUnknownDomainField)
+	require.Equal(t, domainentry.KindUnknownDomainField, diagnostics[0].Kind)
 }
 
 func TestParseEntriesAcceptsTrailingCommaWithoutDiagnostic(t *testing.T) {
@@ -296,7 +298,7 @@ func TestParseEntriesReportsExtraTrailingCommas(t *testing.T) {
 		Span:            syntax.Span{Start: 0, End: 11},
 	}}, entries)
 	require.Len(t, diagnostics, 1)
-	require.ErrorIs(t, diagnostics[0].Cause, domainentry.ErrExtraComma)
+	require.Equal(t, domainentry.KindExtraComma, diagnostics[0].Kind)
 }
 
 func TestParseEntriesRejectsExtraTrailingCommasInStrictLists(t *testing.T) {
@@ -318,21 +320,6 @@ func TestParseEntriesRejectsExtraTrailingCommasInStrictLists(t *testing.T) {
 	}
 }
 
-func TestParseEntriesTypedCauses(t *testing.T) {
-	t.Parallel()
-
-	for _, cause := range []error{
-		domainentry.ErrInvalidDomain,
-		domainentry.ErrUnknownDomainField,
-		domainentry.ErrInvalidHostID6,
-		domainentry.ErrInvalidMAC,
-		domainentry.ErrExtraComma,
-		domainentry.ErrMissingComma,
-	} {
-		require.NotErrorIs(t, cause, syntax.ErrUnexpectedToken)
-	}
-}
-
 func TestEntryDiagnosticDescriptions(t *testing.T) {
 	t.Parallel()
 
@@ -351,4 +338,29 @@ func TestEntryDiagnosticDescriptions(t *testing.T) {
 		diagnostics[2].Description(input),
 		diagnostics[3].Description(input),
 	})
+}
+
+func TestEntryDiagnosticDescriptionsForCommaKinds(t *testing.T) {
+	t.Parallel()
+
+	input := ",example.org example.net"
+	_, diagnostics, err := domainentry.Parse(input)
+
+	require.Nil(t, err)
+	require.Len(t, diagnostics, 2)
+	require.Equal(t, domainentry.KindExtraComma, diagnostics[0].Kind)
+	require.Equal(t, "extra comma", diagnostics[0].Description(input))
+	require.Equal(t, domainentry.KindMissingComma, diagnostics[1].Kind)
+	require.Equal(t, "missing comma", diagnostics[1].Description(input))
+}
+
+func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {
+	t.Parallel()
+
+	diagnostic := domainentry.Diagnostic{
+		Span:   syntax.Span{Start: 0, End: 0},
+		Kind:   domainentry.DiagnosticKind(-1),
+		Detail: nil,
+	}
+	require.Panics(t, func() { _ = diagnostic.Description("") })
 }
