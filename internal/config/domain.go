@@ -161,6 +161,90 @@ func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 	}
 }
 
+// warnShadowedFamilyIntents warns when a family-specific configuration intent is
+// rendered inert by that family's provider being disabled, even if the domain
+// survives via the other family. The intents are: a domain's membership declared
+// through IP4_DOMAINS or IP6_DOMAINS, and an explicit hostid6 setting (IPv6 only).
+// A bare DOMAINS membership is family-agnostic and never warns: running
+// single-stack is the normal narrowing of a broad selector, not an inert intent.
+//
+// Warnings are grouped (like warnSuspiciousMACs): at most one membership warning
+// per disabled family listing every shadowed domain, and one hostid6 warning per
+// distinct host-ID set value listing every domain that carries it. This family
+// intent set is small and operator-authored, so grouping is the right shape (see
+// docs/designs/guides/operator-messages.markdown).
+//
+// These per-intent warnings replace the older whole-domain "only for X but X is
+// disabled" warning: a domain listed only under a disabled family is covered by
+// its membership warning, so there is no double-warn. To avoid two warnings for a
+// domain listed in IP6_DOMAINS that also carries hostid6, the hostid6 warning is
+// emitted only for domains whose hostid6 came through DOMAINS (i.e. not also
+// listed in IP6_DOMAINS, whose membership warning already subsumes it).
+func warnShadowedFamilyIntents(
+	ppfmt pp.PP,
+	ip4Managed, ip6Managed bool,
+	normalized normalizedDomains,
+	raw *RawConfig,
+) {
+	managed := map[ipnet.Family]bool{ipnet.IP4: ip4Managed, ipnet.IP6: ip6Managed}
+	specific := map[ipnet.Family][]domainentry.Entry{
+		ipnet.IP4: raw.IP4Domains,
+		ipnet.IP6: raw.IP6Domains,
+	}
+	settingName := map[ipnet.Family]string{ipnet.IP4: "IP4_DOMAINS", ipnet.IP6: "IP6_DOMAINS"}
+
+	// Membership intents: one grouped warning per disabled family.
+	for _, family := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
+		if managed[family] {
+			continue
+		}
+		domains := projectDomains(specific[family])
+		if len(domains) == 0 {
+			continue
+		}
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"The %s listing of %s is ignored because %s is disabled",
+			settingName[family],
+			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)"),
+			family.Describe())
+	}
+
+	// Explicit hostid6 intents (IPv6 only), grouped by set value. Domains already
+	// covered by the IP6_DOMAINS membership warning above are excluded.
+	if !ip6Managed {
+		ip6Listed := map[domain.Domain]bool{}
+		for _, dom := range projectDomains(specific[ipnet.IP6]) {
+			ip6Listed[dom] = true
+		}
+
+		// StringOrScalar() is the canonical set rendering, so it is a safe grouping
+		// key: distinct sets never collide, and sorting the keys gives a deterministic
+		// order (mirroring how warnSuspiciousMACs sorts MACs).
+		domainsBySet := map[string][]domain.Domain{}
+		for dom := range normalized.ExplicitHostID6 {
+			if ip6Listed[dom] {
+				continue
+			}
+			key := normalized.HostID6[dom].StringOrScalar()
+			domainsBySet[key] = append(domainsBySet[key], dom)
+		}
+
+		keys := make([]string, 0, len(domainsBySet))
+		for key := range domainsBySet {
+			keys = append(keys, key)
+		}
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			domains := sliceutil.SortAndCompact(domainsBySet[key], domain.CompareDomain)
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"hostid6=%s for %s is ignored because IPv6 is disabled",
+				key,
+				pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)"))
+		}
+	}
+}
+
 // normalizeDomains resolves the raw domain settings into a normalizedDomains:
 // it projects the per-family domain lists, merges the hostid6 opinions from
 // DOMAINS and IP6_DOMAINS (reporting conflicts), assigns the default set to every
