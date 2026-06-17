@@ -196,7 +196,6 @@ func firstTree(tree syntax.Tree[formID]) syntax.Tree[formID] {
 			return syntax.Atom[formID]{Token: tree.Tokens[0]}
 		}
 		return firstTree(tree.Args[0])
-	default:
-		return tree
 	}
+	panic("domainentry: cannot locate the first token of an empty tree; this should not happen; please report it")
 }

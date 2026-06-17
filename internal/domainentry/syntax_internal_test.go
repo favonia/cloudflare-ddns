@@ -94,3 +94,12 @@ func TestEntrySyntaxRejectSpans(t *testing.T) {
 		})
 	}
 }
+
+func TestFirstTreeEmptyPanics(t *testing.T) {
+	t.Parallel()
+
+	require.PanicsWithValue(t,
+		"domainentry: cannot locate the first token of an empty tree; this should not happen; please report it",
+		func() { firstTree(syntax.EmptyTree[formID]{}) },
+	)
+}
