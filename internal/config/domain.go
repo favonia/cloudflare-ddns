@@ -15,9 +15,12 @@ import (
 // normalizedDomains is the resolved view of all domain settings. HostID6 covers
 // exactly the IPv6 domains in ByFamily[ipnet.IP6] and is always populated, using
 // the default set for domains that carry no explicit hostid6 opinion.
+// ExplicitHostID6 marks the subset of those domains whose hostid6 was set
+// explicitly by the operator (as opposed to the implicit default).
 type normalizedDomains struct {
-	ByFamily map[ipnet.Family][]domain.Domain
-	HostID6  map[domain.Domain]hostid6.Set
+	ByFamily        map[ipnet.Family][]domain.Domain
+	HostID6         map[domain.Domain]hostid6.Set
+	ExplicitHostID6 map[domain.Domain]bool
 }
 
 // hostID6Opinion is a host-ID set together with a human-readable provenance
@@ -169,18 +172,20 @@ func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 			ipnet.IP4: projectDomains(raw.IP4Domains, raw.Domains),
 			ipnet.IP6: projectDomains(raw.IP6Domains, raw.Domains),
 		},
-		HostID6: map[domain.Domain]hostid6.Set{},
+		HostID6:         map[domain.Domain]hostid6.Set{},
+		ExplicitHostID6: map[domain.Domain]bool{},
 	}
 
 	opinions := map[domain.Domain]hostID6Opinion{}
 	if !mergeHostID6Opinions(ppfmt, "DOMAINS", raw.Domains, opinions) ||
 		!mergeHostID6Opinions(ppfmt, "IP6_DOMAINS", raw.IP6Domains, opinions) {
-		return normalizedDomains{ByFamily: nil, HostID6: nil}, false
+		return normalizedDomains{ByFamily: nil, HostID6: nil, ExplicitHostID6: nil}, false
 	}
 
 	for _, dom := range result.ByFamily[ipnet.IP6] {
 		if opinion, present := opinions[dom]; present {
 			result.HostID6[dom] = opinion.set
+			result.ExplicitHostID6[dom] = true
 		} else {
 			result.HostID6[dom] = hostid6.DefaultSet()
 		}
