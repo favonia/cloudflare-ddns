@@ -37,6 +37,7 @@ Examples:
 
 ### 4. Operator Clarity
 
+- Respect operator intent: treat every explicit configuration as a meaningful intent. Never silently discard one—honor it, or tell the operator why it cannot hold.
 - Detect operator misconfigurations early.
 - Implicit defaults must be semantically identical to some explicit value, so operators can restate the default choice explicitly without changing behavior.
 - Explain behavior through observable outcomes, operator decisions, and actionable next steps.
