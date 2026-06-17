@@ -94,14 +94,14 @@ func TestDeriveDomainsProblems(t *testing.T) {
 
 	require.Equal(t, []hostid6.ProblemGroup{
 		{
-			Kind:           hostid6.LiteralIncompatibility,
+			Kind:           hostid6.LiteralPrefixTooLong,
 			PrefixLenBound: 0,
 			Domains:        []domain.Domain{d2},
 			Derivations:    hostid6.NewSet(literal0),
 			Observed:       []ipnet.RawEntry{raw48, raw65, raw128},
 		},
 		{
-			Kind:           hostid6.LiteralIncompatibility,
+			Kind:           hostid6.LiteralPrefixTooLong,
 			PrefixLenBound: 127,
 			Domains:        []domain.Domain{d2},
 			Derivations:    hostid6.NewSet(literal),

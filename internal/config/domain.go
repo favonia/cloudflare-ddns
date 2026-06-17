@@ -46,7 +46,7 @@ func validateStaticIP6HostIDCompatibility(
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
 		switch problem.Kind {
-		case hostid6.LiteralIncompatibility, hostid6.MACPrefixTooLong:
+		case hostid6.LiteralPrefixTooLong, hostid6.MACPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiUserError,
 				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
 					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",

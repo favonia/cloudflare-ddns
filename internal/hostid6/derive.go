@@ -11,8 +11,9 @@ import (
 type IncompatibilityKind uint8
 
 const (
-	// LiteralIncompatibility means configured literal bits overlap the observed prefix.
-	LiteralIncompatibility IncompatibilityKind = iota
+	// LiteralPrefixTooLong means the observed prefix is longer than the literal
+	// allows: some of the literal's set bits would overlap the prefix.
+	LiteralPrefixTooLong IncompatibilityKind = iota
 
 	// MACPrefixTooLong means the observed prefix is longer than /64, leaving fewer
 	// than 64 host bits for the Modified EUI-64 interface identifier.
@@ -32,7 +33,7 @@ type Incompatibility struct {
 	// ObservedPrefix is the detected prefix that triggered the incompatibility.
 	ObservedPrefix ipnet.RawEntry
 	// PrefixLenBound is the prefix-length boundary involved: a maximum for
-	// LiteralIncompatibility and MACPrefixTooLong, and the required /64 for
+	// LiteralPrefixTooLong and MACPrefixTooLong, and the required /64 for
 	// MACPrefixTooShort (where the prefix is instead too short).
 	PrefixLenBound int
 }
@@ -56,7 +57,7 @@ func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibi
 		maxPrefixLen := literalMaxPrefixLen(derivation.literal)
 		if raw.PrefixLen() > maxPrefixLen {
 			return netip.Addr{}, &Incompatibility{
-				Kind:           LiteralIncompatibility,
+				Kind:           LiteralPrefixTooLong,
 				Derivation:     derivation,
 				ObservedPrefix: raw,
 				PrefixLenBound: maxPrefixLen,

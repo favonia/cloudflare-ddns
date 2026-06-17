@@ -106,14 +106,14 @@ func TestDeriveIP6DNSTargetsGroupsAllProblems(t *testing.T) {
 	require.Nil(t, targets)
 	require.Equal(t, []hostID6ProblemGroup{
 		{
-			Kind:           hostid6.LiteralIncompatibility,
+			Kind:           hostid6.LiteralPrefixTooLong,
 			PrefixLenBound: 126,
 			Domains:        []domain.Domain{alpha, beta},
 			Derivations:    hostid6.NewSet(literal126a, literal126b),
 			Observed:       []ipnet.RawEntry{rawA, rawB},
 		},
 		{
-			Kind:           hostid6.LiteralIncompatibility,
+			Kind:           hostid6.LiteralPrefixTooLong,
 			PrefixLenBound: 127,
 			Domains:        []domain.Domain{alpha},
 			Derivations:    hostid6.NewSet(literal127),

@@ -46,7 +46,7 @@ func TestDeriveLiteral(t *testing.T) {
 	}
 }
 
-func TestDeriveLiteralIncompatibility(t *testing.T) {
+func TestDeriveLiteralPrefixTooLong(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range [...]struct {
@@ -64,7 +64,7 @@ func TestDeriveLiteralIncompatibility(t *testing.T) {
 
 		require.Equal(t, netip.Addr{}, target)
 		require.Equal(t, &hostid6.Incompatibility{
-			Kind:           hostid6.LiteralIncompatibility,
+			Kind:           hostid6.LiteralPrefixTooLong,
 			Derivation:     derivation,
 			ObservedPrefix: raw,
 			PrefixLenBound: tc.maxPrefixLen,

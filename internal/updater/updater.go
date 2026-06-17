@@ -197,7 +197,7 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
 		switch problem.Kind {
-		case hostid6.LiteralIncompatibility:
+		case hostid6.LiteralPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiError,
 				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
 					"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
