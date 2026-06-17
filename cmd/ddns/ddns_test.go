@@ -165,6 +165,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 			ipnet.IP4: {domain4},
 			ipnet.IP6: nil,
 		},
+		HostID6:  nil,
 		WAFLists: []api.WAFList{wafList},
 		DefaultPrefixLen: map[ipnet.Family]int{
 			ipnet.IP4: 32,
@@ -219,6 +220,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 		&config.UpdateConfig{
 			Provider: nil,
 			Domains:  nil,
+			HostID6:  nil,
 			WAFLists: nil,
 			DefaultPrefixLen: map[ipnet.Family]int{
 				ipnet.IP4: 32,

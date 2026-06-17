@@ -63,6 +63,8 @@ func NewStatic(ppfmt pp.PP, envKey string, ipFamily ipnet.Family, defaultPrefixL
 	for _, entry := range entries {
 		names = append(names, entry.Describe(defaultPrefixLen))
 	}
+	// This is the canonical "static:" provider syntax, not human-facing prose, so
+	// it joins with a plain comma rather than a pp presentation helper.
 	return protocol.Static{
 		ProviderName: "static:" + strings.Join(names, ","),
 		RawEntries:   slices.Clone(entries),

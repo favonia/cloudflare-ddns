@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -26,6 +27,22 @@ func (m ErrorMatcher) String() string {
 }
 
 const key string = "KEY"
+
+// FuzzParseEntries fuzz tests [domainentry.Parse].
+func FuzzParseEntries(f *testing.F) {
+	for _, seed := range []string{
+		"",
+		"example.org",
+		"example.org{hostid6=::1,}",
+		"example.org{hostid6=[preserve,::1,mac(00-11-22-33-44-55),],}",
+		"example.org{hostid6=[::1,,::2]}",
+	} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(_ *testing.T, input string) {
+		_, _, _ = domainentry.Parse(input)
+	})
+}
 
 // FuzzParseList fuzz tests [domainexp.ParseList].
 func FuzzParseList(f *testing.F) {

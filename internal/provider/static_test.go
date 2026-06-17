@@ -1,6 +1,7 @@
 package provider_test
 
 import (
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -64,4 +65,29 @@ func TestStaticIsExplicitEmpty(t *testing.T) {
 
 	require.True(t, provider.NewStaticEmpty().IsExplicitEmpty())
 	require.False(t, provider.MustNewStatic(ipnet.IP4, 32, "1.1.1.1").IsExplicitEmpty())
+}
+
+func TestStaticRawData(t *testing.T) {
+	t.Parallel()
+
+	static := provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/65")
+	sp, ok := static.(provider.StaticProvider)
+	require.True(t, ok)
+
+	want := []ipnet.RawEntry{ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::1"), 65)}
+	require.Equal(t, want, sp.StaticRawData())
+
+	// The returned slice is a defensive clone: mutating it must not affect the provider.
+	got := sp.StaticRawData()
+	got[0] = ipnet.RawEntry{}
+	require.Equal(t, want, sp.StaticRawData())
+
+	// static.empty is a StaticProvider exposing an empty set.
+	empty, ok := provider.NewStaticEmpty().(provider.StaticProvider)
+	require.True(t, ok)
+	require.Empty(t, empty.StaticRawData())
+
+	// Dynamic providers do not implement StaticProvider.
+	_, ok = provider.NewCloudflareTrace().(provider.StaticProvider)
+	require.False(t, ok)
 }

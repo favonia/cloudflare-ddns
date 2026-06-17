@@ -55,7 +55,7 @@ The IP prefix length work in this release lays the groundwork for several upcomi
 - **Per-domain IPv6 host IDs** ([#764](https://github.com/favonia/cloudflare-ddns/issues/764)):
   - `IP6_DOMAINS=sub.example.com{hostid6=::2}`
   - `IP6_DOMAINS=sub.example.com{hostid6=preserve}` (keep the detected host IDs)
-  - `IP6_DOMAINS=sub.example.com{hostid6=mac(77:cc:a7:f9:45:94)}` (compute an [EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Modified_EUI-64) host ID from a MAC address)
+  - `IP6_DOMAINS=sub.example.com{hostid6=mac(77:cc:a7:f9:45:94)}` (compute an [EUI-64](https://en.wikipedia.org/wiki/IPv6_address#Interface_identifier) host ID from a MAC address)
   - `DOMAINS=sub1.example.com{hostid6=::aad1},sub2.example.com{hostid6=preserve}`
 - **Detection IP filtering** ([#1138](https://github.com/favonia/cloudflare-ddns/issues/1138)):
   - `IP6_DETECTION_FILTER=keep-all`

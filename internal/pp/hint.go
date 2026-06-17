@@ -20,4 +20,5 @@ const (
 	MessageExperimentalMultipleAddressesFile                   // Multi-address file content introduced in 1.16.0
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
+	MessageHostID6MACPrefix                                    // mac(...) host IDs need a /64 prefix
 )

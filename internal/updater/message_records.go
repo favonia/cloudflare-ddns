@@ -39,6 +39,28 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 	}
 }
 
+func generateIP6DerivationFailureMessage() Message {
+	return Message{
+		HeartbeatMessage: heartbeat.Message{
+			OK:    false,
+			Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+		},
+		NotifierMessage: notifier.Message{
+			"Failed to derive IPv6 DNS targets from the detected prefixes.",
+		},
+	}
+}
+
+func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Domain) Message {
+	domainDescription := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)")
+	message := fmt.Sprintf("Could not update %s records for %s because no target set was provided",
+		ipFamily.RecordType(), domainDescription)
+	return Message{
+		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{message}},
+		NotifierMessage:  notifier.Message{message + "."},
+	}
+}
+
 func describeIPs(ips []netip.Addr) string {
 	return pp.JoinMap(netip.Addr.String, ips)
 }

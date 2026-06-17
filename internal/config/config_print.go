@@ -2,12 +2,14 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -17,6 +19,15 @@ import (
 // Keep titles aligned for the longest built-in key:
 // "WAF list item comment regex:".
 const itemTitleWidth = 28
+
+// Width for host-ID sub-item titles. Two constraints:
+//   - at least the longest sub-label "preserve (using detected):" (26), so the
+//     sub-items' own values stay column-aligned;
+//   - large enough that the sub-value column sits clearly right of the item
+//     value column (sub-value - item-value = indentPrefix + subItemTitleWidth -
+//     itemTitleWidth = 3 + 28 - 28 = +3), so nesting stays visible when scanning
+//     the value column, not just the indented titles.
+const subItemTitleWidth = 28
 
 // These helpers format values for the human-facing startup summary.
 // They are display helpers, not serialization helpers.
@@ -65,6 +76,36 @@ func computeInverseMap[V comparable](m map[domain.Domain]V) ([]V, map[V][]domain
 	return vals, inverse
 }
 
+// hostID6DerivationDomains groups every IPv6 domain by each host-ID derivation
+// it carries. It reports false when no domain has a non-default set, so the
+// host-ID summary stays hidden in the ordinary case where nobody configures it.
+func hostID6DerivationDomains(
+	policies map[domain.Domain]hostid6.Set,
+) ([]hostid6.Derivation, map[hostid6.Derivation][]domain.Domain, bool) {
+	defaultSet := hostid6.DefaultSet()
+	hasNonDefault := false
+	domainsByDerivation := map[hostid6.Derivation][]domain.Domain{}
+	for dom, set := range policies {
+		if !hostid6.EqualSet(set, defaultSet) {
+			hasNonDefault = true
+		}
+		for derivation := range set.All() {
+			domainsByDerivation[derivation] = append(domainsByDerivation[derivation], dom)
+		}
+	}
+	if !hasNonDefault {
+		return nil, nil, false
+	}
+
+	derivations := make([]hostid6.Derivation, 0, len(domainsByDerivation))
+	for derivation := range domainsByDerivation {
+		domain.SortDomains(domainsByDerivation[derivation])
+		derivations = append(derivations, derivation)
+	}
+	slices.SortFunc(derivations, hostid6.Compare)
+	return derivations, domainsByDerivation, true
+}
+
 // Print prints a human-facing summary of the validated config and the reporting
 // services currently wired into the process.
 func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
@@ -91,6 +132,15 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, update.Domains[ipFamily]))
 			item(ipFamily.Describe()+" provider:", "%s", provider.Name(p))
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
+		}
+	}
+	if derivations, domainsByDerivation, ok := hostID6DerivationDomains(update.HostID6); ok {
+		inner.Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:")
+		subInner := inner.Indent()
+		for _, derivation := range derivations {
+			subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
+				derivation.Describe()+":",
+				pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
 		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))

@@ -67,6 +67,26 @@ type Provider interface {
 	// - explicit-empty modes use Available=true with an empty list
 }
 
+// StaticProvider is a Provider whose raw data is fixed at configuration time
+// and never changes across runs. This is distinct from the per-run "known"
+// state of GetRawData: every provider, including dynamic ones, reports a
+// known-or-unavailable result each run, whereas only a StaticProvider exposes
+// raw data settled before any detection round.
+//
+// Implementations return entries already normalized, sorted, and deduplicated
+// for their family (see NewStatic), so callers may trust the result without
+// revalidation.
+type StaticProvider interface {
+	Provider
+
+	// StaticRawData returns the configuration-time raw data, fixed across runs.
+	// It is a pure accessor: no context, no IO, no detection round (contrast
+	// GetRawData). The returned slice is a defensive clone the caller may freely
+	// mutate; it is already normalized, sorted, and deduplicated for the
+	// provider's family.
+	StaticRawData() []ipnet.RawEntry
+}
+
 // Name gets the protocol name. It returns "none" for nil.
 func Name(p Provider) string {
 	if p == nil {

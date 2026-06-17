@@ -5,11 +5,14 @@ package updater
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -30,6 +33,14 @@ func deriveDNSAddresses(rawData provider.DetectionResult) []netip.Addr {
 	}
 	slices.SortFunc(addresses, netip.Addr.Compare)
 	return slices.Compact(addresses)
+}
+
+func sharedDNSTargets(domains []domain.Domain, addresses []netip.Addr) dnsTargetsByDomain {
+	targets := make(dnsTargetsByDomain, len(domains))
+	for _, configuredDomain := range domains {
+		targets[configuredDomain] = addresses
+	}
+	return targets
 }
 
 func deriveWAFTargets(rawData provider.DetectionResult) setter.WAFTargets {
@@ -123,16 +134,43 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.UpdateCon
 
 // setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetIPs] with timeout.
 func setIPs(ctx context.Context, ppfmt pp.PP,
-	c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family, ips []netip.Addr,
+	c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family, targets map[domain.Domain][]netip.Addr,
 ) Message {
-	resps := emptySetterResponses()
+	type targetGroup struct {
+		ips   []netip.Addr
+		resps setterResponses
+	}
+	var groups []targetGroup
+	var missingDomains []domain.Domain
 
-	for _, domain := range c.Domains[ipFamily] {
-		resps.register(domain,
+	for _, configuredDomain := range c.Domains[ipFamily] {
+		// A present-but-empty target set legitimately means "clear this domain's
+		// records" (for example, when no address is detected), so an absent key
+		// must not collapse into the same empty slice: that would let a future
+		// regression desynchronizing this map from c.Domains silently delete real
+		// DNS records instead of failing loudly. Treat absence as a reportable fault.
+		ips, ok := targets[configuredDomain]
+		if !ok {
+			ppfmt.Noticef(pp.EmojiImpossible,
+				"No target set was provided for managed domain %s; this should not happen. Please report it at %s",
+				configuredDomain.Describe(), pp.IssueReportingURL)
+			missingDomains = append(missingDomains, configuredDomain)
+			continue
+		}
+
+		groupIndex := slices.IndexFunc(groups, func(group targetGroup) bool {
+			return slices.Equal(group.ips, ips)
+		})
+		if groupIndex < 0 {
+			groups = append(groups, targetGroup{ips: ips, resps: emptySetterResponses()})
+			groupIndex = len(groups) - 1
+		}
+
+		groups[groupIndex].resps.register(configuredDomain,
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.SetIPs(ctx, ppfmt, ipFamily, domain, ips, api.RecordParams{
+				return s.SetIPs(ctx, ppfmt, ipFamily, configuredDomain, ips, api.RecordParams{
 					TTL:     c.TTL,
-					Proxied: c.Proxied[domain],
+					Proxied: c.Proxied[configuredDomain],
 					Comment: c.RecordComment,
 					// The config surface does not expose non-empty fallback DNS tags yet.
 					// Nil here therefore means "the effective fallback tag set is empty", not "clear tags".
@@ -142,7 +180,44 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 
-	return generateClearOrUpdateMessage(ipFamily, ips, resps)
+	msgs := make([]Message, 0, len(groups)+1)
+	if len(missingDomains) > 0 {
+		msgs = append(msgs, generateMissingTargetSetsMessage(ipFamily, missingDomains))
+	}
+	for _, group := range groups {
+		msgs = append(msgs, generateClearOrUpdateMessage(ipFamily, group.ips, group.resps))
+	}
+	return mergeMessages(msgs...)
+}
+
+func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
+	for _, problem := range problems {
+		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
+		derivations := problem.Derivations.StringOrScalar()
+		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
+
+		switch problem.Kind {
+		case hostid6.LiteralPrefixTooLong:
+			ppfmt.Noticef(pp.EmojiError,
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+					"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
+					"existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, problem.PrefixLenBound, observed)
+		case hostid6.MACPrefixTooLong:
+			ppfmt.Noticef(pp.EmojiError,
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
+					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, problem.PrefixLenBound, observed)
+		case hostid6.MACPrefixTooShort:
+			ppfmt.Noticef(pp.EmojiError,
+				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
+					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
+				domains, derivations, observed)
+			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations)
+		default:
+			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))
+		}
+	}
 }
 
 // finalDeleteIP extracts relevant settings from the configuration
@@ -219,14 +294,28 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 		if p != nil {
 			rawData, msg := detectRawData(ctx, ppfmt, c, ipFamily)
 			msgs = append(msgs, msg)
-			addresses := deriveDNSAddresses(rawData)
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
 			if msg.HeartbeatMessage.OK {
 				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
-				shouldUpdateWAF = true
-				msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, addresses))
+				switch ipFamily {
+				case ipnet.IP4:
+					shouldUpdateWAF = true
+					targets := sharedDNSTargets(c.Domains[ipFamily], deriveDNSAddresses(rawData))
+					msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, targets))
+
+				case ipnet.IP6:
+					targets, problems := deriveIP6DNSTargets(c.Domains[ipFamily], c.HostID6, rawData)
+					if len(problems) > 0 {
+						reportHostID6Problems(ppfmt, problems)
+						targetsForWAF[ipFamily] = setter.NewUnavailableWAFTargets()
+						msgs = append(msgs, generateIP6DerivationFailureMessage())
+						continue
+					}
+					shouldUpdateWAF = true
+					msgs = append(msgs, setIPs(ctx, ppfmt, c, s, ipFamily, targets))
+				}
 			} else {
 				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
 			}

@@ -12,7 +12,7 @@ Give providers one observable contract for the raw data they output for lifecycl
 
 ## Core Model
 
-Providers currently operate per in-scope IP family and return one family-specific raw-data state for that run. The raw data is modeled as a family-scoped set of IP addresses with prefix lengths. For a round to yield known raw data, that raw data must already be admissible for all in-scope resources for that family. Future detection may vary by resource, not only by IP family.
+Providers currently operate per in-scope IP family and return one family-specific raw-data state for that run. The raw data is modeled as a family-scoped set of IP addresses with prefix lengths. For a round to yield known raw data, that raw data must be admissible for all in-scope resources for that family. This is a semantic output contract, independent of which operation checks admissibility or whether a resource-specific derivation was attempted. Future detection may vary by resource, not only by IP family.
 
 This note specifies how in-scope providers produce raw data under the reconciliation intents defined by [Lifecycle Model](lifecycle-model.markdown):
 
@@ -33,6 +33,7 @@ What counts as admissible is defined by derivation, per resource, in the resourc
 - Providers that discover bare addresses lift them using the effective default prefix length for that family (`IP4_DEFAULT_PREFIX_LEN`, default 32; `IP6_DEFAULT_PREFIX_LEN`, default 64). The default interpretation of bare IPv6 observations is owned by [IPv6 Default Prefix Length Policy](ipv6-default-prefix-length-policy.markdown).
 - Providers that discover CIDR-notation entries may preserve the stated prefix length and the full address, or may ignore unsuitable source prefix lengths and fall back to the defaults.
 - Host bits must not be eagerly masked. Preserving the original address bits through normalization keeps downstream host-ID derivation meaningful.
+- IPv6 DNS host-ID compatibility constraints are defined in [DNS Ownership Instantiation](managed-record-ownership.markdown); they do not become provider-specific acceptance rules.
 
 Every entry in the current known result must satisfy these rules:
 
