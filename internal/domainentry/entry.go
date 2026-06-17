@@ -114,7 +114,7 @@ func (state *buildState) buildList(tree syntax.Tree[formID]) bool {
 		state.entries = append(state.entries, entry)
 		return false
 	case syntax.Op[formID]:
-		//nolint:exhaustive // Only top-level entry-list forms are valid here.
+		// Only top-level entry-list forms are valid here.
 		switch tree.ID {
 		case formFieldsEmpty, formFields:
 			entry, diagnostic := buildEntry(tree)
@@ -146,10 +146,12 @@ func (state *buildState) buildList(tree syntax.Tree[formID]) bool {
 		case formCommaOnly:
 			state.recordExtraComma(tree.Tokens[0].Span)
 			return false
+		default:
+			panic("domainentry: invalid parsed entry-list tree; this should not happen; please report it")
 		}
+	default:
+		panic("domainentry: invalid parsed entry-list tree; this should not happen; please report it")
 	}
-
-	panic("domainentry: invalid parsed entry-list tree; this should not happen; please report it")
 }
 
 func (state *buildState) recordExtraComma(span syntax.Span) {
@@ -268,7 +270,7 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			Detail: err,
 		}
 	case syntax.Op[formID]:
-		//nolint:exhaustive // Only structured host-ID values are valid here.
+		// Only structured host-ID values are valid here.
 		switch tree.ID {
 		case formMAC:
 			atom := mustAtom(tree.Args[0])
@@ -283,10 +285,12 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			return []hostid6.Derivation{hostid6.MAC(mac)}, nil
 		case formBracket:
 			return buildHostID6ValueList(tree.Args[0])
+		default:
+			panic("domainentry: invalid parsed hostid6 value tree; this should not happen; please report it")
 		}
+	default:
+		panic("domainentry: invalid parsed hostid6 value tree; this should not happen; please report it")
 	}
-
-	panic("domainentry: invalid parsed hostid6 value tree; this should not happen; please report it")
 }
 
 func buildHostID6ValueList(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagnostic) {

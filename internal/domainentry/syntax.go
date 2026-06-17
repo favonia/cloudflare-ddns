@@ -65,56 +65,60 @@ func parseSyntax(input string) (syntax.Tree[formID], *syntax.ParseError) {
 }
 
 func validateList(tree syntax.Tree[formID]) *syntax.ParseError {
-	switch tree := tree.(type) {
-	case syntax.EmptyTree[formID], syntax.Atom[formID]:
+	// Empty and atom lists are always valid; only operator forms need checking.
+	op, ok := tree.(syntax.Op[formID])
+	if !ok {
 		return nil
-	case syntax.Op[formID]:
-		//nolint:exhaustive // Unrecognized entry-list forms fall through to invalidTree below.
-		switch tree.ID {
-		case formFieldsEmpty:
-			return requireAtom(tree.Args[0])
-		case formFields:
-			if err := requireAtom(tree.Args[0]); err != nil {
-				return err
-			}
-			return validateFieldList(tree.Args[1])
-		case formComma:
-			if err := validateList(tree.Args[0]); err != nil {
-				return err
-			}
-			return validateList(tree.Args[1])
-		case formTrailingComma, formLeadingComma:
-			return validateList(tree.Args[0])
-		case formCommaOnly:
-			return nil
-		case formMissingComma:
-			// Explicit commas bind more tightly than missing commas, so either
-			// side can contain a mixed explicit/missing plain-domain list.
-			if !isPlainList(tree.Args[0]) || !isPlainList(tree.Args[1]) {
-				return invalidTree(tree.Args[1])
-			}
-			return nil
-		}
 	}
-	return invalidTree(tree)
+	switch op.ID {
+	case formFieldsEmpty:
+		return requireAtom(op.Args[0])
+	case formFields:
+		if err := requireAtom(op.Args[0]); err != nil {
+			return err
+		}
+		return validateFieldList(op.Args[1])
+	case formComma:
+		if err := validateList(op.Args[0]); err != nil {
+			return err
+		}
+		return validateList(op.Args[1])
+	case formTrailingComma, formLeadingComma:
+		return validateList(op.Args[0])
+	case formCommaOnly:
+		return nil
+	case formMissingComma:
+		// Explicit commas bind more tightly than missing commas, so either
+		// side can contain a mixed explicit/missing plain-domain list.
+		if !isPlainList(op.Args[0]) || !isPlainList(op.Args[1]) {
+			return invalidTree(op.Args[1])
+		}
+		return nil
+	default:
+		// Any other operator form is not a valid top-level entry list.
+		return invalidTree(tree)
+	}
 }
 
 func validateFieldList(tree syntax.Tree[formID]) *syntax.ParseError {
-	if tree, ok := tree.(syntax.Op[formID]); ok {
-		//nolint:exhaustive // Only assignment and strict-list forms are valid in a field block.
-		switch tree.ID {
-		case formAssign:
-			return validateAssignment(tree)
-		case formComma:
-			if err := validateFieldList(tree.Args[0]); err != nil {
-				return err
-			}
-			return validateFieldList(tree.Args[1])
-		case formTrailingComma:
-			return validateFieldList(tree.Args[0])
-		}
+	op, ok := tree.(syntax.Op[formID])
+	if !ok {
+		return invalidTree(tree)
 	}
-	return invalidTree(tree)
+	// Only assignment and strict-list forms are valid in a field block.
+	switch op.ID {
+	case formAssign:
+		return validateAssignment(op)
+	case formComma:
+		if err := validateFieldList(op.Args[0]); err != nil {
+			return err
+		}
+		return validateFieldList(op.Args[1])
+	case formTrailingComma:
+		return validateFieldList(op.Args[0])
+	default:
+		return invalidTree(tree)
+	}
 }
 
 func validateAssignment(tree syntax.Op[formID]) *syntax.ParseError {
@@ -129,15 +133,18 @@ func validateValue(tree syntax.Tree[formID]) *syntax.ParseError {
 	case syntax.Atom[formID]:
 		return nil
 	case syntax.Op[formID]:
-		//nolint:exhaustive // Only mac calls and bracketed lists are valid structured values.
+		// Only mac calls and bracketed lists are valid structured values.
 		switch tree.ID {
 		case formMAC:
 			return requireAtom(tree.Args[0])
 		case formBracket:
 			return validateValueList(tree.Args[0])
+		default:
+			return invalidTree(tree)
 		}
+	default:
+		return invalidTree(tree)
 	}
-	return invalidTree(tree)
 }
 
 func validateValueList(tree syntax.Tree[formID]) *syntax.ParseError {
@@ -168,7 +175,7 @@ func isPlainList(tree syntax.Tree[formID]) bool {
 	case syntax.Atom[formID]:
 		return true
 	case syntax.Op[formID]:
-		//nolint:exhaustive // Structured-entry forms make a missing-comma list non-plain.
+		// Structured-entry forms make a missing-comma list non-plain.
 		switch tree.ID {
 		case formComma, formMissingComma:
 			return isPlainList(tree.Args[0]) && isPlainList(tree.Args[1])
@@ -176,9 +183,12 @@ func isPlainList(tree syntax.Tree[formID]) bool {
 			return isPlainList(tree.Args[0])
 		case formCommaOnly:
 			return true
+		default:
+			return false
 		}
+	default:
+		return false
 	}
-	return false
 }
 
 func invalidTree(tree syntax.Tree[formID]) *syntax.ParseError {

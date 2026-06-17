@@ -35,6 +35,27 @@ func TestParseEntriesPlainEntryExactSpan(t *testing.T) {
 	}}, entries)
 }
 
+func TestParseEntriesEmptyInput(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainentry.Parse("")
+
+	require.Nil(t, err)
+	require.Empty(t, entries)
+	require.Empty(t, diagnostics)
+}
+
+func TestParseEntriesReportsInvalidValueInBracketList(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainentry.Parse("example.org{hostid6=[bad,::1]}")
+
+	require.Nil(t, err)
+	require.Empty(t, entries)
+	require.Len(t, diagnostics, 1)
+	require.Equal(t, domainentry.KindInvalidHostID6, diagnostics[0].Kind)
+}
+
 func TestParseEntriesDomainsAndSpans(t *testing.T) {
 	t.Parallel()
 
