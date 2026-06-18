@@ -44,7 +44,7 @@ func validateStaticIP6HostIDCompatibility(
 ) bool {
 	_, problems := hostid6.DeriveDomains(domains, policies, rawEntries)
 	for _, problem := range problems {
-		derivations := problem.Derivations.StringOrScalar()
+		derivations := problem.Derivations.ConfigString()
 		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
 		observed := pp.EnglishJoinMapOrEmptyLabel(ipnet.RawEntry.String, problem.Observed, "(none)")
 
@@ -217,15 +217,15 @@ func warnShadowedFamilyIntents(
 			ip6Listed[dom] = true
 		}
 
-		// StringOrScalar() is the canonical set rendering, so it is a safe grouping
-		// key: distinct sets never collide, and sorting the keys gives a deterministic
-		// order (mirroring how warnSuspiciousMACs sorts MACs).
+		// ConfigString() is the canonical hostid6 value rendering, so it is a safe
+		// grouping key: distinct sets never collide, and sorting the keys gives a
+		// deterministic order (mirroring how warnSuspiciousMACs sorts MACs).
 		domainsBySet := map[string][]domain.Domain{}
 		for dom := range normalized.ExplicitHostID6 {
 			if ip6Listed[dom] {
 				continue
 			}
-			key := normalized.HostID6[dom].StringOrScalar()
+			key := normalized.HostID6[dom].ConfigString()
 			domainsBySet[key] = append(domainsBySet[key], dom)
 		}
 

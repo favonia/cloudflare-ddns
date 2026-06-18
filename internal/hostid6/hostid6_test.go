@@ -139,8 +139,8 @@ func TestSetString(t *testing.T) {
 	two := mustLiteral(t, "::2")
 
 	require.Equal(t, "[::1,::2]", hostid6.NewSet(two, one).String())
-	require.Equal(t, "::1", hostid6.NewSet(one).StringOrScalar())
-	require.Equal(t, "[::1,::2]", hostid6.NewSet(two, one).StringOrScalar())
+	require.Equal(t, "::1", hostid6.NewSet(one).ConfigString())
+	require.Equal(t, "[::1,::2]", hostid6.NewSet(two, one).ConfigString())
 	require.Panics(t, func() { _ = hostid6.Set{}.String() })
-	require.Panics(t, func() { _ = hostid6.Set{}.StringOrScalar() })
+	require.Panics(t, func() { _ = hostid6.Set{}.ConfigString() })
 }
