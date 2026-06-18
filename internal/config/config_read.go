@@ -260,20 +260,10 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	// }}}
 
 	// Check 5: are there other unused settings? {{{
-	// Check 5.1: unused domains in DOMAINS, IP4_DOMAINS, and IP6_DOMAINS
-	for ipFamily, domainsForFamily := range ipnet.Bindings(domains) {
-		if providerMap[ipFamily] == nil {
-			for _, domain := range domainsForFamily {
-				if activeDomainSet[domain] {
-					continue
-				}
-
-				ppfmt.Noticef(pp.EmojiUserWarning,
-					"Domain %q is ignored because it is only for %s but %s is disabled",
-					domain.Describe(), ipFamily.Describe(), ipFamily.Describe())
-			}
-		}
-	}
+	// Check 5.1: family-specific intents (IP4_DOMAINS/IP6_DOMAINS membership and
+	// explicit hostid6) shadowed by a disabled provider, even on a domain that
+	// survives via the other family.
+	warnShadowedFamilyIntents(ppfmt, ip4Managed, ip6Managed, normalized, c)
 	// Check 5.2: unused fallback values and selectors
 	if len(activeDomainSet) == 0 { // We are only updating WAF lists.
 		if c.TTL != api.TTLAuto {

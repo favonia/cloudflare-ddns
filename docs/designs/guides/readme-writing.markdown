@@ -8,6 +8,10 @@ Does not define: feature semantics, a second decision tree, or local wording rul
 
 This note applies project-principle consequences to README readers as operators. Use [Project Principles](../core/project-principles.markdown) for tradeoffs. Use this note for the README-writing consequences of those tradeoffs.
 
+## The Reader-Decision Test
+
+This is the README's governing rule; every section below is a corollary of it. One question decides everything: does this change what the reader must decide, expect, configure, or verify? If yes, make it clear and local at the point of action. If not, prefer the lightest treatment that still lets the reader act correctly — plain prose, a later technical section, or leaving it to the point where it surfaces, such as a runtime message. The sections that follow are this one test applied to four axes: phrasing (Operator-Facing Explanations), placement (Point-Of-Use Clarity, Layering And Placement), terms (Stable Terms And Reader Decisions), and markers (Fixed README Markers).
+
 ## Operator-Facing Explanations
 
 - Explain behavior through user-visible outcomes, required decisions, and actionable setup or upgrade steps.
@@ -39,7 +43,7 @@ This note applies project-principle consequences to README readers as operators.
 
 ## Fixed README Markers
 
-Use this fixed marker set only when it sharpens a reader's decision, expectation, or reading order. Keep each marker stable in meaning across the README.
+Use this fixed marker set only when it sharpens a reader's decision, expectation, or reading order; do not add markers mechanically. Keep each marker stable in meaning across the README.
 This README uses the fixed marker set below.
 
 | Marker                            | Stable meaning                                  | Use when                                                                                                                                                                                  | Do not use when                                                                                                                                        |
@@ -55,7 +59,6 @@ This README uses the fixed marker set below.
 - If several nearby points compete for `⚠️`, keep it on the highest-risk point and rewrite the others in plain prose or section structure.
 - Do not use `🧪` as a release-status marker.
 - Do not invent additional fixed markers unless they solve a repeated README-level reader-decision problem. Decorative section emojis and one-off callout icons do not carry stable marker semantics.
-- Apply markers only when they change the reader's decision or expectation; do not add them mechanically.
 
 ## Scope Boundary
 
