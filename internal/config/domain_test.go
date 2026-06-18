@@ -388,7 +388,7 @@ func TestBuildConfigDoesNotWarnDefaultHostID6OrFamilyAgnosticDomainUnderSingleSt
 	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
 	require.True(t, ok)
 	require.NotNil(t, built)
-	require.Equal(t, "", output.String())
+	require.Empty(t, output.String())
 }
 
 func TestBuildConfigWarnsOnceForEntirelyShadowedDomain(t *testing.T) {

@@ -678,7 +678,7 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().IsShowing(pp.Info).Return(true),
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
-					m.EXPECT().Noticef(pp.EmojiUserWarning, "Domain %q is ignored because it is only for %s but %s is disabled", "d.e.f", "IPv4", "IPv4"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "The %s listing of %s is ignored because %s is disabled", "IP4_DOMAINS", "a.b.c and d.e.f", "IPv4"),
 				)
 			},
 		},
