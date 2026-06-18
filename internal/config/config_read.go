@@ -128,6 +128,10 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 			provider.Name(nil))
 		return nil, false
 	}
+	if ip6Managed && len(normalized.ExplicitHostID6) > 0 {
+		ppfmt.InfoOncef(pp.MessageExperimentalHostID6, pp.EmojiExperimental,
+			`You are using the experimental "hostid6" domain field for IPv6 DNS`)
+	}
 
 	// Check 2c: are configuration-time static IPv6 entries compatible with effective host-ID policies?
 	// Only static providers expose raw data before a detection round; the entries are already
