@@ -128,16 +128,17 @@ func (s Set) String() string {
 	return "[" + strings.Join(setSyntaxValues(s), ",") + "]"
 }
 
-// StringOrScalar returns canonical scalar syntax for a singleton set and
-// canonical compact set syntax otherwise.
-func (s Set) StringOrScalar() string {
-	if s.IsZero() {
-		panic("hostid6.Set.StringOrScalar requires a non-empty set")
-	}
-	if s.Len() == 1 {
+// ConfigString returns canonical hostid6 field-value syntax for a non-empty set.
+// Singleton sets use scalar syntax; larger sets use bracketed set syntax.
+func (s Set) ConfigString() string {
+	switch len(s.values) {
+	case 0:
+		panic("hostid6.Set.ConfigString requires a non-empty set")
+	case 1:
 		return s.values[0].String()
+	default:
+		return s.String()
 	}
-	return s.String()
 }
 
 func setSyntaxValues(set Set) []string {
