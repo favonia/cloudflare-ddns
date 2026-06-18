@@ -5,12 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
@@ -85,6 +87,27 @@ func TestBuildConfigAcceptsCanonicalEquivalentRepeatedHostID6Opinions(t *testing
 		[]string{"::1", "mac(00-11-22-33-44-aa)"},
 		hostID6SetStrings(built.Update.HostID6[domain.FQDN("example.org")]),
 	)
+}
+
+func TestBuildConfigEmitsExperimentalNoticeForExplicitHostID6(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Domains = mustEntries(t, "example.org{hostid6=::1}")
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().IsShowing(pp.Info).Return(false)
+	mockPP.EXPECT().InfoOncef(
+		pp.MessageExperimentalHostID6,
+		pp.EmojiExperimental,
+		`You are using the experimental "hostid6" domain field for IPv6 DNS`,
+	)
+
+	built, ok := raw.BuildConfig(mockPP)
+
+	require.True(t, ok)
+	require.NotNil(t, built)
 }
 
 func TestBuildConfigRejectsConflictingHostID6Opinions(t *testing.T) {
