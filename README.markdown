@@ -510,6 +510,8 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > 🔗 `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS` are additive; they do not override each other. For example, setting `DOMAINS=a.org` and `IP4_DOMAINS=b.org` means the updater manages `A` records for both `a.org` and `b.org` (and `AAAA` records for `a.org`).
 >
+> 🤖 (unreleased) `DOMAINS=a.org` manages the same records as `IP4_DOMAINS=a.org` together with `IP6_DOMAINS=a.org`. The difference shows up only when you turn a provider off: with `IP6_PROVIDER=none`, a domain you put in `IP6_DOMAINS` is reported as ignored, while a domain you put in `DOMAINS` is not. To choose which records a domain gets without seeing that report, list it in `DOMAINS`.
+>
 > 🧪 (unreleased) Advanced IPv6 setups can set the host bits of `AAAA` records per domain with a `hostid6` field, such as `example.org{hostid6=::1}`. `hostid6` is valid only in `DOMAINS` and `IP6_DOMAINS` and is rejected in `IP4_DOMAINS`. Omitting it keeps the default, `preserve`, which uses the detected IPv6 addresses directly.
 >
 > For example, if the updater detects `2001:db8:1:2:aaaa:bbbb:cccc:dddd/64`, the `hostid6` value decides the `AAAA` record:
@@ -523,6 +525,8 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 > To apply more than one host ID to a domain, use the bracketed set form, such as `example.org{hostid6=[::1,mac(00-11-22-33-44-55)]}`; the updater then writes one `AAAA` record per combination of a detected prefix and a listed host ID.
 >
 > 🤖 The exact `hostid6` compatibility rules (when a literal or MAC fits a detected prefix) and the runtime behavior when a detected prefix is incompatible are defined in [DNS Ownership Instantiation](docs/designs/features/managed-record-ownership.markdown) and [Lifecycle Model](docs/designs/features/lifecycle-model.markdown). `hostid6` changes only DNS targets; WAF lists still use the detected IPv6 prefixes directly.
+>
+> 🤖 (unreleased) With `IP6_PROVIDER=none`, `hostid6` has no effect and is reported as ignored, because it only changes `AAAA` records. This holds wherever you wrote it, including in `DOMAINS`.
 >
 > 🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 >
