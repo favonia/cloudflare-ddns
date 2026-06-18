@@ -377,6 +377,61 @@ func TestBuildConfigGroupsHostID6BySetValueShadowedByDisabledIP6(t *testing.T) {
 	)
 }
 
+func TestBuildConfigSuppressesHostID6WarningWhenDomainAlsoListedInIP6Domains(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewCloudflareTrace()}
+	raw.Domains = mustEntries(t, "x.example{hostid6=mac(00-11-22-33-44-55)}")
+	raw.IP6Domains = mustEntries(t, "x.example")
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t,
+		"The IP6_DOMAINS listing of x.example is ignored because IPv6 is disabled\n",
+		output.String(),
+	)
+}
+
+func TestBuildConfigWarnsBothMembershipAndHostID6ForDistinctDomains(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewCloudflareTrace()}
+	raw.IP4Domains = mustEntries(t, "keep.example")
+	raw.Domains = mustEntries(t, "keep.example{hostid6=mac(00-11-22-33-44-55)}")
+	raw.IP6Domains = mustEntries(t, "dead.example")
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t,
+		"The IP6_DOMAINS listing of dead.example is ignored because IPv6 is disabled\n"+
+			"hostid6=mac(00-11-22-33-44-55) for keep.example is ignored because IPv6 is disabled\n",
+		output.String(),
+	)
+}
+
+func TestBuildConfigWarnsExplicitDefaultHostID6ShadowedByDisabledIP6(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewCloudflareTrace()}
+	raw.Domains = mustEntries(t, "x.example{hostid6=preserve}")
+
+	var output bytes.Buffer
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t,
+		"hostid6=preserve for x.example is ignored because IPv6 is disabled\n",
+		output.String(),
+	)
+}
+
 func TestBuildConfigDoesNotWarnDefaultHostID6OrFamilyAgnosticDomainUnderSingleStack(t *testing.T) {
 	t.Parallel()
 
