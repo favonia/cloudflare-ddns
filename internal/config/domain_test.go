@@ -233,25 +233,51 @@ func TestBuildConfigRejectsKnownIncompatibleIPv6RawData(t *testing.T) {
 func TestBuildConfigRejectsKnownMACHostIDUnderShortPrefix(t *testing.T) {
 	t.Parallel()
 
-	raw := config.DefaultRaw()
-	raw.Provider[ipnet.IP4] = nil
-	raw.Provider[ipnet.IP6] = provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/56")
-	raw.Domains = mustEntries(t, "example.org{hostid6=mac(00-11-22-33-44-55)}")
+	for _, tc := range []struct {
+		name     string
+		hostID6  string
+		expected string
+	}{
+		{
+			name:    "single-mac",
+			hostID6: "mac(00-11-22-33-44-55)",
+			expected: "IP6_PROVIDER=static:2001:db8::1/56 cannot be used for example.org " +
+				"with hostid6=mac(00-11-22-33-44-55): " +
+				"it requires a /64 prefix, but the provider includes 2001:db8::1/56; change IP6_PROVIDER or that hostid6 setting\n" +
+				"MAC-based host IDs require a /64 prefix. For 2001:db8::1/56, look up the subnet bits between /56 and /64; " +
+				"the MAC-derived interface identifier is ::211:22ff:fe33:4455. If those subnet bits are zero, use " +
+				"hostid6=::211:22ff:fe33:4455. If they are not zero, insert them into the hostid6 literal before the " +
+				"interface identifier. Please open an issue at " + pp.IssueReportingURL + " if you need direct MAC support for shorter prefixes\n",
+		},
+		{
+			name:    "multiple-macs",
+			hostID6: "[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]",
+			expected: "IP6_PROVIDER=static:2001:db8::1/56 cannot be used for example.org " +
+				"with hostid6=[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]: " +
+				"it requires a /64 prefix, but the provider includes 2001:db8::1/56; change IP6_PROVIDER or that hostid6 setting\n" +
+				"MAC-based host IDs require a /64 prefix. For 2001:db8::1/56, look up the subnet bits between /56 and /64; " +
+				"the MAC-derived interface identifiers are ::211:22ff:fe33:4455 and ::a8bb:ccff:fedd:eeff. " +
+				"If those subnet bits are zero, use hostid6=[::211:22ff:fe33:4455,::a8bb:ccff:fedd:eeff]. " +
+				"If they are not zero, insert them into the hostid6 literal before the interface identifier. " +
+				"Please open an issue at " + pp.IssueReportingURL + " if you need direct MAC support for shorter prefixes\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	var output bytes.Buffer
-	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+			raw := config.DefaultRaw()
+			raw.Provider[ipnet.IP4] = nil
+			raw.Provider[ipnet.IP6] = provider.MustNewStatic(ipnet.IP6, 64, "2001:db8::1/56")
+			raw.Domains = mustEntries(t, "example.org{hostid6="+tc.hostID6+"}")
 
-	require.False(t, ok)
-	require.Nil(t, built)
-	require.Equal(t,
-		"IP6_PROVIDER=static:2001:db8::1/56 cannot be used for example.org with hostid6=mac(00-11-22-33-44-55): "+
-			"it requires a /64 prefix, but the provider includes 2001:db8::1/56; change IP6_PROVIDER or that hostid6 setting\n"+
-			"MAC-based host IDs require a /64 prefix. For 2001:db8::1/56, look up the subnet bits between /56 and /64; "+
-			"the MAC-derived interface identifier is ::211:22ff:fe33:4455. If those subnet bits are zero, use "+
-			"hostid6=::211:22ff:fe33:4455. If they are not zero, insert them into the hostid6 literal before the "+
-			"interface identifier. Please open an issue at "+pp.IssueReportingURL+" if you need direct MAC support for shorter prefixes\n",
-		output.String(),
-	)
+			var output bytes.Buffer
+			built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+
+			require.False(t, ok)
+			require.Nil(t, built)
+			require.Equal(t, tc.expected, output.String())
+		})
+	}
 }
 
 func TestBuildConfigAcceptsIPv6RawDataWithoutProvableIncompatibility(t *testing.T) {

@@ -57,3 +57,13 @@ func TestEmitMACShortPrefixHintSkipsNonMAC(t *testing.T) {
 		hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}),
 	), netip.MustParsePrefix("2001:db8:1234::abcd/56"))
 }
+
+func TestEmitMACShortPrefixHintSkipsEmptyMACSet(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(mockCtrl)
+
+	hostid6.EmitMACShortPrefixHint(ppfmt, hostid6.NewSet(hostid6.Preserve()),
+		netip.MustParsePrefix("2001:db8:1234::abcd/56"))
+}
