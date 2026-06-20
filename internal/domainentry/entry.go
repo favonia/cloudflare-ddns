@@ -245,7 +245,7 @@ func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]HostID6Opinion
 func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion, *Diagnostic) {
 	field := mustAtom(tree.Args[0])
 	if field.Token.Text != "hostid6" {
-		return HostID6Opinion{}, &Diagnostic{
+		return HostID6Opinion{Set: hostid6.Set{}, SourceSnippet: ""}, &Diagnostic{
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
@@ -254,7 +254,7 @@ func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion
 
 	values, diagnostic := buildHostID6Values(tree.Args[1])
 	if diagnostic != nil {
-		return HostID6Opinion{}, diagnostic
+		return HostID6Opinion{Set: hostid6.Set{}, SourceSnippet: ""}, diagnostic
 	}
 	return HostID6Opinion{
 		Set:           hostid6.NewSet(values...),

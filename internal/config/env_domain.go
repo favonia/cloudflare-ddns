@@ -67,7 +67,9 @@ func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domaine
 				continue
 			}
 			ppfmt.Noticef(pp.EmojiUserError,
-				`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; remove hostid6 from this %s entry, or configure the IPv6 entry in DOMAINS or IP6_DOMAINS`,
+				`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; `+
+					`remove hostid6 from this %s entry, `+
+					`or configure the IPv6 entry in DOMAINS or IP6_DOMAINS`,
 				key, input[entry.Span.Start:entry.Span.End], entry.Domain.Describe(), key)
 			return false
 		}

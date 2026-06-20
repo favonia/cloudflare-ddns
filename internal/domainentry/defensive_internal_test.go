@@ -18,7 +18,7 @@ func unknownOp() syntax.Op[formID] {
 }
 
 func newBuildState() *buildState {
-	return &buildState{entries: nil, diagnostics: nil, extraComma: false, missingComma: false}
+	return &buildState{input: "", entries: nil, diagnostics: nil, extraComma: false, missingComma: false}
 }
 
 func TestMustAtomPanicsOnNonAtom(t *testing.T) {
