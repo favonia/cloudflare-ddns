@@ -856,8 +856,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
 						"[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]",
 						"alpha.example and beta.example", 64, "2001:db8::1/65 and 2001:db8:1::1/65"),
-					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
-						"Existing AAAA records were preserved for this update"),
 					p.EXPECT().NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
 						"Existing IPv6 WAF list items were preserved for this update"),
 				)
@@ -894,14 +892,13 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 						"No AAAA records were changed because hostid6=%s for %s requires a detected /64 prefix, "+
 							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
 						"mac(00-11-22-33-44-55)", "alpha.example", "2001:db8:1234::abcd/56"),
-					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
-						"Existing AAAA records were preserved for this update"),
 					p.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 						"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
-							"the MAC-derived interface identifier is %s. If those subnet bits are zero, use hostid6=%s. "+
+							"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
 							"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 							"Please open an issue at %s if you need direct MAC support for shorter prefixes",
-						"2001:db8:1234::abcd/56", 56, "::211:22ff:fe33:4455", "::211:22ff:fe33:4455",
+						"2001:db8:1234::abcd/56", 56, "interface identifier is",
+						"::211:22ff:fe33:4455", "::211:22ff:fe33:4455",
 						pp.IssueReportingURL),
 				)
 			})
@@ -944,8 +941,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 						"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
 							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
 						"mac(00-11-22-33-44-55)", "alpha.example", 64, "2001:db8::1/65"),
-					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
-						"Existing AAAA records were preserved for this update"),
 					p.EXPECT().NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
 						"Existing IPv6 WAF list items were preserved for this update"),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,

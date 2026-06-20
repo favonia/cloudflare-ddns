@@ -109,6 +109,8 @@ func hostID6DerivationDomains(
 // Print prints a human-facing summary of the validated config and the reporting
 // services currently wired into the process.
 func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+	// The startup summary is verbose-only. Quiet mode should still show
+	// validation warnings and runtime outcomes, but not the inspected config.
 	if !ppfmt.IsShowing(pp.Info) {
 		return
 	}

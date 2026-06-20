@@ -16,6 +16,13 @@ This note records the durable operator-message consequences of the project princ
 - If the wording sounds driven by parser tokens, placeholders, helper names, or other implementation details, rewrite it.
 - Use the later sections of this note as constraints on that outcome.
 
+## Verbosity Intent
+
+- Design each verbosity level around the operator job it serves.
+- Quiet output is for status surfaces and quick scans. Preserve essential outcomes, material risks, and decisions the operator may need to make next; omit detail that is mainly explanatory, inspectable, or educational.
+- Normal output is for an operator actively reading the run. It may include context, configuration summaries, and remediation guidance, but should still read as an outcome-oriented narrative rather than a debug dump.
+- When changing message levels, review the complete output for each verbosity level against that level's job.
+
 ## One-Time Detail When It Helps
 
 - When extra nuance is useful but not part of the primary outcome, emit it as follow-up detail with `NoticeOncef` or `InfoOncef` instead of bloating the main message.

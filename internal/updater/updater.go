@@ -219,9 +219,9 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup, hasWAFLi
 		}
 	}
 
-	ppfmt.NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
-		"Existing AAAA records were preserved for this update")
 	if hasWAFLists {
+		// The hostid6 errors name AAAA records; keep this quiet-visible so
+		// WAF operators also see that IPv6 list items were preserved.
 		ppfmt.NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
 			"Existing IPv6 WAF list items were preserved for this update")
 	}

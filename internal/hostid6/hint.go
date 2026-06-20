@@ -39,6 +39,8 @@ func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
 		interfaceIdentifierClause = "interface identifier is"
 	}
 
+	// Keep this quiet-visible: without the literal workaround, quiet output
+	// names the failed hostid6 policy but does not show the direct repair path.
 	ppfmt.NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 		"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
 			"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
