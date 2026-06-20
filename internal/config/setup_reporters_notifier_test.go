@@ -73,7 +73,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -94,7 +94,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					2)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -115,7 +115,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"Percent-encode spaces in URLs to suppress this warning")
+					`Encode spaces as "%%20" in URLs to suppress this warning`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -138,7 +138,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -159,7 +159,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -174,7 +174,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			shoutrrr: "meow-meow-meow://cute",
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to prepare Shoutrrr notifications: %v`, gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to set up Shoutrrr notification services: %v`, gomock.Any())
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -192,7 +192,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					2)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -213,7 +213,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					5)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
@@ -234,7 +234,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
+					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you use YAML folded block style ">", switch to literal block style "|"`)
