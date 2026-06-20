@@ -34,20 +34,15 @@ func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
 
 	hostList := pp.EnglishJoinOrEmptyLabel(hosts, "(none)")
 	configString := NewSet(literals...).ConfigString()
+	interfaceIdentifierClause := "interface identifiers are"
 	if len(hosts) == 1 {
-		ppfmt.NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
-			"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
-				"the MAC-derived interface identifier is %s. If those subnet bits are zero, use hostid6=%s. "+
-				"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
-				"Please open an issue at %s if you need direct MAC support for shorter prefixes",
-			observed.String(), observed.Bits(), hostList, configString, pp.IssueReportingURL)
-		return
+		interfaceIdentifierClause = "interface identifier is"
 	}
 
 	ppfmt.NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 		"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
-			"the MAC-derived interface identifiers are %s. If those subnet bits are zero, use hostid6=%s. "+
+			"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
 			"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 			"Please open an issue at %s if you need direct MAC support for shorter prefixes",
-		observed.String(), observed.Bits(), hostList, configString, pp.IssueReportingURL)
+		observed.String(), observed.Bits(), interfaceIdentifierClause, hostList, configString, pp.IssueReportingURL)
 }

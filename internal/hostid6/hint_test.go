@@ -18,11 +18,12 @@ func TestEmitMACShortPrefixHint(t *testing.T) {
 	ppfmt := mocks.NewMockPP(mockCtrl)
 	ppfmt.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 		"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
-			"the MAC-derived interface identifiers are %s. If those subnet bits are zero, use hostid6=%s. "+
+			"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
 			"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 			"Please open an issue at %s if you need direct MAC support for shorter prefixes",
 		"2001:db8:1234::abcd/56",
 		56,
+		"interface identifiers are",
 		"::211:22ff:fe33:4455 and ::a8bb:ccff:fedd:eeff",
 		"[::211:22ff:fe33:4455,::a8bb:ccff:fedd:eeff]",
 		pp.IssueReportingURL)
@@ -40,11 +41,12 @@ func TestEmitMACShortPrefixHintSkipsNonMAC(t *testing.T) {
 	ppfmt := mocks.NewMockPP(mockCtrl)
 	ppfmt.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
 		"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
-			"the MAC-derived interface identifier is %s. If those subnet bits are zero, use hostid6=%s. "+
+			"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
 			"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 			"Please open an issue at %s if you need direct MAC support for shorter prefixes",
 		"2001:db8:1234::abcd/56",
 		56,
+		"interface identifier is",
 		"::211:22ff:fe33:4455",
 		"::211:22ff:fe33:4455",
 		pp.IssueReportingURL)
