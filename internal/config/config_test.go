@@ -58,7 +58,7 @@ func summarizeEntries(entries []domainentry.Entry) []rawEntrySummary {
 	for _, entry := range entries {
 		opinions := make([][]string, 0, len(entry.HostID6Opinions))
 		for _, opinion := range entry.HostID6Opinions {
-			values := opinion.Values()
+			values := opinion.Set.Values()
 			descriptions := make([]string, 0, len(values))
 			for _, value := range values {
 				descriptions = append(descriptions, value.Describe())

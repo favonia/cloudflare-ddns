@@ -44,7 +44,7 @@ func TestBuildFieldsPanicsOnUnexpectedForm(t *testing.T) {
 	t.Parallel()
 
 	state := newBuildState()
-	require.Panics(t, func() { _, _, _ = state.buildFields(unknownOp()) })
+	require.Panics(t, func() { _, _ = state.buildFields(unknownOp()) })
 }
 
 func TestBuildListPanicsOnUnexpectedForm(t *testing.T) {

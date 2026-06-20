@@ -37,12 +37,19 @@ const (
 	KindMissingComma
 )
 
+// HostID6Opinion is one parsed hostid6 assignment. Set carries the normalized
+// value used for behavior, while SourceSnippet preserves the original
+// assignment text for diagnostics.
+type HostID6Opinion struct {
+	Set           hostid6.Set
+	SourceSnippet string
+}
+
 // Entry is one parsed domain declaration.
 type Entry struct {
-	Domain                 domain.Domain
-	HostID6Opinions        []hostid6.Set
-	HostID6OpinionSnippets []string
-	Span                   syntax.Span
+	Domain          domain.Domain
+	HostID6Opinions []HostID6Opinion
+	Span            syntax.Span
 }
 
 // Diagnostic describes one semantic failure in a parsed domain entry. Kind is
@@ -200,34 +207,34 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 		}
 	}
 
-	opinions, snippets, diagnostic := state.buildFields(fieldsTree)
+	opinions, diagnostic := state.buildFields(fieldsTree)
 	if diagnostic != nil {
 		var noEntry Entry
 		return noEntry, diagnostic
 	}
-	return Entry{Domain: dom, HostID6Opinions: opinions, HostID6OpinionSnippets: snippets, Span: tree.Span()}, nil
+	return Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}, nil
 }
 
-func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]hostid6.Set, []string, *Diagnostic) {
+func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]HostID6Opinion, *Diagnostic) {
 	if tree == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	op := mustOp(tree)
 	switch op.ID {
 	case formAssign:
-		opinion, snippet, diagnostic := state.buildAssignment(op)
+		opinion, diagnostic := state.buildAssignment(op)
 		if diagnostic != nil {
-			return nil, nil, diagnostic
+			return nil, diagnostic
 		}
-		return []hostid6.Set{opinion}, []string{snippet}, nil
+		return []HostID6Opinion{opinion}, nil
 	case formComma:
-		left, leftSnippets, diagnostic := state.buildFields(op.Args[0])
+		left, diagnostic := state.buildFields(op.Args[0])
 		if diagnostic != nil {
-			return nil, nil, diagnostic
+			return nil, diagnostic
 		}
-		right, rightSnippets, diagnostic := state.buildFields(op.Args[1])
-		return append(left, right...), append(leftSnippets, rightSnippets...), diagnostic
+		right, diagnostic := state.buildFields(op.Args[1])
+		return append(left, right...), diagnostic
 	case formTrailingComma:
 		return state.buildFields(op.Args[0])
 	default:
@@ -235,10 +242,10 @@ func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]hostid6.Set, [
 	}
 }
 
-func (state *buildState) buildAssignment(tree syntax.Op[formID]) (hostid6.Set, string, *Diagnostic) {
+func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion, *Diagnostic) {
 	field := mustAtom(tree.Args[0])
 	if field.Token.Text != "hostid6" {
-		return hostid6.Set{}, "", &Diagnostic{
+		return HostID6Opinion{}, &Diagnostic{
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
@@ -247,9 +254,12 @@ func (state *buildState) buildAssignment(tree syntax.Op[formID]) (hostid6.Set, s
 
 	values, diagnostic := buildHostID6Values(tree.Args[1])
 	if diagnostic != nil {
-		return hostid6.Set{}, "", diagnostic
+		return HostID6Opinion{}, diagnostic
 	}
-	return hostid6.NewSet(values...), state.input[tree.Span().Start:tree.Span().End], nil
+	return HostID6Opinion{
+		Set:           hostid6.NewSet(values...),
+		SourceSnippet: state.input[tree.Span().Start:tree.Span().End],
+	}, nil
 }
 
 func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagnostic) {

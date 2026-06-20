@@ -168,7 +168,7 @@ func TestBuildConfigRejectsZeroExplicitHostID6OpinionAsImpossible(t *testing.T) 
 	raw := config.DefaultRaw()
 	raw.Domains = []domainentry.Entry{{
 		Domain:          domain.FQDN("example.org"),
-		HostID6Opinions: []hostid6.Set{{}},
+		HostID6Opinions: []domainentry.HostID6Opinion{{Set: hostid6.Set{}}},
 		Span:            syntax.Span{Start: 0, End: 0},
 	}}
 

@@ -23,10 +23,10 @@ type normalizedDomains struct {
 	ExplicitHostID6 map[domain.Domain]bool
 }
 
-// hostID6Opinion remembers where a host-ID set came from, but only at the level
-// needed for operator-facing conflict messages: same entry, same setting, or
-// different settings.
-type hostID6Opinion struct {
+// hostID6Provenance remembers where a host-ID set came from, but only at the
+// level needed for operator-facing conflict messages: same entry, same setting,
+// or different settings.
+type hostID6Provenance struct {
 	// set is the normalized value used for conflict equality.
 	set hostid6.Set
 	// sourceSnippet is the original hostid6=... assignment text used in diagnostics.
@@ -87,10 +87,11 @@ func mergeHostID6Opinions(
 	ppfmt pp.PP,
 	setting string,
 	entries []domainentry.Entry,
-	opinions map[domain.Domain]hostID6Opinion,
+	opinions map[domain.Domain]hostID6Provenance,
 ) bool {
 	for entryIndex, entry := range entries {
-		for assignmentIndex, set := range entry.HostID6Opinions {
+		for _, opinion := range entry.HostID6Opinions {
+			set := opinion.Set
 			if set.IsZero() {
 				ppfmt.Noticef(pp.EmojiImpossible,
 					"An internal error produced an empty hostid6 set for %s in %s; this should not happen. Please report it at %s",
@@ -98,8 +99,8 @@ func mergeHostID6Opinions(
 				return false
 			}
 			snippet := hostID6Snippet(set)
-			if assignmentIndex < len(entry.HostID6OpinionSnippets) && entry.HostID6OpinionSnippets[assignmentIndex] != "" {
-				snippet = entry.HostID6OpinionSnippets[assignmentIndex]
+			if opinion.SourceSnippet != "" {
+				snippet = opinion.SourceSnippet
 			}
 			previous, present := opinions[entry.Domain]
 			if present && !hostid6.EqualSet(previous.set, set) {
@@ -120,7 +121,7 @@ func mergeHostID6Opinions(
 				return false
 			}
 			if !present {
-				opinions[entry.Domain] = hostID6Opinion{
+				opinions[entry.Domain] = hostID6Provenance{
 					set:           set,
 					sourceSnippet: snippet,
 					setting:       setting,
@@ -289,7 +290,7 @@ func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 		ExplicitHostID6: map[domain.Domain]bool{},
 	}
 
-	opinions := map[domain.Domain]hostID6Opinion{}
+	opinions := map[domain.Domain]hostID6Provenance{}
 	if !mergeHostID6Opinions(ppfmt, "DOMAINS", raw.Domains, opinions) ||
 		!mergeHostID6Opinions(ppfmt, "IP6_DOMAINS", raw.IP6Domains, opinions) {
 		return normalizedDomains{ByFamily: nil, HostID6: nil, ExplicitHostID6: nil}, false
