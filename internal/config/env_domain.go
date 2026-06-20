@@ -18,7 +18,7 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 		return true
 	case domainentry.KindMissingComma:
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+			"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
 	default:
@@ -67,8 +67,8 @@ func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domaine
 				continue
 			}
 			ppfmt.Noticef(pp.EmojiUserError,
-				`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; move this declaration to DOMAINS or IP6_DOMAINS`,
-				key, input[entry.Span.Start:entry.Span.End], entry.Domain.Describe())
+				`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; remove hostid6 from this %s entry, or configure the IPv6 entry in DOMAINS or IP6_DOMAINS`,
+				key, input[entry.Span.Start:entry.Span.End], entry.Domain.Describe(), key)
 			return false
 		}
 	}

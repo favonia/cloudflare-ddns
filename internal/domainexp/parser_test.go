@@ -71,7 +71,7 @@ func TestParseList(t *testing.T) {
 			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+					"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 					key, `" a.a a.b a.c a.d "`)
 			},
 		},
@@ -80,7 +80,7 @@ func TestParseList(t *testing.T) {
 			ds{f("a.a"), f("a.b"), f("a.c"), f("a.d")},
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+					"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 					key, `"a.a a.b,a.c a.d"`)
 			},
 		},
@@ -227,7 +227,7 @@ func TestParseExpression(t *testing.T) {
 			"is(a b c)", true, f("b"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 					key, `"is(a b c)"`)
 			},
 		},
@@ -235,7 +235,7 @@ func TestParseExpression(t *testing.T) {
 			"is(a b) && true", true, f("b"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 					key, `"is(a b) && true"`)
 			},
 		},
@@ -454,7 +454,7 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 						key, `"is(a b && true)"`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
 						key, "is(a b && true)", "&&"),
@@ -466,7 +466,7 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 						key, `"is(a (b))"`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
 						key, "is(a (b))", "("),
@@ -485,7 +485,7 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						"%s (%s) contains missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
+						"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 						key, `"is(a sub(b))"`),
 					m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`,
 						key, "is(a sub(b))", "sub"),

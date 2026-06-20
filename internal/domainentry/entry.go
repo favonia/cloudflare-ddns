@@ -39,9 +39,10 @@ const (
 
 // Entry is one parsed domain declaration.
 type Entry struct {
-	Domain          domain.Domain
-	HostID6Opinions []hostid6.Set
-	Span            syntax.Span
+	Domain                 domain.Domain
+	HostID6Opinions        []hostid6.Set
+	HostID6OpinionSnippets []string
+	Span                   syntax.Span
 }
 
 // Diagnostic describes one semantic failure in a parsed domain entry. Kind is
@@ -87,6 +88,7 @@ func Parse(input string) ([]Entry, []Diagnostic, *syntax.ParseError) {
 		diagnostics:  nil,
 		extraComma:   false,
 		missingComma: false,
+		input:        input,
 	}
 	state.buildList(tree)
 	return state.entries, state.diagnostics, nil
@@ -97,6 +99,7 @@ type buildState struct {
 	diagnostics  []Diagnostic
 	extraComma   bool
 	missingComma bool
+	input        string
 }
 
 // buildList reports whether conversion failed semantically. Explicit
@@ -106,7 +109,7 @@ func (state *buildState) buildList(tree syntax.Tree[formID]) bool {
 	case syntax.EmptyTree[formID]:
 		return false
 	case syntax.Atom[formID]:
-		entry, diagnostic := buildEntry(tree)
+		entry, diagnostic := state.buildEntry(tree)
 		if diagnostic != nil {
 			state.diagnostics = append(state.diagnostics, *diagnostic)
 			return true
@@ -117,7 +120,7 @@ func (state *buildState) buildList(tree syntax.Tree[formID]) bool {
 		// Only top-level entry-list forms are valid here.
 		switch tree.ID {
 		case formFieldsEmpty, formFields:
-			entry, diagnostic := buildEntry(tree)
+			entry, diagnostic := state.buildEntry(tree)
 			if diagnostic != nil {
 				state.diagnostics = append(state.diagnostics, *diagnostic)
 				return true
@@ -170,7 +173,7 @@ func (state *buildState) recordMissingComma(span syntax.Span) {
 	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindMissingComma, Detail: nil})
 }
 
-func buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
+func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
 	var domainTree syntax.Tree[formID]
 	var fieldsTree syntax.Tree[formID]
 
@@ -197,45 +200,45 @@ func buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
 		}
 	}
 
-	opinions, diagnostic := buildFields(fieldsTree)
+	opinions, snippets, diagnostic := state.buildFields(fieldsTree)
 	if diagnostic != nil {
 		var noEntry Entry
 		return noEntry, diagnostic
 	}
-	return Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}, nil
+	return Entry{Domain: dom, HostID6Opinions: opinions, HostID6OpinionSnippets: snippets, Span: tree.Span()}, nil
 }
 
-func buildFields(tree syntax.Tree[formID]) ([]hostid6.Set, *Diagnostic) {
+func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]hostid6.Set, []string, *Diagnostic) {
 	if tree == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	op := mustOp(tree)
 	switch op.ID {
 	case formAssign:
-		opinion, diagnostic := buildAssignment(op)
+		opinion, snippet, diagnostic := state.buildAssignment(op)
 		if diagnostic != nil {
-			return nil, diagnostic
+			return nil, nil, diagnostic
 		}
-		return []hostid6.Set{opinion}, nil
+		return []hostid6.Set{opinion}, []string{snippet}, nil
 	case formComma:
-		left, diagnostic := buildFields(op.Args[0])
+		left, leftSnippets, diagnostic := state.buildFields(op.Args[0])
 		if diagnostic != nil {
-			return nil, diagnostic
+			return nil, nil, diagnostic
 		}
-		right, diagnostic := buildFields(op.Args[1])
-		return append(left, right...), diagnostic
+		right, rightSnippets, diagnostic := state.buildFields(op.Args[1])
+		return append(left, right...), append(leftSnippets, rightSnippets...), diagnostic
 	case formTrailingComma:
-		return buildFields(op.Args[0])
+		return state.buildFields(op.Args[0])
 	default:
 		panic("domainentry: invalid parsed field-list tree; this should not happen; please report it")
 	}
 }
 
-func buildAssignment(tree syntax.Op[formID]) (hostid6.Set, *Diagnostic) {
+func (state *buildState) buildAssignment(tree syntax.Op[formID]) (hostid6.Set, string, *Diagnostic) {
 	field := mustAtom(tree.Args[0])
 	if field.Token.Text != "hostid6" {
-		return hostid6.Set{}, &Diagnostic{
+		return hostid6.Set{}, "", &Diagnostic{
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
@@ -244,9 +247,9 @@ func buildAssignment(tree syntax.Op[formID]) (hostid6.Set, *Diagnostic) {
 
 	values, diagnostic := buildHostID6Values(tree.Args[1])
 	if diagnostic != nil {
-		return hostid6.Set{}, diagnostic
+		return hostid6.Set{}, "", diagnostic
 	}
-	return hostid6.NewSet(values...), nil
+	return hostid6.NewSet(values...), state.input[tree.Span().Start:tree.Span().End], nil
 }
 
 func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagnostic) {

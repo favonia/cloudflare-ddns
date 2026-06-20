@@ -96,7 +96,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 	handle, err := t.newClient()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
+			"Cloudflare API token preflight check could not run: %v; the updater will continue",
 			err)
 		return
 	}

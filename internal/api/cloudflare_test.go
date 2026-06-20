@@ -311,7 +311,7 @@ func TestCheckUsabilityNewClientFailure(t *testing.T) {
 		BaseURL: "",
 	}
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
+		"Cloudflare API token preflight check could not run: %v; the updater will continue",
 		gomock.Any())
 
 	auth.CheckUsability(context.Background(), mockPP)

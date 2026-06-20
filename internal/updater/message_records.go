@@ -40,13 +40,14 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 }
 
 func generateIP6DerivationFailureMessage() Message {
+	message := "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
 	return Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+			Lines: []string{message},
 		},
 		NotifierMessage: notifier.Message{
-			"Failed to derive IPv6 DNS targets from the detected prefixes.",
+			message + ".",
 		},
 	}
 }

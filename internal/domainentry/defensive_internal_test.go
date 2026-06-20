@@ -36,13 +36,15 @@ func TestMustOpPanicsOnNonOp(t *testing.T) {
 func TestBuildEntryPanicsOnUnexpectedTree(t *testing.T) {
 	t.Parallel()
 
-	require.Panics(t, func() { _, _ = buildEntry(syntax.EmptyTree[formID]{}) })
+	state := newBuildState()
+	require.Panics(t, func() { _, _ = state.buildEntry(syntax.EmptyTree[formID]{}) })
 }
 
 func TestBuildFieldsPanicsOnUnexpectedForm(t *testing.T) {
 	t.Parallel()
 
-	require.Panics(t, func() { _, _ = buildFields(unknownOp()) })
+	state := newBuildState()
+	require.Panics(t, func() { _, _, _ = state.buildFields(unknownOp()) })
 }
 
 func TestBuildListPanicsOnUnexpectedForm(t *testing.T) {

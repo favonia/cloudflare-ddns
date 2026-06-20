@@ -22,4 +22,6 @@ const (
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
 	MessageHostID6MACPrefix                                    // mac(...) host IDs need a /64 prefix
+	MessageHostID6AAAARecordsPreserved                         // Host-ID incompatibility preserved AAAA records
+	MessageHostID6WAFItemsPreserved                            // Host-ID incompatibility preserved IPv6 WAF list items
 )

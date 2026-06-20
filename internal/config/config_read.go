@@ -8,6 +8,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
+	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -130,7 +131,8 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 	if ip6Managed && len(normalized.ExplicitHostID6) > 0 {
 		ppfmt.InfoOncef(pp.MessageExperimentalHostID6, pp.EmojiExperimental,
-			`You are using the experimental "hostid6" domain field for IPv6 DNS`)
+			`You are using the experimental "hostid6" domain field for IPv6 DNS (unreleased)`)
+		warnSuspiciousMACs(ppfmt, normalized.HostID6)
 	}
 
 	// Check 2c: are configuration-time static IPv6 entries compatible with effective host-ID policies?
@@ -366,10 +368,14 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		UpdateOnStart: c.UpdateOnStart,
 		DeleteOnStop:  c.DeleteOnStop,
 	}
+	hostID6Policies := map[domain.Domain]hostid6.Set{}
+	if ip6Managed {
+		hostID6Policies = normalized.HostID6
+	}
 	updateConfig := &UpdateConfig{
 		Provider: providerMap,
 		Domains:  domains,
-		HostID6:  normalized.HostID6,
+		HostID6:  hostID6Policies,
 		WAFLists: c.WAFLists,
 		DefaultPrefixLen: map[ipnet.Family]int{
 			ipnet.IP4: c.IP4DefaultPrefixLen,

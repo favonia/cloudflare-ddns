@@ -848,24 +848,28 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 						2, "IPv6", "2001:db8::1/65, 2001:db8:1::1/65"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
 					p.EXPECT().Noticef(pp.EmojiError,
-						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-							"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
-							"existing IPv6 DNS records and WAF list items will be preserved for this update",
-						"alpha.example and beta.example", "2001::1", 2, "2001:db8::1/65 and 2001:db8:1::1/65"),
+						"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
+							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+						"2001::1", "alpha.example and beta.example", 2, "2001:db8::1/65 and 2001:db8:1::1/65"),
 					p.EXPECT().Noticef(pp.EmojiError,
-						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-						"alpha.example and beta.example", "[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]", 64, "2001:db8::1/65 and 2001:db8:1::1/65"),
+						"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
+							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+						"[mac(00-11-22-33-44-55),mac(aa-bb-cc-dd-ee-ff)]",
+						"alpha.example and beta.example", 64, "2001:db8::1/65 and 2001:db8:1::1/65"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
+						"Existing AAAA records were preserved for this update"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
+						"Existing IPv6 WAF list items were preserved for this update"),
 				)
 			})
 
 		require.Equal(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
-				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
 			NotifierMessage: notifier.Message{
-				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
 		}, resp)
 	})
@@ -887,12 +891,17 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8:1234::abcd/56"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
 					p.EXPECT().Noticef(pp.EmojiError,
-						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
-							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-						"alpha.example", "mac(00-11-22-33-44-55)", "2001:db8:1234::abcd/56"),
+						"No AAAA records were changed because hostid6=%s for %s requires a detected /64 prefix, "+
+							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+						"mac(00-11-22-33-44-55)", "alpha.example", "2001:db8:1234::abcd/56"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
+						"Existing AAAA records were preserved for this update"),
 					p.EXPECT().NoticeOncef(pp.MessageHostID6MACPrefix, pp.EmojiHint,
-						"Modified EUI-64 host IDs are only defined within a /64 prefix. Assuming the subnet bits are all zero, %s; look up the subnet bits between your prefix and /64 (often zero on a single-subnet network), prepend them, and use the result as a literal hostid6 until shorter prefixes are supported. Please open an issue at %s if you need this",
-						"mac(00-11-22-33-44-55) gives ::211:22ff:fe33:4455",
+						"MAC-based host IDs require a /64 prefix. For %s, look up the subnet bits between /%d and /64; "+
+							"the MAC-derived interface identifier is %s. If those subnet bits are zero, use hostid6=%s. "+
+							"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
+							"Please open an issue at %s if you need direct MAC support for shorter prefixes",
+						"2001:db8:1234::abcd/56", 56, "::211:22ff:fe33:4455", "::211:22ff:fe33:4455",
 						pp.IssueReportingURL),
 				)
 			})
@@ -900,10 +909,10 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 		require.Equal(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
-				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
 			NotifierMessage: notifier.Message{
-				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
 		}, resp)
 	})
@@ -932,9 +941,13 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::1/65"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
 					p.EXPECT().Noticef(pp.EmojiError,
-						"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-							"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-						"alpha.example", "mac(00-11-22-33-44-55)", 64, "2001:db8::1/65"),
+						"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
+							"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+						"mac(00-11-22-33-44-55)", "alpha.example", 64, "2001:db8::1/65"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6AAAARecordsPreserved, pp.EmojiHint,
+						"Existing AAAA records were preserved for this update"),
+					p.EXPECT().NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
+						"Existing IPv6 WAF list items were preserved for this update"),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						withUnavailableTargets(wafTargets([]netip.Addr{ip4}, nil), ipnet.IP6),
 						wafItemComment).Return(setter.ResponseNoop),
@@ -944,10 +957,10 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 		require.Equal(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
-				Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
 			NotifierMessage: notifier.Message{
-				"Failed to derive IPv6 DNS targets from the detected prefixes.",
+				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
 		}, resp)
 	})

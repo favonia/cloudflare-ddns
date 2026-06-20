@@ -92,6 +92,11 @@ func TestParseEntriesHostID6Sets(t *testing.T) {
 	require.Equal(t, []string{"preserve", "::1", "::2"}, describeSet(entries[0].HostID6Opinions[0]))
 	require.Equal(t, []string{"mac(00-11-22-33-44-55)"}, describeSet(entries[0].HostID6Opinions[1]))
 	require.Equal(t, []string{"::3"}, describeSet(entries[0].HostID6Opinions[2]))
+	require.Equal(t, []string{
+		"hostid6=[::2,preserve,::1,::2,]",
+		"hostid6=mac(00-11-22-33-44-55)",
+		"hostid6=::3",
+	}, entries[0].HostID6OpinionSnippets)
 }
 
 func TestParseEntriesAcceptsUniversalTrailingCommas(t *testing.T) {
@@ -103,9 +108,10 @@ func TestParseEntriesAcceptsUniversalTrailingCommas(t *testing.T) {
 	require.Nil(t, err)
 	require.Empty(t, diagnostics)
 	require.Equal(t, []domainentry.Entry{{
-		Domain:          domain.FQDN("example.org"),
-		HostID6Opinions: []hostid6.Set{hostid6.DefaultSet()},
-		Span:            syntax.Span{Start: 0, End: len(input) - 1},
+		Domain:                 domain.FQDN("example.org"),
+		HostID6Opinions:        []hostid6.Set{hostid6.DefaultSet()},
+		HostID6OpinionSnippets: []string{"hostid6=[preserve,]"},
+		Span:                   syntax.Span{Start: 0, End: len(input) - 1},
 	}}, entries)
 }
 
