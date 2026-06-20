@@ -149,6 +149,12 @@ func TestBuildConfigRejectsConflictingHostID6Opinions(t *testing.T) {
 			ip6Domains: "",
 			message:    `Conflicting hostid6 settings for example.org: DOMAINS has "hostid6=[0:0::1,mac(00:11:22:33:44:55)]" and also "hostid6=[::2,mac(00-11-22-33-44-55)]"; use the same hostid6 set everywhere example.org configures hostid6, or remove the extra hostid6 assignment` + "\n",
 		},
+		{
+			name:       "quotes source snippets with newlines",
+			domains:    "example.org{hostid6 = [ ::1 ,\n ::2 ]},example.org{hostid6 = ::3}",
+			ip6Domains: "",
+			message:    "Conflicting hostid6 settings for example.org: DOMAINS has \"hostid6 = [ ::1 ,\\n ::2 ]\" and also \"hostid6 = ::3\"; use the same hostid6 set everywhere example.org configures hostid6, or remove the extra hostid6 assignment\n",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -108,18 +108,18 @@ func mergeHostID6Opinions(
 				case previous.setting == setting && previous.entryIndex == entryIndex:
 					ppfmt.Noticef(pp.EmojiUserError,
 						`Conflicting hostid6 settings for %s: `+
-							`the same %s entry has "%s" and "%s"; `+
+							`the same %s entry has %q and %q; `+
 							`use only one hostid6 assignment, or make the assignments identical`,
 						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet)
 				case previous.setting == setting:
 					ppfmt.Noticef(pp.EmojiUserError,
-						`Conflicting hostid6 settings for %s: %s has "%s" and also "%s"; `+
+						`Conflicting hostid6 settings for %s: %s has %q and also %q; `+
 							`use the same hostid6 set everywhere %s configures hostid6, `+
 							`or remove the extra hostid6 assignment`,
 						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet, entry.Domain.Describe())
 				default:
 					ppfmt.Noticef(pp.EmojiUserError,
-						`Conflicting hostid6 settings for %s: %s has "%s", but %s has "%s"; `+
+						`Conflicting hostid6 settings for %s: %s has %q, but %s has %q; `+
 							`use the same hostid6 set everywhere %s configures hostid6, `+
 							`or remove the extra hostid6 assignment`,
 						entry.Domain.Describe(), previous.setting, previous.sourceSnippet, setting, snippet, entry.Domain.Describe())
