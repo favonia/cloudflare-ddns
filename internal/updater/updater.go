@@ -64,9 +64,37 @@ func detectRawData(
 	defer cancel()
 
 	rawData := c.Provider[ipFamily].GetRawData(ctx, ppfmt, ipFamily, c.DefaultPrefixLen[ipFamily])
+	filter := c.DetectionFilter[ipFamily]
+	filterAbort := false
+	if rawData.Available && len(rawData.RawEntries) > 0 && !filter.IsDefault() {
+		filtered := filter.Apply(rawData.RawEntries)
+		switch {
+		case len(filtered) == 0:
+			ppfmt.Noticef(pp.EmojiError,
+				"No detected %s addresses remain after filtering; %s update aborted",
+				ipFamily.Describe(), ipFamily.Describe())
+			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
+				"Check IP%d_DETECTION_FILTER if this was unexpected",
+				ipFamily.Int())
+			rawData = provider.NewUnavailableDetectionResult()
+			filterAbort = true
+		case len(filtered) != len(rawData.RawEntries):
+			rawData.RawEntries = filtered
+			ppfmt.Infof(pp.EmojiInternet, "Using %d %s addresses after filtering: %s",
+				len(deriveDNSAddresses(rawData)), ipFamily.Describe(),
+				pp.JoinMap(func(e ipnet.RawEntry) string {
+					return e.Describe(c.DefaultPrefixLen[ipFamily])
+				}, rawData.RawEntries))
+		default:
+			rawData.RawEntries = filtered
+		}
+	}
 	addresses := deriveDNSAddresses(rawData)
 
 	switch {
+	case filterAbort:
+		return rawData, generateFilterAbortDetectMessage(ipFamily)
+
 	case rawData.Available && len(rawData.RawEntries) == 0:
 		ppfmt.Infof(pp.EmojiClear, "Clearing %s addresses . . .", ipFamily.Describe())
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))

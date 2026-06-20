@@ -39,6 +39,19 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 	}
 }
 
+func generateFilterAbortDetectMessage(ipFamily ipnet.Family) Message {
+	summary := fmt.Sprintf("No detected %s addresses remain after filtering", ipFamily.Describe())
+	return Message{
+		HeartbeatMessage: heartbeat.Message{
+			OK:    false,
+			Lines: []string{summary},
+		},
+		NotifierMessage: notifier.Message{
+			summary + ".",
+		},
+	}
+}
+
 func generateIP6DerivationFailureMessage() Message {
 	message := "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
 	return Message{
