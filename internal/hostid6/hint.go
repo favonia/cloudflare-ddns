@@ -22,11 +22,7 @@ func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
 			continue
 		}
 		hosts = append(hosts, host.String())
-		literal, err := Literal(host)
-		if err != nil {
-			panic(fmt.Sprintf("invalid MAC-derived host-ID literal %s", host))
-		}
-		literals = append(literals, literal)
+		literals = append(literals, mustLiteral(host))
 	}
 	if len(hosts) == 0 {
 		return
@@ -47,4 +43,12 @@ func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
 			"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 			"Please open an issue at %s if you need direct MAC support for shorter prefixes",
 		observed.String(), observed.Bits(), interfaceIdentifierClause, hostList, configString, pp.IssueReportingURL)
+}
+
+func mustLiteral(host netip.Addr) Derivation {
+	literal, err := Literal(host)
+	if err != nil {
+		panic(fmt.Sprintf("invalid MAC-derived host-ID literal %s", host))
+	}
+	return literal
 }

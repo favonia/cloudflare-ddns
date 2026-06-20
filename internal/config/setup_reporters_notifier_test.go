@@ -69,14 +69,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"1st")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -90,14 +90,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"2nd")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					2)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -115,7 +115,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 					"1st")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"Percent-encode spaces to suppress this warning")
+					"Percent-encode spaces in URLs to suppress this warning")
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -134,14 +134,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"1st")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -155,14 +155,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"1st")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -174,7 +174,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 			shoutrrr: "meow-meow-meow://cute",
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to create a Shoutrrr client: %v`, gomock.Any())
+				m.EXPECT().Noticef(pp.EmojiUserError, `Failed to prepare Shoutrrr notifications: %v`, gomock.Any())
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -188,14 +188,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"2nd")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					2)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -203,20 +203,20 @@ func TestSetupReportersNotifier(t *testing.T) {
 				require.Equal(t, notifier.NewComposed(), nt)
 			},
 		},
-		"blank lines are skipped but non-empty line numbers stay original": {
+		"blank lines preserve source line number in folded diagnostic": {
 			shoutrrr: "\n  generic+https://example.com/hook?title=hello world  \n\n   \npushover://shoutrrr:token@userKey ifttt://hey/?events=1\n",
 			ok:       false,
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"5th")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					5)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()
@@ -230,14 +230,14 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"The %s non-empty line of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					"1st")
+					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
+					1)
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
-					"If you are using YAML folded block style >, use literal block style | instead")
+					`If you use YAML folded block style ">", switch to literal block style "|"`)
 			},
 			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
 				t.Helper()

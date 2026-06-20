@@ -52,10 +52,10 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 	require.Equal(t, Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Could not update A records for missing.example because no target set was provided"},
+			Lines: []string{"Could not update A records for missing.example"},
 		},
 		NotifierMessage: notifier.Message{
-			"Could not update A records for missing.example because no target set was provided.",
+			"Could not update A records for missing.example because of an internal error; check the logs for details.",
 			"Updated A records for present.example to 192.0.2.1.",
 		},
 	}, msg)

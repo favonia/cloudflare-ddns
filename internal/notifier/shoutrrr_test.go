@@ -28,10 +28,10 @@ func TestDescribeShoutrrrService(t *testing.T) {
 	}{
 		"ifttt": {"ifttt", "IFTTT", nil},
 		"zulip": {"zulip", "Zulip Chat", nil},
-		"empty": {
-			"", "",
+		"unknown": {
+			"example", "Example",
 			func(ppfmt *mocks.MockPP) {
-				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unknown Shoutrrr service name %q; please report it at %s", "", pp.IssueReportingURL)
+				ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Unknown Shoutrrr service name %q; please report it at %s", "example", pp.IssueReportingURL)
 			},
 		},
 	} {

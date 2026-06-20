@@ -47,17 +47,14 @@ func sanityCheckToken(ppfmt pp.PP, tokenKey string, fromFile bool, token string)
 
 	// Some setups, including NixOS modules, pass an environment file as the token file.
 	if fromFile {
-		switch {
-		case strings.HasPrefix(token, "CLOUDFLARE_API_TOKEN="):
-			ppfmt.Noticef(pp.EmojiUserError,
-				`The token file appears to be an environment file with "CLOUDFLARE_API_TOKEN=..."; `+
-					`the file should contain only the token itself`)
-			return false
-		case strings.HasPrefix(token, "CF_API_TOKEN="):
-			ppfmt.Noticef(pp.EmojiUserError,
-				`The token file appears to be an environment file with "CF_API_TOKEN=..."; `+
-					`the file should contain only the token itself`)
-			return false
+		for _, envPrefix := range []string{"CLOUDFLARE_API_TOKEN=", "CF_API_TOKEN="} {
+			if strings.HasPrefix(token, envPrefix) {
+				ppfmt.Noticef(pp.EmojiUserError,
+					`The file specified by %s appears to be an environment file with %q; `+
+						`the file should contain only the token itself`,
+					tokenKey, envPrefix+"...")
+				return false
+			}
 		}
 	}
 

@@ -117,13 +117,13 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 			sawWarning = true
 		case shoutrrrSpaceFail:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"The %s non-empty line of SHOUTRRR contains spaces, "+
+				"Line %d of SHOUTRRR contains spaces, "+
 					"which suggests that multiple URLs were folded onto one line",
-				pp.Ordinal(line.lineNum))
+				line.lineNum)
 			ppfmt.Infof(pp.EmojiHint,
 				"If you meant multiple URLs, put each URL on its own line; if this is one URL, percent-encode spaces")
 			ppfmt.Infof(pp.EmojiHint,
-				"If you are using YAML folded block style >, use literal block style | instead")
+				`If you use YAML folded block style ">", switch to literal block style "|"`)
 			return nil, false
 		}
 	}
@@ -138,7 +138,7 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 					pp.Ordinal(line.lineNum))
 			}
 		}
-		ppfmt.Infof(pp.EmojiHint, "Percent-encode spaces to suppress this warning")
+		ppfmt.Infof(pp.EmojiHint, "Percent-encode spaces in URLs to suppress this warning")
 	}
 
 	return urls, true
