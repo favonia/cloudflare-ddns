@@ -56,6 +56,14 @@ func TestParseRejectsWrongFamily(t *testing.T) {
 func TestParseRejectsUnexpectedToken(t *testing.T) {
 	t.Parallel()
 
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(198.51.100.0/24) addr-in(203.0.113.0/24)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(198.51.100.0/24) addr-in(203.0.113.0/24)") is not a detection filter expression`)
+}
+
+func TestParseRejectsIncompleteExpression(t *testing.T) {
+	t.Parallel()
+
 	_, ok, output := parseWithOutput(ipnet.IP6, "addr-in(fc00::/7) &&")
 	require.False(t, ok)
 	require.Contains(t, output, `TEST_FILTER ("addr-in(fc00::/7) &&") is not a detection filter expression`)
