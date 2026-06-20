@@ -17,6 +17,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -50,6 +51,23 @@ func defaultPrefixLen() map[ipnet.Family]int {
 		ipnet.IP4: 32,
 		ipnet.IP6: 64,
 	}
+}
+
+func defaultDetectionFilter(providers map[ipnet.Family]provider.Provider) map[ipnet.Family]ipfilter.Filter {
+	filters := map[ipnet.Family]ipfilter.Filter{}
+	for family, prov := range ipnet.Bindings(providers) {
+		if prov != nil {
+			filters[family] = ipfilter.Filter{}
+		}
+	}
+	return filters
+}
+
+func mustIPFilter(t *testing.T, family ipnet.Family, text string) ipfilter.Filter {
+	t.Helper()
+	filter, ok := ipfilter.Parse(pp.NewSilent(), "TEST_FILTER", family, text)
+	require.True(t, ok)
+	return filter
 }
 
 //nolint:paralleltest // environment variables are global
@@ -1587,6 +1605,9 @@ func TestBuildConfig(t *testing.T) {
 						tc.expected.update.HostID6[dom] = hostid6.DefaultSet()
 					}
 				}
+				if tc.expected.update.DetectionFilter == nil {
+					tc.expected.update.DetectionFilter = defaultDetectionFilter(tc.expected.update.Provider)
+				}
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)
@@ -1594,4 +1615,25 @@ func TestBuildConfig(t *testing.T) {
 			require.Equal(t, original, *raw)
 		})
 	}
+}
+
+func TestBuildConfigWarnsDetectionFilterShadowedByDisabledFamily(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: nil,
+		ipnet.IP6: provider.NewCloudflareTrace(),
+	}
+	raw.IP4DetectionFilter = mustIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+	raw.IP6Domains = entries(domain.FQDN("d.e.f"))
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Contains(t, output.String(),
+		`IP4_DETECTION_FILTER ("addr-in(198.51.100.0/24)") is ignored because no domains or WAF lists use IPv4`)
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP4)
+	require.Contains(t, built.Update.DetectionFilter, ipnet.IP6)
 }

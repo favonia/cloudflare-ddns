@@ -14,6 +14,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 )
@@ -30,6 +31,8 @@ type RawConfig struct {
 	Domains                         []domainentry.Entry
 	IP4Domains                      []domainentry.Entry
 	IP6Domains                      []domainentry.Entry
+	IP4DetectionFilter              ipfilter.Filter
+	IP6DetectionFilter              ipfilter.Filter
 	WAFLists                        []api.WAFList
 	UpdateCron                      cron.Schedule
 	UpdateOnStart                   bool
@@ -83,6 +86,8 @@ type UpdateConfig struct {
 	Domains  map[ipnet.Family][]domain.Domain
 	HostID6  map[domain.Domain]hostid6.Set
 	WAFLists []api.WAFList
+	// DetectionFilter contains only managed families in the built config.
+	DetectionFilter map[ipnet.Family]ipfilter.Filter
 	// DefaultPrefixLen stores the derivation default prefix length for each family
 	// when lifting bare detected addresses into raw data.
 	DefaultPrefixLen   map[ipnet.Family]int
@@ -111,6 +116,8 @@ func DefaultRaw() *RawConfig {
 		Domains:                         nil,
 		IP4Domains:                      nil,
 		IP6Domains:                      nil,
+		IP4DetectionFilter:              ipfilter.KeepAll(),
+		IP6DetectionFilter:              ipfilter.KeepAll(),
 		WAFLists:                        nil,
 		UpdateCron:                      cron.MustNew("@every 5m"),
 		UpdateOnStart:                   true,

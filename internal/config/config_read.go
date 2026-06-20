@@ -9,6 +9,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
@@ -43,6 +44,8 @@ func (c *RawConfig) ReadEnv(ppfmt pp.PP) bool {
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,
 		}, &c.Provider) ||
+		!readDetectionFilter(ppfmt, "IP4_DETECTION_FILTER", ipnet.IP4, &c.IP4DetectionFilter) ||
+		!readDetectionFilter(ppfmt, "IP6_DETECTION_FILTER", ipnet.IP6, &c.IP6DetectionFilter) ||
 		!readDomains(ppfmt, "DOMAINS", nil, &c.Domains) ||
 		!readDomains(ppfmt, "IP4_DOMAINS", new(ipnet.IP4), &c.IP4Domains) ||
 		!readDomains(ppfmt, "IP6_DOMAINS", new(ipnet.IP6), &c.IP6Domains) ||
@@ -322,6 +325,16 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 				c.IP6DefaultPrefixLen)
 		}
 	}
+	if providerMap[ipnet.IP4] == nil && !c.IP4DetectionFilter.IsDefault() {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"IP4_DETECTION_FILTER (%s) is ignored because no domains or WAF lists use IPv4",
+			previewSettingValue(c.IP4DetectionFilter.String()))
+	}
+	if providerMap[ipnet.IP6] == nil && !c.IP6DetectionFilter.IsDefault() {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"IP6_DETECTION_FILTER (%s) is ignored because no domains or WAF lists use IPv6",
+			previewSettingValue(c.IP6DetectionFilter.String()))
+	}
 	// }}}
 
 	// Check 6: are we doing cleaning up only? {{{
@@ -372,11 +385,19 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	if ip6Managed {
 		hostID6Policies = normalized.HostID6
 	}
+	detectionFilter := map[ipnet.Family]ipfilter.Filter{}
+	if ip4Managed {
+		detectionFilter[ipnet.IP4] = c.IP4DetectionFilter
+	}
+	if ip6Managed {
+		detectionFilter[ipnet.IP6] = c.IP6DetectionFilter
+	}
 	updateConfig := &UpdateConfig{
-		Provider: providerMap,
-		Domains:  domains,
-		HostID6:  hostID6Policies,
-		WAFLists: c.WAFLists,
+		Provider:        providerMap,
+		Domains:         domains,
+		HostID6:         hostID6Policies,
+		WAFLists:        c.WAFLists,
+		DetectionFilter: detectionFilter,
 		DefaultPrefixLen: map[ipnet.Family]int{
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,
