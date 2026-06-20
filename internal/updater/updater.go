@@ -190,7 +190,8 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 	return mergeMessages(msgs...)
 }
 
-func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
+func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup, hasWAFLists bool) {
+	var macShortPrefixHints []hostID6ProblemGroup
 	for _, problem := range problems {
 		domains := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.Domains, "(none)")
 		derivations := problem.Derivations.ConfigString()
@@ -199,23 +200,34 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup) {
 		switch problem.Kind {
 		case hostid6.LiteralPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiError,
-				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-					"but detected %s; change the listed hostid6 setting or provide compatible prefixes; "+
-					"existing IPv6 DNS records and WAF list items will be preserved for this update",
-				domains, derivations, problem.PrefixLenBound, observed)
+				"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
+					"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+				derivations, domains, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiError,
-				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires detected prefixes no longer than /%d, "+
-					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-				domains, derivations, problem.PrefixLenBound, observed)
+				"No AAAA records were changed because hostid6=%s for %s requires detected prefixes no longer than /%d, "+
+					"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+				derivations, domains, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooShort:
 			ppfmt.Noticef(pp.EmojiError,
-				"Cannot derive IPv6 DNS targets for %s: hostid6=%s requires a detected /64 prefix, "+
-					"but detected %s; existing IPv6 DNS records and WAF list items will be preserved for this update",
-				domains, derivations, observed)
-			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations)
+				"No AAAA records were changed because hostid6=%s for %s requires a detected /64 prefix, "+
+					"but detected %s; change that hostid6 setting or change IP6_PROVIDER",
+				derivations, domains, observed)
+			macShortPrefixHints = append(macShortPrefixHints, problem)
 		default:
 			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))
+		}
+	}
+
+	if hasWAFLists {
+		// The hostid6 errors name AAAA records; keep this quiet-visible so
+		// WAF operators also see that IPv6 list items were preserved.
+		ppfmt.NoticeOncef(pp.MessageHostID6WAFItemsPreserved, pp.EmojiHint,
+			"Existing IPv6 WAF list items were preserved for this update")
+	}
+	for _, problem := range macShortPrefixHints {
+		if len(problem.Observed) > 0 {
+			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0])
 		}
 	}
 }
@@ -308,7 +320,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 				case ipnet.IP6:
 					targets, problems := deriveIP6DNSTargets(c.Domains[ipFamily], c.HostID6, rawData)
 					if len(problems) > 0 {
-						reportHostID6Problems(ppfmt, problems)
+						reportHostID6Problems(ppfmt, problems, len(c.WAFLists) > 0)
 						targetsForWAF[ipFamily] = setter.NewUnavailableWAFTargets()
 						msgs = append(msgs, generateIP6DerivationFailureMessage())
 						continue

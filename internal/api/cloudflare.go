@@ -65,7 +65,7 @@ type CloudflareAuth struct {
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	handle, err := t.newClient()
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", err)
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)
 		return nil, false
 	}
 
@@ -96,7 +96,7 @@ func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
 	handle, err := t.newClient()
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
+			"Cloudflare API token preflight check could not run: %v; the updater will continue",
 			err)
 		return
 	}

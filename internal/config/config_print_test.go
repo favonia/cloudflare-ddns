@@ -135,7 +135,7 @@ func TestPrintValues(t *testing.T) {
 		printItem(t, innerMockPP, "IPv6-enabled domains:", "test6.org, *.test6.org"),
 		printItem(t, innerMockPP, "IPv6 provider:", "cloudflare.trace"),
 		printItem(t, innerMockPP, "IPv6 default prefix length:", "/64"),
-		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "%s", "IPv6-enabled domains by host IDs:"),
 		innerMockPP.EXPECT().Indent().Return(subInnerMockPP),
 		printSubItem(t, subInnerMockPP, "preserve (using detected):", "*.test6.org"),
 		printSubItem(t, subInnerMockPP, "::1:", "test6.org"),
@@ -287,6 +287,52 @@ func TestPrintEmpty(t *testing.T) {
 		Lifecycle: &config.LifecycleConfig{}, //nolint:exhaustruct
 		Update:    &config.UpdateConfig{},    //nolint:exhaustruct
 	}
+	config.Print(mockPP, builtConfig, heartbeat.NewComposed(), notifier.NewComposed())
+}
+
+//nolint:paralleltest // changing the environment variable TZ
+func TestPrintSkipsHostID6SummaryWhenIPv6Disabled(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	store(t, "TZ", "UTC")
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	innerMockPP := mocks.NewMockPP(mockCtrl)
+	gomock.InOrder(
+		mockPP.EXPECT().IsShowing(pp.Info).Return(true),
+		mockPP.EXPECT().Infof(pp.EmojiEnvVars, "Current settings:"),
+		mockPP.EXPECT().Indent().Return(mockPP),
+		mockPP.EXPECT().Indent().Return(innerMockPP),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Domains, IP providers, and WAF lists:"),
+		printItem(t, innerMockPP, "IPv4-enabled domains:", "keep.example"),
+		printItem(t, innerMockPP, "IPv4 provider:", "cloudflare.trace"),
+		printItem(t, innerMockPP, "IPv4 default prefix length:", "/32"),
+		printItem(t, innerMockPP, "WAF lists:", "(none)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Scheduling:"),
+		printItem(t, innerMockPP, "Timezone:", gomock.AnyOf("UTC (currently UTC+00)", "Local (currently UTC+00)")),
+		printItem(t, innerMockPP, "Update schedule:", "@every 5m"),
+		printItem(t, innerMockPP, "Update on start?", "true"),
+		printItem(t, innerMockPP, "Delete on stop?", "false"),
+		printItem(t, innerMockPP, "Cache expiration:", "6h0m0s"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "DNS and WAF fallback values:"),
+		printItem(t, innerMockPP, "TTL:", "1 (auto)"),
+		printItem(t, innerMockPP, "Proxied domains:", "(none)"),
+		printItem(t, innerMockPP, "Unproxied domains:", "keep.example"),
+		printItem(t, innerMockPP, "DNS record comment:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list description:", "(empty)"),
+		printItem(t, innerMockPP, "WAF list item comment:", "(empty)"),
+		mockPP.EXPECT().Infof(pp.EmojiConfig, "%s", "Timeouts:"),
+		printItem(t, innerMockPP, "IP detection:", "5s"),
+		printItem(t, innerMockPP, "Record/list updating:", "30s"),
+	)
+
+	raw := config.DefaultRaw()
+	builtConfig := defaultPrintedConfig(raw)
+	builtConfig.Update.Provider[ipnet.IP6] = nil
+	builtConfig.Update.Domains[ipnet.IP4] = []domain.Domain{domain.FQDN("keep.example")}
+	builtConfig.Update.Proxied[domain.FQDN("keep.example")] = false
+	builtConfig.Update.HostID6[domain.FQDN("keep.example")] = hostid6.NewSet(hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}))
+
 	config.Print(mockPP, builtConfig, heartbeat.NewComposed(), notifier.NewComposed())
 }
 

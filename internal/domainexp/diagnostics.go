@@ -50,7 +50,7 @@ func reportListDiagnostics(ppfmt pp.PP, key string, input string, state *parserS
 	}
 	if state.missingComma {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0",
+			"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, listSyntaxPreview(input))
 	}
 }
@@ -94,7 +94,7 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 	if state.missingComma {
 		ppfmt.Noticef(
 			pp.EmojiUserWarning,
-			"%s (%s) contains missing commas inside is(...) or sub(...); "+
+			"%s (%s) is missing commas inside is(...) or sub(...); "+
 				"this is accepted for now but will be rejected in version 2.0.0",
 			key, listSyntaxPreview(input),
 		)

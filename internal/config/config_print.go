@@ -109,6 +109,8 @@ func hostID6DerivationDomains(
 // Print prints a human-facing summary of the validated config and the reporting
 // services currently wired into the process.
 func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+	// The startup summary is verbose-only. Quiet mode should still show
+	// validation warnings and runtime outcomes, but not the inspected config.
 	if !ppfmt.IsShowing(pp.Info) {
 		return
 	}
@@ -134,13 +136,16 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
 		}
 	}
-	if derivations, domainsByDerivation, ok := hostID6DerivationDomains(update.HostID6); ok {
-		inner.Infof(pp.EmojiBullet, "%s", "IPv6 host IDs:")
-		subInner := inner.Indent()
-		for _, derivation := range derivations {
-			subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
-				derivation.Describe()+":",
-				pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
+	if update.Provider[ipnet.IP6] != nil {
+		derivations, domainsByDerivation, ok := hostID6DerivationDomains(update.HostID6)
+		if ok {
+			inner.Infof(pp.EmojiBullet, "%s", "IPv6-enabled domains by host IDs:")
+			subInner := inner.Indent()
+			for _, derivation := range derivations {
+				subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
+					derivation.Describe()+":",
+					pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
+			}
 		}
 	}
 	item("WAF lists:", "%s", pp.JoinMap(api.WAFList.Describe, update.WAFLists))

@@ -58,7 +58,7 @@ func summarizeEntries(entries []domainentry.Entry) []rawEntrySummary {
 	for _, entry := range entries {
 		opinions := make([][]string, 0, len(entry.HostID6Opinions))
 		for _, opinion := range entry.HostID6Opinions {
-			values := opinion.Values()
+			values := opinion.Set.Values()
 			descriptions := make([]string, 0, len(values))
 			for _, value := range values {
 				descriptions = append(descriptions, value.Describe())
@@ -179,7 +179,7 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 			key:   "DOMAINS",
 			value: ",good.example bad.example,localhost",
 			expected: "DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n" +
-				"DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n" +
+				"DOMAINS (\",good.example bad.example,localhost\") is missing commas; this is accepted for now but will be rejected in version 2.0.0\n" +
 				"DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
 		},
 		"ordered-recovered-semantic-errors": {
@@ -193,7 +193,7 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 		"ipv4-hostid6": {
 			key:      "IP4_DOMAINS",
 			value:    "example.org{hostid6=::1}",
-			expected: "IP4_DOMAINS (\"example.org{hostid6=::1}\") configures hostid6 for example.org, but hostid6 only affects IPv6; move this declaration to DOMAINS or IP6_DOMAINS\n",
+			expected: "IP4_DOMAINS (\"example.org{hostid6=::1}\") configures hostid6 for example.org, but hostid6 only affects IPv6; remove hostid6 from this IP4_DOMAINS entry, or configure the IPv6 entry in DOMAINS or IP6_DOMAINS\n",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestReadEnvDomainDiagnosticSeverityAndOrder(t *testing.T) {
 	require.False(t, ok)
 	require.Equal(t,
 		"😦 DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n"+
-			"😦 DOMAINS (\",good.example bad.example,localhost\") contains missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
+			"😦 DOMAINS (\",good.example bad.example,localhost\") is missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
 			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
 		output.String(),
 	)

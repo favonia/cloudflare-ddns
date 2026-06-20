@@ -120,8 +120,9 @@ func TestReadDomainsRejectsHostID6ForIPv4Setting(t *testing.T) {
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	mockPP.EXPECT().Noticef(
 		pp.EmojiUserError,
-		`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; move this declaration to DOMAINS or IP6_DOMAINS`,
+		`%s (%q) configures hostid6 for %s, but hostid6 only affects IPv6; remove hostid6 from this %s entry, or configure the IPv6 entry in DOMAINS or IP6_DOMAINS`,
 		"IP4_DOMAINS", value, "example.org",
+		"IP4_DOMAINS",
 	)
 
 	ok := readDomains(mockPP, "IP4_DOMAINS", family(ipnet.IP4), &field)
@@ -158,7 +159,7 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
 	)
 

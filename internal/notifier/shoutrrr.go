@@ -58,7 +58,7 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 	} else {
 		ppfmt.Noticef(pp.EmojiImpossible,
 			"Unknown Shoutrrr service name %q; please report it at %s",
-			name, pp.IssueReportingURL)
+			proto, pp.IssueReportingURL)
 		return cases.Title(language.English).String(proto)
 	}
 }
@@ -67,7 +67,7 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 	r, err := shoutrrr.CreateSender(rawURLs...)
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiUserError, "Failed to create a Shoutrrr client: %v", err)
+		ppfmt.Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", err)
 		return Shoutrrr{}, false //nolint:exhaustruct
 	}
 

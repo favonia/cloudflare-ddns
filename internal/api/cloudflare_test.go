@@ -33,7 +33,7 @@ func TestNewEmptyToken(t *testing.T) {
 	_, auth := newServerAuth(t)
 
 	auth.Token = ""
-	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare authentication: %v", gomock.Any())
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", gomock.Any())
 	h, ok := auth.New(mockPP, defaultHandleOptions())
 	require.False(t, ok)
 	require.Nil(t, h)
@@ -311,7 +311,7 @@ func TestCheckUsabilityNewClientFailure(t *testing.T) {
 		BaseURL: "",
 	}
 	mockPP.EXPECT().Noticef(pp.EmojiWarning,
-		"Cloudflare API token preflight check could not create a client: %v; the updater will continue",
+		"Cloudflare API token preflight check could not run: %v; the updater will continue",
 		gomock.Any())
 
 	auth.CheckUsability(context.Background(), mockPP)

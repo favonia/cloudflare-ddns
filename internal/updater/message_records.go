@@ -40,24 +40,26 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 }
 
 func generateIP6DerivationFailureMessage() Message {
+	message := "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
 	return Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
-			Lines: []string{"Failed to derive IPv6 DNS targets from the detected prefixes"},
+			Lines: []string{message},
 		},
 		NotifierMessage: notifier.Message{
-			"Failed to derive IPv6 DNS targets from the detected prefixes.",
+			message + ".",
 		},
 	}
 }
 
 func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Domain) Message {
 	domainDescription := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)")
-	message := fmt.Sprintf("Could not update %s records for %s because no target set was provided",
-		ipFamily.RecordType(), domainDescription)
+	summary := fmt.Sprintf("Could not update %s records for %s", ipFamily.RecordType(), domainDescription)
 	return Message{
-		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{message}},
-		NotifierMessage:  notifier.Message{message + "."},
+		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{summary}},
+		NotifierMessage: notifier.Message{
+			summary + " because of an internal error; check the logs for details.",
+		},
 	}
 }
 

@@ -23,12 +23,22 @@ type normalizedDomains struct {
 	ExplicitHostID6 map[domain.Domain]bool
 }
 
-// hostID6Opinion is a host-ID set together with a human-readable provenance
-// string (e.g. "IP6_DOMAINS declaration 2 hostid6 assignment 1") so that a later
-// conflicting declaration can be reported against the one that set it first.
-type hostID6Opinion struct {
-	set    hostid6.Set
-	source string
+// hostID6Provenance remembers where a host-ID set came from, but only at the
+// level needed for operator-facing conflict messages: same entry, same setting,
+// or different settings.
+type hostID6Provenance struct {
+	// set is the normalized value used for conflict equality.
+	set hostid6.Set
+	// sourceSnippet is the original hostid6=... assignment text used in diagnostics.
+	sourceSnippet string
+	// setting is the setting containing the domain entry, such as DOMAINS or IP6_DOMAINS.
+	setting string
+	// entryIndex is the zero-based index of the domainentry.Entry within setting.
+	entryIndex int
+}
+
+func hostID6Snippet(set hostid6.Set) string {
+	return fmt.Sprintf("hostid6=%s", set.ConfigString())
 }
 
 // validateStaticIP6HostIDCompatibility reports whether the host-ID policies are
@@ -51,15 +61,17 @@ func validateStaticIP6HostIDCompatibility(
 		switch problem.Kind {
 		case hostid6.LiteralPrefixTooLong, hostid6.MACPrefixTooLong:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires prefixes no longer than /%d, "+
-					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
-				providerName, derivations, domains, problem.PrefixLenBound, observed)
+				"IP6_PROVIDER=%s cannot be used for %s with hostid6=%s: it requires prefixes no longer than /%d, "+
+					"but the provider includes %s; change IP6_PROVIDER or that hostid6 setting",
+				providerName, domains, derivations, problem.PrefixLenBound, observed)
 		case hostid6.MACPrefixTooShort:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"IP6_PROVIDER=%s is incompatible with hostid6=%s for %s: requires a /64 prefix, "+
-					"but includes %s; change the listed hostid6 setting or IP6_PROVIDER",
-				providerName, derivations, domains, observed)
-			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations)
+				"IP6_PROVIDER=%s cannot be used for %s with hostid6=%s: it requires a /64 prefix, "+
+					"but the provider includes %s; change IP6_PROVIDER or that hostid6 setting",
+				providerName, domains, derivations, observed)
+			if len(problem.Observed) > 0 {
+				hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0])
+			}
 		default:
 			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))
 		}
@@ -75,27 +87,52 @@ func mergeHostID6Opinions(
 	ppfmt pp.PP,
 	setting string,
 	entries []domainentry.Entry,
-	opinions map[domain.Domain]hostID6Opinion,
+	opinions map[domain.Domain]hostID6Provenance,
 ) bool {
-	for declarationIndex, entry := range entries {
-		for assignmentIndex, set := range entry.HostID6Opinions {
-			source := fmt.Sprintf("%s declaration %d hostid6 assignment %d", setting, declarationIndex+1, assignmentIndex+1)
+	for entryIndex, entry := range entries {
+		for _, opinion := range entry.HostID6Opinions {
+			set := opinion.Set
 			if set.IsZero() {
 				ppfmt.Noticef(pp.EmojiImpossible,
-					"%s for %s contains an empty host-ID set; this should not happen. Please report it at %s",
-					source, entry.Domain.Describe(), pp.IssueReportingURL)
+					"An internal error produced an empty hostid6 set for %s in %s; this should not happen. Please report it at %s",
+					entry.Domain.Describe(), setting, pp.IssueReportingURL)
 				return false
+			}
+			snippet := hostID6Snippet(set)
+			if opinion.SourceSnippet != "" {
+				snippet = opinion.SourceSnippet
 			}
 			previous, present := opinions[entry.Domain]
 			if present && !hostid6.EqualSet(previous.set, set) {
-				ppfmt.Noticef(pp.EmojiUserError,
-					"Conflicting hostid6 settings for %s: %s configures %s, while %s configures %s; "+
-						"configure exactly the same hostid6 set in every declaration or omit it from partial declarations",
-					entry.Domain.Describe(), previous.source, previous.set.String(), source, set.String())
+				switch {
+				case previous.setting == setting && previous.entryIndex == entryIndex:
+					ppfmt.Noticef(pp.EmojiUserError,
+						`Conflicting hostid6 settings for %s: `+
+							`the same %s entry has %q and %q; `+
+							`use only one hostid6 assignment, or make the assignments identical`,
+						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet)
+				case previous.setting == setting:
+					ppfmt.Noticef(pp.EmojiUserError,
+						`Conflicting hostid6 settings for %s: %s has %q and also %q; `+
+							`use the same hostid6 set everywhere %s configures hostid6, `+
+							`or remove the extra hostid6 assignment`,
+						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet, entry.Domain.Describe())
+				default:
+					ppfmt.Noticef(pp.EmojiUserError,
+						`Conflicting hostid6 settings for %s: %s has %q, but %s has %q; `+
+							`use the same hostid6 set everywhere %s configures hostid6, `+
+							`or remove the extra hostid6 assignment`,
+						entry.Domain.Describe(), previous.setting, previous.sourceSnippet, setting, snippet, entry.Domain.Describe())
+				}
 				return false
 			}
 			if !present {
-				opinions[entry.Domain] = hostID6Opinion{set: set, source: source}
+				opinions[entry.Domain] = hostID6Provenance{
+					set:           set,
+					sourceSnippet: snippet,
+					setting:       setting,
+					entryIndex:    entryIndex,
+				}
 			}
 		}
 	}
@@ -145,8 +182,7 @@ func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 		switch {
 		case mac == [6]byte{}:
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				"hostid6=%s for %s uses the all-zero MAC address, which commonly represents an unset, placeholder, "+
-					"deliberately configured, or broken identity",
+				"hostid6=%s for %s uses the all-zero MAC address; check whether this is the MAC address you intended to use",
 				description, domainList)
 		case mac == [6]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}:
 			ppfmt.Noticef(pp.EmojiUserWarning,
@@ -248,8 +284,8 @@ func warnShadowedFamilyIntents(
 // normalizeDomains resolves the raw domain settings into a normalizedDomains:
 // it projects the per-family domain lists, merges the hostid6 opinions from
 // DOMAINS and IP6_DOMAINS (reporting conflicts), assigns the default set to every
-// IPv6 domain without an explicit opinion, and warns about suspicious MACs. It
-// returns false if any opinion conflict makes the configuration invalid.
+// IPv6 domain without an explicit opinion. It returns false if any opinion
+// conflict makes the configuration invalid.
 func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 	result := normalizedDomains{
 		ByFamily: map[ipnet.Family][]domain.Domain{
@@ -260,7 +296,7 @@ func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 		ExplicitHostID6: map[domain.Domain]bool{},
 	}
 
-	opinions := map[domain.Domain]hostID6Opinion{}
+	opinions := map[domain.Domain]hostID6Provenance{}
 	if !mergeHostID6Opinions(ppfmt, "DOMAINS", raw.Domains, opinions) ||
 		!mergeHostID6Opinions(ppfmt, "IP6_DOMAINS", raw.IP6Domains, opinions) {
 		return normalizedDomains{ByFamily: nil, HostID6: nil, ExplicitHostID6: nil}, false
@@ -274,6 +310,5 @@ func normalizeDomains(ppfmt pp.PP, raw *RawConfig) (normalizedDomains, bool) {
 			result.HostID6[dom] = hostid6.DefaultSet()
 		}
 	}
-	warnSuspiciousMACs(ppfmt, result.HostID6)
 	return result, true
 }

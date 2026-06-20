@@ -188,15 +188,31 @@ func TestReadAuth(t *testing.T) {
 			"", "", "/token.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The token file appears to be an environment file with "CLOUDFLARE_API_TOKEN=..."; the file should contain only the token itself`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The file specified by %s appears to be an environment file with %q; the file should contain only the token itself`, "CLOUDFLARE_API_TOKEN_FILE", "CLOUDFLARE_API_TOKEN=...")
 			},
 		},
 		"file/env-file/cf": {
 			map[string]string{"token.txt": "CF_API_TOKEN=hello"},
+			"", "", "", "/token.txt", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `The file specified by %s appears to be an environment file with %q; the file should contain only the token itself`, "CF_API_TOKEN_FILE", "CF_API_TOKEN=...")
+			},
+		},
+		"file/env-file/cloudflare-prefix-in-cf-file": {
+			map[string]string{"token.txt": "CLOUDFLARE_API_TOKEN=hello"},
+			"", "", "", "/token.txt", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `The file specified by %s appears to be an environment file with %q; the file should contain only the token itself`, "CF_API_TOKEN_FILE", "CLOUDFLARE_API_TOKEN=...")
+			},
+		},
+		"file/env-file/cf-prefix-in-cloudflare-file": {
+			map[string]string{"token.txt": "CF_API_TOKEN=hello"},
 			"", "", "/token.txt", "", "",
 			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, `The token file appears to be an environment file with "CF_API_TOKEN=..."; the file should contain only the token itself`)
+				m.EXPECT().Noticef(pp.EmojiUserError, `The file specified by %s appears to be an environment file with %q; the file should contain only the token itself`, "CLOUDFLARE_API_TOKEN_FILE", "CF_API_TOKEN=...")
 			},
 		},
 		"file/invalid-directory": {
