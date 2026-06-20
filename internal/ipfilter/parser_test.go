@@ -13,7 +13,7 @@ import (
 
 func parseWithOutput(family ipnet.Family, text string) (ipfilter.Filter, bool, string) {
 	var output strings.Builder
-	filter, ok := ipfilter.Parse(pp.New(&output, false, pp.Normal), "TEST_FILTER", family, text)
+	filter, ok := ipfilter.Parse(pp.New(&output, false, pp.Quiet), "TEST_FILTER", family, text)
 	return filter, ok, output.String()
 }
 
