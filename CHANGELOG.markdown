@@ -1,3 +1,11 @@
+# Unreleased
+
+## Detailed Changes
+
+### Features
+
+- Added `IP4_DETECTION_FILTER` and `IP6_DETECTION_FILTER` to filter detected raw IP data before DNS and WAF derivation. If a filter removes every detected entry for a family, that family aborts for the round and existing managed resources are preserved.
+
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
 This is a quick bugfix release for users affected by a startup regression in 1.16.0. If 1.16.0 or 1.16.1 reports that your Cloudflare API token is invalid during startup even though the token had worked before 1.16.0, upgrade to 1.16.2. If version 1.16.0 or 1.16.1 is working well for you, there is no rush.
