@@ -9,6 +9,8 @@ const (
 	MessageAuthTokenNewPrefix                                  // "CF_*" to "CLOUDFLARE_*"
 	MessageIP4DetectionFails                                   // How to turn off IPv4
 	MessageIP6DetectionFails                                   // How to set up IPv6 or turn it off
+	MessageIP4DetectionFilterEmpties                           // How to check an IPv4 detection filter
+	MessageIP6DetectionFilterEmpties                           // How to check an IPv6 detection filter
 	MessageIP4MappedIP6Address                                 // IPv4-mapped IPv6 addresses are bad for AAAA records
 	MessageDetectionTimeouts                                   // Longer detection timeout
 	MessageUpdateTimeouts                                      // Longer update timeout

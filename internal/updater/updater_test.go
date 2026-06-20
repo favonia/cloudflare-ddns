@@ -740,8 +740,8 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 			gomock.InOrder(
 				pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
 					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4a, ip4b})),
-				p.EXPECT().Infof(pp.EmojiInternet, "Using %d %s addresses after filtering: %s",
-					1, "IPv4", "198.51.100.8"),
+				p.EXPECT().Infof(pp.EmojiInternet, "Using %d %s %s after filtering: %s",
+					1, "IPv4", "address", "198.51.100.8"),
 				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4a}, params).
@@ -776,7 +776,7 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 				p.EXPECT().Noticef(pp.EmojiError,
 					"No detected %s addresses remain after filtering; %s update aborted", "IPv4", "IPv4"),
-				p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint,
+				p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFilterEmpties, pp.EmojiHint,
 					"Check IP%d_DETECTION_FILTER if this was unexpected", 4),
 				pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).
 					Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),

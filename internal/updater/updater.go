@@ -26,6 +26,20 @@ func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
 	}[ipFamily]
 }
 
+func getMessageIDForDetectionFilter(ipFamily ipnet.Family) pp.ID {
+	return map[ipnet.Family]pp.ID{
+		ipnet.IP4: pp.MessageIP4DetectionFilterEmpties,
+		ipnet.IP6: pp.MessageIP6DetectionFilterEmpties,
+	}[ipFamily]
+}
+
+func addressWord(n int) string {
+	if n == 1 {
+		return "address"
+	}
+	return "addresses"
+}
+
 func deriveDNSAddresses(rawData provider.DetectionResult) []netip.Addr {
 	addresses := make([]netip.Addr, 0, len(rawData.RawEntries))
 	for _, entry := range rawData.RawEntries {
@@ -73,15 +87,16 @@ func detectRawData(
 			ppfmt.Noticef(pp.EmojiError,
 				"No detected %s addresses remain after filtering; %s update aborted",
 				ipFamily.Describe(), ipFamily.Describe())
-			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
+			ppfmt.NoticeOncef(getMessageIDForDetectionFilter(ipFamily), pp.EmojiHint,
 				"Check IP%d_DETECTION_FILTER if this was unexpected",
 				ipFamily.Int())
 			rawData = provider.NewUnavailableDetectionResult()
 			filterAbort = true
 		case len(filtered) != len(rawData.RawEntries):
 			rawData.RawEntries = filtered
-			ppfmt.Infof(pp.EmojiInternet, "Using %d %s addresses after filtering: %s",
-				len(deriveDNSAddresses(rawData)), ipFamily.Describe(),
+			addressCount := len(deriveDNSAddresses(rawData))
+			ppfmt.Infof(pp.EmojiInternet, "Using %d %s %s after filtering: %s",
+				addressCount, ipFamily.Describe(), addressWord(addressCount),
 				pp.JoinMap(func(e ipnet.RawEntry) string {
 					return e.Describe(c.DefaultPrefixLen[ipFamily])
 				}, rawData.RawEntries))

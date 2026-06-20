@@ -562,7 +562,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
 
-Detection filters use boolean expressions:
+Detection filters use boolean expressions built from `keep-all`, `addr-in(<CIDR>)`, `!`, `&&`, `||`, and parentheses:
 
 ```yaml
 environment:
