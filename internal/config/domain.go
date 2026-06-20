@@ -70,7 +70,7 @@ func validateStaticIP6HostIDCompatibility(
 					"but the provider includes %s; change IP6_PROVIDER or that hostid6 setting",
 				providerName, domains, derivations, observed)
 			if len(problem.Observed) > 0 {
-				hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0].Prefix())
+				hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0])
 			}
 		default:
 			panic(fmt.Sprintf("invalid host-ID incompatibility kind %d", problem.Kind))

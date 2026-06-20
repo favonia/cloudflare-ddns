@@ -7,6 +7,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -31,7 +32,7 @@ func TestEmitMACShortPrefixHint(t *testing.T) {
 	hostid6.EmitMACShortPrefixHint(ppfmt, hostid6.NewSet(
 		hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}),
 		hostid6.MAC([6]byte{0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}),
-	), netip.MustParsePrefix("2001:db8:1234::abcd/56"))
+	), ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234::abcd"), 56))
 }
 
 func TestEmitMACShortPrefixHintSkipsNonMAC(t *testing.T) {
@@ -55,7 +56,7 @@ func TestEmitMACShortPrefixHintSkipsNonMAC(t *testing.T) {
 	hostid6.EmitMACShortPrefixHint(ppfmt, hostid6.NewSet(
 		hostid6.Preserve(),
 		hostid6.MAC([6]byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}),
-	), netip.MustParsePrefix("2001:db8:1234::abcd/56"))
+	), ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234::abcd"), 56))
 }
 
 func TestEmitMACShortPrefixHintSkipsEmptyMACSet(t *testing.T) {
@@ -65,5 +66,5 @@ func TestEmitMACShortPrefixHintSkipsEmptyMACSet(t *testing.T) {
 	ppfmt := mocks.NewMockPP(mockCtrl)
 
 	hostid6.EmitMACShortPrefixHint(ppfmt, hostid6.NewSet(hostid6.Preserve()),
-		netip.MustParsePrefix("2001:db8:1234::abcd/56"))
+		ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8:1234::abcd"), 56))
 }

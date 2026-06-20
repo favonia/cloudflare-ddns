@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/netip"
 
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
@@ -13,7 +14,7 @@ import (
 // asks the operator to supply the real subnet bits, which the MAC alone does
 // not determine. The set should contain only MAC derivations; others are
 // skipped.
-func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
+func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed ipnet.RawEntry) {
 	hosts := make([]string, 0, macs.Len())
 	literals := make([]Derivation, 0, macs.Len())
 	for derivation := range macs.All() {
@@ -42,7 +43,7 @@ func EmitMACShortPrefixHint(ppfmt pp.PP, macs Set, observed netip.Prefix) {
 			"the MAC-derived %s %s. If those subnet bits are zero, use hostid6=%s. "+
 			"If they are not zero, insert them into the hostid6 literal before the interface identifier. "+
 			"Please open an issue at %s if you need direct MAC support for shorter prefixes",
-		observed.String(), observed.Bits(), interfaceIdentifierClause, hostList, configString, pp.IssueReportingURL)
+		observed.String(), observed.PrefixLen(), interfaceIdentifierClause, hostList, configString, pp.IssueReportingURL)
 }
 
 func mustLiteral(host netip.Addr) Derivation {

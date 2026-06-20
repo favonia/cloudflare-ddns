@@ -227,7 +227,7 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup, hasWAFLi
 	}
 	for _, problem := range macShortPrefixHints {
 		if len(problem.Observed) > 0 {
-			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0].Prefix())
+			hostid6.EmitMACShortPrefixHint(ppfmt, problem.Derivations, problem.Observed[0])
 		}
 	}
 }
