@@ -27,10 +27,14 @@ type normalizedDomains struct {
 // needed for operator-facing conflict messages: same entry, same setting, or
 // different settings.
 type hostID6Opinion struct {
-	set              hostid6.Set
-	snippet          string
-	setting          string
-	declarationIndex int
+	// set is the normalized value used for conflict equality.
+	set hostid6.Set
+	// sourceSnippet is the original hostid6=... assignment text used in diagnostics.
+	sourceSnippet string
+	// setting is the setting containing the domain entry, such as DOMAINS or IP6_DOMAINS.
+	setting string
+	// entryIndex is the zero-based index of the domainentry.Entry within setting.
+	entryIndex int
 }
 
 func hostID6Snippet(set hostid6.Set) string {
@@ -85,7 +89,7 @@ func mergeHostID6Opinions(
 	entries []domainentry.Entry,
 	opinions map[domain.Domain]hostID6Opinion,
 ) bool {
-	for declarationIndex, entry := range entries {
+	for entryIndex, entry := range entries {
 		for assignmentIndex, set := range entry.HostID6Opinions {
 			if set.IsZero() {
 				ppfmt.Noticef(pp.EmojiImpossible,
@@ -100,27 +104,27 @@ func mergeHostID6Opinions(
 			previous, present := opinions[entry.Domain]
 			if present && !hostid6.EqualSet(previous.set, set) {
 				switch {
-				case previous.setting == setting && previous.declarationIndex == declarationIndex:
+				case previous.setting == setting && previous.entryIndex == entryIndex:
 					ppfmt.Noticef(pp.EmojiUserError,
 						`Conflicting hostid6 settings for %s: the same %s entry has "%s" and "%s"; use only one hostid6 assignment, or make the assignments identical`,
-						entry.Domain.Describe(), setting, previous.snippet, snippet)
+						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet)
 				case previous.setting == setting:
 					ppfmt.Noticef(pp.EmojiUserError,
 						`Conflicting hostid6 settings for %s: %s has "%s" and also "%s"; use the same hostid6 set everywhere %s configures hostid6, or remove the extra hostid6 assignment`,
-						entry.Domain.Describe(), setting, previous.snippet, snippet, entry.Domain.Describe())
+						entry.Domain.Describe(), setting, previous.sourceSnippet, snippet, entry.Domain.Describe())
 				default:
 					ppfmt.Noticef(pp.EmojiUserError,
 						`Conflicting hostid6 settings for %s: %s has "%s", but %s has "%s"; use the same hostid6 set everywhere %s configures hostid6, or remove the extra hostid6 assignment`,
-						entry.Domain.Describe(), previous.setting, previous.snippet, setting, snippet, entry.Domain.Describe())
+						entry.Domain.Describe(), previous.setting, previous.sourceSnippet, setting, snippet, entry.Domain.Describe())
 				}
 				return false
 			}
 			if !present {
 				opinions[entry.Domain] = hostID6Opinion{
-					set:              set,
-					snippet:          snippet,
-					setting:          setting,
-					declarationIndex: declarationIndex,
+					set:           set,
+					sourceSnippet: snippet,
+					setting:       setting,
+					entryIndex:    entryIndex,
 				}
 			}
 		}
