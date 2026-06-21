@@ -9,9 +9,7 @@ import (
 func readDetectionFilter(ppfmt pp.PP, key string, family ipnet.Family, field *ipfilter.Filter) bool {
 	val := getenv(key)
 	if val == "" {
-		if !field.IsDefault() {
-			ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, field.String())
-		}
+		ppfmt.Infof(pp.EmojiBullet, "Using default %s=%s", key, field.String())
 		return true
 	}
 	filter, ok := ipfilter.Parse(ppfmt, key, family, val)

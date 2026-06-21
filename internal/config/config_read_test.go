@@ -92,6 +92,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_DETECTION_FILTER", "keep-all"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_DETECTION_FILTER", "keep-all"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "UPDATE_CRON", "@once"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "UPDATE_ON_START", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "DELETE_ON_STOP", false),
@@ -1636,6 +1638,27 @@ func TestBuildConfigWarnsDetectionFilterShadowedByDisabledFamily(t *testing.T) {
 		`IP4_DETECTION_FILTER ("addr-in(198.51.100.0/24)") is ignored because no domains or WAF lists use IPv4`)
 	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP4)
 	require.Contains(t, built.Update.DetectionFilter, ipnet.IP6)
+}
+
+func TestBuildConfigWarnsIP6DetectionFilterShadowedByDisabledFamily(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.IP6DetectionFilter = mustIPFilter(t, ipnet.IP6, "addr-in(2001:db8::/32)")
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Contains(t, output.String(),
+		`IP6_DETECTION_FILTER ("addr-in(2001:db8::/32)") is ignored because no domains or WAF lists use IPv6`)
+	require.Contains(t, built.Update.DetectionFilter, ipnet.IP4)
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP6)
 }
 
 func TestBuildConfigKeepsManagedDetectionFilter(t *testing.T) {

@@ -13,11 +13,36 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+func mustReadDetectionFilter(t *testing.T, family ipnet.Family, text string) ipfilter.Filter {
+	t.Helper()
+	filter, ok := ipfilter.Parse(pp.NewSilent(), "TEST_FILTER", family, text)
+	require.True(t, ok)
+	return filter
+}
+
 func TestReadDetectionFilterDefault(t *testing.T) {
 	t.Setenv("TEST_FILTER", "")
 	filter := ipfilter.KeepAll()
-	require.True(t, readDetectionFilter(pp.NewSilent(), "TEST_FILTER", ipnet.IP4, &filter))
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "TEST_FILTER", "keep-all")
+
+	require.True(t, readDetectionFilter(mockPP, "TEST_FILTER", ipnet.IP4, &filter))
 	require.Equal(t, "keep-all", filter.String())
+}
+
+func TestReadDetectionFilterPrintsNonDefaultFallback(t *testing.T) {
+	t.Setenv("TEST_FILTER", "")
+	filter := mustReadDetectionFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s",
+		"TEST_FILTER", "addr-in(198.51.100.0/24)")
+
+	require.True(t, readDetectionFilter(mockPP, "TEST_FILTER", ipnet.IP4, &filter))
+	require.Equal(t, "addr-in(198.51.100.0/24)", filter.String())
 }
 
 func TestReadDetectionFilterValid(t *testing.T) {
