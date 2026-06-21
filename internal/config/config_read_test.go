@@ -17,6 +17,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -52,6 +53,23 @@ func defaultPrefixLen() map[ipnet.Family]int {
 	}
 }
 
+func defaultDetectionFilter(providers map[ipnet.Family]provider.Provider) map[ipnet.Family]ipfilter.Filter {
+	filters := map[ipnet.Family]ipfilter.Filter{}
+	for family, prov := range ipnet.Bindings(providers) {
+		if prov != nil {
+			filters[family] = ipfilter.Filter{}
+		}
+	}
+	return filters
+}
+
+func mustIPFilter(t *testing.T, family ipnet.Family, text string) ipfilter.Filter {
+	t.Helper()
+	filter, ok := ipfilter.Parse(pp.NewSilent(), "TEST_FILTER", family, text)
+	require.True(t, ok)
+	return filter
+}
+
 //nolint:paralleltest // environment variables are global
 func TestReadEnvWithOnlyToken(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
@@ -74,6 +92,8 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "none"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_DETECTION_FILTER", "keep-all"),
+		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_DETECTION_FILTER", "keep-all"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "UPDATE_CRON", "@once"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "UPDATE_ON_START", false),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%t", "DELETE_ON_STOP", false),
@@ -1587,6 +1607,9 @@ func TestBuildConfig(t *testing.T) {
 						tc.expected.update.HostID6[dom] = hostid6.DefaultSet()
 					}
 				}
+				if tc.expected.update.DetectionFilter == nil {
+					tc.expected.update.DetectionFilter = defaultDetectionFilter(tc.expected.update.Provider)
+				}
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)
@@ -1594,4 +1617,64 @@ func TestBuildConfig(t *testing.T) {
 			require.Equal(t, original, *raw)
 		})
 	}
+}
+
+func TestBuildConfigWarnsDetectionFilterShadowedByDisabledFamily(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: nil,
+		ipnet.IP6: provider.NewCloudflareTrace(),
+	}
+	raw.IP4DetectionFilter = mustIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+	raw.IP6Domains = entries(domain.FQDN("d.e.f"))
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Contains(t, output.String(),
+		`IP4_DETECTION_FILTER ("addr-in(198.51.100.0/24)") is ignored because no domains or WAF lists use IPv4`)
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP4)
+	require.Contains(t, built.Update.DetectionFilter, ipnet.IP6)
+}
+
+func TestBuildConfigWarnsIP6DetectionFilterShadowedByDisabledFamily(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.IP6DetectionFilter = mustIPFilter(t, ipnet.IP6, "addr-in(2001:db8::/32)")
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Contains(t, output.String(),
+		`IP6_DETECTION_FILTER ("addr-in(2001:db8::/32)") is ignored because no domains or WAF lists use IPv6`)
+	require.Contains(t, built.Update.DetectionFilter, ipnet.IP4)
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP6)
+}
+
+func TestBuildConfigKeepsManagedDetectionFilter(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.IP4DetectionFilter = mustIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+
+	built, ok := raw.BuildConfig(pp.NewSilent())
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t, "addr-in(198.51.100.0/24)", built.Update.DetectionFilter[ipnet.IP4].String())
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP6)
 }

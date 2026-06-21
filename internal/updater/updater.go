@@ -26,6 +26,20 @@ func getMessageIDForDetection(ipFamily ipnet.Family) pp.ID {
 	}[ipFamily]
 }
 
+func getMessageIDForDetectionFilter(ipFamily ipnet.Family) pp.ID {
+	return map[ipnet.Family]pp.ID{
+		ipnet.IP4: pp.MessageIP4DetectionFilterEmpties,
+		ipnet.IP6: pp.MessageIP6DetectionFilterEmpties,
+	}[ipFamily]
+}
+
+func addressWord(n int) string {
+	if n == 1 {
+		return "address"
+	}
+	return "addresses"
+}
+
 func deriveDNSAddresses(rawData provider.DetectionResult) []netip.Addr {
 	addresses := make([]netip.Addr, 0, len(rawData.RawEntries))
 	for _, entry := range rawData.RawEntries {
@@ -64,25 +78,74 @@ func detectRawData(
 	defer cancel()
 
 	rawData := c.Provider[ipFamily].GetRawData(ctx, ppfmt, ipFamily, c.DefaultPrefixLen[ipFamily])
+	filter := c.DetectionFilter[ipFamily]
+	filterApplied := false
+	filterAbort := false
+	if rawData.Available && len(rawData.RawEntries) > 0 && !filter.IsDefault() {
+		filterApplied = true
+		kept, dropped := filter.Partition(rawData.RawEntries)
+		// Report the dropped addresses, not the kept ones: the dropped set is logged
+		// nowhere else, while the kept set is reported by the later "Detected" line.
+		// This is the operator's only signal for an over-aggressive filter, so it is
+		// emitted whenever anything is dropped, including the all-dropped abort.
+		reportDropped := func() {
+			ppfmt.Infof(pp.EmojiInternet, "Dropped %d %s %s after filtering: %s",
+				len(dropped), ipFamily.Describe(), addressWord(len(dropped)),
+				pp.JoinMap(func(e ipnet.RawEntry) string {
+					return e.Describe(c.DefaultPrefixLen[ipFamily])
+				}, dropped))
+		}
+		switch {
+		case len(kept) == 0:
+			ppfmt.Noticef(pp.EmojiError,
+				"No detected %s addresses remain after filtering; %s update aborted",
+				ipFamily.Describe(), ipFamily.Describe())
+			reportDropped()
+			ppfmt.NoticeOncef(getMessageIDForDetectionFilter(ipFamily), pp.EmojiHint,
+				"Check IP%d_DETECTION_FILTER if this was unexpected",
+				ipFamily.Int())
+			rawData = provider.NewUnavailableDetectionResult()
+			filterAbort = true
+		case len(dropped) > 0:
+			rawData.RawEntries = kept
+			reportDropped()
+		default:
+			rawData.RawEntries = kept
+		}
+	}
 	addresses := deriveDNSAddresses(rawData)
 
 	switch {
+	case filterAbort:
+		return rawData, generateFilterAbortDetectMessage(ipFamily)
+
 	case rawData.Available && len(rawData.RawEntries) == 0:
 		ppfmt.Infof(pp.EmojiClear, "Clearing %s addresses . . .", ipFamily.Describe())
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Fast path: one detected address.
 	case rawData.Available && len(addresses) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected %s address: %s",
-			ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		if filterApplied {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %s address after filtering: %s",
+				ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		} else {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %s address: %s",
+				ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		}
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Multi-address path: report the full deterministic set.
 	case rawData.Available && len(addresses) > 1:
 		defaultPrefixLen := c.DefaultPrefixLen[ipFamily]
-		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
-			len(addresses), ipFamily.Describe(),
-			pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		if filterApplied {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses after filtering: %s",
+				len(addresses), ipFamily.Describe(),
+				pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		} else {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
+				len(addresses), ipFamily.Describe(),
+				pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		}
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Failure path: emit hints and timeout guidance.

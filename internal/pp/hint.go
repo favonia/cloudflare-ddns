@@ -9,6 +9,8 @@ const (
 	MessageAuthTokenNewPrefix                                  // "CF_*" to "CLOUDFLARE_*"
 	MessageIP4DetectionFails                                   // How to turn off IPv4
 	MessageIP6DetectionFails                                   // How to set up IPv6 or turn it off
+	MessageIP4DetectionFilterEmpties                           // How to check an IPv4 detection filter
+	MessageIP6DetectionFilterEmpties                           // How to check an IPv6 detection filter
 	MessageIP4MappedIP6Address                                 // IPv4-mapped IPv6 addresses are bad for AAAA records
 	MessageDetectionTimeouts                                   // Longer detection timeout
 	MessageUpdateTimeouts                                      // Longer update timeout
@@ -19,6 +21,7 @@ const (
 	MessageExperimentalMultipleAddressesURL                    // Multi-address URL response introduced in 1.16.0
 	MessageExperimentalMultipleAddressesFile                   // Multi-address file content introduced in 1.16.0
 	MessageExperimentalHostID6                                 // DNS host-ID derivation
+	MessageExperimentalDetectionFilters                        // Detection filters
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
 	MessageHostID6MACPrefix                                    // mac(...) host IDs need a /64 prefix

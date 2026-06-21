@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"bytes"
 	"net/netip"
 	"regexp"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -60,6 +62,10 @@ func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
 	updateConfig.DefaultPrefixLen = map[ipnet.Family]int{
 		ipnet.IP4: raw.IP4DefaultPrefixLen,
 		ipnet.IP6: raw.IP6DefaultPrefixLen,
+	}
+	updateConfig.DetectionFilter = map[ipnet.Family]ipfilter.Filter{
+		ipnet.IP4: ipfilter.KeepAll(),
+		ipnet.IP6: ipfilter.KeepAll(),
 	}
 	updateConfig.DetectionTimeout = raw.DetectionTimeout
 	updateConfig.UpdateTimeout = raw.UpdateTimeout
@@ -198,6 +204,25 @@ func TestPrintValues(t *testing.T) {
 		}).AnyTimes()
 
 	config.Print(mockPP, builtConfig, hb, n)
+}
+
+//nolint:paralleltest // changing the environment variable TZ
+func TestPrintShowsNonDefaultDetectionFilters(t *testing.T) {
+	store(t, "TZ", "UTC")
+
+	raw := config.DefaultRaw()
+	builtConfig := defaultPrintedConfig(raw)
+	builtConfig.Update.DetectionFilter = map[ipnet.Family]ipfilter.Filter{
+		ipnet.IP4: mustIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)"),
+		ipnet.IP6: ipfilter.KeepAll(),
+	}
+
+	var output bytes.Buffer
+	config.Print(pp.New(&output, false, pp.Info), builtConfig, heartbeat.NewComposed(), notifier.NewComposed())
+
+	require.Contains(t, output.String(), "IPv4 detection filter:")
+	require.Contains(t, output.String(), "addr-in(198.51.100.0/24)")
+	require.NotContains(t, output.String(), "IPv6 detection filter:")
 }
 
 //nolint:paralleltest // changing the environment variable TZ

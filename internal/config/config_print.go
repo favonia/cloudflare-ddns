@@ -134,6 +134,9 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			item(ipFamily.Describe()+"-enabled domains:", "%s", pp.JoinMap(domain.Domain.Describe, update.Domains[ipFamily]))
 			item(ipFamily.Describe()+" provider:", "%s", provider.Name(p))
 			item(ipFamily.Describe()+" default prefix length:", "/%d", update.DefaultPrefixLen[ipFamily])
+			if filter := update.DetectionFilter[ipFamily]; !filter.IsDefault() {
+				item(ipFamily.Describe()+" detection filter:", "%s", filter.String())
+			}
 		}
 	}
 	if update.Provider[ipnet.IP6] != nil {
