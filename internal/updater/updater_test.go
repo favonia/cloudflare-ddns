@@ -788,6 +788,34 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 	}, resp)
 }
 
+func TestUpdateIPsDetectionFilterKeepingAllBehavesLikeNormalDetection(t *testing.T) {
+	t.Parallel()
+
+	ip4 := netip.MustParseAddr("198.51.100.8")
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: recordComment, Tags: nil}
+
+	resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true},
+		func(conf *config.UpdateConfig) {
+			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(198.51.100.0/24)")
+		},
+		func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+			gomock.InOrder(
+				pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
+					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
+				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "198.51.100.8"),
+				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
+				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4}, params).
+					Return(setter.ResponseUpdated),
+			)
+		})
+
+	require.Equal(t, updater.Message{
+		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
+		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
+	}, resp)
+}
+
 func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 	t.Parallel()
 
