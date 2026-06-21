@@ -1,7 +1,6 @@
 package ipfilter
 
 import (
-	"errors"
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -20,11 +19,6 @@ const (
 	formOr      formID = "||"
 )
 
-var (
-	errNotFilterExpression = errors.New("not a detection filter expression")
-	errUnexpectedToken     = errors.New("unexpected token in detection filter expression")
-)
-
 //nolint:gochecknoglobals // Immutable compiled grammar shared by all parse calls.
 var grammar = syntax.MustNewPratt(
 	syntax.Form(formKeepAll, syntax.Keyword("keep-all")),
@@ -39,24 +33,21 @@ var grammar = syntax.MustNewPratt(
 func Parse(ppfmt pp.PP, key string, family ipnet.Family, input string) (Filter, bool) {
 	tree, err := grammar.Parse(input)
 	if err != nil {
-		if errors.Is(err, syntax.ErrUnexpectedEOF) {
-			err = &syntax.ParseError{Span: err.Span, Cause: errNotFilterExpression}
-		}
-		reportParseError(ppfmt, key, input, err)
+		syntaxFault{err: err}.report(ppfmt, key, input)
 		return Filter{}, false //nolint:exhaustruct
 	}
-	expr, err := buildExpr(tree, family, input)
-	if err != nil {
-		reportParseError(ppfmt, key, input, err)
+	expr, f := buildExpr(tree, family)
+	if f != nil {
+		f.report(ppfmt, key, input)
 		return Filter{}, false //nolint:exhaustruct
 	}
 	return Filter{expr: expr, text: expr.string()}, true
 }
 
-func buildExpr(tree syntax.Tree[formID], family ipnet.Family, input string) (expr, *syntax.ParseError) {
+func buildExpr(tree syntax.Tree[formID], family ipnet.Family) (expr, fault) {
 	switch tree := tree.(type) {
 	case syntax.Atom[formID]:
-		return nil, &syntax.ParseError{Span: tree.Token.Span, Cause: errUnexpectedToken}
+		return nil, notFilterFault{}
 	case syntax.Op[formID]:
 		switch tree.ID {
 		case formKeepAll:
@@ -64,35 +55,35 @@ func buildExpr(tree syntax.Tree[formID], family ipnet.Family, input string) (exp
 		case formAddrIn:
 			return buildAddrIn(tree.Args[0], family)
 		case formNot:
-			inner, err := buildExpr(tree.Args[0], family, input)
-			if err != nil {
-				return nil, err
+			inner, f := buildExpr(tree.Args[0], family)
+			if f != nil {
+				return nil, f
 			}
 			return notExpr{inner: inner}, nil
 		case formGroup:
-			return buildExpr(tree.Args[0], family, input)
+			return buildExpr(tree.Args[0], family)
 		case formAnd, formOr:
-			left, err := buildExpr(tree.Args[0], family, input)
-			if err != nil {
-				return nil, err
+			left, f := buildExpr(tree.Args[0], family)
+			if f != nil {
+				return nil, f
 			}
-			right, err := buildExpr(tree.Args[1], family, input)
-			if err != nil {
-				return nil, err
+			right, f := buildExpr(tree.Args[1], family)
+			if f != nil {
+				return nil, f
 			}
 			return binaryExpr{op: tree.ID, left: left, right: right}, nil
 		default:
-			return nil, &syntax.ParseError{Span: tree.Span(), Cause: errUnexpectedToken}
+			return nil, notFilterFault{}
 		}
 	default:
-		return nil, &syntax.ParseError{Span: syntax.Span{Start: 0, End: len(input)}, Cause: errNotFilterExpression}
+		return nil, notFilterFault{}
 	}
 }
 
-func buildAddrIn(tree syntax.Tree[formID], family ipnet.Family) (expr, *syntax.ParseError) {
+func buildAddrIn(tree syntax.Tree[formID], family ipnet.Family) (expr, fault) {
 	atom, ok := tree.(syntax.Atom[formID])
 	if !ok {
-		return nil, &syntax.ParseError{Span: tree.Span(), Cause: errUnexpectedToken}
+		return nil, notFilterFault{}
 	}
 	text := atom.Token.Text
 	prefix, err := netip.ParsePrefix(text)
@@ -102,15 +93,12 @@ func buildAddrIn(tree syntax.Tree[formID], family ipnet.Family) (expr, *syntax.P
 			if addr.Is6() {
 				bits = 128
 			}
-			return nil, &syntax.ParseError{
-				Span:  atom.Token.Span,
-				Cause: bareAddrError{addr: addr, suggested: netip.PrefixFrom(addr, bits)},
-			}
+			return nil, bareAddrFault{addr: addr, suggested: netip.PrefixFrom(addr, bits)}
 		}
-		return nil, &syntax.ParseError{Span: atom.Token.Span, Cause: prefixParseError{text: text, err: err}}
+		return nil, prefixParseFault{text: text, err: err}
 	}
 	if prefix.Addr().Is4() != (family == ipnet.IP4) {
-		return nil, &syntax.ParseError{Span: atom.Token.Span, Cause: wrongFamilyError{family: family, prefix: prefix}}
+		return nil, wrongFamilyFault{family: family, prefix: prefix}
 	}
 	return addrInExpr{prefix: prefix}, nil
 }
