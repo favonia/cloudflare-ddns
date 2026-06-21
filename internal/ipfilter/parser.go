@@ -79,7 +79,10 @@ func buildExpr(tree syntax.Tree[formID], family ipnet.Family, topLevel bool) (ex
 			if f != nil {
 				return nil, f
 			}
-			return binaryExpr{op: tree.ID, left: left, right: right}, nil
+			if tree.ID == formOr {
+				return orExpr{left: left, right: right}, nil
+			}
+			return andExpr{left: left, right: right}, nil
 		default:
 			return nil, notFilterFault{}
 		}

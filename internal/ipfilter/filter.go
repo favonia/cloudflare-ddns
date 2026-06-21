@@ -84,22 +84,24 @@ type notExpr struct {
 func (e notExpr) evaluate(entry ipnet.RawEntry) bool { return !e.inner.evaluate(entry) }
 func (e notExpr) string() string                     { return "!(" + e.inner.string() + ")" }
 
-type binaryExpr struct {
-	op          formID
+type andExpr struct {
 	left, right expr
 }
 
-func (e binaryExpr) evaluate(entry ipnet.RawEntry) bool {
-	switch e.op {
-	case formAnd:
-		return e.left.evaluate(entry) && e.right.evaluate(entry)
-	case formOr:
-		return e.left.evaluate(entry) || e.right.evaluate(entry)
-	default:
-		return false
-	}
+func (e andExpr) evaluate(entry ipnet.RawEntry) bool {
+	return e.left.evaluate(entry) && e.right.evaluate(entry)
+}
+func (e andExpr) string() string { return binaryString(e.left, "&&", e.right) }
+
+type orExpr struct {
+	left, right expr
 }
 
-func (e binaryExpr) string() string {
-	return "(" + e.left.string() + " " + string(e.op) + " " + e.right.string() + ")"
+func (e orExpr) evaluate(entry ipnet.RawEntry) bool {
+	return e.left.evaluate(entry) || e.right.evaluate(entry)
+}
+func (e orExpr) string() string { return binaryString(e.left, "||", e.right) }
+
+func binaryString(left expr, op string, right expr) string {
+	return "(" + left.string() + " " + op + " " + right.string() + ")"
 }
