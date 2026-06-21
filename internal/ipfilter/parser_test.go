@@ -92,3 +92,68 @@ func TestParseRejectsMalformedCIDR(t *testing.T) {
 	require.False(t, ok)
 	require.Contains(t, output, `TEST_FILTER ("addr-in(not-a-prefix)") is malformed: failed to parse "not-a-prefix" as a CIDR prefix`)
 }
+
+func TestParseRejectsUnrecognizedSymbol(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "keep-all & keep-all")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("keep-all & keep-all") is malformed: unrecognized symbol starting with '&'`)
+}
+
+func TestParseRejectsTokenWhereOpenParenExpected(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in 198.51.100.0/24")
+	require.False(t, ok)
+	require.Contains(t, output, `has unexpected token`)
+	require.Contains(t, output, `when "(" is expected`)
+}
+
+func TestParseRejectsMissingClosingParen(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(198.51.100.0/24")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(198.51.100.0/24") is missing ")" at the end`)
+}
+
+func TestParseRejectsBareTopLevelPrefix(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "198.51.100.0/24")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("198.51.100.0/24") is not a detection filter expression`)
+}
+
+func TestParseRejectsNonPrefixAddrInArgument(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(keep-all)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(keep-all)") is not a detection filter expression`)
+}
+
+func TestParseSurfacesErrorInsideNegation(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "!addr-in(2001:db8::/32)")
+	require.False(t, ok)
+	require.Contains(t, output, `contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
+}
+
+func TestParseSurfacesErrorInLeftOperand(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(2001:db8::/32) && keep-all")
+	require.False(t, ok)
+	require.Contains(t, output, `contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
+}
+
+func TestParseSurfacesErrorInRightOperand(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "keep-all && addr-in(2001:db8::/32)")
+	require.False(t, ok)
+	require.Contains(t, output, `contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
+}

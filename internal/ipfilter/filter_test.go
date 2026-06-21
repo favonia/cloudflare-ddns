@@ -61,6 +61,15 @@ func TestBooleanOperators(t *testing.T) {
 	require.False(t, filter.Evaluate(raw("203.0.113.7/32")))
 }
 
+func TestDisjunctionEvaluation(t *testing.T) {
+	t.Parallel()
+
+	filter := mustParse(t, ipnet.IP4, "addr-in(198.51.100.0/24) || addr-in(203.0.113.0/24)")
+	require.True(t, filter.Evaluate(raw("198.51.100.8/32"))) // left operand matches
+	require.True(t, filter.Evaluate(raw("203.0.113.9/32")))  // right operand matches
+	require.False(t, filter.Evaluate(raw("8.8.8.8/32")))     // neither operand matches
+}
+
 func TestFilterPreservesOrder(t *testing.T) {
 	t.Parallel()
 
