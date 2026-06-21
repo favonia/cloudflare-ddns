@@ -145,7 +145,7 @@ func TestParseSurfacesErrorInsideNegation(t *testing.T) {
 func TestParseSurfacesErrorInLeftOperand(t *testing.T) {
 	t.Parallel()
 
-	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(2001:db8::/32) && keep-all")
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(2001:db8::/32) && addr-in(198.51.100.0/24)")
 	require.False(t, ok)
 	require.Contains(t, output, `contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
 }
@@ -153,7 +153,31 @@ func TestParseSurfacesErrorInLeftOperand(t *testing.T) {
 func TestParseSurfacesErrorInRightOperand(t *testing.T) {
 	t.Parallel()
 
-	_, ok, output := parseWithOutput(ipnet.IP4, "keep-all && addr-in(2001:db8::/32)")
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(198.51.100.0/24) && addr-in(2001:db8::/32)")
 	require.False(t, ok)
 	require.Contains(t, output, `contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
+}
+
+func TestParseRejectsKeepAllInConjunction(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "keep-all && addr-in(198.51.100.0/24)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("keep-all && addr-in(198.51.100.0/24)") may use "keep-all" only as the whole expression, not as part of a larger expression`)
+}
+
+func TestParseRejectsKeepAllInNegation(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "!keep-all")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("!keep-all") may use "keep-all" only as the whole expression, not as part of a larger expression`)
+}
+
+func TestParseRejectsParenthesizedKeepAll(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "(keep-all)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("(keep-all)") may use "keep-all" only as the whole expression, not as part of a larger expression`)
 }

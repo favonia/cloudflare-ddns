@@ -59,6 +59,16 @@ func (notFilterFault) report(ppfmt pp.PP, key string, input string) {
 	ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is not a detection filter expression`, key, input)
 }
 
+// keepAllNotTopLevelFault is "keep-all" used as part of a larger expression. It is
+// a mode sentinel, not a predicate, so it is valid only as the whole expression.
+type keepAllNotTopLevelFault struct{}
+
+func (keepAllNotTopLevelFault) report(ppfmt pp.PP, key string, input string) {
+	ppfmt.Noticef(pp.EmojiUserError,
+		`%s (%q) may use "keep-all" only as the whole expression, not as part of a larger expression`,
+		key, input)
+}
+
 // syntaxFault wraps a foreign error from the shared [syntax] parser. Inspecting it
 // with [errors.As]/[errors.Is] is appropriate here because the error crosses a
 // package boundary; the other faults are minted and consumed inside this package.

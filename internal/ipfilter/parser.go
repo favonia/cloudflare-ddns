@@ -36,7 +36,7 @@ func Parse(ppfmt pp.PP, key string, family ipnet.Family, input string) (Filter, 
 		syntaxFault{err: err}.report(ppfmt, key, input)
 		return Filter{}, false //nolint:exhaustruct
 	}
-	expr, f := buildExpr(tree, family)
+	expr, f := buildExpr(tree, family, true)
 	if f != nil {
 		f.report(ppfmt, key, input)
 		return Filter{}, false //nolint:exhaustruct
@@ -44,30 +44,38 @@ func Parse(ppfmt pp.PP, key string, family ipnet.Family, input string) (Filter, 
 	return Filter{expr: expr, text: expr.string()}, true
 }
 
-func buildExpr(tree syntax.Tree[formID], family ipnet.Family) (expr, fault) {
+// buildExpr converts a parse tree into an [expr]. topLevel is true only for the
+// whole expression; it is false inside operators, negations, and parentheses.
+// "keep-all" is a mode sentinel ("filtering disabled"), not a predicate, so it is
+// valid only as the entire expression and rejected anywhere a sub-expression is
+// expected.
+func buildExpr(tree syntax.Tree[formID], family ipnet.Family, topLevel bool) (expr, fault) {
 	switch tree := tree.(type) {
 	case syntax.Atom[formID]:
 		return nil, notFilterFault{}
 	case syntax.Op[formID]:
 		switch tree.ID {
 		case formKeepAll:
+			if !topLevel {
+				return nil, keepAllNotTopLevelFault{}
+			}
 			return literalExpr(true), nil
 		case formAddrIn:
 			return buildAddrIn(tree.Args[0], family)
 		case formNot:
-			inner, f := buildExpr(tree.Args[0], family)
+			inner, f := buildExpr(tree.Args[0], family, false)
 			if f != nil {
 				return nil, f
 			}
 			return notExpr{inner: inner}, nil
 		case formGroup:
-			return buildExpr(tree.Args[0], family)
+			return buildExpr(tree.Args[0], family, false)
 		case formAnd, formOr:
-			left, f := buildExpr(tree.Args[0], family)
+			left, f := buildExpr(tree.Args[0], family, false)
 			if f != nil {
 				return nil, f
 			}
-			right, f := buildExpr(tree.Args[1], family)
+			right, f := buildExpr(tree.Args[1], family, false)
 			if f != nil {
 				return nil, f
 			}
