@@ -81,27 +81,34 @@ func detectRawData(
 	filter := c.DetectionFilter[ipFamily]
 	filterAbort := false
 	if rawData.Available && len(rawData.RawEntries) > 0 && !filter.IsDefault() {
-		filtered := filter.Apply(rawData.RawEntries)
+		kept, dropped := filter.Partition(rawData.RawEntries)
+		// Report the dropped addresses, not the kept ones: the dropped set is logged
+		// nowhere else, while the kept set is reported by the later "Detected" line.
+		// This is the operator's only signal for an over-aggressive filter, so it is
+		// emitted whenever anything is dropped, including the all-dropped abort.
+		reportDropped := func() {
+			ppfmt.Infof(pp.EmojiInternet, "Dropped %d %s %s after filtering: %s",
+				len(dropped), ipFamily.Describe(), addressWord(len(dropped)),
+				pp.JoinMap(func(e ipnet.RawEntry) string {
+					return e.Describe(c.DefaultPrefixLen[ipFamily])
+				}, dropped))
+		}
 		switch {
-		case len(filtered) == 0:
+		case len(kept) == 0:
 			ppfmt.Noticef(pp.EmojiError,
 				"No detected %s addresses remain after filtering; %s update aborted",
 				ipFamily.Describe(), ipFamily.Describe())
+			reportDropped()
 			ppfmt.NoticeOncef(getMessageIDForDetectionFilter(ipFamily), pp.EmojiHint,
 				"Check IP%d_DETECTION_FILTER if this was unexpected",
 				ipFamily.Int())
 			rawData = provider.NewUnavailableDetectionResult()
 			filterAbort = true
-		case len(filtered) != len(rawData.RawEntries):
-			rawData.RawEntries = filtered
-			addressCount := len(deriveDNSAddresses(rawData))
-			ppfmt.Infof(pp.EmojiInternet, "Using %d %s %s after filtering: %s",
-				addressCount, ipFamily.Describe(), addressWord(addressCount),
-				pp.JoinMap(func(e ipnet.RawEntry) string {
-					return e.Describe(c.DefaultPrefixLen[ipFamily])
-				}, rawData.RawEntries))
+		case len(dropped) > 0:
+			rawData.RawEntries = kept
+			reportDropped()
 		default:
-			rawData.RawEntries = filtered
+			rawData.RawEntries = kept
 		}
 	}
 	addresses := deriveDNSAddresses(rawData)

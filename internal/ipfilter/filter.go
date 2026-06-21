@@ -39,18 +39,17 @@ func (f Filter) Evaluate(entry ipnet.RawEntry) bool {
 	return f.expr.evaluate(entry)
 }
 
-// Apply returns the entries kept by f. It preserves input ordering.
-func (f Filter) Apply(entries []ipnet.RawEntry) []ipnet.RawEntry {
-	if len(entries) == 0 {
-		return entries
-	}
-	filtered := make([]ipnet.RawEntry, 0, len(entries))
+// Partition splits entries into those kept and those dropped by f, preserving
+// the input ordering within each group.
+func (f Filter) Partition(entries []ipnet.RawEntry) (kept, dropped []ipnet.RawEntry) {
 	for _, entry := range entries {
 		if f.Evaluate(entry) {
-			filtered = append(filtered, entry)
+			kept = append(kept, entry)
+		} else {
+			dropped = append(dropped, entry)
 		}
 	}
-	return filtered
+	return kept, dropped
 }
 
 type expr interface {

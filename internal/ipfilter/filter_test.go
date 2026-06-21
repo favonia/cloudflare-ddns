@@ -40,7 +40,9 @@ func TestZeroValueKeepsAll(t *testing.T) {
 	require.Equal(t, "keep-all", filter.String())
 	require.True(t, filter.IsDefault())
 	require.True(t, filter.Evaluate(input[0]))
-	require.Equal(t, input, filter.Apply(input))
+	kept, dropped := filter.Partition(input)
+	require.Equal(t, input, kept)
+	require.Empty(t, dropped)
 }
 
 func TestAddrInIgnoresDetectedPrefixLength(t *testing.T) {
@@ -79,15 +81,21 @@ func TestFilterPreservesOrder(t *testing.T) {
 		raw("203.0.113.1/32"),
 		raw("198.51.100.9/32"),
 	}
+	kept, dropped := filter.Partition(input)
 	require.Equal(t, []ipnet.RawEntry{
 		raw("198.51.100.8/32"),
 		raw("198.51.100.9/32"),
-	}, filter.Apply(input))
+	}, kept)
+	require.Equal(t, []ipnet.RawEntry{
+		raw("203.0.113.1/32"),
+	}, dropped)
 }
 
-func TestApplyEmptyReturnsEmpty(t *testing.T) {
+func TestPartitionEmptyReturnsEmpty(t *testing.T) {
 	t.Parallel()
 
 	filter := mustParse(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
-	require.Empty(t, filter.Apply(nil))
+	kept, dropped := filter.Partition(nil)
+	require.Empty(t, kept)
+	require.Empty(t, dropped)
 }
