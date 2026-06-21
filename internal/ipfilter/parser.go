@@ -59,7 +59,7 @@ func buildExpr(tree syntax.Tree[formID], family ipnet.Family, topLevel bool) (ex
 			if !topLevel {
 				return nil, keepAllNotTopLevelFault{}
 			}
-			return literalExpr(true), nil
+			return keepAllExpr{}, nil
 		case formAddrIn:
 			return buildAddrIn(tree.Args[0], family)
 		case formNot:

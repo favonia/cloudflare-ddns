@@ -15,7 +15,7 @@ type Filter struct {
 
 // KeepAll returns the default filter that keeps every detected raw entry.
 func KeepAll() Filter {
-	return Filter{expr: literalExpr(true), text: "keep-all"}
+	return Filter{expr: keepAllExpr{}, text: "keep-all"}
 }
 
 // String returns the canonical filter expression.
@@ -57,15 +57,13 @@ type expr interface {
 	string() string
 }
 
-type literalExpr bool
+// keepAllExpr is the expression form of the keep-all sentinel: it keeps every
+// detected entry. It is the only literal the grammar can produce, because the
+// parser rejects keep-all anywhere a sub-expression is expected.
+type keepAllExpr struct{}
 
-func (e literalExpr) evaluate(ipnet.RawEntry) bool { return bool(e) }
-func (e literalExpr) string() string {
-	if e {
-		return "keep-all"
-	}
-	return "!(keep-all)"
-}
+func (keepAllExpr) evaluate(ipnet.RawEntry) bool { return true }
+func (keepAllExpr) string() string               { return "keep-all" }
 
 type addrInExpr struct {
 	prefix netip.Prefix
