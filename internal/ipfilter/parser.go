@@ -62,7 +62,7 @@ func buildExpr(tree syntax.Tree[formID], family ipnet.Family, input string) (exp
 		case formKeepAll:
 			return literalExpr(true), nil
 		case formAddrIn:
-			return buildAddrIn(tree.Args[0], family, input)
+			return buildAddrIn(tree.Args[0], family)
 		case formNot:
 			inner, err := buildExpr(tree.Args[0], family, input)
 			if err != nil {
@@ -89,7 +89,7 @@ func buildExpr(tree syntax.Tree[formID], family ipnet.Family, input string) (exp
 	}
 }
 
-func buildAddrIn(tree syntax.Tree[formID], family ipnet.Family, input string) (expr, *syntax.ParseError) {
+func buildAddrIn(tree syntax.Tree[formID], family ipnet.Family) (expr, *syntax.ParseError) {
 	atom, ok := tree.(syntax.Atom[formID])
 	if !ok {
 		return nil, &syntax.ParseError{Span: tree.Span(), Cause: errUnexpectedToken}

@@ -1637,3 +1637,21 @@ func TestBuildConfigWarnsDetectionFilterShadowedByDisabledFamily(t *testing.T) {
 	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP4)
 	require.Contains(t, built.Update.DetectionFilter, ipnet.IP6)
 }
+
+func TestBuildConfigKeepsManagedDetectionFilter(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.IP4DetectionFilter = mustIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+
+	built, ok := raw.BuildConfig(pp.NewSilent())
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Equal(t, "addr-in(198.51.100.0/24)", built.Update.DetectionFilter[ipnet.IP4].String())
+	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP6)
+}

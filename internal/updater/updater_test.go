@@ -96,10 +96,10 @@ func hostID6Literal(t *testing.T, text string) hostid6.Derivation {
 	return derivation
 }
 
-func mustUpdaterIPFilter(t *testing.T, family ipnet.Family, text string) ipfilter.Filter {
+func mustUpdaterIP4Filter(t *testing.T, text string) ipfilter.Filter {
 	t.Helper()
 
-	filter, ok := ipfilter.Parse(pp.NewSilent(), "TEST_FILTER", family, text)
+	filter, ok := ipfilter.Parse(pp.NewSilent(), "TEST_FILTER", ipnet.IP4, text)
 	require.True(t, ok)
 	return filter
 }
@@ -734,7 +734,7 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 	resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true},
 		func(conf *config.UpdateConfig) {
 			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
-			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIPFilter(t, ipnet.IP4, "addr-in(198.51.100.0/24)")
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(198.51.100.0/24)")
 		},
 		func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 			gomock.InOrder(
@@ -768,7 +768,7 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
 			conf.Domains[ipnet.IP6] = []domain.Domain{domain6}
 			conf.WAFLists = []api.WAFList{list}
-			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIPFilter(t, ipnet.IP4, "addr-in(203.0.113.0/24)")
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(203.0.113.0/24)")
 		},
 		func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 			gomock.InOrder(
@@ -811,7 +811,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeExplicitClear(t *testing.T) {
 	resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true},
 		func(conf *config.UpdateConfig) {
 			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
-			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIPFilter(t, ipnet.IP4, "addr-in(203.0.113.0/24)")
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(203.0.113.0/24)")
 		},
 		func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 			gomock.InOrder(
@@ -836,7 +836,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 	resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true},
 		func(conf *config.UpdateConfig) {
 			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
-			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIPFilter(t, ipnet.IP4, "addr-in(203.0.113.0/24)")
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(203.0.113.0/24)")
 		},
 		func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 			gomock.InOrder(

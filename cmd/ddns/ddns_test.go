@@ -13,6 +13,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -171,6 +172,9 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 			ipnet.IP4: 32,
 			ipnet.IP6: 64,
 		},
+		DetectionFilter: map[ipnet.Family]ipfilter.Filter{
+			ipnet.IP4: ipfilter.KeepAll(),
+		},
 		TTL:                api.TTLAuto,
 		Proxied:            map[domain.Domain]bool{domain4: false},
 		RecordComment:      "managed",
@@ -226,6 +230,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 				ipnet.IP4: 32,
 				ipnet.IP6: 64,
 			},
+			DetectionFilter:    nil,
 			TTL:                0,
 			Proxied:            nil,
 			RecordComment:      "",

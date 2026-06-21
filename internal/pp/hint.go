@@ -21,6 +21,7 @@ const (
 	MessageExperimentalMultipleAddressesURL                    // Multi-address URL response introduced in 1.16.0
 	MessageExperimentalMultipleAddressesFile                   // Multi-address file content introduced in 1.16.0
 	MessageExperimentalHostID6                                 // DNS host-ID derivation
+	MessageExperimentalDetectionFilters                        // Detection filters
 	MessageUndocumentedCustomCloudflareTraceProvider           // Undocumented feature
 	MessageUndocumentedDebugUnavailableProvider                // Undocumented debug provider
 	MessageHostID6MACPrefix                                    // mac(...) host IDs need a /64 prefix

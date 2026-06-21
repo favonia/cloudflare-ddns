@@ -54,7 +54,7 @@ func (f Filter) Apply(entries []ipnet.RawEntry) []ipnet.RawEntry {
 }
 
 type expr interface {
-	evaluate(ipnet.RawEntry) bool
+	evaluate(entry ipnet.RawEntry) bool
 	string() string
 }
 

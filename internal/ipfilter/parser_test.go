@@ -45,12 +45,28 @@ func TestParseRejectsBareHostWithHint(t *testing.T) {
 	require.Contains(t, output, `TEST_FILTER ("addr-in(8.8.8.8)") uses bare IP address "8.8.8.8"; use "8.8.8.8/32"`)
 }
 
+func TestParseRejectsIPv6BareHostWithHint(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP6, "addr-in(2001:db8::1)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(2001:db8::1)") uses bare IP address "2001:db8::1"; use "2001:db8::1/128"`)
+}
+
 func TestParseRejectsWrongFamily(t *testing.T) {
 	t.Parallel()
 
 	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(2001:db8::/32)")
 	require.False(t, ok)
 	require.Contains(t, output, `TEST_FILTER ("addr-in(2001:db8::/32)") contains IPv6 prefix "2001:db8::/32" in an IPv4 filter`)
+}
+
+func TestParseRejectsIPv4PrefixInIPv6Filter(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP6, "addr-in(198.51.100.0/24)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(198.51.100.0/24)") contains IPv4 prefix "198.51.100.0/24" in an IPv6 filter`)
 }
 
 func TestParseRejectsUnexpectedToken(t *testing.T) {
@@ -67,4 +83,12 @@ func TestParseRejectsIncompleteExpression(t *testing.T) {
 	_, ok, output := parseWithOutput(ipnet.IP6, "addr-in(fc00::/7) &&")
 	require.False(t, ok)
 	require.Contains(t, output, `TEST_FILTER ("addr-in(fc00::/7) &&") is not a detection filter expression`)
+}
+
+func TestParseRejectsMalformedCIDR(t *testing.T) {
+	t.Parallel()
+
+	_, ok, output := parseWithOutput(ipnet.IP4, "addr-in(not-a-prefix)")
+	require.False(t, ok)
+	require.Contains(t, output, `TEST_FILTER ("addr-in(not-a-prefix)") is malformed: failed to parse "not-a-prefix" as a CIDR prefix`)
 }
