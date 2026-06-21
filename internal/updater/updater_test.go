@@ -742,7 +742,7 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4a, ip4b})),
 				p.EXPECT().Infof(pp.EmojiInternet, "Dropped %d %s %s after filtering: %s",
 					1, "IPv4", "address", "203.0.113.8"),
-				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "198.51.100.8"),
+				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4a}, params).
 					Return(setter.ResponseUpdated),
@@ -775,7 +775,7 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 				// The dropped set is listed in detection order with a compact join.
 				p.EXPECT().Infof(pp.EmojiInternet, "Dropped %d %s %s after filtering: %s",
 					2, "IPv4", "addresses", "203.0.113.8, 192.0.2.8"),
-				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "198.51.100.8"),
+				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4kept}, params).
 					Return(setter.ResponseUpdated),
@@ -788,7 +788,7 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 	}, resp)
 }
 
-func TestUpdateIPsDetectionFilterKeepingAllBehavesLikeNormalDetection(t *testing.T) {
+func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredDetection(t *testing.T) {
 	t.Parallel()
 
 	ip4 := netip.MustParseAddr("198.51.100.8")
@@ -803,7 +803,7 @@ func TestUpdateIPsDetectionFilterKeepingAllBehavesLikeNormalDetection(t *testing
 			gomock.InOrder(
 				pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
 					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
-				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "198.51.100.8"),
+				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4}, params).
 					Return(setter.ResponseUpdated),
@@ -813,6 +813,36 @@ func TestUpdateIPsDetectionFilterKeepingAllBehavesLikeNormalDetection(t *testing
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
+	}, resp)
+}
+
+func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredPluralDetection(t *testing.T) {
+	t.Parallel()
+
+	ip4a := netip.MustParseAddr("198.51.100.8")
+	ip4b := netip.MustParseAddr("198.51.100.9")
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: recordComment, Tags: nil}
+
+	resp := runConfiguredUpdateIPsScenario(t, providerEnablers{ipnet.IP4: true},
+		func(conf *config.UpdateConfig) {
+			conf.Domains[ipnet.IP4] = []domain.Domain{domain4}
+			conf.DetectionFilter[ipnet.IP4] = mustUpdaterIP4Filter(t, "addr-in(198.51.100.0/24)")
+		},
+		func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
+			gomock.InOrder(
+				pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
+					Return(detectionResult(ipnet.IP4, []netip.Addr{ip4a, ip4b})),
+				p.EXPECT().Infof(pp.EmojiInternet, "Detected %d %s addresses after filtering: %s",
+					2, "IPv4", "198.51.100.8, 198.51.100.9"),
+				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
+				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4a, ip4b}, params).
+					Return(setter.ResponseUpdated),
+			)
+		})
+
+	require.Equal(t, updater.Message{
+		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8, 198.51.100.9"}},
+		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8 and 198.51.100.9."},
 	}, resp)
 }
 

@@ -79,8 +79,10 @@ func detectRawData(
 
 	rawData := c.Provider[ipFamily].GetRawData(ctx, ppfmt, ipFamily, c.DefaultPrefixLen[ipFamily])
 	filter := c.DetectionFilter[ipFamily]
+	filterApplied := false
 	filterAbort := false
 	if rawData.Available && len(rawData.RawEntries) > 0 && !filter.IsDefault() {
+		filterApplied = true
 		kept, dropped := filter.Partition(rawData.RawEntries)
 		// Report the dropped addresses, not the kept ones: the dropped set is logged
 		// nowhere else, while the kept set is reported by the later "Detected" line.
@@ -123,16 +125,27 @@ func detectRawData(
 
 	// Fast path: one detected address.
 	case rawData.Available && len(addresses) == 1:
-		ppfmt.Infof(pp.EmojiInternet, "Detected %s address: %s",
-			ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		if filterApplied {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %s address after filtering: %s",
+				ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		} else {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %s address: %s",
+				ipFamily.Describe(), rawData.RawEntries[0].Describe(c.DefaultPrefixLen[ipFamily]))
+		}
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Multi-address path: report the full deterministic set.
 	case rawData.Available && len(addresses) > 1:
 		defaultPrefixLen := c.DefaultPrefixLen[ipFamily]
-		ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
-			len(addresses), ipFamily.Describe(),
-			pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		if filterApplied {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses after filtering: %s",
+				len(addresses), ipFamily.Describe(),
+				pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		} else {
+			ppfmt.Infof(pp.EmojiInternet, "Detected %d %s addresses: %s",
+				len(addresses), ipFamily.Describe(),
+				pp.JoinMap(func(e ipnet.RawEntry) string { return e.Describe(defaultPrefixLen) }, rawData.RawEntries))
+		}
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
 	// Failure path: emit hints and timeout guidance.
