@@ -52,7 +52,7 @@ partial def loop (stdin stdout : IO.FS.Stream) : IO Unit := do
   let line ← stdin.getLine
   if line.isEmpty then pure ()
   else
-    stdout.putStrLn (handle line.trim)
+    stdout.putStrLn (handle (line.trimAscii).toString)
     stdout.flush
     loop stdin stdout
 
