@@ -75,4 +75,29 @@ theorem t2_mac_host (raw : Raw) (mm : BitVec 48) (a : Addr)
       simp only [combine]
       exact combine_host raw.addr (eui64 mm) (prefixMask 64)
 
+/-- T3-literal: literal incompatibility fires exactly when the prefix is too long. -/
+theorem t3_literal (raw : Raw) (lit : Addr) :
+    derive raw (.literal lit) = .error (.literalPrefixTooLong (literalMaxPrefixLen lit))
+      ↔ raw.prefixLen > literalMaxPrefixLen lit := by
+  simp only [derive]
+  split <;> simp_all <;> omega
+
+/-- T3-mac-long: MAC "too long" fires exactly when prefix > 64. -/
+theorem t3_mac_long (raw : Raw) (mm : BitVec 48) :
+    derive raw (.mac mm) = .error .macPrefixTooLong ↔ raw.prefixLen > 64 := by
+  simp only [derive]
+  split <;> first
+    | (split <;> simp_all <;> omega)
+    | (simp_all <;> omega)
+    | simp_all
+
+/-- T3-mac-short: MAC "too short" fires exactly when prefix < 64. -/
+theorem t3_mac_short (raw : Raw) (mm : BitVec 48) :
+    derive raw (.mac mm) = .error .macPrefixTooShort ↔ raw.prefixLen < 64 := by
+  simp only [derive]
+  split <;> first
+    | (split <;> simp_all <;> omega)
+    | (simp_all <;> omega)
+    | simp_all
+
 end Hostid6
