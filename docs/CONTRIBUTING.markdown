@@ -20,7 +20,7 @@ If you have code ready, please make a pull request. Before you do:
 
 2. Test your code.
 
-   Add or update tests for new features and bug fixes when practical. You can run the full test suite locally with `go test ./...`.
+   Add or update tests for new features and bug fixes when practical. You can run the full test suite locally with `go test ./...`. If you modify `internal/hostid6.Derive` or its documented claims, also follow the Lean formal-verification workflow in [proofs/README.markdown](../proofs/README.markdown).
 
 3. Follow the coding style.
 
