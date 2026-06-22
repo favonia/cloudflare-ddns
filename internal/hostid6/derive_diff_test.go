@@ -9,7 +9,6 @@ import (
 	"net/netip"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"pgregory.net/rapid"
@@ -66,7 +65,7 @@ func startOracle(t *testing.T) *oracle {
 	return o
 }
 
-// ask sends one request line and returns the single trimmed response line.
+// ask sends one request line and returns the single response line.
 func (o *oracle) ask(t *testing.T, line string) string {
 	t.Helper()
 	if _, err := o.in.WriteString(line + "\n"); err != nil {
@@ -81,7 +80,8 @@ func (o *oracle) ask(t *testing.T, line string) string {
 		}
 		t.Fatalf("oracle closed output before responding to %q", line)
 	}
-	return strings.TrimSpace(o.out.Text())
+	// Scan already drops the trailing newline framing.
+	return o.out.Text()
 }
 
 // goResult renders Derive's output in the same wire form the oracle uses.
@@ -229,7 +229,11 @@ func TestDiff_DeriveMatchesOracle(t *testing.T) {
 
 		a := addr.As16()
 		addrHex := hex.EncodeToString(a[:])
-		line := strings.TrimSpace(fmt.Sprintf("%s %d %s %s", kind, p, addrHex, payload))
+		// Wire format: "<kind> <prefixLen> <addr32>", plus " <payload>" when present.
+		line := fmt.Sprintf("%s %d %s", kind, p, addrHex)
+		if payload != "" {
+			line += " " + payload
+		}
 
 		want := o.ask(t, line)
 		if got != want {

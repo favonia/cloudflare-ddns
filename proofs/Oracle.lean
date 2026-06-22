@@ -52,7 +52,8 @@ partial def loop (stdin stdout : IO.FS.Stream) : IO Unit := do
   let line ← stdin.getLine
   if line.isEmpty then pure ()
   else
-    stdout.putStrLn (handle (line.trimAscii).toString)
+    -- `getLine` keeps the trailing newline framing; drop just that before parsing.
+    stdout.putStrLn (handle (line.dropEndWhile '\n').toString)
     stdout.flush
     loop stdin stdout
 
