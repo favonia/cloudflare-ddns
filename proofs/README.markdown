@@ -4,18 +4,11 @@ This directory contains a Lean 4 formalization of the documented claims of `inte
 
 ## Who needs Lean
 
-Only contributors who modify `internal/hostid6.Derive` (or its documented claims) or the `proofs/` directory. Everyone else can ignore this directory entirely — `go test ./...` runs the always-on regression tests with no Lean dependency.
-
-## Structure
-
-- `Hostid6/Model.lean` — the Lean model: `derive` over `BitVec 128`, with `combine`, `eui64`, `literalMaxPrefixLen`, `prefixMask`.
-- `Hostid6/Proofs.lean` — six theorems (zero `sorry`): `t1_prefix_preserved`, `t2_literal_host`, `t2_mac_host`, `t3_literal`, `t3_mac_long`, `t3_mac_short`.
-- `Oracle.lean` — a persistent stdin→stdout oracle process used by the differential test.
-- `CORRESPONDENCE.markdown` — the manual/AI audit surface that aligns each documented claim to its Lean theorem.
+Only contributors who modify `internal/hostid6.Derive` (or its documented claims) or the `proofs/` directory. Everyone else can ignore it — `go test ./...` runs the always-on regression tests with no Lean dependency.
 
 ## Toolchain
 
-The pinned toolchain version is in `proofs/lean-toolchain` (`leanprover/lean4:v4.31.0`). You need `elan`, `lake`, and `lean` on your PATH. If `elan` is present, it auto-installs the pinned toolchain on the first `lake` invocation — no manual `elan toolchain install` step is needed. There is no Mathlib dependency; only Lean core and `Std` are used (`bv_decide` is imported via `import Std.Tactic.BVDecide`).
+The pinned toolchain version is in `proofs/lean-toolchain`. You need `elan`, `lake`, and `lean` on your PATH; with `elan` present, the pinned toolchain auto-installs on the first `lake` invocation. There is no Mathlib dependency — only Lean core and `Std` (`bv_decide` via `import Std.Tactic.BVDecide`).
 
 ## Build and check the proofs
 
@@ -23,34 +16,15 @@ The pinned toolchain version is in `proofs/lean-toolchain` (`leanprover/lean4:v4
 cd proofs && lake build Hostid6
 ```
 
-This type-checks every theorem; a `sorry` shows up as a build warning. CI enforces a no-`sorry` gate independently with the nanoda kernel (`nanoda-allow-sorry: false`), which rejects any proof depending on `sorryAx`, and with `lake build --wfail`, which turns the `sorry` warning into a failure.
+This type-checks every theorem; a `sorry` shows up as a build warning. CI enforces a no-`sorry` gate independently with the nanoda kernel (`nanoda-allow-sorry: false`), which rejects any proof depending on `sorryAx`, and with `lake build --wfail`.
 
-## Build the oracle
+## Build and run the oracle
 
 ```sh
 cd proofs && lake build oracle
 ```
 
-Binary is at `proofs/.lake/build/bin/oracle`.
-
-**Wire codec:** The oracle is a persistent process. It reads one request per line on stdin and writes one response per line on stdout.
-
-Request format:
-
-```
-<kind> <prefixLen> <addr32> <payload>
-```
-
-where `<kind>` is `preserve`, `literal`, or `mac`; `<prefixLen>` is a decimal integer; `<addr32>` is the 128-bit address as 32 lowercase hex chars; and `<payload>` is the literal address (32 hex chars) for `literal`, the MAC (12 hex chars) for `mac`, or absent for `preserve`.
-
-Response format:
-
-```
-ok <addr32>
-err literalPrefixTooLong <bound>
-err macPrefixTooLong
-err macPrefixTooShort
-```
+The binary at `proofs/.lake/build/bin/oracle` is a persistent process: one request line in, one response line out. Request: `<kind> <prefixLen> <addr32> <payload>`, where `<kind>` is `preserve`/`literal`/`mac`, `<prefixLen>` is decimal, `<addr32>` is the 128-bit address as 32 lowercase hex chars, and `<payload>` is a 32-hex address for `literal`, a 12-hex MAC for `mac`, or absent for `preserve`. Response: `ok <addr32>`, `err literalPrefixTooLong <bound>`, `err macPrefixTooLong`, or `err macPrefixTooShort`.
 
 ## Run the differential test
 
@@ -61,17 +35,9 @@ HOSTID6_LEAN_ORACLE="$PWD/proofs/.lake/build/bin/oracle" go test -tags lean_orac
 
 The differential test (`derive_diff_test.go`) compares `hostid6.Derive` against the oracle over a near-exhaustive enumeration plus random inputs. This is the code↔model link.
 
-## Run the always-on tests (no Lean required)
-
-```sh
-go test ./internal/hostid6/
-```
-
-These run as part of the normal `go test ./...` suite and require no Lean installation.
-
 ## Correspondence map
 
-`proofs/CORRESPONDENCE.markdown` aligns each documented claim in `derive.go` and the `Incompatibility` constants to its Lean theorem, and notes which always-on Go test (if any) provides a cheap everyday regression for that claim.
+`proofs/CORRESPONDENCE.markdown` aligns each documented claim in `derive.go` and the `Incompatibility` constants to its Lean theorem.
 
 ## Maintenance rule
 
