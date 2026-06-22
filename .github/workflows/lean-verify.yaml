@@ -1,0 +1,75 @@
+name: Lean Verify
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "proofs/**"
+      - "internal/hostid6/**"
+      - ".github/workflows/lean-verify.yaml"
+  pull_request:
+    paths:
+      - "proofs/**"
+      - "internal/hostid6/**"
+      - ".github/workflows/lean-verify.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  lean-verify:
+    name: Lean Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: 🚚 Check out the repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: 🏗️ Install elan and Lean toolchain
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain "$(cat proofs/lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: 📦 Cache proofs/.lake
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: proofs/.lake
+          key: ${{ runner.os }}-${{ hashFiles('proofs/lean-toolchain', 'proofs/lake-manifest.json') }}
+
+      - name: 🧪 Build proofs
+        run: |
+          cd proofs && lake build Hostid6
+
+      - name: 🔍 Assert no sorry
+        run: |
+          if grep -rn "sorry" proofs/Hostid6/; then
+            echo "sorry found in proofs"
+            exit 1
+          fi
+
+      - name: 🔨 Build oracle
+        run: |
+          cd proofs && lake build oracle
+
+      - name: 🏗️ Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.4"
+
+      - name: 📡 Run `go telemetry on`
+        run: |
+          go telemetry on
+
+      - name: 🧪 Run differential test with Lean oracle
+        run: |
+          HOSTID6_LEAN_ORACLE="$PWD/proofs/.lake/build/bin/oracle" go test -tags lean_oracle ./internal/hostid6/...
