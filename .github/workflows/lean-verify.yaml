@@ -40,6 +40,9 @@ jobs:
         with:
           lake-package-directory: "proofs"
           build: "true"
+          # Warning and stray-IO hygiene: fail on any warning (incl. sorry/
+          # deprecations) or leftover `#eval`/`#print`/info output.
+          build-args: "--wfail --iofail"
           test: "false"
           lint: "false"
           use-mathlib-cache: "false"
