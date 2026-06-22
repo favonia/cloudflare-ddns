@@ -6,6 +6,19 @@
     ":semanticCommitTypeAll(build)",
     "customManagers:githubActionsVersions"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)lean-toolchain$/"
+      ],
+      "matchStrings": [
+        "leanprover/lean4:(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "leanprover/lean4",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
   "pip-compile": {
     "managerFilePatterns": [
       "/(^|/)\\.github/workflows/mdformat-requirements\\.txt$/"
@@ -51,6 +64,12 @@
         "mdformat-gfm"
       ],
       "groupName": "mdformat"
+    },
+    {
+      "matchPackageNames": [
+        "leanprover/lean4"
+      ],
+      "groupName": "Lean toolchain"
     }
   ],
   "postUpdateOptions": [
