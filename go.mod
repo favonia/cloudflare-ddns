@@ -18,6 +18,7 @@ require (
 	go.uber.org/mock v0.6.0
 	golang.org/x/net v0.55.0
 	golang.org/x/text v0.37.0
+	pgregory.net/rapid v1.3.0
 )
 
 require (

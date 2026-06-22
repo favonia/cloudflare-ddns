@@ -20,7 +20,7 @@ If you have code ready, please make a pull request. Before you do:
 
 2. Test your code.
 
-   Add or update tests for new features and bug fixes when practical. You can run the full test suite locally with `go test ./...`.
+   Add or update tests for new features and bug fixes when practical. You can run the full test suite locally with `go test ./...`. If you modify `internal/hostid6.Derive` or its documented claims, also follow the Lean formal-verification workflow in [proofs/README.markdown](../proofs/README.markdown).
 
 3. Follow the coding style.
 
@@ -32,7 +32,7 @@ If you have code ready, please make a pull request. Before you do:
 
 5. Open the pull request.
 
-   Keep the summary focused on behavior and include test evidence when relevant. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title. Use `fix:` for bugs in released code, `fixup:` for bugs introduced during the current development cycle, and `ux:` for UI/UX improvements.
+   Keep the summary focused on behavior and include test evidence when relevant. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title. Use `fix:` for bugs in released code, `fixup:` for bugs introduced during the current development cycle, `ux:` for UI/UX improvements, and `fv:` for formal-verification work (Lean models, proofs, oracles, and differential tests).
 
 ## 🧑‍⚖️ Who’s in Charge
 

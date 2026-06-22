@@ -41,6 +41,19 @@ type Incompatibility struct {
 // Derive applies one intentional host-ID derivation to an observed IPv6 prefix.
 // The raw entry must be valid and contain an IPv6 address.
 // Derive panics when this internal precondition is violated.
+//
+// Derive only ever changes host bits: on success the result equals the observed
+// address on the top PrefixLen bits (T1). It returns an *Incompatibility,
+// rather than a wrong address, exactly when the derivation cannot fit the
+// observed prefix (T3). On success a literal supplies the host bits and a MAC
+// supplies the Modified EUI-64 interface identifier, which requires exactly a
+// /64 (T2).
+//
+// T1/T2/T3 are formalized and machine-checked against a Lean model of this
+// function in proofs/Hostid6 (theorems t1_prefix_preserved, t2_literal_host,
+// t2_mac_host, t3_literal, t3_mac_long, t3_mac_short); a build-tagged
+// differential test (derive_diff_test.go) confirms this code computes the same
+// function as that model. See proofs/CORRESPONDENCE.markdown.
 func Derive(raw ipnet.RawEntry, derivation Derivation) (netip.Addr, *Incompatibility) {
 	if !raw.IsValid() {
 		panic("hostid6.Derive received an invalid raw entry; this should not happen; please report it")

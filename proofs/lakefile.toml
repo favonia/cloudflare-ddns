@@ -1,0 +1,9 @@
+name = "hostid6proofs"
+defaultTargets = ["Hostid6", "oracle"]
+
+[[lean_lib]]
+name = "Hostid6"
+
+[[lean_exe]]
+name = "oracle"
+root = "Oracle"
