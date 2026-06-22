@@ -37,10 +37,7 @@ Together, the three legs establish: the Go code provably obeys its documented co
 
 A small set of Lean-free property tests runs in normal `go test` as an everyday regression tripwire for contributors who do not have the prover installed.
 
-These tests must:
-
-- assert only invariants checkable against an *input* or a *fixed constant* via derivation-agnostic helpers
-- not re-implement any private part of the function under test — doing so is "code tested against a hand-copy of itself" (circular)
+In this pilot, these tests were kept to invariants checkable against an *input* or a *fixed constant* via derivation-agnostic helpers, and avoid re-implementing any private part of the function under test — that would be "code tested against a hand-copy of itself" (circular).
 
 Computation-fidelity (exact byte layouts, boundary arithmetic derived from private helpers) is owned by the differential test against the independent model, not by these tests.
 
