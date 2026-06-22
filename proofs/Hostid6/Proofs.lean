@@ -39,4 +39,40 @@ theorem t1_prefix_preserved (raw : Raw) (d : Deriv) (a : Addr)
           simp only [combine]
           exact combine_mask raw.addr (eui64 mm) (prefixMask 64)
 
+/-- Dual of `combine_mask`: masking the result of `combine` with the complement
+    of the mask recovers exactly the masked host bits of the second argument.
+    A pure bitvector identity for any mask `M`; it is the core of T2. -/
+private theorem combine_host (X L M : BitVec 128) :
+    ((X &&& M) ||| (L &&& ~~~M)) &&& ~~~M = L &&& ~~~M := by
+  bv_decide
+
+/-- T2-literal: a successful literal derivation copies the literal's host bits. -/
+theorem t2_literal_host (raw : Raw) (lit a : Addr)
+    (h : derive raw (.literal lit) = .ok a) :
+    a &&& ~~~ prefixMask raw.prefixLen = lit &&& ~~~ prefixMask raw.prefixLen := by
+  simp only [derive] at h
+  split at h
+  · exact absurd h (by simp)
+  · simp only [Except.ok.injEq] at h
+    subst h
+    simp only [combine]
+    exact combine_host raw.addr lit (prefixMask raw.prefixLen)
+
+/-- T2-mac: a successful MAC derivation requires /64 and yields the EUI-64 IID. -/
+theorem t2_mac_host (raw : Raw) (mm : BitVec 48) (a : Addr)
+    (h : derive raw (.mac mm) = .ok a) :
+    raw.prefixLen = 64 ∧
+      a &&& ~~~ prefixMask 64 = eui64 mm &&& ~~~ prefixMask 64 := by
+  simp only [derive] at h
+  split at h
+  · exact absurd h (by simp)
+  · split at h
+    · exact absurd h (by simp)
+    · simp only [Except.ok.injEq] at h
+      have hp : raw.prefixLen = 64 := by omega
+      refine ⟨hp, ?_⟩
+      subst h
+      simp only [combine]
+      exact combine_host raw.addr (eui64 mm) (prefixMask 64)
+
 end Hostid6
