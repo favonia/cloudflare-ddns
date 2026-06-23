@@ -39,8 +39,55 @@ func LintExpression(ppfmt pp.PP, key, input string, expr Expr) {
 	}
 }
 
-// shapeFindings runs the structural pass (R1, R2). Filled in by later tasks.
-func shapeFindings(Expr) []finding { return nil }
+// redundantNegationFinding is R1: a ! applied to another ! or to a constant.
+type redundantNegationFinding struct {
+	suggestion string // canonical text of the equivalent simpler expression
+	constant   bool   // true if the ! was applied to a Boolean constant
+}
+
+func (f redundantNegationFinding) message(key, input string) string {
+	if f.constant {
+		return key + ` ("` + input + `") negates a constant; "` + f.suggestion + `" means the same thing`
+	}
+	return key + ` ("` + input + `") negates a negation, which has no effect; "` + f.suggestion + `" means the same thing`
+}
+
+func shapeFindings(expr Expr) []finding {
+	var findings []finding
+	walk(expr, func(e Expr) {
+		u, ok := e.(unaryExpr)
+		if !ok {
+			return
+		}
+		switch inner := u.operand.(type) {
+		case unaryExpr:
+			// !!X cancels to inner.operand.
+			findings = append(findings, redundantNegationFinding{
+				suggestion: exprString(inner.operand),
+				constant:   false,
+			})
+		case literalExpr:
+			// !true -> false, !false -> true.
+			findings = append(findings, redundantNegationFinding{
+				suggestion: exprString(literalExpr{value: !inner.value}),
+				constant:   true,
+			})
+		}
+	})
+	return findings
+}
+
+// walk visits every node of e in pre-order.
+func walk(e Expr, visit func(Expr)) {
+	visit(e)
+	switch e := e.(type) {
+	case unaryExpr:
+		walk(e.operand, visit)
+	case binaryExpr:
+		walk(e.left, visit)
+		walk(e.right, visit)
+	}
+}
 
 // semanticFindings runs the is/sub pass (R3, R4). Filled in by later tasks.
 func semanticFindings(Expr) []finding { return nil }
