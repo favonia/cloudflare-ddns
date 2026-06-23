@@ -19,6 +19,11 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 
 // readWAFListNames reads an environment variable as a comma-separated list of IP list names.
 //
+// WAF_LISTS is a parsed scope declaration, not an optional setting with a
+// reader-owned default: unset or empty input leaves the field empty (nil). The
+// combined empty-scope case is diagnosed later when the scopes are evaluated
+// together.
+//
 // The quota snapshot below was adopted on 2026-03-22. Update that date only
 // when the Cloudflare WAF list availability case in
 // scripts/github-actions/cloudflare-doc-watch/cases.go changes.
@@ -31,6 +36,7 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 func readWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	vals := getenvAsList(key, ",")
 	if len(vals) == 1 && vals[0] == "" {
+		*field = nil
 		return true
 	}
 	hasNonCanonicalEmptyEntry := false

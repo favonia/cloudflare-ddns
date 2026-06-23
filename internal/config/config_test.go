@@ -127,7 +127,7 @@ func readUpdaterSettingsFromDefaultRaw(t *testing.T, env map[string]string) *con
 	return raw
 }
 
-func canonicalExplicitUpdaterDefaults() map[string]string {
+func canonicalOmissionEquivalentUpdaterValues() map[string]string {
 	return map[string]string{
 		"DOMAINS":                              "",
 		"IP4_DOMAINS":                          "",
@@ -153,9 +153,9 @@ func canonicalExplicitUpdaterDefaults() map[string]string {
 
 //nolint:paralleltest // environment variables are global
 func TestOptionalUpdaterSettingsOmissionMatchesCanonicalExplicitValues(t *testing.T) {
-	// Canonical explicit defaults mirrored from README.markdown's "All Settings"
-	// tables for the optional updater settings owned by RawConfig.
-	explicitDefaults := canonicalExplicitUpdaterDefaults()
+	// Canonical explicit values equivalent to omission. Some are meaningful
+	// defaults; scope-list entries are empty parsed inputs.
+	explicitDefaults := canonicalOmissionEquivalentUpdaterValues()
 
 	implicitDefaults := readUpdaterSettingsFromDefaultRaw(t, nil)
 	explicitDefaultsRaw := readUpdaterSettingsFromDefaultRaw(t, explicitDefaults)
@@ -391,7 +391,7 @@ func TestOptionalUpdaterSettingsBuiltConfigOmissionMatchesCanonicalExplicitValue
 		"DOMAINS": "example.org",
 	}
 
-	explicitEnv := canonicalExplicitUpdaterDefaults()
+	explicitEnv := canonicalOmissionEquivalentUpdaterValues()
 	explicitEnv["DOMAINS"] = "example.org"
 
 	implicitBuilt := readAndBuildUpdaterConfig(t, implicitEnv)
