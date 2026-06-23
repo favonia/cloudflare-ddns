@@ -45,6 +45,60 @@ type redundantNegationFinding struct {
 	constant   bool   // true if the ! was applied to a Boolean constant
 }
 
+// exclusionOnlyDisjunctFinding is R2: an || branch with no positive atom.
+type exclusionOnlyDisjunctFinding struct {
+	branch string // canonical text of the offending branch
+}
+
+func (f exclusionOnlyDisjunctFinding) message(key, input string) string {
+	return key + ` ("` + input + `") has an || branch "` + f.branch +
+		`" with no included domain, only exclusions; it usually matches far more than intended`
+}
+
+// flatten returns the operands of the maximal chain of op rooted at e. For a
+// non-op node it returns just that node.
+func flatten(e Expr, op formID) []Expr {
+	b, ok := e.(binaryExpr)
+	if !ok || b.operator != op {
+		return []Expr{e}
+	}
+	return append(flatten(b.left, op), flatten(b.right, op)...)
+}
+
+// hasAnyAtom reports whether e contains at least one is(...)/sub(...) atom.
+// Boolean constants are not atoms.
+func hasAnyAtom(e Expr, _ bool) bool {
+	switch e := e.(type) {
+	case callExpr:
+		return true
+	case unaryExpr:
+		return hasAnyAtom(e.operand, false)
+	case binaryExpr:
+		return hasAnyAtom(e.left, false) || hasAnyAtom(e.right, false)
+	default:
+		return false
+	}
+}
+
+// hasPositiveAtom reports whether e contains an is(...)/sub(...) atom under an
+// even number of negations. neg tracks the parity so far. A Boolean constant is
+// treated as positive so that R2 never fires on a branch containing a constant
+// (those cases are R3/R4 instead).
+func hasPositiveAtom(e Expr, neg bool) bool {
+	switch e := e.(type) {
+	case callExpr:
+		return !neg
+	case literalExpr:
+		return true
+	case unaryExpr:
+		return hasPositiveAtom(e.operand, !neg)
+	case binaryExpr:
+		return hasPositiveAtom(e.left, neg) || hasPositiveAtom(e.right, neg)
+	default:
+		return false
+	}
+}
+
 func (f redundantNegationFinding) message(key, input string) string {
 	if f.constant {
 		return key + ` ("` + input + `") negates a constant; "` + f.suggestion + `" means the same thing`
@@ -74,6 +128,20 @@ func shapeFindings(expr Expr) []finding {
 			})
 		}
 	})
+
+	// R2: every || branch should include at least one positive atom.
+	walk(expr, func(e Expr) {
+		b, ok := e.(binaryExpr)
+		if !ok || b.operator != formOr {
+			return
+		}
+		for _, branch := range flatten(e, formOr) {
+			if hasAnyAtom(branch, false) && !hasPositiveAtom(branch, false) {
+				findings = append(findings, exclusionOnlyDisjunctFinding{branch: exprString(branch)})
+			}
+		}
+	})
+
 	return findings
 }
 

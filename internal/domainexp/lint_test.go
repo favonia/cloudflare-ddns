@@ -65,3 +65,24 @@ func TestLintR1RedundantNegation(t *testing.T) {
 		})
 	}
 }
+
+func TestLintR2ExclusionOnlyDisjunct(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  string
+	}{
+		"mixed": {
+			"is(a.org) || !sub(b.org)",
+			`PROXIED ("is(a.org) || !sub(b.org)") has an || branch "!sub(b.org)" with no included domain, only exclusions; it usually matches far more than intended`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "%s", tc.want)
+			lintExpr(t, ppfmt, "PROXIED", tc.input)
+		})
+	}
+}
