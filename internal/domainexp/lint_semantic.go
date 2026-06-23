@@ -199,6 +199,12 @@ func analyzeDisjunction(operands []Expr) []finding {
 // contradictory reports whether some pair of conjoined literals is always false:
 // two positives with disjoint sets, or a positive p and a negative !q with
 // set(p) subset of set(q).
+//
+// The loop must visit every ordered pair (full i != j), not a triangular
+// j := i+1, because the positive/negated branch is asymmetric: it only fires
+// when the positive literal is a and the negated literal is b. A triangular
+// loop would miss contradictions where the negated literal comes first, e.g.
+// "!sub(a.org) && sub(x.a.org)".
 func contradictory(lits []literal) bool {
 	for i := range lits {
 		for j := range lits {

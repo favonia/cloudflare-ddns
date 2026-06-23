@@ -46,6 +46,13 @@ func TestLintR3Constant(t *testing.T) {
 			"sub(x.a.org) && !sub(a.org)",
 			`PROXIED ("sub(x.a.org) && !sub(a.org)") can never match any domain`,
 		},
+		// Regression guard for contradictory's full i != j loop: the negated
+		// literal appears before the positive one, so a triangular j := i+1 loop
+		// would miss this contradiction. See the comment on contradictory.
+		"contradiction-negated-first": {
+			"!sub(a.org) && sub(x.a.org)",
+			`PROXIED ("!sub(a.org) && sub(x.a.org)") can never match any domain`,
+		},
 		"tautology": {
 			"is(a.org) || !is(a.org)",
 			`PROXIED ("is(a.org) || !is(a.org)") always matches every domain`,
