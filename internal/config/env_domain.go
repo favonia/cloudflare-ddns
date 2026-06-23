@@ -75,6 +75,9 @@ func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domaine
 		}
 	}
 
+	// Scope lists are parsed inputs, not optional settings with reader-owned
+	// defaults. Empty input means an empty scope and is diagnosed later together
+	// with the other scope lists if it leaves the updater with nothing to do.
 	*field = entries
 	return true
 }
