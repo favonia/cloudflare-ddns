@@ -156,6 +156,3 @@ func walk(e Expr, visit func(Expr)) {
 		walk(e.right, visit)
 	}
 }
-
-// semanticFindings runs the is/sub pass (R3, R4). Filled in by later tasks.
-func semanticFindings(Expr) []finding { return nil }

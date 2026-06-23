@@ -4,6 +4,63 @@ package domainexp
 
 import "testing"
 
+func mustParse(t *testing.T, input string) Expr {
+	t.Helper()
+	tree, err := expressionGrammar.Parse(input)
+	if err != nil {
+		t.Fatalf("parse %q: %v", input, err)
+	}
+	// parserState fields are listed explicitly: this repo enables the exhaustruct linter.
+	expr, perr := buildExpr(tree, &parserState{emptyCallFunctions: nil, extraComma: false, missingComma: false})
+	if perr != nil {
+		t.Fatalf("build %q: %v", input, perr)
+	}
+	return expr
+}
+
+func messages(t *testing.T, input string) []string {
+	t.Helper()
+	findings := semanticFindings(mustParse(t, input))
+	out := make([]string, 0, len(findings))
+	for _, f := range findings {
+		out = append(out, f.message("PROXIED", input))
+	}
+	return out
+}
+
+func TestLintR3Constant(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  string
+	}{
+		"contradiction-same": {
+			"is(a.org) && !is(a.org)",
+			`PROXIED ("is(a.org) && !is(a.org)") can never match any domain`,
+		},
+		"contradiction-is-sub": {
+			"is(a.org) && sub(a.org)",
+			`PROXIED ("is(a.org) && sub(a.org)") can never match any domain`,
+		},
+		"contradiction-child-parent": {
+			"sub(x.a.org) && !sub(a.org)",
+			`PROXIED ("sub(x.a.org) && !sub(a.org)") can never match any domain`,
+		},
+		"tautology": {
+			"is(a.org) || !is(a.org)",
+			`PROXIED ("is(a.org) || !is(a.org)") always matches every domain`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := messages(t, tc.input)
+			if len(got) != 1 || got[0] != tc.want {
+				t.Fatalf("messages = %#v, want exactly [%q]", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestLiteralRelations(t *testing.T) {
 	t.Parallel()
 	is := func(d string) atomSet { return atomSet{kind: litIs, domain: d} }
