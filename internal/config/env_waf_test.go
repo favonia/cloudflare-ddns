@@ -27,10 +27,18 @@ func TestReadWAFListNames(t *testing.T) {
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"unset": {
-			false, "", nil, nil, true, nil,
+			false, "",
+			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
+			nil,
+			true,
+			nil,
 		},
 		"empty": {
-			true, "", nil, nil, true, nil,
+			true, "",
+			[]api.WAFList{{AccountID: "there", Name: "ciao"}},
+			nil,
+			true,
+			nil,
 		},
 		"trailing-comma": {
 			true, "hey/hello,",
