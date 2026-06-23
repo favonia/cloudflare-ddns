@@ -45,6 +45,11 @@ func reportEntryParseError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 }
 
 // readDomains reads an environment variable as structured domain entries.
+//
+// DOMAINS, IP4_DOMAINS, and IP6_DOMAINS are parsed scope declarations, not
+// optional settings with reader-owned defaults: unset or empty input leaves the
+// field empty (nil). The combined empty-scope case is diagnosed later when the
+// scopes are evaluated together.
 func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domainentry.Entry) bool {
 	input := getenv(key)
 	entries, diagnostics, err := domainentry.Parse(input)
@@ -75,9 +80,6 @@ func readDomains(ppfmt pp.PP, key string, family *ipnet.Family, field *[]domaine
 		}
 	}
 
-	// Scope lists are parsed inputs, not optional settings with reader-owned
-	// defaults. Empty input means an empty scope and is diagnosed later together
-	// with the other scope lists if it leaves the updater with nothing to do.
 	*field = entries
 	return true
 }
