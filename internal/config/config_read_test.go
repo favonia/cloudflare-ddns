@@ -1430,7 +1430,7 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")),
-				ProxiedExpression: ` true && !is(a.bb.c) `,
+				ProxiedExpression: ` !is(a.bb.c) `,
 			},
 			ok: true,
 			expected: &builtConfig{
