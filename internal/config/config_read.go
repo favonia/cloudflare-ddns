@@ -192,6 +192,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		if !ok {
 			return nil, false
 		}
+		domainexp.LintExpression(ppfmt, "PROXIED", c.ProxiedExpression, expr)
 
 		for dom := range activeDomainSet {
 			proxiedMap[dom] = domainexp.Evaluate(expr, dom)
