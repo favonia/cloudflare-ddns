@@ -8,7 +8,11 @@ package domainexp
 // it carries no is/sub semantics. That is the seam a future shared linter would
 // extract. The semantic pass (R3, R4) lives in lint_semantic.go.
 
-import "github.com/favonia/cloudflare-ddns/internal/pp"
+import (
+	"slices"
+
+	"github.com/favonia/cloudflare-ddns/internal/pp"
+)
 
 // finding is one advisory lint result. The set is closed to this package, so a
 // finding reports itself rather than being matched with errors.As. message
@@ -21,11 +25,7 @@ type finding interface {
 // It assumes expr already parsed successfully. It is purely advisory: callers
 // continue to build config and evaluate the expression unchanged.
 func LintExpression(ppfmt pp.PP, key, input string, expr Expr) {
-	shape := shapeFindings(expr)
-	semantic := semanticFindings(expr)
-	findings := make([]finding, 0, len(shape)+len(semantic))
-	findings = append(findings, shape...)
-	findings = append(findings, semantic...)
+	findings := slices.Concat(shapeFindings(expr), semanticFindings(expr))
 
 	seen := map[string]bool{}
 	for _, f := range findings {
