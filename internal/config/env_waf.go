@@ -31,6 +31,10 @@ var inverseWAFListNameRegex = regexp.MustCompile(`[^a-z0-9_]`)
 func readWAFListNames(ppfmt pp.PP, key string, field *[]api.WAFList) bool {
 	vals := getenvAsList(key, ",")
 	if len(vals) == 1 && vals[0] == "" {
+		// Scope lists are parsed inputs, not optional settings with reader-owned
+		// defaults. Empty input means an empty scope and is diagnosed later together
+		// with the other scope lists if it leaves the updater with nothing to do.
+		*field = nil
 		return true
 	}
 	hasNonCanonicalEmptyEntry := false
