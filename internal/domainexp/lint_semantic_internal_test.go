@@ -61,6 +61,35 @@ func TestLintR3Constant(t *testing.T) {
 	}
 }
 
+func TestLintR4Redundant(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  string
+	}{
+		"duplicate-or": {
+			"is(a.org) || is(a.org)",
+			`PROXIED ("is(a.org) || is(a.org)") contains a redundant term "is(a.org)"; removing it means the same thing`,
+		},
+		"subsumed-or": {
+			"sub(a.org) || sub(x.a.org)",
+			`PROXIED ("sub(a.org) || sub(x.a.org)") contains a redundant term "sub(x.a.org)"; removing it means the same thing`,
+		},
+		"subsumed-and": {
+			"is(x.a.org) && sub(a.org)",
+			`PROXIED ("is(x.a.org) && sub(a.org)") contains a redundant term "sub(a.org)"; removing it means the same thing`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := messages(t, tc.input)
+			if len(got) != 1 || got[0] != tc.want {
+				t.Fatalf("messages = %#v, want exactly [%q]", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestLiteralRelations(t *testing.T) {
 	t.Parallel()
 	is := func(d string) atomSet { return atomSet{kind: litIs, domain: d} }

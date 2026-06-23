@@ -143,6 +143,23 @@ func analyzeConjunction(operands []Expr) []finding {
 	if contradictory(lits) {
 		findings = append(findings, constantFinding{value: false})
 	}
+	for _, e := range operands {
+		if tm := classifyTerm(e); tm.con != nil && *tm.con && len(operands) > 1 {
+			findings = append(findings, redundantTermFinding{term: "true"})
+		}
+	}
+	for i := range lits {
+		for j := range lits {
+			if i == j || lits[i].negated || lits[j].negated {
+				continue
+			}
+			// In A && B, if set(A) superset-or-equal set(B) then A is redundant.
+			// Use a strict tie-break for equal sets: drop the later index only.
+			if subsumes(lits[i].set, lits[j].set) && (lits[i].set != lits[j].set || i >= j) {
+				findings = append(findings, redundantTermFinding{term: litString(lits[i])})
+			}
+		}
+	}
 	return findings
 }
 
@@ -159,6 +176,22 @@ func analyzeDisjunction(operands []Expr) []finding {
 	}
 	if tautological(lits) {
 		findings = append(findings, constantFinding{value: true})
+	}
+	for _, e := range operands {
+		if tm := classifyTerm(e); tm.con != nil && !*tm.con && len(operands) > 1 {
+			findings = append(findings, redundantTermFinding{term: "false"})
+		}
+	}
+	for i := range lits {
+		for j := range lits {
+			if i == j || lits[i].negated || lits[j].negated {
+				continue
+			}
+			// In A || B, if set(A) subset-or-equal set(B) then A is redundant.
+			if subsumes(lits[j].set, lits[i].set) && (lits[i].set != lits[j].set || i >= j) {
+				findings = append(findings, redundantTermFinding{term: litString(lits[i])})
+			}
+		}
 	}
 	return findings
 }
@@ -199,4 +232,27 @@ func tautological(lits []literal) bool {
 		}
 	}
 	return false
+}
+
+// redundantTermFinding is R4: a literal with no effect given another.
+type redundantTermFinding struct {
+	term string // canonical text of the redundant atom
+}
+
+func (f redundantTermFinding) message(key, input string) string {
+	return key + ` ("` + input + `") contains a redundant term "` + f.term +
+		`"; removing it means the same thing`
+}
+
+// litString renders a literal back to canonical text for messages.
+func litString(l literal) string {
+	fn := "is"
+	if l.set.kind == litSub {
+		fn = "sub"
+	}
+	atom := exprString(callExpr{function: fn, domains: []string{l.set.domain}})
+	if l.negated {
+		return "!" + atom
+	}
+	return atom
 }
