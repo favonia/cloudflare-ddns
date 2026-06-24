@@ -31,9 +31,9 @@ func exprStringPrec(e Expr, ctx int) string {
 	case unaryExpr:
 		return wrap("!"+exprStringPrec(e.operand, precNot), precNot, ctx)
 	case binaryExpr:
-		prec := precAnd
-		if e.operator == formOr {
-			prec = precOr
+		prec, ok := map[formID]int{formAnd: precAnd, formOr: precOr}[e.operator]
+		if !ok {
+			return ""
 		}
 		s := fmt.Sprintf("%s %s %s", exprStringPrec(e.left, prec), e.operator, exprStringPrec(e.right, prec))
 		return wrap(s, prec, ctx)
