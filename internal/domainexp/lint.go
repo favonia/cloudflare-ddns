@@ -19,6 +19,10 @@ package domainexp
 // The shape pass (R1, R2) below uses only Boolean structure and atom polarity;
 // it carries no is/sub semantics. The semantic pass (R3, R4) lives in
 // lint_semantic.go.
+//
+// The sub()-of-a-wildcard advisory (formerly L1) is no longer a linter rule:
+// a wildcard argument is skipped and recorded at parse time (buildSubCall) and
+// reported by reportExpressionDiagnostics, so it never reaches this AST.
 
 import (
 	"slices"

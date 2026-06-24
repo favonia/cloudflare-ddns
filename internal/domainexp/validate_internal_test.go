@@ -20,6 +20,10 @@ func parseQuiet(t *testing.T, input string) (Expr, bool) {
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any()).AnyTimes()
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return ParseExpression(ppfmt, "PROXIED", input)
 }
 
@@ -63,4 +67,12 @@ func TestShortIsTargetAdvisory(t *testing.T) {
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", "is(org, com)", "org and com")
 	_, ok := ParseExpression(ppfmt, "PROXIED", "is(org, com)")
 	require.True(t, ok)
+}
+
+func TestSubWildcardAdvisory(t *testing.T) {
+	t.Parallel()
+	// Skipped + advisory; the term keeps parsing and renders as an empty sub().
+	expr, ok := parseQuiet(t, "sub(*.a.org)")
+	require.True(t, ok)
+	require.Equal(t, "sub()", exprString(expr)) // wildcard skipped -> empty subExpr
 }

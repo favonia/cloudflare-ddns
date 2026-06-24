@@ -5,6 +5,7 @@ package domainexp_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
@@ -233,6 +234,39 @@ func TestLintExpressionMerges(t *testing.T) {
 			ppfmt := mocks.NewMockPP(mockCtrl)
 			expectWarnings(ppfmt, tc.want...)
 			lintExpr(t, ppfmt, "PROXIED", tc.input)
+		})
+	}
+}
+
+// TestParseL1SubWildcard pins the sub()-of-a-wildcard advisory, which now fires
+// at parse time (the wildcard is skipped and recorded by buildSubCall), not in
+// LintExpression. Behavior is pinned by positional Noticef args, not prose.
+func TestParseL1SubWildcard(t *testing.T) {
+	t.Parallel()
+
+	// Warns at parse time, naming the wildcard argument (once, even with a
+	// second non-wildcard arg). The parse still succeeds; the wildcard is
+	// skipped because it matches nothing.
+	for _, input := range []string{"sub(*.a.org)", "sub(*.a.org, b.org)"} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(),
+				"PROXIED", input, "*.a.org", "*.a.org", "a.org", "a.org")
+			_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", input)
+			require.True(t, ok)
+		})
+	}
+
+	// No warning: is() of a wildcard and sub() of a plain domain are fine.
+	for _, input := range []string{"is(*.a.org)", "sub(a.org)"} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", input) // no Noticef expected
+			require.True(t, ok)
 		})
 	}
 }

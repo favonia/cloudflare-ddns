@@ -7,6 +7,7 @@ package domainexp
 import (
 	"errors"
 	"slices"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -113,6 +114,14 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 				`domain name; this is accepted but probably not what you want — a target domain `+
 				`name should look like "*.example.org" or "sub.example.org"`,
 			key, input, targets)
+	}
+	for _, w := range state.subWildcards {
+		ws := w.String()                       // canonical "*.X"
+		parent := strings.TrimPrefix(ws, "*.") // subdomain form sub(X)
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			`%s (%q) has sub(%s), which matches no domain; use is(%s) to match the wildcard `+
+				`record itself, or sub(%s) to match subdomains of %s`,
+			key, input, ws, ws, parent, parent)
 	}
 	if state.extraComma {
 		ppfmt.Noticef(
