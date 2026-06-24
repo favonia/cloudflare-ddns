@@ -4,6 +4,18 @@ package domainexp
 // parsed Expr AST and emits warnings for suspicious-but-valid shapes. It never
 // rejects an expression and never changes evaluation.
 //
+// The linter emits four rules, referred to as R1–R4 throughout this package:
+//
+//   - R1 — Redundant negation: a ! applied to another ! or to a constant
+//     (e.g. !!is(a) or !true).
+//   - R2 — Exclusion-only disjunct: an || branch with atoms but no positive
+//     one (e.g. !is(a) as a whole branch), which usually matches far more
+//     than intended.
+//   - R3 — Constant: a subexpression that is statically always true or false
+//     (e.g. is(a) && !is(a)).
+//   - R4 — Redundant term: a term with no effect given another in the same
+//     conjunction/disjunction (e.g. a subsumed sub(...) branch).
+//
 // The shape pass (R1, R2) below uses only Boolean structure and atom polarity;
 // it carries no is/sub semantics. That is the seam a future shared linter would
 // extract. The semantic pass (R3, R4) lives in lint_semantic.go.
