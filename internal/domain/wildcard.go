@@ -24,7 +24,8 @@ func (w Wildcard) String() string {
 	return "*." + safelyToUnicode(string(w))
 }
 
-// Describe gives a human-readible representation of the wildcard domain.
+// Describe gives the human-readable form. The wildcard carries no annotation,
+// so it equals String.
 func (w Wildcard) Describe() string {
 	return w.String()
 }
