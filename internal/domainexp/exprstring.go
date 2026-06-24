@@ -1,6 +1,9 @@
 package domainexp
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Precedence for canonical printing: higher binds tighter.
 const (
@@ -28,11 +31,11 @@ func exprStringPrec(e Expr, ctx int) string {
 	case unaryExpr:
 		return wrap("!"+exprStringPrec(e.operand, precNot), precNot, ctx)
 	case binaryExpr:
-		op, prec := " && ", precAnd
+		prec := precAnd
 		if e.operator == formOr {
-			op, prec = " || ", precOr
+			prec = precOr
 		}
-		s := exprStringPrec(e.left, prec) + op + exprStringPrec(e.right, prec)
+		s := fmt.Sprintf("%s %s %s", exprStringPrec(e.left, prec), e.operator, exprStringPrec(e.right, prec))
 		return wrap(s, prec, ctx)
 	default:
 		return ""
