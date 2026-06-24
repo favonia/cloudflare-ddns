@@ -8,9 +8,22 @@ type FQDN string
 // DNSNameASCII retruns the ASCII form of the FQDN.
 func (f FQDN) DNSNameASCII() string { return string(f) }
 
-// Describe gives a human-readible representation of the FQDN.
-func (f FQDN) Describe() string {
+// String gives the canonical, round-trippable form of the FQDN. The empty
+// FQDN is the root domain, rendered as ".".
+func (f FQDN) String() string {
+	if f == "" {
+		return "."
+	}
 	return safelyToUnicode(string(f))
+}
+
+// Describe gives the human-readable form: String with an annotation where one
+// helps, so an empty value never renders blank.
+func (f FQDN) Describe() string {
+	if f == "" {
+		return ". (root)"
+	}
+	return f.String()
 }
 
 // Zones starts from a.b.c for the domain a.b.c.

@@ -6,6 +6,9 @@ type Domain interface {
 	// DNSNameASCII gives a name suitable for accessing the Cloudflare API
 	DNSNameASCII() string
 
+	// String gives the canonical, round-trippable text form of the domain.
+	String() string
+
 	// Describe gives the most human-readable domain name that is still unambiguous
 	Describe() string
 

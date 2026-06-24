@@ -56,6 +56,20 @@ func TestFQDNDescribe(t *testing.T) {
 	}
 }
 
+func TestFQDNStringDescribe(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, ".", domain.FQDN("").String())
+	require.Equal(t, ". (root)", domain.FQDN("").Describe())
+	require.Equal(t, "example.org", domain.FQDN("example.org").String())
+	require.Equal(t, "example.org", domain.FQDN("example.org").Describe())
+
+	// An IDN renders Unicode via String(), distinct from the ASCII/Punycode form.
+	d, err := domain.New("café.example")
+	require.NoError(t, err)
+	require.Equal(t, d.String(), d.Describe())
+	require.NotEqual(t, d.DNSNameASCII(), d.String())
+}
+
 func TestFQDNZones(t *testing.T) {
 	t.Parallel()
 	type r = string

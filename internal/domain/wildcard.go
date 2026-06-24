@@ -15,13 +15,18 @@ func (w Wildcard) DNSNameASCII() string {
 	return "*." + string(w)
 }
 
-// Describe gives a human-readible representation of the wildcard domain.
-func (w Wildcard) Describe() string {
+// String gives the canonical, round-trippable form of the wildcard domain.
+func (w Wildcard) String() string {
 	if string(w) == "" {
 		return "*"
 	}
 
 	return "*." + safelyToUnicode(string(w))
+}
+
+// Describe gives a human-readible representation of the wildcard domain.
+func (w Wildcard) Describe() string {
+	return w.String()
 }
 
 // Zones starts from a.b.c for the wildcard domain *.a.b.c.
