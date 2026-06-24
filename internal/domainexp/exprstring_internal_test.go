@@ -6,8 +6,8 @@ import "testing"
 
 func TestExprString(t *testing.T) {
 	t.Parallel()
-	is := func(d string) Expr { return callExpr{function: "is", domains: []string{d}} }
-	sub := func(d string) Expr { return callExpr{function: "sub", domains: []string{d}} }
+	is := func(d ...string) Expr { return callExpr{function: "is", domains: d} }
+	sub := func(d ...string) Expr { return callExpr{function: "sub", domains: d} }
 	not := func(e Expr) Expr { return unaryExpr{operator: formNot, operand: e} }
 	and := func(l, r Expr) Expr { return binaryExpr{operator: formAnd, left: l, right: r} }
 	or := func(l, r Expr) Expr { return binaryExpr{operator: formOr, left: l, right: r} }
@@ -19,7 +19,7 @@ func TestExprString(t *testing.T) {
 		"true":       {literalExpr{value: true}, "true"},
 		"false":      {literalExpr{value: false}, "false"},
 		"is":         {is("a.org"), "is(a.org)"},
-		"is-multi":   {callExpr{function: "is", domains: []string{"a.org", "b.org"}}, "is(a.org, b.org)"},
+		"is-multi":   {is("a.org", "b.org"), "is(a.org, b.org)"},
 		"not-atom":   {not(is("a.org")), "!is(a.org)"},
 		"not-binary": {not(and(is("a.org"), sub("b.org"))), "!(is(a.org) && sub(b.org))"},
 		"and-tight":  {or(is("a.org"), and(sub("b.org"), is("c.org"))), "is(a.org) || sub(b.org) && is(c.org)"},
