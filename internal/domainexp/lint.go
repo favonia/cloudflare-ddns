@@ -4,25 +4,25 @@ package domainexp
 // parsed Expr AST and emits warnings for suspicious-but-valid shapes. It never
 // rejects an expression and never changes evaluation.
 //
-// The linter emits four rules, referred to as R1–R4 throughout this package:
+// The linter emits rules in two categories:
 //
-//   - R1 — Redundant negation: a ! applied to another ! or to a constant
-//     (e.g. !!is(a) or !true).
-//   - R2 — Exclusion-only disjunct: an || branch with atoms but no positive
-//     one (e.g. !is(a) as a whole branch), which usually matches far more
-//     than intended.
-//   - R3 — Constant: a subexpression that is statically always true or false
-//     (e.g. is(a) && !is(a)).
-//   - R4 — Redundant term: a term with no effect given another in the same
-//     conjunction/disjunction (e.g. a subsumed sub(...) branch).
+//   - Shape (R1, R2): Boolean structure and atom polarity only; DSL-agnostic.
+//   - Semantic (R3, R4): is/sub set-relations via the subsumes/disjoint oracle.
+//
+// R1 — Redundant negation: a ! applied to another ! or to a constant.
+// R2 — Exclusion-only disjunct: an || branch with atoms but no positive one.
+// R3 — Constant: a subexpression that is statically always true or false.
+// R4 — Redundant term: a term with no effect given another in the same chain.
 //
 // The shape pass (R1, R2) below uses only Boolean structure and atom polarity;
 // it carries no is/sub semantics. The semantic pass (R3, R4) lives in
 // lint_semantic.go.
 //
-// The sub()-of-a-wildcard advisory (formerly L1) is no longer a linter rule:
-// a wildcard argument is skipped and recorded at parse time (buildSubCall) and
-// reported by reportExpressionDiagnostics, so it never reaches this AST.
+// A language-specific advisory (historically L1) — sub() of a wildcard, which
+// matches no domain since a wildcard has no valid strict subdomains — is not a
+// linter rule: the wildcard argument is skipped and recorded at parse time
+// (buildSubCall) and reported by reportExpressionDiagnostics, so it never
+// reaches this AST.
 
 import (
 	"slices"

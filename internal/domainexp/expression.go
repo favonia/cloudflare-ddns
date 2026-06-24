@@ -249,6 +249,12 @@ func buildExpr(tree syntax.Tree[formID], state *parserState) (Expr, *syntax.Pars
 //     all subdomains of example.org (including *.example.org).
 //   - sub(example.org), which matches subdomains of example.org, such as www.example.org and *.example.org.
 //     It does not match the domain example.org itself.
+//   - Domain arguments must be valid: a malformed argument such as b.*.a.org
+//     (a non-leftmost wildcard) is rejected. sub(.) and sub(org) are valid
+//     (the root and single-label suffixes); is(.) and is(org) are accepted but
+//     match nothing, and raise an advisory since such a short target is rarely
+//     intended. sub(*.example.org) is skipped with an advisory, since a wildcard
+//     has no valid strict subdomains.
 //   - ! exp, where exp is a boolean expression, representing logical negation of exp.
 //   - exp1 || exp2, where exp1 and exp2 are boolean expressions, representing logical disjunction of exp1 and exp2.
 //   - exp1 && exp2, where exp1 and exp2 are boolean expressions, representing logical conjunction of exp1 and exp2.
