@@ -105,6 +105,15 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 			`%s (%q) uses %s with empty domain lists, which always evaluate to false`,
 			key, input, functions)
 	}
+	if len(state.shortIsTargets) > 0 {
+		targets := pp.EnglishJoinMapOrEmptyLabel(
+			func(t string) string { return t }, state.shortIsTargets, "")
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			`%s (%q) has the domain %q in is(...), which is too short to be a reasonable target `+
+				`domain name; this is accepted but probably not what you want — a target domain `+
+				`name should look like "*.example.org" or "sub.example.org"`,
+			key, input, targets)
+	}
 	if state.extraComma {
 		ppfmt.Noticef(
 			pp.EmojiUserWarning,
@@ -127,6 +136,7 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.ParseError) {
 	expectedToken, expectedTokenOK := errors.AsType[*syntax.ExpectedTokenError](err)
 	missingToken, missingTokenOK := errors.AsType[*syntax.MissingTokenError](err)
+	invalidDomain, invalidDomainOK := errors.AsType[*invalidDomainError](err)
 	switch {
 	case errors.Is(err, errNotBooleanExpression):
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is not a boolean expression", key, input)
@@ -144,6 +154,10 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) is missing %q at the end`, key, input, missingToken.Expected)
 	case errors.Is(err, syntax.ErrUnexpectedToken):
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, input[err.Span.Start:err.Span.End])
+	case invalidDomainOK:
+		ppfmt.Noticef(pp.EmojiUserError,
+			`%s (%q) has the domain %q in is(...) or sub(...), but it is malformed: %v`,
+			key, input, invalidDomain.domain, invalidDomain.cause)
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, "%s (%q) is malformed: %v", key, input, err.Cause)
 	}

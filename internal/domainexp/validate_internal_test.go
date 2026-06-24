@@ -39,3 +39,28 @@ func TestValidateArguments(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "is(café.example)", exprString(expr))
 }
+
+func TestRejectionMessages(t *testing.T) {
+	t.Parallel()
+
+	// malformed: quotes the domain and passes through the underlying cause.
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	ppfmt.EXPECT().Noticef(
+		gomock.Any(),
+		gomock.Any(),
+		"PROXIED", "is(b.*.a.org)", "b.*.a.org", gomock.Any(),
+	)
+	_, ok := ParseExpression(ppfmt, "PROXIED", "is(b.*.a.org)")
+	require.False(t, ok)
+}
+
+func TestShortIsTargetAdvisory(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	// One advisory naming the joined too-short targets; kept (parse succeeds).
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", "is(org, com)", "org and com")
+	_, ok := ParseExpression(ppfmt, "PROXIED", "is(org, com)")
+	require.True(t, ok)
+}
