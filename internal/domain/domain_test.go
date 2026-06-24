@@ -96,10 +96,10 @@ func TestNew(t *testing.T) {
 		{"*.A......", w("a"), true, ""},
 		{"*｡A｡｡｡｡｡", w("a"), true, ""},
 		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
-		{"*......", w(""), false, "not fully qualified"},
-		{"*｡｡｡｡｡｡", w(""), false, "not fully qualified"},
-		{"......", f(""), false, "not fully qualified"},
-		{"｡｡｡｡｡｡", f(""), false, "not fully qualified"},
+		{"*......", w(""), false, "too few labels"},
+		{"*｡｡｡｡｡｡", w(""), false, "too few labels"},
+		{"......", f(""), false, "too few labels"},
+		{"｡｡｡｡｡｡", f(""), false, "too few labels"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -111,6 +111,17 @@ func TestNew(t *testing.T) {
 			} else {
 				require.EqualError(t, err, tc.errString)
 			}
+		})
+	}
+}
+
+func TestNewTooFewLabels(t *testing.T) {
+	t.Parallel()
+	for _, input := range [...]string{"com", "localhost", "org", "hello.", ".", "*"} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+			_, err := domain.New(input)
+			require.ErrorIs(t, err, domain.ErrTooFewLabels)
 		})
 	}
 }
