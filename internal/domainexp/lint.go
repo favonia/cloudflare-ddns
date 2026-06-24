@@ -67,14 +67,14 @@ func flatten(e Expr, op formID) []Expr {
 
 // hasAnyAtom reports whether e contains at least one is(...)/sub(...) atom.
 // Boolean constants are not atoms.
-func hasAnyAtom(e Expr, _ bool) bool {
+func hasAnyAtom(e Expr) bool {
 	switch e := e.(type) {
 	case callExpr:
 		return true
 	case unaryExpr:
-		return hasAnyAtom(e.operand, false)
+		return hasAnyAtom(e.operand)
 	case binaryExpr:
-		return hasAnyAtom(e.left, false) || hasAnyAtom(e.right, false)
+		return hasAnyAtom(e.left) || hasAnyAtom(e.right)
 	default:
 		return false
 	}
@@ -136,7 +136,7 @@ func shapeFindings(expr Expr) []finding {
 			return
 		}
 		for _, branch := range flatten(e, formOr) {
-			if hasAnyAtom(branch, false) && !hasPositiveAtom(branch, false) {
+			if hasAnyAtom(branch) && !hasPositiveAtom(branch, false) {
 				findings = append(findings, exclusionOnlyDisjunctFinding{branch: exprString(branch)})
 			}
 		}
