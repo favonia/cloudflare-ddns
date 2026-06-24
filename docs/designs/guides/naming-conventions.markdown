@@ -37,7 +37,6 @@ This keeps diagnostics quoting syntax operators can copy back while summaries st
 
 - `String()` is the round-trippable syntax a user writes and diagnostics quote back (`hostid6.Derivation.String()` → `preserve`; `hostid6.Set.String()` → `[::1,::2]`).
 - `Describe()` is human prose that may add annotations not meant to be parsed (`hostid6.Derivation.Describe()` → `preserve (using detected)`); keep such annotations out of any value an error quotes as the syntax to edit.
-- With a single rendering, name by intent; a `Describe()` that is also valid syntax (`api.WAFList.Describe()` → `account/name`) is fine when no separate human form exists.
 
 ## Scope Boundary
 

@@ -65,12 +65,12 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 					pp.EmojiUserError,
 					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; `+
 						`a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
-					pp.Ordinal(i+1), key, input, d.Describe(),
+					pp.Ordinal(i+1), key, input, d.String(),
 				)
 				return nil, false
 			}
 			ppfmt.Noticef(pp.EmojiUserError, "The %s domain in %s (%q) is %q, but it is malformed: %v",
-				pp.Ordinal(i+1), key, input, d.Describe(), domainErr)
+				pp.Ordinal(i+1), key, input, d.String(), domainErr)
 			return nil, false
 		}
 		domains = append(domains, d)

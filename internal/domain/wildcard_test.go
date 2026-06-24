@@ -69,6 +69,14 @@ func TestWildcardDescribe(t *testing.T) {
 	}
 }
 
+func TestWildcardStringDescribe(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, "*", domain.Wildcard("").String())
+	require.Equal(t, "*", domain.Wildcard("").Describe())
+	require.Equal(t, "*.example.org", domain.Wildcard("example.org").String())
+	require.Equal(t, "*.example.org", domain.Wildcard("example.org").Describe())
+}
+
 func TestWildcardZones(t *testing.T) {
 	t.Parallel()
 	type r = string
