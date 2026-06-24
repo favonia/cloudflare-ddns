@@ -218,25 +218,25 @@ func TestParseExpression(t *testing.T) {
 			},
 		},
 		"is/double-comma-warning": {
-			"is(a,,b)", true, f("b"), true,
+			"is(a.org,,b.org)", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a,,b)"`)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a.org,,b.org)"`)
 			},
 		},
 		"is/missing-comma": {
-			"is(a b c)", true, f("b"), true,
+			"is(a.org b.org c.org)", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
-					key, `"is(a b c)"`)
+					key, `"is(a.org b.org c.org)"`)
 			},
 		},
 		"is/missing-comma/with-boolean-tail": {
-			"is(a b) && true", true, f("b"), true,
+			"is(a.org b.org) && true", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
-					key, `"is(a b) && true"`)
+					key, `"is(a.org b.org) && true"`)
 			},
 		},
 		"is/empty": {

@@ -2,12 +2,38 @@
 
 package domainexp
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/favonia/cloudflare-ddns/internal/domain"
+)
 
 func TestExprString(t *testing.T) {
 	t.Parallel()
-	is := func(d ...string) Expr { return callExpr{function: "is", domains: d} }
-	sub := func(d ...string) Expr { return callExpr{function: "sub", domains: d} }
+	toDomains := func(ss ...string) []domain.Domain {
+		ds := make([]domain.Domain, len(ss))
+		for i, s := range ss {
+			d, err := domain.New(s)
+			if err != nil {
+				t.Fatalf("domain.New(%q): %v", s, err)
+			}
+			ds[i] = d
+		}
+		return ds
+	}
+	toSuffixes := func(ss ...string) []domain.Suffix {
+		suffixes := make([]domain.Suffix, len(ss))
+		for i, s := range ss {
+			suffix, err := domain.NewSuffix(s)
+			if err != nil {
+				t.Fatalf("domain.NewSuffix(%q): %v", s, err)
+			}
+			suffixes[i] = suffix
+		}
+		return suffixes
+	}
+	is := func(d ...string) Expr { return isExpr{domains: toDomains(d...)} }
+	sub := func(d ...string) Expr { return subExpr{suffixes: toSuffixes(d...)} }
 	not := func(e Expr) Expr { return unaryExpr{operator: formNot, operand: e} }
 	and := func(l, r Expr) Expr { return binaryExpr{operator: formAnd, left: l, right: r} }
 	or := func(l, r Expr) Expr { return binaryExpr{operator: formOr, left: l, right: r} }

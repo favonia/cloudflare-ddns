@@ -3,7 +3,6 @@ package domainexp
 import (
 	"errors"
 	"slices"
-	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -32,12 +31,27 @@ type literalExpr struct {
 
 func (literalExpr) expr() {}
 
-type callExpr struct {
-	function string
-	domains  []string
+type isExpr struct {
+	domains []domain.Domain
 }
 
-func (callExpr) expr() {}
+func (isExpr) expr() {}
+
+type subExpr struct {
+	suffixes []domain.Suffix
+}
+
+func (subExpr) expr() {}
+
+// invalidDomainError is the cause of a ParseError when an is()/sub() argument
+// is malformed (any error other than the soft, accepted-and-kept cases). It
+// carries the canonical form for quoting.
+type invalidDomainError struct {
+	domain string // canonical text of the rejected argument
+	cause  error  // the underlying domain.New / domain.NewSuffix error
+}
+
+func (e *invalidDomainError) Error() string { return e.cause.Error() }
 
 type unaryExpr struct {
 	operator formID
@@ -93,39 +107,74 @@ func parseBooleanLiteral(token syntax.Token) (Expr, bool) {
 	}
 }
 
-// buildCallExpr validates and normalizes an is(...) or sub(...) call while
-// recording compatibility-list diagnostics.
-func buildCallExpr(tree syntax.Op[formID], state *parserState) (Expr, *syntax.ParseError) {
-	var function string
-	//nolint:exhaustive // buildExpr dispatches only call forms here
-	switch tree.ID {
-	case formIsCall, formIsCallEmpty:
-		function = "is"
-	case formSubCall, formSubCallEmpty:
-		function = "sub"
-	}
-	if tree.ID == formIsCallEmpty || tree.ID == formSubCallEmpty {
-		state.recordEmptyCall(function)
-		return callExpr{
-			function: function,
-			domains:  nil,
-		}, nil
+// buildIsCall validates an is(...) call. Malformed arguments hard-fail; a
+// too-short argument (domain.ErrTooFewLabels) is accepted and kept — it matches
+// nothing exactly as v1.16.2 did — and recorded for the #1 advisory.
+func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.ParseError) {
+	if tree.ID == formIsCallEmpty {
+		state.recordEmptyCall("is")
+		return isExpr{domains: nil}, nil
 	}
 	list, err := flattenDomainList(tree.Args[0], state)
 	if err != nil {
 		return nil, err
 	}
 	if len(list) == 0 {
-		state.recordEmptyCall(function)
+		state.recordEmptyCall("is")
 	}
-	domains := make([]string, 0, len(list))
+	domains := make([]domain.Domain, 0, len(list))
 	for _, token := range list {
-		domains = append(domains, domain.StringToASCII(token.Text))
+		d, derr := domain.New(token.Text)
+		switch {
+		case derr == nil:
+			domains = append(domains, d)
+		case errors.Is(derr, domain.ErrTooFewLabels):
+			state.recordShortIsTarget(d.String())
+			domains = append(domains, d)
+		default:
+			return nil, &syntax.ParseError{
+				Span:  token.Span,
+				Cause: &invalidDomainError{domain: d.String(), cause: derr},
+			}
+		}
 	}
-	return callExpr{
-		function: function,
-		domains:  domains,
-	}, nil
+	return isExpr{domains: domains}, nil
+}
+
+// buildSubCall validates a sub(...) call over domain.Suffix values. Wildcards
+// are skipped (a wildcard has no strict subdomains) and recorded for the #2/L1
+// advisory; the resulting suffix list may be empty, which evaluates to false.
+func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.ParseError) {
+	if tree.ID == formSubCallEmpty {
+		state.recordEmptyCall("sub")
+		return subExpr{suffixes: nil}, nil
+	}
+	list, err := flattenDomainList(tree.Args[0], state)
+	if err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		state.recordEmptyCall("sub")
+	}
+	suffixes := make([]domain.Suffix, 0, len(list))
+	for _, token := range list {
+		s, serr := domain.NewSuffix(token.Text)
+		switch {
+		case serr == nil:
+			suffixes = append(suffixes, s)
+		case errors.Is(serr, domain.ErrWildcardSuffix):
+			// Skip + record the wildcard for the #2/L1 advisory. Parse it as a
+			// Domain only to render the canonical "*.X" form for the message.
+			wd, _ := domain.New(token.Text)
+			state.recordSubWildcard(wd)
+		default:
+			return nil, &syntax.ParseError{
+				Span:  token.Span,
+				Cause: &invalidDomainError{domain: domain.StringToASCII(token.Text), cause: serr},
+			}
+		}
+	}
+	return subExpr{suffixes: suffixes}, nil
 }
 
 // buildExpr converts a generic parse tree into a domain expression while
@@ -175,8 +224,10 @@ func buildExpr(tree syntax.Tree[formID], state *parserState) (Expr, *syntax.Pars
 		case formGroup:
 			// Grouping shapes the parse tree; the group itself has no meaning.
 			return buildExpr(tree.Args[0], state)
-		case formIsCall, formSubCall, formIsCallEmpty, formSubCallEmpty:
-			return buildCallExpr(tree, state)
+		case formIsCall, formIsCallEmpty:
+			return buildIsCall(tree, state)
+		case formSubCall, formSubCallEmpty:
+			return buildSubCall(tree, state)
 		default:
 			return nil, &syntax.ParseError{
 				Span: tree.Tokens[0].Span, Cause: errUnexpectedBooleanToken,
@@ -204,7 +255,13 @@ func buildExpr(tree syntax.Tree[formID], state *parserState) (Expr, *syntax.Pars
 //
 // One can use parentheses to group expressions, such as !(is(hello.org) && (is(hello.io) || is(hello.me))).
 func ParseExpression(ppfmt pp.PP, key string, input string) (Expr, bool) {
-	state := &parserState{emptyCallFunctions: nil, extraComma: false, missingComma: false}
+	state := &parserState{
+		emptyCallFunctions: nil,
+		extraComma:         false,
+		missingComma:       false,
+		shortIsTargets:     nil,
+		subWildcards:       nil,
+	}
 	tree, err := expressionGrammar.Parse(input)
 	if err != nil {
 		// Translate generic parser failures into more useful expression diagnostics:
@@ -237,26 +294,19 @@ func ParseExpression(ppfmt pp.PP, key string, input string) (Expr, bool) {
 	return expr, true
 }
 
-// hasStrictSuffix reports whether suffix is a proper dot-delimited suffix of s.
-func hasStrictSuffix(s, suffix string) bool {
-	return strings.HasSuffix(s, suffix) && len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.'
-}
-
 // Evaluate evaluates a parsed expression for a domain.
 func Evaluate(expr Expr, dom domain.Domain) bool {
 	switch expr := expr.(type) {
 	case literalExpr:
 		return expr.value
-	case callExpr:
-		switch expr.function {
-		case "is":
-			return slices.Contains(expr.domains, dom.DNSNameASCII())
-		case "sub":
-			asciiDomain := dom.DNSNameASCII()
-			return slices.ContainsFunc(expr.domains, func(pattern string) bool {
-				return hasStrictSuffix(asciiDomain, pattern)
-			})
-		}
+	case isExpr:
+		return slices.ContainsFunc(expr.domains, func(d domain.Domain) bool {
+			return d.DNSNameASCII() == dom.DNSNameASCII()
+		})
+	case subExpr:
+		return slices.ContainsFunc(expr.suffixes, func(s domain.Suffix) bool {
+			return dom.HasStrictSuffix(s)
+		})
 	case unaryExpr:
 		return !Evaluate(expr.operand, dom)
 	case binaryExpr:

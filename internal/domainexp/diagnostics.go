@@ -8,6 +8,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
@@ -19,6 +20,11 @@ type parserState struct {
 	extraComma bool
 	// Missing-comma diagnostics are intentionally deduplicated across one parse.
 	missingComma bool
+	// Short is(...) targets (domain.ErrTooFewLabels) kept and reported once, in
+	// first-occurrence order, deduplicated (#1).
+	shortIsTargets []string
+	// sub(...) wildcard arguments skipped and reported, deduplicated (#2/L1).
+	subWildcards []domain.Domain
 }
 
 // listSyntaxPreview formats potentially long list syntax for advisory messages.
@@ -39,6 +45,22 @@ func (state *parserState) recordEmptyCall(function string) {
 
 func (state *parserState) recordMissingComma() {
 	state.missingComma = true
+}
+
+func (state *parserState) recordShortIsTarget(target string) {
+	if slices.Contains(state.shortIsTargets, target) {
+		return
+	}
+	state.shortIsTargets = append(state.shortIsTargets, target)
+}
+
+func (state *parserState) recordSubWildcard(w domain.Domain) {
+	for _, existing := range state.subWildcards {
+		if existing.String() == w.String() {
+			return
+		}
+	}
+	state.subWildcards = append(state.subWildcards, w)
 }
 
 // reportListDiagnostics emits the compatibility warnings accumulated while flattening a domain list.

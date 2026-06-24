@@ -26,8 +26,18 @@ func exprStringPrec(e Expr, ctx int) string {
 			return "true"
 		}
 		return "false"
-	case callExpr:
-		return e.function + "(" + strings.Join(e.domains, ", ") + ")"
+	case isExpr:
+		parts := make([]string, len(e.domains))
+		for i, d := range e.domains {
+			parts[i] = d.String()
+		}
+		return "is(" + strings.Join(parts, ", ") + ")"
+	case subExpr:
+		parts := make([]string, len(e.suffixes))
+		for i, s := range e.suffixes {
+			parts[i] = s.String()
+		}
+		return "sub(" + strings.Join(parts, ", ") + ")"
 	case unaryExpr:
 		return wrap("!"+exprStringPrec(e.operand, precNot), precNot, ctx)
 	case binaryExpr:

@@ -4,6 +4,8 @@ package domainexp
 // relations over single-domain atoms. Multi-domain atoms and unrecognized
 // shapes are treated as opaque and produce no findings.
 
+import "github.com/favonia/cloudflare-ddns/internal/domain"
+
 type litKind int
 
 const (
@@ -12,10 +14,11 @@ const (
 )
 
 // atomSet is the set denoted by a single-domain is/sub atom. is(d) is the
-// singleton {d}; sub(d) is the set of strict subdomains of d.
+// singleton {d}; sub(s) is the set of strict subdomains of suffix s.
 type atomSet struct {
 	kind   litKind
-	domain string // ASCII
+	domain domain.Domain // valid when kind == litIs
+	suffix domain.Suffix // valid when kind == litSub
 }
 
 // literal is an atomSet with a polarity.
@@ -28,16 +31,13 @@ type literal struct {
 func subsumes(p, q atomSet) bool {
 	switch p.kind {
 	case litIs:
-		// {p} can only contain q if q is exactly {p}.
-		return q.kind == litIs && q.domain == p.domain
+		return q.kind == litIs && q.domain.DNSNameASCII() == p.domain.DNSNameASCII()
 	case litSub:
 		switch q.kind {
 		case litIs:
-			// q == {q.domain} subset of sub(p) iff q.domain is a strict subdomain of p.
-			return hasStrictSuffix(q.domain, p.domain)
+			return q.domain.HasStrictSuffix(p.suffix)
 		case litSub:
-			// sub(q) subset of sub(p) iff q == p or q is under p.
-			return q.domain == p.domain || hasStrictSuffix(q.domain, p.domain)
+			return q.suffix == p.suffix || q.suffix.HasStrictSuffix(p.suffix)
 		}
 	}
 	return false
@@ -47,15 +47,15 @@ func subsumes(p, q atomSet) bool {
 func disjoint(p, q atomSet) bool {
 	switch {
 	case p.kind == litIs && q.kind == litIs:
-		return p.domain != q.domain
+		return p.domain.DNSNameASCII() != q.domain.DNSNameASCII()
 	case p.kind == litIs && q.kind == litSub:
-		return !hasStrictSuffix(p.domain, q.domain)
+		return !p.domain.HasStrictSuffix(q.suffix)
 	case p.kind == litSub && q.kind == litIs:
-		return !hasStrictSuffix(q.domain, p.domain)
-	default: // both sub: share a strict subdomain iff their domains are nested or equal.
-		return p.domain != q.domain &&
-			!hasStrictSuffix(p.domain, q.domain) &&
-			!hasStrictSuffix(q.domain, p.domain)
+		return !q.domain.HasStrictSuffix(p.suffix)
+	default: // both sub
+		return p.suffix != q.suffix &&
+			!p.suffix.HasStrictSuffix(q.suffix) &&
+			!q.suffix.HasStrictSuffix(p.suffix)
 	}
 }
 
@@ -83,31 +83,39 @@ func classifyTerm(e Expr) term {
 	case literalExpr:
 		v := e.value
 		return term{lit: nil, con: &v}
-	case callExpr:
+	case isExpr:
+		if l, ok := asLiteral(e, false); ok {
+			return term{lit: &l, con: nil}
+		}
+	case subExpr:
 		if l, ok := asLiteral(e, false); ok {
 			return term{lit: &l, con: nil}
 		}
 	case unaryExpr:
-		if call, ok := e.operand.(callExpr); ok {
-			if l, ok := asLiteral(call, true); ok {
-				return term{lit: &l, con: nil}
-			}
+		if l, ok := asLiteral(e.operand, true); ok {
+			return term{lit: &l, con: nil}
 		}
 	}
 	return term{lit: nil, con: nil} // opaque
 }
 
 // asLiteral converts a single-domain is/sub call into a literal. Multi-domain
-// or empty calls are not representable and return ok=false.
-func asLiteral(c callExpr, negated bool) (literal, bool) {
-	if len(c.domains) != 1 {
-		return literal{negated: false, set: atomSet{kind: litIs, domain: ""}}, false
+// or empty calls are not single literals and return ok=false.
+func asLiteral(e Expr, negated bool) (literal, bool) {
+	switch e := e.(type) {
+	case isExpr:
+		if len(e.domains) != 1 {
+			return literal{negated: false, set: atomSet{}}, false
+		}
+		return literal{negated: negated, set: atomSet{kind: litIs, domain: e.domains[0]}}, true
+	case subExpr:
+		if len(e.suffixes) != 1 {
+			return literal{negated: false, set: atomSet{}}, false
+		}
+		return literal{negated: negated, set: atomSet{kind: litSub, suffix: e.suffixes[0]}}, true
+	default:
+		return literal{negated: false, set: atomSet{}}, false
 	}
-	kind := litIs
-	if c.function == "sub" {
-		kind = litSub
-	}
-	return literal{negated: negated, set: atomSet{kind: kind, domain: c.domains[0]}}, true
 }
 
 func semanticFindings(expr Expr) []finding {
@@ -252,11 +260,12 @@ func (f redundantTermFinding) message(key, input string) string {
 
 // litString renders a literal back to canonical text for messages.
 func litString(l literal) string {
-	fn := "is"
+	var atom string
 	if l.set.kind == litSub {
-		fn = "sub"
+		atom = exprString(subExpr{suffixes: []domain.Suffix{l.set.suffix}})
+	} else {
+		atom = exprString(isExpr{domains: []domain.Domain{l.set.domain}})
 	}
-	atom := exprString(callExpr{function: fn, domains: []string{l.set.domain}})
 	if l.negated {
 		return "!" + atom
 	}

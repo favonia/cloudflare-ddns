@@ -17,8 +17,8 @@ package domainexp
 //     conjunction/disjunction (e.g. a subsumed sub(...) branch).
 //
 // The shape pass (R1, R2) below uses only Boolean structure and atom polarity;
-// it carries no is/sub semantics. That is the seam a future shared linter would
-// extract. The semantic pass (R3, R4) lives in lint_semantic.go.
+// it carries no is/sub semantics. The semantic pass (R3, R4) lives in
+// lint_semantic.go.
 
 import (
 	"slices"
@@ -81,7 +81,7 @@ func flatten(e Expr, op formID) []Expr {
 // Boolean constants are not atoms.
 func hasAnyAtom(e Expr) bool {
 	switch e := e.(type) {
-	case callExpr:
+	case isExpr, subExpr:
 		return true
 	case unaryExpr:
 		return hasAnyAtom(e.operand)
@@ -98,7 +98,7 @@ func hasAnyAtom(e Expr) bool {
 // (those cases are R3/R4 instead).
 func hasPositiveAtom(e Expr, neg bool) bool {
 	switch e := e.(type) {
-	case callExpr:
+	case isExpr, subExpr:
 		return !neg
 	case literalExpr:
 		return true
