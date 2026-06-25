@@ -134,7 +134,84 @@ func semanticFindings(expr Expr) []finding {
 			// other binary forms are not && or || — ignore
 		}
 	})
+	// Report R3 constancy whenever the expression both contains an always-true
+	// sub atom such as sub(.) and is statically determined as a whole. This
+	// complements the &&/|| chain analysis above, which only fires when a
+	// literalExpr constant or an is/sub relation forces the result. The guard on
+	// containsAlwaysTrueAtom keeps R3 from flagging plain literal expressions like
+	// "true" or "!true" (those are not the kind of non-obvious constancy R3 warns
+	// about). The constValue evaluation only reports when the whole expression is
+	// statically determined, so e.g. "sub(.) && is(a.org)" (not constant) is left
+	// to the redundancy pass instead of being mislabeled constant-true.
+	if containsAlwaysTrueAtom(expr) {
+		if value, ok := constValue(expr); ok {
+			findings = append(findings, constantFinding{value: value})
+		}
+	}
 	return findings
+}
+
+// isAlwaysTrueAtom reports whether e is a sub() atom that matches every domain,
+// i.e. a single root suffix. sub(.) is the only such atom.
+func isAlwaysTrueAtom(e Expr) bool {
+	s, ok := e.(subExpr)
+	return ok && len(s.suffixes) == 1 && s.suffixes[0] == domain.Suffix("")
+}
+
+// containsAlwaysTrueAtom reports whether e contains an always-true sub atom.
+func containsAlwaysTrueAtom(e Expr) bool {
+	found := false
+	walk(e, func(n Expr) {
+		if isAlwaysTrueAtom(n) {
+			found = true
+		}
+	})
+	return found
+}
+
+// constValue computes the static truth value of e, treating an always-true sub
+// atom (sub(.)) as true. known is false when the value depends on the matched
+// domain. Negation flips the value; && and || short-circuit on a known operand.
+// is()/sub() atoms other than the always-true one are treated as unknown.
+func constValue(e Expr) (value bool, known bool) {
+	switch e := e.(type) {
+	case literalExpr:
+		return e.value, true
+	case subExpr:
+		if isAlwaysTrueAtom(e) {
+			return true, true
+		}
+		return false, false
+	case unaryExpr:
+		if v, ok := constValue(e.operand); ok {
+			return !v, true
+		}
+		return false, false
+	case binaryExpr:
+		lv, lok := constValue(e.left)
+		rv, rok := constValue(e.right)
+		switch e.operator {
+		case formAnd:
+			if (lok && !lv) || (rok && !rv) {
+				return false, true
+			}
+			if lok && rok {
+				return lv && rv, true
+			}
+		case formOr:
+			if (lok && lv) || (rok && rv) {
+				return true, true
+			}
+			if lok && rok {
+				return lv || rv, true
+			}
+		default:
+			// other binary forms are not && or || — treat as unknown
+		}
+		return false, false
+	default:
+		return false, false
+	}
 }
 
 func analyzeConjunction(operands []Expr) []finding {

@@ -164,6 +164,102 @@ func TestLintR3Constant(t *testing.T) {
 	}
 }
 
+// TestLintR3SubRoot pins task #5: sub(.) denotes the strict subdomains of the
+// root suffix, i.e. every domain, so it is statically constant-true and trips
+// R3. Negating it is constant-false, and in a disjunction the constant-true
+// folds to the whole expression.
+func TestLintR3SubRoot(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  []string
+	}{
+		// A bare root-suffix sub() always matches every domain.
+		"bare": {
+			"sub(.)",
+			[]string{`PROXIED ("sub(.)") always matches every domain`},
+		},
+		// In a disjunction the constant-true folds to the whole expression, and
+		// the other disjunct is redundant because sub(.) already covers it.
+		"disjunct": {
+			"sub(.) || is(a.org)",
+			[]string{
+				`PROXIED ("sub(.) || is(a.org)") always matches every domain`,
+				`PROXIED ("sub(.) || is(a.org)") contains a redundant term "is(a.org)"; removing it means the same thing`,
+			},
+		},
+		// Negating an always-true atom is constant-false.
+		"negated": {
+			"!sub(.)",
+			[]string{`PROXIED ("!sub(.)") can never match any domain`},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			expectWarnings(ppfmt, tc.want...)
+			lintExpr(t, ppfmt, "PROXIED", tc.input)
+		})
+	}
+}
+
+// TestLintR3SubRootMultiArgDeferred documents a known limitation deferred to
+// task #6: a multi-arg sub() that contains the root suffix, e.g. sub(org, .),
+// is semantically constant-true (its union covers every domain) but is still
+// opaque to the constant/redundancy passes, because it is not a single-domain
+// literal. For now it produces no findings.
+func TestLintR3SubRootMultiArgDeferred(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(mockCtrl)
+	// No Noticef expectations: not yet recognized (deferred to #6).
+	lintExpr(t, ppfmt, "PROXIED", "sub(org, .)")
+}
+
+// TestLintR3SubRootGuard pins the cases that justify the constancy detector's
+// guard and folding logic: a non-constant expression containing sub(.) must not
+// be mislabeled constant, a plain constant without sub(.) must not gain an R3
+// "always/never matches" line, and the negation/short-circuit folding must hold.
+func TestLintR3SubRootGuard(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  []string
+	}{
+		// sub(.) && is(a.org) == is(a.org): NOT constant. Only the redundancy of
+		// the all-covering sub(.) is reported, never "always matches every domain".
+		"not-constant-with-subroot": {
+			"sub(.) && is(a.org)",
+			[]string{`PROXIED ("sub(.) && is(a.org)") contains a redundant term "sub(.)"; removing it means the same thing`},
+		},
+		// A plain true constant (no sub(.)) is not the non-obvious constancy R3
+		// warns about: the guard keeps R3 silent here.
+		"plain-true-no-r3": {
+			"true",
+			nil,
+		},
+		// !true is an R1 finding only; the guard keeps R3 from also firing.
+		"negated-true-no-r3": {
+			"!true",
+			[]string{`PROXIED ("!true") negates a constant; "false" means the same thing`},
+		},
+		// sub(.) && false short-circuits to constant-false.
+		"subroot-and-false": {
+			"sub(.) && false",
+			[]string{`PROXIED ("sub(.) && false") can never match any domain`},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			expectWarnings(ppfmt, tc.want...)
+			lintExpr(t, ppfmt, "PROXIED", tc.input)
+		})
+	}
+}
+
 func TestLintR4Redundant(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
