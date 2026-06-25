@@ -118,6 +118,47 @@ func asLiteral(e Expr, negated bool) (literal, bool) {
 	}
 }
 
+// atomsOfCall expands a multi/single-arg is/sub call into its positive literals.
+// A call is semantically the disjunction of its single-atom literals.
+func atomsOfCall(e Expr) ([]literal, bool) {
+	switch e := e.(type) {
+	case isExpr:
+		lits := make([]literal, len(e.domains))
+		for i, d := range e.domains {
+			lits[i] = literal{negated: false, set: atomSet{kind: litIs, domain: d, suffix: ""}}
+		}
+		return lits, true
+	case subExpr:
+		lits := make([]literal, len(e.suffixes))
+		for i, s := range e.suffixes {
+			lits[i] = literal{negated: false, set: atomSet{kind: litSub, domain: nil, suffix: s}}
+		}
+		return lits, true
+	default:
+		return nil, false
+	}
+}
+
+// orRedundancies reports each literal that is redundant in a disjunction of the
+// given literals: a positive A is redundant when some positive B has a set that
+// is a superset of (or equal to) set(A). The equal-set tie-break flags only the
+// later index so a duplicate pair yields exactly one finding.
+func orRedundancies(lits []literal) []finding {
+	var findings []finding
+	for i := range lits {
+		for j := range lits {
+			if i == j || lits[i].negated || lits[j].negated {
+				continue
+			}
+			// In A || B, if set(A) subset-or-equal set(B) then A is redundant.
+			if subsumes(lits[j].set, lits[i].set) && (lits[i].set != lits[j].set || i >= j) {
+				findings = append(findings, redundantTermFinding{term: litString(lits[i])})
+			}
+		}
+	}
+	return findings
+}
+
 func semanticFindings(expr Expr) []finding {
 	var findings []finding
 	walk(expr, func(e Expr) {
@@ -132,6 +173,14 @@ func semanticFindings(expr Expr) []finding {
 			findings = append(findings, analyzeDisjunction(flatten(e, formOr))...)
 		default:
 			// other binary forms are not && or || — ignore
+		}
+	})
+	// A multi-arg is/sub call is the disjunction of its single-atom literals, so
+	// redundancy among its arguments holds in any context (even inside &&). Report
+	// it from a walk rather than only from disjunction analysis.
+	walk(expr, func(e Expr) {
+		if lits, ok := atomsOfCall(e); ok && len(lits) > 1 {
+			findings = append(findings, orRedundancies(lits)...)
 		}
 	})
 	// Report R3 constancy whenever the expression both contains an always-true
@@ -250,16 +299,30 @@ func analyzeConjunction(operands []Expr) []finding {
 
 func analyzeDisjunction(operands []Expr) []finding {
 	var findings []finding
-	var lits []literal
+	// singleLits drives the tautology check, which compares positive against
+	// negated single-domain literals. redundancyLits additionally expands
+	// multi-arg calls into their positive atoms so redundancy is caught across ||
+	// terms, including atoms drawn from different calls.
+	var singleLits []literal
+	var redundancyLits []literal
 	for _, e := range operands {
 		switch tm := classifyTerm(e); {
 		case tm.con != nil && *tm.con:
 			findings = append(findings, constantFinding{value: true})
 		case tm.lit != nil:
-			lits = append(lits, *tm.lit)
+			singleLits = append(singleLits, *tm.lit)
+		}
+		if lits, ok := atomsOfCall(e); ok {
+			redundancyLits = append(redundancyLits, lits...)
+		} else if u, ok := e.(unaryExpr); ok {
+			// A negated single literal (!is(x)/!sub(x)) still participates so it is
+			// never wrongly flagged as a cover; orRedundancies skips negated pairs.
+			if l, ok := asLiteral(u.operand, true); ok {
+				redundancyLits = append(redundancyLits, l)
+			}
 		}
 	}
-	if tautological(lits) {
+	if tautological(singleLits) {
 		findings = append(findings, constantFinding{value: true})
 	}
 	for _, e := range operands {
@@ -267,17 +330,7 @@ func analyzeDisjunction(operands []Expr) []finding {
 			findings = append(findings, redundantTermFinding{term: "false"})
 		}
 	}
-	for i := range lits {
-		for j := range lits {
-			if i == j || lits[i].negated || lits[j].negated {
-				continue
-			}
-			// In A || B, if set(A) subset-or-equal set(B) then A is redundant.
-			if subsumes(lits[j].set, lits[i].set) && (lits[i].set != lits[j].set || i >= j) {
-				findings = append(findings, redundantTermFinding{term: litString(lits[i])})
-			}
-		}
-	}
+	findings = append(findings, orRedundancies(redundancyLits)...)
 	return findings
 }
 

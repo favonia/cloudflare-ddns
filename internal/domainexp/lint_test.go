@@ -204,16 +204,18 @@ func TestLintR3SubRoot(t *testing.T) {
 	}
 }
 
-// TestLintR3SubRootMultiArgDeferred documents a known limitation deferred to
-// task #6: a multi-arg sub() that contains the root suffix, e.g. sub(org, .),
-// is semantically constant-true (its union covers every domain) but is still
-// opaque to the constant/redundancy passes, because it is not a single-domain
-// literal. For now it produces no findings.
-func TestLintR3SubRootMultiArgDeferred(t *testing.T) {
+// TestLintR3SubRootMultiArgPartial pins what task #6 resolves and what it does
+// not: a multi-arg sub() that contains the root suffix, e.g. sub(org, .), is now
+// expanded into its single-atom literals, so the redundancy pass sees that org
+// is covered by the all-matching "." and flags sub(org). The whole-call R3
+// constant-true detection (its union covers every domain) remains out of scope,
+// because constValue still treats a multi-arg call as opaque.
+func TestLintR3SubRootMultiArgPartial(t *testing.T) {
 	t.Parallel()
 	mockCtrl := gomock.NewController(t)
 	ppfmt := mocks.NewMockPP(mockCtrl)
-	// No Noticef expectations: not yet recognized (deferred to #6).
+	expectWarnings(ppfmt,
+		`PROXIED ("sub(org, .)") contains a redundant term "sub(org)"; removing it means the same thing`)
 	lintExpr(t, ppfmt, "PROXIED", "sub(org, .)")
 }
 
@@ -294,6 +296,54 @@ func TestLintR4Redundant(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ppfmt := mocks.NewMockPP(mockCtrl)
 			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "%s", tc.want)
+			lintExpr(t, ppfmt, "PROXIED", tc.input)
+		})
+	}
+}
+
+// TestLintR4RedundantArguments pins task #6: a multi-arg is/sub call is the
+// disjunction of its single-atom literals, so redundancy is detected both within
+// one call (any context) and across || terms drawn from different calls.
+func TestLintR4RedundantArguments(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  []string
+	}{
+		// Two identical atoms in one call: the duplicate is redundant, reported once.
+		"intra-call-duplicate": {
+			"is(a.org, a.org)",
+			[]string{`PROXIED ("is(a.org, a.org)") contains a redundant term "is(a.org)"; removing it means the same thing`},
+		},
+		// sub.org is under org, so its atom is the redundant smaller set in the call.
+		"intra-call-subsumption": {
+			"sub(org, sub.org)",
+			[]string{`PROXIED ("sub(org, sub.org)") contains a redundant term "sub(sub.org)"; removing it means the same thing`},
+		},
+		// b.com (in the first call) is under com (the second call), so it is
+		// redundant across the || boundary.
+		"cross-or": {
+			"sub(a.org, b.com) || sub(com)",
+			[]string{`PROXIED ("sub(a.org, b.com) || sub(com)") contains a redundant term "sub(b.com)"; removing it means the same thing`},
+		},
+		// Two disjoint atoms in one call: nothing is redundant.
+		"no-false-positive": {
+			"sub(a.org, b.com)",
+			nil,
+		},
+		// A negated operand in a || must not be used as a redundancy cover, nor be
+		// flagged itself. The only finding here is R2 (the !sub(com) branch has no
+		// included domain); crucially there is no R4 "redundant term".
+		"negated-operand-not-cover": {
+			"sub(b.com) || !sub(com)",
+			[]string{`PROXIED ("sub(b.com) || !sub(com)") has an || branch "!sub(com)" with no included domain, only exclusions; it usually matches far more than intended`},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			expectWarnings(ppfmt, tc.want...)
 			lintExpr(t, ppfmt, "PROXIED", tc.input)
 		})
 	}
