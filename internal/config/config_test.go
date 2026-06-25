@@ -180,12 +180,12 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 			value: ",good.example bad.example,localhost",
 			expected: "DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n" +
 				"DOMAINS (\",good.example bad.example,localhost\") is missing commas; this is accepted for now but will be rejected in version 2.0.0\n" +
-				"DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+				"DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": too few labels\n",
 		},
 		"ordered-recovered-semantic-errors": {
 			key:   "DOMAINS",
 			value: "localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}",
-			expected: "DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid domain \"localhost\": not fully qualified\n" +
+			expected: "DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid domain \"localhost\": too few labels\n" +
 				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has unknown domain field \"unknown\"\n" +
 				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid hostid6 value \"192.0.2.1\": host-ID literal must be an unzoned IPv6 address\n" +
 				"DOMAINS (\"localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}\") has invalid hostid6 MAC address \"bad\": invalid 48-bit MAC address\n",
@@ -243,7 +243,7 @@ func TestReadEnvDomainDiagnosticSeverityAndOrder(t *testing.T) {
 	require.Equal(t,
 		"😦 DOMAINS (\",good.example bad.example,localhost\") contains extra commas; this is accepted for now but will be rejected in version 2.0.0\n"+
 			"😦 DOMAINS (\",good.example bad.example,localhost\") is missing commas; this is accepted for now but will be rejected in version 2.0.0\n"+
-			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": not fully qualified\n",
+			"😡 DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": too few labels\n",
 		output.String(),
 	)
 }

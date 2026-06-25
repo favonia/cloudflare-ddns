@@ -60,11 +60,11 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 		d, domainErr := domain.New(token.Text)
 		if domainErr != nil {
 			reportListDiagnostics(ppfmt, key, input, state)
-			if errors.Is(domainErr, domain.ErrNotFQDN) {
+			if errors.Is(domainErr, domain.ErrTooFewLabels) {
 				ppfmt.Noticef(
 					pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; `+
-						`a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					`The %s domain in %s (%q) is %q, but it is too short to be a reasonable target domain name; `+
+						`it should look like "*.example.org" or "sub.example.org"`,
 					pp.Ordinal(i+1), key, input, d.String(),
 				)
 				return nil, false

@@ -139,7 +139,7 @@ func TestReadDomainsReportsSemanticDiagnosticsInSourceOrder(t *testing.T) {
 	field := oldField
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": too few labels`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `unknown domain field "unknown"`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid hostid6 value "192.0.2.1": host-ID literal must be an unzoned IPv6 address`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid hostid6 MAC address "bad": invalid 48-bit MAC address`),
@@ -160,7 +160,7 @@ func TestReadDomainsReportsCompatibilityWarningsBeforeLaterRecoveredSemanticErro
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",good.example bad.example,localhost"`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": not fully qualified`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has %s`, "DOMAINS", value, `invalid domain "localhost": too few labels`),
 	)
 
 	ok := readDomains(mockPP, "DOMAINS", nil, &field)
