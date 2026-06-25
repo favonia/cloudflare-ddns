@@ -26,6 +26,11 @@ func (f FQDN) Describe() string {
 	return f.String()
 }
 
+// HasStrictSuffix reports whether the FQDN is strictly under the suffix s.
+func (f FQDN) HasStrictSuffix(s Suffix) bool {
+	return hasStrictSuffixASCII(f.DNSNameASCII(), s.DNSNameASCII())
+}
+
 // Zones starts from a.b.c for the domain a.b.c.
 func (f FQDN) Zones(yield func(ZoneNameASCII string) bool) {
 	domain := string(f)

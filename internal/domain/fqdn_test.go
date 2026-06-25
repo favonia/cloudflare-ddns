@@ -70,6 +70,27 @@ func TestFQDNStringDescribe(t *testing.T) {
 	require.NotEqual(t, d.DNSNameASCII(), d.String())
 }
 
+func TestFQDNHasStrictSuffix(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]struct {
+		input    domain.FQDN
+		suffix   domain.Suffix
+		expected bool
+	}{
+		{"a.b.c", "c", true},
+		{"a.b.c", "b.c", true},
+		{"c", "c", false},     // strict: not under itself
+		{"a.b.c", "", true},   // under the root
+		{"c", "", true},       // single label under the root
+		{"a.b.c", "x.c", false},
+	} {
+		t.Run(string(tc.input)+"/"+string(tc.suffix), func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.input.HasStrictSuffix(tc.suffix))
+		})
+	}
+}
+
 func TestFQDNZones(t *testing.T) {
 	t.Parallel()
 	type r = string

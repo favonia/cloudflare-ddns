@@ -77,6 +77,26 @@ func TestWildcardStringDescribe(t *testing.T) {
 	require.Equal(t, "*.example.org", domain.Wildcard("example.org").Describe())
 }
 
+func TestWildcardHasStrictSuffix(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]struct {
+		input    domain.Wildcard
+		suffix   domain.Suffix
+		expected bool
+	}{
+		{"example.org", "example.org", true}, // *.example.org is strictly under example.org
+		{"example.org", "org", true},         // and under org
+		{"example.org", "", true},            // and under the root
+		{"", "org", false},                   // bare * is not under org
+		{"", "", true},                       // bare * is under the root
+	} {
+		t.Run(string(tc.input)+"/"+string(tc.suffix), func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.input.HasStrictSuffix(tc.suffix))
+		})
+	}
+}
+
 func TestWildcardZones(t *testing.T) {
 	t.Parallel()
 	type r = string
