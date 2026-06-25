@@ -65,3 +65,39 @@ func TestSuffixHasStrictSuffix(t *testing.T) {
 		})
 	}
 }
+
+func TestNewSuffix(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]struct {
+		input    string
+		expected domain.Suffix
+		ok       bool
+	}{
+		{"example.org", "example.org", true},
+		{"org", "org", true},                  // single label accepted (looser than New)
+		{".", "", true},                        // root accepted
+		{"", "", true},                         // empty is the root
+		{"example.org.", "example.org", true},  // trailing dot trimmed
+		{"tHe.CaPiTaL.cAsE", "the.capital.case", true},
+		{"*", "", false},             // wildcard rejected
+		{"*.example.org", "", false}, // wildcard rejected
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			got, err := domain.NewSuffix(tc.input)
+			if tc.ok {
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, got)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestNewSuffixWildcardError(t *testing.T) {
+	t.Parallel()
+	_, err := domain.NewSuffix("*.example.org")
+	require.ErrorIs(t, err, domain.ErrWildcardSuffix)
+}
+

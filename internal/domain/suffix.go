@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 // Suffix is a fully-qualified, dot-delimited domain tail in ASCII form, such as
 // example.com or org, with "" representing the root. Unlike Domain, a Suffix can
@@ -35,4 +38,33 @@ func hasStrictSuffixASCII(s, suffix string) bool {
 // s. b.c HasStrictSuffix c is true; c HasStrictSuffix c is false.
 func (s Suffix) HasStrictSuffix(t Suffix) bool {
 	return hasStrictSuffixASCII(s.DNSNameASCII(), t.DNSNameASCII())
+}
+
+// ErrWildcardSuffix means a suffix argument was a wildcard. A wildcard has no
+// strict subdomains, so it cannot be a suffix.
+var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
+
+// NewSuffix parses a domain suffix. It is its own parser, parallel to New
+// (not layered on it): it is looser — it accepts a single label (org) and the
+// root (. or "") — and stricter — it rejects any wildcard (* or *.example.org).
+// It applies the same IDNA normalization New uses for the ASCII form.
+func NewSuffix(suffix string) (Suffix, error) {
+	normalized, err := profileDroppingLeadingDots.ToASCII(suffix)
+
+	// Remove the final dot for consistency, matching New.
+	normalized = strings.TrimRight(normalized, ".")
+
+	// A wildcard has no strict subdomains, so it cannot be a suffix. Detect it on
+	// the normalized form, exactly where New detects it.
+	if normalized == "*" {
+		return "", ErrWildcardSuffix
+	}
+	if _, ok := strings.CutPrefix(normalized, "*."); ok {
+		return "", ErrWildcardSuffix
+	}
+
+	if err != nil {
+		return Suffix(normalized), err
+	}
+	return Suffix(normalized), nil
 }
