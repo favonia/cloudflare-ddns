@@ -41,3 +41,27 @@ func TestSuffixString(t *testing.T) {
 		})
 	}
 }
+
+func TestSuffixHasStrictSuffix(t *testing.T) {
+	t.Parallel()
+	for _, tc := range [...]struct {
+		s        domain.Suffix
+		t        domain.Suffix
+		expected bool
+	}{
+		{"b.c", "c", true},     // b.c is strictly under c
+		{"c", "c", false},      // strict: not under itself
+		{"a.b.c", "c", true},   // multi-label
+		{"a.b.c", "b.c", true}, // multi-label deeper suffix
+		{"a.b.c", "", true},    // every non-root name is under the root
+		{"", "", false},        // root is not strictly under the root
+		{"c", "", true},        // single label is under the root
+		{"example.com", "org", false},
+		{"xc", "c", false}, // "c" is a substring suffix but not on a dot boundary
+	} {
+		t.Run(string(tc.s)+"/"+string(tc.t), func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, tc.s.HasStrictSuffix(tc.t))
+		})
+	}
+}
