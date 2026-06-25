@@ -79,6 +79,7 @@ func TestNewSuffix(t *testing.T) {
 		{"", "", true},                        // empty is the root
 		{"example.org.", "example.org", true}, // trailing dot trimmed
 		{"tHe.CaPiTaL.cAsE", "the.capital.case", true},
+		{"\u0080.com", "", false},    // malformed: disallowed rune rejected
 		{"*", "", false},             // wildcard rejected
 		{"*.example.org", "", false}, // wildcard rejected
 	} {
