@@ -185,7 +185,7 @@ func (h cloudflareHandle) zoneMetaOfDomain(ctx context.Context, ppfmt pp.PP, dom
 
 zoneSearch:
 	for zoneName := range domain.Zones {
-		zones, ok := h.listZoneMeta(ctx, ppfmt, zoneName)
+		zones, ok := h.listZoneMeta(ctx, ppfmt, zoneName.DNSNameASCII())
 		if !ok {
 			return zero, false
 		}
@@ -204,11 +204,11 @@ zoneSearch:
 			}
 			ppfmt.Noticef(pp.EmojiImpossible,
 				"Found multiple active zones named %s (IDs: %s); please report this at %s",
-				zoneName, pp.EnglishJoinMapOrEmptyLabel(ID.String, ids, "(none)"), pp.IssueReportingURL)
+				zoneName.DNSNameASCII(), pp.EnglishJoinMapOrEmptyLabel(ID.String, ids, "(none)"), pp.IssueReportingURL)
 			// The suffix walk reached a semantic dead end at zoneName. Retry the
 			// traversed suffixes up to and including that boundary next cycle.
 			for cachedZoneName := range domain.Zones {
-				h.cache.listZones.Delete(cachedZoneName)
+				h.cache.listZones.Delete(cachedZoneName.DNSNameASCII())
 				if cachedZoneName == zoneName {
 					break
 				}
@@ -221,7 +221,7 @@ zoneSearch:
 	// new or recovered zones are retried on the next cycle instead of waiting for
 	// the full zone-list cache TTL.
 	for zoneName := range domain.Zones {
-		h.cache.listZones.Delete(zoneName)
+		h.cache.listZones.Delete(zoneName.DNSNameASCII())
 	}
 
 	ppfmt.Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", domain.Describe())

@@ -12,6 +12,9 @@ type Domain interface {
 	// Describe gives the most human-readable domain name that is still unambiguous
 	Describe() string
 
+	// HasStrictSuffix reports whether the domain is strictly under the suffix s.
+	HasStrictSuffix(s Suffix) bool
+
 	// Zones iterates from the smallest possible zone to largest ones (the root).
-	Zones(yield func(ZoneNameASCII string) bool)
+	Zones(yield func(Suffix) bool)
 }

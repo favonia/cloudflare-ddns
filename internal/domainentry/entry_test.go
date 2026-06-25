@@ -355,7 +355,7 @@ func TestEntryDiagnosticDescriptions(t *testing.T) {
 
 	require.Nil(t, err)
 	require.Equal(t, []string{
-		`invalid domain "localhost": not fully qualified`,
+		`invalid domain "localhost": too few labels`,
 		`unknown domain field "unknown"`,
 		`invalid hostid6 value "192.0.2.1": host-ID literal must be an unzoned IPv6 address`,
 		`invalid hostid6 MAC address "bad": invalid 48-bit MAC address`,

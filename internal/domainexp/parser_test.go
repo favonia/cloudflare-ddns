@@ -88,7 +88,7 @@ func TestParseList(t *testing.T) {
 			"&", false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					`The %s domain in %s (%q) is %q, but it is too short to be a reasonable target domain name; it should look like "*.example.org" or "sub.example.org"`,
 					"1st", key, "&", "&")
 			},
 		},
@@ -100,11 +100,11 @@ func TestParseList(t *testing.T) {
 					"1st", key, "xn--:D.org", "xn--:d.org", gomock.Any())
 			},
 		},
-		"not-fqdn": {
+		"too-few-labels": {
 			"localhost", false, nil,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
-					`The %s domain in %s (%q) is %q, but it does not appear to be fully qualified; a fully qualified domain name (FQDN) would look like "*.example.org" or "sub.example.org"`,
+					`The %s domain in %s (%q) is %q, but it is too short to be a reasonable target domain name; it should look like "*.example.org" or "sub.example.org"`,
 					"1st", key, "localhost", "localhost")
 			},
 		},

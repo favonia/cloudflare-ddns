@@ -30,11 +30,18 @@ func (w Wildcard) Describe() string {
 	return w.String()
 }
 
+// HasStrictSuffix reports whether the wildcard domain is strictly under the
+// suffix s. Wildcard("example.org") (i.e. *.example.org) is strictly under
+// example.org.
+func (w Wildcard) HasStrictSuffix(s Suffix) bool {
+	return hasStrictSuffixASCII(w.DNSNameASCII(), s.DNSNameASCII())
+}
+
 // Zones starts from a.b.c for the wildcard domain *.a.b.c.
-func (w Wildcard) Zones(yield func(ZoneNameASCII string) bool) {
+func (w Wildcard) Zones(yield func(Suffix) bool) {
 	domain := string(w)
 	for {
-		if !yield(domain) {
+		if !yield(Suffix(domain)) {
 			return
 		}
 		if i := strings.IndexRune(domain, '.'); i == -1 {

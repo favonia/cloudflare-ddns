@@ -51,8 +51,10 @@ func StringToASCII(domain string) string {
 	return normalized
 }
 
-// ErrNotFQDN means a domain name is not fully qualified.
-var ErrNotFQDN error = errors.New("not fully qualified")
+// ErrTooFewLabels means a domain name has fewer than two labels after
+// normalization — a single label (com, localhost), the empty/root name (.),
+// or a bare "*". Such a name cannot be a reasonable target domain name.
+var ErrTooFewLabels error = errors.New("too few labels")
 
 // New normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
@@ -67,9 +69,9 @@ func New(domain string) (Domain, error) {
 	if strings.IndexByte(normalized, '.') == -1 {
 		// Special case: "*"
 		if normalized == "*" {
-			return Wildcard(""), ErrNotFQDN
+			return Wildcard(""), ErrTooFewLabels
 		} else {
-			return FQDN(normalized), ErrNotFQDN
+			return FQDN(normalized), ErrTooFewLabels
 		}
 	}
 
