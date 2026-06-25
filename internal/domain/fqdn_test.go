@@ -79,9 +79,9 @@ func TestFQDNHasStrictSuffix(t *testing.T) {
 	}{
 		{"a.b.c", "c", true},
 		{"a.b.c", "b.c", true},
-		{"c", "c", false},     // strict: not under itself
-		{"a.b.c", "", true},   // under the root
-		{"c", "", true},       // single label under the root
+		{"c", "c", false},   // strict: not under itself
+		{"a.b.c", "", true}, // under the root
+		{"c", "", true},     // single label under the root
 		{"a.b.c", "x.c", false},
 	} {
 		t.Run(string(tc.input)+"/"+string(tc.suffix), func(t *testing.T) {

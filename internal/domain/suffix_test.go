@@ -75,9 +75,9 @@ func TestNewSuffix(t *testing.T) {
 	}{
 		{"example.org", "example.org", true},
 		{"org", "org", true},                  // single label accepted (looser than New)
-		{".", "", true},                        // root accepted
-		{"", "", true},                         // empty is the root
-		{"example.org.", "example.org", true},  // trailing dot trimmed
+		{".", "", true},                       // root accepted
+		{"", "", true},                        // empty is the root
+		{"example.org.", "example.org", true}, // trailing dot trimmed
 		{"tHe.CaPiTaL.cAsE", "the.capital.case", true},
 		{"*", "", false},             // wildcard rejected
 		{"*.example.org", "", false}, // wildcard rejected
@@ -100,4 +100,3 @@ func TestNewSuffixWildcardError(t *testing.T) {
 	_, err := domain.NewSuffix("*.example.org")
 	require.ErrorIs(t, err, domain.ErrWildcardSuffix)
 }
-
