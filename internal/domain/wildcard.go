@@ -38,10 +38,10 @@ func (w Wildcard) HasStrictSuffix(s Suffix) bool {
 }
 
 // Zones starts from a.b.c for the wildcard domain *.a.b.c.
-func (w Wildcard) Zones(yield func(ZoneNameASCII string) bool) {
+func (w Wildcard) Zones(yield func(Suffix) bool) {
 	domain := string(w)
 	for {
-		if !yield(domain) {
+		if !yield(Suffix(domain)) {
 			return
 		}
 		if i := strings.IndexRune(domain, '.'); i == -1 {

@@ -16,5 +16,5 @@ type Domain interface {
 	HasStrictSuffix(s Suffix) bool
 
 	// Zones iterates from the smallest possible zone to largest ones (the root).
-	Zones(yield func(ZoneNameASCII string) bool)
+	Zones(yield func(Suffix) bool)
 }

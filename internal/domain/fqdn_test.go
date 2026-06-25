@@ -93,7 +93,7 @@ func TestFQDNHasStrictSuffix(t *testing.T) {
 
 func TestFQDNZones(t *testing.T) {
 	t.Parallel()
-	type r = string
+	type r = domain.Suffix
 	for _, tc := range [...]struct {
 		input    string
 		expected []r
