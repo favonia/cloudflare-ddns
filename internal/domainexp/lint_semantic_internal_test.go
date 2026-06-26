@@ -15,8 +15,8 @@ import (
 // black-box through LintExpression in lint_test.go.
 func TestLiteralRelations(t *testing.T) {
 	t.Parallel()
-	is := func(d string) atomSet { return atomSet{kind: litIs, domain: domain.FQDN(d)} }
-	sub := func(d string) atomSet { return atomSet{kind: litSub, suffix: domain.Suffix(d)} }
+	is := func(d string) atomSet { return atomSet{kind: litIs, domain: domain.FQDN(d), suffix: ""} }
+	sub := func(d string) atomSet { return atomSet{kind: litSub, domain: nil, suffix: domain.Suffix(d)} }
 
 	for name, tc := range map[string]struct {
 		p, q     atomSet

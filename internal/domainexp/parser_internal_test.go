@@ -23,7 +23,10 @@ import (
 // yet it matches no value-type case in a type switch.
 
 func newParserState() *parserState {
-	return &parserState{emptyCallFunctions: nil, extraComma: false, missingComma: false}
+	return &parserState{
+		emptyCallFunctions: nil, extraComma: false, missingComma: false,
+		shortIsTargets: nil, subWildcards: nil,
+	}
 }
 
 func TestFlattenDomainListImpossibleTrees(t *testing.T) {

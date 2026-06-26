@@ -105,16 +105,16 @@ func asLiteral(e Expr, negated bool) (literal, bool) {
 	switch e := e.(type) {
 	case isExpr:
 		if len(e.domains) != 1 {
-			return literal{negated: false, set: atomSet{}}, false
+			return literal{negated: false, set: atomSet{kind: litIs, domain: nil, suffix: ""}}, false
 		}
-		return literal{negated: negated, set: atomSet{kind: litIs, domain: e.domains[0]}}, true
+		return literal{negated: negated, set: atomSet{kind: litIs, domain: e.domains[0], suffix: ""}}, true
 	case subExpr:
 		if len(e.suffixes) != 1 {
-			return literal{negated: false, set: atomSet{}}, false
+			return literal{negated: false, set: atomSet{kind: litIs, domain: nil, suffix: ""}}, false
 		}
-		return literal{negated: negated, set: atomSet{kind: litSub, suffix: e.suffixes[0]}}, true
+		return literal{negated: negated, set: atomSet{kind: litSub, domain: nil, suffix: e.suffixes[0]}}, true
 	default:
-		return literal{negated: false, set: atomSet{}}, false
+		return literal{negated: false, set: atomSet{kind: litIs, domain: nil, suffix: ""}}, false
 	}
 }
 
