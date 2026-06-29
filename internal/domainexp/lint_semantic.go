@@ -44,6 +44,10 @@ func subsumes(p, q atomSet) bool {
 			return q.suffix == p.suffix || q.suffix.HasStrictSuffix(p.suffix)
 		}
 	}
+	// Unreachable: litKind is only litIs or litSub and both switches handle both,
+	// so every kind combination returns above. Go cannot prove the inner switch
+	// exhaustive, so this terminal return is required; false (not a superset) is
+	// the safe answer, with no need to panic in a lint predicate.
 	return false
 }
 
