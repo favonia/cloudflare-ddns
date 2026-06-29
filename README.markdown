@@ -529,7 +529,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 >
 > 🤖 **Wildcard domains** (`*.example.org`) represent all subdomains that _would not exist otherwise._ Therefore, if you have another subdomain entry `sub.example.org`, the wildcard domain is independent of it, because it only represents the _other_ subdomains which do not have their own entries. Also, you can only have one layer of `*`---`*.*.example.org` would not work.
 >
-> 🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn).
+> 🤖 **Internationalized domain names** are handled using the _nontransitional processing_ (fully compatible with IDNA2008). At this point, all major browsers and whatnot have switched to the same nontransitional processing. See [this useful FAQ on internationalized domain names](https://www.unicode.org/faq/idn.html).
 
 </details>
 
