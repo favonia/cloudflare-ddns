@@ -1,4 +1,4 @@
-package domainexp
+package domainexp_test
 
 import (
 	"testing"
@@ -6,10 +6,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 )
 
-func parseQuiet(t *testing.T, input string) (Expr, bool) {
+func parseQuiet(t *testing.T, input string) (domainexp.Expr, bool) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	ppfmt := mocks.NewMockPP(ctrl)
@@ -19,12 +20,11 @@ func parseQuiet(t *testing.T, input string) (Expr, bool) {
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	return ParseExpression(ppfmt, "PROXIED", input)
+	return domainexp.ParseExpression(ppfmt, "PROXIED", input)
 }
 
 func TestValidateArguments(t *testing.T) {
@@ -41,7 +41,7 @@ func TestValidateArguments(t *testing.T) {
 	// The AST renders arguments via domain.String() (Unicode for an IDN).
 	expr, ok := parseQuiet(t, "is(café.example)")
 	require.True(t, ok)
-	require.Equal(t, "is(café.example)", exprString(expr))
+	require.Equal(t, "is(café.example)", domainexp.ExprString(expr))
 }
 
 func TestRejectionMessages(t *testing.T) {
@@ -55,7 +55,7 @@ func TestRejectionMessages(t *testing.T) {
 		gomock.Any(),
 		"PROXIED", "is(b.*.a.org)", "b.*.a.org", gomock.Any(),
 	)
-	_, ok := ParseExpression(ppfmt, "PROXIED", "is(b.*.a.org)")
+	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "is(b.*.a.org)")
 	require.False(t, ok)
 }
 
@@ -65,7 +65,7 @@ func TestShortIsTargetAdvisory(t *testing.T) {
 	ppfmt := mocks.NewMockPP(ctrl)
 	// One advisory naming the joined too-short targets; kept (parse succeeds).
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"is(org, com)"`, "org and com")
-	_, ok := ParseExpression(ppfmt, "PROXIED", "is(org, com)")
+	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "is(org, com)")
 	require.True(t, ok)
 }
 
@@ -74,7 +74,7 @@ func TestSubWildcardAdvisory(t *testing.T) {
 	// Skipped + advisory; the term keeps parsing and renders as an empty sub().
 	expr, ok := parseQuiet(t, "sub(*.a.org)")
 	require.True(t, ok)
-	require.Equal(t, "sub()", exprString(expr)) // wildcard skipped -> empty subExpr
+	require.Equal(t, "sub()", domainexp.ExprString(expr)) // wildcard skipped -> empty subExpr
 }
 
 func TestSubBareStarAdvisory(t *testing.T) {
@@ -85,6 +85,6 @@ func TestSubBareStarAdvisory(t *testing.T) {
 	// without the misleading is(...)/sub(...) remediation: exactly one notice
 	// pinned by its positional args (key, input, canonical wildcard form).
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"sub(*)"`, "*")
-	_, ok := ParseExpression(ppfmt, "PROXIED", "sub(*)")
+	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "sub(*)")
 	require.True(t, ok)
 }
