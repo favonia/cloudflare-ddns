@@ -43,12 +43,19 @@ func exprStringPrec(e Expr, ctx int) string {
 	case binaryExpr:
 		prec, ok := map[formID]int{formAnd: precAnd, formOr: precOr}[e.operator]
 		if !ok {
-			return ""
+			// Unreachable: the parser only builds formAnd/formOr operators. This
+			// renderer must always produce a valid canonical expression (its output
+			// is shown in user-facing warnings), so returning "" would silently emit
+			// corrupt text. Panic to surface the bug instead of hiding it.
+			panic("domainexp: exprStringPrec got an unknown binary operator; please report it")
 		}
 		s := fmt.Sprintf("%s %s %s", exprStringPrec(e.left, prec), e.operator, exprStringPrec(e.right, prec))
 		return wrap(s, prec, ctx)
 	default:
-		return ""
+		// Unreachable: Expr is sealed (unexported expr()) and every concrete type is
+		// handled above. As with the operator guard, "" would be a silently corrupt
+		// rendering, so panic to surface the bug instead of hiding it.
+		panic("domainexp: exprStringPrec got an unknown Expr type; please report it")
 	}
 }
 

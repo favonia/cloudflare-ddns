@@ -5,8 +5,28 @@ package domainexp
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
+
+// unknownExpr is a test-only Expr implementation outside the parser's vocabulary,
+// used to reach exprStringPrec's otherwise-unreachable default arm.
+type unknownExpr struct{}
+
+func (unknownExpr) expr() {}
+
+// TestExprStringPanicsOnImpossibleInput pins the totality contract: exprString
+// must never return a silently corrupt rendering, so its unreachable arms panic
+// rather than yielding "". Both an unknown Expr type and an unknown binary
+// operator are impossible for parser output but are guarded defensively.
+func TestExprStringPanicsOnImpossibleInput(t *testing.T) {
+	t.Parallel()
+	require.Panics(t, func() { _ = exprString(unknownExpr{}) })
+	require.Panics(t, func() {
+		_ = exprString(binaryExpr{operator: formID("xor"), left: literalExpr{value: true}, right: literalExpr{value: true}})
+	})
+}
 
 func TestExprString(t *testing.T) {
 	t.Parallel()

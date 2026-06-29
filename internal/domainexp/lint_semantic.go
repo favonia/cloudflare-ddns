@@ -176,7 +176,10 @@ func semanticFindings(expr Expr) []finding {
 		case formOr:
 			findings = append(findings, analyzeDisjunction(flatten(e, formOr))...)
 		default:
-			// other binary forms are not && or || — ignore
+			// Unreachable: the parser only builds binaryExpr with formAnd or formOr.
+			// operator is a formID (string), not a compiler-checked enum, so we keep
+			// the arm; ignoring degrades a future third form to "no findings" rather
+			// than crashing, which is the safe conservative behavior for a linter.
 		}
 	})
 	// A multi-arg is/sub call is the disjunction of its single-atom literals, so
@@ -259,7 +262,10 @@ func constValue(e Expr) (value bool, known bool) {
 				return lv || rv, true
 			}
 		default:
-			// other binary forms are not && or || — treat as unknown
+			// Unreachable: the parser only builds binaryExpr with formAnd or formOr.
+			// operator is a formID (string), not a compiler-checked enum, so we keep
+			// the arm; treating a future third form as unknown only suppresses an R3
+			// advisory rather than crashing, which is the safe conservative behavior.
 		}
 		return false, false
 	default:

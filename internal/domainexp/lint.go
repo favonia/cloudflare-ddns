@@ -114,6 +114,10 @@ func hasPositiveAtom(e Expr, neg bool) bool {
 	case binaryExpr:
 		return hasPositiveAtom(e.left, neg) || hasPositiveAtom(e.right, neg)
 	default:
+		// Unreachable: Expr is sealed and every concrete type is handled above.
+		// false is also the safe answer if it were somehow reached: it only makes
+		// R2 under-report on this branch, never produces wrong output, so there is
+		// no reason to crash the daemon over it.
 		return false
 	}
 }
