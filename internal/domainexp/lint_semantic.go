@@ -170,16 +170,15 @@ func semanticFindings(expr Expr) []finding {
 		if !ok {
 			return
 		}
+		// Only && and || carry chain semantics; the parser builds no other binary
+		// operator. We omit a default arm deliberately: a hypothetical future form
+		// simply produces no findings rather than crashing the linter.
+		//exhaustive:ignore // non-&&/|| operators are impossible from the parser
 		switch b.operator {
 		case formAnd:
 			findings = append(findings, analyzeConjunction(flatten(e, formAnd))...)
 		case formOr:
 			findings = append(findings, analyzeDisjunction(flatten(e, formOr))...)
-		default:
-			// Unreachable: the parser only builds binaryExpr with formAnd or formOr.
-			// operator is a formID (string), not a compiler-checked enum, so we keep
-			// the arm; ignoring degrades a future third form to "no findings" rather
-			// than crashing, which is the safe conservative behavior for a linter.
 		}
 	})
 	// A multi-arg is/sub call is the disjunction of its single-atom literals, so
@@ -246,6 +245,7 @@ func constValue(e Expr) (value bool, known bool) {
 	case binaryExpr:
 		lv, lok := constValue(e.left)
 		rv, rok := constValue(e.right)
+		//exhaustive:ignore // non-&&/|| operators are impossible from the parser
 		switch e.operator {
 		case formAnd:
 			if (lok && !lv) || (rok && !rv) {
@@ -261,14 +261,16 @@ func constValue(e Expr) (value bool, known bool) {
 			if lok && rok {
 				return lv || rv, true
 			}
-		default:
-			// Unreachable: the parser only builds binaryExpr with formAnd or formOr.
-			// operator is a formID (string), not a compiler-checked enum, so we keep
-			// the arm; treating a future third form as unknown only suppresses an R3
-			// advisory rather than crashing, which is the safe conservative behavior.
 		}
+		// Reached when the operator is && or || but at least one operand is unknown.
+		// We intentionally omit a default arm: operator is a formID (string) with no
+		// compiler-checked exhaustiveness, and an unmatched form would land here too,
+		// degrading to "unknown" — the safe conservative answer for the R3 check.
 		return false, false
 	default:
+		// isExpr lands here: an is(...) atom's truth depends on the matched domain,
+		// so it is unknown. (subExpr is handled above because sub(.) is statically
+		// true.) This arm is reachable, unlike the binary-operator fall-through.
 		return false, false
 	}
 }

@@ -76,3 +76,48 @@ func TestLitString(t *testing.T) {
 		})
 	}
 }
+
+// TestConstValue is a white-box unit test for constValue, the R3 static evaluator.
+// It is normally driven indirectly through LintExpression, but the reachable
+// branches (a non-root sub atom and an is atom as "unknown"; the && and || arms
+// where both operands are known versus where one is unknown) are easier to pin
+// directly than to coax through full expressions. Only the binary-operator
+// fall-through for a hypothetical non-&&/|| form is unreachable, so it is omitted.
+func TestConstValue(t *testing.T) {
+	t.Parallel()
+	subDot := subExpr{suffixes: []domain.Suffix{domain.Suffix("")}}    // sub(.): statically true
+	subA := subExpr{suffixes: []domain.Suffix{domain.Suffix("a.org")}} // ordinary sub: unknown
+	isA := isExpr{domains: []domain.Domain{domain.FQDN("a.org")}}      // is atom: unknown
+	yes := literalExpr{value: true}
+	no := literalExpr{value: false}
+	not := func(e Expr) Expr { return unaryExpr{operator: formNot, operand: e} }
+	and := func(l, r Expr) Expr { return binaryExpr{operator: formAnd, left: l, right: r} }
+	or := func(l, r Expr) Expr { return binaryExpr{operator: formOr, left: l, right: r} }
+
+	for name, tc := range map[string]struct {
+		e            Expr
+		value, known bool
+	}{
+		"literal-true":    {yes, true, true},
+		"literal-false":   {no, false, true},
+		"sub-root":        {subDot, true, true},
+		"sub-ordinary":    {subA, false, false},               // non-root subExpr -> unknown
+		"is-atom":         {isA, false, false},                // outer default: depends on the domain
+		"not-known":       {not(subDot), false, true},         // unary, operand known
+		"not-unknown":     {not(isA), false, false},           // unary, operand unknown
+		"and-short-false": {and(no, subDot), false, true},     // && short-circuits on known false
+		"and-both-known":  {and(subDot, yes), true, true},     // && both known -> lv && rv
+		"and-operand-unk": {and(subDot, isA), false, false},   // && fall-through, operand unknown
+		"or-short-true":   {or(yes, isA), true, true},         // || short-circuits on known true
+		"or-both-known":   {or(no, not(subDot)), false, true}, // || both known -> lv || rv
+		"or-operand-unk":  {or(isA, subA), false, false},      // || fall-through, operand unknown
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			value, known := constValue(tc.e)
+			if value != tc.value || known != tc.known {
+				t.Errorf("constValue(%s) = (%v, %v), want (%v, %v)", name, value, known, tc.value, tc.known)
+			}
+		})
+	}
+}

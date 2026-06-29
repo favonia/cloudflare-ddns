@@ -77,6 +77,28 @@ func TestSubWildcardAdvisory(t *testing.T) {
 	require.Equal(t, "sub()", domainexp.ExprString(expr)) // wildcard skipped -> empty subExpr
 }
 
+func TestShortIsTargetDeduped(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	// A repeated too-short target is recorded once, so the advisory names "org"
+	// a single time rather than "org and org".
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"is(org, org)"`, "org")
+	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "is(org, org)")
+	require.True(t, ok)
+}
+
+func TestSubWildcardDeduped(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	// The same wildcard repeated is recorded once: exactly one advisory, not two.
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(),
+		"PROXIED", `"sub(*.a.org, *.a.org)"`, "*.a.org", "*.a.org", "a.org", "a.org")
+	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "sub(*.a.org, *.a.org)")
+	require.True(t, ok)
+}
+
 func TestSubBareStarAdvisory(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
