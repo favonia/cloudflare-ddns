@@ -218,33 +218,33 @@ func TestParseExpression(t *testing.T) {
 			},
 		},
 		"is/double-comma-warning": {
-			"is(a,,b)", true, f("b"), true,
+			"is(a.org,,b.org)", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a,,b)"`)
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(a.org,,b.org)"`)
 			},
 		},
 		"is/missing-comma": {
-			"is(a b c)", true, f("b"), true,
+			"is(a.org b.org c.org)", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
-					key, `"is(a b c)"`)
+					key, `"is(a.org b.org c.org)"`)
 			},
 		},
 		"is/missing-comma/with-boolean-tail": {
-			"is(a b) && true", true, f("b"), true,
+			"is(a.org b.org) && true", true, f("b.org"), true,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
 					"%s (%s) is missing commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
-					key, `"is(a b) && true"`)
+					key, `"is(a.org b.org) && true"`)
 			},
 		},
 		"is/empty": {
 			"is()", true, f("example.com"), false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-					key, "is()", "is")
+					`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+					key, `"is()"`, "is")
 			},
 		},
 		"is/comma-only": {
@@ -252,8 +252,8 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-						key, "is(,)", "is"),
+						`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+						key, `"is(,)"`, "is"),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"is(,)"`),
 				)
 			},
@@ -263,8 +263,8 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-						key, "sub(,,)", "sub"),
+						`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+						key, `"sub(,,)"`, "sub"),
 					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0", key, `"sub(,,)"`),
 				)
 			},
@@ -274,8 +274,8 @@ func TestParseExpression(t *testing.T) {
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`%s (%q) uses %s with empty domain lists, which always evaluate to false`,
-						key, "sub() || is(,) || sub()", "sub() and is()"),
+						`%s (%s) uses %s with empty domain lists, which always evaluate to false`,
+						key, `"sub() || is(,) || sub()"`, "sub() and is()"),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
 						"%s (%s) contains extra commas inside is(...) or sub(...); this is accepted for now but will be rejected in version 2.0.0",
 						key, `"sub() || is(,) || sub()"`),
@@ -318,6 +318,23 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, "is(true && false)", "&&")
 			},
 		},
+		// The sub() twins of the two is() error cases above: a Boolean operator in
+		// the argument list trips the same unexpected-token path through buildSubCall,
+		// and a non-wildcard malformed suffix trips its invalid-domain path.
+		"sub/error/non-list-expression": {
+			"sub(a.org && b.org)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, "sub(a.org && b.org)", "&&")
+			},
+		},
+		"sub/error/malformed-suffix": {
+			"sub(b.*.a.org)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`%s (%q) has the domain %q in is(...) or sub(...), but it is malformed: %v`,
+					key, "sub(b.*.a.org)", "b.*.a.org", gomock.Any())
+			},
+		},
 		"sub/1":              {"sub(example.com)", true, f("example.com"), false, nil},
 		"sub/2":              {"sub(example.com)", true, w("example.com"), true, nil},
 		"sub/3":              {"sub(example.com)", true, f("sub.example.com"), true, nil},
@@ -340,8 +357,8 @@ func TestParseExpression(t *testing.T) {
 			"sub()", true, f("example.com"), false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiUserWarning,
-					`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-					key, "sub()", "sub")
+					`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+					key, `"sub()"`, "sub")
 			},
 		},
 		"sub/idn/1": {"sub(☕.de)", true, f("www.xn--53h.de"), true, nil},

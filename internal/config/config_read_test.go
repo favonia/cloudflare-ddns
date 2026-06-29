@@ -1430,7 +1430,7 @@ func TestBuildConfig(t *testing.T) {
 					ipnet.IP6: provider.NewCloudflareTrace(),
 				},
 				IP6Domains:        entries(domain.FQDN("a.b.c"), domain.FQDN("a.bb.c"), domain.FQDN("a.d.e.f")),
-				ProxiedExpression: ` true && !is(a.bb.c) `,
+				ProxiedExpression: ` !is(a.bb.c) `,
 			},
 			ok: true,
 			expected: &builtConfig{
@@ -1504,8 +1504,8 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-						keyProxied, "is()", "is"),
+						`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+						keyProxied, `"is()"`, "is"),
 				)
 			},
 		},
@@ -1677,4 +1677,24 @@ func TestBuildConfigKeepsManagedDetectionFilter(t *testing.T) {
 	require.NotNil(t, built)
 	require.Equal(t, "addr-in(198.51.100.0/24)", built.Update.DetectionFilter[ipnet.IP4].String())
 	require.NotContains(t, built.Update.DetectionFilter, ipnet.IP6)
+}
+
+func TestBuildConfigProxiedLintWarns(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.ProxiedExpression = "is(a.org) && !is(a.org)"
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.Contains(t, output.String(),
+		`PROXIED ("is(a.org) && !is(a.org)") can never match any domain`)
+	require.False(t, built.Update.Proxied[domain.FQDN("a.b.c")])
 }
