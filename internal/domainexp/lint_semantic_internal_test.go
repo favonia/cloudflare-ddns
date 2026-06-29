@@ -44,3 +44,35 @@ func TestLiteralRelations(t *testing.T) {
 		})
 	}
 }
+
+// TestLitString is a white-box unit test for the litString renderer. R4's
+// redundancy passes only ever feed it positive literals (both loops skip
+// negated operands, because subsumption-based redundancy is sound only for
+// positive sets), so the negated branch is unreachable through LintExpression.
+// litString is nonetheless a total renderer of the literal type, like
+// exprString; this test pins its full contract, including negation.
+func TestLitString(t *testing.T) {
+	t.Parallel()
+	is := func(negated bool, d string) literal {
+		return literal{negated: negated, set: atomSet{kind: litIs, domain: domain.FQDN(d), suffix: ""}}
+	}
+	sub := func(negated bool, d string) literal {
+		return literal{negated: negated, set: atomSet{kind: litSub, domain: nil, suffix: domain.Suffix(d)}}
+	}
+	for name, tc := range map[string]struct {
+		lit  literal
+		want string
+	}{
+		"is":      {is(false, "a.org"), "is(a.org)"},
+		"not-is":  {is(true, "a.org"), "!is(a.org)"},
+		"sub":     {sub(false, "a.org"), "sub(a.org)"},
+		"not-sub": {sub(true, "a.org"), "!sub(a.org)"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := litString(tc.lit); got != tc.want {
+				t.Errorf("litString(%+v) = %q, want %q", tc.lit, got, tc.want)
+			}
+		})
+	}
+}
