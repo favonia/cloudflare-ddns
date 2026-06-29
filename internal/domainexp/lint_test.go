@@ -110,6 +110,22 @@ func TestLintR2ExclusionOnlyDisjunct(t *testing.T) {
 	}
 }
 
+// TestLintR2ConstantBranchNotFlagged pins that a Boolean constant inside an ||
+// branch suppresses R2: hasPositiveAtom treats the constant as a positive atom,
+// so the branch "true && !is(a.org)" is not reported as exclusion-only even
+// though !is(a.org) is its only is/sub atom. (R4 still flags the redundant
+// constant; expectWarnings asserts exactly that one warning, so a stray R2
+// notice would fail the mock.) This is the only path that reaches the
+// literalExpr arm of hasPositiveAtom.
+func TestLintR2ConstantBranchNotFlagged(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(mockCtrl)
+	expectWarnings(ppfmt,
+		`PROXIED ("(true && !is(a.org)) || is(b.org)") contains a redundant term "true"; removing it means the same thing`)
+	lintExpr(t, ppfmt, "PROXIED", "(true && !is(a.org)) || is(b.org)")
+}
+
 func TestLintR3Constant(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {

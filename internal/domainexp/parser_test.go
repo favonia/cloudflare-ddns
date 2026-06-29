@@ -318,6 +318,23 @@ func TestParseExpression(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, "is(true && false)", "&&")
 			},
 		},
+		// The sub() twins of the two is() error cases above: a Boolean operator in
+		// the argument list trips the same unexpected-token path through buildSubCall,
+		// and a non-wildcard malformed suffix trips its invalid-domain path.
+		"sub/error/non-list-expression": {
+			"sub(a.org && b.org)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, "sub(a.org && b.org)", "&&")
+			},
+		},
+		"sub/error/malformed-suffix": {
+			"sub(b.*.a.org)", false, nil, false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError,
+					`%s (%q) has the domain %q in is(...) or sub(...), but it is malformed: %v`,
+					key, "sub(b.*.a.org)", "b.*.a.org", gomock.Any())
+			},
+		},
 		"sub/1":              {"sub(example.com)", true, f("example.com"), false, nil},
 		"sub/2":              {"sub(example.com)", true, w("example.com"), true, nil},
 		"sub/3":              {"sub(example.com)", true, f("sub.example.com"), true, nil},
