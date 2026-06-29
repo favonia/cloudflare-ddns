@@ -25,6 +25,7 @@ package domainexp
 // reaches this AST.
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -67,8 +68,10 @@ type exclusionOnlyDisjunctFinding struct {
 }
 
 func (f exclusionOnlyDisjunctFinding) message(key, input string) string {
-	return key + ` ("` + input + `") has an || branch "` + f.branch +
-		`" with no included domain, only exclusions; it usually matches far more than intended`
+	return fmt.Sprintf(
+		`%s (%s) has an || branch %q with no included domain, only exclusions; `+
+			`it usually matches far more than intended`,
+		key, listSyntaxPreview(input), f.branch)
 }
 
 // flatten returns the operands of the maximal chain of op rooted at e. For a
@@ -117,9 +120,12 @@ func hasPositiveAtom(e Expr, neg bool) bool {
 
 func (f redundantNegationFinding) message(key, input string) string {
 	if f.constant {
-		return key + ` ("` + input + `") negates a constant; "` + f.suggestion + `" means the same thing`
+		return fmt.Sprintf(`%s (%s) negates a constant; %q means the same thing`,
+			key, listSyntaxPreview(input), f.suggestion)
 	}
-	return key + ` ("` + input + `") negates a negation, which has no effect; "` + f.suggestion + `" means the same thing`
+	return fmt.Sprintf(
+		`%s (%s) negates a negation, which has no effect; %q means the same thing`,
+		key, listSyntaxPreview(input), f.suggestion)
 }
 
 func shapeFindings(expr Expr) []finding {

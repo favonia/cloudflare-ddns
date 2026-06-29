@@ -64,7 +64,7 @@ func TestShortIsTargetAdvisory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ppfmt := mocks.NewMockPP(ctrl)
 	// One advisory naming the joined too-short targets; kept (parse succeeds).
-	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", "is(org, com)", "org and com")
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"is(org, com)"`, "org and com")
 	_, ok := ParseExpression(ppfmt, "PROXIED", "is(org, com)")
 	require.True(t, ok)
 }
@@ -84,7 +84,7 @@ func TestSubBareStarAdvisory(t *testing.T) {
 	// Bare star has no parent domain, so the advisory states the fact only,
 	// without the misleading is(...)/sub(...) remediation: exactly one notice
 	// pinned by its positional args (key, input, canonical wildcard form).
-	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", "sub(*)", "*")
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"sub(*)"`, "*")
 	_, ok := ParseExpression(ppfmt, "PROXIED", "sub(*)")
 	require.True(t, ok)
 }

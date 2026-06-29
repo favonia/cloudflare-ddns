@@ -4,7 +4,11 @@ package domainexp
 // relations over single-domain atoms. Multi-domain atoms and unrecognized
 // shapes are treated as opaque and produce no findings.
 
-import "github.com/favonia/cloudflare-ddns/internal/domain"
+import (
+	"fmt"
+
+	"github.com/favonia/cloudflare-ddns/internal/domain"
+)
 
 type litKind int
 
@@ -66,9 +70,9 @@ type constantFinding struct {
 
 func (f constantFinding) message(key, input string) string {
 	if f.value {
-		return key + ` ("` + input + `") always matches every domain`
+		return fmt.Sprintf(`%s (%s) always matches every domain`, key, listSyntaxPreview(input))
 	}
-	return key + ` ("` + input + `") can never match any domain`
+	return fmt.Sprintf(`%s (%s) can never match any domain`, key, listSyntaxPreview(input))
 }
 
 // term is one operand of a flattened &&/|| chain. Pointer fields avoid nested
@@ -384,8 +388,8 @@ type redundantTermFinding struct {
 }
 
 func (f redundantTermFinding) message(key, input string) string {
-	return key + ` ("` + input + `") contains a redundant term "` + f.term +
-		`"; removing it means the same thing`
+	return fmt.Sprintf(`%s (%s) contains a redundant term %q; removing it means the same thing`,
+		key, listSyntaxPreview(input), f.term)
 }
 
 // litString renders a literal back to canonical text for messages.

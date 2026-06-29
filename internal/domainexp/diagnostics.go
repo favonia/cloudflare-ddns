@@ -95,8 +95,8 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 	case 0:
 	case 1:
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-			key, input, state.emptyCallFunctions[0])
+			`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+			key, listSyntaxPreview(input), state.emptyCallFunctions[0])
 	default:
 		functions := pp.EnglishJoinMapOrEmptyLabel(
 			func(function string) string { return function + "()" },
@@ -104,17 +104,17 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 			"",
 		)
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			`%s (%q) uses %s with empty domain lists, which always evaluate to false`,
-			key, input, functions)
+			`%s (%s) uses %s with empty domain lists, which always evaluate to false`,
+			key, listSyntaxPreview(input), functions)
 	}
 	if len(state.shortIsTargets) > 0 {
 		targets := pp.EnglishJoinMapOrEmptyLabel(
 			func(t string) string { return t }, state.shortIsTargets, "")
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			`%s (%q) has the domain %q in is(...), which is too short to be a reasonable target `+
+			`%s (%s) has the domain %q in is(...), which is too short to be a reasonable target `+
 				`domain name; this is accepted but probably not what you want — a target domain `+
 				`name should look like "*.example.org" or "sub.example.org"`,
-			key, input, targets)
+			key, listSyntaxPreview(input), targets)
 	}
 	for _, w := range state.subWildcards {
 		ws := w.String()                       // canonical "*.X"
@@ -123,14 +123,14 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 			// Bare star: there is no parent domain after the "*", so neither
 			// is(...) nor sub(...) remediation applies. State the fact only.
 			ppfmt.Noticef(pp.EmojiUserWarning,
-				`%s (%q) has sub(%s), which matches no domain`,
-				key, input, ws)
+				`%s (%s) has sub(%s), which matches no domain`,
+				key, listSyntaxPreview(input), ws)
 			continue
 		}
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			`%s (%q) has sub(%s), which matches no domain; use is(%s) to match the wildcard `+
+			`%s (%s) has sub(%s), which matches no domain; use is(%s) to match the wildcard `+
 				`record itself, or sub(%s) to match subdomains of %s`,
-			key, input, ws, ws, parent, parent)
+			key, listSyntaxPreview(input), ws, ws, parent, parent)
 	}
 	if state.extraComma {
 		ppfmt.Noticef(

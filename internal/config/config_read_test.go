@@ -1504,8 +1504,8 @@ func TestBuildConfig(t *testing.T) {
 					m.EXPECT().Infof(pp.EmojiEnvVars, "Checking settings . . ."),
 					m.EXPECT().Indent().Return(m),
 					m.EXPECT().Noticef(pp.EmojiUserWarning,
-						`%s (%q) uses %s() with an empty domain list, which always evaluates to false`,
-						keyProxied, "is()", "is"),
+						`%s (%s) uses %s() with an empty domain list, which always evaluates to false`,
+						keyProxied, `"is()"`, "is"),
 				)
 			},
 		},

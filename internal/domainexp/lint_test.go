@@ -3,6 +3,7 @@
 package domainexp_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -399,7 +400,7 @@ func TestParseL1SubWildcard(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			ppfmt := mocks.NewMockPP(mockCtrl)
 			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(),
-				"PROXIED", input, "*.a.org", "*.a.org", "a.org", "a.org")
+				"PROXIED", strconv.Quote(input), "*.a.org", "*.a.org", "a.org", "a.org")
 			_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", input)
 			require.True(t, ok)
 		})
@@ -413,6 +414,36 @@ func TestParseL1SubWildcard(t *testing.T) {
 			ppfmt := mocks.NewMockPP(mockCtrl)
 			_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", input) // no Noticef expected
 			require.True(t, ok)
+		})
+	}
+}
+
+// Lint messages echo the expression through the shared advisory preview helper,
+// which quotes the value, so a valid expression whose source carries special
+// characters (here a newline and a tab used as token separators) is escaped
+// rather than spilled into the message verbatim. This keeps each warning on one
+// line. The inputs here are short enough that the preview is never truncated.
+func TestLintEscapesSpecialCharsInInput(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		input string
+		want  string
+	}{
+		"newline-separators": {
+			"!\n!is(a.org)",
+			`PROXIED ("!\n!is(a.org)") negates a negation, which has no effect; "is(a.org)" means the same thing`,
+		},
+		"tab-separators": {
+			"is(a.org)\t||\t!sub(b.org)",
+			`PROXIED ("is(a.org)\t||\t!sub(b.org)") has an || branch "!sub(b.org)" with no included domain, only exclusions; it usually matches far more than intended`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockCtrl := gomock.NewController(t)
+			ppfmt := mocks.NewMockPP(mockCtrl)
+			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning, "%s", tc.want)
+			lintExpr(t, ppfmt, "PROXIED", tc.input)
 		})
 	}
 }
