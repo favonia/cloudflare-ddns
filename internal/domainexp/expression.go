@@ -109,7 +109,7 @@ func parseBooleanLiteral(token syntax.Token) (Expr, bool) {
 
 // buildIsCall validates an is(...) call. Malformed arguments hard-fail; a
 // too-short argument (domain.ErrTooFewLabels) is accepted and kept — it matches
-// nothing exactly as v1.16.2 did — and recorded for the #1 advisory.
+// nothing exactly as v1.16.2 did — and recorded for the short-target advisory.
 func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.ParseError) {
 	if tree.ID == formIsCallEmpty {
 		state.recordEmptyCall("is")
@@ -142,7 +142,7 @@ func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Pars
 }
 
 // buildSubCall validates a sub(...) call over domain.Suffix values. Wildcards
-// are skipped (a wildcard has no strict subdomains) and recorded for the #2/L1
+// are skipped (a wildcard has no strict subdomains) and recorded for the L1
 // advisory; the resulting suffix list may be empty, which evaluates to false.
 func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.ParseError) {
 	if tree.ID == formSubCallEmpty {
@@ -163,7 +163,7 @@ func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Par
 		case serr == nil:
 			suffixes = append(suffixes, s)
 		case errors.Is(serr, domain.ErrWildcardSuffix):
-			// Skip + record the wildcard for the #2/L1 advisory. Parse it as a
+			// Skip + record the wildcard for the L1 advisory. Parse it as a
 			// Domain only to render the canonical "*.X" form for the message.
 			wd, _ := domain.New(token.Text)
 			state.recordSubWildcard(wd)

@@ -22,9 +22,10 @@ type parserState struct {
 	// Missing-comma diagnostics are intentionally deduplicated across one parse.
 	missingComma bool
 	// Short is(...) targets (domain.ErrTooFewLabels) kept and reported once, in
-	// first-occurrence order, deduplicated (#1).
+	// first-occurrence order, deduplicated.
 	shortIsTargets []string
-	// sub(...) wildcard arguments skipped and reported, deduplicated (#2/L1).
+	// sub(...) wildcard arguments skipped and reported, deduplicated (the L1
+	// advisory).
 	subWildcards []domain.Domain
 }
 
@@ -118,6 +119,14 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 	for _, w := range state.subWildcards {
 		ws := w.String()                       // canonical "*.X"
 		parent := strings.TrimPrefix(ws, "*.") // subdomain form sub(X)
+		if parent == ws {
+			// Bare star: there is no parent domain after the "*", so neither
+			// is(...) nor sub(...) remediation applies. State the fact only.
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				`%s (%q) has sub(%s), which matches no domain`,
+				key, input, ws)
+			continue
+		}
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			`%s (%q) has sub(%s), which matches no domain; use is(%s) to match the wildcard `+
 				`record itself, or sub(%s) to match subdomains of %s`,

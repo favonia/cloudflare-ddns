@@ -164,7 +164,7 @@ func TestLintR3Constant(t *testing.T) {
 	}
 }
 
-// TestLintR3SubRoot pins task #5: sub(.) denotes the strict subdomains of the
+// TestLintR3SubRoot pins that sub(.) denotes the strict subdomains of the
 // root suffix, i.e. every domain, so it is statically constant-true and trips
 // R3. Negating it is constant-false, and in a disjunction the constant-true
 // folds to the whole expression.
@@ -204,7 +204,7 @@ func TestLintR3SubRoot(t *testing.T) {
 	}
 }
 
-// TestLintR3SubRootMultiArgPartial pins what task #6 resolves and what it does
+// TestLintR3SubRootMultiArgPartial pins what the multi-arg redundancy pass resolves and what it does
 // not: a multi-arg sub() that contains the root suffix, e.g. sub(org, .), is now
 // expanded into its single-atom literals, so the redundancy pass sees that org
 // is covered by the all-matching "." and flags sub(org). The whole-call R3
@@ -301,7 +301,7 @@ func TestLintR4Redundant(t *testing.T) {
 	}
 }
 
-// TestLintR4RedundantArguments pins task #6: a multi-arg is/sub call is the
+// TestLintR4RedundantArguments pins that a multi-arg is/sub call is the
 // disjunction of its single-atom literals, so redundancy is detected both within
 // one call (any context) and across || terms drawn from different calls.
 func TestLintR4RedundantArguments(t *testing.T) {

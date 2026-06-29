@@ -76,3 +76,15 @@ func TestSubWildcardAdvisory(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "sub()", exprString(expr)) // wildcard skipped -> empty subExpr
 }
+
+func TestSubBareStarAdvisory(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	// Bare star has no parent domain, so the advisory states the fact only,
+	// without the misleading is(...)/sub(...) remediation: exactly one notice
+	// pinned by its positional args (key, input, canonical wildcard form).
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", "sub(*)", "*")
+	_, ok := ParseExpression(ppfmt, "PROXIED", "sub(*)")
+	require.True(t, ok)
+}
