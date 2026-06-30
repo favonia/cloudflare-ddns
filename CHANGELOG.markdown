@@ -1,3 +1,11 @@
+# Unreleased
+
+## Detailed Changes
+
+### Bug Fixes
+
+- Account API tokens are no longer rejected at startup. The dedicated startup token preflight check (Cloudflare’s `/user/tokens/verify`) is removed; token problems are now reported when the first DNS or WAF operation fails. Malformed tokens that do not follow the OAuth2 bearer format are still rejected immediately at startup. ([#1197](https://github.com/favonia/cloudflare-ddns/issues/1197))
+
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
 This is a quick bugfix release for users affected by a startup regression in 1.16.0. If 1.16.0 or 1.16.1 reports that your Cloudflare API token is invalid during startup even though the token had worked before 1.16.0, upgrade to 1.16.2. If version 1.16.0 or 1.16.1 is working well for you, there is no rush.
