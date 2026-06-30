@@ -394,4 +394,63 @@ var allWatches = []config{
 			"internal/api/cloudflare_records_zone_test.go",
 		},
 	},
+	{
+		Name:         "Cloudflare OpenAPI token-verify endpoints",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		KeySets: []keySetSelector{
+			{
+				Label:   "token-verify paths",
+				Pointer: "/paths",
+				Pattern: `/tokens/verify$`,
+				Expected: []string{
+					"/accounts/{account_id}/tokens/verify",
+					"/user/tokens/verify",
+				},
+			},
+		},
+		WatchLabel: "Watched token-verify endpoint set",
+		Reminders: []string{
+			"A new path matching /tokens/verify signals a new token class to evaluate — the change class behind #1197 that the live behavior watch alone cannot see.",
+			"The account verifier requires an account_id path parameter; the user verifier takes none. This asymmetry is why no single startup preflight covers every token type.",
+		},
+		RelatedPaths: []string{
+			"internal/config/env_auth.go",
+			"internal/api/cloudflare.go",
+		},
+	},
+	{
+		Name:         "Cloudflare OpenAPI bearer-token auth contract",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		JSONPointers: []jsonPointerSelector{
+			{Label: "api_token.type", Pointer: "/components/securitySchemes/api_token/type", Expected: "http"},
+			{Label: "api_token.scheme", Pointer: "/components/securitySchemes/api_token/scheme", Expected: "bearer"},
+			// The security array is an OR of requirement objects. We pin the
+			// api_token entry at index 0 of each endpoint's security array; its
+			// value is the empty scope list [], so [] here asserts "api_token is
+			// accepted with no extra scopes at this position". Removing api_token
+			// (or reordering it off index 0) makes the pointer fail to resolve,
+			// which the watch reports as drift — see Reminders.
+			{Label: "GET /zones api_token security", Pointer: "/paths/~1zones/get/security/0/api_token", Expected: []any{}},
+			{Label: "WAF ListLists api_token security", Pointer: "/paths/~1accounts~1{account_id}~1rules~1lists/get/security/0/api_token", Expected: []any{}},
+		},
+		WatchLabel: "Watched bearer-token auth contract",
+		Reminders: []string{
+			"newClient uses cloudflare.NewWithAPIToken (a bearer api_token). If api_token stops being {type: http, scheme: bearer}, revisit newClient.",
+			"hintRecordPermission and hintWAFListPermission assume the Zone and WAF endpoints accept api_token. Revisit if either drops it.",
+			"The api_token security pins target index 0 of each endpoint's security array (empty scope list []). If Cloudflare reorders the security array, update the pointer index; a resolution failure here means api_token moved or was removed, not necessarily that it is gone.",
+		},
+		RelatedPaths: []string{
+			"internal/api/cloudflare.go",
+			"internal/api/cloudflare_records.go",
+			"internal/api/cloudflare_waf.go",
+		},
+	},
 }
