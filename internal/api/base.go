@@ -171,9 +171,4 @@ type Handle interface {
 type Auth interface {
 	// New uses the authentication information to create a Handle.
 	New(ppfmt pp.PP, options HandleOptions) (Handle, bool)
-
-	// CheckUsability performs an early credential usability check.
-	//
-	// The check is warning-only and should not block startup.
-	CheckUsability(ctx context.Context, ppfmt pp.PP)
 }

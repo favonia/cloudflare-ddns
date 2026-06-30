@@ -121,8 +121,6 @@ func realMain() int {
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
-	builtConfig.Handle.Auth.CheckUsability(ctxWithSignals, ppfmt)
-
 	// We only needs lifecycleConfig and updateConfig from now on, and builtConfig should not be used.
 	lifecycleConfig := builtConfig.Lifecycle
 	updateConfig := builtConfig.Update
