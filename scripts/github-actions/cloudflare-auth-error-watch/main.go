@@ -1,8 +1,11 @@
-// Package main probes negative Authorization cases against Cloudflare's
-// /user/tokens/verify endpoint and compares the observed responses against
-// built-in expected values. It is intended for GitHub Actions and reports
-// API behavior drift through stderr, workflow error annotations, and
-// GITHUB_STEP_SUMMARY.
+// Package main probes the real Cloudflare operations behind the updater's
+// authentication hints — the Zone listing (ListZones, behind
+// hintRecordPermission) and the WAF list listing (ListLists, behind
+// hintWAFListPermission) — with well-formed-but-invalid and malformed tokens,
+// and compares the observed responses against built-in expected values. It
+// guards the AuthenticationError/AuthorizationError classification those hints
+// depend on. It is intended for GitHub Actions and reports API behavior drift
+// through stderr, workflow error annotations, and GITHUB_STEP_SUMMARY.
 package main
 
 import (
@@ -28,7 +31,6 @@ import (
 type config struct {
 	Name             string
 	SnapshotDate     string
-	URL              string
 	UserAgent        string
 	PauseBetweenRuns string
 	RequestTimeout   string
@@ -40,6 +42,9 @@ type config struct {
 type probe struct {
 	Name                 string
 	Kind                 string
+	Endpoint             string // raw HTTP URL probed for this case
+	Operation            string // SDK operation: "ListZones" or "ListLists" (empty = no SDK probe)
+	AccountID            string // placeholder account ID for ListLists
 	Token                string
 	IncludeAuthorization *bool
 	ExpectedRaw          expectedRaw
@@ -213,7 +218,7 @@ func builtInConfig(runPattern string) (config, error) {
 
 func runRawProbe(cfg config, entry probe, timeout time.Duration) ([]string, []string) {
 	fmt.Fprintf(os.Stderr, "Probing raw %s...\n", entry.Name)
-	raw, err := probeRaw(cfg.URL, cfg.UserAgent, entry, timeout)
+	raw, err := probeRaw(entry.Endpoint, cfg.UserAgent, entry, timeout)
 	if err != nil {
 		line := fmt.Sprintf(
 			"- Raw %s [%s]: transport error: %v",
@@ -328,26 +333,35 @@ func probeSDK(entry probe, timeout time.Duration) (observedSDK, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	_, verifyErr := client.VerifyAPIToken(ctx)
-	if verifyErr == nil {
+	var opErr error
+	switch entry.Operation {
+	case "ListZones":
+		_, opErr = client.ListZones(ctx)
+	case "ListLists":
+		_, opErr = client.ListLists(ctx, cloudflare.AccountIdentifier(entry.AccountID), cloudflare.ListListsParams{})
+	default:
+		return observedSDK{}, fmt.Errorf("unknown SDK operation %q for probe %q", entry.Operation, entry.Name)
+	}
+	if opErr == nil {
 		return observedSDK{}, fmt.Errorf(
-			"expected VerifyAPIToken to fail for probe %q, but it succeeded",
-			entry.Name,
-		)
+			"expected %s to fail for probe %q, but it succeeded", entry.Operation, entry.Name)
 	}
 
 	return observedSDK{
-		ErrorType:    classifyErrorType(verifyErr),
-		ErrorCodes:   extractErrorCodes(verifyErr),
-		ErrorMessage: verifyErr.Error(),
+		ErrorType:    classifyErrorType(opErr),
+		ErrorCodes:   extractErrorCodes(opErr),
+		ErrorMessage: opErr.Error(),
 	}, nil
 }
 
 func classifyErrorType(err error) string {
+	var authenticationError *cloudflare.AuthenticationError
 	var authorizationError *cloudflare.AuthorizationError
 	var requestError *cloudflare.RequestError
 
 	switch {
+	case errors.As(err, &authenticationError):
+		return "AuthenticationError"
 	case errors.As(err, &authorizationError):
 		return "AuthorizationError"
 	case errors.As(err, &requestError):
@@ -493,7 +507,17 @@ func buildDriftSummary(cfg config, lines, drifts []string) string {
 func writeHeader(builder *strings.Builder, cfg config) {
 	fmt.Fprintf(builder, "## %s\n\n", cfg.Name)
 	fmt.Fprintf(builder, "- Snapshot date: %s\n", cfg.SnapshotDate)
-	fmt.Fprintf(builder, "- Endpoint: `%s`\n", cfg.URL)
+	endpoints := make([]string, 0, len(cfg.Probes))
+	seen := map[string]bool{}
+	for _, p := range cfg.Probes {
+		if p.Endpoint != "" && !seen[p.Endpoint] {
+			seen[p.Endpoint] = true
+			endpoints = append(endpoints, p.Endpoint)
+		}
+	}
+	for _, e := range endpoints {
+		fmt.Fprintf(builder, "- Endpoint: `%s`\n", e)
+	}
 }
 
 func formatBullets(items []string) string {
