@@ -188,7 +188,7 @@ var allWatches = []config{
 		},
 		WatchLabel: "Watched OpenAPI list-schema values",
 		Reminders: []string{
-			"Re-check the name-rule conflict between the Lists page and the OpenAPI/JSON-object schema if the list-name pattern changes.",
+			"Re-check the name-rule conflict between the Lists page and the OpenAPI schema if the list-name pattern changes.",
 			"Re-check assumptions about available list kinds and the read-only num_referencing_filters field.",
 			"Re-check WAF list create/read handling in internal/api/cloudflare_waf.go if the schema changes.",
 		},
