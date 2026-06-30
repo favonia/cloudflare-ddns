@@ -83,14 +83,14 @@ type apiMessageInfo struct {
 	Message string `json:"message"`
 }
 
-type verifyResponse struct {
+type apiResponse struct {
 	Success  bool             `json:"success"`
-	Result   *verifyResult    `json:"result"`
+	Result   *apiResult       `json:"result"`
 	Errors   []apiError       `json:"errors"`
 	Messages []apiMessageInfo `json:"messages"`
 }
 
-type verifyResult struct {
+type apiResult struct {
 	Status string `json:"status"`
 }
 
@@ -301,7 +301,7 @@ func probeRaw(
 		return observedRaw{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var parsed verifyResponse
+	var parsed apiResponse
 	if trimmed := strings.TrimSpace(string(body)); trimmed != "" {
 		if err := json.Unmarshal(body, &parsed); err != nil {
 			return observedRaw{}, fmt.Errorf(
