@@ -411,11 +411,47 @@ var allWatches = []config{
 					"/user/tokens/verify",
 				},
 			},
+			// The user verifier "takes none": its GET operation has no
+			// parameters key at all. Enumerating the operation's keys and
+			// filtering for ^parameters$ must yield the empty set; a parameter
+			// appearing here (the user side of the asymmetry changing) is drift.
+			{
+				Label:    "user-verifier parameter keys",
+				Pointer:  "/paths/~1user~1tokens~1verify/get",
+				Pattern:  `^parameters$`,
+				Expected: []string{},
+			},
 		},
-		WatchLabel: "Watched token-verify endpoint set",
+		WatchLabel: "Watched token-verify endpoint set and user-verifier parameters",
 		Reminders: []string{
 			"A new path matching /tokens/verify signals a new token class to evaluate — the change class behind #1197 that the live behavior watch alone cannot see.",
-			"The account verifier requires an account_id path parameter; the user verifier takes none. This asymmetry is why no single startup preflight covers every token type.",
+			"The account verifier requires an account_id path parameter; the user verifier takes none. This asymmetry is why no single startup preflight covers every token type. The user-verifier side (no parameters) is pinned here; the account-verifier account_id requirement is pinned in the \"token-verify parameter asymmetry\" case.",
+		},
+		RelatedPaths: []string{
+			"internal/config/env_auth.go",
+			"internal/api/cloudflare.go",
+		},
+	},
+	{
+		Name:         "Cloudflare OpenAPI token-verify parameter asymmetry",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		JSONPointers: []jsonPointerSelector{
+			// The account verifier requires an account_id path parameter.
+			// Pinning parameters/0 name/in/required catches a parameter change
+			// even when both /tokens/verify paths stay the same — the gap a
+			// path-set watch alone would miss.
+			{Label: "account-verifier param name", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/name", Expected: "account_id"},
+			{Label: "account-verifier param in", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/in", Expected: "path"},
+			{Label: "account-verifier param required", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/required", Expected: true},
+		},
+		WatchLabel: "Watched account-verifier parameter requirement",
+		Reminders: []string{
+			"The account verifier requires a required account_id path parameter; the user verifier takes none (pinned in the \"token-verify endpoints\" case). This asymmetry is why no single startup preflight covers every token type.",
+			"Pins parameters/0; if Cloudflare adds or reorders the account verifier's parameters, a resolution failure or value change here is drift to review, not necessarily a removed account_id.",
 		},
 		RelatedPaths: []string{
 			"internal/config/env_auth.go",
