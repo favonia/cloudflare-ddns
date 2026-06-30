@@ -168,6 +168,10 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 		return "", false
 	}
 
+	// A malformed token must be rejected here, not merely warned about. There is
+	// no longer a startup preflight, so a malformed token would otherwise reach
+	// the gateway as an unhinted RequestError (6003/6111) on the first
+	// operation. Failing offline keeps that path unreachable in normal use.
 	if !oauthBearerRegex.MatchString(token) {
 		tokenKey := tokenPlainKey
 		if tokenPlain == "" {
