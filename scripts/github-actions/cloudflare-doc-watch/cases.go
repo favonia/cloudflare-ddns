@@ -306,33 +306,6 @@ var allWatches = []config{
 		},
 	},
 	{
-		Name:           "Cloudflare WAF list JSON-object name rules",
-		Repo:           "cloudflare/cloudflare-docs",
-		Ref:            "production",
-		Path:           "src/content/docs/waf/tools/lists/lists-api/json-object.mdx",
-		SnapshotDate:   "2026-03-27",
-		HistoryURL:     "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/waf/tools/lists/lists-api/json-object.mdx",
-		PageURL:        "https://developers.cloudflare.com/waf/tools/lists/lists-api/json-object/index.md",
-		WatchedHeading: "## List object structure and properties",
-		LineFilters: []string{
-			"^\\| name String ",
-		},
-		ExpectedLines: []string{
-			"| name String | An informative name for the list. | Maximum length: 50 characters.Only alphanumeric and underscore (\\_) characters are valid.A valid name satisfies this regular expression: ^\\[a-zA-Z0-9\\_\\]+$. |",
-		},
-		WatchLabel: "Watched JSON-object name-rule line",
-		Reminders: []string{
-			"Re-check the documented conflict between the Lists page lowercase-only rule and the JSON-object page alphanumeric rule.",
-			"Re-check whether warnings in internal/config/env_waf.go should stay lowercase-only.",
-			"Re-check whether uppercase list names should be accepted, warned on, or normalized.",
-		},
-		RelatedPaths: []string{
-			"internal/config/env_waf.go",
-			"internal/config/env_waf_test.go",
-			"README.markdown",
-		},
-	},
-	{
 		Name:           "Cloudflare WAF list name rules",
 		Repo:           "cloudflare/cloudflare-docs",
 		Ref:            "production",
