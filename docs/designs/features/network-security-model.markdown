@@ -21,7 +21,7 @@ The security model is about provider correctness at the raw-data boundary, not b
 
 ## Assumptions
 
-This note uses `off-path` and `on-path` as in [RFC 3552, Section 3.5](https://www.rfc-editor.org/rfc/rfc3552.html): an `off-path` attacker can inject traffic without controlling the route, while an `on-path` attacker can observe or alter traffic on that route.
+This note uses `off-path` and `on-path` as in [RFC 3552, Section 3.5](https://datatracker.ietf.org/doc/html/rfc3552): an `off-path` attacker can inject traffic without controlling the route, while an `on-path` attacker can observe or alter traffic on that route.
 
 1. The adversary cannot access or tamper with the local machine or Cloudflare's servers.
 2. The adversary is `off-path` with respect to the public-IP detection route.
