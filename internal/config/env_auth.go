@@ -169,8 +169,13 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 	}
 
 	if !oauthBearerRegex.MatchString(token) {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
+		tokenKey := tokenPlainKey
+		if tokenPlain == "" {
+			tokenKey = tokenFromFileKey
+		}
+		ppfmt.Noticef(pp.EmojiUserError,
+			"The API token does not follow the OAuth2 bearer token format; double-check the value of %s", tokenKey)
+		return "", false
 	}
 
 	return token, true

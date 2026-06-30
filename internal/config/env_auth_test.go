@@ -71,9 +71,9 @@ func TestReadAuth(t *testing.T) {
 		"invalid": {
 			map[string]string{},
 			"!!!", "", "", "", "",
-			true, "!!!",
+			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The API token does not follow the OAuth2 bearer token format; double-check the value of %s", "CLOUDFLARE_API_TOKEN")
 			},
 		},
 		"invalid/quoted": {
