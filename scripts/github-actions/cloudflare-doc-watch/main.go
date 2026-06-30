@@ -42,6 +42,7 @@ type config struct {
 	RelatedPaths       []string
 	JSONRouteSelectors []jsonRouteSelector
 	JSONPointers       []jsonPointerSelector
+	KeySets            []keySetSelector
 }
 
 type jsonRouteSelector struct {
@@ -55,6 +56,13 @@ type jsonPointerSelector struct {
 	Label    string
 	Pointer  string
 	Expected any
+}
+
+type keySetSelector struct {
+	Label    string
+	Pointer  string   // base pointer to an object whose keys are enumerated
+	Pattern  string   // regex; only keys matching it are included
+	Expected []string // expected sorted set of matching keys
 }
 
 //nolint:tagliatelle // GitHub-specific
@@ -281,6 +289,16 @@ func checkContextLines(cfg config) []string {
 
 func checkTargets(cfg config) []string {
 	switch {
+	case len(cfg.KeySets) > 0:
+		targets := make([]string, 0, len(cfg.KeySets))
+		for _, selector := range cfg.KeySets {
+			label := selector.Label
+			if label == "" {
+				label = selector.Pointer
+			}
+			targets = append(targets, fmt.Sprintf("key set %q under %q", label, selector.Pointer))
+		}
+		return targets
 	case len(cfg.JSONPointers) > 0:
 		targets := make([]string, 0, len(cfg.JSONPointers))
 		for _, selector := range cfg.JSONPointers {
@@ -333,6 +351,19 @@ func checkTargets(cfg config) []string {
 
 func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, error) {
 	switch {
+	case len(cfg.KeySets) > 0:
+		expected := make([]string, 0, len(cfg.KeySets))
+		for _, selector := range cfg.KeySets {
+			sorted := slices.Clone(selector.Expected)
+			slices.Sort(sorted)
+			expected = append(expected, fmt.Sprintf("%s: %v", selector.Label, sorted))
+		}
+		document, err := fetchDocument(ctx, cfg.Repo, cfg.Ref, cfg.Path)
+		if err != nil {
+			return nil, nil, err
+		}
+		actual, err := extractKeySetItems(document, cfg.KeySets)
+		return expected, actual, err
 	case len(cfg.JSONPointers) > 0:
 		expected := make([]string, 0, len(cfg.JSONPointers))
 		for _, selector := range cfg.JSONPointers {
@@ -719,6 +750,38 @@ func extractJSONPointerItems(document string, selectors []jsonPointerSelector) (
 			return nil, err
 		}
 		items = append(items, fmt.Sprintf("%s: %s", selector.Label, rendered))
+	}
+	return items, nil
+}
+
+func extractKeySetItems(document string, selectors []keySetSelector) ([]string, error) {
+	var parsed any
+	if err := json.Unmarshal([]byte(document), &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON document: %w", err)
+	}
+
+	items := make([]string, 0, len(selectors))
+	for _, selector := range selectors {
+		value, err := resolveJSONPointer(parsed, selector.Pointer)
+		if err != nil {
+			return nil, err
+		}
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("key-set pointer %q did not resolve to a JSON object", selector.Pointer)
+		}
+		matcher, err := regexp.Compile(selector.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid key-set pattern %q: %w", selector.Pattern, err)
+		}
+		keys := make([]string, 0)
+		for key := range object {
+			if matcher.MatchString(key) {
+				keys = append(keys, key)
+			}
+		}
+		slices.Sort(keys)
+		items = append(items, fmt.Sprintf("%s: %v", selector.Label, keys))
 	}
 	return items, nil
 }

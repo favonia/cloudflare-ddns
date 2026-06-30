@@ -34,3 +34,34 @@ func TestParseOptionsRejectsPositionalArguments(t *testing.T) {
 		t.Fatal("parseOptions succeeded with positional arguments")
 	}
 }
+
+func TestExtractKeySetItems(t *testing.T) {
+	t.Parallel()
+
+	document := `{"paths":{"/user/tokens/verify":{},"/accounts/{account_id}/tokens/verify":{},"/zones":{}}}`
+	selectors := []keySetSelector{{
+		Label:    "token-verify paths",
+		Pointer:  "/paths",
+		Pattern:  `/tokens/verify$`,
+		Expected: []string{"/accounts/{account_id}/tokens/verify", "/user/tokens/verify"},
+	}}
+
+	actual, err := extractKeySetItems(document, selectors)
+	if err != nil {
+		t.Fatalf("extractKeySetItems returned error: %v", err)
+	}
+	want := "token-verify paths: [/accounts/{account_id}/tokens/verify /user/tokens/verify]"
+	if len(actual) != 1 || actual[0] != want {
+		t.Fatalf("extractKeySetItems = %v, want [%q]", actual, want)
+	}
+}
+
+func TestExtractKeySetItemsRejectsNonObject(t *testing.T) {
+	t.Parallel()
+
+	document := `{"paths":[]}`
+	selectors := []keySetSelector{{Label: "x", Pointer: "/paths", Pattern: `.`, Expected: nil}}
+	if _, err := extractKeySetItems(document, selectors); err == nil {
+		t.Fatal("extractKeySetItems succeeded on a non-object base pointer")
+	}
+}
