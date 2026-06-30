@@ -173,7 +173,7 @@ type options struct {
 }
 
 func parseOptions(args []string) (options, error) {
-	flags := flag.NewFlagSet("cloudflare-token-verify-watch", flag.ContinueOnError)
+	flags := flag.NewFlagSet("cloudflare-auth-error-watch", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 
 	var opts options
