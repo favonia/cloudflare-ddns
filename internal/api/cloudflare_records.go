@@ -28,7 +28,7 @@ func hintRecordPermission(ppfmt pp.PP, err error) {
 	if errors.As(err, &authentication) || errors.As(err, &authorization) {
 		ppfmt.NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint,
 			"Double-check your API token. "+
-				`Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				`Make sure it is valid and unexpired and has the "Edit" permission of "Zone - DNS"`)
 	}
 }
 

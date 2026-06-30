@@ -165,7 +165,7 @@ func TestListRecords(t *testing.T) {
 			false,
 			func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to retrieve %s records for %s: %v", "AAAA", "sub.test.org", gomock.Any())
-				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double-check your API token. Make sure you granted the "Edit" permission of "Zone - DNS"`)
+				ppfmt.EXPECT().NoticeOncef(pp.MessageRecordPermission, pp.EmojiHint, `Double-check your API token. Make sure it is valid and unexpired and has the "Edit" permission of "Zone - DNS"`)
 			},
 		},
 		"no-zone": {
