@@ -69,8 +69,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					1)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					1, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -90,8 +90,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					2)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					2, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -111,8 +111,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"The %s non-empty line of SHOUTRRR contains spaces",
-					"1st")
+					"The %s non-empty line of %s contains spaces",
+					"1st", "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`Encode spaces as "%%20" in URLs to suppress this warning`)
@@ -134,8 +134,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					1)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					1, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -155,8 +155,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					1)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					1, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -188,8 +188,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					2)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					2, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -209,8 +209,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					5)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					5, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
@@ -230,8 +230,8 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserError,
-					"Line %d of SHOUTRRR contains spaces, which suggests that multiple URLs were folded onto one line",
-					1)
+					"Line %d of %s contains spaces, which suggests that multiple URLs were folded onto one line",
+					1, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)

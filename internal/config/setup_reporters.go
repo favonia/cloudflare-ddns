@@ -82,6 +82,14 @@ func parseShoutrrrLines(raw string) []shoutrrrURLLine {
 	return lines
 }
 
+// shoutrrrSource is one origin of shoutrrr URLs: its raw text plus a
+// human-readable name used in diagnostics (e.g. "SHOUTRRR" or
+// "the file specified by SHOUTRRR_FILE").
+type shoutrrrSource struct {
+	name string
+	raw  string
+}
+
 // parseShoutrrrURLs parses SHOUTRRR into a list of shoutrrr URLs.
 //
 // The input contract is newline-separated URLs, with each configured line kept
@@ -104,8 +112,8 @@ func parseShoutrrrLines(raw string) []shoutrrrURLLine {
 // intentionally redesigned. Any future notifier input surface should normalize
 // back to the same one-URL-per-line contract instead of making parsing behavior
 // format-dependent.
-func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
-	lines := parseShoutrrrLines(os.Getenv("SHOUTRRR"))
+func parseShoutrrrURLs(ppfmt pp.PP, src shoutrrrSource) ([]string, bool) {
+	lines := parseShoutrrrLines(src.raw)
 	urls := make([]string, 0, len(lines))
 	sawWarning := false
 
@@ -118,9 +126,9 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 			sawWarning = true
 		case shoutrrrSpaceFail:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d of SHOUTRRR contains spaces, "+
+				"Line %d of %s contains spaces, "+
 					"which suggests that multiple URLs were folded onto one line",
-				line.lineNum)
+				line.lineNum, src.name)
 			ppfmt.Infof(pp.EmojiHint,
 				`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 			ppfmt.Infof(pp.EmojiHint,
@@ -135,8 +143,8 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 		for _, line := range lines {
 			if classifyShoutrrrURLSpace(line.rawURL) == shoutrrrSpaceWarn {
 				ppfmt.Noticef(pp.EmojiUserWarning,
-					"The %s non-empty line of SHOUTRRR contains spaces",
-					pp.Ordinal(line.lineNum))
+					"The %s non-empty line of %s contains spaces",
+					pp.Ordinal(line.lineNum), src.name)
 			}
 		}
 		ppfmt.Infof(pp.EmojiHint, `Encode spaces as "%%20" in URLs to suppress this warning`)
@@ -177,7 +185,7 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
-	shoutrrrURLs, ok := parseShoutrrrURLs(ppfmt)
+	shoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: os.Getenv("SHOUTRRR")})
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
