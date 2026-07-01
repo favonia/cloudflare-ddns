@@ -55,21 +55,48 @@ func RequireAbsolutePath(ppfmt pp.PP, path string) (fixedPath string, ok bool) {
 	return fixedPath, ok
 }
 
-// ReadString reads the content of the file at path.
-// The path must be absolute; relative paths are rejected.
-func ReadString(ppfmt pp.PP, path string) (string, bool) {
+// readRaw reads the verbatim bytes of the file at path, sharing path validation
+// and read-error wording with ReadString and ReadRawString.
+func readRaw(ppfmt pp.PP, path string) ([]byte, bool) {
 	relPath, _, ok := processPath(ppfmt, path)
 	if !ok {
-		return "", false
+		return nil, false
 	}
 
 	body, err := fs.ReadFile(fileSystem, relPath)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to read %s: %v", pp.QuoteIfUnsafeInSentence(path), err)
+		return nil, false
+	}
+
+	return body, true
+}
+
+// ReadString reads the content of the file at path, trimming surrounding whitespace.
+// The trim is intentional for scalar values such as API tokens. For inputs whose line
+// numbers matter (e.g. shoutrrr URL lists), use ReadRawString instead; the two are not
+// interchangeable and must not be consolidated.
+// The path must be absolute; relative paths are rejected.
+func ReadString(ppfmt pp.PP, path string) (string, bool) {
+	body, ok := readRaw(ppfmt, path)
+	if !ok {
 		return "", false
 	}
 
 	return string(bytes.TrimSpace(body)), true
+}
+
+// ReadRawString reads the verbatim content of the file at path without any trimming.
+// It exists for line-numbered inputs where trimming leading blank lines would shift
+// reported line numbers. For scalar values, prefer ReadString.
+// The path must be absolute; relative paths are rejected.
+func ReadRawString(ppfmt pp.PP, path string) (string, bool) {
+	body, ok := readRaw(ppfmt, path)
+	if !ok {
+		return "", false
+	}
+
+	return string(body), true
 }
 
 // ProcessLines returns an iterator over non-blank, non-comment lines in content.

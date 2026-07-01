@@ -109,6 +109,39 @@ func TestReadStringRelativePath(t *testing.T) {
 	require.Empty(t, content)
 }
 
+//nolint:paralleltest // changing global var file.FS
+func TestReadRawString(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	path := "test/raw.txt"
+	written := "\n\n  # comment\ngeneric://x\n" // leading blank lines must be preserved
+	useMemFS(t, fstest.MapFS{
+		path: &fstest.MapFile{
+			Data:    []byte(written),
+			Mode:    0o644,
+			ModTime: time.Unix(1234, 5678),
+			Sys:     nil,
+		},
+	})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	content, ok := file.ReadRawString(mockPP, "/"+path)
+	require.True(t, ok)
+	require.Equal(t, written, content) // verbatim, no trim
+}
+
+//nolint:paralleltest // changing global var file.FS
+func TestReadRawStringWrongPath(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	useMemFS(t, fstest.MapFS{})
+
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Noticef(pp.EmojiUserError, "Failed to read %s: %v", "/wrong/path.txt", gomock.Any())
+	content, ok := file.ReadRawString(mockPP, "/wrong/path.txt")
+	require.False(t, ok)
+	require.Empty(t, content)
+}
+
 func collectLines(lines func(func(int, string) bool)) []struct {
 	num  int
 	text string
