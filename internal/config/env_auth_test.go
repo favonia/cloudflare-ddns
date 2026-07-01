@@ -125,6 +125,14 @@ func TestReadAuth(t *testing.T) {
 					"CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
+		"file/invalid": {
+			map[string]string{"token.txt": "!!!"},
+			"", "", "/token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The API token does not follow the OAuth2 bearer token format; double-check the value of %s", "CLOUDFLARE_API_TOKEN_FILE")
+			},
+		},
 		"file/conflicting": {
 			map[string]string{"token1.txt": "hello1", "token2.txt": "hello2"},
 			"", "", "/token1.txt", "/token2.txt", "",
