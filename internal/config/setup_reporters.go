@@ -174,32 +174,72 @@ func readShoutrrrFileURLs(ppfmt pp.PP) ([]string, bool) {
 	return parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "the file specified by SHOUTRRR_FILE", raw: raw})
 }
 
-// reconcileShoutrrrURLs combines the URL lists from SHOUTRRR and SHOUTRRR_FILE.
-// When both sources provide URLs, the two lists must be equal up to ordering,
-// counting multiplicity (sorted, not deduplicated). Otherwise the single
-// non-empty list is used, or none.
+// reconcileShoutrrrURLs combines the URL lists from SHOUTRRR and SHOUTRRR_FILE,
+// given whether each source participates. A source participates when its
+// environment variable holds a non-whitespace value: a non-empty SHOUTRRR, or a
+// SHOUTRRR_FILE that names a path. Participation is distinct from whether the
+// parsed list is non-empty, because a set-but-comment-only or empty source
+// participates yet yields no URLs. Conflating the two (using list emptiness as a
+// proxy for participation) is exactly what lets a populated source silently
+// override a participating-but-empty one, so keep the two notions separate.
 //
-// The comparison is deliberately multiplicity-sensitive: notifier.NewShoutrrr
-// passes the URLs verbatim to shoutrrr without deduplicating, so a repeated URL
-// notifies that service once per occurrence. Deduplicating before comparison
-// would accept e.g. SHOUTRRR="a\na" against a file of "a" as matching even
-// though the two configurations notify a different number of times. Keeping
-// multiplicity in the comparison makes "the two sources match" mean "the two
-// sources behave identically"; do not collapse this to a set comparison.
-func reconcileShoutrrrURLs(ppfmt pp.PP, envURLs, fileURLs []string) ([]string, bool) {
-	switch {
-	case len(envURLs) > 0 && len(fileURLs) > 0:
-		if !slices.Equal(slices.Sorted(slices.Values(envURLs)), slices.Sorted(slices.Values(fileURLs))) {
+// Two failures are possible, at deliberately different severities:
+//
+//   - Contradiction (hard error): both sources participate but disagree. The
+//     comparison is up to ordering and counts multiplicity (sorted, not
+//     deduplicated), and an empty list disagrees with a non-empty one.
+//     Multiplicity matters because notifier.NewShoutrrr passes the URLs verbatim
+//     to shoutrrr without deduplicating, so a repeated URL notifies that service
+//     once per occurrence; "the two sources match" must mean "the two sources
+//     behave identically". Do not collapse this to a set comparison.
+//
+//   - No URLs despite participation (warning): a participating source resolved
+//     to no URLs — a likely mistake such as a failed secret mount or a
+//     fully commented-out list — but the sources do not contradict each other.
+//     This is not fatal; no notifier is configured.
+//
+// The diagnostics never print the URLs themselves because shoutrrr URLs embed
+// credentials; they describe only presence or absence.
+func reconcileShoutrrrURLs(ppfmt pp.PP,
+	envParticipates bool, envURLs []string,
+	fileParticipates bool, fileURLs []string,
+) ([]string, bool) {
+	if envParticipates && fileParticipates &&
+		!slices.Equal(slices.Sorted(slices.Values(envURLs)), slices.Sorted(slices.Values(fileURLs))) {
+		switch {
+		case len(envURLs) == 0:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The file specified by SHOUTRRR_FILE specifies URLs but SHOUTRRR specifies none; they must specify the same URLs")
+		case len(fileURLs) == 0:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"SHOUTRRR specifies URLs but the file specified by SHOUTRRR_FILE specifies none; they must specify the same URLs")
+		default:
 			ppfmt.Noticef(pp.EmojiUserError,
 				"The URLs in SHOUTRRR and the file specified by SHOUTRRR_FILE differ; they must specify the same URLs")
-			return nil, false
 		}
-		return envURLs, true
-	case len(envURLs) > 0:
-		return envURLs, true
-	default:
-		return fileURLs, true
+		return nil, false
 	}
+
+	urls := envURLs
+	if len(urls) == 0 {
+		urls = fileURLs
+	}
+
+	if len(urls) == 0 && (envParticipates || fileParticipates) {
+		switch {
+		case envParticipates && fileParticipates:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"Neither SHOUTRRR nor the file specified by SHOUTRRR_FILE specifies any URLs; no notifications will be sent")
+		case envParticipates:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"SHOUTRRR is set but specifies no URLs; no notifications will be sent")
+		default:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"The file specified by SHOUTRRR_FILE specifies no URLs; no notifications will be sent")
+		}
+	}
+
+	return urls, true
 }
 
 // SetupReporters reads and constructs the configured heartbeat and notifier
@@ -234,17 +274,19 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
+	envParticipates := getenv("SHOUTRRR") != ""
 	envShoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: os.Getenv("SHOUTRRR")})
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
 
+	fileParticipates := getenv("SHOUTRRR_FILE") != ""
 	fileShoutrrrURLs, ok := readShoutrrrFileURLs(ppfmt)
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
 
-	shoutrrrURLs, ok := reconcileShoutrrrURLs(ppfmt, envShoutrrrURLs, fileShoutrrrURLs)
+	shoutrrrURLs, ok := reconcileShoutrrrURLs(ppfmt, envParticipates, envShoutrrrURLs, fileParticipates, fileShoutrrrURLs)
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}

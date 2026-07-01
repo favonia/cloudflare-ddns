@@ -92,29 +92,65 @@ func TestSetupReportersShoutrrrFile(t *testing.T) {
 					"The URLs in SHOUTRRR and the file specified by SHOUTRRR_FILE differ; they must specify the same URLs")
 			},
 		},
+		// The env participates (non-whitespace) but resolves to no URLs while the
+		// file has one: a contradiction, so a hard error naming the empty side.
 		"comment-only env plus populated file": {
-			shoutrrr:     "# nothing here",
-			fileContent:  url1,
-			useFile:      true,
-			ok:           true,
-			descriptions: []string{"Generic"},
+			shoutrrr:    "# nothing here",
+			fileContent: url1,
+			useFile:     true,
+			ok:          false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"The file specified by SHOUTRRR_FILE specifies URLs but SHOUTRRR specifies none; they must specify the same URLs")
+			},
 		},
+		// Symmetric contradiction: env has a URL, the participating file has none.
 		"empty file with env": {
-			shoutrrr:     url1,
-			fileContent:  "\n#comment\n",
-			useFile:      true,
-			ok:           true,
-			descriptions: []string{"Generic"},
+			shoutrrr:    url1,
+			fileContent: "\n#comment\n",
+			useFile:     true,
+			ok:          false,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserError,
+					"SHOUTRRR specifies URLs but the file specified by SHOUTRRR_FILE specifies none; they must specify the same URLs")
+			},
 		},
+		// Only the file participates and it resolves to no URLs: no contradiction,
+		// but a likely mistake, so warn and configure no notifier.
 		"comment-only file, env unset": {
 			fileContent: "# just a comment\n\n",
 			useFile:     true,
 			ok:          true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserWarning,
+					"The file specified by SHOUTRRR_FILE specifies no URLs; no notifications will be sent")
+			},
 		},
+		// Both participate and both resolve to no URLs: they agree (no
+		// contradiction), so warn about the empty result rather than erroring.
 		"both empty": {
+			shoutrrr:    "# env comment",
 			fileContent: "\n#c\n",
 			useFile:     true,
 			ok:          true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserWarning,
+					"Neither SHOUTRRR nor the file specified by SHOUTRRR_FILE specifies any URLs; no notifications will be sent")
+			},
+		},
+		// Only the env participates and it resolves to no URLs: warn, no notifier.
+		"comment-only env, file unset": {
+			shoutrrr: "# just a comment\n\n",
+			ok:       true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserWarning,
+					"SHOUTRRR is set but specifies no URLs; no notifications will be sent")
+			},
 		},
 		"space fail in file": {
 			fileContent: url1 + " " + url2,
