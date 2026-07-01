@@ -64,16 +64,17 @@ type shoutrrrURLLine struct {
 	rawURL  string
 }
 
-func shoutrrrURLLines() []shoutrrrURLLine {
-	raw := os.Getenv("SHOUTRRR")
-	if raw == "" {
-		return nil
-	}
-
+// parseShoutrrrLines splits raw shoutrrr configuration text into non-blank,
+// non-comment lines, preserving 1-based line numbers so diagnostics point at the
+// true source line. A line is a comment when its first non-whitespace character
+// is '#'. Inline '#' is deliberately NOT treated as a comment because shoutrrr
+// URLs may contain '#' in a query or fragment; do not route this through
+// file.ProcessLines, which strips inline '#'.
+func parseShoutrrrLines(raw string) []shoutrrrURLLine {
 	lines := make([]shoutrrrURLLine, 0)
 	for i, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		lines = append(lines, shoutrrrURLLine{lineNum: i + 1, rawURL: line})
@@ -104,7 +105,7 @@ func shoutrrrURLLines() []shoutrrrURLLine {
 // back to the same one-URL-per-line contract instead of making parsing behavior
 // format-dependent.
 func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
-	lines := shoutrrrURLLines()
+	lines := parseShoutrrrLines(os.Getenv("SHOUTRRR"))
 	urls := make([]string, 0, len(lines))
 	sawWarning := false
 
