@@ -3,8 +3,10 @@ package config
 import (
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -153,13 +155,51 @@ func parseShoutrrrURLs(ppfmt pp.PP, src shoutrrrSource) ([]string, bool) {
 	return urls, true
 }
 
+// readShoutrrrFileURLs reads and parses SHOUTRRR_FILE, if set. An unset
+// SHOUTRRR_FILE yields no URLs and no error. A configured but unreadable or
+// non-absolute path is an error. A readable file that parses to no URLs (blank
+// or comment-only) yields no URLs and no error.
+func readShoutrrrFileURLs(ppfmt pp.PP) ([]string, bool) {
+	path := getenv("SHOUTRRR_FILE")
+	if path == "" {
+		return nil, true
+	}
+
+	raw, ok := file.ReadRawString(ppfmt, path)
+	if !ok {
+		return nil, false
+	}
+
+	return parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "the file specified by SHOUTRRR_FILE", raw: raw})
+}
+
+// reconcileShoutrrrURLs combines the URL lists from SHOUTRRR and SHOUTRRR_FILE.
+// When both sources provide URLs, the two lists must be equal up to ordering,
+// counting multiplicity (sorted, not deduplicated). Otherwise the single
+// non-empty list is used, or none.
+func reconcileShoutrrrURLs(ppfmt pp.PP, envURLs, fileURLs []string) ([]string, bool) {
+	switch {
+	case len(envURLs) > 0 && len(fileURLs) > 0:
+		if !slices.Equal(slices.Sorted(slices.Values(envURLs)), slices.Sorted(slices.Values(fileURLs))) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The URLs in SHOUTRRR and the file specified by SHOUTRRR_FILE differ; they must specify the same URLs")
+			return nil, false
+		}
+		return envURLs, true
+	case len(envURLs) > 0:
+		return envURLs, true
+	default:
+		return fileURLs, true
+	}
+}
+
 // SetupReporters reads and constructs the configured heartbeat and notifier
 // services used by the updater process.
 //
 // This is a bootstrap path parallel to [RawConfig.ReadEnv] and
 // [RawConfig.BuildConfig], not part of them. Its job is limited to the
-// reporter-specific environment variables HEALTHCHECKS, UPTIMEKUMA, and
-// SHOUTRRR.
+// reporter-specific environment variables HEALTHCHECKS, UPTIMEKUMA, SHOUTRRR,
+// and SHOUTRRR_FILE.
 //
 // Omitting any of these settings is semantically equivalent to setting that
 // variable to the empty string.
@@ -185,7 +225,17 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
-	shoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: os.Getenv("SHOUTRRR")})
+	envShoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: os.Getenv("SHOUTRRR")})
+	if !ok {
+		return emptyHeartbeat, emptyNotifier, false
+	}
+
+	fileShoutrrrURLs, ok := readShoutrrrFileURLs(ppfmt)
+	if !ok {
+		return emptyHeartbeat, emptyNotifier, false
+	}
+
+	shoutrrrURLs, ok := reconcileShoutrrrURLs(ppfmt, envShoutrrrURLs, fileShoutrrrURLs)
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}

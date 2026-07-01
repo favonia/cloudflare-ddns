@@ -247,7 +247,7 @@ func TestSetupReportersNotifier(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			unset(t, "HEALTHCHECKS", "UPTIMEKUMA", "SHOUTRRR")
+			unset(t, "HEALTHCHECKS", "UPTIMEKUMA", "SHOUTRRR", "SHOUTRRR_FILE")
 			if tc.shoutrrr != "" {
 				store(t, "SHOUTRRR", tc.shoutrrr)
 			}
