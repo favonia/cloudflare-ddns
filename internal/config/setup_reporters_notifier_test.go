@@ -111,8 +111,35 @@ func TestSetupReportersNotifier(t *testing.T) {
 			prepareMockPP: func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(
 					pp.EmojiUserWarning,
-					"The %s non-empty line of %s contains spaces",
-					"1st", "SHOUTRRR")
+					"Line %d of %s contains spaces",
+					1, "SHOUTRRR")
+				m.EXPECT().Infof(
+					pp.EmojiHint,
+					`Encode spaces as "%%20" in URLs to suppress this warning`)
+			},
+			check: func(t *testing.T, hb heartbeat.Heartbeat, nt notifier.Notifier) {
+				t.Helper()
+				require.Equal(t, heartbeat.NewComposed(), hb)
+				ns, ok := nt.(notifier.Composed)
+				require.True(t, ok)
+				require.Len(t, ns, 1)
+				s, ok := ns[0].(notifier.Shoutrrr)
+				require.True(t, ok)
+				require.Equal(t, []string{"Generic"}, s.ServiceDescriptions)
+			},
+		},
+		// Regression guard: the space-warn diagnostic must report the physical
+		// line number, not a count of non-empty lines. The warned URL sits on
+		// physical line 3 (after two skipped blank lines) but is the 1st
+		// non-empty line, so the message must say line 3, not "1st".
+		"single URL with raw space after leading blank lines": {
+			shoutrrr: "\n\ngeneric+https://example.com/hook?title=hello world",
+			ok:       true,
+			prepareMockPP: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(
+					pp.EmojiUserWarning,
+					"Line %d of %s contains spaces",
+					3, "SHOUTRRR")
 				m.EXPECT().Infof(
 					pp.EmojiHint,
 					`Encode spaces as "%%20" in URLs to suppress this warning`)

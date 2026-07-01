@@ -146,8 +146,8 @@ func parseShoutrrrURLs(ppfmt pp.PP, src shoutrrrSource) ([]string, bool) {
 		for _, line := range lines {
 			if classifyShoutrrrURLSpace(line.rawURL) == shoutrrrSpaceWarn {
 				ppfmt.Noticef(pp.EmojiUserWarning,
-					"The %s non-empty line of %s contains spaces",
-					pp.Ordinal(line.lineNum), src.name)
+					"Line %d of %s contains spaces",
+					line.lineNum, src.name)
 			}
 		}
 		ppfmt.Infof(pp.EmojiHint, `Encode spaces as "%%20" in URLs to suppress this warning`)
