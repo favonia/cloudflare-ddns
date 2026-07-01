@@ -152,7 +152,7 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 		return "", false
 	}
 
-	var token string
+	var tokenKey, token string
 	switch {
 	case tokenPlain != "" && tokenFromFile != "" && tokenPlain != tokenFromFile:
 		ppfmt.Noticef(pp.EmojiUserError,
@@ -160,17 +160,22 @@ func readAuthToken(ppfmt pp.PP) (string, bool) {
 			tokenPlainKey, tokenFromFileKey)
 		return "", false
 	case tokenPlain != "":
-		token = tokenPlain
+		tokenKey, token = tokenPlainKey, tokenPlain
 	case tokenFromFile != "":
-		token = tokenFromFile
+		tokenKey, token = tokenFromFileKey, tokenFromFile
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, "Either %s or %s must be set", tokenKey1, tokenFileKey1)
 		return "", false
 	}
 
+	// A malformed token must be rejected here, not merely warned about. There is
+	// no longer a startup preflight, so a malformed token would otherwise reach
+	// the gateway as an unhinted RequestError (6003/6111) on the first
+	// operation. Failing offline keeps that path unreachable in normal use.
 	if !oauthBearerRegex.MatchString(token) {
-		ppfmt.Noticef(pp.EmojiUserWarning,
-			"The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
+		ppfmt.Noticef(pp.EmojiUserError,
+			"The API token does not follow the OAuth2 bearer token format; double-check the value of %s", tokenKey)
+		return "", false
 	}
 
 	return token, true

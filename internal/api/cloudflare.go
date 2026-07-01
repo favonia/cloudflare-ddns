@@ -1,8 +1,6 @@
 package api
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -12,8 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
-
-const authVerifyTimeout = time.Second
 
 // wafListMeta contains the metadata of a list.
 type wafListMeta struct {
@@ -88,94 +84,6 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	}
 
 	return h, true
-}
-
-// CheckUsability performs an early token check and emits warnings for
-// suspicious results while allowing startup to continue.
-func (t CloudflareAuth) CheckUsability(ctx context.Context, ppfmt pp.PP) {
-	handle, err := t.newClient()
-	if err != nil {
-		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token preflight check could not run: %v; the updater will continue",
-			err)
-		return
-	}
-
-	quickCtx, cancel := context.WithTimeout(ctx, authVerifyTimeout)
-	defer cancel()
-
-	res, err := handle.VerifyAPIToken(quickCtx)
-	if err != nil {
-		var authorizationError *cloudflare.AuthorizationError
-		var authenticationError *cloudflare.AuthenticationError
-		var requestError *cloudflare.RequestError
-		// Startup verification is warn-only by design.
-		//
-		// The expected snapshot for this observed behavior was adopted on
-		// 2026-03-22. Update that date only when the Cloudflare
-		// /user/tokens/verify drift watch case in
-		// scripts/github-actions/cloudflare-token-verify-watch/cases.go changes
-		// the expected behavior. That drift watch currently observes:
-		// - 400 for malformed or missing Authorization headers
-		// - 401 for well-formed but invalid bearer tokens
-		// cloudflare-go maps those to RequestError and AuthorizationError.
-		//
-		// Everything here is treated as non-fatal. This keeps temporary outages,
-		// undocumented server behavior, and token issues from blocking startup.
-		if errors.As(err, &authorizationError) || errors.As(err, &requestError) {
-			ppfmt.Noticef(pp.EmojiWarning,
-				"Cloudflare API token preflight check suggests the token is invalid: %v; the updater will continue", err)
-			ppfmt.Noticef(pp.EmojiWarning,
-				"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
-			return
-		}
-		// cloudflare-go reserves AuthenticationError for HTTP 403. We did not
-		// find a documented or observed 403 variant for /user/tokens/verify, so
-		// keep this as a defensive unexpected-response branch instead of claiming
-		// the token is definitely invalid.
-		if errors.As(err, &authenticationError) {
-			ppfmt.Noticef(pp.EmojiWarning,
-				"Cloudflare API token preflight check returned an unexpected authorization failure: %v; the updater will continue",
-				err)
-			return
-		}
-		// This startup probe intentionally uses a short fixed budget. If the
-		// probe context is already done here, treat the result as ambiguous and
-		// continue startup instead of mislabeling the token as invalid.
-		if quickCtx.Err() != nil {
-			ppfmt.Noticef(pp.EmojiWarning,
-				"Cloudflare API token preflight check timed out after %v; the updater will continue",
-				authVerifyTimeout)
-			return
-		}
-
-		// Other errors here are usually transport failures, timeouts, or future
-		// undocumented client-library/server behavior. Keep startup running and
-		// let later operations provide more context if the problem persists.
-		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare API token preflight check failed: %v; the updater will continue", err)
-		return
-	}
-
-	switch res.Status {
-	case "active":
-		return
-	case "disabled", "expired":
-		ppfmt.Noticef(pp.EmojiWarning,
-			"The Cloudflare API token is %s during preflight check; the updater will continue",
-			res.Status)
-		ppfmt.Noticef(pp.EmojiWarning,
-			"Please double-check the value of CLOUDFLARE_API_TOKEN or CLOUDFLARE_API_TOKEN_FILE")
-		return
-	default:
-		// Cloudflare documents "active", and we have seen "disabled" and
-		// "expired" in the client contract. Anything else should be preserved as
-		// an unexpected-but-non-fatal warning until there is real evidence for a
-		// stricter interpretation.
-		ppfmt.Noticef(pp.EmojiWarning,
-			"Cloudflare reported the API token status as %q during preflight check; the updater will continue", res.Status)
-		return
-	}
 }
 
 func (t CloudflareAuth) newClient() (*cloudflare.API, error) {

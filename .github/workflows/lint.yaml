@@ -50,8 +50,8 @@ jobs:
         module:
           - name: "doc watch"
             directory: scripts/github-actions/cloudflare-doc-watch
-          - name: "token verify watch"
-            directory: scripts/github-actions/cloudflare-token-verify-watch
+          - name: "auth error watch"
+            directory: scripts/github-actions/cloudflare-auth-error-watch
           - name: "link check"
             directory: scripts/github-actions/link-check
           - name: "smoke test"

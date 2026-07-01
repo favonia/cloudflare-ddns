@@ -1,4 +1,4 @@
-module github.com/favonia/cloudflare-ddns/scripts/github-actions/cloudflare-token-verify-watch
+module github.com/favonia/cloudflare-ddns/scripts/github-actions/cloudflare-auth-error-watch
 
 go 1.26.0
 

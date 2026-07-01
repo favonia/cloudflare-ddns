@@ -44,7 +44,6 @@ Current startup includes:
 - runtime-config construction
 - API handle construction
 - setter construction
-- API-token usability verification
 
 The main startup boundary is owned by [Codebase Architecture](../core/codebase-architecture.markdown). Ownership and reconciliation notes assume startup has already produced a valid runtime configuration.
 

@@ -5,15 +5,15 @@ import "testing"
 func TestBuiltInConfigRunPattern(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := builtInConfig("^missing Authorization$")
+	cfg, err := builtInConfig("^zones invalid token$")
 	if err != nil {
 		t.Fatalf("builtInConfig returned error: %v", err)
 	}
 	if len(cfg.Probes) != 1 {
 		t.Fatalf("builtInConfig returned %d probes, want 1", len(cfg.Probes))
 	}
-	if cfg.Probes[0].Name != "missing Authorization" {
-		t.Fatalf("selected probe = %q, want %q", cfg.Probes[0].Name, "missing Authorization")
+	if cfg.Probes[0].Name != "zones invalid token" {
+		t.Fatalf("selected probe = %q, want %q", cfg.Probes[0].Name, "zones invalid token")
 	}
 }
 

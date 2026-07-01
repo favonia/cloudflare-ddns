@@ -71,9 +71,9 @@ func TestReadAuth(t *testing.T) {
 		"invalid": {
 			map[string]string{},
 			"!!!", "", "", "", "",
-			true, "!!!",
+			false, "",
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserWarning, "The API token appears to be invalid; it does not follow the OAuth2 bearer token format")
+				m.EXPECT().Noticef(pp.EmojiUserError, "The API token does not follow the OAuth2 bearer token format; double-check the value of %s", "CLOUDFLARE_API_TOKEN")
 			},
 		},
 		"invalid/quoted": {
@@ -123,6 +123,14 @@ func TestReadAuth(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError,
 					"The value of %s appears to include surrounding quotation marks; remove the extra quotes",
 					"CLOUDFLARE_API_TOKEN_FILE")
+			},
+		},
+		"file/invalid": {
+			map[string]string{"token.txt": "!!!"},
+			"", "", "/token.txt", "", "",
+			false, "",
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "The API token does not follow the OAuth2 bearer token format; double-check the value of %s", "CLOUDFLARE_API_TOKEN_FILE")
 			},
 		},
 		"file/conflicting": {

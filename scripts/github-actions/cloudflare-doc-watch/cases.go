@@ -394,4 +394,99 @@ var allWatches = []config{
 			"internal/api/cloudflare_records_zone_test.go",
 		},
 	},
+	{
+		Name:         "Cloudflare OpenAPI token-verify endpoints",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		KeySets: []keySetSelector{
+			{
+				Label:   "token-verify paths",
+				Pointer: "/paths",
+				Pattern: `/tokens/verify$`,
+				Expected: []string{
+					"/accounts/{account_id}/tokens/verify",
+					"/user/tokens/verify",
+				},
+			},
+			// The user verifier "takes none": its GET operation has no
+			// parameters key at all. Enumerating the operation's keys and
+			// filtering for ^parameters$ must yield the empty set; a parameter
+			// appearing here (the user side of the asymmetry changing) is drift.
+			{
+				Label:    "user-verifier parameter keys",
+				Pointer:  "/paths/~1user~1tokens~1verify/get",
+				Pattern:  `^parameters$`,
+				Expected: []string{},
+			},
+		},
+		WatchLabel: "Watched token-verify endpoint set and user-verifier parameters",
+		Reminders: []string{
+			"A new path matching /tokens/verify signals a new token class to evaluate — the change class behind #1197 that the live behavior watch alone cannot see.",
+			"The account verifier requires an account_id path parameter; the user verifier takes none. This asymmetry is why no single startup preflight covers every token type. The user-verifier side (no parameters) is pinned here; the account-verifier account_id requirement is pinned in the \"token-verify parameter asymmetry\" case.",
+		},
+		RelatedPaths: []string{
+			"internal/config/env_auth.go",
+			"internal/api/cloudflare.go",
+		},
+	},
+	{
+		Name:         "Cloudflare OpenAPI token-verify parameter asymmetry",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		JSONPointers: []jsonPointerSelector{
+			// The account verifier requires an account_id path parameter.
+			// Pinning parameters/0 name/in/required catches a parameter change
+			// even when both /tokens/verify paths stay the same — the gap a
+			// path-set watch alone would miss.
+			{Label: "account-verifier param name", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/name", Expected: "account_id"},
+			{Label: "account-verifier param in", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/in", Expected: "path"},
+			{Label: "account-verifier param required", Pointer: "/paths/~1accounts~1{account_id}~1tokens~1verify/get/parameters/0/required", Expected: true},
+		},
+		WatchLabel: "Watched account-verifier parameter requirement",
+		Reminders: []string{
+			"The account verifier requires a required account_id path parameter; the user verifier takes none (pinned in the \"token-verify endpoints\" case). This asymmetry is why no single startup preflight covers every token type.",
+			"Pins parameters/0; if Cloudflare adds or reorders the account verifier's parameters, a resolution failure or value change here is drift to review, not necessarily a removed account_id.",
+		},
+		RelatedPaths: []string{
+			"internal/config/env_auth.go",
+			"internal/api/cloudflare.go",
+		},
+	},
+	{
+		Name:         "Cloudflare OpenAPI bearer-token auth contract",
+		Repo:         "cloudflare/api-schemas",
+		Ref:          "main",
+		Path:         "openapi.json",
+		SnapshotDate: "2026-06-30",
+		HistoryURL:   "https://github.com/cloudflare/api-schemas/commits/main/openapi.json",
+		JSONPointers: []jsonPointerSelector{
+			{Label: "api_token.type", Pointer: "/components/securitySchemes/api_token/type", Expected: "http"},
+			{Label: "api_token.scheme", Pointer: "/components/securitySchemes/api_token/scheme", Expected: "bearer"},
+			// The security array is an OR of requirement objects. We pin the
+			// api_token entry at index 0 of each endpoint's security array; its
+			// value is the empty scope list [], so [] here asserts "api_token is
+			// accepted with no extra scopes at this position". Removing api_token
+			// (or reordering it off index 0) makes the pointer fail to resolve,
+			// which the watch reports as drift — see Reminders.
+			{Label: "GET /zones api_token security", Pointer: "/paths/~1zones/get/security/0/api_token", Expected: []any{}},
+			{Label: "WAF ListLists api_token security", Pointer: "/paths/~1accounts~1{account_id}~1rules~1lists/get/security/0/api_token", Expected: []any{}},
+		},
+		WatchLabel: "Watched bearer-token auth contract",
+		Reminders: []string{
+			"newClient uses cloudflare.NewWithAPIToken (a bearer api_token). If api_token stops being {type: http, scheme: bearer}, revisit newClient.",
+			"hintRecordPermission and hintWAFListPermission assume the Zone and WAF endpoints accept api_token. Revisit if either drops it.",
+			"The api_token security pins target index 0 of each endpoint's security array (empty scope list []). If Cloudflare reorders the security array, update the pointer index; a resolution failure here means api_token moved or was removed, not necessarily that it is gone.",
+		},
+		RelatedPaths: []string{
+			"internal/api/cloudflare.go",
+			"internal/api/cloudflare_records.go",
+			"internal/api/cloudflare_waf.go",
+		},
+	},
 }
