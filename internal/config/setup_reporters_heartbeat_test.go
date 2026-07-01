@@ -23,6 +23,7 @@ func TestSetupReportersOmissionMatchesCanonicalExplicitValues(t *testing.T) {
 		set(t, "HEALTHCHECKS", setHealthchecks, healthchecks)
 		set(t, "UPTIMEKUMA", setUptimeKuma, uptimeKuma)
 		set(t, "SHOUTRRR", setShoutrrr, shoutrrr)
+		unset(t, "SHOUTRRR_FILE")
 
 		hb, nt, ok := config.SetupReporters(pp.NewSilent())
 		require.True(t, ok)
@@ -155,7 +156,7 @@ func TestSetupReportersHeartbeat(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			unset(t, "HEALTHCHECKS", "UPTIMEKUMA", "SHOUTRRR")
+			unset(t, "HEALTHCHECKS", "UPTIMEKUMA", "SHOUTRRR", "SHOUTRRR_FILE")
 			if tc.setHealthchecks {
 				store(t, "HEALTHCHECKS", tc.healthchecks)
 			}

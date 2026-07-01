@@ -3,8 +3,10 @@ package config
 import (
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
+	"github.com/favonia/cloudflare-ddns/internal/file"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -64,16 +66,17 @@ type shoutrrrURLLine struct {
 	rawURL  string
 }
 
-func shoutrrrURLLines() []shoutrrrURLLine {
-	raw := os.Getenv("SHOUTRRR")
-	if raw == "" {
-		return nil
-	}
-
+// parseShoutrrrLines splits raw shoutrrr configuration text into non-blank,
+// non-comment lines, preserving 1-based line numbers so diagnostics point at the
+// true source line. A line is a comment when its first non-whitespace character
+// is '#'. Inline '#' is deliberately NOT treated as a comment because shoutrrr
+// URLs may contain '#' in a query or fragment; do not route this through
+// file.ProcessLines, which strips inline '#'.
+func parseShoutrrrLines(raw string) []shoutrrrURLLine {
 	lines := make([]shoutrrrURLLine, 0)
 	for i, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		lines = append(lines, shoutrrrURLLine{lineNum: i + 1, rawURL: line})
@@ -81,13 +84,22 @@ func shoutrrrURLLines() []shoutrrrURLLine {
 	return lines
 }
 
-// parseShoutrrrURLs parses SHOUTRRR into a list of shoutrrr URLs.
+// shoutrrrSource is one origin of shoutrrr URLs: its raw text plus a
+// human-readable name used in diagnostics (e.g. "SHOUTRRR" or
+// "the file specified by SHOUTRRR_FILE").
+type shoutrrrSource struct {
+	name string
+	raw  string
+}
+
+// parseShoutrrrURLs parses the given source into a list of shoutrrr URLs,
+// reading its content from src.raw and using src.name in diagnostics.
 //
 // The input contract is newline-separated URLs, with each configured line kept
 // as exactly one URL. The parser never rewrites one ambiguous line into
 // multiple URLs.
 //
-// This function only handles parsing and validation of the raw SHOUTRRR input.
+// This function only handles parsing and validation of the raw source input.
 // Final shoutrrr client construction and message delivery behavior are handled
 // downstream.
 //
@@ -103,8 +115,8 @@ func shoutrrrURLLines() []shoutrrrURLLine {
 // intentionally redesigned. Any future notifier input surface should normalize
 // back to the same one-URL-per-line contract instead of making parsing behavior
 // format-dependent.
-func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
-	lines := shoutrrrURLLines()
+func parseShoutrrrURLs(ppfmt pp.PP, src shoutrrrSource) ([]string, bool) {
+	lines := parseShoutrrrLines(src.raw)
 	urls := make([]string, 0, len(lines))
 	sawWarning := false
 
@@ -117,9 +129,9 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 			sawWarning = true
 		case shoutrrrSpaceFail:
 			ppfmt.Noticef(pp.EmojiUserError,
-				"Line %d of SHOUTRRR contains spaces, "+
+				"Line %d of %s contains spaces, "+
 					"which suggests that multiple URLs were folded onto one line",
-				line.lineNum)
+				line.lineNum, src.name)
 			ppfmt.Infof(pp.EmojiHint,
 				`If you meant multiple URLs, put each URL on its own line; if this is one URL, encode spaces as "%%20"`)
 			ppfmt.Infof(pp.EmojiHint,
@@ -134,11 +146,98 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 		for _, line := range lines {
 			if classifyShoutrrrURLSpace(line.rawURL) == shoutrrrSpaceWarn {
 				ppfmt.Noticef(pp.EmojiUserWarning,
-					"The %s non-empty line of SHOUTRRR contains spaces",
-					pp.Ordinal(line.lineNum))
+					"Line %d of %s contains spaces",
+					line.lineNum, src.name)
 			}
 		}
 		ppfmt.Infof(pp.EmojiHint, `Encode spaces as "%%20" in URLs to suppress this warning`)
+	}
+
+	return urls, true
+}
+
+// readShoutrrrFileURLs reads and parses the shoutrrr URL file at path. An empty
+// path (SHOUTRRR_FILE unset) yields no URLs and no error. A non-empty but
+// unreadable or non-absolute path is an error. A readable file that parses to no
+// URLs (blank or comment-only) yields no URLs and no error. The caller supplies
+// the path so this helper is not coupled to the SHOUTRRR_FILE variable name,
+// matching how the sibling SHOUTRRR value is read at the call site.
+func readShoutrrrFileURLs(ppfmt pp.PP, path string) ([]string, bool) {
+	if path == "" {
+		return nil, true
+	}
+
+	raw, ok := file.ReadRawString(ppfmt, path)
+	if !ok {
+		return nil, false
+	}
+
+	return parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "the file specified by SHOUTRRR_FILE", raw: raw})
+}
+
+// reconcileShoutrrrURLs combines the URL lists from SHOUTRRR and SHOUTRRR_FILE,
+// given whether each source participates. A source participates when its
+// environment variable holds a non-whitespace value: a non-empty SHOUTRRR, or a
+// SHOUTRRR_FILE that names a path. Participation is distinct from whether the
+// parsed list is non-empty, because a set-but-comment-only or empty source
+// participates yet yields no URLs. Conflating the two (using list emptiness as a
+// proxy for participation) is exactly what lets a populated source silently
+// override a participating-but-empty one, so keep the two notions separate.
+//
+// Two failures are possible, at deliberately different severities:
+//
+//   - Contradiction (hard error): both sources participate but disagree. The
+//     comparison is up to ordering and counts multiplicity (sorted, not
+//     deduplicated), and an empty list disagrees with a non-empty one.
+//     Multiplicity matters because notifier.NewShoutrrr passes the URLs verbatim
+//     to shoutrrr without deduplicating, so a repeated URL notifies that service
+//     once per occurrence; "the two sources match" must mean "the two sources
+//     behave identically". Do not collapse this to a set comparison.
+//
+//   - No URLs despite participation (warning): a participating source resolved
+//     to no URLs — a likely mistake such as a failed secret mount or a
+//     fully commented-out list — but the sources do not contradict each other.
+//     This is not fatal; no notifier is configured.
+//
+// The diagnostics never print the URLs themselves because shoutrrr URLs embed
+// credentials; they describe only presence or absence.
+func reconcileShoutrrrURLs(ppfmt pp.PP,
+	envParticipates bool, envURLs []string,
+	fileParticipates bool, fileURLs []string,
+) ([]string, bool) {
+	if envParticipates && fileParticipates &&
+		!slices.Equal(slices.Sorted(slices.Values(envURLs)), slices.Sorted(slices.Values(fileURLs))) {
+		switch {
+		case len(envURLs) == 0:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The file specified by SHOUTRRR_FILE specifies URLs but SHOUTRRR specifies none; they must specify the same URLs")
+		case len(fileURLs) == 0:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"SHOUTRRR specifies URLs but the file specified by SHOUTRRR_FILE specifies none; they must specify the same URLs")
+		default:
+			ppfmt.Noticef(pp.EmojiUserError,
+				"The URLs in SHOUTRRR and the file specified by SHOUTRRR_FILE differ; they must specify the same URLs")
+		}
+		return nil, false
+	}
+
+	urls := envURLs
+	if len(urls) == 0 {
+		urls = fileURLs
+	}
+
+	if len(urls) == 0 && (envParticipates || fileParticipates) {
+		switch {
+		case envParticipates && fileParticipates:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"Neither SHOUTRRR nor the file specified by SHOUTRRR_FILE specifies any URLs; no notifications will be sent")
+		case envParticipates:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"SHOUTRRR is set but specifies no URLs; no notifications will be sent")
+		default:
+			ppfmt.Noticef(pp.EmojiUserWarning,
+				"The file specified by SHOUTRRR_FILE specifies no URLs; no notifications will be sent")
+		}
 	}
 
 	return urls, true
@@ -149,8 +248,8 @@ func parseShoutrrrURLs(ppfmt pp.PP) ([]string, bool) {
 //
 // This is a bootstrap path parallel to [RawConfig.ReadEnv] and
 // [RawConfig.BuildConfig], not part of them. Its job is limited to the
-// reporter-specific environment variables HEALTHCHECKS, UPTIMEKUMA, and
-// SHOUTRRR.
+// reporter-specific environment variables HEALTHCHECKS, UPTIMEKUMA, SHOUTRRR,
+// and SHOUTRRR_FILE.
 //
 // Omitting any of these settings is semantically equivalent to setting that
 // variable to the empty string.
@@ -176,7 +275,21 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
-	shoutrrrURLs, ok := parseShoutrrrURLs(ppfmt)
+	shoutrrrRaw := os.Getenv("SHOUTRRR")
+	envParticipates := strings.TrimSpace(shoutrrrRaw) != ""
+	envShoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: shoutrrrRaw})
+	if !ok {
+		return emptyHeartbeat, emptyNotifier, false
+	}
+
+	shoutrrrFilePath := getenv("SHOUTRRR_FILE")
+	fileParticipates := shoutrrrFilePath != ""
+	fileShoutrrrURLs, ok := readShoutrrrFileURLs(ppfmt, shoutrrrFilePath)
+	if !ok {
+		return emptyHeartbeat, emptyNotifier, false
+	}
+
+	shoutrrrURLs, ok := reconcileShoutrrrURLs(ppfmt, envParticipates, envShoutrrrURLs, fileParticipates, fileShoutrrrURLs)
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
