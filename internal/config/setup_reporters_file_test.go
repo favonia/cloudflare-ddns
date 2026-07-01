@@ -106,6 +106,16 @@ func TestSetupReportersShoutrrrFile(t *testing.T) {
 			ok:           true,
 			descriptions: []string{"Generic"},
 		},
+		"comment-only file, env unset": {
+			fileContent: "# just a comment\n\n",
+			useFile:     true,
+			ok:          true,
+		},
+		"both empty": {
+			fileContent: "\n#c\n",
+			useFile:     true,
+			ok:          true,
+		},
 		"space fail in file": {
 			fileContent: url1 + " " + url2,
 			useFile:     true,
@@ -195,13 +205,27 @@ func TestSetupReportersShoutrrrFile(t *testing.T) {
 			_, nt, ok := config.SetupReporters(mockPP)
 			require.Equal(t, tc.ok, ok)
 
-			if tc.ok && len(tc.descriptions) > 0 {
+			switch {
+			case tc.ok && len(tc.descriptions) > 0:
 				ns, isComposed := nt.(notifier.Composed)
 				require.True(t, isComposed)
 				require.Len(t, ns, 1)
 				s, isShoutrrr := ns[0].(notifier.Shoutrrr)
 				require.True(t, isShoutrrr)
 				require.Equal(t, tc.descriptions, s.ServiceDescriptions)
+			case tc.ok:
+				// No descriptions expected, so no shoutrrr notifier should be
+				// composed. "No notifier" is represented as an empty
+				// notifier.Composed (notifier.NewComposed()); assert that
+				// precisely, and conservatively that no element is a
+				// notifier.Shoutrrr.
+				ns, isComposed := nt.(notifier.Composed)
+				require.True(t, isComposed)
+				for _, n := range ns {
+					_, isShoutrrr := n.(notifier.Shoutrrr)
+					require.False(t, isShoutrrr)
+				}
+				require.Empty(t, ns)
 			}
 		})
 	}

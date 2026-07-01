@@ -92,13 +92,14 @@ type shoutrrrSource struct {
 	raw  string
 }
 
-// parseShoutrrrURLs parses SHOUTRRR into a list of shoutrrr URLs.
+// parseShoutrrrURLs parses the given source into a list of shoutrrr URLs,
+// reading its content from src.raw and using src.name in diagnostics.
 //
 // The input contract is newline-separated URLs, with each configured line kept
 // as exactly one URL. The parser never rewrites one ambiguous line into
 // multiple URLs.
 //
-// This function only handles parsing and validation of the raw SHOUTRRR input.
+// This function only handles parsing and validation of the raw source input.
 // Final shoutrrr client construction and message delivery behavior are handled
 // downstream.
 //
