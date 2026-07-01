@@ -156,12 +156,13 @@ func parseShoutrrrURLs(ppfmt pp.PP, src shoutrrrSource) ([]string, bool) {
 	return urls, true
 }
 
-// readShoutrrrFileURLs reads and parses SHOUTRRR_FILE, if set. An unset
-// SHOUTRRR_FILE yields no URLs and no error. A configured but unreadable or
-// non-absolute path is an error. A readable file that parses to no URLs (blank
-// or comment-only) yields no URLs and no error.
-func readShoutrrrFileURLs(ppfmt pp.PP) ([]string, bool) {
-	path := getenv("SHOUTRRR_FILE")
+// readShoutrrrFileURLs reads and parses the shoutrrr URL file at path. An empty
+// path (SHOUTRRR_FILE unset) yields no URLs and no error. A non-empty but
+// unreadable or non-absolute path is an error. A readable file that parses to no
+// URLs (blank or comment-only) yields no URLs and no error. The caller supplies
+// the path so this helper is not coupled to the SHOUTRRR_FILE variable name,
+// matching how the sibling SHOUTRRR value is read at the call site.
+func readShoutrrrFileURLs(ppfmt pp.PP, path string) ([]string, bool) {
 	if path == "" {
 		return nil, true
 	}
@@ -274,14 +275,16 @@ func SetupReporters(ppfmt pp.PP) (heartbeat.Heartbeat, notifier.Notifier, bool) 
 		hb = heartbeat.NewComposed(hb, h)
 	}
 
-	envParticipates := getenv("SHOUTRRR") != ""
-	envShoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: os.Getenv("SHOUTRRR")})
+	shoutrrrRaw := os.Getenv("SHOUTRRR")
+	envParticipates := strings.TrimSpace(shoutrrrRaw) != ""
+	envShoutrrrURLs, ok := parseShoutrrrURLs(ppfmt, shoutrrrSource{name: "SHOUTRRR", raw: shoutrrrRaw})
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
 
-	fileParticipates := getenv("SHOUTRRR_FILE") != ""
-	fileShoutrrrURLs, ok := readShoutrrrFileURLs(ppfmt)
+	shoutrrrFilePath := getenv("SHOUTRRR_FILE")
+	fileParticipates := shoutrrrFilePath != ""
+	fileShoutrrrURLs, ok := readShoutrrrFileURLs(ppfmt, shoutrrrFilePath)
 	if !ok {
 		return emptyHeartbeat, emptyNotifier, false
 	}
