@@ -178,6 +178,14 @@ func readShoutrrrFileURLs(ppfmt pp.PP) ([]string, bool) {
 // When both sources provide URLs, the two lists must be equal up to ordering,
 // counting multiplicity (sorted, not deduplicated). Otherwise the single
 // non-empty list is used, or none.
+//
+// The comparison is deliberately multiplicity-sensitive: notifier.NewShoutrrr
+// passes the URLs verbatim to shoutrrr without deduplicating, so a repeated URL
+// notifies that service once per occurrence. Deduplicating before comparison
+// would accept e.g. SHOUTRRR="a\na" against a file of "a" as matching even
+// though the two configurations notify a different number of times. Keeping
+// multiplicity in the comparison makes "the two sources match" mean "the two
+// sources behave identically"; do not collapse this to a set comparison.
 func reconcileShoutrrrURLs(ppfmt pp.PP, envURLs, fileURLs []string) ([]string, bool) {
 	switch {
 	case len(envURLs) > 0 && len(fileURLs) > 0:
