@@ -73,7 +73,6 @@ jobs:
       cancel-in-progress: true
     strategy:
       fail-fast: false
-      max-parallel: 2
       matrix:
         target:
           - name: "parse list"
