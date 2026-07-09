@@ -21,7 +21,7 @@ import (
 const itemTitleWidth = 28
 
 // Width for host-ID sub-item titles. Two constraints:
-//   - at least the longest sub-label "preserve (using detected):" (26), so the
+//   - at least the longest sub-label "preserve (using detected)" (25), so the
 //     sub-items' own values stay column-aligned;
 //   - large enough that the sub-value column sits clearly right of the item
 //     value column (sub-value - item-value = indentPrefix + subItemTitleWidth -
@@ -146,7 +146,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			subInner := inner.Indent()
 			for _, derivation := range derivations {
 				subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
-					derivation.Describe()+":",
+					derivation.Describe(),
 					pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
 			}
 		}
