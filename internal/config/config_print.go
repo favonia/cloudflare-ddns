@@ -21,7 +21,7 @@ import (
 const itemTitleWidth = 28
 
 // Width for host-ID sub-item titles. Two constraints:
-//   - at least the longest sub-label "preserve (using detected):" (26), so the
+//   - at least the longest sub-label "preserve (using detected)" (25), so the
 //     sub-items' own values stay column-aligned;
 //   - large enough that the sub-value column sits clearly right of the item
 //     value column (sub-value - item-value = indentPrefix + subItemTitleWidth -
