@@ -146,7 +146,7 @@ func Print(ppfmt pp.PP, built *BuiltConfig, hb heartbeat.Heartbeat, nt notifier.
 			subInner := inner.Indent()
 			for _, derivation := range derivations {
 				subInner.Infof(pp.EmojiSubBullet, "%-*s %s", subItemTitleWidth,
-					derivation.Describe()+":",
+					derivation.Describe(),
 					pp.JoinMap(domain.Domain.Describe, domainsByDerivation[derivation]))
 			}
 		}
