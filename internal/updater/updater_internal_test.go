@@ -20,6 +20,36 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+func TestClassifyNotification(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		ok       bool
+		wantKind notifier.Kind
+	}{
+		"success": {true, notifier.KindUpdate},
+		"failure": {false, notifier.KindUpdateFailure},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			msg := Message{
+				HeartbeatMessage: heartbeat.NewMessagef(tc.ok, "heartbeat"),
+				NotifierMessage:  notifier.NewMessagef("notification"),
+				NotificationKind: "",
+			}
+			got := classifyNotification(
+				msg,
+				notifier.KindUpdate,
+				notifier.KindUpdateFailure,
+			)
+			require.Equal(t, tc.wantKind, got.NotificationKind)
+			require.Equal(t,
+				notifier.NewNotification(tc.wantKind, msg.NotifierMessage),
+				got.Notification())
+		})
+	}
+}
+
 func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 	t.Parallel()
 
@@ -58,5 +88,6 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 			"Could not update A records for missing.example because of an internal error; check the logs for details.",
 			"Updated A records for present.example to 192.0.2.1.",
 		},
+		NotificationKind: "",
 	}, msg)
 }
