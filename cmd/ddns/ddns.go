@@ -70,7 +70,7 @@ func stopUpdating(
 	if lifecycleConfig.DeleteOnStop {
 		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s)
 		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
-		nt.Send(ctx, ppfmt, msg.NotifierMessage)
+		nt.Send(ctx, ppfmt, msg.Notification())
 	}
 }
 
@@ -116,8 +116,7 @@ func realMain() int {
 	// Bail out now if initConfig failed
 	if !configOK {
 		hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "Configuration errors"))
-		nt.Send(ctx, ppfmt, notifier.NewMessagef(
-			"Cloudflare DDNS was misconfigured and could not start. Please check the logs for details."))
+		nt.Send(ctx, ppfmt, startupFailureNotification())
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
 		return 1
 	}
@@ -127,7 +126,7 @@ func realMain() int {
 
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if lifecycleConfig.UpdateCron != nil {
-		nt.Send(ctx, ppfmt, notifier.NewMessagef("Cloudflare DDNS has started."))
+		nt.Send(ctx, ppfmt, startupNotification())
 	}
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
@@ -156,7 +155,7 @@ func realMain() int {
 
 			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, updateConfig, s)
 			hb.Ping(ctx, ppfmt, msg.HeartbeatMessage)
-			nt.Send(ctx, ppfmt, msg.NotifierMessage)
+			nt.Send(ctx, ppfmt, msg.Notification())
 		}
 
 		if ctxWithSignals.Err() != nil {
@@ -179,13 +178,8 @@ func realMain() int {
 			)
 			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "No scheduled updates"))
-			nt.Send(ctx, ppfmt,
-				notifier.NewMessagef(
-					"Cloudflare DDNS stopped because no updates are scheduled in the near future. "+
-						"Consider changing the value of UPDATE_CRON (%s).",
-					cron.DescribeSchedule(lifecycleConfig.UpdateCron),
-				),
-			)
+			nt.Send(ctx, ppfmt, schedulingFailureNotification(
+				cron.DescribeSchedule(lifecycleConfig.UpdateCron)))
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -199,7 +193,7 @@ func realMain() int {
 			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Exit(ctx, ppfmt, "Stopped")
 			if lifecycleConfig.UpdateCron != nil {
-				nt.Send(ctx, ppfmt, notifier.NewMessagef("Cloudflare DDNS has stopped."))
+				nt.Send(ctx, ppfmt, shutdownNotification())
 			}
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 0

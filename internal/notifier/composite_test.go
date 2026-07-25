@@ -47,12 +47,13 @@ func TestComposedSend(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		ss []string
+		kind notifier.Kind
+		ss   []string
 	}{
-		"nil":   {nil},
-		"empty": {[]string{}},
-		"one":   {[]string{"hi"}},
-		"two":   {[]string{"hi", "hey"}},
+		"nil":   {notifier.KindUpdate, nil},
+		"empty": {notifier.KindUpdateFailure, []string{}},
+		"one":   {notifier.KindCleanup, []string{"hi"}},
+		"two":   {notifier.KindCleanupFailure, []string{"hi", "hey"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -61,15 +62,15 @@ func TestComposedSend(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			mockPP := mocks.NewMockPP(mockCtrl)
 
-			msg := notifier.Message(tc.ss)
+			notification := notifier.NewNotification(tc.kind, notifier.Message(tc.ss))
 
 			for range 5 {
 				n := mocks.NewMockNotifier(mockCtrl)
-				n.EXPECT().Send(context.Background(), mockPP, msg).Return(true)
+				n.EXPECT().Send(context.Background(), mockPP, notification).Return(true)
 				ns = append(ns, n)
 			}
 
-			ok := notifier.NewComposed(ns...).Send(context.Background(), mockPP, msg)
+			ok := notifier.NewComposed(ns...).Send(context.Background(), mockPP, notification)
 			require.True(t, ok)
 		})
 	}
@@ -82,13 +83,13 @@ func TestComposedSendContinuesAfterFailure(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	first := mocks.NewMockNotifier(mockCtrl)
 	second := mocks.NewMockNotifier(mockCtrl)
-	message := notifier.NewMessagef("notification")
+	notification := notifier.NewNotification(notifier.KindUpdate, notifier.NewMessagef("notification"))
 
 	gomock.InOrder(
-		first.EXPECT().Send(context.Background(), mockPP, message).Return(false),
-		second.EXPECT().Send(context.Background(), mockPP, message).Return(true),
+		first.EXPECT().Send(context.Background(), mockPP, notification).Return(false),
+		second.EXPECT().Send(context.Background(), mockPP, notification).Return(true),
 	)
 
-	ok := notifier.NewComposed(first, second).Send(context.Background(), mockPP, message)
+	ok := notifier.NewComposed(first, second).Send(context.Background(), mockPP, notification)
 	require.False(t, ok)
 }

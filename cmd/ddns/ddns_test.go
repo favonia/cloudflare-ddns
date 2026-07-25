@@ -195,9 +195,10 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		},
 	)
 	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ pp.PP, msg notifier.Message) bool {
-			require.Contains(t, msg.Format(), "Deleted A records for example.org.")
-			require.Contains(t, msg.Format(), "Cleaned WAF list(s) acc/office.")
+		func(_ context.Context, _ pp.PP, notification notifier.Notification) bool {
+			require.Equal(t, notifier.KindCleanup, notification.Kind)
+			require.Contains(t, notification.Format(), "Deleted A records for example.org")
+			require.Contains(t, notification.Format(), "Cleaned WAF list(s) acc/office")
 			return true
 		},
 	)

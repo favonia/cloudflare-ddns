@@ -14,6 +14,6 @@ type Notifier interface {
 	// Describe a notifier in a human-readable format by calling callback with service names and params.
 	Describe(yield func(name, params string) bool)
 
-	// Send out a message.
-	Send(ctx context.Context, ppfmt pp.PP, msg Message) bool
+	// Send out a notification.
+	Send(ctx context.Context, ppfmt pp.PP, notification Notification) bool
 }

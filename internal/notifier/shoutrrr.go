@@ -91,13 +91,14 @@ func (s Shoutrrr) Describe(yield func(string, string) bool) {
 	}
 }
 
-// Send sents the message msg.
-func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
-	if msg.IsEmpty() {
+// Send sends the notification.
+func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, notification Notification) bool {
+	if notification.IsEmpty() {
 		return true
 	}
 
-	errs := s.Router.Send(msg.Format(), &types.Params{})
+	description := notification.description(ppfmt)
+	errs := s.Router.Send(notification.Format(), &types.Params{})
 	allOK := true
 	for _, err := range errs {
 		if err != nil {
@@ -107,7 +108,8 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, msg Message) bool {
 	}
 	if allOK {
 		ppfmt.Infof(pp.EmojiNotify,
-			"Notified %s via Shoutrrr",
+			"Sent %s to %s via Shoutrrr",
+			description,
 			pp.EnglishJoinOrEmptyLabel(s.ServiceDescriptions, "(none)"))
 	}
 	return allOK
