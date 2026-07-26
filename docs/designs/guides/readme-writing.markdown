@@ -43,8 +43,7 @@ This is the README's governing rule; every section below is a corollary of it. O
 
 ## Fixed README Markers
 
-Use this fixed marker set only when it sharpens a reader's decision, expectation, or reading order; do not add markers mechanically. Keep each marker stable in meaning across the README.
-This README uses the fixed marker set below.
+Use this fixed marker set only when it sharpens a reader's decision, expectation, or reading order; do not add markers mechanically. Keep each marker stable in meaning across the README. This README uses the fixed marker set below.
 
 | Marker                            | Stable meaning                                  | Use when                                                                                                                                                                                  | Do not use when                                                                                                                                        |
 | --------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
