@@ -74,3 +74,21 @@ func TestComposedSend(t *testing.T) {
 		})
 	}
 }
+
+func TestComposedSendContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	first := mocks.NewMockNotifier(mockCtrl)
+	second := mocks.NewMockNotifier(mockCtrl)
+	message := notifier.NewMessagef("notification")
+
+	gomock.InOrder(
+		first.EXPECT().Send(context.Background(), mockPP, message).Return(false),
+		second.EXPECT().Send(context.Background(), mockPP, message).Return(true),
+	)
+
+	ok := notifier.NewComposed(first, second).Send(context.Background(), mockPP, message)
+	require.False(t, ok)
+}

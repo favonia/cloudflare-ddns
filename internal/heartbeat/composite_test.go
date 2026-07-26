@@ -107,6 +107,24 @@ func TestComposedPing(t *testing.T) {
 	}
 }
 
+func TestComposedPingContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	first := mocks.NewMockBasicHeartbeat(mockCtrl)
+	second := mocks.NewMockBasicHeartbeat(mockCtrl)
+	message := heartbeat.NewMessagef(false, "failure")
+
+	gomock.InOrder(
+		first.EXPECT().Ping(context.Background(), mockPP, message).Return(false),
+		second.EXPECT().Ping(context.Background(), mockPP, message).Return(true),
+	)
+
+	ok := heartbeat.NewComposed(first, second).Ping(context.Background(), mockPP, message)
+	require.False(t, ok)
+}
+
 func TestComposedStart(t *testing.T) {
 	t.Parallel()
 
@@ -127,6 +145,24 @@ func TestComposedStart(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestComposedStartContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	first := mocks.NewMockHeartbeat(mockCtrl)
+	second := mocks.NewMockHeartbeat(mockCtrl)
+	message := "starting"
+
+	gomock.InOrder(
+		first.EXPECT().Start(context.Background(), mockPP, message).Return(false),
+		second.EXPECT().Start(context.Background(), mockPP, message).Return(true),
+	)
+
+	ok := heartbeat.NewComposed(first, second).Start(context.Background(), mockPP, message)
+	require.False(t, ok)
+}
+
 func TestComposedExit(t *testing.T) {
 	t.Parallel()
 
@@ -145,6 +181,24 @@ func TestComposedExit(t *testing.T) {
 
 	ok := heartbeat.NewComposed(ms...).Exit(context.Background(), mockPP, message)
 	require.True(t, ok)
+}
+
+func TestComposedExitContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	first := mocks.NewMockHeartbeat(mockCtrl)
+	second := mocks.NewMockHeartbeat(mockCtrl)
+	message := "exiting"
+
+	gomock.InOrder(
+		first.EXPECT().Exit(context.Background(), mockPP, message).Return(false),
+		second.EXPECT().Exit(context.Background(), mockPP, message).Return(true),
+	)
+
+	ok := heartbeat.NewComposed(first, second).Exit(context.Background(), mockPP, message)
+	require.False(t, ok)
 }
 
 func TestComposedLog(t *testing.T) {
@@ -194,4 +248,22 @@ func TestComposedLog(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestComposedLogContinuesAfterFailure(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	first := mocks.NewMockHeartbeat(mockCtrl)
+	second := mocks.NewMockBasicHeartbeat(mockCtrl)
+	message := heartbeat.NewMessagef(false, "failure")
+
+	gomock.InOrder(
+		first.EXPECT().Log(context.Background(), mockPP, message).Return(false),
+		second.EXPECT().Ping(context.Background(), mockPP, message).Return(true),
+	)
+
+	ok := heartbeat.NewComposed(first, second).Log(context.Background(), mockPP, message)
+	require.False(t, ok)
 }

@@ -40,44 +40,49 @@ func (hs Composed) Describe(yield func(name string, params string) bool) {
 
 // Ping calls [Heartbeat.Ping] for each service in the group.
 func (hs Composed) Ping(ctx context.Context, ppfmt pp.PP, message Message) bool {
-	ok := true
+	allOK := true
 	for _, hb := range hs {
-		ok = ok && hb.Ping(ctx, ppfmt, message)
+		childOK := hb.Ping(ctx, ppfmt, message)
+		allOK = allOK && childOK
 	}
-	return ok
+	return allOK
 }
 
 // Start calls [Heartbeat.Start] for each service in the group.
 func (hs Composed) Start(ctx context.Context, ppfmt pp.PP, message string) bool {
-	ok := true
+	allOK := true
 	for _, hb := range hs {
 		if extended, okType := hb.(Heartbeat); okType {
-			ok = ok && extended.Start(ctx, ppfmt, message)
+			childOK := extended.Start(ctx, ppfmt, message)
+			allOK = allOK && childOK
 		}
 	}
-	return ok
+	return allOK
 }
 
 // Exit calls [Heartbeat.Exit] for each service in the group.
 func (hs Composed) Exit(ctx context.Context, ppfmt pp.PP, message string) bool {
-	ok := true
+	allOK := true
 	for _, hb := range hs {
 		if extended, okType := hb.(Heartbeat); okType {
-			ok = ok && extended.Exit(ctx, ppfmt, message)
+			childOK := extended.Exit(ctx, ppfmt, message)
+			allOK = allOK && childOK
 		}
 	}
-	return ok
+	return allOK
 }
 
 // Log calls [Heartbeat.Log] for each service in the group.
 func (hs Composed) Log(ctx context.Context, ppfmt pp.PP, msg Message) bool {
-	ok := true
+	allOK := true
 	for _, hb := range hs {
 		if extended, okType := hb.(Heartbeat); okType {
-			ok = ok && extended.Log(ctx, ppfmt, msg)
+			childOK := extended.Log(ctx, ppfmt, msg)
+			allOK = allOK && childOK
 		} else if !msg.OK {
-			ok = ok && hb.Ping(ctx, ppfmt, msg)
+			childOK := hb.Ping(ctx, ppfmt, msg)
+			allOK = allOK && childOK
 		}
 	}
-	return ok
+	return allOK
 }
