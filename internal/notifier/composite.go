@@ -40,9 +40,10 @@ func (ns Composed) Describe(yield func(name string, params string) bool) {
 
 // Send calls [Notifier.Send] for each notifier in the group.
 func (ns Composed) Send(ctx context.Context, ppfmt pp.PP, msg Message) bool {
-	ok := true
+	allOK := true
 	for _, n := range ns {
-		ok = ok && n.Send(ctx, ppfmt, msg)
+		childOK := n.Send(ctx, ppfmt, msg)
+		allOK = allOK && childOK
 	}
-	return ok
+	return allOK
 }
