@@ -32,6 +32,7 @@ type config struct {
 	HistoryURL         string
 	PageURL            string
 	WatchedHeading     string
+	StopHeading        string
 	LineFilters        []string
 	ExpectedLines      []string
 	WatchedSection     string
@@ -325,6 +326,9 @@ func checkTargets(cfg config) []string {
 		return targets
 	case cfg.WatchedHeading != "":
 		targets := []string{fmt.Sprintf("heading %q", cfg.WatchedHeading)}
+		if cfg.StopHeading != "" {
+			targets = append(targets, fmt.Sprintf("stop before heading %q", cfg.StopHeading))
+		}
 		for _, line := range cfg.ExpectedLines {
 			targets = append(targets, fmt.Sprintf("expected phrase %q", line))
 		}
@@ -408,7 +412,7 @@ func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, err
 			actual := extractPlainTextLines(document)
 			return expected, actual, nil
 		}
-		actual, err := extractMarkdownSectionLines(document, cfg.WatchedHeading, cfg.LineFilters)
+		actual, err := extractMarkdownSectionLines(document, cfg.WatchedHeading, cfg.StopHeading, cfg.LineFilters)
 		return expected, actual, err
 	default:
 		document, err := fetchDocument(ctx, cfg.Repo, cfg.Ref, cfg.Path)
@@ -588,8 +592,8 @@ func normalizeMarkdownLine(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []string) ([]string, error) {
-	sectionLines, err := extractMarkdownSectionContent(document, watchedHeading)
+func extractMarkdownSectionLines(document, watchedHeading, stopHeading string, lineFilters []string) ([]string, error) {
+	sectionLines, err := extractMarkdownSectionContent(document, watchedHeading, stopHeading)
 	if err != nil {
 		return nil, err
 	}
@@ -626,7 +630,7 @@ func extractMarkdownSectionLines(document, watchedHeading string, lineFilters []
 	return filtered, nil
 }
 
-func extractMarkdownSectionContent(document, watchedHeading string) ([]string, error) {
+func extractMarkdownSectionContent(document, watchedHeading, stopHeading string) ([]string, error) {
 	lines := strings.Split(document, "\n")
 	headingIndex := -1
 	for index, line := range lines {
@@ -643,7 +647,7 @@ func extractMarkdownSectionContent(document, watchedHeading string) ([]string, e
 	sectionLines := make([]string, 0)
 	for _, line := range lines[headingIndex+1:] {
 		stripped := strings.TrimSpace(line)
-		if isHeadingAtOrAboveLevel(stripped, headingLevel) {
+		if (stopHeading != "" && stripped == stopHeading) || isHeadingAtOrAboveLevel(stripped, headingLevel) {
 			break
 		}
 		if stripped != "" {
