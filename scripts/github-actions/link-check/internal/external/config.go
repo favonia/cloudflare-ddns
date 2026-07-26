@@ -91,7 +91,8 @@ func defaultConfig() config {
 					// durable documentation targets, so probing them adds noise.
 					"https://one.one.one.one/cdn-cgi/trace",
 					"https://api.cloudflare.com/cdn-cgi/trace",
-					"https://api.cloudflare.com/client/v4/user/tokens/verify",
+					"https://api.cloudflare.com/client/v4/zones",
+					"https://api.cloudflare.com/client/v4/accounts/",
 					"https://token.actions.githubusercontent.com",
 					"https://cloudflare-dns.com/dns-query",
 					"https://api4.ipify.org",

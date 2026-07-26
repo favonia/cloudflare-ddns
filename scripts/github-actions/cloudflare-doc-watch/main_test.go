@@ -65,3 +65,40 @@ func TestExtractKeySetItemsRejectsNonObject(t *testing.T) {
 		t.Fatal("extractKeySetItems succeeded on a non-object base pointer")
 	}
 }
+
+func TestExtractMarkdownSectionLinesStopsAtConfiguredHeading(t *testing.T) {
+	t.Parallel()
+
+	document := `# Watched section
+
+## First item
+
+First details.
+
+## Second item
+
+Second details.
+
+## Stop here
+
+Outside the watched section.
+`
+	actual, err := extractMarkdownSectionLines(
+		document,
+		"# Watched section",
+		"## Stop here",
+		[]string{"^## "},
+	)
+	if err != nil {
+		t.Fatalf("extractMarkdownSectionLines returned error: %v", err)
+	}
+	want := []string{"## First item", "## Second item"}
+	if len(actual) != len(want) {
+		t.Fatalf("extractMarkdownSectionLines = %v, want %v", actual, want)
+	}
+	for index := range want {
+		if actual[index] != want[index] {
+			t.Fatalf("extractMarkdownSectionLines = %v, want %v", actual, want)
+		}
+	}
+}

@@ -41,13 +41,35 @@ func TestCollectURLsKeepsSourceLocations(t *testing.T) {
 	}
 }
 
+func TestCollectURLsUsesDefaultOperationalEndpointExclusions(t *testing.T) {
+	root := t.TempDir()
+	testutil.WriteFile(t, root, "operational.go", strings.Join([]string{
+		`const zonesURL = "https://api.cloudflare.com/client/v4/zones"`,
+		`const wafListsURL = "https://api.cloudflare.com/client/v4/accounts/" + accountID + "/rules/lists"`,
+		`const docsURL = "https://developers.cloudflare.com/api/"`,
+	}, "\n"))
+
+	cfg := defaultConfig()
+	urls := collectURLs(
+		root,
+		[]string{"operational.go"},
+		cfg.Links.TargetURLs.IgnoreExact,
+		cfg.Links.TargetURLs.IgnorePatterns,
+	)
+
+	if len(urls) != 1 || urls[0].URL != "https://developers.cloudflare.com/api/" {
+		t.Fatalf("collected URLs = %#v, want only the durable documentation URL", urls)
+	}
+}
+
 func TestDefaultConfigIgnoresOperationalEndpoints(t *testing.T) {
 	cfg := defaultConfig()
 
 	want := []string{
 		"https://one.one.one.one/cdn-cgi/trace",
 		"https://api.cloudflare.com/cdn-cgi/trace",
-		"https://api.cloudflare.com/client/v4/user/tokens/verify",
+		"https://api.cloudflare.com/client/v4/zones",
+		"https://api.cloudflare.com/client/v4/accounts/",
 		"https://token.actions.githubusercontent.com",
 		"https://cloudflare-dns.com/dns-query",
 		"https://api4.ipify.org",

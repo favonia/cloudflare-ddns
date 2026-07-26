@@ -342,6 +342,7 @@ var allWatches = []config{
 		HistoryURL:     "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/dns/zone-setups/reference/domain-status.mdx",
 		PageURL:        "https://developers.cloudflare.com/dns/zone-setups/reference/domain-status/index.md",
 		WatchedHeading: "# Zone status",
+		StopHeading:    "## On this page",
 		LineFilters: []string{
 			"^## ",
 		},
@@ -373,6 +374,7 @@ var allWatches = []config{
 		HistoryURL:     "https://github.com/cloudflare/cloudflare-docs/commits/production/src/content/docs/dns/zone-setups/reference/domain-status.mdx",
 		PageURL:        "https://developers.cloudflare.com/dns/zone-setups/reference/domain-status/index.md",
 		WatchedHeading: "# Zone status",
+		StopHeading:    "## On this page",
 		LineFilters: []string{
 			`^[A-Za-z][A-Za-z0-9_]*\[[^\]]+\]$`,
 		},
