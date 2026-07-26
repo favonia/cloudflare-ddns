@@ -156,6 +156,9 @@ the variable user-facing wording for the request:
 This keeps the contract explicit while avoiding repeated string literals at
 each call site.
 
+The endpoint identifies the ping purpose and the POST body carries its details,
+so the success log does not repeat a semantic summary of the message.
+
 Code and body for UUID API:
 
   - 200

@@ -107,6 +107,8 @@ func (s Shoutrrr) Send(_ context.Context, ppfmt pp.PP, notification Notification
 		}
 	}
 	if allOK {
+		// Keep the configured transport visible, especially when a service
+		// description such as "Generic" would be ambiguous in an isolated log.
 		ppfmt.Infof(pp.EmojiNotify,
 			"Sent %s to %s via Shoutrrr",
 			description,

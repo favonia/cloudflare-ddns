@@ -2,7 +2,8 @@ package notifier
 
 import "github.com/favonia/cloudflare-ddns/internal/pp"
 
-// Kind identifies the purpose of a notification.
+// Kind identifies the purpose assigned at an event-producing boundary, so
+// transports never need to infer it from the formatted message.
 type Kind string
 
 // Notification kinds.
