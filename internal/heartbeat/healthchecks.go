@@ -150,11 +150,14 @@ The caller is responsible for choosing a [healthchecksPingSpec], which defines
 the variable user-facing wording for the request:
 
   - location is the endpoint label shown in error messages.
-  - descriptionWithArticle is used in messages like "Successfully sent ... to Healthchecks".
+  - descriptionWithArticle is used in messages like "Sent ... to Healthchecks".
   - descriptionWithoutArticle is used in messages like "The ... to Healthchecks returned an unexpected response".
 
 This keeps the contract explicit while avoiding repeated string literals at
 each call site.
+
+The endpoint identifies the ping purpose and the POST body carries its details,
+so the success log does not repeat a semantic summary of the message.
 
 Code and body for UUID API:
 
@@ -224,6 +227,6 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, spec healthchecksPi
 		return false
 	}
 
-	ppfmt.Infof(pp.EmojiPing, "Successfully sent %s to Healthchecks", spec.descriptionWithArticle)
+	ppfmt.Infof(pp.EmojiPing, "Sent %s to Healthchecks", spec.descriptionWithArticle)
 	return true
 }

@@ -35,6 +35,7 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 			NotifierMessage: notifier.Message{
 				fmt.Sprintf("Failed to detect any %s addresses.", ipFamily.Describe()),
 			},
+			NotificationKind: "",
 		}
 	}
 }
@@ -49,6 +50,7 @@ func generateFilterAbortDetectMessage(ipFamily ipnet.Family) Message {
 		NotifierMessage: notifier.Message{
 			summary + ".",
 		},
+		NotificationKind: "",
 	}
 }
 
@@ -62,6 +64,7 @@ func generateIP6DerivationFailureMessage() Message {
 		NotifierMessage: notifier.Message{
 			message + ".",
 		},
+		NotificationKind: "",
 	}
 }
 
@@ -73,6 +76,7 @@ func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Do
 		NotifierMessage: notifier.Message{
 			summary + " because of an internal error; check the logs for details.",
 		},
+		NotificationKind: "",
 	}
 }
 
@@ -227,11 +231,13 @@ func generateClearOrUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s set
 		return Message{
 			HeartbeatMessage: generateClearHeartbeatMessage(ipFamily, s),
 			NotifierMessage:  generateClearNotifierMessage(ipFamily, s),
+			NotificationKind: "",
 		}
 	} else {
 		return Message{
 			HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
 			NotifierMessage:  generateUpdateNotifierMessage(ipFamily, ips, s),
+			NotificationKind: "",
 		}
 	}
 }
@@ -300,5 +306,6 @@ func generateFinalDeleteMessage(ipFamily ipnet.Family, s setterResponses) Messag
 	return Message{
 		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipFamily, s),
 		NotifierMessage:  generateFinalDeleteNotifierMessage(ipFamily, s),
+		NotificationKind: "",
 	}
 }

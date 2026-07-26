@@ -79,6 +79,7 @@ func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
 		HeartbeatMessage: generateUpdateWAFListsHeartbeatMessage(s),
 		NotifierMessage:  generateUpdateWAFListsNotifierMessage(s),
+		NotificationKind: "",
 	}
 }
 
@@ -139,5 +140,6 @@ func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
 		HeartbeatMessage: generateFinalClearWAFListsHeartbeatMessage(s),
 		NotifierMessage:  generateFinalClearWAFListsNotifierMessage(s),
+		NotificationKind: "",
 	}
 }

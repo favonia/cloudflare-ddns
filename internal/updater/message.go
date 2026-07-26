@@ -12,6 +12,12 @@ import (
 type Message struct {
 	HeartbeatMessage heartbeat.Message
 	NotifierMessage  notifier.Message
+	NotificationKind notifier.Kind
+}
+
+// Notification returns the notifier-facing message with its classification.
+func (m Message) Notification() notifier.Notification {
+	return notifier.NewNotification(m.NotificationKind, m.NotifierMessage)
 }
 
 // newMessage creates a new, empty message.
@@ -19,6 +25,7 @@ func newMessage() Message {
 	return Message{
 		HeartbeatMessage: heartbeat.NewMessage(),
 		NotifierMessage:  notifier.NewMessage(),
+		NotificationKind: "",
 	}
 }
 
@@ -35,7 +42,17 @@ func mergeMessages(msgs ...Message) Message {
 	return Message{
 		HeartbeatMessage: heartbeat.MergeMessages(hms...),
 		NotifierMessage:  notifier.MergeMessages(nms...),
+		NotificationKind: "",
 	}
+}
+
+func classifyNotification(msg Message, successKind, failureKind notifier.Kind) Message {
+	if msg.HeartbeatMessage.OK {
+		msg.NotificationKind = successKind
+	} else {
+		msg.NotificationKind = failureKind
+	}
+	return msg
 }
 
 // appendNotifierFragmentf appends a notifier fragment while keeping the

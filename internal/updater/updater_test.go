@@ -353,12 +353,17 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			}
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			wantKind := notifier.KindUpdateFailure
+			if tc.ok {
+				wantKind = notifier.KindUpdate
+			}
 			require.Equal(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
+				NotifierMessage:  notifier.Message(tc.notifierMessages),
+				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -456,12 +461,17 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 				tc.prepareMocks(mockPP, mockSetter)
 			}
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter)
+			wantKind := notifier.KindCleanupFailure
+			if tc.ok {
+				wantKind = notifier.KindCleanup
+			}
 			require.Equal(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
+				NotifierMessage:  notifier.Message(tc.notifierMessages),
+				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -713,12 +723,17 @@ func TestUpdateIPs(t *testing.T) {
 			t.Parallel()
 
 			resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			wantKind := notifier.KindUpdateFailure
+			if tc.ok {
+				wantKind = notifier.KindUpdate
+			}
 			require.Equal(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
+				NotifierMessage:  notifier.Message(tc.notifierMessages),
+				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -752,6 +767,7 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
+		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -785,6 +801,7 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
+		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -813,6 +830,7 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredDetection(t *testing.T
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
+		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -843,6 +861,7 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredPluralDetection(t *tes
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8, 198.51.100.9"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8 and 198.51.100.9."},
+		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -893,6 +912,7 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 			"Updated AAAA records for ip6.hello to 2001:db8::8.",
 			"Updated WAF list(s) 12341234/list.",
 		},
+		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -920,6 +940,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeExplicitClear(t *testing.T) {
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Cleared A records for ip4.hello"}},
 		NotifierMessage:  notifier.Message{"Cleared A records for ip4.hello."},
+		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -944,6 +965,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 	require.Equal(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{"Failed to detect any IPv4 addresses"}},
 		NotifierMessage:  notifier.Message{"Failed to detect any IPv4 addresses."},
+		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -988,6 +1010,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 		require.Equal(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
 			NotifierMessage:  nil,
+			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1021,6 +1044,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 		require.Equal(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
 			NotifierMessage:  nil,
+			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1059,6 +1083,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				"Cleared AAAA records for alpha.example and beta.example.",
 				"Updated WAF list(s) 12341234/list.",
 			},
+			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1105,6 +1130,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 			NotifierMessage: notifier.Message{
 				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
+			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1147,6 +1173,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 			NotifierMessage: notifier.Message{
 				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
+			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1193,6 +1220,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 			NotifierMessage: notifier.Message{
 				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
 			},
+			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 }
@@ -1288,12 +1316,17 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 
 			synctest.Test(t, func(t *testing.T) {
 				resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				wantKind := notifier.KindUpdateFailure
+				if tc.ok {
+					wantKind = notifier.KindUpdate
+				}
 				require.Equal(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage: notifier.Message(tc.notifierMessages),
+					NotifierMessage:  notifier.Message(tc.notifierMessages),
+					NotificationKind: wantKind,
 				}, resp)
 			})
 		})
@@ -1456,12 +1489,17 @@ func TestFinalDeleteIPs(t *testing.T) {
 			t.Parallel()
 
 			resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			wantKind := notifier.KindCleanupFailure
+			if tc.ok {
+				wantKind = notifier.KindCleanup
+			}
 			require.Equal(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage: notifier.Message(tc.notifierMessages),
+				NotifierMessage:  notifier.Message(tc.notifierMessages),
+				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -1531,12 +1569,17 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 
 			synctest.Test(t, func(t *testing.T) {
 				resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				wantKind := notifier.KindCleanupFailure
+				if tc.ok {
+					wantKind = notifier.KindCleanup
+				}
 				require.Equal(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage: notifier.Message(tc.notifierMessages),
+					NotifierMessage:  notifier.Message(tc.notifierMessages),
+					NotificationKind: wantKind,
 				}, resp)
 			})
 		})

@@ -85,23 +85,50 @@ func TestShoutrrrSend(t *testing.T) {
 		path          string
 		pinged        int
 		service       func(serverURL string) string
-		message       notifier.Message
+		notification  notifier.Notification
 		ok            bool
 		prepareMockPP func(*mocks.MockPP)
 	}{
 		"success": {
 			"/greeting", 1,
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			notifier.NewMessagef("hello"),
+			notifier.NewNotificationf(notifier.KindStartup, "hello"),
 			true,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Infof(pp.EmojiNotify, "Notified %s via Shoutrrr", "Generic")
+				m.EXPECT().Infof(
+					pp.EmojiNotify,
+					"Sent %s to %s via Shoutrrr",
+					"a startup notification",
+					"Generic",
+				)
+			},
+		},
+		"invalid kind": {
+			"/greeting", 1,
+			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
+			notifier.NewNotificationf(notifier.Kind("unexpected"), "hello"),
+			true,
+			func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(
+						pp.EmojiImpossible,
+						"Unknown notification type %q; this should not happen. Please report it at %s",
+						notifier.Kind("unexpected"),
+						pp.IssueReportingURL,
+					),
+					m.EXPECT().Infof(
+						pp.EmojiNotify,
+						"Sent %s to %s via Shoutrrr",
+						"a notification",
+						"Generic",
+					),
+				)
 			},
 		},
 		"malformed url": {
 			"", 0,
 			func(_serverURL string) string { return "generic+https://0.0.0.0" },
-			notifier.NewMessagef("hello"),
+			notifier.NewNotificationf(notifier.KindUpdate, "hello"),
 			false,
 			func(m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiError, "Failed to send notifications via Shoutrrr: %v", gomock.Any())
@@ -110,7 +137,7 @@ func TestShoutrrrSend(t *testing.T) {
 		"empty": {
 			"/greeting", 0,
 			func(serverURL string) string { return "generic+" + serverURL + "/greeting" },
-			notifier.NewMessage(),
+			notifier.NewNotification(notifier.KindUpdate, notifier.NewMessage()),
 			true,
 			nil,
 		},
@@ -131,7 +158,7 @@ func TestShoutrrrSend(t *testing.T) {
 				}
 
 				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Equal(t, tc.message.Format(), string(reqBody)) {
+					!assert.Equal(t, tc.notification.Format(), string(reqBody)) {
 					panic(http.ErrAbortHandler)
 				}
 
@@ -140,9 +167,39 @@ func TestShoutrrrSend(t *testing.T) {
 
 			s, ok := notifier.NewShoutrrr(mockPP, []string{tc.service(server.URL)})
 			require.True(t, ok)
-			ok = s.Send(context.Background(), mockPP, tc.message)
+			ok = s.Send(context.Background(), mockPP, tc.notification)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.pinged, pinged)
 		})
 	}
+}
+
+func TestShoutrrrSendMultipleServices(t *testing.T) {
+	t.Parallel()
+
+	notification := notifier.NewNotificationf(notifier.KindUpdate, "hello")
+	pinged := 0
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+			!assert.Equal(t, notification.Format(), string(reqBody)) {
+			panic(http.ErrAbortHandler)
+		}
+		pinged++
+	}))
+	t.Cleanup(server.Close)
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+	mockPP.EXPECT().Infof(
+		pp.EmojiNotify,
+		"Sent %s to %s via Shoutrrr",
+		"an update notification",
+		"Generic and Generic",
+	)
+
+	service := "generic+" + server.URL + "/greeting"
+	s, ok := notifier.NewShoutrrr(mockPP, []string{service, service})
+	require.True(t, ok)
+	require.True(t, s.Send(context.Background(), mockPP, notification))
+	require.Equal(t, 2, pinged)
 }
