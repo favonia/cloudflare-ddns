@@ -22,6 +22,7 @@ Write suppressions in the local form `//nolint:<linter> // reason`.
 - Keep the scope on the smallest code site that needs the exception.
 - Suppress one linter unless the same site needs inseparable suppressions.
 - Give a concrete local reason when the exception is not already obvious from nearby code.
+- Do not add semantically empty or misleading code solely to silence a linter; when the code is correct by an invariant the linter cannot see, use a precise suppression with a reason.
 - Do not use bare `//nolint`, `//nolint:all`, or file-wide suppression as normal practice.
 
 ## Narrowest Durable Home
