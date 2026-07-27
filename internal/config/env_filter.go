@@ -17,7 +17,7 @@ func readDetectionFilter(ppfmt pp.PP, key string, family ipnet.Family, field *ip
 		return false
 	}
 	ppfmt.InfoOncef(pp.MessageExperimentalDetectionFilters, pp.EmojiExperimental,
-		"You are using experimental detection filters (unreleased)")
+		"You are using experimental detection filters (available since version 1.17.0)")
 	*field = filter
 	return true
 }

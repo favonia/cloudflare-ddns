@@ -134,7 +134,7 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 	}
 	if ip6Managed && len(normalized.ExplicitHostID6) > 0 {
 		ppfmt.InfoOncef(pp.MessageExperimentalHostID6, pp.EmojiExperimental,
-			`You are using the experimental "hostid6" domain field for IPv6 DNS (unreleased)`)
+			`You are using the experimental "hostid6" domain field for IPv6 DNS (available since version 1.17.0)`)
 		warnSuspiciousMACs(ppfmt, normalized.HostID6)
 	}
 

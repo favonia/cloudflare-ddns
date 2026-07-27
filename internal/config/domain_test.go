@@ -101,7 +101,7 @@ func TestBuildConfigEmitsExperimentalNoticeForExplicitHostID6(t *testing.T) {
 	mockPP.EXPECT().InfoOncef(
 		pp.MessageExperimentalHostID6,
 		pp.EmojiExperimental,
-		`You are using the experimental "hostid6" domain field for IPv6 DNS (unreleased)`,
+		`You are using the experimental "hostid6" domain field for IPv6 DNS (available since version 1.17.0)`,
 	)
 
 	built, ok := raw.BuildConfig(mockPP)

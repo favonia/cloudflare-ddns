@@ -1,3 +1,28 @@
+# [1.17.0](https://github.com/favonia/cloudflare-ddns/compare/v1.16.2...v1.17.0) (2026-07-28)
+
+This release adds experimental controls for per-domain IPv6 host IDs and detected-address filtering, and makes advanced configuration easier to validate. No configuration migration is required. It also removes the startup token-verification request that produced misleading warnings for valid account API tokens.
+
+## Highlights
+
+1. **Per-domain IPv6 host IDs.** The new experimental `hostid6` field lets each domain preserve detected IPv6 host bits, replace them with a fixed host ID, or derive one from a MAC address. It affects `AAAA` record derivation; WAF lists continue to use the raw detected prefixes. ([#1224](https://github.com/favonia/cloudflare-ddns/pull/1224))
+2. **IPv4 and IPv6 detection filters.** New experimental `IP4_DETECTION_FILTER` and `IP6_DETECTION_FILTER` expressions select detected addresses before both DNS and WAF reconciliation. If a filter removes every address for one family, the updater preserves that family's existing managed content for the round. ([#1231](https://github.com/favonia/cloudflare-ddns/pull/1231))
+3. **Advisory linting for `PROXIED`.** The updater now warns about suspicious boolean expressions, including constant results and redundant or subsumed terms, without changing how the expression is evaluated. ([#1235](https://github.com/favonia/cloudflare-ddns/pull/1235))
+4. **Account API tokens no longer trigger misleading startup warnings.** The updater no longer calls Cloudflare's user-token verification endpoint during startup. Malformed token values are still rejected locally, and authorization failures from actual DNS or WAF operations are still reported with guidance. ([#1240](https://github.com/favonia/cloudflare-ddns/pull/1240))
+
+## Detailed Changes
+
+### Features
+
+- New `SHOUTRRR_FILE` reads Shoutrrr notification URLs from a file, making mounted secrets usable without putting token-bearing URLs in environment values. If `SHOUTRRR` and `SHOUTRRR_FILE` are both set, they must specify the same URLs. ([#1241](https://github.com/favonia/cloudflare-ddns/pull/1241))
+
+### Bug Fixes
+
+- When multiple Healthchecks, Uptime Kuma, or Shoutrrr destinations are configured, the updater now attempts every destination even if an earlier one fails. Delivery logs also identify the notification type and destination. ([#1249](https://github.com/favonia/cloudflare-ddns/pull/1249)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
+
+### Configuration and Operator Experience
+
+- Startup diagnostics now point to the setting or source that needs repair, including common token-paste mistakes and settings ignored because the corresponding IP provider is disabled. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230))
+
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
 This is a quick bugfix release for users affected by a startup regression in 1.16.0. If 1.16.0 or 1.16.1 reports that your Cloudflare API token is invalid during startup even though the token had worked before 1.16.0, upgrade to 1.16.2. If version 1.16.0 or 1.16.1 is working well for you, there is no rush.

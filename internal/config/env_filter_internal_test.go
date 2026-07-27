@@ -27,7 +27,7 @@ func TestReadDetectionFilterValid(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockPP.EXPECT().InfoOncef(pp.MessageExperimentalDetectionFilters, pp.EmojiExperimental,
-		"You are using experimental detection filters (unreleased)")
+		"You are using experimental detection filters (available since version 1.17.0)")
 
 	require.True(t, readDetectionFilter(mockPP, "TEST_FILTER", ipnet.IP4, &filter))
 	require.Equal(t, "addr-in(198.51.100.0/24)", filter.String())
