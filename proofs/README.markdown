@@ -13,10 +13,10 @@ The pinned toolchain version is in `proofs/lean-toolchain`. You need `elan`, `la
 ## Build and check the proofs
 
 ```sh
-cd proofs && lake build Hostid6
+cd proofs && lake build --wfail --iofail
 ```
 
-This type-checks every theorem; a `sorry` shows up as a build warning. CI enforces a no-`sorry` gate independently with the nanoda kernel (`nanoda-allow-sorry: false`), which rejects any proof depending on `sorryAx`, and with `lake build --wfail`.
+This builds every default target, including the `Hostid6` proofs and the `oracle` executable. CI uses `--wfail` to reject `sorry` and every other warning, and `--iofail` to reject unexpected informational output.
 
 ## Build and run the oracle
 
@@ -51,6 +51,6 @@ Changing `Derive` or any of its documented claims requires updating **all** of t
 Then verify:
 
 ```sh
-cd proofs && lake build Hostid6   # type-checks every theorem; warns on any sorry
+(cd proofs && lake build --wfail --iofail)
 HOSTID6_LEAN_ORACLE="$PWD/proofs/.lake/build/bin/oracle" go test -tags lean_oracle ./internal/hostid6/...
 ```
