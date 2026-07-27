@@ -30,7 +30,7 @@ jobs:
         run: |
           go telemetry on
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🧹 Run golangci-lint
@@ -64,7 +64,7 @@ jobs:
           disable-sudo: true
           policy: golangci-lint
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -95,7 +95,7 @@ jobs:
           policy: go-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -133,7 +133,7 @@ jobs:
           policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🧹 Run zizmor
@@ -153,7 +153,7 @@ jobs:
           policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🧹 Run hadolint
@@ -175,7 +175,7 @@ jobs:
           policy: go-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🏗️ Set up Go
@@ -207,7 +207,7 @@ jobs:
           policy: github-hosted-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🧹 Run jq
@@ -243,7 +243,7 @@ jobs:
           policy: python-tooling
 
       - name: 🚚 Check out the repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: 🐍 Set up Python
