@@ -9,7 +9,7 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 3. **Advisory linting for `PROXIED`.** The updater now warns about suspicious boolean expressions, including constant results and redundant or subsumed terms. ([#1235](https://github.com/favonia/cloudflare-ddns/pull/1235))
 4. **Account API tokens no longer trigger misleading startup warnings.** The updater no longer calls Cloudflare's user-token verification endpoint during startup. Malformed token values are still rejected locally. A well-formed but invalid or insufficiently scoped token is instead reported when the first DNS or WAF operation uses it, with the corresponding permission guidance. ([#1240](https://github.com/favonia/cloudflare-ddns/pull/1240))
 
-## Other Detailed Changes
+## Other Notable Changes
 
 ### Features
 
