@@ -17,7 +17,7 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 
 ### Bug Fixes
 
-- When multiple Healthchecks, Uptime Kuma, or Shoutrrr destinations are configured, the updater now attempts every destination even if an earlier one fails. Delivery logs also identify the notification type and destination. ([#1249](https://github.com/favonia/cloudflare-ddns/pull/1249)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
+- When both `HEALTHCHECKS` and `UPTIMEKUMA` are configured, a failure from either service no longer prevents the updater from contacting the other. Healthchecks success logs now identify the ping type, while Shoutrrr success logs identify the notification type and destination services. ([#1249](https://github.com/favonia/cloudflare-ddns/pull/1249)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
 
 ### Configuration and Operator Experience
 
