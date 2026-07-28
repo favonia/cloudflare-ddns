@@ -21,7 +21,7 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 
 ### Message Improvements
 
-- **Expanded operator feedback.** Configuration checks now catch likely token-file mixups and warn about additional cases of family-specific settings being ignored because their provider is disabled. Warnings about Shoutrrr URLs containing spaces now identify the configuration source, report the correct line number, and offer guidance on encoding spaces in URLs and choosing the correct YAML block style. Shoutrrr success logs now identify the notification type. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
+- **Expanded operator feedback.** Configuration checks now catch likely token-file mixups and warn about additional cases of family-specific settings being ignored because their provider is disabled. Diagnostics for Shoutrrr URLs containing spaces now identify the configuration source, report the correct line number, and give clearer guidance on how to fix the issue. Shoutrrr success logs now identify the notification type. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
 
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
