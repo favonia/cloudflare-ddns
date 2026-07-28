@@ -17,11 +17,12 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 
 ### Bug Fixes
 
-- When both `HEALTHCHECKS` and `UPTIMEKUMA` are configured, a failure from either service no longer prevents the updater from contacting the other. Healthchecks success logs now identify the ping type, while Shoutrrr success logs identify the notification type and destination services. ([#1249](https://github.com/favonia/cloudflare-ddns/pull/1249)) ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
+- When both `HEALTHCHECKS` and `UPTIMEKUMA` are configured, a failure from either service no longer prevents the updater from contacting the other. ([#1249](https://github.com/favonia/cloudflare-ddns/pull/1249))
 
-### Configuration and Operator Experience
+### Message Improvements
 
 - **More actionable configuration messages.** Configuration diagnostics now catch additional token-file mistakes and family-specific settings ignored by disabled providers. Messages for conflicting or incompatible `hostid6` settings and Shoutrrr URLs containing spaces also give more direct repair instructions. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230))
+- **More informative delivery logs.** Healthchecks success logs now identify the ping type, while Shoutrrr success logs identify the notification type and destination services. ([#1250](https://github.com/favonia/cloudflare-ddns/pull/1250))
 
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
