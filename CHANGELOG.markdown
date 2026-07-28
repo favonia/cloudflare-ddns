@@ -21,7 +21,7 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 
 ### Configuration and Operator Experience
 
-- Startup diagnostics now point to the setting or source that needs repair, including common token-paste mistakes and settings ignored because the corresponding IP provider is disabled. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230))
+- Configuration diagnostics now catch additional token-file mistakes and family-specific settings ignored by disabled providers. Messages for conflicting or incompatible `hostid6` settings and Shoutrrr URLs containing spaces also give more direct repair instructions. ([#1204](https://github.com/favonia/cloudflare-ddns/pull/1204)) ([#1227](https://github.com/favonia/cloudflare-ddns/pull/1227)) ([#1230](https://github.com/favonia/cloudflare-ddns/pull/1230))
 
 # [1.16.2](https://github.com/favonia/cloudflare-ddns/compare/v1.16.1...v1.16.2) (2026-04-02)
 
