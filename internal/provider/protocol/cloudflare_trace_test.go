@@ -92,7 +92,7 @@ func validCloudflareTraceResponse(req *http.Request) string {
 	return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=off\n", req.Host)
 }
 
-func TestCloudflareTraceGetRawDataPrimarySuccessSendsOneRequest(t *testing.T) {
+func TestCloudflareTraceGetRawDataValidatesPrimarySuccess(t *testing.T) {
 	t.Parallel()
 
 	var counts [3]atomic.Int32
@@ -103,29 +103,31 @@ func TestCloudflareTraceGetRawDataPrimarySuccessSendsOneRequest(t *testing.T) {
 			return
 		}
 		counts[index].Add(1)
+		if index > 0 {
+			<-req.Context().Done()
+			return
+		}
 		_, _ = fmt.Fprint(w, validCloudflareTraceResponse(req))
 	}))
 	t.Cleanup(server.Close)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
-		GetRawData(ctx, pp.NewSilent(), ipnet.IP4, 32)
+		GetRawData(context.Background(), pp.NewSilent(), ipnet.IP4, 32)
 
-	// Mutation caught: launching fallback endpoints eagerly after a clean primary success.
+	// Mutation caught: failing to transmit or validate a clean primary response.
+	// The synctest scheduler suite owns the no-hedge-before-ready-primary invariant.
 	require.Equal(t, protocol.NewKnownDetectionResult([]ipnet.RawEntry{
 		ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 32),
 	}), result)
 	require.Equal(t, int32(1), counts[0].Load())
-	require.Zero(t, counts[1].Load())
-	require.Zero(t, counts[2].Load())
+	require.LessOrEqual(t, counts[1].Load(), int32(1))
+	require.LessOrEqual(t, counts[2].Load(), int32(1))
 }
 
-func TestCloudflareTraceGetRawDataFailureAcceleratesFallback(t *testing.T) {
+func TestCloudflareTraceGetRawDataUsesFallbackAfterPrimaryFailure(t *testing.T) {
 	t.Parallel()
 
 	var counts [3]atomic.Int32
-	requestOrder := make(chan string, 3)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		index := cloudflareTraceTestEndpointIndex(req.URL.Path)
 		if index < 0 {
@@ -133,7 +135,6 @@ func TestCloudflareTraceGetRawDataFailureAcceleratesFallback(t *testing.T) {
 			return
 		}
 		counts[index].Add(1)
-		requestOrder <- req.URL.Path
 		switch index {
 		case 0:
 			//nolint:gosec // The httptest request host is required by the trace-response fixture.
@@ -141,23 +142,20 @@ func TestCloudflareTraceGetRawDataFailureAcceleratesFallback(t *testing.T) {
 		case 1:
 			_, _ = fmt.Fprint(w, validCloudflareTraceResponse(req))
 		case 2:
-			t.Error("tertiary endpoint should not be requested after fallback success")
+			<-req.Context().Done()
 		}
 	}))
 	t.Cleanup(server.Close)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
-		GetRawData(ctx, pp.NewSilent(), ipnet.IP4, 32)
+		GetRawData(context.Background(), pp.NewSilent(), ipnet.IP4, 32)
 
-	// Mutation caught: failing to advance to the next endpoint after a definite primary failure.
+	// Mutation caught: failing to use a valid fallback after a definite primary failure.
+	// The synctest scheduler suite owns failure-acceleration timing and launch order.
 	require.True(t, result.Available)
-	require.Equal(t, "/primary", <-requestOrder)
-	require.Equal(t, "/fallback", <-requestOrder)
 	require.Equal(t, int32(1), counts[0].Load())
 	require.Equal(t, int32(1), counts[1].Load())
-	require.Zero(t, counts[2].Load())
+	require.LessOrEqual(t, counts[2].Load(), int32(1))
 }
 
 func TestCloudflareTraceGetRawDataAttemptsEachEndpointOnce(t *testing.T) {
@@ -176,10 +174,8 @@ func TestCloudflareTraceGetRawDataAttemptsEachEndpointOnce(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
-		GetRawData(ctx, pp.NewSilent(), ipnet.IP4, 32)
+		GetRawData(context.Background(), pp.NewSilent(), ipnet.IP4, 32)
 
 	// Mutation caught: retrying an endpoint or omitting a configured endpoint after all failures.
 	require.False(t, result.Available)
@@ -198,7 +194,7 @@ func TestCloudflareTraceGetRawDataHidesLosingDiagnosticsAfterSuccess(t *testing.
 		case 1:
 			_, _ = fmt.Fprint(w, validCloudflareTraceResponse(req))
 		case 2:
-			t.Error("tertiary endpoint should not be requested after fallback success")
+			<-req.Context().Done()
 		default:
 			t.Errorf("unexpected test endpoint %q", req.URL.Path)
 		}
@@ -227,7 +223,7 @@ func TestCloudflareTraceGetRawDataReplaysWinnerWarnings(t *testing.T) {
 		case 1:
 			_, _ = fmt.Fprint(w, "ip=192.0.2.1\n")
 		case 2:
-			t.Error("tertiary endpoint should not be requested after fallback success")
+			<-req.Context().Done()
 		default:
 			t.Errorf("unexpected test endpoint %q", req.URL.Path)
 		}
@@ -311,6 +307,7 @@ func TestCloudflareTraceGetRawDataReportsSharedTimeoutOnce(t *testing.T) {
 	t.Parallel()
 
 	var counts [3]atomic.Int32
+	requestObserved := make(chan struct{}, 3)
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		index := cloudflareTraceTestEndpointIndex(req.URL.Path)
 		if index < 0 {
@@ -318,24 +315,78 @@ func TestCloudflareTraceGetRawDataReportsSharedTimeoutOnce(t *testing.T) {
 			return
 		}
 		counts[index].Add(1)
+		requestObserved <- struct{}{}
 		<-req.Context().Done()
 	}))
 	t.Cleanup(server.Close)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(context.Canceled)
 	var output strings.Builder
-	result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
-		GetRawData(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
+	resultChannel := make(chan protocol.DetectionResult, 1)
+	go func() {
+		resultChannel <- cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
+			GetRawData(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
+	}()
+	<-requestObserved
+	cancel(context.DeadlineExceeded)
+	result := <-resultChannel
 	transcript := output.String()
 
-	// Mutation caught: rendering one deadline error per canceled worker instead of one shared timeout.
+	// Mutation caught: rendering a controlled DeadlineExceeded cancellation as worker errors
+	// instead of one operation-level timeout. The synctest scheduler suite owns launch timing.
 	require.False(t, result.Available)
 	require.Equal(t, 1, strings.Count(transcript, "timed out before any endpoint returned a valid response"))
 	require.NotContains(t, transcript, "context deadline exceeded")
-	for index := range counts {
-		require.Equal(t, int32(1), counts[index].Load())
+	require.Equal(t, int32(1), counts[0].Load())
+	require.LessOrEqual(t, counts[1].Load(), int32(1))
+	require.LessOrEqual(t, counts[2].Load(), int32(1))
+}
+
+func TestCloudflareTraceGetRawDataReportsMappedIPv6HintOnceAfterEndpointFailures(t *testing.T) {
+	t.Parallel()
+
+	var counts [3]atomic.Int32
+	server := newSplitServer(ipnet.IP6, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		index := cloudflareTraceTestEndpointIndex(req.URL.Path)
+		if index < 0 {
+			t.Errorf("unexpected test endpoint %q", req.URL.Path)
+			return
+		}
+		counts[index].Add(1)
+		switch index {
+		case 0:
+			//nolint:gosec // The httptest request host is required by the trace-response fixture.
+			_, _ = fmt.Fprintf(w, "h=%s\nwarp=off\n", req.Host)
+		case 1:
+			//nolint:gosec // The httptest request host is required by the trace-response fixture.
+			_, _ = fmt.Fprintf(w, "h=%s\nip=::ffff:192.0.2.1\nwarp=off\n", req.Host)
+		case 2:
+			//nolint:gosec // The httptest request host is required by the trace-response fixture.
+			_, _ = fmt.Fprintf(w, "h=%s\nip=not-an-ip\nwarp=off\n", req.Host)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	endpoints := cloudflareTraceTestEndpoints(server.URL)
+	provider := protocol.CloudflareTrace{
+		ProviderName: "test",
+		URLs:         map[ipnet.Family][]string{ipnet.IP6: endpoints},
 	}
+	var output strings.Builder
+	result := provider.GetRawData(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP6, 128)
+	transcript := output.String()
+	hint := "An IPv4-mapped IPv6 address is an IPv4 address in disguise."
+
+	// Mutation caught: dropping the aggregated mapped-address hint, repeating it per
+	// endpoint, or rendering it before all configured endpoint failure summaries.
+	require.False(t, result.Available)
+	for index := range counts {
+		require.Equal(t, int32(1), counts[index].Load(), "endpoint index %d", index)
+		require.Contains(t, transcript, endpoints[index])
+		require.Less(t, strings.Index(transcript, endpoints[index]), strings.Index(transcript, hint))
+	}
+	require.Equal(t, 1, strings.Count(transcript, hint))
 }
 
 func TestCloudflareTraceGetRawData(t *testing.T) {

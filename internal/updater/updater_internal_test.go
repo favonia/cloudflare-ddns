@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -34,7 +33,6 @@ type cloudflareTraceTranscriptCapture struct {
 	heartbeat      string
 	notifier       string
 	endpoints      []string
-	requestOrder   []string
 	requestCounts  [3]int32
 	winnerWarnings bool
 }
@@ -65,11 +63,8 @@ func captureCloudflareTraceDetectionTranscript(
 ) cloudflareTraceTranscriptCapture {
 	t.Helper()
 
-	var (
-		requestCounts [3]atomic.Int32
-		requestOrder  []string
-		requestMu     sync.Mutex
-	)
+	var requestCounts [3]atomic.Int32
+	requestObserved := make(chan struct{}, 3)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		index := cloudflareTraceTranscriptEndpointIndex(req.URL.Path)
 		if index < 0 {
@@ -77,17 +72,24 @@ func captureCloudflareTraceDetectionTranscript(
 			return
 		}
 		requestCounts[index].Add(1)
-		requestMu.Lock()
-		requestOrder = append(requestOrder, req.URL.Path)
-		requestMu.Unlock()
+		requestObserved <- struct{}{}
 
 		switch scenario {
 		case "primary-clean-success":
+			if index > 0 {
+				<-req.Context().Done()
+				return
+			}
 			//nolint:gosec // The httptest request host is required by the trace-response fixture.
 			_, _ = fmt.Fprintf(w, "h=%s\nip=203.0.113.7\nwarp=off\n", req.Host)
 
 		case "fallback-clean-success":
 			if index == 0 {
+				//nolint:gosec // The httptest request host is required by the trace-response fixture.
+				_, _ = fmt.Fprintf(w, "h=%s\nwarp=off\n", req.Host)
+				return
+			}
+			if index > 1 {
 				<-req.Context().Done()
 				return
 			}
@@ -96,7 +98,13 @@ func captureCloudflareTraceDetectionTranscript(
 
 		case "primary-winner-missing-h", "primary-winner-missing-warp", "primary-winner-missing-both",
 			"fallback-winner-missing-h", "fallback-winner-missing-warp", "fallback-winner-missing-both":
-			if strings.HasPrefix(scenario, "fallback-") && index == 0 {
+			isFallbackScenario := strings.HasPrefix(scenario, "fallback-")
+			if isFallbackScenario && index == 0 {
+				//nolint:gosec // The httptest request host is required by the trace-response fixture.
+				_, _ = fmt.Fprintf(w, "h=%s\nwarp=off\n", req.Host)
+				return
+			}
+			if (!isFallbackScenario && index > 0) || (isFallbackScenario && index > 1) {
 				<-req.Context().Done()
 				return
 			}
@@ -130,7 +138,7 @@ func captureCloudflareTraceDetectionTranscript(
 	}))
 	t.Cleanup(server.Close)
 
-	detectionTimeout := 2 * time.Second
+	detectionTimeout := time.Hour
 	if scenario == "shared-detection-timeout" {
 		detectionTimeout = 100 * time.Millisecond
 	}
@@ -148,16 +156,32 @@ func captureCloudflareTraceDetectionTranscript(
 	}
 
 	var output strings.Builder
-	_, msg := detectRawData(context.Background(), pp.New(&output, false, verbosity), conf, ipnet.IP4)
-	requestMu.Lock()
-	order := append([]string(nil), requestOrder...)
-	requestMu.Unlock()
+	ppfmt := pp.New(&output, false, verbosity)
+	var msg Message
+	if scenario == "shared-detection-timeout" {
+		providerCtx, cancelProvider := context.WithCancelCause(context.Background())
+		defer cancelProvider(context.Canceled)
+		rawDataChannel := make(chan provider.DetectionResult, 1)
+		go func() {
+			rawDataChannel <- conf.Provider[ipnet.IP4].GetRawData(
+				providerCtx, ppfmt, ipnet.IP4, conf.DefaultPrefixLen[ipnet.IP4],
+			)
+		}()
+		<-requestObserved
+		cancelProvider(context.DeadlineExceeded)
+		rawData := <-rawDataChannel
+
+		renderCtx, cancelRender := context.WithCancelCause(context.Background())
+		cancelRender(errTimeout)
+		_, msg = finalizeDetectedRawData(renderCtx, ppfmt, conf, ipnet.IP4, rawData)
+	} else {
+		_, msg = detectRawData(context.Background(), ppfmt, conf, ipnet.IP4)
+	}
 	capture := cloudflareTraceTranscriptCapture{
 		transcript:    output.String(),
 		heartbeat:     msg.HeartbeatMessage.Format(),
 		notifier:      msg.NotifierMessage.Format(),
 		endpoints:     append([]string(nil), endpoints...),
-		requestOrder:  order,
 		requestCounts: [3]int32{requestCounts[0].Load(), requestCounts[1].Load(), requestCounts[2].Load()},
 		winnerWarnings: strings.Contains(output.String(), "response is missing the h (host)") ||
 			strings.Contains(output.String(), "response is missing the warp field"),
@@ -187,8 +211,9 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					// Mutation caught: adding provider chatter to a clean primary success.
 					require.Empty(t, capture.heartbeat)
 					require.Empty(t, capture.notifier)
-					require.Equal(t, []string{"/primary"}, capture.requestOrder)
-					require.Equal(t, [3]int32{1, 0, 0}, capture.requestCounts)
+					require.Equal(t, int32(1), capture.requestCounts[0])
+					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
+					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 					require.False(t, capture.winnerWarnings)
 					if verbosity == pp.Verbose {
 						wantTranscript = "Detected IPv4 address: 203.0.113.7\n"
@@ -198,8 +223,9 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					// Mutation caught: claiming the primary failed, exposing loser diagnostics, or losing quiet suppression.
 					require.Empty(t, capture.heartbeat)
 					require.Empty(t, capture.notifier)
-					require.Equal(t, []string{"/primary", "/fallback"}, capture.requestOrder)
-					require.Equal(t, [3]int32{1, 1, 0}, capture.requestCounts)
+					require.Equal(t, int32(1), capture.requestCounts[0])
+					require.Equal(t, int32(1), capture.requestCounts[1])
+					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 					require.False(t, capture.winnerWarnings)
 					if verbosity == pp.Verbose {
 						wantTranscript = fmt.Sprintf(
@@ -213,7 +239,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					// Mutation caught: omitting endpoint context, replaying failed-attempt warnings, or promising another run.
 					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
 					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
-					require.Equal(t, []string{"/primary", "/fallback", "/tertiary"}, capture.requestOrder)
 					require.Equal(t, [3]int32{1, 1, 1}, capture.requestCounts)
 					require.False(t, capture.winnerWarnings)
 					host := strings.TrimSuffix(strings.TrimPrefix(capture.endpoints[0], "http://"), "/primary")
@@ -230,8 +255,9 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					// Mutation caught: repeating worker deadlines or placing family guidance before timeout remediation.
 					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
 					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
-					require.Equal(t, []string{"/primary", "/fallback", "/tertiary"}, capture.requestOrder)
-					require.Equal(t, [3]int32{1, 1, 1}, capture.requestCounts)
+					require.Equal(t, int32(1), capture.requestCounts[0])
+					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
+					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 					require.False(t, capture.winnerWarnings)
 					wantTranscript = "Cloudflare trace IPv4 detection timed out before any endpoint returned a valid response\n" +
 						"No valid IPv4 addresses were detected\n" +
@@ -280,11 +306,13 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				require.True(t, capture.winnerWarnings)
 				require.Equal(t, 1, strings.Count(capture.transcript, "please report this at"))
 				if tc.winnerIndex == 0 {
-					require.Equal(t, []string{"/primary"}, capture.requestOrder)
-					require.Equal(t, [3]int32{1, 0, 0}, capture.requestCounts)
+					require.Equal(t, int32(1), capture.requestCounts[0])
+					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
+					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 				} else {
-					require.Equal(t, []string{"/primary", "/fallback"}, capture.requestOrder)
-					require.Equal(t, [3]int32{1, 1, 0}, capture.requestCounts)
+					require.Equal(t, int32(1), capture.requestCounts[0])
+					require.Equal(t, int32(1), capture.requestCounts[1])
+					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 				}
 			}
 		})

@@ -79,6 +79,16 @@ func detectRawData(
 	defer cancel()
 
 	rawData := c.Provider[ipFamily].GetRawData(ctx, ppfmt, ipFamily, c.DefaultPrefixLen[ipFamily])
+	return finalizeDetectedRawData(ctx, ppfmt, c, ipFamily, rawData)
+}
+
+func finalizeDetectedRawData(
+	ctx context.Context,
+	ppfmt pp.PP,
+	c *config.UpdateConfig,
+	ipFamily ipnet.Family,
+	rawData provider.DetectionResult,
+) (provider.DetectionResult, Message) {
 	filter := c.DetectionFilter[ipFamily]
 	filterApplied := false
 	filterAbort := false
