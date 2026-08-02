@@ -16,6 +16,8 @@ import (
 )
 
 func TestHTTPCoreGetBodyOnceDoesNotRetry(t *testing.T) {
+	t.Parallel()
+
 	var requests atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
@@ -35,6 +37,8 @@ func TestHTTPCoreGetBodyOnceDoesNotRetry(t *testing.T) {
 }
 
 func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
+	t.Parallel()
+
 	var sourceRequests atomic.Int64
 	var targetRequests atomic.Int64
 	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -62,6 +66,7 @@ func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
 
 type trackingReadCloser struct {
 	io.Reader
+
 	closed *atomic.Bool
 }
 
@@ -74,7 +79,7 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) {
+func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 99
 	var closed atomic.Bool
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
@@ -103,6 +108,8 @@ func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) {
 }
 
 func TestHTTPCoreGetBodyRetainsRetryableHTTPBehavior(t *testing.T) {
+	t.Parallel()
+
 	var requests atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)

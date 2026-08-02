@@ -121,8 +121,9 @@ func attemptCloudflareTrace(
 	parsedURL, err := url.Parse(traceURL)
 	if err != nil {
 		return traceAttemptResult{
-			status:  traceAttemptFailed,
-			rawData: NewUnavailableDetectionResult(),
+			status:   traceAttemptFailed,
+			rawData:  NewUnavailableDetectionResult(),
+			warnings: nil,
 			failure: traceFailure{ //nolint:exhaustruct // This failure carries only its parse error.
 				kind:  traceFailureInvalidEndpoint,
 				cause: err,
@@ -145,8 +146,9 @@ func attemptCloudflareTrace(
 			}
 		}
 		return traceAttemptResult{
-			status:  traceAttemptFailed,
-			rawData: NewUnavailableDetectionResult(),
+			status:   traceAttemptFailed,
+			rawData:  NewUnavailableDetectionResult(),
+			warnings: nil,
 			failure: traceFailure{ //nolint:exhaustruct // This failure carries only its request error.
 				kind:  traceFailureRequest,
 				cause: err,

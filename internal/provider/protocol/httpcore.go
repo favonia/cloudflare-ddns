@@ -92,5 +92,6 @@ func (h httpCore) readBody(reader io.Reader) ([]byte, error) {
 	if limit <= 0 {
 		limit = defaultMaxReadLength
 	}
-	return io.ReadAll(io.LimitReader(reader, limit))
+	// The caller adds transport-specific context to any response-read failure.
+	return io.ReadAll(io.LimitReader(reader, limit)) //nolint:wrapcheck // Preserve caller-specific error context.
 }

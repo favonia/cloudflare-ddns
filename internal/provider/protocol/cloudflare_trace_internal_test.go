@@ -42,6 +42,8 @@ func newTraceAttemptServer(
 }
 
 func TestAttemptCloudflareTraceValid(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=off\n", req.Host)
 	})
@@ -57,6 +59,8 @@ func TestAttemptCloudflareTraceValid(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceTransportFailure(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	traceURL := server.URL
 	server.Close()
@@ -75,6 +79,8 @@ func TestAttemptCloudflareTraceTransportFailure(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceCancellation(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=off\n", req.Host)
 	})
@@ -90,6 +96,8 @@ func TestAttemptCloudflareTraceCancellation(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceMissingHWarning(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(*http.Request) string {
 		return "ip=192.0.2.1\nwarp=off\n"
 	})
@@ -105,6 +113,8 @@ func TestAttemptCloudflareTraceMissingHWarning(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceMismatchedH(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(*http.Request) string {
 		return "h=wrong.example.com\nip=192.0.2.1\nwarp=off\n"
 	})
@@ -117,12 +127,15 @@ func TestAttemptCloudflareTraceMismatchedH(t *testing.T) {
 	require.Equal(t, traceFailureMismatchedH, result.failure.kind)
 	require.NoError(t, result.failure.cause)
 	require.Equal(t, "wrong.example.com", result.failure.observed)
-	require.Equal(t, server.Listener.Addr().String(), result.failure.expected)
+	expectedHost := server.Listener.Addr().String()
+	require.Equal(t, expectedHost, result.failure.expected)
 	require.Empty(t, result.failure.problem)
 	require.False(t, result.failure.wantsMapped4Hint)
 }
 
 func TestAttemptCloudflareTraceMissingWarpWarning(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\n", req.Host)
 	})
@@ -138,6 +151,8 @@ func TestAttemptCloudflareTraceMissingWarpWarning(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceWarpOn(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=on\n", req.Host)
 	})
@@ -156,6 +171,8 @@ func TestAttemptCloudflareTraceWarpOn(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceMissingIP(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nwarp=off\n", req.Host)
 	})
@@ -174,6 +191,8 @@ func TestAttemptCloudflareTraceMissingIP(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceUnparseableIP(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=not-an-ip\nwarp=off\n", req.Host)
 	})
@@ -192,6 +211,8 @@ func TestAttemptCloudflareTraceUnparseableIP(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceCloudflareRange(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=104.16.0.1\nwarp=off\n", req.Host)
 	})
@@ -210,6 +231,8 @@ func TestAttemptCloudflareTraceCloudflareRange(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceFamilyMismatch(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=2001:db8::1\nwarp=off\n", req.Host)
 	})
@@ -228,6 +251,8 @@ func TestAttemptCloudflareTraceFamilyMismatch(t *testing.T) {
 }
 
 func TestAttemptCloudflareTraceMappedIPv6Hint(t *testing.T) {
+	t.Parallel()
+
 	server := newTraceAttemptServer(t, ipnet.IP6, func(req *http.Request) string {
 		return fmt.Sprintf("h=%s\nip=::ffff:192.0.2.1\nwarp=off\n", req.Host)
 	})
