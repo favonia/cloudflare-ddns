@@ -25,8 +25,8 @@ func TestNewCloudflareTraceCustom(t *testing.T) {
 	p, ok := provider.MustNewCloudflareTraceCustom("https://trace.example/cdn-cgi/trace").(protocol.CloudflareTrace)
 	require.True(t, ok)
 	require.Equal(t, "cloudflare.trace", p.ProviderName)
-	require.Equal(t, "https://trace.example/cdn-cgi/trace", p.URL[ipnet.IP4])
-	require.Equal(t, "https://trace.example/cdn-cgi/trace", p.URL[ipnet.IP6])
+	require.Equal(t, []string{"https://trace.example/cdn-cgi/trace"}, p.URLs[ipnet.IP4])
+	require.Equal(t, []string{"https://trace.example/cdn-cgi/trace"}, p.URLs[ipnet.IP6])
 }
 
 func TestNewCloudflareTraceCustomRejectsBlankURL(t *testing.T) {
@@ -56,8 +56,14 @@ func TestMustNewCloudflareTrace(t *testing.T) {
 	p, ok := provider.NewCloudflareTrace().(protocol.CloudflareTrace)
 	require.True(t, ok)
 	require.Equal(t, "cloudflare.trace", p.ProviderName)
-	require.Equal(t, "https://api.cloudflare.com/cdn-cgi/trace", p.URL[ipnet.IP4])
-	require.Equal(t, "https://api.cloudflare.com/cdn-cgi/trace", p.URL[ipnet.IP6])
+	wantEndpoints := []string{
+		"https://api.cloudflare.com/cdn-cgi/trace",
+		"https://www.cloudflare.com/cdn-cgi/trace",
+		"https://connectivity.cloudflareclient.com/cdn-cgi/trace",
+	}
+	// Mutation caught: changing, reordering, or omitting a built-in endpoint.
+	require.Equal(t, wantEndpoints, p.URLs[ipnet.IP4])
+	require.Equal(t, wantEndpoints, p.URLs[ipnet.IP6])
 }
 
 func TestMustNewCloudflareTraceCustomPanicsOnBlankURL(t *testing.T) {

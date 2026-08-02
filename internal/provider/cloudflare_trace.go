@@ -9,13 +9,20 @@ import (
 )
 
 // NewCloudflareTrace creates a specialized CloudflareTrace provider.
-// It parses https://api.cloudflare.com/cdn-cgi/trace.
 func NewCloudflareTrace() Provider {
 	return protocol.CloudflareTrace{
 		ProviderName: "cloudflare.trace",
-		URL: map[ipnet.Family]string{
-			ipnet.IP4: "https://api.cloudflare.com/cdn-cgi/trace",
-			ipnet.IP6: "https://api.cloudflare.com/cdn-cgi/trace",
+		URLs: map[ipnet.Family][]string{
+			ipnet.IP4: {
+				"https://api.cloudflare.com/cdn-cgi/trace",
+				"https://www.cloudflare.com/cdn-cgi/trace",
+				"https://connectivity.cloudflareclient.com/cdn-cgi/trace",
+			},
+			ipnet.IP6: {
+				"https://api.cloudflare.com/cdn-cgi/trace",
+				"https://www.cloudflare.com/cdn-cgi/trace",
+				"https://connectivity.cloudflareclient.com/cdn-cgi/trace",
+			},
 		},
 	}
 }
@@ -34,9 +41,9 @@ func NewCloudflareTraceCustom(ppfmt pp.PP, envKey string, url string) (Provider,
 
 	return protocol.CloudflareTrace{
 		ProviderName: "cloudflare.trace",
-		URL: map[ipnet.Family]string{
-			ipnet.IP4: url,
-			ipnet.IP6: url,
+		URLs: map[ipnet.Family][]string{
+			ipnet.IP4: {url},
+			ipnet.IP6: {url},
 		},
 	}, true
 }

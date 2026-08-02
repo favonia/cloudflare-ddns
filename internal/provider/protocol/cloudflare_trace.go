@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -57,8 +58,8 @@ func parseTraceBody(body []byte) traceFields {
 //   - An ip inside Cloudflare's published ranges indicates a proxy scenario
 //     where the reported ip is not the client's real public IP.
 type CloudflareTrace struct {
-	ProviderName string                  // name of the detection protocol
-	URL          map[ipnet.Family]string // trace endpoint URL per family
+	ProviderName string                    // name of the detection protocol
+	URLs         map[ipnet.Family][]string // ordered trace endpoint URLs per family
 }
 
 // Name of the detection protocol.
@@ -282,20 +283,42 @@ func describeCloudflareTraceFailure(failure traceFailure) string {
 	}
 }
 
-func reportCloudflareTraceWarnings(ppfmt pp.PP, traceURL string, warnings []traceWarningKind) {
-	displayTraceURL := pp.QuoteIfUnsafeInSentence(traceURL)
+func reportCloudflareTraceWinnerWarnings(
+	ppfmt pp.PP,
+	ipFamily ipnet.Family,
+	endpointRole string,
+	traceURL string,
+	warnings []traceWarningKind,
+) {
+	missingH := false
+	missingWarp := false
 	for _, warning := range warnings {
 		switch warning {
 		case traceWarningMissingH:
-			ppfmt.Noticef(pp.EmojiImpossible,
-				"The response from %s does not contain an h (host) field; please report this at %s",
-				displayTraceURL, pp.IssueReportingURL)
+			missingH = true
 		case traceWarningMissingWarp:
-			ppfmt.Noticef(pp.EmojiImpossible,
-				"The response from %s does not contain a warp field; please report this at %s",
-				displayTraceURL, pp.IssueReportingURL)
+			missingWarp = true
 		}
 	}
+
+	var missingFields string
+	switch {
+	case missingH && missingWarp:
+		missingFields = "the h (host) and warp fields"
+	case missingH:
+		missingFields = "the h (host) field"
+	case missingWarp:
+		missingFields = "the warp field"
+	default:
+		return
+	}
+
+	ppfmt.Noticef(
+		pp.EmojiImpossible,
+		"Cloudflare trace %s detection succeeded via %s endpoint %s, "+
+			"but its response is missing %s; please report this at %s",
+		ipFamily.Describe(), endpointRole, pp.QuoteIfUnsafeInSentence(traceURL), missingFields, pp.IssueReportingURL,
+	)
 }
 
 // GetRawData detects the IP address by parsing and validating a Cloudflare
@@ -303,28 +326,67 @@ func reportCloudflareTraceWarnings(ppfmt pp.PP, traceURL string, warnings []trac
 func (p CloudflareTrace) GetRawData(
 	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
 ) DetectionResult {
-	traceURL, found := p.URL[ipFamily]
-	if !found {
+	endpoints, found := p.URLs[ipFamily]
+	if !found || len(endpoints) == 0 {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
 		return NewUnavailableDetectionResult()
 	}
 
-	result := attemptCloudflareTrace(ctx, traceURL, ipFamily, defaultPrefixLen)
-	reportCloudflareTraceWarnings(ppfmt, traceURL, result.warnings)
-	if result.status == traceAttemptSucceeded {
+	coordinatorStart := time.Now()
+	run := runCloudflareTraceAttempts(
+		ctx,
+		endpoints,
+		cloudflareTraceHedgeDelay(ctx, coordinatorStart),
+		func(attemptCtx context.Context, endpoint string) traceAttemptResult {
+			return attemptCloudflareTrace(attemptCtx, endpoint, ipFamily, defaultPrefixLen)
+		},
+	)
+
+	if run.winnerIndex >= 0 {
+		endpoint := endpoints[run.winnerIndex]
+		result := run.attempts[run.winnerIndex]
+		if len(result.warnings) > 0 {
+			endpointRole := "primary"
+			if run.winnerIndex > 0 {
+				endpointRole = "fallback"
+			}
+			reportCloudflareTraceWinnerWarnings(ppfmt, ipFamily, endpointRole, endpoint, result.warnings)
+		} else if run.winnerIndex > 0 {
+			ppfmt.Infof(
+				pp.EmojiSwitch,
+				"Cloudflare trace %s detection used fallback endpoint %s",
+				ipFamily.Describe(), pp.QuoteIfUnsafeInSentence(endpoint),
+			)
+		}
 		return result.rawData
 	}
-	if result.status == traceAttemptCanceled {
-		return NewUnavailableDetectionResult()
-	}
 
-	displayTraceURL := pp.QuoteIfUnsafeInSentence(traceURL)
-	emoji := pp.EmojiError
-	if result.failure.kind == traceFailureInvalidEndpoint || result.failure.kind == traceFailureMismatchedH {
-		emoji = pp.EmojiImpossible
+	wantsMapped4Hint := false
+	for index, result := range run.attempts {
+		if result.status != traceAttemptFailed {
+			continue
+		}
+
+		emoji := pp.EmojiError
+		if result.failure.kind == traceFailureInvalidEndpoint || result.failure.kind == traceFailureMismatchedH {
+			emoji = pp.EmojiImpossible
+		}
+		ppfmt.Noticef(
+			emoji,
+			"Cloudflare trace %s detection via %s failed: %s",
+			ipFamily.Describe(),
+			pp.QuoteIfUnsafeInSentence(endpoints[index]),
+			describeCloudflareTraceFailure(result.failure),
+		)
+		wantsMapped4Hint = wantsMapped4Hint || result.failure.wantsMapped4Hint
 	}
-	ppfmt.Noticef(emoji, "Cloudflare trace detection from %s failed: %s",
-		displayTraceURL, describeCloudflareTraceFailure(result.failure))
-	ipnet.Emit4in6Hint(ppfmt, result.failure.wantsMapped4Hint)
-	return result.rawData
+	if run.timedOut {
+		ppfmt.Noticef(
+			pp.EmojiTimeout,
+			"Cloudflare trace %s detection timed out before any endpoint returned a valid response",
+			ipFamily.Describe(),
+		)
+	}
+	ipnet.Emit4in6Hint(ppfmt, wantsMapped4Hint)
+	return NewUnavailableDetectionResult()
 }
