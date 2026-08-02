@@ -50,6 +50,14 @@ func hostFromURL(rawURL string) string {
 	return u.Host
 }
 
+func expectCloudflareTraceFailure(
+	m *mocks.MockPP, emoji pp.Emoji, traceURL string, failure any,
+) {
+	m.EXPECT().Noticef(emoji,
+		"Cloudflare trace detection from %s failed: %s",
+		pp.QuoteIfUnsafeInSentence(traceURL), failure)
+}
+
 func TestCloudflareTraceGetRawData(t *testing.T) {
 	t.Parallel()
 
@@ -101,10 +109,10 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=wrong.example.com\nip=%s\nwarp=off\n", ip4)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The h field %q in the response from %s does not match the expected host %q; please report this at %s",
-					"wrong.example.com", gomock.Any(), gomock.Any(), pp.IssueReportingURL)
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiImpossible, serverURL, fmt.Sprintf(
+					"the h field %q does not match the expected host %q; please report this at %s",
+					"wrong.example.com", hostFromURL(serverURL), pp.IssueReportingURL))
 			},
 		},
 		"4/warp-on": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -113,10 +121,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=%s\nwarp=on\n", hostFromURL(serverURL), ip4)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The response from %s has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
-					gomock.Any())
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the response has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP")
 			},
 		},
 		"4/missing-warp-warns": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -137,9 +144,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nwarp=off\n", hostFromURL(serverURL))
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The response from %s does not contain an ip field", gomock.Any())
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the response does not contain an ip field")
 			},
 		},
 		"4/unparseable-ip": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -148,10 +155,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=not-an-ip\nwarp=off\n", hostFromURL(serverURL))
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"Failed to parse the IP address in the response from %s (%q)",
-					gomock.Any(), "not-an-ip")
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					`failed to parse the IP address "not-an-ip"`)
 			},
 		},
 		"4/cloudflare-ipv4-range": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -160,10 +166,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=104.16.0.1\nwarp=off\n", hostFromURL(serverURL))
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The detected IP address %s is inside Cloudflare's own IP range and is not your real public IP",
-					"104.16.0.1")
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the detected IP address 104.16.0.1 is inside Cloudflare's own IP range and is not your real public IP")
 			},
 		},
 		"6/cloudflare-ipv6-range": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -172,10 +177,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=2606:4700::1\nwarp=off\n", hostFromURL(serverURL))
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The detected IP address %s is inside Cloudflare's own IP range and is not your real public IP",
-					"2606:4700::1")
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the detected IP address 2606:4700::1 is inside Cloudflare's own IP range and is not your real public IP")
 			},
 		},
 		"4/not-handled": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -193,8 +197,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=%s\nwarp=off\n", hostFromURL(serverURL), ip6)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s %s", ip6.String(), "is not a valid IPv4 address")
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the detected IP address ::1:2:3:4:5:6 is not a valid IPv4 address")
 			},
 		},
 		"6/ip4-response-family-mismatch": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -203,8 +208,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=%s\nwarp=off\n", hostFromURL(serverURL), ip4)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Detected IP address %s %s", ip4.String(), "is not a valid IPv6 address")
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the detected IP address 1.2.3.4 is not a valid IPv6 address")
 			},
 		},
 		"4/extra-fields-ignored": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -218,15 +224,15 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			ipFamily: ipnet.IP4, serverFamily: ipnet.IP4,
 			makeResponse: func(_ string) string { return "" },
 			available:    false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"The response from %s does not contain an h (host) field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
 				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"The response from %s does not contain a warp field; please report this at %s",
 					gomock.Any(), pp.IssueReportingURL)
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The response from %s does not contain an ip field", gomock.Any())
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the response does not contain an ip field")
 			},
 		},
 		"4/lines-without-equals": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -242,10 +248,9 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=%s\nip=%s\nwarp=on\n", hostFromURL(serverURL), ip6)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError,
-					"The response from %s has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP",
-					gomock.Any())
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL,
+					"the response has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP")
 			},
 		},
 		"4/warp-plus-passes": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -273,10 +278,10 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				return fmt.Sprintf("h=wrong.example.com\nip=%s\nwarp=off\n", ip6)
 			},
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible,
-					"The h field %q in the response from %s does not match the expected host %q; please report this at %s",
-					"wrong.example.com", gomock.Any(), gomock.Any(), pp.IssueReportingURL)
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiImpossible, serverURL, fmt.Sprintf(
+					"the h field %q does not match the expected host %q; please report this at %s",
+					"wrong.example.com", hostFromURL(serverURL), pp.IssueReportingURL))
 			},
 		},
 		"6/not-handled": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -291,25 +296,23 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 		"4/request-fail": { //nolint:exhaustruct // test fixture sets only exercised fields
 			ipFamily: ipnet.IP4, noServer: true, forceURL: "",
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", `""`, gomock.Any())
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL, gomock.Any())
 			},
 		},
 		"6/request-fail": { //nolint:exhaustruct // test fixture sets only exercised fields
 			ipFamily: ipnet.IP6, noServer: true, forceURL: "",
 			available: false,
-			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", `""`, gomock.Any())
+			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
+				expectCloudflareTraceFailure(m, pp.EmojiError, serverURL, gomock.Any())
 			},
 		},
 		"4/illegal-url-escape": { //nolint:exhaustruct // test fixture sets only exercised fields
-			// A URL with an illegal percent-escape fails at request preparation
-			// (http.NewRequest calls url.Parse internally), so the explicit
-			// url.Parse guard later in GetRawData is never reached.
+			// A URL with an illegal percent-escape fails endpoint parsing before transmission.
 			ipFamily: ipnet.IP4, noServer: true, forceURL: "http://example.com/path%zz",
 			available: false,
 			prepareMockPP: func(_ string, m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiImpossible, "Failed to prepare HTTP(S) request to %s: %v",
+				expectCloudflareTraceFailure(m, pp.EmojiImpossible,
 					"http://example.com/path%zz", gomock.Any())
 			},
 		},
