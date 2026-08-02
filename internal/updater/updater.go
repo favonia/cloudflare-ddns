@@ -149,10 +149,17 @@ func detectRawData(
 		}
 		ppfmt.Suppress(getMessageIDForDetection(ipFamily))
 
-	// Failure path: emit hints and timeout guidance.
+	// Failure path: emit timeout guidance and family hints.
 	default:
 		rawData = provider.NewUnavailableDetectionResult()
-		ppfmt.Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", ipFamily.Describe())
+		ppfmt.Noticef(pp.EmojiError, "No valid %s addresses were detected", ipFamily.Describe())
+
+		if errors.Is(context.Cause(ctx), errTimeout) {
+			ppfmt.NoticeOncef(pp.MessageDetectionTimeouts, pp.EmojiHint,
+				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
+				c.DetectionTimeout,
+			)
+		}
 
 		switch ipFamily {
 		case ipnet.IP6:
@@ -164,13 +171,6 @@ func detectRawData(
 		case ipnet.IP4:
 			ppfmt.NoticeOncef(getMessageIDForDetection(ipFamily), pp.EmojiHint,
 				"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none")
-		}
-
-		if errors.Is(context.Cause(ctx), errTimeout) {
-			ppfmt.NoticeOncef(pp.MessageDetectionTimeouts, pp.EmojiHint,
-				"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v",
-				c.DetectionTimeout,
-			)
 		}
 	}
 	return rawData, generateDetectMessage(ipFamily, rawData.Available)
