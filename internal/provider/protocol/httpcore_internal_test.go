@@ -2,12 +2,14 @@ package protocol
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
 
@@ -64,6 +66,20 @@ func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
 	require.EqualValues(t, 0, targetRequests.Load())
 }
 
+func TestHTTPCoreGetBodyOnceReportsRequestPreparationFailure(t *testing.T) {
+	t.Parallel()
+
+	h := httpCore{ //nolint:exhaustruct // The invalid method fails before transport setup matters.
+		url:    "http://example.com/",
+		method: "GET\n",
+	}
+	body, err := h.getBodyOnce(context.Background())
+
+	// Mutation caught: losing the request-preparation category while propagating constructor errors.
+	require.Nil(t, body)
+	require.ErrorContains(t, err, "failed to prepare request")
+}
+
 type trackingReadCloser struct {
 	io.Reader
 
@@ -104,6 +120,60 @@ func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) { //nolint:parallel
 
 	require.NoError(t, err)
 	require.Equal(t, []byte("response body"), body)
+	require.True(t, closed.Load())
+}
+
+func TestHTTPCoreGetBodyOnceReportsTransportFailure(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
+	const testFamily ipnet.Family = 100
+	sentinel := errors.New("transport failure")
+	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
+		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return nil, sentinel
+		}),
+	}
+	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
+
+	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+		ipFamily: testFamily,
+		url:      "http://example.com/",
+		method:   http.MethodGet,
+	}
+	body, err := h.getBodyOnce(context.Background())
+
+	// Mutation caught: swallowing or misclassifying a one-shot transport failure.
+	require.Nil(t, body)
+	require.ErrorIs(t, err, sentinel)
+	require.ErrorContains(t, err, "request failed")
+}
+
+func TestHTTPCoreGetBodyOnceReportsReadFailureAndClosesBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
+	const testFamily ipnet.Family = 101
+	sentinel := errors.New("read failure")
+	var closed atomic.Bool
+	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
+		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{ //nolint:exhaustruct // Test response needs only status and body.
+				StatusCode: http.StatusOK,
+				Body: trackingReadCloser{
+					Reader: iotest.ErrReader(sentinel),
+					closed: &closed,
+				},
+			}, nil
+		}),
+	}
+	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
+
+	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+		ipFamily: testFamily,
+		url:      "http://example.com/",
+		method:   http.MethodGet,
+	}
+	body, err := h.getBodyOnce(context.Background())
+
+	// Mutation caught: swallowing or misclassifying a read failure, or leaking its response body.
+	require.Nil(t, body)
+	require.ErrorIs(t, err, sentinel)
+	require.ErrorContains(t, err, "failed to read response")
 	require.True(t, closed.Load())
 }
 
