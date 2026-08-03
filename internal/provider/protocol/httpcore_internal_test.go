@@ -17,6 +17,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
+var (
+	errTransportFailure = errors.New("transport failure")
+	errReadFailure      = errors.New("read failure")
+)
+
 func TestHTTPCoreGetBodyOnceDoesNotRetry(t *testing.T) {
 	t.Parallel()
 
@@ -125,10 +130,9 @@ func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) { //nolint:parallel
 
 func TestHTTPCoreGetBodyOnceReportsTransportFailure(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 100
-	sentinel := errors.New("transport failure")
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
 		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return nil, sentinel
+			return nil, errTransportFailure
 		}),
 	}
 	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
@@ -142,20 +146,19 @@ func TestHTTPCoreGetBodyOnceReportsTransportFailure(t *testing.T) { //nolint:par
 
 	// Mutation caught: swallowing or misclassifying a one-shot transport failure.
 	require.Nil(t, body)
-	require.ErrorIs(t, err, sentinel)
+	require.ErrorIs(t, err, errTransportFailure)
 	require.ErrorContains(t, err, "request failed")
 }
 
 func TestHTTPCoreGetBodyOnceReportsReadFailureAndClosesBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 101
-	sentinel := errors.New("read failure")
 	var closed atomic.Bool
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
 		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{ //nolint:exhaustruct // Test response needs only status and body.
 				StatusCode: http.StatusOK,
 				Body: trackingReadCloser{
-					Reader: iotest.ErrReader(sentinel),
+					Reader: iotest.ErrReader(errReadFailure),
 					closed: &closed,
 				},
 			}, nil
@@ -172,7 +175,7 @@ func TestHTTPCoreGetBodyOnceReportsReadFailureAndClosesBody(t *testing.T) { //no
 
 	// Mutation caught: swallowing or misclassifying a read failure, or leaking its response body.
 	require.Nil(t, body)
-	require.ErrorIs(t, err, sentinel)
+	require.ErrorIs(t, err, errReadFailure)
 	require.ErrorContains(t, err, "failed to read response")
 	require.True(t, closed.Load())
 }
