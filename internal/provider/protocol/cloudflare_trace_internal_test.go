@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 func newTraceAttemptServer(
@@ -268,4 +270,45 @@ func TestAttemptCloudflareTraceMappedIPv6Hint(t *testing.T) {
 	require.Empty(t, result.failure.expected)
 	require.Equal(t, "is an IPv4-mapped IPv6 address", result.failure.problem)
 	require.True(t, result.failure.wantsMapped4Hint)
+}
+
+func TestDescribeCloudflareTraceFailureUnknownKind(t *testing.T) {
+	t.Parallel()
+
+	failure := traceFailure{ //nolint:exhaustruct // An unknown kind carries no recognized failure details.
+		kind: traceFailureKind(255),
+	}
+
+	// Mutation caught: removing or changing the safe fallback for an unrecognized internal failure kind.
+	require.Equal(t, "unknown Cloudflare trace failure", describeCloudflareTraceFailure(failure))
+}
+
+func TestReportCloudflareTraceWinnerWarningsIgnoresNoRecognizedWarnings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		warnings []traceWarningKind
+	}{
+		{name: "empty", warnings: nil},
+		{name: "unknown", warnings: []traceWarningKind{traceWarningKind(255)}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			var output strings.Builder
+			reportCloudflareTraceWinnerWarnings(
+				pp.New(&output, false, pp.Verbose),
+				ipnet.IP4,
+				"primary",
+				"https://example.com/cdn-cgi/trace",
+				test.warnings,
+			)
+
+			// Mutation caught: emitting a malformed winner warning when no recognized field is missing.
+			require.Empty(t, output.String())
+		})
+	}
 }
