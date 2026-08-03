@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -437,6 +438,58 @@ func TestRunCloudflareTraceAttemptsParentCancellationStopsNewLaunchesAndDrains(t
 				requireTraceStatuses(t, run,
 					traceAttemptSucceeded, traceAttemptUnstarted, traceAttemptUnstarted)
 			})
+		})
+	}
+}
+
+func TestRunCloudflareTraceAttemptsCanceledBeforeLaunch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		newContext func() (context.Context, context.CancelFunc)
+		timedOut   bool
+	}{
+		{
+			name: "external-cancellation",
+			newContext: func() (context.Context, context.CancelFunc) {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				return ctx, func() {}
+			},
+			timedOut: false,
+		},
+		{
+			name: "expired-deadline",
+			newContext: func() (context.Context, context.CancelFunc) {
+				return context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+			},
+			timedOut: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := test.newContext()
+			defer cancel()
+			var attempts atomic.Int64
+			run := runCloudflareTraceAttempts(
+				ctx,
+				[]string{"primary", "fallback"},
+				100*time.Millisecond,
+				func(context.Context, string) traceAttemptResult {
+					attempts.Add(1)
+					return traceTestAttemptResult(traceAttemptSucceeded)
+				},
+			)
+
+			// Mutation caught: launching an endpoint after cancellation or losing the timeout distinction.
+			require.EqualValues(t, 0, attempts.Load())
+			require.Equal(t, -1, run.winnerIndex)
+			require.Equal(t, test.timedOut, run.timedOut)
+			requireTraceStatuses(t, run, traceAttemptUnstarted, traceAttemptUnstarted)
 		})
 	}
 }
