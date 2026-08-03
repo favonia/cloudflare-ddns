@@ -11,6 +11,7 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -69,6 +70,34 @@ func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, sourceRequests.Load())
 	require.EqualValues(t, 0, targetRequests.Load())
+}
+
+func TestHTTPCoreGetBodyOnceAppliesAdditionalHeaders(t *testing.T) {
+	t.Parallel()
+
+	const headerName = "X-Cloudflare-Trace-Test"
+	const headerValue = "present"
+	receivedHeaders := make(chan http.Header, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		receivedHeaders <- req.Header.Clone()
+		_, _ = io.WriteString(w, "response body")
+	}))
+	t.Cleanup(server.Close)
+
+	h := httpCore{ //nolint:exhaustruct // GET request needs only the tested headers and endpoint.
+		ipFamily: ipnet.IP4,
+		url:      server.URL,
+		method:   http.MethodGet,
+		additionalHeaders: map[string]string{
+			headerName: headerValue,
+		},
+	}
+	body, err := h.getBodyOnce(context.Background())
+
+	// Mutation caught: omitting configured headers from the one-shot request path.
+	require.NoError(t, err)
+	require.Equal(t, []byte("response body"), body)
+	require.Equal(t, headerValue, (<-receivedHeaders).Get(headerName))
 }
 
 func TestHTTPCoreGetBodyOnceReportsRequestPreparationFailure(t *testing.T) {
@@ -201,4 +230,38 @@ func TestHTTPCoreGetBodyRetainsRetryableHTTPBehavior(t *testing.T) {
 	_, _ = h.getBodyWithRetryableClient(context.Background(), pp.NewSilent(), client)
 
 	require.Greater(t, requests.Load(), int64(1))
+}
+
+func TestHTTPCoreGetBodyWithRetryableClientReportsReadFailureAndClosesBody(t *testing.T) {
+	t.Parallel()
+
+	var closed atomic.Bool
+	client := retryablehttp.NewClient()
+	client.Logger = nil
+	client.RetryMax = 0
+	client.HTTPClient.Transport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{ //nolint:exhaustruct // Test response needs only status and a controlled body.
+			StatusCode: http.StatusOK,
+			Body: trackingReadCloser{
+				Reader: iotest.ErrReader(errReadFailure),
+				closed: &closed,
+			},
+		}, nil
+	})
+	h := httpCore{ //nolint:exhaustruct // Test supplies a local retryable client directly.
+		url:    "http://example.com/",
+		method: http.MethodGet,
+	}
+	var output strings.Builder
+
+	body, ok := h.getBodyWithRetryableClient(
+		context.Background(), pp.New(&output, false, pp.Verbose), client,
+	)
+
+	// Mutation caught: treating a response-read error as success, hiding its diagnostic, or leaking its body.
+	require.Nil(t, body)
+	require.False(t, ok)
+	require.Contains(t, output.String(), "Failed to read HTTP(S) response")
+	require.Contains(t, output.String(), errReadFailure.Error())
+	require.True(t, closed.Load())
 }
