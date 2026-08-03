@@ -249,6 +249,33 @@ func TestCloudflareTraceGetRawDataReplaysWinnerWarnings(t *testing.T) {
 	require.Equal(t, 1, strings.Count(transcript, "please report this at"))
 }
 
+func TestCloudflareTraceGetRawDataReportsMissingWarpFromWinner(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if cloudflareTraceTestEndpointIndex(req.URL.Path) != 0 {
+			<-req.Context().Done()
+			return
+		}
+		//nolint:gosec // The httptest request host is required by the trace-response fixture.
+		_, _ = fmt.Fprintf(w, "h=%s\nip=192.0.2.1\n", req.Host)
+	}))
+	t.Cleanup(server.Close)
+
+	var output strings.Builder
+	result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
+		GetRawData(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
+
+	// Mutation caught: dropping or mislabeling the sole missing-warp warning from a successful primary response.
+	require.True(t, result.Available)
+	require.Equal(t,
+		"Cloudflare trace IPv4 detection succeeded via primary endpoint "+server.URL+
+			"/primary, but its response is missing the warp field; please report this at "+
+			"https://github.com/favonia/cloudflare-ddns/issues/new/choose\n",
+		output.String(),
+	)
+}
+
 func TestCloudflareTraceGetRawDataReportsFailuresInEndpointOrder(t *testing.T) {
 	t.Parallel()
 
