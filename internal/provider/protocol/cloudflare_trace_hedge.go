@@ -51,7 +51,7 @@ func runCloudflareTraceAttempts(
 	next := 0
 
 	parentCanceled := func() bool {
-		return context.Cause(ctx) != nil || ctx.Err() != nil
+		return ctx.Err() != nil
 	}
 	parentTimedOut := func() bool {
 		return errors.Is(context.Cause(ctx), context.DeadlineExceeded) ||

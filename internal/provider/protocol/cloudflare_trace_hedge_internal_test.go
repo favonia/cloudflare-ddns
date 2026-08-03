@@ -18,6 +18,27 @@ type traceAttemptControl struct {
 	exited    chan struct{}
 }
 
+type traceCancellationWindowContext struct {
+	context.Context //nolint:containedctx // Test-only wrapper intercepts the coordinator's Err observations.
+
+	cancel       context.CancelCauseFunc
+	windowStart  time.Time
+	windowEnd    time.Time
+	target       int64
+	observations atomic.Int64
+	triggered    atomic.Bool
+}
+
+func (ctx *traceCancellationWindowContext) Err() error {
+	now := time.Now()
+	inWindow := !now.Before(ctx.windowStart) && now.Before(ctx.windowEnd)
+	if inWindow && !ctx.triggered.Load() && ctx.observations.Add(1) == ctx.target {
+		ctx.triggered.Store(true)
+		ctx.cancel(context.Canceled)
+	}
+	return ctx.Context.Err() //nolint:wrapcheck // Context.Err must preserve its cancellation sentinel.
+}
+
 func newTraceAttemptControls(endpoints []string) map[string]*traceAttemptControl {
 	controls := make(map[string]*traceAttemptControl, len(endpoints))
 	for _, endpoint := range endpoints {
@@ -490,6 +511,196 @@ func TestRunCloudflareTraceAttemptsCanceledBeforeLaunch(t *testing.T) {
 			require.Equal(t, -1, run.winnerIndex)
 			require.Equal(t, test.timedOut, run.timedOut)
 			requireTraceStatuses(t, run, traceAttemptUnstarted, traceAttemptUnstarted)
+		})
+	}
+}
+
+func TestRunCloudflareTraceAttemptsCancellationObservationWindows(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		endpoints        []string
+		hedgeDelay       time.Duration
+		plannedStatus    traceAttemptStatus
+		hasPlannedResult bool
+		windowStart      time.Duration
+		windowEnd        time.Duration
+		target           int64
+		wantStatuses     []traceAttemptStatus
+	}{
+		{
+			name:             "non-positive-delay-launch-loop",
+			endpoints:        []string{"primary", "fallback"},
+			hedgeDelay:       0,
+			plannedStatus:    traceAttemptUnstarted,
+			hasPlannedResult: false,
+			windowStart:      0,
+			windowEnd:        5 * time.Second,
+			target:           2,
+			wantStatuses:     []traceAttemptStatus{traceAttemptCanceled, traceAttemptUnstarted},
+		},
+		{
+			name:             "top-of-loop",
+			endpoints:        []string{"primary", "fallback"},
+			hedgeDelay:       time.Hour,
+			plannedStatus:    traceAttemptUnstarted,
+			hasPlannedResult: false,
+			windowStart:      0,
+			windowEnd:        5 * time.Second,
+			target:           2,
+			wantStatuses:     []traceAttemptStatus{traceAttemptCanceled, traceAttemptUnstarted},
+		},
+		{
+			name:             "after-result",
+			endpoints:        []string{"primary"},
+			hedgeDelay:       time.Hour,
+			plannedStatus:    traceAttemptSucceeded,
+			hasPlannedResult: true,
+			windowStart:      10 * time.Second,
+			windowEnd:        15 * time.Second,
+			target:           1,
+			wantStatuses:     []traceAttemptStatus{traceAttemptSucceeded},
+		},
+		{
+			name:             "failed-result-launch",
+			endpoints:        []string{"primary", "fallback"},
+			hedgeDelay:       time.Hour,
+			plannedStatus:    traceAttemptFailed,
+			hasPlannedResult: true,
+			windowStart:      10 * time.Second,
+			windowEnd:        15 * time.Second,
+			target:           2,
+			wantStatuses:     []traceAttemptStatus{traceAttemptFailed, traceAttemptUnstarted},
+		},
+		{
+			name:             "after-final-result",
+			endpoints:        []string{"primary"},
+			hedgeDelay:       time.Hour,
+			plannedStatus:    traceAttemptFailed,
+			hasPlannedResult: true,
+			windowStart:      10 * time.Second,
+			windowEnd:        15 * time.Second,
+			target:           2,
+			wantStatuses:     []traceAttemptStatus{traceAttemptFailed},
+		},
+		{
+			name:             "timer-launch",
+			endpoints:        []string{"primary", "fallback"},
+			hedgeDelay:       10 * time.Second,
+			plannedStatus:    traceAttemptUnstarted,
+			hasPlannedResult: false,
+			windowStart:      10 * time.Second,
+			windowEnd:        15 * time.Second,
+			target:           1,
+			wantStatuses:     []traceAttemptStatus{traceAttemptCanceled, traceAttemptUnstarted},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			synctest.Test(t, func(t *testing.T) {
+				now := time.Now()
+				windowStart := now.Add(test.windowStart)
+				windowEnd := now.Add(test.windowEnd)
+				deadlineCtx, cancelDeadline := context.WithDeadline(context.Background(), windowEnd)
+				parentCtx, cancel := context.WithCancelCause(deadlineCtx)
+				probe := &traceCancellationWindowContext{
+					Context:      parentCtx,
+					cancel:       cancel,
+					windowStart:  windowStart,
+					windowEnd:    windowEnd,
+					target:       test.target,
+					observations: atomic.Int64{},
+					triggered:    atomic.Bool{},
+				}
+				cleanup := func() {
+					cancel(context.Canceled)
+					cancelDeadline()
+				}
+				defer cleanup()
+
+				var started atomic.Int64
+				var exited atomic.Int64
+				attempt := func(ctx context.Context, endpoint string) traceAttemptResult {
+					started.Add(1)
+					defer exited.Add(1)
+
+					if endpoint == "primary" && test.hasPlannedResult {
+						timer := time.NewTimer(10 * time.Second)
+						defer timer.Stop()
+						select {
+						case <-timer.C:
+							return traceTestAttemptResult(test.plannedStatus)
+						case <-ctx.Done():
+							return traceTestAttemptResult(traceAttemptCanceled)
+						}
+					}
+
+					<-ctx.Done()
+					return traceTestAttemptResult(traceAttemptCanceled)
+				}
+				run := runCloudflareTraceAttempts(probe, test.endpoints, test.hedgeDelay, attempt)
+
+				require.True(t, probe.triggered.Load(), "target cancellation check was not observed before the window closed")
+				require.Equal(t, probe.target, probe.observations.Load())
+				require.Equal(t, int64(1), started.Load())
+				require.Equal(t, started.Load(), exited.Load(), "coordinator returned before every started worker exited")
+				require.Equal(t, -1, run.winnerIndex)
+				require.False(t, run.timedOut)
+				requireTraceStatuses(t, run, test.wantStatuses...)
+			})
+		})
+	}
+}
+
+func TestRunCloudflareTraceAttemptsEmptyEndpoints(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		newCtx   func() (context.Context, context.CancelFunc)
+		timedOut bool
+	}{
+		{
+			name: "active-context",
+			newCtx: func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.Background())
+			},
+			timedOut: false,
+		},
+		{
+			name: "expired-deadline",
+			newCtx: func() (context.Context, context.CancelFunc) {
+				return context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+			},
+			timedOut: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := test.newCtx()
+			defer cancel()
+			var attempts atomic.Int64
+			run := runCloudflareTraceAttempts(
+				ctx,
+				nil,
+				time.Hour,
+				func(context.Context, string) traceAttemptResult {
+					attempts.Add(1)
+					return traceTestAttemptResult(traceAttemptSucceeded)
+				},
+			)
+
+			require.EqualValues(t, 0, attempts.Load())
+			require.Equal(t, -1, run.winnerIndex)
+			require.Equal(t, test.timedOut, run.timedOut)
+			require.Empty(t, run.attempts)
 		})
 	}
 }
