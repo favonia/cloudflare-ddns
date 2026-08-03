@@ -4,6 +4,7 @@ package config
 // vim: nowrap
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,10 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
+	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
+
+const retiredCloudflareTraceURL = "https://user:secret@example.invalid/cdn-cgi/trace?token=do-not-print#private"
 
 //nolint:paralleltest // paralleltest should not be used because environment vars are global
 func TestReadProvider(t *testing.T) {
@@ -24,7 +28,6 @@ func TestReadProvider(t *testing.T) {
 		none             provider.Provider
 		doh              = provider.NewCloudflareDOH()
 		trace            = provider.NewCloudflareTrace()
-		traceCustom      = provider.MustNewCloudflareTraceCustom("https://1.1.1.1/cdn-cgi/trace")
 		local            = provider.NewLocal()
 		localLoopback    = provider.MustNewLocalWithInterface("lo")
 		ipify            = provider.NewIpify()
@@ -122,18 +125,31 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"cloudflare.trace": {ipnet.IP4, true, " cloudflare.trace", false, "", none, trace, true, nil},
-		"cloudflare.trace:https://1.1.1.1/cdn-cgi/trace": {
-			ipnet.IP4, true, "   cloudflare.trace:https://1.1.1.1/cdn-cgi/trace ", false, "", trace, traceCustom, true,
+		"cloudflare.trace:retired URL": {
+			ipnet.IP4, true,
+			"cloudflare.trace:https://user:secret@example.invalid/cdn-cgi/trace?token=do-not-print#private",
+			false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`)
+				gomock.InOrder(
+					m.EXPECT().Noticef(
+						pp.EmojiUserError,
+						`%s=cloudflare.trace:... is no longer supported; use %s=cloudflare.trace`,
+						key, key,
+					),
+					m.EXPECT().Request(pp.MessageRetiredCustomCloudflareTraceProvider),
+				)
 			},
 		},
 		"cloudflare.trace:": {
-			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
+			ipnet.IP4, true, "cloudflare.trace:", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
-					m.EXPECT().InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint, `You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`),
-					m.EXPECT().Noticef(pp.EmojiUserError, `%s=cloudflare.trace: must be followed by a URL`, key),
+					m.EXPECT().Noticef(
+						pp.EmojiUserError,
+						`%s=cloudflare.trace:... is no longer supported; use %s=cloudflare.trace`,
+						key, key,
+					),
+					m.EXPECT().Request(pp.MessageRetiredCustomCloudflareTraceProvider),
 				)
 			},
 		},
@@ -362,6 +378,201 @@ func TestReadProvider(t *testing.T) {
 }
 
 //nolint:paralleltest // environment vars are global
+func TestRetiredCloudflareTrace(t *testing.T) {
+	retiredProvider := "cloudflare.trace:" + retiredCloudflareTraceURL
+
+	for name, tc := range map[string]struct {
+		verbosity       pp.Verbosity
+		ip4Provider     string
+		ip6Provider     string
+		wantOK          bool
+		wantRetiredKeys []string
+		wantOtherParse  string
+	}{
+		"ordinary cloudflare.trace": {
+			verbosity:       pp.Verbose,
+			ip4Provider:     "cloudflare.trace",
+			ip6Provider:     "cloudflare.trace",
+			wantOK:          true,
+			wantRetiredKeys: nil,
+			wantOtherParse:  "",
+		},
+		"IP4 retired syntax in normal output": {
+			verbosity:       pp.Verbose,
+			ip4Provider:     retiredProvider,
+			ip6Provider:     "",
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP4_PROVIDER"},
+			wantOtherParse:  "Using default IP6_PROVIDER=cloudflare.doh",
+		},
+		"IP6 retired syntax in normal output": {
+			verbosity:       pp.Verbose,
+			ip4Provider:     "",
+			ip6Provider:     retiredProvider,
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP6_PROVIDER"},
+			wantOtherParse:  "Using default IP4_PROVIDER=local",
+		},
+		"blank custom trace syntax": {
+			verbosity:       pp.Verbose,
+			ip4Provider:     "cloudflare.trace:",
+			ip6Provider:     "cloudflare.trace",
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP4_PROVIDER"},
+			wantOtherParse:  "",
+		},
+		"one family retired in quiet output": {
+			verbosity:       pp.Quiet,
+			ip4Provider:     "cloudflare.trace",
+			ip6Provider:     retiredProvider,
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP6_PROVIDER"},
+			wantOtherParse:  "",
+		},
+		"both families retired in normal output": {
+			verbosity:       pp.Verbose,
+			ip4Provider:     retiredProvider,
+			ip6Provider:     retiredProvider,
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP4_PROVIDER", "IP6_PROVIDER"},
+			wantOtherParse:  "",
+		},
+		"both families retired in quiet output": {
+			verbosity:       pp.Quiet,
+			ip4Provider:     retiredProvider,
+			ip6Provider:     retiredProvider,
+			wantOK:          false,
+			wantRetiredKeys: []string{"IP4_PROVIDER", "IP6_PROVIDER"},
+			wantOtherParse:  "",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store(t, "IP4_PROVIDER", tc.ip4Provider)
+			store(t, "IP6_PROVIDER", tc.ip6Provider)
+
+			oldProviders := map[ipnet.Family]provider.Provider{
+				ipnet.IP4: provider.NewLocal(),
+				ipnet.IP6: provider.NewCloudflareDOH(),
+			}
+			providers := map[ipnet.Family]provider.Provider{
+				ipnet.IP4: oldProviders[ipnet.IP4],
+				ipnet.IP6: oldProviders[ipnet.IP6],
+			}
+			var output strings.Builder
+			ok := readProviderMap(
+				pp.New(&output, false, tc.verbosity),
+				map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64},
+				&providers,
+			)
+			rendered := output.String()
+
+			require.Equal(t, tc.wantOK, ok)
+			if tc.wantOK {
+				require.Equal(t, "cloudflare.trace", provider.Name(providers[ipnet.IP4]))
+				require.Equal(t, "cloudflare.trace", provider.Name(providers[ipnet.IP6]))
+				require.NotContains(t, rendered, pp.IssueReportingURL)
+				return
+			}
+
+			// Mutation caught: a failed provider read must not publish either
+			// family's temporary result into the caller's provider map.
+			require.Equal(t, oldProviders, providers)
+			require.Contains(t, rendered, tc.wantOtherParse)
+
+			guidanceOffset := strings.Index(rendered, pp.IssueReportingURL)
+			require.NotEqual(t, -1, guidanceOffset)
+			require.Equal(t, 1, strings.Count(rendered, pp.IssueReportingURL))
+			for _, key := range tc.wantRetiredKeys {
+				require.Contains(t, rendered, key+"=cloudflare.trace:...")
+				require.Contains(t, rendered, "use "+key+"=cloudflare.trace")
+				require.Less(t, strings.Index(rendered, key), guidanceOffset)
+			}
+			require.Contains(t, rendered, "no longer supported")
+
+			for _, secret := range []string{"user", "secret", "token", "private"} {
+				require.NotContains(t, rendered, secret)
+			}
+		})
+	}
+}
+
+func TestRetiredCloudflareTraceStartupTranscripts(t *testing.T) {
+	retiredProvider := "cloudflare.trace:" + retiredCloudflareTraceURL
+
+	for name, tc := range map[string]struct {
+		verbosity   pp.Verbosity
+		ip4Provider string
+		ip6Provider string
+		want        string
+	}{
+		"one family normal": {
+			verbosity:   pp.Verbose,
+			ip4Provider: retiredProvider,
+			ip6Provider: "cloudflare.trace",
+			want: `🌟 Cloudflare DDNS
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   😡 IP4_PROVIDER=cloudflare.trace:... is no longer supported; use IP4_PROVIDER=cloudflare.trace
+   💡 If you still need a custom Cloudflare trace endpoint, open an issue at https://github.com/favonia/cloudflare-ddns/issues/new/choose
+👋 Bye!
+`,
+		},
+		"one family quiet": {
+			verbosity:   pp.Quiet,
+			ip4Provider: retiredProvider,
+			ip6Provider: "cloudflare.trace",
+			want: `😡 IP4_PROVIDER=cloudflare.trace:... is no longer supported; use IP4_PROVIDER=cloudflare.trace
+💡 If you still need a custom Cloudflare trace endpoint, open an issue at https://github.com/favonia/cloudflare-ddns/issues/new/choose
+`,
+		},
+		"both families normal": {
+			verbosity:   pp.Verbose,
+			ip4Provider: retiredProvider,
+			ip6Provider: retiredProvider,
+			want: `🌟 Cloudflare DDNS
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   😡 IP4_PROVIDER=cloudflare.trace:... is no longer supported; use IP4_PROVIDER=cloudflare.trace
+   😡 IP6_PROVIDER=cloudflare.trace:... is no longer supported; use IP6_PROVIDER=cloudflare.trace
+   💡 If you still need a custom Cloudflare trace endpoint, open an issue at https://github.com/favonia/cloudflare-ddns/issues/new/choose
+👋 Bye!
+`,
+		},
+		"both families quiet": {
+			verbosity:   pp.Quiet,
+			ip4Provider: retiredProvider,
+			ip6Provider: retiredProvider,
+			want: `😡 IP4_PROVIDER=cloudflare.trace:... is no longer supported; use IP4_PROVIDER=cloudflare.trace
+😡 IP6_PROVIDER=cloudflare.trace:... is no longer supported; use IP6_PROVIDER=cloudflare.trace
+💡 If you still need a custom Cloudflare trace endpoint, open an issue at https://github.com/favonia/cloudflare-ddns/issues/new/choose
+`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			testenv.ClearAll(t)
+			t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+			t.Setenv("IP4_PROVIDER", tc.ip4Provider)
+			t.Setenv("IP6_PROVIDER", tc.ip6Provider)
+
+			var output strings.Builder
+			ppfmt := pp.New(&output, true, tc.verbosity)
+			ppfmt.Infof(pp.EmojiStar, "Cloudflare DDNS")
+			raw := DefaultRaw()
+			require.False(t, raw.ReadEnv(ppfmt))
+			ppfmt.Infof(pp.EmojiBye, "Bye!")
+
+			rendered := output.String()
+			require.Equal(t, tc.want, rendered)
+			for _, secret := range []string{"user", "secret", "token", "private"} {
+				require.NotContains(t, rendered, secret)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // environment vars are global
 func TestReadProviderMap(t *testing.T) {
 	var (
 		none  provider.Provider
@@ -486,7 +697,10 @@ func TestReadProviderMap(t *testing.T) {
 			},
 			false,
 			func(m *mocks.MockPP) {
-				m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", "IP4_PROVIDER", "flare")
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserError, "%s (%q) is not a valid provider", "IP4_PROVIDER", "flare"),
+					m.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "local"),
+				)
 			},
 		},
 	} {
@@ -501,6 +715,7 @@ func TestReadProviderMap(t *testing.T) {
 			if tc.prepareMockPP != nil {
 				tc.prepareMockPP(mockPP)
 			}
+			mockPP.EXPECT().DrainRequests(pp.MessageRetiredCustomCloudflareTraceProvider).Return(uint(0))
 			ok := readProviderMap(mockPP, map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 64}, &field)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, field)

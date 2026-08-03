@@ -674,7 +674,7 @@ func TestUpdateIPs(t *testing.T) {
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(provider.NewUnavailableDetectionResult()),
-					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv4"),
+					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv4"),
 					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
@@ -696,7 +696,7 @@ func TestUpdateIPs(t *testing.T) {
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(provider.NewUnavailableDetectionResult()),
-					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv6"),
+					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv6"),
 					hintIP6DetectionFails(p),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, withUnavailableTargets(wafTargets([]netip.Addr{ip4}, nil), ipnet.IP6), wafItemComment),
 				)
@@ -710,10 +710,10 @@ func TestUpdateIPs(t *testing.T) {
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(provider.NewUnavailableDetectionResult()),
-					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv4"),
+					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv4"),
 					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(provider.NewUnavailableDetectionResult()),
-					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv6"),
+					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv6"),
 					hintIP6DetectionFails(p),
 				)
 			},
@@ -956,7 +956,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 			gomock.InOrder(
 				pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).
 					Return(provider.NewUnavailableDetectionResult()),
-				p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv4"),
+				p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv4"),
 				p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint,
 					"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 			)
@@ -1264,9 +1264,9 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 							return provider.NewUnavailableDetectionResult()
 						},
 					),
-					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected; will try again", "IPv4"),
-					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
+					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv4"),
 					p.EXPECT().NoticeOncef(pp.MessageDetectionTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=%v", time.Second),
+					p.EXPECT().NoticeOncef(pp.MessageIP4DetectionFails, pp.EmojiHint, "If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none"),
 				)
 			},
 		},

@@ -44,6 +44,18 @@ type PP interface {
 	// The seen-state is shared with [InfoOncef] and [NoticeOncef].
 	Suppress(id ID)
 
+	// Request increments the pending request count for a message ID.
+	//
+	// Request-state is independent of the once-state shared by [InfoOncef],
+	// [NoticeOncef], and [Suppress].
+	Request(id ID)
+
+	// DrainRequests returns and clears the pending request count for a message ID.
+	//
+	// Request-state is independent of the once-state shared by [InfoOncef],
+	// [NoticeOncef], and [Suppress].
+	DrainRequests(id ID) uint
+
 	// InfoOncef formats and prints an info at most once for a message ID.
 	//
 	// The once-state is shared with [NoticeOncef] and [Suppress].

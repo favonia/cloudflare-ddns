@@ -54,6 +54,8 @@ func (p *stubPP) Noticef(emoji pp.Emoji, format string, args ...any) {
 	p.noticeCalls = append(p.noticeCalls, noticeCall{emoji: emoji, format: format, args: args})
 }
 func (*stubPP) Suppress(pp.ID)                              {}
+func (*stubPP) Request(pp.ID)                               {}
+func (*stubPP) DrainRequests(pp.ID) uint                    { return 0 }
 func (*stubPP) InfoOncef(pp.ID, pp.Emoji, string, ...any)   {}
 func (*stubPP) NoticeOncef(pp.ID, pp.Emoji, string, ...any) {}
 

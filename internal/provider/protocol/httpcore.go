@@ -2,7 +2,9 @@ package protocol
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/hashicorp/go-retryablehttp"
 
@@ -24,6 +26,14 @@ type httpCore struct {
 }
 
 func (h httpCore) getBody(ctx context.Context, ppfmt pp.PP) ([]byte, bool) {
+	return h.getBodyWithRetryableClient(ctx, ppfmt, SharedRetryableSplitClient(h.ipFamily))
+}
+
+func (h httpCore) getBodyWithRetryableClient(
+	ctx context.Context,
+	ppfmt pp.PP,
+	client *retryablehttp.Client,
+) ([]byte, bool) {
 	displayURL := pp.QuoteIfUnsafeInSentence(h.url)
 	req, err := retryablehttp.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
@@ -35,25 +45,53 @@ func (h httpCore) getBody(ctx context.Context, ppfmt pp.PP) ([]byte, bool) {
 		req.Header.Set(header, value)
 	}
 
-	c := SharedRetryableSplitClient(h.ipFamily)
-
-	resp, err := c.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to send HTTP(S) request to %s: %v", displayURL, err)
 		return nil, false
 	}
 	defer resp.Body.Close()
 
-	limit := h.maxReadLength
-	if limit <= 0 {
-		limit = defaultMaxReadLength
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+	body, err := h.readBody(resp.Body)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Failed to read HTTP(S) response from %s: %v", displayURL, err)
 		return nil, false
 	}
 
 	return body, true
+}
+
+func (h httpCore) getBodyOnce(ctx context.Context) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare request: %w", err)
+	}
+	for header, value := range h.additionalHeaders {
+		req.Header.Set(header, value)
+	}
+
+	client := *SharedSplitClient(h.ipFamily)
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := h.readBody(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	return body, nil
+}
+
+func (h httpCore) readBody(reader io.Reader) ([]byte, error) {
+	limit := h.maxReadLength
+	if limit <= 0 {
+		limit = defaultMaxReadLength
+	}
+	// The caller adds transport-specific context to any response-read failure.
+	return io.ReadAll(io.LimitReader(reader, limit)) //nolint:wrapcheck // Preserve caller-specific error context.
 }

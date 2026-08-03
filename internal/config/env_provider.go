@@ -102,14 +102,13 @@ func readProvider(ppfmt pp.PP, key, keyDeprecated string,
 		*field = provider.NewCloudflareTrace()
 		return true
 	case len(parts) == 2 && parts[0] == "cloudflare.trace":
-		ppfmt.InfoOncef(pp.MessageUndocumentedCustomCloudflareTraceProvider, pp.EmojiHint,
-			`You are using the undocumented "cloudflare.trace:..." provider; this will soon be removed`)
-		p, ok := provider.NewCloudflareTraceCustom(ppfmt, key, parts[1])
-		if !ok {
-			return false
-		}
-		*field = p
-		return true
+		ppfmt.Noticef(
+			pp.EmojiUserError,
+			`%s=cloudflare.trace:... is no longer supported; use %s=cloudflare.trace`,
+			key, key,
+		)
+		ppfmt.Request(pp.MessageRetiredCustomCloudflareTraceProvider)
+		return false
 	case len(parts) == 1 && parts[0] == "cloudflare.doh":
 		*field = provider.NewCloudflareDOH()
 		return true
@@ -193,8 +192,32 @@ func readProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
-	if !readProvider(ppfmt, "IP4_PROVIDER", "IP4_POLICY", ipnet.IP4, defaultPrefixLen[ipnet.IP4], &ip4Provider) ||
-		!readProvider(ppfmt, "IP6_PROVIDER", "IP6_POLICY", ipnet.IP6, defaultPrefixLen[ipnet.IP6], &ip6Provider) {
+	ip4OK := readProvider(
+		ppfmt,
+		"IP4_PROVIDER",
+		"IP4_POLICY",
+		ipnet.IP4,
+		defaultPrefixLen[ipnet.IP4],
+		&ip4Provider,
+	)
+	ip6OK := readProvider(
+		ppfmt,
+		"IP6_PROVIDER",
+		"IP6_POLICY",
+		ipnet.IP6,
+		defaultPrefixLen[ipnet.IP6],
+		&ip6Provider,
+	)
+
+	if ppfmt.DrainRequests(pp.MessageRetiredCustomCloudflareTraceProvider) > 0 {
+		ppfmt.NoticeOncef(
+			pp.MessageRetiredCustomCloudflareTraceProvider,
+			pp.EmojiHint,
+			"If you still need a custom Cloudflare trace endpoint, open an issue at %s",
+			pp.IssueReportingURL,
+		)
+	}
+	if !ip4OK || !ip6OK {
 		return false
 	}
 
