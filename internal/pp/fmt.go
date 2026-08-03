@@ -7,21 +7,23 @@ import (
 )
 
 type formatter struct {
-	writer       io.Writer
-	emoji        bool
-	indent       int
-	messageShown map[ID]bool
-	verbosity    Verbosity
+	writer          io.Writer
+	emoji           bool
+	indent          int
+	messageShown    map[ID]bool
+	messageRequests map[ID]uint
+	verbosity       Verbosity
 }
 
 // New creates a new pretty printer.
 func New(writer io.Writer, emoji bool, verbosity Verbosity) PP {
 	return formatter{
-		writer:       writer,
-		emoji:        emoji,
-		indent:       0,
-		messageShown: map[ID]bool{},
-		verbosity:    verbosity,
+		writer:          writer,
+		emoji:           emoji,
+		indent:          0,
+		messageShown:    map[ID]bool{},
+		messageRequests: map[ID]uint{},
+		verbosity:       verbosity,
 	}
 }
 
@@ -68,6 +70,18 @@ func (f formatter) Noticef(emoji Emoji, format string, args ...any) {
 // Suppress marks the message ID in the internal map to be "shown".
 func (f formatter) Suppress(id ID) {
 	_ = f.markIfUnseen(id)
+}
+
+// Request increments the pending request count for a message ID.
+func (f formatter) Request(id ID) {
+	f.messageRequests[id]++
+}
+
+// DrainRequests returns and clears the pending request count for a message ID.
+func (f formatter) DrainRequests(id ID) uint {
+	requests := f.messageRequests[id]
+	delete(f.messageRequests, id)
+	return requests
 }
 
 // InfoOncef calls [Infof] if the message ID is new, and ignores it otherwise.

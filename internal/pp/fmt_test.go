@@ -105,6 +105,125 @@ func TestOnceAndSuppress(t *testing.T) {
 	require.Equal(t, "⏰ hello world\n💡 hello galaxy\n👋 aloha\n", buf.String())
 }
 
+func TestRequestAndDrain(t *testing.T) {
+	t.Parallel()
+
+	ppfmt := pp.NewSilent()
+	id := pp.ID(0)
+
+	// Mutation caught: draining an untouched ID must not manufacture a request.
+	require.Equal(t, uint(0), ppfmt.DrainRequests(id))
+
+	ppfmt.Request(id)
+	requests := ppfmt.DrainRequests(id)
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+	// Mutation caught: draining must clear the accumulated count.
+	require.Equal(t, uint(0), ppfmt.DrainRequests(id))
+
+	ppfmt.Request(id)
+	ppfmt.Request(id)
+	requests = ppfmt.DrainRequests(id)
+	require.Positive(t, requests)
+	require.Equal(t, uint(2), requests)
+
+	// Mutation caught: a request made after a drain must remain observable.
+	ppfmt.Request(id)
+	requests = ppfmt.DrainRequests(id)
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+}
+
+func TestDrainRequestsDoesNotMarkOnceMessageSeen(t *testing.T) {
+	t.Parallel()
+
+	var output strings.Builder
+	ppfmt := pp.New(&output, false, pp.Verbose)
+	id := pp.ID(0)
+
+	require.Equal(t, uint(0), ppfmt.DrainRequests(id))
+	ppfmt.NoticeOncef(id, pp.EmojiHint, "notice remains eligible")
+
+	require.Equal(t, "notice remains eligible\n", output.String())
+}
+
+func TestRequestsAreIndependentFromOnceState(t *testing.T) {
+	t.Parallel()
+
+	var output strings.Builder
+	ppfmt := pp.New(&output, false, pp.Verbose)
+
+	ppfmt.Request(pp.ID(0))
+	ppfmt.NoticeOncef(pp.ID(0), pp.EmojiHint, "notice")
+	requests := ppfmt.DrainRequests(pp.ID(0))
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+	ppfmt.Request(pp.ID(0))
+	ppfmt.InfoOncef(pp.ID(0), pp.EmojiHint, "suppressed info")
+	requests = ppfmt.DrainRequests(pp.ID(0))
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+
+	ppfmt.Request(pp.ID(1))
+	ppfmt.InfoOncef(pp.ID(1), pp.EmojiHint, "info")
+	requests = ppfmt.DrainRequests(pp.ID(1))
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+	ppfmt.NoticeOncef(pp.ID(1), pp.EmojiHint, "suppressed notice")
+
+	ppfmt.Suppress(pp.ID(2))
+	ppfmt.Request(pp.ID(2))
+	ppfmt.Request(pp.ID(2))
+	requests = ppfmt.DrainRequests(pp.ID(2))
+	require.Positive(t, requests)
+	require.Equal(t, uint(2), requests)
+	ppfmt.NoticeOncef(pp.ID(2), pp.EmojiHint, "suppressed notice")
+	ppfmt.InfoOncef(pp.ID(2), pp.EmojiHint, "suppressed info")
+
+	require.Equal(t, "notice\ninfo\n", output.String())
+}
+
+func TestIndentedPrintersShareRequests(t *testing.T) {
+	t.Parallel()
+
+	outer := pp.NewSilent()
+	inner := outer.Indent()
+	id := pp.ID(0)
+
+	outer.Request(id)
+	inner.Request(id)
+	requests := inner.DrainRequests(id)
+	require.Positive(t, requests)
+	require.Equal(t, uint(2), requests)
+	require.Equal(t, uint(0), outer.DrainRequests(id))
+
+	inner.Request(id)
+	requests = outer.DrainRequests(id)
+	require.Positive(t, requests)
+	require.Equal(t, uint(1), requests)
+}
+
+func TestRequestsIgnoreVerbosity(t *testing.T) {
+	t.Parallel()
+
+	var quietOutput strings.Builder
+	for name, ppfmt := range map[string]pp.PP{
+		"quiet":  pp.New(&quietOutput, false, pp.Quiet),
+		"silent": pp.NewSilent(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ppfmt.Request(pp.ID(0))
+			ppfmt.Request(pp.ID(0))
+			requests := ppfmt.DrainRequests(pp.ID(0))
+			require.Positive(t, requests)
+			require.Equal(t, uint(2), requests)
+			require.Equal(t, uint(0), ppfmt.DrainRequests(pp.ID(0)))
+		})
+	}
+}
+
 func TestNewDefault(t *testing.T) {
 	t.Parallel()
 

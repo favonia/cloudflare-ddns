@@ -76,6 +76,44 @@ func (c *MockPPBlankLineIfVerboseCall) DoAndReturn(f func()) *MockPPBlankLineIfV
 	return c
 }
 
+// DrainRequests mocks base method.
+func (m *MockPP) DrainRequests(id pp.ID) uint {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DrainRequests", id)
+	ret0, _ := ret[0].(uint)
+	return ret0
+}
+
+// DrainRequests indicates an expected call of DrainRequests.
+func (mr *MockPPMockRecorder) DrainRequests(id any) *MockPPDrainRequestsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DrainRequests", reflect.TypeOf((*MockPP)(nil).DrainRequests), id)
+	return &MockPPDrainRequestsCall{Call: call}
+}
+
+// MockPPDrainRequestsCall wrap *gomock.Call
+type MockPPDrainRequestsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockPPDrainRequestsCall) Return(arg0 uint) *MockPPDrainRequestsCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockPPDrainRequestsCall) Do(f func(pp.ID) uint) *MockPPDrainRequestsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockPPDrainRequestsCall) DoAndReturn(f func(pp.ID) uint) *MockPPDrainRequestsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Indent mocks base method.
 func (m *MockPP) Indent() pp.PP {
 	m.ctrl.T.Helper()
@@ -312,6 +350,42 @@ func (c *MockPPNoticefCall) Do(f func(pp.Emoji, string, ...any)) *MockPPNoticefC
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockPPNoticefCall) DoAndReturn(f func(pp.Emoji, string, ...any)) *MockPPNoticefCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Request mocks base method.
+func (m *MockPP) Request(id pp.ID) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Request", id)
+}
+
+// Request indicates an expected call of Request.
+func (mr *MockPPMockRecorder) Request(id any) *MockPPRequestCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Request", reflect.TypeOf((*MockPP)(nil).Request), id)
+	return &MockPPRequestCall{Call: call}
+}
+
+// MockPPRequestCall wrap *gomock.Call
+type MockPPRequestCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockPPRequestCall) Return() *MockPPRequestCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockPPRequestCall) Do(f func(pp.ID)) *MockPPRequestCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockPPRequestCall) DoAndReturn(f func(pp.ID)) *MockPPRequestCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

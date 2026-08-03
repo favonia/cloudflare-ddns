@@ -92,6 +92,7 @@ func TestReadEnvWithOnlyToken(t *testing.T) {
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%d", "IP6_DEFAULT_PREFIX_LEN", 0),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_PROVIDER", "none"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_PROVIDER", "none"),
+		innerMockPP.EXPECT().DrainRequests(pp.MessageRetiredCustomCloudflareTraceProvider).Return(uint(0)),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP4_DETECTION_FILTER", "keep-all"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "IP6_DETECTION_FILTER", "keep-all"),
 		innerMockPP.EXPECT().Infof(pp.EmojiBullet, "Using default %s=%s", "UPDATE_CRON", "@once"),
