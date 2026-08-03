@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -253,6 +254,10 @@ func TestCloudflareTraceGetRawDataReportsFailuresInEndpointOrder(t *testing.T) {
 
 	started := [3]chan struct{}{make(chan struct{}, 1), make(chan struct{}, 1), make(chan struct{}, 1)}
 	release := [3]chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{})}
+	var releaseOnce [3]sync.Once
+	releaseEndpoint := func(index int) {
+		releaseOnce[index].Do(func() { close(release[index]) })
+	}
 	completed := [3]chan struct{}{make(chan struct{}), make(chan struct{}), make(chan struct{})}
 	completionOrder := make([]string, 0, 3)
 	responses := []string{
@@ -275,26 +280,42 @@ func TestCloudflareTraceGetRawDataReportsFailuresInEndpointOrder(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+		for index := range release {
+			releaseEndpoint(index)
+		}
+	})
+	endpoints := cloudflareTraceTestEndpoints(server.URL)
 	var output strings.Builder
 	resultChannel := make(chan protocol.DetectionResult, 1)
 	go func() {
-		resultChannel <- cloudflareTraceTestProvider(cloudflareTraceTestEndpoints(server.URL)).
-			GetRawData(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
+		resultChannel <- cloudflareTraceTestProvider(endpoints).
+			GetRawData(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
 	}()
 	for index := range started {
 		select {
 		case <-started[index]:
 		case <-time.After(2 * time.Second):
-			require.FailNow(t, "endpoint was not started", "index %d", index)
+			require.FailNow(t, "endpoint was not started", "endpoint %s", endpoints[index])
 		}
 	}
 	for _, index := range []int{2, 1, 0} {
-		close(release[index])
-		<-completed[index]
+		releaseEndpoint(index)
+		select {
+		case <-completed[index]:
+		case <-time.After(2 * time.Second):
+			require.FailNow(t, "endpoint did not complete", "endpoint %s", endpoints[index])
+		}
 	}
-	result := <-resultChannel
+	var result protocol.DetectionResult
+	select {
+	case result = <-resultChannel:
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "Cloudflare trace coordinator did not complete")
+	}
 	transcript := output.String()
-	endpoints := cloudflareTraceTestEndpoints(server.URL)
 
 	// Mutation caught: rendering definite failures in worker completion order.
 	require.False(t, result.Available)

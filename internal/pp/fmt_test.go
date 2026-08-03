@@ -183,6 +183,31 @@ func TestRequestsAreIndependentFromOnceState(t *testing.T) {
 	require.Equal(t, "notice\ninfo\n", output.String())
 }
 
+func TestDrainRequestsIsKeyedAndIndependentFromOnceState(t *testing.T) {
+	t.Parallel()
+
+	var output strings.Builder
+	ppfmt := pp.New(&output, false, pp.Verbose)
+	idA := pp.ID(0)
+	idB := pp.ID(1)
+
+	ppfmt.Request(idA)
+	ppfmt.Request(idA)
+	ppfmt.Request(idB)
+	ppfmt.Request(idB)
+	ppfmt.Request(idB)
+
+	require.Equal(t, uint(2), ppfmt.DrainRequests(idA))
+	ppfmt.NoticeOncef(idA, pp.EmojiHint, "notice after drain")
+	require.Equal(t, "notice after drain\n", output.String())
+	require.Equal(t, uint(3), ppfmt.DrainRequests(idB))
+
+	ppfmt.Request(idA)
+	require.Equal(t, uint(1), ppfmt.DrainRequests(idA))
+	ppfmt.NoticeOncef(idA, pp.EmojiHint, "suppressed notice")
+	require.Equal(t, "notice after drain\n", output.String())
+}
+
 func TestIndentedPrintersShareRequests(t *testing.T) {
 	t.Parallel()
 
