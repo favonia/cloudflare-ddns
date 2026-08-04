@@ -448,7 +448,7 @@ docker run --rm --network host curlimages/curl:latest --fail --show-error --sile
 docker run --rm --network host curlimages/curl:latest --fail --show-error --silent --ipv4 https://connectivity.cloudflareclient.com/cdn-cgi/trace
 ```
 
-If curl reports `Could not resolve host`, fix DNS resolution in the container network. Any other curl failure means that HTTPS endpoint is unavailable under the tested network and IP family. One failed endpoint does not by itself mean detection must fail, because another endpoint can return a valid response first. However, restrictive outbound policies should allow all three hosts to preserve fallback behavior. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+If `curl` reports `Could not resolve host`, fix DNS resolution in the container network. Any other `curl` failure means that HTTPS endpoint is unavailable under the tested network and IP family. One failed endpoint does not by itself mean detection must fail, because another endpoint can return a valid response first. However, restrictive outbound policies should allow all three hosts to preserve fallback behavior. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
 
 If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
 

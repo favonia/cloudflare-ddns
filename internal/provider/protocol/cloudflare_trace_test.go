@@ -242,7 +242,7 @@ func TestCloudflareTraceGetRawDataReplaysWinnerWarnings(t *testing.T) {
 	require.True(t, result.Available)
 	require.Equal(t,
 		"Cloudflare trace IPv4 detection succeeded via fallback endpoint "+winnerURL+
-			", but its response is missing the h (host) and warp fields; please report this at "+
+			", but its response is missing the \"h\" (host) and \"warp\" fields; please report this at "+
 			"https://github.com/favonia/cloudflare-ddns/issues/new/choose\n",
 		transcript,
 	)
@@ -270,7 +270,7 @@ func TestCloudflareTraceGetRawDataReportsMissingWarpFromWinner(t *testing.T) {
 	require.True(t, result.Available)
 	require.Equal(t,
 		"Cloudflare trace IPv4 detection succeeded via primary endpoint "+server.URL+
-			"/primary, but its response is missing the warp field; please report this at "+
+			"/primary, but its response is missing the \"warp\" field; please report this at "+
 			"https://github.com/favonia/cloudflare-ddns/issues/new/choose\n",
 		output.String(),
 	)
@@ -488,7 +488,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"Cloudflare trace %s detection succeeded via %s endpoint %s, "+
 						"but its response is missing %s; please report this at %s",
-					"IPv4", "primary", serverURL, "the h (host) field", pp.IssueReportingURL)
+					"IPv4", "primary", serverURL, `the "h" (host) field`, pp.IssueReportingURL)
 			},
 		},
 		"4/mismatched-h": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -499,7 +499,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiImpossible, ipnet.IP4, serverURL, fmt.Sprintf(
-					"the h field %q does not match the expected host %q; please report this at %s",
+					`the "h" field %q does not match the expected host %q; please report this at %s`,
 					"wrong.example.com", hostFromURL(serverURL), pp.IssueReportingURL))
 			},
 		},
@@ -511,7 +511,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiError, ipnet.IP4, serverURL,
-					"the response has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP")
+					`the "warp" field is "on"; the detected IP is a Cloudflare WARP egress IP, not your real public IP`)
 			},
 		},
 		"4/missing-warp-warns": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -524,7 +524,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"Cloudflare trace %s detection succeeded via %s endpoint %s, "+
 						"but its response is missing %s; please report this at %s",
-					"IPv4", "primary", serverURL, "the warp field", pp.IssueReportingURL)
+					"IPv4", "primary", serverURL, `the "warp" field`, pp.IssueReportingURL)
 			},
 		},
 		"4/missing-ip": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -535,7 +535,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiError, ipnet.IP4, serverURL,
-					"the response does not contain an ip field")
+					`the response does not contain an "ip" field`)
 			},
 		},
 		"4/unparseable-ip": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -615,7 +615,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available:    false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiError, ipnet.IP4, serverURL,
-					"the response does not contain an ip field")
+					`the response does not contain an "ip" field`)
 			},
 		},
 		"4/lines-without-equals": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -633,7 +633,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiError, ipnet.IP6, serverURL,
-					"the response has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP")
+					`the "warp" field is "on"; the detected IP is a Cloudflare WARP egress IP, not your real public IP`)
 			},
 		},
 		"4/warp-plus-passes": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -654,7 +654,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiImpossible,
 					"Cloudflare trace %s detection succeeded via %s endpoint %s, "+
 						"but its response is missing %s; please report this at %s",
-					"IPv6", "primary", displayServerURL, "the h (host) field", pp.IssueReportingURL)
+					"IPv6", "primary", displayServerURL, `the "h" (host) field`, pp.IssueReportingURL)
 			},
 		},
 		"6/mismatched-h": { //nolint:exhaustruct // test fixture sets only exercised fields
@@ -665,7 +665,7 @@ func TestCloudflareTraceGetRawData(t *testing.T) {
 			available: false,
 			prepareMockPP: func(serverURL string, m *mocks.MockPP) {
 				expectCloudflareTraceFailure(m, pp.EmojiImpossible, ipnet.IP6, serverURL, fmt.Sprintf(
-					"the h field %q does not match the expected host %q; please report this at %s",
+					`the "h" field %q does not match the expected host %q; please report this at %s`,
 					"wrong.example.com", hostFromURL(serverURL), pp.IssueReportingURL))
 			},
 		},

@@ -183,8 +183,8 @@ func captureCloudflareTraceDetectionTranscript(
 		notifier:      msg.NotifierMessage.Format(),
 		endpoints:     append([]string(nil), endpoints...),
 		requestCounts: [3]int32{requestCounts[0].Load(), requestCounts[1].Load(), requestCounts[2].Load()},
-		winnerWarnings: strings.Contains(output.String(), "response is missing the h (host)") ||
-			strings.Contains(output.String(), "response is missing the warp field"),
+		winnerWarnings: strings.Contains(output.String(), `response is missing the "h" (host)`) ||
+			strings.Contains(output.String(), `response is missing the "warp" field`),
 	}
 
 	return capture
@@ -243,8 +243,8 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					require.False(t, capture.winnerWarnings)
 					host := strings.TrimSuffix(strings.TrimPrefix(capture.endpoints[0], "http://"), "/primary")
 					wantTranscript = fmt.Sprintf(
-						"Cloudflare trace IPv4 detection via %s failed: the response does not contain an ip field\n"+
-							"Cloudflare trace IPv4 detection via %s failed: the h field \"wrong.example\" does not match the expected host \"%s\"; please report this at https://github.com/favonia/cloudflare-ddns/issues/new/choose\n"+
+						"Cloudflare trace IPv4 detection via %s failed: the response does not contain an \"ip\" field\n"+
+							"Cloudflare trace IPv4 detection via %s failed: the \"h\" field \"wrong.example\" does not match the expected host \"%s\"; please report this at https://github.com/favonia/cloudflare-ddns/issues/new/choose\n"+
 							"Cloudflare trace IPv4 detection via %s failed: the detected IP address 2001:db8::1 is not a valid IPv4 address\n"+
 							"No valid IPv4 addresses were detected\n"+
 							"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none\n",
@@ -276,12 +276,12 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 		endpointRole  string
 		missingClause string
 	}{
-		{name: "primary-winner-missing-h", winnerIndex: 0, endpointRole: "primary", missingClause: "but its response is missing the h (host) field"},
-		{name: "primary-winner-missing-warp", winnerIndex: 0, endpointRole: "primary", missingClause: "but its response is missing the warp field"},
-		{name: "primary-winner-missing-both", winnerIndex: 0, endpointRole: "primary", missingClause: "but its response is missing the h (host) and warp fields"},
-		{name: "fallback-winner-missing-h", winnerIndex: 1, endpointRole: "fallback", missingClause: "but its response is missing the h (host) field"},
-		{name: "fallback-winner-missing-warp", winnerIndex: 1, endpointRole: "fallback", missingClause: "but its response is missing the warp field"},
-		{name: "fallback-winner-missing-both", winnerIndex: 1, endpointRole: "fallback", missingClause: "but its response is missing the h (host) and warp fields"},
+		{name: "primary-winner-missing-h", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) field`},
+		{name: "primary-winner-missing-warp", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "warp" field`},
+		{name: "primary-winner-missing-both", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) and "warp" fields`},
+		{name: "fallback-winner-missing-h", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) field`},
+		{name: "fallback-winner-missing-warp", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "warp" field`},
+		{name: "fallback-winner-missing-both", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) and "warp" fields`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
