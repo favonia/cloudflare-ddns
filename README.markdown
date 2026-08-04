@@ -450,7 +450,7 @@ docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest -
 docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://connectivity.cloudflareclient.com/cdn-cgi/trace
 ```
 
-If `curl` reports `Could not resolve host`, DNS resolution is failing from that same network stack; investigate Docker or host DNS rather than Cloudflare trace response handling. Any other `curl` failure means that HTTPS endpoint is unavailable under the tested network and IP family. A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+If `curl` reports `Could not resolve host`, DNS resolution is failing from that same network stack; investigate Docker or host DNS rather than Cloudflare trace response handling. A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
 
 If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
 
@@ -635,10 +635,10 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 <details>
 <summary>⏳ Operation Timeouts <sup><em>click to expand</em></sup></summary>
 
-| Name                | Meaning                                                                                                                                                                                                                                                                                            | Default Value      |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `DETECTION_TIMEOUT` | The timeout for each IP detection attempt, per IP family. A provider may make multiple requests during one detection attempt; all of them share this timeout. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `5s` (5 seconds)   |
-| `UPDATE_TIMEOUT`    | The timeout of each attempt to update DNS records, per domain and per record type, or per WAF list. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`.                                                           | `30s` (30 seconds) |
+| Name                | Meaning                                                                                                                                                                                                                                  | Default Value      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `DETECTION_TIMEOUT` | The maximum time a provider may spend detecting IP addresses for one IP family. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`.                     | `5s` (5 seconds)   |
+| `UPDATE_TIMEOUT`    | The timeout of each attempt to update DNS records, per domain and per record type, or per WAF list. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `30s` (30 seconds) |
 
 </details>
 
