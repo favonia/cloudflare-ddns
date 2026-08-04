@@ -344,11 +344,19 @@ func TestCloudflareTraceGetRawDataReportsFailuresInEndpointOrder(t *testing.T) {
 	}
 	transcript := output.String()
 
-	// Mutation caught: rendering definite failures in worker completion order.
+	// Mutation caught: omitting a definite failure or rendering failures in worker completion order.
 	require.False(t, result.Available)
 	require.Equal(t, []string{"/tertiary", "/fallback", "/primary"}, completionOrder)
-	require.Less(t, strings.Index(transcript, endpoints[0]), strings.Index(transcript, endpoints[1]))
-	require.Less(t, strings.Index(transcript, endpoints[1]), strings.Index(transcript, endpoints[2]))
+	offsets := [3]int{
+		strings.Index(transcript, endpoints[0]),
+		strings.Index(transcript, endpoints[1]),
+		strings.Index(transcript, endpoints[2]),
+	}
+	for index, offset := range offsets {
+		require.NotEqual(t, -1, offset, "endpoint index %d", index)
+	}
+	require.Less(t, offsets[0], offsets[1])
+	require.Less(t, offsets[1], offsets[2])
 }
 
 func TestCloudflareTraceGetRawDataReportsSharedTimeoutOnce(t *testing.T) {
