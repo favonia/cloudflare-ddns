@@ -189,6 +189,8 @@ func readProvider(ppfmt pp.PP, key, keyDeprecated string,
 func readProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
 	field *map[ipnet.Family]provider.Provider,
 ) bool {
+	// Read into temporary values so both families can report errors and neither
+	// result is published unless both reads succeed.
 	ip4Provider := (*field)[ipnet.IP4]
 	ip6Provider := (*field)[ipnet.IP6]
 
@@ -209,6 +211,8 @@ func readProviderMap(ppfmt pp.PP, defaultPrefixLen map[ipnet.Family]int,
 		&ip6Provider,
 	)
 
+	// Drain after both reads so retired syntax in both families shares one
+	// migration hint.
 	if ppfmt.DrainRequests(pp.MessageRetiredCustomCloudflareTraceProvider) > 0 {
 		ppfmt.NoticeOncef(
 			pp.MessageRetiredCustomCloudflareTraceProvider,
