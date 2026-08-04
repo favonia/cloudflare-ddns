@@ -61,6 +61,10 @@ func (h httpCore) getBodyWithRetryableClient(
 	return body, true
 }
 
+// getBodyOnce performs one application-level request and rejects redirects so
+// one hedged attempt cannot move beyond its configured endpoint. It clones the
+// shared client before changing its redirect policy, leaving other providers
+// unchanged.
 func (h httpCore) getBodyOnce(ctx context.Context) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {

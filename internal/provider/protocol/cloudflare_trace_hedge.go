@@ -31,6 +31,10 @@ func cloudflareTraceHedgeDelay(ctx context.Context, now time.Time) time.Duration
 	return min(deadline.Sub(now)/20, maxCloudflareTraceHedgeDelay)
 }
 
+// runCloudflareTraceAttempts launches endpoints in order, accelerating the next
+// launch after a definite failure, and accepts the first successful completion.
+// Parent cancellation takes precedence, and every started worker is drained
+// before return.
 func runCloudflareTraceAttempts(
 	ctx context.Context,
 	endpoints []string,

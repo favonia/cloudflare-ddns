@@ -127,7 +127,7 @@ func TestReadProvider(t *testing.T) {
 		"cloudflare.trace": {ipnet.IP4, true, " cloudflare.trace", false, "", none, trace, true, nil},
 		"cloudflare.trace:retired URL": {
 			ipnet.IP4, true,
-			"cloudflare.trace:https://user:secret@example.invalid/cdn-cgi/trace?token=do-not-print#private",
+			"   cloudflare.trace:" + retiredCloudflareTraceURL + " ",
 			false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
@@ -141,7 +141,7 @@ func TestReadProvider(t *testing.T) {
 			},
 		},
 		"cloudflare.trace:": {
-			ipnet.IP4, true, "cloudflare.trace:", false, "", trace, trace, false,
+			ipnet.IP4, true, "   cloudflare.trace: ", false, "", trace, trace, false,
 			func(m *mocks.MockPP) {
 				gomock.InOrder(
 					m.EXPECT().Noticef(

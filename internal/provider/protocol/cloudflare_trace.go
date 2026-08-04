@@ -262,13 +262,13 @@ func describeCloudflareTraceFailure(failure traceFailure) string {
 		return fmt.Sprintf("failed to parse the provider URL: %v", failure.cause)
 	case traceFailureMismatchedH:
 		return fmt.Sprintf(
-			"the h field %q does not match the expected host %q; please report this at %s",
+			`the "h" field %q does not match the expected host %q; please report this at %s`,
 			failure.observed, failure.expected, pp.IssueReportingURL,
 		)
 	case traceFailureWarpOn:
-		return "the response has warp=on; the detected IP is a Cloudflare WARP egress IP, not your real public IP"
+		return `the "warp" field is "on"; the detected IP is a Cloudflare WARP egress IP, not your real public IP`
 	case traceFailureMissingIP:
-		return "the response does not contain an ip field"
+		return `the response does not contain an "ip" field`
 	case traceFailureUnparseableIP:
 		return fmt.Sprintf("failed to parse the IP address %q", failure.observed)
 	case traceFailureCloudflareIP:
@@ -304,11 +304,11 @@ func reportCloudflareTraceWinnerWarnings(
 	var missingFields string
 	switch {
 	case missingH && missingWarp:
-		missingFields = "the h (host) and warp fields"
+		missingFields = `the "h" (host) and "warp" fields`
 	case missingH:
-		missingFields = "the h (host) field"
+		missingFields = `the "h" (host) field`
 	case missingWarp:
-		missingFields = "the warp field"
+		missingFields = `the "warp" field`
 	default:
 		return
 	}
