@@ -68,4 +68,4 @@ It does not define:
 
 - `README.markdown` explanations, which belong in [README Writing](readme-writing.markdown)
 - one-off local wording that does not need a durable repository-wide rule
-- feature-specific warning triggers or contracts, which belong in `docs/designs/features/` when they are durable
+- feature-specific warning triggers or contracts, which belong in `docs/design/features/` when they are durable

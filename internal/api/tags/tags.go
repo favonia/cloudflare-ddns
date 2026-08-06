@@ -121,7 +121,7 @@ type Resolved struct {
 // When the effective fallback tag set is empty, only tags present in every
 // input set survive in Inherited and the remaining canonical tags are reported
 // in Dropped. This is the DNS tag-specific instantiation of the managed-record
-// reconciliation rule from docs/designs/features/managed-record-ownership.markdown.
+// reconciliation rule from docs/design/features/managed-record-ownership.markdown.
 func Resolve(tags [][]string) Resolved {
 	summary := summarizeSets(tags)
 	resolved := Resolved{

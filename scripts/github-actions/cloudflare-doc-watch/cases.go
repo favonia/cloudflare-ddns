@@ -298,8 +298,8 @@ var allWatches = []config{
 			"Re-check whether exact IPv6 addresses remain supported, because that affects the live /64 versus /128 default discussion.",
 		},
 		RelatedPaths: []string{
-			"docs/designs/features/ipv6-default-prefix-length-policy.markdown",
-			"docs/designs/features/lifecycle-model.markdown",
+			"docs/design/features/ipv6-default-prefix-length-policy.markdown",
+			"docs/design/features/lifecycle-model.markdown",
 			"internal/api/cloudflare_waf_list_items_test.go",
 			"internal/setter/setter.go",
 			"internal/updater/updater.go",

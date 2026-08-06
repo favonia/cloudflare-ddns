@@ -10,7 +10,7 @@ import (
 
 // TestLiteralRelations is a white-box unit test for the set-relation primitives
 // subsumes and disjoint. These are private helpers with no exported surface;
-// per docs/designs/guides/testing-boundaries.markdown they belong in a
+// per docs/design/guides/testing-boundaries.markdown they belong in a
 // *_internal_test.go file. The rule behavior they feed (R3/R4) is verified
 // black-box through LintExpression in lint_test.go.
 func TestLiteralRelations(t *testing.T) {

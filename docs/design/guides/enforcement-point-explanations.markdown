@@ -24,7 +24,7 @@ This note applies across the repository to explanatory text at the site where co
 
 It does not define:
 
-- feature-specific behavior, which belongs in `docs/designs/features/`
+- feature-specific behavior, which belongs in `docs/design/features/`
 - `README.markdown` writing rules, which belong in [README Writing](readme-writing.markdown)
-- retrieval or placement rules for `docs/designs/`, which belong in [docs/designs/README.markdown](../README.markdown)
+- retrieval or placement rules for `docs/design/`, which belong in [docs/design/README.markdown](../README.markdown)
 - local one-off wording that does not need a durable repository-wide rule

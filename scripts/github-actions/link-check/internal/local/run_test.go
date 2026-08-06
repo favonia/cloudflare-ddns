@@ -14,7 +14,7 @@ func TestInferRepoPathPrefixesUsesTrackedTopLevelDirectories(t *testing.T) {
 		"internal/api/ttl.go",
 		"scripts/github-actions/link-check/main.go",
 		".github/workflows/test.yml",
-		"docs/designs/README.markdown",
+		"docs/design/README.markdown",
 		"internal/config/env.go",
 	})
 

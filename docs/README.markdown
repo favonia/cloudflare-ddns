@@ -8,6 +8,6 @@ This directory holds the public documentation set beyond the top-level `README.m
 - `docs/CODE_OF_CONDUCT.markdown`: community conduct rules.
 - `docs/SECURITY.md`: supported versions and vulnerability reporting.
 - `docs/release-workflow.markdown`: maintainer release and feature-note conventions.
-- `docs/designs/`: durable design documents for future developers, including AI agents.
+- `docs/design/`: durable design documents for future developers, including AI agents.
 
-For `docs/designs/`, start with [`docs/designs/README.markdown`](designs/README.markdown).
+For `docs/design/`, start with [`docs/design/README.markdown`](design/README.markdown).

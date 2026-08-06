@@ -9,7 +9,7 @@ import (
 // AdvisoryPreviewLimit is the centralized advisory preview limit.
 // Keep advisory value previews short in operator-facing messages while
 // preserving full-fidelity values for mismatch or validation diagnostics.
-// See docs/designs/guides/operator-messages.markdown.
+// See docs/design/guides/operator-messages.markdown.
 const AdvisoryPreviewLimit = 48
 
 // QuoteOrEmptyLabel quotes non-empty strings and keeps a caller-defined label
@@ -59,7 +59,7 @@ func QuoteIfUnsafeInSentence(s string) string {
 // label unchanged.
 //
 // This is the advisory-preview form of the operator-message rule from
-// docs/designs/guides/operator-messages.markdown: keep advisory values short,
+// docs/design/guides/operator-messages.markdown: keep advisory values short,
 // but preserve explicit empty-state labels.
 func QuotePreviewOrEmptyLabel(s string, limit int, emptyLabel string) string {
 	if s == "" {

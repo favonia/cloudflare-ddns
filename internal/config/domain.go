@@ -208,7 +208,7 @@ func warnSuspiciousMACs(ppfmt pp.PP, policies map[domain.Domain]hostid6.Set) {
 // per disabled family listing every shadowed domain, and one hostid6 warning per
 // distinct host-ID set value listing every domain that carries it. This family
 // intent set is small and operator-authored, so grouping is the right shape (see
-// docs/designs/guides/operator-messages.markdown).
+// docs/design/guides/operator-messages.markdown).
 //
 // These per-intent warnings replace the older whole-domain "only for X but X is
 // disabled" warning: a domain listed only under a disabled family is covered by
