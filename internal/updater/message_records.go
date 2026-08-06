@@ -88,7 +88,7 @@ func describeIPs(ips []netip.Addr) string {
 // surface short status text. Failures can spend more words because they are the
 // messages users need to inspect. Notifier messages are more prose-like for
 // Shoutrrr and similar channels, so they use English joins instead. See
-// docs/designs/guides/operator-messages.markdown.
+// docs/design/guides/operator-messages.markdown.
 func describeIPsInEnglish(ips []netip.Addr) string {
 	return pp.EnglishJoinMapOrEmptyLabel(netip.Addr.String, ips, "(none)")
 }

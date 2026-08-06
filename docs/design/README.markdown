@@ -40,11 +40,11 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ## Directory Scope
 
-Use `docs/designs/` only for durable design information that is broader than one local edit.
+Use `docs/design/` only for durable design information that is broader than one local edit.
 
 - use `core/` for project-wide principles and architecture that affect many tasks
 - use `guides/` for shared editing or explanation rules reused across unrelated topics
 - use `features/` for durable feature contracts, invariants, and scope boundaries
 - update an existing note before adding a new one
 - add a new note only when no existing note can own the information cleanly and the information is durable, cross-file, and likely to matter again
-- keep temporary rollout notes, branch-local rationale, review notes, and one-file heuristics out of `docs/designs/`
+- keep temporary rollout notes, branch-local rationale, review notes, and one-file heuristics out of `docs/design/`

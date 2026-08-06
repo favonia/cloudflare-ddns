@@ -24,11 +24,11 @@ If you have code ready, please make a pull request. Before you do:
 
 3. Follow the coding style.
 
-   We use `golangci-lint` to enforce the coding style. You can wait for GitHub Actions or run `golangci-lint run` locally. If you need a local `//nolint`, treat it as an exception, not a second lint policy. Repository guidance for Go inline `//nolint` lives in [docs/designs/guides/go-lint-suppressions.markdown](designs/guides/go-lint-suppressions.markdown).
+   We use `golangci-lint` to enforce the coding style. You can wait for GitHub Actions or run `golangci-lint run` locally. If you need a local `//nolint`, treat it as an exception, not a second lint policy. Repository guidance for Go inline `//nolint` lives in [docs/design/guides/go-lint-suppressions.markdown](design/guides/go-lint-suppressions.markdown).
 
 4. Put documentation in the right place.
 
-   Use [docs/README.markdown](README.markdown) as the map for public docs. If you edit `docs/designs/`, start with [docs/designs/README.markdown](designs/README.markdown). If you edit `README.markdown`, follow [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown).
+   Use [docs/README.markdown](README.markdown) as the map for public docs. If you edit `docs/design/`, start with [docs/design/README.markdown](design/README.markdown). If you edit `README.markdown`, follow [docs/design/guides/readme-writing.markdown](design/guides/readme-writing.markdown).
 
 5. Open the pull request.
 

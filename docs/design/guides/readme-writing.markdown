@@ -65,6 +65,6 @@ This note applies only to `README.markdown`.
 
 It does not define:
 
-- durable feature semantics, which belong in `docs/designs/features/`
+- durable feature semantics, which belong in `docs/design/features/`
 - local message wording outside the README
 - changelog style or release-note policy beyond the README's need to signal operator-relevant availability or contract stability

@@ -5,11 +5,11 @@ This note records maintainer-facing conventions for preparing releases, especial
 ## Changelog
 
 1. Use the usual release-time process to generate the initial changelog entries.
-2. Before rewriting the release notes, inspect the release diff and the latest user-facing documents, especially `README.markdown` and any relevant files in `docs/designs/`.
+2. Before rewriting the release notes, inspect the release diff and the latest user-facing documents, especially `README.markdown` and any relevant files in `docs/design/`.
 3. Explain user-visible changes in terms of actual behavior, scope, and current terminology. Do not rely only on pull request titles or commit subjects.
 4. Before the release, remove duplicates, tighten wording, and group entries by type.
 5. For each release section, verify the version header, compare link, and release date.
-6. If release prep changes `README.markdown`, verify the release-specific notes there as well: availability notes and experimental markers should match actual feature state. For generic README-writing rules, use [docs/designs/guides/readme-writing.markdown](designs/guides/readme-writing.markdown).
+6. If release prep changes `README.markdown`, verify the release-specific notes there as well: availability notes and experimental markers should match actual feature state. For generic README-writing rules, use [docs/design/guides/readme-writing.markdown](design/guides/readme-writing.markdown).
 7. Verify that all experimental features emit a warning at runtime. Check that the code warns users when they enable a feature still marked experimental in `README.markdown`.
 
 ## Feature-Note Lifecycle

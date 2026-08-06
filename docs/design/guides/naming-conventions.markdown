@@ -46,4 +46,4 @@ It does not define:
 
 - local helper names whose meaning is obvious within one small file
 - public wording rules for logs or notices, which belong in [Operator Messages](operator-messages.markdown)
-- feature-specific ownership semantics, which belong in `docs/designs/features/`
+- feature-specific ownership semantics, which belong in `docs/design/features/`
