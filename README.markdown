@@ -450,7 +450,7 @@ docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest -
 docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://connectivity.cloudflareclient.com/cdn-cgi/trace
 ```
 
-If `curl` reports `Could not resolve host`, DNS resolution is failing from that same network stack; investigate Docker or host DNS rather than Cloudflare trace response handling. A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+If `curl` reports `Could not resolve host`, DNS resolution failed in the updater's container network. Check the host's DNS configuration and Docker's [DNS services](https://docs.docker.com/engine/network/#dns-services). A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
 
 If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
 
