@@ -35,6 +35,8 @@ const (
 	KindExtraComma
 	// KindMissingComma reports missing top-level commas accepted for compatibility.
 	KindMissingComma
+	// KindDomainBoundaryNormalization reports accepted domain-boundary cleanup.
+	KindDomainBoundaryNormalization
 )
 
 // HostID6Opinion is one parsed hostid6 assignment. Set carries the normalized
@@ -52,13 +54,16 @@ type Entry struct {
 	Span            syntax.Span
 }
 
-// Diagnostic describes one semantic failure in a parsed domain entry. Kind is
-// the classification; Detail carries the underlying error for kinds that have
-// one (it is nil for KindUnknownDomainField and the comma kinds).
+// Diagnostic describes one semantic failure or accepted compatibility cleanup
+// in a parsed domain entry. Kind is the classification; Detail carries the
+// underlying error for kinds that have one (it is nil for
+// KindUnknownDomainField and the compatibility kinds).
 type Diagnostic struct {
-	Span   syntax.Span
-	Kind   DiagnosticKind
-	Detail error
+	Span          syntax.Span
+	Kind          DiagnosticKind
+	Detail        error
+	Normalization domain.Normalization
+	Effective     domain.Domain
 }
 
 // Description renders the source-specific semantic failure without setting context.
@@ -78,6 +83,8 @@ func (diagnostic Diagnostic) Description(input string) string {
 		return "extra comma"
 	case KindMissingComma:
 		return "missing comma"
+	case KindDomainBoundaryNormalization:
+		return "__DOMAIN_BOUNDARY_NORMALIZATION__"
 	}
 
 	panic("domainentry: unknown diagnostic kind; this should not happen; please report it")
@@ -197,7 +204,7 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 	}
 
 	domainAtom := mustAtom(domainTree)
-	dom, _, err := domain.New(domainAtom.Token.Text)
+	dom, normalization, err := domain.New(domainAtom.Token.Text)
 	if err != nil {
 		var noEntry Entry
 		return noEntry, &Diagnostic{
@@ -212,7 +219,17 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 		var noEntry Entry
 		return noEntry, diagnostic
 	}
-	return Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}, nil
+	entry := Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}
+	if normalization != (domain.Normalization{}) {
+		state.diagnostics = append(state.diagnostics, Diagnostic{
+			Span:          domainAtom.Span(),
+			Kind:          KindDomainBoundaryNormalization,
+			Detail:        nil,
+			Normalization: normalization,
+			Effective:     dom,
+		})
+	}
+	return entry, nil
 }
 
 func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]HostID6Opinion, *Diagnostic) {

@@ -21,6 +21,14 @@ func describeSet(set hostid6.Set) []string {
 	return descriptions
 }
 
+func diagnosticKinds(diagnostics []domainentry.Diagnostic) []domainentry.DiagnosticKind {
+	kinds := make([]domainentry.DiagnosticKind, len(diagnostics))
+	for i, diagnostic := range diagnostics {
+		kinds[i] = diagnostic.Kind
+	}
+	return kinds
+}
+
 func TestParseEntriesPlainEntryExactSpan(t *testing.T) {
 	t.Parallel()
 
@@ -328,6 +336,151 @@ func TestParseEntriesReportsExtraTrailingCommas(t *testing.T) {
 	require.Equal(t, domainentry.KindExtraComma, diagnostics[0].Kind)
 }
 
+func TestParseEntriesReportsBoundaryNormalizations(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name          string
+		input         string
+		span          syntax.Span
+		normalization domain.Normalization
+		effective     domain.Domain
+	}{
+		{
+			name:          "leading dots",
+			input:         ".good.example",
+			span:          syntax.Span{Start: 0, End: 13},
+			normalization: domain.Normalization{RemovedLeadingDots: true},
+			effective:     domain.FQDN("good.example"),
+		},
+		{
+			name:          "extra trailing dots",
+			input:         "good.example..",
+			span:          syntax.Span{Start: 0, End: 14},
+			normalization: domain.Normalization{RemovedExtraTrailingDots: true},
+			effective:     domain.FQDN("good.example"),
+		},
+		{
+			name:  "combined boundary dots",
+			input: ".good.example..",
+			span:  syntax.Span{Start: 0, End: 15},
+			normalization: domain.Normalization{
+				RemovedLeadingDots:       true,
+				RemovedExtraTrailingDots: true,
+			},
+			effective: domain.FQDN("good.example"),
+		},
+		{
+			name:          "hostid6 field",
+			input:         ".good.example{hostid6=::1}",
+			span:          syntax.Span{Start: 0, End: 13},
+			normalization: domain.Normalization{RemovedLeadingDots: true},
+			effective:     domain.FQDN("good.example"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainentry.Parse(tc.input)
+
+			require.Nil(t, err)
+			require.Len(t, entries, 1)
+			require.Equal(t, tc.effective, entries[0].Domain)
+			if tc.name == "hostid6 field" {
+				require.Len(t, entries[0].HostID6Opinions, 1)
+			}
+			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindDomainBoundaryNormalization}, diagnosticKinds(diagnostics))
+			require.Equal(t, tc.span, diagnostics[0].Span)
+			require.Nil(t, diagnostics[0].Detail)
+			require.Equal(t, tc.normalization, diagnostics[0].Normalization)
+			require.Equal(t, tc.effective, diagnostics[0].Effective)
+		})
+	}
+}
+
+func TestParseEntriesPreservesRepeatedBoundaryNormalizations(t *testing.T) {
+	t.Parallel()
+
+	input := ".good.example,.good.example"
+	entries, diagnostics, err := domainentry.Parse(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domain.Domain{
+		domain.FQDN("good.example"),
+		domain.FQDN("good.example"),
+	}, []domain.Domain{entries[0].Domain, entries[1].Domain})
+	require.Equal(t, []domainentry.DiagnosticKind{
+		domainentry.KindDomainBoundaryNormalization,
+		domainentry.KindDomainBoundaryNormalization,
+	}, diagnosticKinds(diagnostics))
+	for i, span := range []syntax.Span{{Start: 0, End: 13}, {Start: 14, End: 27}} {
+		require.Equal(t, span, diagnostics[i].Span)
+		require.Equal(t, domain.Normalization{RemovedLeadingDots: true}, diagnostics[i].Normalization)
+		require.Equal(t, domain.FQDN("good.example"), diagnostics[i].Effective)
+	}
+}
+
+func TestParseEntriesRecoversAfterEmptyInteriorLabel(t *testing.T) {
+	t.Parallel()
+
+	input := ".good.example,a..bad.example,also.good.example.."
+	entries, diagnostics, err := domainentry.Parse(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domain.Domain{
+		domain.FQDN("good.example"),
+		domain.FQDN("also.good.example"),
+	}, []domain.Domain{entries[0].Domain, entries[1].Domain})
+	require.Equal(t, []domainentry.DiagnosticKind{
+		domainentry.KindDomainBoundaryNormalization,
+		domainentry.KindInvalidDomain,
+		domainentry.KindDomainBoundaryNormalization,
+	}, diagnosticKinds(diagnostics))
+	require.Equal(t, syntax.Span{Start: 0, End: 13}, diagnostics[0].Span)
+	require.Equal(t, syntax.Span{Start: 14, End: 28}, diagnostics[1].Span)
+	require.ErrorIs(t, diagnostics[1].Detail, domain.ErrEmptyInteriorLabel)
+	require.Zero(t, diagnostics[1].Normalization)
+	require.Nil(t, diagnostics[1].Effective)
+	require.Equal(t, syntax.Span{Start: 29, End: 48}, diagnostics[2].Span)
+	require.Equal(t, domain.Normalization{RemovedExtraTrailingDots: true}, diagnostics[2].Normalization)
+	require.Equal(t, domain.FQDN("also.good.example"), diagnostics[2].Effective)
+}
+
+func TestParseEntriesRejectsFatalWildcardEmptyLabels(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{
+		"*..example.org",
+		"*...example.org",
+		"*.a..example.org",
+	} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainentry.Parse(input)
+
+			require.Nil(t, err)
+			require.Empty(t, entries)
+			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindInvalidDomain}, diagnosticKinds(diagnostics))
+			require.ErrorIs(t, diagnostics[0].Detail, domain.ErrEmptyInteriorLabel)
+			require.Zero(t, diagnostics[0].Normalization)
+			require.Nil(t, diagnostics[0].Effective)
+		})
+	}
+}
+
+func TestParseEntriesSuppressesBoundaryNormalizationForRejectedFields(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainentry.Parse(".good.example{unknown=::1}")
+
+	require.Nil(t, err)
+	require.Empty(t, entries)
+	require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindUnknownDomainField}, diagnosticKinds(diagnostics))
+	require.Zero(t, diagnostics[0].Normalization)
+	require.Nil(t, diagnostics[0].Effective)
+}
+
 func TestParseEntriesRejectsExtraTrailingCommasInStrictLists(t *testing.T) {
 	t.Parallel()
 
@@ -379,6 +532,20 @@ func TestEntryDiagnosticDescriptionsForCommaKinds(t *testing.T) {
 	require.Equal(t, "extra comma", diagnostics[0].Description(input))
 	require.Equal(t, domainentry.KindMissingComma, diagnostics[1].Kind)
 	require.Equal(t, "missing comma", diagnostics[1].Description(input))
+}
+
+func TestEntryDiagnosticDescriptionForBoundaryNormalization(t *testing.T) {
+	t.Parallel()
+
+	diagnostic := domainentry.Diagnostic{
+		Span:          syntax.Span{Start: 0, End: 13},
+		Kind:          domainentry.KindDomainBoundaryNormalization,
+		Detail:        nil,
+		Normalization: domain.Normalization{RemovedLeadingDots: true},
+		Effective:     domain.FQDN("good.example"),
+	}
+
+	require.Equal(t, "__DOMAIN_BOUNDARY_NORMALIZATION__", diagnostic.Description(".good.example"))
 }
 
 func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {

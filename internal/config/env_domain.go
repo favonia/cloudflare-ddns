@@ -3,11 +3,15 @@ package config
 import (
 	"errors"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
+
+const domainBoundaryNormalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q source=%q effective=%s leading=%t extra-trailing=%t"
+const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q source=%q"
 
 func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic domainentry.Diagnostic) bool {
 	switch diagnostic.Kind {
@@ -21,9 +25,22 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 			"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
-	default:
-		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
+	case domainentry.KindDomainBoundaryNormalization:
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			domainBoundaryNormalizationSentinel,
+			key, input, input[diagnostic.Span.Start:diagnostic.Span.End], diagnostic.Effective,
+			diagnostic.Normalization.RemovedLeadingDots,
+			diagnostic.Normalization.RemovedExtraTrailingDots)
+		return true
+	case domainentry.KindInvalidDomain:
+		if errors.Is(diagnostic.Detail, domain.ErrEmptyInteriorLabel) {
+			ppfmt.Noticef(pp.EmojiUserError,
+				emptyInteriorLabelSentinel,
+				key, input, input[diagnostic.Span.Start:diagnostic.Span.End])
+			return false
+		}
 	}
+	ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
 	return false
 }
 
