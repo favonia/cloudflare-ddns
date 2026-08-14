@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 // unknownExpr is a test-only Expr implementation outside the parser's vocabulary,
@@ -79,4 +80,12 @@ func TestExprString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExprStringCanonicalBoundaryAcceptedValues(t *testing.T) {
+	t.Parallel()
+
+	expr, ok := ParseExpression(pp.NewSilent(), "PROXIED", "is(.example.org..) && sub(..)")
+	require.True(t, ok)
+	require.Equal(t, "is(example.org) && sub(.)", exprString(expr))
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainexp"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 )
@@ -24,6 +25,8 @@ func parseQuiet(t *testing.T, input string) (domainexp.Expr, bool) {
 		gomock.Any(), gomock.Any()).AnyTimes()
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return domainexp.ParseExpression(ppfmt, "PROXIED", input)
 }
 
@@ -109,4 +112,26 @@ func TestSubBareStarAdvisory(t *testing.T) {
 	ppfmt.EXPECT().Noticef(gomock.Any(), gomock.Any(), "PROXIED", `"sub(*)"`, "*")
 	_, ok := domainexp.ParseExpression(ppfmt, "PROXIED", "sub(*)")
 	require.True(t, ok)
+}
+
+func TestValidateBoundaryNormalizedExpressions(t *testing.T) {
+	t.Parallel()
+
+	match, ok := parseQuiet(t, "is(.example.org..)")
+	require.True(t, ok)
+	canonical, _, err := domain.New("example.org")
+	require.NoError(t, err)
+	require.True(t, domainexp.Evaluate(match, canonical))
+
+	root, ok := parseQuiet(t, "sub(..)")
+	require.True(t, ok)
+	require.True(t, domainexp.Evaluate(root, canonical))
+	bareRoot, _, err := domain.New(".")
+	require.ErrorIs(t, err, domain.ErrTooFewLabels)
+	require.False(t, domainexp.Evaluate(root, bareRoot))
+
+	for _, input := range []string{"sub(*..example.org)", "sub(*...example.org)"} {
+		_, ok := parseQuiet(t, input)
+		require.Falsef(t, ok, "expected %q to reject its empty interior label", input)
+	}
 }

@@ -14,6 +14,36 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
+const domainBoundaryNormalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q context=%s source=%q effective=%s leading=%t extra-trailing=%t"
+const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q context=%s source=%q"
+
+type normalizationContext uint8
+
+const (
+	normalizationList normalizationContext = iota
+	normalizationIs
+	normalizationSub
+)
+
+type boundaryNormalization struct {
+	context       normalizationContext
+	source        string
+	effective     string
+	normalization domain.Normalization
+}
+
+func (context normalizationContext) String() string {
+	switch context {
+	case normalizationList:
+		return "list"
+	case normalizationIs:
+		return "is"
+	case normalizationSub:
+		return "sub"
+	}
+	panic("domainexp: unknown normalization context")
+}
+
 type parserState struct {
 	// Empty-call functions are kept in first-occurrence order and deduplicated.
 	emptyCallFunctions []string
@@ -27,6 +57,8 @@ type parserState struct {
 	// sub(...) wildcard arguments skipped and reported, deduplicated (the L1
 	// advisory).
 	subWildcards []domain.Domain
+	// Boundary normalizations remain per occurrence, in parse encounter order.
+	boundaryNormalizations []boundaryNormalization
 }
 
 // listSyntaxPreview formats potentially long list syntax for advisory messages.
@@ -65,8 +97,29 @@ func (state *parserState) recordSubWildcard(w domain.Domain) {
 	state.subWildcards = append(state.subWildcards, w)
 }
 
+func (state *parserState) recordBoundaryNormalization(
+	context normalizationContext,
+	source string,
+	effective string,
+	normalization domain.Normalization,
+) {
+	if normalization == (domain.Normalization{}) {
+		return
+	}
+	state.boundaryNormalizations = append(state.boundaryNormalizations, boundaryNormalization{
+		context: context, source: source, effective: effective, normalization: normalization,
+	})
+}
+
 // reportListDiagnostics emits the compatibility warnings accumulated while flattening a domain list.
 func reportListDiagnostics(ppfmt pp.PP, key string, input string, state *parserState) {
+	for _, entry := range state.boundaryNormalizations {
+		arguments := []any{
+			key, input, entry.context.String(), entry.source, entry.effective,
+			entry.normalization.RemovedLeadingDots, entry.normalization.RemovedExtraTrailingDots,
+		}
+		ppfmt.Noticef(pp.EmojiUserWarning, domainBoundaryNormalizationSentinel, arguments...)
+	}
 	if state.extraComma {
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
@@ -132,6 +185,13 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 				`record itself, or sub(%s) to match subdomains of %s`,
 			key, listSyntaxPreview(input), ws, ws, parent, parent)
 	}
+	for _, entry := range state.boundaryNormalizations {
+		arguments := []any{
+			key, input, entry.context.String(), entry.source, entry.effective,
+			entry.normalization.RemovedLeadingDots, entry.normalization.RemovedExtraTrailingDots,
+		}
+		ppfmt.Noticef(pp.EmojiUserWarning, domainBoundaryNormalizationSentinel, arguments...)
+	}
 	if state.extraComma {
 		ppfmt.Noticef(
 			pp.EmojiUserWarning,
@@ -173,6 +233,11 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 	case errors.Is(err, syntax.ErrUnexpectedToken):
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, input[err.Span.Start:err.Span.End])
 	case invalidDomainOK:
+		if errors.Is(invalidDomain.cause, domain.ErrEmptyInteriorLabel) {
+			arguments := []any{key, input, invalidDomain.context.String(), input[err.Span.Start:err.Span.End]}
+			ppfmt.Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, arguments...)
+			return
+		}
 		ppfmt.Noticef(pp.EmojiUserError,
 			`%s (%q) has the domain %q in is(...) or sub(...), but it is malformed: %v`,
 			key, input, invalidDomain.domain, invalidDomain.cause)

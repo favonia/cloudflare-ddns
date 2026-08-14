@@ -60,9 +60,14 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 
 	domains := make([]domain.Domain, 0, len(list))
 	for i, token := range list {
-		d, _, domainErr := domain.New(token.Text)
+		d, normalization, domainErr := domain.New(token.Text)
 		if domainErr != nil {
 			reportListDiagnostics(ppfmt, key, input, state)
+			if errors.Is(domainErr, domain.ErrEmptyInteriorLabel) {
+				arguments := []any{key, input, normalizationList.String(), token.Text}
+				ppfmt.Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, arguments...)
+				return nil, false
+			}
 			if errors.Is(domainErr, domain.ErrTooFewLabels) {
 				ppfmt.Noticef(
 					pp.EmojiUserError,
@@ -76,6 +81,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 				pp.Ordinal(i+1), key, input, d.String(), domainErr)
 			return nil, false
 		}
+		state.recordBoundaryNormalization(normalizationList, token.Text, d.String(), normalization)
 		domains = append(domains, d)
 	}
 	reportListDiagnostics(ppfmt, key, input, state)

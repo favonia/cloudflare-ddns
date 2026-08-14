@@ -132,6 +132,166 @@ func TestParseList(t *testing.T) {
 	}
 }
 
+func TestParseListBoundaryNormalization(t *testing.T) {
+	t.Parallel()
+
+	const normalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q context=%s source=%q effective=%s leading=%t extra-trailing=%t"
+	const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q context=%s source=%q"
+	const key = "DOMAINS"
+	type f = domain.FQDN
+
+	for name, tc := range map[string]struct {
+		input   string
+		want    []domain.Domain
+		ok      bool
+		prepare func(*mocks.MockPP)
+	}{
+		"leading": {
+			input: ".good.example",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+					key, ".good.example", "list", ".good.example", "good.example", true, false)
+			},
+		},
+		"extra-trailing": {
+			input: "good.example..",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+					key, "good.example..", "list", "good.example..", "good.example", false, true)
+			},
+		},
+		"combined-unicode-separators": {
+			input: "\u3002good.example\uff0e\uff61",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+					key, "\u3002good.example\uff0e\uff61", "list", "\u3002good.example\uff0e\uff61", "good.example", true, true)
+			},
+		},
+		"repeated-effective-targets-in-encounter-order": {
+			input: ".good.example,good.example..,.good.example",
+			want:  []domain.Domain{f("good.example"), f("good.example"), f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+						key, ".good.example,good.example..,.good.example", "list", ".good.example", "good.example", true, false),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+						key, ".good.example,good.example..,.good.example", "list", "good.example..", "good.example", false, true),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+						key, ".good.example,good.example..,.good.example", "list", ".good.example", "good.example", true, false),
+				)
+			},
+		},
+		"normalization-precedes-extra-comma": {
+			input: ",.good.example..",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+						key, ",.good.example..", "list", ".good.example..", "good.example", true, true),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, `",.good.example.."`),
+				)
+			},
+		},
+		"accepted-normalized-atom-before-fatal-empty-interior-label": {
+			input: ".good.example,a..bad.example",
+			want:  nil,
+			ok:    false,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+						key, ".good.example,a..bad.example", "list", ".good.example", "good.example", true, false),
+					m.EXPECT().Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel,
+						key, ".good.example,a..bad.example", "list", "a..bad.example"),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			tc.prepare(mockPP)
+
+			got, ok := domainexp.ParseList(mockPP, key, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.want, got)
+		})
+	}
+
+	for _, input := range []string{"a..example.org", "*..example.org", "*.a..example.org"} {
+		t.Run("fatal-empty-interior-label/"+input, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, key, input, "list", input)
+
+			got, ok := domainexp.ParseList(mockPP, key, input)
+			require.False(t, ok)
+			require.Nil(t, got)
+		})
+	}
+}
+
+func TestParseExpressionBoundaryNormalization(t *testing.T) {
+	t.Parallel()
+
+	const normalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q context=%s source=%q effective=%s leading=%t extra-trailing=%t"
+	const key = "PROXIED"
+	const input = "is(.example.org, .example.org, example.org..) || sub(..) || sub(*.example.org..)"
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(),
+			key, gomock.Any(), "*.example.org", "*.example.org", "example.org", "example.org"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+			key, input, "is", ".example.org", "example.org", true, false),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+			key, input, "is", ".example.org", "example.org", true, false),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+			key, input, "is", "example.org..", "example.org", false, true),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+			key, input, "sub", "..", ".", false, true),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel,
+			key, input, "sub", "*.example.org..", "*.example.org", false, true),
+	)
+
+	expr, ok := domainexp.ParseExpression(mockPP, key, input)
+	require.True(t, ok)
+	require.True(t, domainexp.Evaluate(expr, domain.FQDN("example.org")))
+	require.True(t, domainexp.Evaluate(expr, domain.FQDN("www.example.org")))
+}
+
+func TestParseExpressionEmptyInteriorLabel(t *testing.T) {
+	t.Parallel()
+
+	const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q context=%s source=%q"
+	for _, tc := range []struct {
+		input   string
+		context string
+		source  string
+	}{
+		{"is(a..example.org)", "is", "a..example.org"},
+		{"sub(*..example.org)", "sub", "*..example.org"},
+		{"sub(*...example.org)", "sub", "*...example.org"},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel,
+				"PROXIED", tc.input, tc.context, tc.source)
+
+			expr, ok := domainexp.ParseExpression(mockPP, "PROXIED", tc.input)
+			require.False(t, ok)
+			require.Nil(t, expr)
+		})
+	}
+}
+
 type ErrorMatcher struct {
 	Error error
 }

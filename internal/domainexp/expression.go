@@ -47,8 +47,9 @@ func (subExpr) expr() {}
 // is malformed (any error other than the soft, accepted-and-kept cases). It
 // carries the canonical form for quoting.
 type invalidDomainError struct {
-	domain string // canonical text of the rejected argument
-	cause  error  // the underlying domain.New / domain.NewSuffix error
+	context normalizationContext
+	domain  string // canonical text of the rejected argument
+	cause   error  // the underlying domain.New / domain.NewSuffix error
 }
 
 func (e *invalidDomainError) Error() string { return e.cause.Error() }
@@ -124,17 +125,23 @@ func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Pars
 	}
 	domains := make([]domain.Domain, 0, len(list))
 	for _, token := range list {
-		d, _, derr := domain.New(token.Text)
+		d, normalization, derr := domain.New(token.Text)
 		switch {
 		case derr == nil:
+			state.recordBoundaryNormalization(normalizationIs, token.Text, d.String(), normalization)
 			domains = append(domains, d)
 		case errors.Is(derr, domain.ErrTooFewLabels):
 			state.recordShortIsTarget(d.String())
+			state.recordBoundaryNormalization(normalizationIs, token.Text, d.String(), normalization)
 			domains = append(domains, d)
 		default:
+			invalidDomain := domain.StringToASCII(token.Text)
+			if d != nil {
+				invalidDomain = d.String()
+			}
 			return nil, &syntax.ParseError{
 				Span:  token.Span,
-				Cause: &invalidDomainError{domain: d.String(), cause: derr},
+				Cause: &invalidDomainError{context: normalizationIs, domain: invalidDomain, cause: derr},
 			}
 		}
 	}
@@ -158,19 +165,21 @@ func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Par
 	}
 	suffixes := make([]domain.Suffix, 0, len(list))
 	for _, token := range list {
-		s, _, serr := domain.NewSuffix(token.Text)
+		s, normalization, serr := domain.NewSuffix(token.Text)
 		switch {
 		case serr == nil:
+			state.recordBoundaryNormalization(normalizationSub, token.Text, s.String(), normalization)
 			suffixes = append(suffixes, s)
 		case errors.Is(serr, domain.ErrWildcardSuffix):
 			// Skip + record the wildcard for the L1 advisory. Parse it as a
 			// Domain only to render the canonical "*.X" form for the message.
 			wd, _, _ := domain.New(token.Text)
 			state.recordSubWildcard(wd)
+			state.recordBoundaryNormalization(normalizationSub, token.Text, wd.String(), normalization)
 		default:
 			return nil, &syntax.ParseError{
 				Span:  token.Span,
-				Cause: &invalidDomainError{domain: domain.StringToASCII(token.Text), cause: serr},
+				Cause: &invalidDomainError{context: normalizationSub, domain: domain.StringToASCII(token.Text), cause: serr},
 			}
 		}
 	}
