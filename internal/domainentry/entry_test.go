@@ -449,19 +449,23 @@ func TestParseEntriesRecoversAfterEmptyInteriorLabel(t *testing.T) {
 func TestParseEntriesRejectsFatalWildcardEmptyLabels(t *testing.T) {
 	t.Parallel()
 
-	for _, input := range []string{
-		"*..example.org",
-		"*...example.org",
-		"*.a..example.org",
+	for _, tc := range []struct {
+		input string
+		span  syntax.Span
+	}{
+		{input: "*..example.org", span: syntax.Span{Start: 0, End: 14}},
+		{input: "*...example.org", span: syntax.Span{Start: 0, End: 15}},
+		{input: "*.a..example.org", span: syntax.Span{Start: 0, End: 16}},
 	} {
-		t.Run(input, func(t *testing.T) {
+		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 
-			entries, diagnostics, err := domainentry.Parse(input)
+			entries, diagnostics, err := domainentry.Parse(tc.input)
 
 			require.Nil(t, err)
 			require.Empty(t, entries)
 			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindInvalidDomain}, diagnosticKinds(diagnostics))
+			require.Equal(t, tc.span, diagnostics[0].Span)
 			require.ErrorIs(t, diagnostics[0].Detail, domain.ErrEmptyInteriorLabel)
 			require.Zero(t, diagnostics[0].Normalization)
 			require.Nil(t, diagnostics[0].Effective)

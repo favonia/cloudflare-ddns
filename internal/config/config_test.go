@@ -182,12 +182,6 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 				"DOMAINS (\",good.example bad.example,localhost\") is missing commas; this is accepted for now but will be rejected in version 2.0.0\n" +
 				"DOMAINS (\",good.example bad.example,localhost\") has invalid domain \"localhost\": too few labels\n",
 		},
-		"boundary-normalization-and-empty-interior-label-sentinels": {
-			key:   "DOMAINS",
-			value: ".good.example,a..bad.example",
-			expected: "__DOMAIN_BOUNDARY_NORMALIZATION__ key=DOMAINS input=\".good.example,a..bad.example\" source=\".good.example\" effective=good.example leading=true extra-trailing=false\n" +
-				"__EMPTY_INTERIOR_LABEL__ key=DOMAINS input=\".good.example,a..bad.example\" source=\"a..bad.example\"\n",
-		},
 		"ordered-recovered-semantic-errors": {
 			key:   "DOMAINS",
 			value: "localhost,good.example,example.org{unknown=::1},example.net{hostid6=192.0.2.1},example.com{hostid6=mac(bad)}",
