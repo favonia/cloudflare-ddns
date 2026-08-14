@@ -94,7 +94,7 @@ docker run \
   favonia/cloudflare-ddns:1
 ```
 
-The GHCR mirror at `ghcr.io/favonia/cloudflare-ddns` (unreleased) will use the same image tags and platforms.
+The GHCR mirror at `ghcr.io/favonia/cloudflare-ddns` (unreleased) will use the same image tags.
 
 ⚠️ `PROXIED=true` does not change the proxy statuses of existing records. See [DNS and WAF Fallback Values](#dns-and-waf-fallback-values).
 
