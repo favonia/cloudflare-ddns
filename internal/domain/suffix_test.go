@@ -69,35 +69,58 @@ func TestSuffixHasStrictSuffix(t *testing.T) {
 func TestNewSuffix(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]struct {
-		input    string
-		expected domain.Suffix
-		ok       bool
+		input         string
+		expected      domain.Suffix
+		normalization domain.Normalization
+		err           error
 	}{
-		{"example.org", "example.org", true},
-		{"org", "org", true},                  // single label accepted (looser than New)
-		{".", "", true},                       // root accepted
-		{"", "", true},                        // empty is the root
-		{"example.org.", "example.org", true}, // trailing dot trimmed
-		{"tHe.CaPiTaL.cAsE", "the.capital.case", true},
-		{"\u0080.com", "", false},    // malformed: disallowed rune rejected
-		{"*", "", false},             // wildcard rejected
-		{"*.example.org", "", false}, // wildcard rejected
+		{"", "", domain.Normalization{}, nil},
+		{".", "", domain.Normalization{}, nil},
+		{"..", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"...", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org", "example.org", domain.Normalization{}, nil},
+		{"org", "org", domain.Normalization{}, nil},
+		{"example.org.", "example.org", domain.Normalization{}, nil},
+		{".example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"example.org..", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"..example.org...", "example.org", domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
+		{"\u3002", "", domain.Normalization{}, nil},
+		{"\uff0e\uff0e", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"\uff61\uff61\uff61", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"\u3002example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"\uff0eexample.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"\uff61example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"example.org\u3002\u3002", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org\uff0e\uff0e", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org\uff61\uff61", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"\u3002example.org\uff0e\uff61", "example.org", domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
+		{"a..org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*..a.org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*.a..org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*.example.org", "", domain.Normalization{}, domain.ErrWildcardSuffix},
+		{"*.example.org..", "", domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrWildcardSuffix},
+		{"*", "", domain.Normalization{}, domain.ErrWildcardSuffix},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			got, err := domain.NewSuffix(tc.input)
-			if tc.ok {
+			got, normalization, err := domain.NewSuffix(tc.input)
+			require.Equal(t, tc.expected, got)
+			require.Equal(t, tc.normalization, normalization)
+			if tc.err == nil {
 				require.NoError(t, err)
-				require.Equal(t, tc.expected, got)
 			} else {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tc.err)
 			}
 		})
 	}
+
+	_, normalization, err := domain.NewSuffix("\u0080.com")
+	require.Zero(t, normalization)
+	require.EqualError(t, err, "idna: disallowed rune U+0080")
 }
 
 func TestNewSuffixWildcardError(t *testing.T) {
 	t.Parallel()
-	_, err := domain.NewSuffix("*.example.org")
+	_, _, err := domain.NewSuffix("*.example.org")
 	require.ErrorIs(t, err, domain.ErrWildcardSuffix)
 }

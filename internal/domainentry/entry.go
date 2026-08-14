@@ -197,7 +197,7 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 	}
 
 	domainAtom := mustAtom(domainTree)
-	dom, err := domain.New(domainAtom.Token.Text)
+	dom, _, err := domain.New(domainAtom.Token.Text)
 	if err != nil {
 		var noEntry Entry
 		return noEntry, &Diagnostic{

@@ -18,25 +18,28 @@ var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 // (not layered on it): it is looser — it accepts a single label (org) and the
 // root (. or "") — and stricter — it rejects any wildcard (* or *.example.org).
 // It applies the same IDNA normalization New uses for the ASCII form.
-func NewSuffix(suffix string) (Suffix, error) {
-	normalized, err := profileDroppingLeadingDots.ToASCII(suffix)
+func NewSuffix(input string) (Suffix, Normalization, error) {
+	ascii, err := profileKeepingLeadingDots.ToASCII(input)
+	normalized, normalization := normalizeBoundary(ascii)
 
-	// Remove the final dot for consistency, matching New.
-	normalized = strings.TrimRight(normalized, ".")
-
-	// A wildcard has no strict subdomains, so it cannot be a suffix. Detect it on
-	// the normalized form, exactly where New detects it.
-	if normalized == "*" {
-		return "", ErrWildcardSuffix
+	if suffix, ok := strings.CutPrefix(normalized, "*."); ok {
+		_, suffixNormalization, suffixErr := newWildcard(suffix, normalization)
+		if suffixErr != nil && !errors.Is(suffixErr, ErrTooFewLabels) {
+			return "", Normalization{}, suffixErr
+		}
+		return "", normalization.combine(suffixNormalization), ErrWildcardSuffix
 	}
-	if _, ok := strings.CutPrefix(normalized, "*."); ok {
-		return "", ErrWildcardSuffix
+	if normalized == "*" {
+		return "", normalization, ErrWildcardSuffix
 	}
 
 	if err != nil {
-		return Suffix(normalized), err
+		return Suffix(normalized), Normalization{}, err
 	}
-	return Suffix(normalized), nil
+	if hasEmptyInteriorLabel(normalized) {
+		return "", Normalization{}, ErrEmptyInteriorLabel
+	}
+	return Suffix(normalized), normalization, nil
 }
 
 // DNSNameASCII gives the ASCII name used for matching, the Cloudflare zone name,

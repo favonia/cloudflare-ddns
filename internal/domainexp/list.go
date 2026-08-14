@@ -60,7 +60,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 
 	domains := make([]domain.Domain, 0, len(list))
 	for i, token := range list {
-		d, domainErr := domain.New(token.Text)
+		d, _, domainErr := domain.New(token.Text)
 		if domainErr != nil {
 			reportListDiagnostics(ppfmt, key, input, state)
 			if errors.Is(domainErr, domain.ErrTooFewLabels) {

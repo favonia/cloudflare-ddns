@@ -124,7 +124,7 @@ func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Pars
 	}
 	domains := make([]domain.Domain, 0, len(list))
 	for _, token := range list {
-		d, derr := domain.New(token.Text)
+		d, _, derr := domain.New(token.Text)
 		switch {
 		case derr == nil:
 			domains = append(domains, d)
@@ -158,14 +158,14 @@ func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Par
 	}
 	suffixes := make([]domain.Suffix, 0, len(list))
 	for _, token := range list {
-		s, serr := domain.NewSuffix(token.Text)
+		s, _, serr := domain.NewSuffix(token.Text)
 		switch {
 		case serr == nil:
 			suffixes = append(suffixes, s)
 		case errors.Is(serr, domain.ErrWildcardSuffix):
 			// Skip + record the wildcard for the L1 advisory. Parse it as a
 			// Domain only to render the canonical "*.X" form for the message.
-			wd, _ := domain.New(token.Text)
+			wd, _, _ := domain.New(token.Text)
 			state.recordSubWildcard(wd)
 		default:
 			return nil, &syntax.ParseError{

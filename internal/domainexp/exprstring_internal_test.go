@@ -33,7 +33,7 @@ func TestExprString(t *testing.T) {
 	toDomains := func(ss ...string) []domain.Domain {
 		ds := make([]domain.Domain, len(ss))
 		for i, s := range ss {
-			d, err := domain.New(s)
+			d, _, err := domain.New(s)
 			if err != nil {
 				t.Fatalf("domain.New(%q): %v", s, err)
 			}
@@ -44,7 +44,7 @@ func TestExprString(t *testing.T) {
 	toSuffixes := func(ss ...string) []domain.Suffix {
 		suffixes := make([]domain.Suffix, len(ss))
 		for i, s := range ss {
-			suffix, err := domain.NewSuffix(s)
+			suffix, _, err := domain.NewSuffix(s)
 			if err != nil {
 				t.Fatalf("domain.NewSuffix(%q): %v", s, err)
 			}

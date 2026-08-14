@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"testing/quick"
 
@@ -11,6 +12,58 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+	type f = domain.FQDN
+	type w = domain.Wildcard
+	for _, tc := range [...]struct {
+		input         string
+		expected      domain.Domain
+		normalization domain.Normalization
+		err           error
+	}{
+		{"example.org", f("example.org"), domain.Normalization{}, nil},
+		{"example.org.", f("example.org"), domain.Normalization{}, nil},
+		{".example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"..example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"example.org..", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org...", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"..example.org...", f("example.org"), domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
+		{"*.example.org", w("example.org"), domain.Normalization{}, nil},
+		{"*.example.org.", w("example.org"), domain.Normalization{}, nil},
+		{"*.example.org..", w("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"......", f(""), domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrTooFewLabels},
+		{"*......", w(""), domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrTooFewLabels},
+		{"a..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*...example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"*.a..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"\u3002example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"\uff0eexample.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"\uff61example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
+		{"example.org\u3002\u3002", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org\uff0e\uff0e", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"example.org\uff61\uff61", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
+		{"\u3002example.org\uff0e\uff61", f("example.org"), domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
+		{"a\u3002\u3002example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"a\uff0e\uff0eexample.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"a\uff61\uff61example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"a\u3002\uff0eexample.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			got, normalization, err := domain.New(tc.input)
+			require.Equal(t, tc.expected, got)
+			require.Equal(t, tc.normalization, normalization)
+			if tc.err == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, tc.err)
+			}
+		})
+	}
+}
+
+func TestNewIDNA(t *testing.T) {
 	t.Parallel()
 	type f = domain.FQDN
 	type w = domain.Wildcard
@@ -88,23 +141,14 @@ func TestNew(t *testing.T) {
 		{"*.نامه\u200Cای.de", w("xn--mgba3gch31f060k.de"), true, ""},
 		// some other test cases
 		{"xn--a.xn--a.xn--a.com", f("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
-		{"a.com...｡", f("a.com"), true, ""},
-		{"..｡..a.com", f("a.com"), true, ""},
 		{"*.xn--a.xn--a.xn--a.com", w("xn--a.xn--a.xn--a.com"), false, `idna: invalid label "\u0080"`},
-		{"*.a.com...｡", w("a.com"), true, ""},
-		{"*...｡..a.com", w(".....a.com"), true, ""},
-		{"*.A......", w("a"), true, ""},
-		{"*｡A｡｡｡｡｡", w("a"), true, ""},
 		{"*.*.*", w("*.*"), false, `idna: disallowed rune U+002A`},
-		{"*......", w(""), false, "too few labels"},
-		{"*｡｡｡｡｡｡", w(""), false, "too few labels"},
-		{"......", f(""), false, "too few labels"},
-		{"｡｡｡｡｡｡", f(""), false, "too few labels"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			normalized, err := domain.New(tc.input)
+			normalized, normalization, err := domain.New(tc.input)
 			require.Equal(t, tc.expected, normalized)
+			require.Empty(t, normalization)
 			if tc.ok {
 				require.NoError(t, err)
 				require.Empty(t, tc.errString)
@@ -120,10 +164,93 @@ func TestNewTooFewLabels(t *testing.T) {
 	for _, input := range [...]string{"com", "localhost", "org", "hello.", ".", "*"} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			_, err := domain.New(input)
+			_, _, err := domain.New(input)
 			require.ErrorIs(t, err, domain.ErrTooFewLabels)
 		})
 	}
+}
+
+func TestConstructedDomainInvariant(t *testing.T) {
+	t.Parallel()
+
+	assertDomain := func(t *testing.T, input string) {
+		t.Helper()
+		got, _, err := domain.New(input)
+		if err != nil || got.DNSNameASCII() == "" {
+			return
+		}
+		ascii := got.DNSNameASCII()
+		require.False(t, strings.HasPrefix(ascii, "."))
+		require.False(t, strings.HasSuffix(ascii, "."))
+		require.NotContains(t, ascii, "..")
+		reparsed, reparsedNormalization, reparsedErr := domain.New(ascii)
+		require.NoError(t, reparsedErr)
+		require.Equal(t, domain.Normalization{}, reparsedNormalization)
+		require.Equal(t, got, reparsed)
+		require.NotEmpty(t, got.String())
+		require.NotEmpty(t, got.Describe())
+		require.Zero(t, domain.CompareDomain(got, reparsed))
+		require.True(t, got.HasStrictSuffix(domain.Suffix("")))
+		var zones []domain.Suffix
+		got.Zones(func(zone domain.Suffix) bool {
+			zones = append(zones, zone)
+			return true
+		})
+		require.NotEmpty(t, zones)
+		require.Equal(t, strings.TrimPrefix(ascii, "*."), zones[0].DNSNameASCII())
+	}
+
+	assertSuffix := func(t *testing.T, input string) {
+		t.Helper()
+		got, _, err := domain.NewSuffix(input)
+		if err != nil || got.DNSNameASCII() == "" {
+			return
+		}
+		ascii := got.DNSNameASCII()
+		require.False(t, strings.HasPrefix(ascii, "."))
+		require.False(t, strings.HasSuffix(ascii, "."))
+		require.NotContains(t, ascii, "..")
+		reparsed, reparsedNormalization, reparsedErr := domain.NewSuffix(ascii)
+		require.NoError(t, reparsedErr)
+		require.Equal(t, domain.Normalization{}, reparsedNormalization)
+		require.Equal(t, got, reparsed)
+		require.NotEmpty(t, got.String())
+	}
+
+	for _, input := range [...]string{
+		"example.org", "example.org.", ".example.org", "..example.org",
+		"example.org..", "example.org...", "..example.org...", "*.example.org",
+		"*.example.org.", "*.example.org..", "\u3002example.org", "\uff0eexample.org",
+		"\uff61example.org", "example.org\u3002\u3002", "example.org\uff0e\uff0e",
+		"example.org\uff61\uff61", "\u3002example.org\uff0e\uff61",
+	} {
+		assertDomain(t, input)
+	}
+	for _, input := range [...]string{
+		"", ".", "..", "...", "example.org", "org", "example.org.",
+		".example.org", "example.org..", "..example.org...", "\u3002",
+		"\uff0e\uff0e", "\uff61\uff61\uff61", "\u3002example.org", "\uff0eexample.org",
+		"\uff61example.org", "example.org\u3002\u3002", "example.org\uff0e\uff0e",
+		"example.org\uff61\uff61", "\u3002example.org\uff0e\uff61",
+	} {
+		assertSuffix(t, input)
+	}
+
+	require.NoError(t, quick.Check(func(label string, leading, trailing uint8) bool {
+		label = strings.Map(func(r rune) rune {
+			if r >= 'a' && r <= 'z' {
+				return r
+			}
+			return -1
+		}, label)
+		if label == "" {
+			label = "example"
+		}
+		input := strings.Repeat(".", int(leading%3)) + label + ".org" + strings.Repeat(".", int(trailing%4))
+		assertDomain(t, input)
+		assertSuffix(t, input)
+		return true
+	}, nil))
 }
 
 func TestSortDomains(t *testing.T) {
