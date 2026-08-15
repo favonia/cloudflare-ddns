@@ -32,7 +32,8 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 			source := input[diagnostic.Span.Start:diagnostic.Span.End]
 			if domain.EmptyInteriorLabelIncludesWildcardMarker(diagnostic.Detail) {
 				ppfmt.Noticef(pp.EmojiUserError,
-					`%s has consecutive dots in %q, including a run immediately after the wildcard marker "*"; replace each run with a single dot`,
+					`%s has consecutive dots in %q, including a run immediately after the wildcard marker "*"; `+
+						`replace each run with a single dot`,
 					key, source)
 				return false
 			}
@@ -40,6 +41,8 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 				`%s has consecutive dots in %q; replace each run with a single dot`, key, source)
 			return false
 		}
+	case domainentry.KindUnknownDomainField, domainentry.KindInvalidHostID6, domainentry.KindInvalidMAC:
+		// These existing structured diagnostics use the generic rendering below.
 	}
 	ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
 	return false

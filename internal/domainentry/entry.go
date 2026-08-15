@@ -176,7 +176,16 @@ func (state *buildState) recordExtraComma(span syntax.Span) {
 		return
 	}
 	state.extraComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindExtraComma, Detail: nil})
+	state.diagnostics = append(state.diagnostics, Diagnostic{
+		Span:   span,
+		Kind:   KindExtraComma,
+		Detail: nil,
+		Normalization: domain.Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		},
+		Effective: nil,
+	})
 }
 
 func (state *buildState) recordMissingComma(span syntax.Span) {
@@ -184,7 +193,16 @@ func (state *buildState) recordMissingComma(span syntax.Span) {
 		return
 	}
 	state.missingComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindMissingComma, Detail: nil})
+	state.diagnostics = append(state.diagnostics, Diagnostic{
+		Span:   span,
+		Kind:   KindMissingComma,
+		Detail: nil,
+		Normalization: domain.Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		},
+		Effective: nil,
+	})
 }
 
 func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
@@ -211,6 +229,11 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 			Span:   domainAtom.Span(),
 			Kind:   KindInvalidDomain,
 			Detail: err,
+			Normalization: domain.Normalization{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	}
 
@@ -220,7 +243,10 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 		return noEntry, diagnostic
 	}
 	entry := Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}
-	if normalization != (domain.Normalization{}) {
+	if normalization != (domain.Normalization{
+		RemovedLeadingDots:       false,
+		RemovedExtraTrailingDots: false,
+	}) {
 		state.diagnostics = append(state.diagnostics, Diagnostic{
 			Span:          domainAtom.Span(),
 			Kind:          KindDomainBoundaryNormalization,
@@ -266,6 +292,11 @@ func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
+			Normalization: domain.Normalization{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	}
 
@@ -298,6 +329,11 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			Span:   tree.Span(),
 			Kind:   KindInvalidHostID6,
 			Detail: err,
+			Normalization: domain.Normalization{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	case syntax.Op[formID]:
 		// Only structured host-ID values are valid here.
@@ -310,6 +346,11 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 					Span:   atom.Span(),
 					Kind:   KindInvalidMAC,
 					Detail: err,
+					Normalization: domain.Normalization{
+						RemovedLeadingDots:       false,
+						RemovedExtraTrailingDots: false,
+					},
+					Effective: nil,
 				}
 			}
 			return []hostid6.Derivation{hostid6.MAC(mac)}, nil

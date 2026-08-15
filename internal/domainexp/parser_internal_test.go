@@ -26,6 +26,7 @@ func newParserState() *parserState {
 	return &parserState{
 		emptyCallFunctions: nil, extraComma: false, missingComma: false,
 		shortIsTargets: nil, subWildcards: nil,
+		boundaryNormalizations: nil,
 	}
 }
 

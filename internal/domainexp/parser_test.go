@@ -31,10 +31,11 @@ func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
 		parse                  func(pp.PP, string, string) bool
 	}{
 		{
-			name:   "plain-long-runs",
-			key:    "DOMAINS",
-			input:  "a......b.....c.....d",
-			source: "a......b.....c.....d",
+			name:                   "plain-long-runs",
+			key:                    "DOMAINS",
+			input:                  "a......b.....c.....d",
+			source:                 "a......b.....c.....d",
+			includesWildcardMarker: false,
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseList(formatter, key, input)
 				return ok
@@ -52,10 +53,11 @@ func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
 			},
 		},
 		{
-			name:   "wildcard-later-only",
-			key:    "PROXIED",
-			input:  "sub(*.a.....b)",
-			source: "*.a.....b",
+			name:                   "wildcard-later-only",
+			key:                    "PROXIED",
+			input:                  "sub(*.a.....b)",
+			source:                 "*.a.....b",
+			includesWildcardMarker: false,
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok
@@ -100,6 +102,7 @@ func TestBoundaryNormalizationMessagesSuggestContextualSyntax(t *testing.T) {
 			source:           strconv.Quote(".leading.example"),
 			correction:       "leading.example",
 			quotedCorrection: strconv.Quote("leading.example"),
+			semanticAdvisory: "",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseList(formatter, key, input)
 				return ok
@@ -111,6 +114,7 @@ func TestBoundaryNormalizationMessagesSuggestContextualSyntax(t *testing.T) {
 			source:           `is(".equivalent.example")`,
 			correction:       "is(equivalent.example)",
 			quotedCorrection: `is("equivalent.example")`,
+			semanticAdvisory: "",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok
@@ -122,6 +126,7 @@ func TestBoundaryNormalizationMessagesSuggestContextualSyntax(t *testing.T) {
 			source:           `sub(".equivalent.example")`,
 			correction:       "sub(equivalent.example)",
 			quotedCorrection: `sub("equivalent.example")`,
+			semanticAdvisory: "",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok
@@ -133,6 +138,7 @@ func TestBoundaryNormalizationMessagesSuggestContextualSyntax(t *testing.T) {
 			source:           `sub("..")`,
 			correction:       "sub(.)",
 			quotedCorrection: `sub(".")`,
+			semanticAdvisory: "",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok

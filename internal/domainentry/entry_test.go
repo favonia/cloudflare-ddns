@@ -29,6 +29,13 @@ func diagnosticKinds(diagnostics []domainentry.Diagnostic) []domainentry.Diagnos
 	return kinds
 }
 
+func expectedNormalization(leading, extraTrailing bool) domain.Normalization {
+	return domain.Normalization{
+		RemovedLeadingDots:       leading,
+		RemovedExtraTrailingDots: extraTrailing,
+	}
+}
+
 func TestParseEntriesPlainEntryExactSpan(t *testing.T) {
 	t.Parallel()
 
@@ -254,9 +261,11 @@ func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
 		Span:            syntax.Span{Start: commaCount, End: commaCount + len("example.org")},
 	}}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:   syntax.Span{Start: 0, End: 1},
-		Kind:   domainentry.KindExtraComma,
-		Detail: nil,
+		Span:          syntax.Span{Start: 0, End: 1},
+		Kind:          domainentry.KindExtraComma,
+		Detail:        nil,
+		Normalization: expectedNormalization(false, false),
+		Effective:     nil,
 	}}, diagnostics)
 }
 
@@ -272,9 +281,11 @@ func TestParseEntriesManyMissingCommasReturnOneDiagnostic(t *testing.T) {
 		{Domain: domain.FQDN("example.com"), HostID6Opinions: nil, Span: syntax.Span{Start: 24, End: 35}},
 	}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:   syntax.Span{Start: 11, End: 12},
-		Kind:   domainentry.KindMissingComma,
-		Detail: nil,
+		Span:          syntax.Span{Start: 11, End: 12},
+		Kind:          domainentry.KindMissingComma,
+		Detail:        nil,
+		Normalization: expectedNormalization(false, false),
+		Effective:     nil,
 	}}, diagnostics)
 }
 
@@ -350,31 +361,28 @@ func TestParseEntriesReportsBoundaryNormalizations(t *testing.T) {
 			name:          "leading dots",
 			input:         ".good.example",
 			span:          syntax.Span{Start: 0, End: 13},
-			normalization: domain.Normalization{RemovedLeadingDots: true},
+			normalization: expectedNormalization(true, false),
 			effective:     domain.FQDN("good.example"),
 		},
 		{
 			name:          "extra trailing dots",
 			input:         "good.example..",
 			span:          syntax.Span{Start: 0, End: 14},
-			normalization: domain.Normalization{RemovedExtraTrailingDots: true},
+			normalization: expectedNormalization(false, true),
 			effective:     domain.FQDN("good.example"),
 		},
 		{
-			name:  "combined boundary dots",
-			input: ".good.example..",
-			span:  syntax.Span{Start: 0, End: 15},
-			normalization: domain.Normalization{
-				RemovedLeadingDots:       true,
-				RemovedExtraTrailingDots: true,
-			},
-			effective: domain.FQDN("good.example"),
+			name:          "combined boundary dots",
+			input:         ".good.example..",
+			span:          syntax.Span{Start: 0, End: 15},
+			normalization: expectedNormalization(true, true),
+			effective:     domain.FQDN("good.example"),
 		},
 		{
 			name:          "hostid6 field",
 			input:         ".good.example{hostid6=::1}",
 			span:          syntax.Span{Start: 0, End: 13},
-			normalization: domain.Normalization{RemovedLeadingDots: true},
+			normalization: expectedNormalization(true, false),
 			effective:     domain.FQDN("good.example"),
 		},
 	} {
@@ -391,7 +399,7 @@ func TestParseEntriesReportsBoundaryNormalizations(t *testing.T) {
 			}
 			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindDomainBoundaryNormalization}, diagnosticKinds(diagnostics))
 			require.Equal(t, tc.span, diagnostics[0].Span)
-			require.Nil(t, diagnostics[0].Detail)
+			require.NoError(t, diagnostics[0].Detail)
 			require.Equal(t, tc.normalization, diagnostics[0].Normalization)
 			require.Equal(t, tc.effective, diagnostics[0].Effective)
 		})
@@ -415,7 +423,7 @@ func TestParseEntriesPreservesRepeatedBoundaryNormalizations(t *testing.T) {
 	}, diagnosticKinds(diagnostics))
 	for i, span := range []syntax.Span{{Start: 0, End: 13}, {Start: 14, End: 27}} {
 		require.Equal(t, span, diagnostics[i].Span)
-		require.Equal(t, domain.Normalization{RemovedLeadingDots: true}, diagnostics[i].Normalization)
+		require.Equal(t, expectedNormalization(true, false), diagnostics[i].Normalization)
 		require.Equal(t, domain.FQDN("good.example"), diagnostics[i].Effective)
 	}
 }
@@ -442,7 +450,7 @@ func TestParseEntriesRecoversAfterEmptyInteriorLabel(t *testing.T) {
 	require.Zero(t, diagnostics[1].Normalization)
 	require.Nil(t, diagnostics[1].Effective)
 	require.Equal(t, syntax.Span{Start: 29, End: 48}, diagnostics[2].Span)
-	require.Equal(t, domain.Normalization{RemovedExtraTrailingDots: true}, diagnostics[2].Normalization)
+	require.Equal(t, expectedNormalization(false, true), diagnostics[2].Normalization)
 	require.Equal(t, domain.FQDN("also.good.example"), diagnostics[2].Effective)
 }
 
@@ -548,7 +556,7 @@ func TestEntryDiagnosticDescriptionForBoundaryNormalization(t *testing.T) {
 		Span:          syntax.Span{Start: 0, End: 13},
 		Kind:          domainentry.KindDomainBoundaryNormalization,
 		Detail:        nil,
-		Normalization: domain.Normalization{RemovedLeadingDots: true},
+		Normalization: expectedNormalization(true, false),
 		Effective:     domain.FQDN("good.example"),
 	}
 
@@ -559,9 +567,11 @@ func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {
 	t.Parallel()
 
 	diagnostic := domainentry.Diagnostic{
-		Span:   syntax.Span{Start: 0, End: 0},
-		Kind:   domainentry.DiagnosticKind(-1),
-		Detail: nil,
+		Span:          syntax.Span{Start: 0, End: 0},
+		Kind:          domainentry.DiagnosticKind(-1),
+		Detail:        nil,
+		Normalization: expectedNormalization(false, false),
+		Effective:     nil,
 	}
 	require.Panics(t, func() { _ = diagnostic.Description("") })
 }

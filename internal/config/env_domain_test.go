@@ -188,6 +188,7 @@ func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
 	require.Equal(t, domain.FQDN("example.org"), field[0].Domain)
 }
 
+//nolint:paralleltest // The table cases write process-global environment variables.
 func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 	for _, tc := range []struct {
 		key           string
@@ -199,11 +200,13 @@ func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 		hasHostID6    bool
 	}{
 		{
-			key:     "DOMAINS",
-			family:  nil,
-			value:   ".good.example",
-			source:  ".good.example",
-			leading: true,
+			key:           "DOMAINS",
+			family:        nil,
+			value:         ".good.example",
+			source:        ".good.example",
+			leading:       true,
+			extraTrailing: false,
+			hasHostID6:    false,
 		},
 		{
 			key:           "IP4_DOMAINS",
@@ -212,14 +215,16 @@ func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 			source:        ".good.example..",
 			leading:       true,
 			extraTrailing: true,
+			hasHostID6:    false,
 		},
 		{
-			key:        "IP6_DOMAINS",
-			family:     family(ipnet.IP6),
-			value:      ".good.example{hostid6=::1}",
-			source:     ".good.example",
-			leading:    true,
-			hasHostID6: true,
+			key:           "IP6_DOMAINS",
+			family:        family(ipnet.IP6),
+			value:         ".good.example{hostid6=::1}",
+			source:        ".good.example",
+			leading:       true,
+			extraTrailing: false,
+			hasHostID6:    true,
 		},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
@@ -244,6 +249,7 @@ func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // The table cases write process-global environment variables.
 func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
 	for _, tc := range []struct {
 		key    string
@@ -270,6 +276,7 @@ func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // The test writes process-global environment variables.
 func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T) {
 	const value = ",.good.example good.example..,a..bad.example"
 	oldField := []domainentry.Entry{oldEntry()}
@@ -295,6 +302,7 @@ func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T
 	require.Equal(t, oldField, field)
 }
 
+//nolint:paralleltest // The test writes process-global environment variables.
 func TestReadDomainsReportsRepeatedBoundaryNormalizationsBeforeFatalEntry(t *testing.T) {
 	const value = ".good.example,.good.example,a..bad.example"
 	oldField := []domainentry.Entry{oldEntry()}
@@ -318,6 +326,7 @@ func TestReadDomainsReportsRepeatedBoundaryNormalizationsBeforeFatalEntry(t *tes
 	require.Equal(t, oldField, field)
 }
 
+//nolint:paralleltest // The table cases write process-global environment variables.
 func TestReadDomainsSilencesSingleTrailingRootDot(t *testing.T) {
 	for _, tc := range []struct {
 		key    string

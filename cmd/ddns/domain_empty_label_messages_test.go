@@ -18,6 +18,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
+//nolint:gochecknoglobals // The flag package registers test flags through its process-global command-line set.
 var domainEmptyLabelMatrixOutput = flag.String(
 	"domain-empty-label-matrix-output",
 	"",
@@ -59,6 +60,7 @@ func domainEmptyLabelMatrixOutputPath(path string) (string, error) {
 
 	directory, err := os.Getwd()
 	if err != nil {
+		//nolint:wrapcheck // The test-only helper preserves the raw os.Getwd error contract.
 		return "", err
 	}
 	for {
@@ -67,6 +69,7 @@ func domainEmptyLabelMatrixOutputPath(path string) (string, error) {
 		}
 		parent := filepath.Dir(directory)
 		if parent == directory {
+			//nolint:err113 // The test-only helper preserves its existing dynamic module-root error text.
 			return "", fmt.Errorf("cannot find module root for %q", path)
 		}
 		directory = parent

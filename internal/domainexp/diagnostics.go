@@ -61,7 +61,8 @@ func boundaryNormalizationMessage(key string, context normalizationContext, sour
 
 func emptyInteriorLabelMessage(key string, context normalizationContext, source string, err error) string {
 	if domain.EmptyInteriorLabelIncludesWildcardMarker(err) {
-		return fmt.Sprintf(`%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; replace each run with a single dot`,
+		return fmt.Sprintf(`%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; `+
+			`replace each run with a single dot`,
 			key, context.describeSource(source))
 	}
 	return fmt.Sprintf(`%s has consecutive dots in %s; replace each run with a single dot`,
@@ -127,7 +128,10 @@ func (state *parserState) recordBoundaryNormalization(
 	effective string,
 	normalization domain.Normalization,
 ) {
-	if normalization == (domain.Normalization{}) {
+	if normalization == (domain.Normalization{
+		RemovedLeadingDots:       false,
+		RemovedExtraTrailingDots: false,
+	}) {
 		return
 	}
 	state.boundaryNormalizations = append(state.boundaryNormalizations, boundaryNormalization{
@@ -252,8 +256,9 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, input[err.Span.Start:err.Span.End])
 	case invalidDomainOK:
 		if errors.Is(invalidDomain.cause, domain.ErrEmptyInteriorLabel) {
+			source := input[err.Span.Start:err.Span.End]
 			ppfmt.Noticef(pp.EmojiUserError,
-				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, input[err.Span.Start:err.Span.End], invalidDomain.cause))
+				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, source, invalidDomain.cause))
 			return
 		}
 		ppfmt.Noticef(pp.EmojiUserError,

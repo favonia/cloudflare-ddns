@@ -16,7 +16,7 @@ import (
 func TestInvalidDomainErrorError(t *testing.T) {
 	t.Parallel()
 	cause := io.ErrUnexpectedEOF // a static sentinel error to delegate to
-	err := &invalidDomainError{domain: "b.*.a.org", cause: cause}
+	err := &invalidDomainError{context: normalizationList, domain: "b.*.a.org", cause: cause}
 	if got := err.Error(); got != cause.Error() {
 		t.Errorf("Error() = %q, want %q", got, cause.Error())
 	}

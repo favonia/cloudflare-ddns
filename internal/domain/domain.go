@@ -70,10 +70,16 @@ func (normalization Normalization) combine(other Normalization) Normalization {
 // all-dot spelling is root cleanup, not leading-dot cleanup.
 func normalizeBoundary(ascii string) (string, Normalization) {
 	if strings.Trim(ascii, ".") == "" {
-		return "", Normalization{RemovedExtraTrailingDots: len(ascii) >= 2}
+		return "", Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: len(ascii) >= 2,
+		}
 	}
 
-	normalization := Normalization{}
+	normalization := Normalization{
+		RemovedLeadingDots:       false,
+		RemovedExtraTrailingDots: false,
+	}
 	withoutLeadingDots := strings.TrimLeft(ascii, ".")
 	if withoutLeadingDots != ascii {
 		normalization.RemovedLeadingDots = true
@@ -136,10 +142,16 @@ func New(input string) (Domain, Normalization, error) {
 	}
 
 	if err != nil {
-		return FQDN(normalized), Normalization{}, err
+		return FQDN(normalized), Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, err
 	}
 	if hasEmptyInteriorLabel(normalized) {
-		return nil, Normalization{}, newEmptyInteriorLabelError(false)
+		return nil, Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, newEmptyInteriorLabelError(false)
 	}
 	return FQDN(normalized), normalization, nil
 }
@@ -151,10 +163,16 @@ func newWildcard(
 	normalized, normalization := normalizeBoundary(ascii)
 	normalization = outerNormalization.combine(normalization)
 	if err != nil {
-		return Wildcard(normalized), Normalization{}, err
+		return Wildcard(normalized), Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, err
 	}
 	if hasEmptyInteriorLabel(suffix) {
-		return nil, Normalization{}, newEmptyInteriorLabelError(includesWildcardMarker)
+		return nil, Normalization{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, newEmptyInteriorLabelError(includesWildcardMarker)
 	}
 	if normalized == "" {
 		return Wildcard(""), normalization, ErrTooFewLabels

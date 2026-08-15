@@ -271,11 +271,12 @@ func buildExpr(tree syntax.Tree[formID], state *parserState) (Expr, *syntax.Pars
 // One can use parentheses to group expressions, such as !(is(hello.org) && (is(hello.io) || is(hello.me))).
 func ParseExpression(ppfmt pp.PP, key string, input string) (Expr, bool) {
 	state := &parserState{
-		emptyCallFunctions: nil,
-		extraComma:         false,
-		missingComma:       false,
-		shortIsTargets:     nil,
-		subWildcards:       nil,
+		emptyCallFunctions:     nil,
+		extraComma:             false,
+		missingComma:           false,
+		shortIsTargets:         nil,
+		subWildcards:           nil,
+		boundaryNormalizations: nil,
 	}
 	tree, err := expressionGrammar.Parse(input)
 	if err != nil {

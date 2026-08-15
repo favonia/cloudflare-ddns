@@ -8,6 +8,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
+func expectedNormalization(leading, extraTrailing bool) domain.Normalization {
+	return domain.Normalization{
+		RemovedLeadingDots:       leading,
+		RemovedExtraTrailingDots: extraTrailing,
+	}
+}
+
 func TestSuffixDNSNameASCII(t *testing.T) {
 	t.Parallel()
 	for _, tc := range [...]struct {
@@ -74,36 +81,36 @@ func TestNewSuffix(t *testing.T) {
 		normalization domain.Normalization
 		err           error
 	}{
-		{"", "", domain.Normalization{}, nil},
-		{".", "", domain.Normalization{}, nil},
-		{"..", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"...", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org", "example.org", domain.Normalization{}, nil},
-		{"org", "org", domain.Normalization{}, nil},
-		{"example.org.", "example.org", domain.Normalization{}, nil},
-		{".example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"example.org..", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"..example.org...", "example.org", domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
-		{"\u3002", "", domain.Normalization{}, nil},
-		{"\uff0e\uff0e", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"\uff61\uff61\uff61", "", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"\u3002example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"\uff0eexample.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"\uff61example.org", "example.org", domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"example.org\u3002\u3002", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org\uff0e\uff0e", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org\uff61\uff61", "example.org", domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"\u3002example.org\uff0e\uff61", "example.org", domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
-		{"a..org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\u3002\u3002org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\uff0e\uff0eorg", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\uff61\uff61org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\u3002\uff0eorg", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*..a.org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*.a..org", "", domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*.example.org", "", domain.Normalization{}, domain.ErrWildcardSuffix},
-		{"*.example.org..", "", domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrWildcardSuffix},
-		{"*", "", domain.Normalization{}, domain.ErrWildcardSuffix},
+		{"", "", expectedNormalization(false, false), nil},
+		{".", "", expectedNormalization(false, false), nil},
+		{"..", "", expectedNormalization(false, true), nil},
+		{"...", "", expectedNormalization(false, true), nil},
+		{"example.org", "example.org", expectedNormalization(false, false), nil},
+		{"org", "org", expectedNormalization(false, false), nil},
+		{"example.org.", "example.org", expectedNormalization(false, false), nil},
+		{".example.org", "example.org", expectedNormalization(true, false), nil},
+		{"example.org..", "example.org", expectedNormalization(false, true), nil},
+		{"..example.org...", "example.org", expectedNormalization(true, true), nil},
+		{"\u3002", "", expectedNormalization(false, false), nil},
+		{"\uff0e\uff0e", "", expectedNormalization(false, true), nil},
+		{"\uff61\uff61\uff61", "", expectedNormalization(false, true), nil},
+		{"\u3002example.org", "example.org", expectedNormalization(true, false), nil},
+		{"\uff0eexample.org", "example.org", expectedNormalization(true, false), nil},
+		{"\uff61example.org", "example.org", expectedNormalization(true, false), nil},
+		{"example.org\u3002\u3002", "example.org", expectedNormalization(false, true), nil},
+		{"example.org\uff0e\uff0e", "example.org", expectedNormalization(false, true), nil},
+		{"example.org\uff61\uff61", "example.org", expectedNormalization(false, true), nil},
+		{"\u3002example.org\uff0e\uff61", "example.org", expectedNormalization(true, true), nil},
+		{"a..org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\u3002\u3002org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff0e\uff0eorg", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff61\uff61org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\u3002\uff0eorg", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*..a.org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*.a..org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*.example.org", "", expectedNormalization(false, false), domain.ErrWildcardSuffix},
+		{"*.example.org..", "", expectedNormalization(false, true), domain.ErrWildcardSuffix},
+		{"*", "", expectedNormalization(false, false), domain.ErrWildcardSuffix},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()

@@ -11,6 +11,13 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
+func normalization(leading, extraTrailing bool) domain.Normalization {
+	return domain.Normalization{
+		RemovedLeadingDots:       leading,
+		RemovedExtraTrailingDots: extraTrailing,
+	}
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 	type f = domain.FQDN
@@ -21,33 +28,33 @@ func TestNew(t *testing.T) {
 		normalization domain.Normalization
 		err           error
 	}{
-		{"example.org", f("example.org"), domain.Normalization{}, nil},
-		{"example.org.", f("example.org"), domain.Normalization{}, nil},
-		{".example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"..example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"example.org..", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org...", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"..example.org...", f("example.org"), domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
-		{"*.example.org", w("example.org"), domain.Normalization{}, nil},
-		{"*.example.org.", w("example.org"), domain.Normalization{}, nil},
-		{"*.example.org..", w("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"......", f(""), domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrTooFewLabels},
-		{"*......", w(""), domain.Normalization{RemovedExtraTrailingDots: true}, domain.ErrTooFewLabels},
-		{"a..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*...example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"*.a..example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"\u3002example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"\uff0eexample.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"\uff61example.org", f("example.org"), domain.Normalization{RemovedLeadingDots: true}, nil},
-		{"example.org\u3002\u3002", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org\uff0e\uff0e", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"example.org\uff61\uff61", f("example.org"), domain.Normalization{RemovedExtraTrailingDots: true}, nil},
-		{"\u3002example.org\uff0e\uff61", f("example.org"), domain.Normalization{RemovedLeadingDots: true, RemovedExtraTrailingDots: true}, nil},
-		{"a\u3002\u3002example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\uff0e\uff0eexample.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\uff61\uff61example.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
-		{"a\u3002\uff0eexample.org", nil, domain.Normalization{}, domain.ErrEmptyInteriorLabel},
+		{"example.org", f("example.org"), normalization(false, false), nil},
+		{"example.org.", f("example.org"), normalization(false, false), nil},
+		{".example.org", f("example.org"), normalization(true, false), nil},
+		{"..example.org", f("example.org"), normalization(true, false), nil},
+		{"example.org..", f("example.org"), normalization(false, true), nil},
+		{"example.org...", f("example.org"), normalization(false, true), nil},
+		{"..example.org...", f("example.org"), normalization(true, true), nil},
+		{"*.example.org", w("example.org"), normalization(false, false), nil},
+		{"*.example.org.", w("example.org"), normalization(false, false), nil},
+		{"*.example.org..", w("example.org"), normalization(false, true), nil},
+		{"......", f(""), normalization(false, true), domain.ErrTooFewLabels},
+		{"*......", w(""), normalization(false, true), domain.ErrTooFewLabels},
+		{"a..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*...example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"*.a..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"\u3002example.org", f("example.org"), normalization(true, false), nil},
+		{"\uff0eexample.org", f("example.org"), normalization(true, false), nil},
+		{"\uff61example.org", f("example.org"), normalization(true, false), nil},
+		{"example.org\u3002\u3002", f("example.org"), normalization(false, true), nil},
+		{"example.org\uff0e\uff0e", f("example.org"), normalization(false, true), nil},
+		{"example.org\uff61\uff61", f("example.org"), normalization(false, true), nil},
+		{"\u3002example.org\uff0e\uff61", f("example.org"), normalization(true, true), nil},
+		{"a\u3002\u3002example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff0e\uff0eexample.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff61\uff61example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\u3002\uff0eexample.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -214,7 +221,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		require.NotContains(t, ascii, "..")
 		reparsed, reparsedNormalization, reparsedErr := domain.New(ascii)
 		require.NoError(t, reparsedErr)
-		require.Equal(t, domain.Normalization{}, reparsedNormalization)
+		require.Equal(t, normalization(false, false), reparsedNormalization)
 		require.Equal(t, got, reparsed)
 		require.NotEmpty(t, got.String())
 		require.NotEmpty(t, got.Describe())
@@ -241,7 +248,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		require.NotContains(t, ascii, "..")
 		reparsed, reparsedNormalization, reparsedErr := domain.NewSuffix(ascii)
 		require.NoError(t, reparsedErr)
-		require.Equal(t, domain.Normalization{}, reparsedNormalization)
+		require.Equal(t, normalization(false, false), reparsedNormalization)
 		require.Equal(t, got, reparsed)
 		require.NotEmpty(t, got.String())
 	}

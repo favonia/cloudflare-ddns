@@ -47,6 +47,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 	state := &parserState{
 		emptyCallFunctions: nil, extraComma: false, missingComma: false,
 		shortIsTargets: nil, subWildcards: nil,
+		boundaryNormalizations: nil,
 	}
 	list, err := flattenDomainList(tree, state)
 	if err != nil {

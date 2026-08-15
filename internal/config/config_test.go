@@ -229,14 +229,14 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment variables are global
 func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		input                  string
 		includesWildcardMarker bool
 	}{
 		{
-			input: "a......b.....c.....d",
+			input:                  "a......b.....c.....d",
+			includesWildcardMarker: false,
 		},
 		{
 			input:                  "*......a.....b",
@@ -271,7 +271,6 @@ func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // environment variables are global
 func TestReadEnvBoundaryNormalizationSuggestsValidSyntax(t *testing.T) {
 	testenv.ClearAll(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
