@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,37 +44,110 @@ type domainEmptyLabelMatrixScenario struct {
 //nolint:paralleltest // the bootstrap deliberately clears process environment variables.
 func TestRenderDomainEmptyLabelMessageMatrix(t *testing.T) {
 	matrix := renderDomainEmptyLabelMessageMatrix(t)
-	golden, err := os.ReadFile(domainEmptyLabelMatrixGolden)
-	require.NoError(t, err)
-	require.Equal(t, string(golden), matrix)
 	if *domainEmptyLabelMatrixOutput != "" {
 		outputPath, err := domainEmptyLabelMatrixOutputPath(*domainEmptyLabelMatrixOutput)
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(outputPath, []byte(matrix), 0o600))
 	}
+	golden, err := os.ReadFile(domainEmptyLabelMatrixGolden)
+	require.NoError(t, err)
+	require.Equal(t, string(golden), matrix)
+}
+
+//nolint:paralleltest // the subprocess runs the environment-mutating matrix test.
+func TestRenderDomainEmptyLabelMessageMatrixWritesRequestedOutputBeforeGoldenMismatch(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(temporaryDirectory, "testdata"), 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(temporaryDirectory, domainEmptyLabelMatrixGolden),
+		[]byte("stale golden\n"),
+		0o600,
+	))
+
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	outputPath := filepath.Join(temporaryDirectory, "recaptured.txt")
+	command := exec.CommandContext(t.Context(),
+		executable,
+		"-test.run=^TestRenderDomainEmptyLabelMessageMatrix$",
+		"-domain-empty-label-matrix-output="+outputPath,
+	)
+	command.Dir = temporaryDirectory
+	require.Error(t, command.Run())
+
+	recaptured, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Contains(t, string(recaptured), "Domain empty-label operator-message matrix\n")
+	require.NotEqual(t, "stale golden\n", string(recaptured))
+}
+
+//nolint:paralleltest // t.Chdir changes process-global state.
+func TestDomainEmptyLabelMatrixOutputPathRejectsGoldenAliases(t *testing.T) {
+	moduleRoot := t.TempDir()
+	packageDirectory := filepath.Join(moduleRoot, "cmd", "ddns")
+	goldenPath := filepath.Join(packageDirectory, domainEmptyLabelMatrixGolden)
+	require.NoError(t, os.MkdirAll(filepath.Dir(goldenPath), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleRoot, "go.mod"), []byte("module example.com/test\n"), 0o600))
+	require.NoError(t, os.WriteFile(goldenPath, []byte("tracked golden\n"), 0o600))
+	symlinkPath := filepath.Join(moduleRoot, "golden-link.txt")
+	require.NoError(t, os.Symlink(goldenPath, symlinkPath))
+	t.Chdir(packageDirectory)
+
+	for name, targetPath := range map[string]string{
+		"relative lexical alias": filepath.Join("cmd", "ddns", "testdata", "..", "testdata", filepath.Base(goldenPath)),
+		"absolute lexical alias": filepath.Join(packageDirectory, "testdata", "..", "testdata", filepath.Base(goldenPath)),
+		"symlink":                symlinkPath,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := domainEmptyLabelMatrixOutputPath(targetPath)
+			require.Error(t, err)
+		})
+	}
 }
 
 func domainEmptyLabelMatrixOutputPath(path string) (string, error) {
-	if filepath.IsAbs(path) {
-		return path, nil
+	outputPath := path
+	if !filepath.IsAbs(outputPath) {
+		directory, err := os.Getwd()
+		if err != nil {
+			//nolint:wrapcheck // The test-only helper preserves the raw os.Getwd error contract.
+			return "", err
+		}
+		for {
+			if _, err := os.Stat(filepath.Join(directory, "go.mod")); err == nil {
+				outputPath = filepath.Join(directory, outputPath)
+				break
+			}
+			parent := filepath.Dir(directory)
+			if parent == directory {
+				//nolint:err113 // The test-only helper preserves its existing dynamic module-root error text.
+				return "", fmt.Errorf("cannot find module root for %q", path)
+			}
+			directory = parent
+		}
 	}
 
-	directory, err := os.Getwd()
+	outputPath, err := filepath.Abs(outputPath)
 	if err != nil {
-		//nolint:wrapcheck // The test-only helper preserves the raw os.Getwd error contract.
+		//nolint:wrapcheck // The test-only helper preserves the raw filepath.Abs error contract.
 		return "", err
 	}
-	for {
-		if _, err := os.Stat(filepath.Join(directory, "go.mod")); err == nil {
-			return filepath.Join(directory, path), nil
-		}
-		parent := filepath.Dir(directory)
-		if parent == directory {
-			//nolint:err113 // The test-only helper preserves its existing dynamic module-root error text.
-			return "", fmt.Errorf("cannot find module root for %q", path)
-		}
-		directory = parent
+	goldenPath, err := filepath.Abs(domainEmptyLabelMatrixGolden)
+	if err != nil {
+		//nolint:wrapcheck // The test-only helper preserves the raw filepath.Abs error contract.
+		return "", err
 	}
+	aliasesGolden := outputPath == goldenPath
+	outputInfo, outputErr := os.Stat(outputPath)
+	goldenInfo, goldenErr := os.Stat(goldenPath)
+	if outputErr == nil && goldenErr == nil {
+		aliasesGolden = aliasesGolden || os.SameFile(outputInfo, goldenInfo)
+	}
+	if aliasesGolden {
+		//nolint:err113 // The test-only helper reports the unsafe caller-provided path.
+		return "", fmt.Errorf("output path %q resolves to the tracked golden", path)
+	}
+	return outputPath, nil
 }
 
 func renderDomainEmptyLabelMessageMatrix(t *testing.T) string {

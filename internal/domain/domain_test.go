@@ -272,21 +272,77 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		assertSuffix(t, input)
 	}
 
-	require.NoError(t, quick.Check(func(label string, leading, trailing uint8) bool {
-		label = strings.Map(func(r rune) rune {
-			if r >= 'a' && r <= 'z' {
-				return r
-			}
-			return -1
-		}, label)
-		if label == "" {
-			label = "example"
-		}
-		input := strings.Repeat(".", int(leading%3)) + label + ".org" + strings.Repeat(".", int(trailing%4))
+	require.NoError(t, quick.Check(func(input string) bool {
 		assertDomain(t, input)
 		assertSuffix(t, input)
 		return true
 	}, nil))
+
+	canonicalLabel := func(value string) string {
+		value = strings.Map(func(r rune) rune {
+			if r >= 'a' && r <= 'z' {
+				return r
+			}
+			return -1
+		}, value)
+		if value == "" {
+			return "example"
+		}
+		return value[:min(len(value), 12)]
+	}
+	for _, tc := range []struct {
+		name        string
+		buildInput  func(string, string) string
+		checkSuffix bool
+	}{
+		{
+			name:        "fqdn with multiple interior labels",
+			buildInput:  func(left, right string) string { return left + "." + right + ".org" },
+			checkSuffix: true,
+		},
+		{
+			name:        "wildcard with multiple interior labels",
+			buildInput:  func(left, right string) string { return "*." + left + "." + right + ".org" },
+			checkSuffix: false,
+		},
+		{
+			name:        "IDNA with multiple interior labels",
+			buildInput:  func(left, right string) string { return "faß." + left + "." + right + ".org" },
+			checkSuffix: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, quick.Check(func(left, right string, leading, trailing uint8) bool {
+				input := strings.Repeat(".", int(leading%3)) +
+					tc.buildInput(canonicalLabel(left), canonicalLabel(right)) +
+					strings.Repeat(".", int(trailing%4))
+				assertDomain(t, input)
+				if tc.checkSuffix {
+					assertSuffix(t, input)
+				}
+				return true
+			}, nil))
+		})
+	}
+	for _, tc := range []struct {
+		name         string
+		interiorDots string
+	}{
+		{name: "one interior dot", interiorDots: "."},
+		{name: "empty interior label", interiorDots: ".."},
+		{name: "multiple empty interior labels", interiorDots: "..."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, quick.Check(func(left, right string, leading, trailing uint8) bool {
+				input := strings.Repeat(".", int(leading%3)) +
+					canonicalLabel(left) + tc.interiorDots + canonicalLabel(right) + ".org" +
+					strings.Repeat(".", int(trailing%4))
+				assertDomain(t, input)
+				assertSuffix(t, input)
+				return true
+			}, nil))
+		})
+	}
 }
 
 func TestSortDomains(t *testing.T) {
