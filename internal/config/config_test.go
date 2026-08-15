@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +227,66 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		input                  string
+		includesWildcardMarker bool
+	}{
+		{
+			input: "a......b.....c.....d",
+		},
+		{
+			input:                  "*......a.....b",
+			includesWildcardMarker: true,
+		},
+		{
+			input:                  "*｡｡a。｡b",
+			includesWildcardMarker: true,
+		},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			testenv.ClearAll(t)
+			t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+			t.Setenv("IP4_PROVIDER", "local")
+			t.Setenv("IP4_DOMAINS", tc.input)
+
+			var output bytes.Buffer
+			ok := config.DefaultRaw().ReadEnv(pp.New(&output, false, pp.Quiet))
+			require.False(t, ok)
+			rendered := output.String()
+			require.Contains(t, rendered, "IP4_DOMAINS")
+			require.Contains(t, rendered, strconv.Quote(tc.input))
+			require.Contains(t, rendered, "consecutive dots")
+			require.Contains(t, rendered, "each run")
+			require.Contains(t, rendered, "single dot")
+			if tc.includesWildcardMarker {
+				require.Contains(t, rendered, `wildcard marker "*"`)
+			} else {
+				require.NotContains(t, rendered, "wildcard marker")
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // environment variables are global
+func TestReadEnvBoundaryNormalizationSuggestsValidSyntax(t *testing.T) {
+	testenv.ClearAll(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+	t.Setenv("IP4_PROVIDER", "local")
+	t.Setenv("IP4_DOMAINS", ".leading.example")
+
+	var output bytes.Buffer
+	require.True(t, config.DefaultRaw().ReadEnv(pp.New(&output, false, pp.Quiet)))
+
+	rendered := output.String()
+	require.Contains(t, rendered, "IP4_DOMAINS")
+	require.Contains(t, rendered, strconv.Quote(".leading.example"))
+	require.Contains(t, rendered, "use leading.example")
+	require.NotContains(t, rendered, `use "leading.example"`)
+	require.Contains(t, rendered, "version 2.0.0")
 }
 
 //nolint:paralleltest // environment variables are global

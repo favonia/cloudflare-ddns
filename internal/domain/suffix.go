@@ -23,7 +23,7 @@ func NewSuffix(input string) (Suffix, Normalization, error) {
 	normalized, normalization := normalizeBoundary(ascii)
 
 	if suffix, ok := strings.CutPrefix(normalized, "*."); ok {
-		_, suffixNormalization, suffixErr := newWildcard(suffix, normalization)
+		_, suffixNormalization, suffixErr := newWildcard(suffix, normalization, strings.HasPrefix(suffix, "."))
 		if suffixErr != nil && !errors.Is(suffixErr, ErrTooFewLabels) {
 			return "", Normalization{}, suffixErr
 		}
@@ -37,7 +37,7 @@ func NewSuffix(input string) (Suffix, Normalization, error) {
 		return Suffix(normalized), Normalization{}, err
 	}
 	if hasEmptyInteriorLabel(normalized) {
-		return "", Normalization{}, ErrEmptyInteriorLabel
+		return "", Normalization{}, newEmptyInteriorLabelError(false)
 	}
 	return Suffix(normalized), normalization, nil
 }

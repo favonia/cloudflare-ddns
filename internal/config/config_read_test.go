@@ -1716,9 +1716,8 @@ func TestBuildConfigProxiedBoundaryNormalization(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, built)
 	require.False(t, built.Update.Proxied[domain.FQDN("a.b.c")])
-	normalization := "__DOMAIN_BOUNDARY_NORMALIZATION__ key=PROXIED input=\"is(.a.b.c...) && !is(a.b.c)\" context=is source=\".a.b.c...\" effective=a.b.c leading=true extra-trailing=true"
-	require.Contains(t, output.String(), normalization)
-	require.Less(t, strings.Index(output.String(), normalization), strings.Index(output.String(), "can never match any domain"))
+	require.Contains(t, output.String(), ".a.b.c...")
+	require.Less(t, strings.Index(output.String(), ".a.b.c..."), strings.Index(output.String(), "can never match any domain"))
 
 	raw.ProxiedExpression = "is(a..b.c)"
 	built, ok = raw.BuildConfig(pp.NewSilent())

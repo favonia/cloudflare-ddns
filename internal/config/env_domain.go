@@ -10,9 +10,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-const domainBoundaryNormalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q source=%q effective=%s leading=%t extra-trailing=%t"
-const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q source=%q"
-
 func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic domainentry.Diagnostic) bool {
 	switch diagnostic.Kind {
 	case domainentry.KindExtraComma:
@@ -27,16 +24,20 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 		return true
 	case domainentry.KindDomainBoundaryNormalization:
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			domainBoundaryNormalizationSentinel,
-			key, input, input[diagnostic.Span.Start:diagnostic.Span.End], diagnostic.Effective,
-			diagnostic.Normalization.RemovedLeadingDots,
-			diagnostic.Normalization.RemovedExtraTrailingDots)
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			key, input[diagnostic.Span.Start:diagnostic.Span.End], diagnostic.Effective)
 		return true
 	case domainentry.KindInvalidDomain:
 		if errors.Is(diagnostic.Detail, domain.ErrEmptyInteriorLabel) {
+			source := input[diagnostic.Span.Start:diagnostic.Span.End]
+			if domain.EmptyInteriorLabelIncludesWildcardMarker(diagnostic.Detail) {
+				ppfmt.Noticef(pp.EmojiUserError,
+					`%s has consecutive dots in %q, including a run immediately after the wildcard marker "*"; replace each run with a single dot`,
+					key, source)
+				return false
+			}
 			ppfmt.Noticef(pp.EmojiUserError,
-				emptyInteriorLabelSentinel,
-				key, input, input[diagnostic.Span.Start:diagnostic.Span.End])
+				`%s has consecutive dots in %q; replace each run with a single dot`, key, source)
 			return false
 		}
 	}

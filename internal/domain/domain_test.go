@@ -63,6 +63,35 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestEmptyInteriorLabelIncludesWildcardMarker(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name             string
+		input            string
+		includesWildcard bool
+	}{
+		{"plain-long-runs", "a......b.....c.....d", false},
+		{"wildcard-immediate-only", "*..a", true},
+		{"wildcard-immediate-and-later", "*......a.....b", true},
+		{"wildcard-later-only", "*.a.....b", false},
+		{"unicode-immediate-and-later", "*｡｡a。｡b", true},
+		{"unicode-later-only", "*.a｡｡b", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, newErr := domain.New(tc.input)
+			require.ErrorIs(t, newErr, domain.ErrEmptyInteriorLabel)
+			require.Equal(t, tc.includesWildcard, domain.EmptyInteriorLabelIncludesWildcardMarker(newErr))
+
+			_, _, suffixErr := domain.NewSuffix(tc.input)
+			require.ErrorIs(t, suffixErr, domain.ErrEmptyInteriorLabel)
+			require.Equal(t, tc.includesWildcard, domain.EmptyInteriorLabelIncludesWildcardMarker(suffixErr))
+		})
+	}
+}
+
 func TestNewIDNA(t *testing.T) {
 	t.Parallel()
 	type f = domain.FQDN

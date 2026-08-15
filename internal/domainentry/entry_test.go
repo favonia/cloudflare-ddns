@@ -450,12 +450,13 @@ func TestParseEntriesRejectsFatalWildcardEmptyLabels(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		input string
-		span  syntax.Span
+		input                  string
+		span                   syntax.Span
+		includesWildcardMarker bool
 	}{
-		{input: "*..example.org", span: syntax.Span{Start: 0, End: 14}},
-		{input: "*...example.org", span: syntax.Span{Start: 0, End: 15}},
-		{input: "*.a..example.org", span: syntax.Span{Start: 0, End: 16}},
+		{input: "*..example.org", span: syntax.Span{Start: 0, End: 14}, includesWildcardMarker: true},
+		{input: "*...example.org", span: syntax.Span{Start: 0, End: 15}, includesWildcardMarker: true},
+		{input: "*.a..example.org", span: syntax.Span{Start: 0, End: 16}, includesWildcardMarker: false},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -467,6 +468,8 @@ func TestParseEntriesRejectsFatalWildcardEmptyLabels(t *testing.T) {
 			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindInvalidDomain}, diagnosticKinds(diagnostics))
 			require.Equal(t, tc.span, diagnostics[0].Span)
 			require.ErrorIs(t, diagnostics[0].Detail, domain.ErrEmptyInteriorLabel)
+			require.Equal(t, tc.includesWildcardMarker,
+				domain.EmptyInteriorLabelIncludesWildcardMarker(diagnostics[0].Detail))
 			require.Zero(t, diagnostics[0].Normalization)
 			require.Nil(t, diagnostics[0].Effective)
 		})
@@ -549,7 +552,7 @@ func TestEntryDiagnosticDescriptionForBoundaryNormalization(t *testing.T) {
 		Effective:     domain.FQDN("good.example"),
 	}
 
-	require.Equal(t, "__DOMAIN_BOUNDARY_NORMALIZATION__", diagnostic.Description(".good.example"))
+	require.Equal(t, "domain spelling was normalized for compatibility", diagnostic.Description(".good.example"))
 }
 
 func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {

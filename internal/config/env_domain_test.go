@@ -189,8 +189,6 @@ func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
 }
 
 func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
-	const sentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q source=%q effective=%s leading=%t extra-trailing=%t"
-
 	for _, tc := range []struct {
 		key           string
 		family        *ipnet.Family
@@ -230,8 +228,8 @@ func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 			mockPP := mocks.NewMockPP(gomock.NewController(t))
 			mockPP.EXPECT().Noticef(
 				pp.EmojiUserWarning,
-				sentinel,
-				tc.key, tc.value, tc.source, domain.FQDN("good.example"), tc.leading, tc.extraTrailing,
+				`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+				tc.key, tc.source, domain.FQDN("good.example"),
 			)
 
 			ok := readDomains(mockPP, tc.key, tc.family, &field)
@@ -247,8 +245,6 @@ func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
 }
 
 func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
-	const sentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q source=%q"
-
 	for _, tc := range []struct {
 		key    string
 		family *ipnet.Family
@@ -263,7 +259,8 @@ func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
 			oldField := []domainentry.Entry{oldEntry()}
 			field := oldField
 			mockPP := mocks.NewMockPP(gomock.NewController(t))
-			mockPP.EXPECT().Noticef(pp.EmojiUserError, sentinel, tc.key, value, value)
+			mockPP.EXPECT().Noticef(pp.EmojiUserError,
+				`%s has consecutive dots in %q; replace each run with a single dot`, tc.key, value)
 
 			ok := readDomains(mockPP, tc.key, tc.family, &field)
 
@@ -274,8 +271,6 @@ func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
 }
 
 func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T) {
-	const normalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q source=%q effective=%s leading=%t extra-trailing=%t"
-	const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q source=%q"
 	const value = ",.good.example good.example..,a..bad.example"
 	oldField := []domainentry.Entry{oldEntry()}
 	field := oldField
@@ -283,10 +278,15 @@ func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",.good.example good.example..,a..bad.example"`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel, "DOMAINS", value, ".good.example", domain.FQDN("good.example"), true, false),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
 		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",.good.example good.example..,a..bad.example"`),
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel, "DOMAINS", value, "good.example..", domain.FQDN("good.example"), false, true),
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, "DOMAINS", value, "a..bad.example"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", "good.example..", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError,
+			`%s has consecutive dots in %q; replace each run with a single dot`, "DOMAINS", "a..bad.example"),
 	)
 
 	ok := readDomains(mockPP, "DOMAINS", nil, &field)
@@ -296,17 +296,20 @@ func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T
 }
 
 func TestReadDomainsReportsRepeatedBoundaryNormalizationsBeforeFatalEntry(t *testing.T) {
-	const normalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q source=%q effective=%s leading=%t extra-trailing=%t"
-	const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q source=%q"
 	const value = ".good.example,.good.example,a..bad.example"
 	oldField := []domainentry.Entry{oldEntry()}
 	field := oldField
 	store(t, "DOMAINS", value)
 	mockPP := mocks.NewMockPP(gomock.NewController(t))
 	gomock.InOrder(
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel, "DOMAINS", value, ".good.example", domain.FQDN("good.example"), true, false),
-		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, normalizationSentinel, "DOMAINS", value, ".good.example", domain.FQDN("good.example"), true, false),
-		mockPP.EXPECT().Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, "DOMAINS", value, "a..bad.example"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError,
+			`%s has consecutive dots in %q; replace each run with a single dot`, "DOMAINS", "a..bad.example"),
 	)
 
 	ok := readDomains(mockPP, "DOMAINS", nil, &field)

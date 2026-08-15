@@ -84,7 +84,7 @@ func (diagnostic Diagnostic) Description(input string) string {
 	case KindMissingComma:
 		return "missing comma"
 	case KindDomainBoundaryNormalization:
-		return "__DOMAIN_BOUNDARY_NORMALIZATION__"
+		return "domain spelling was normalized for compatibility"
 	}
 
 	panic("domainentry: unknown diagnostic kind; this should not happen; please report it")

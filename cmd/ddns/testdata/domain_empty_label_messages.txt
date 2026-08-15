@@ -1,0 +1,306 @@
+Domain empty-label operator-message matrix
+The harness makes no network request and uses a deliberately unusable API token.
+
+01. leading-dot compatibility
+setting/input: IP4_DOMAINS=".leading.example"
+quiet CLI output:
+😦 IP4_DOMAINS accepts ".leading.example" for now; use leading.example instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS accepts ".leading.example" for now; use leading.example instead because version 2.0.0 will reject the current spelling
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default PROXIED=false
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Read settings, then check settings
+
+02. extra-trailing-dot compatibility
+setting/input: IP4_DOMAINS="trailing.example.."
+quiet CLI output:
+😦 IP4_DOMAINS accepts "trailing.example.." for now; use trailing.example instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS accepts "trailing.example.." for now; use trailing.example instead because version 2.0.0 will reject the current spelling
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default PROXIED=false
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Read settings, then check settings
+
+03. one atom with both normalizations
+setting/input: IP4_DOMAINS=".both.example.."
+quiet CLI output:
+😦 IP4_DOMAINS accepts ".both.example.." for now; use both.example instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS accepts ".both.example.." for now; use both.example instead because version 2.0.0 will reject the current spelling
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default PROXIED=false
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Read settings, then check settings
+
+04. repeated effective targets retain encounter order
+setting/input: IP4_DOMAINS=".repeat.example,repeat.example..,.repeat.example"
+quiet CLI output:
+😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS accepts "repeat.example.." for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+   😦 IP4_DOMAINS accepts "repeat.example.." for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+   😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default PROXIED=false
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Read settings in source-atom encounter order, then check settings
+
+05. plain interior empty label
+setting/input: IP4_DOMAINS="plain..empty.example"
+quiet CLI output:
+😡 IP4_DOMAINS has consecutive dots in "plain..empty.example"; replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😡 IP4_DOMAINS has consecutive dots in "plain..empty.example"; replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings, then report the startup failure
+
+06. empty label immediately after wildcard marker
+setting/input: PROXIED="sub(*..wildcard.example)"
+quiet CLI output:
+😡 PROXIED has consecutive dots in sub("*..wildcard.example"), including a run immediately after the wildcard marker "*"; replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😡 PROXIED has consecutive dots in sub("*..wildcard.example"), including a run immediately after the wildcard marker "*"; replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings, check settings, then report the startup failure
+
+07. later interior empty label in a wildcard suffix
+setting/input: PROXIED="sub(*.later..empty.example)"
+quiet CLI output:
+😡 PROXIED has consecutive dots in sub("*.later..empty.example"); replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😡 PROXIED has consecutive dots in sub("*.later..empty.example"); replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings, check settings, then report the startup failure
+
+08. equivalent plain-list, is(...), and sub(...) cases
+setting/input: DOMAINS / PROXIED=".equivalent.example / is(.equivalent.example) / sub(.equivalent.example)"
+quiet CLI output:
+plain-list:
+😦 DOMAINS accepts ".equivalent.example" for now; use equivalent.example instead because version 2.0.0 will reject the current spelling
+is(...):
+😦 PROXIED accepts is(".equivalent.example") for now; use is(equivalent.example) instead because version 2.0.0 will reject the current spelling
+sub(...):
+😦 PROXIED accepts sub(".equivalent.example") for now; use sub(equivalent.example) instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+plain-list:
+😦 DOMAINS accepts ".equivalent.example" for now; use equivalent.example instead because version 2.0.0 will reject the current spelling
+is(...):
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😦 PROXIED accepts is(".equivalent.example") for now; use is(equivalent.example) instead because version 2.0.0 will reject the current spelling
+sub(...):
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😦 PROXIED accepts sub(".equivalent.example") for now; use sub(equivalent.example) instead because version 2.0.0 will reject the current spelling
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Render the plain list, then is(...), then sub(...) in that order
+
+09. compatibility output beside extra- and missing-comma warnings
+setting/input: IP4_DOMAINS=",.extra.example .missing.example.."
+quiet CLI output:
+😦 IP4_DOMAINS (",.extra.example .missing.example..") contains extra commas; this is accepted for now but will be rejected in version 2.0.0
+😦 IP4_DOMAINS accepts ".extra.example" for now; use extra.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS (",.extra.example .missing.example..") is missing commas; this is accepted for now but will be rejected in version 2.0.0
+😦 IP4_DOMAINS accepts ".missing.example.." for now; use missing.example instead because version 2.0.0 will reject the current spelling
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS (",.extra.example .missing.example..") contains extra commas; this is accepted for now but will be rejected in version 2.0.0
+   😦 IP4_DOMAINS accepts ".extra.example" for now; use extra.example instead because version 2.0.0 will reject the current spelling
+   😦 IP4_DOMAINS (",.extra.example .missing.example..") is missing commas; this is accepted for now but will be rejected in version 2.0.0
+   😦 IP4_DOMAINS accepts ".missing.example.." for now; use missing.example instead because version 2.0.0 will reject the current spelling
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default PROXIED=false
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+accepted/rejected result: accepted
+heartbeat output: no feature-specific heartbeat result
+notifier output: no feature-specific notifier result
+encounter order: Read settings in the existing comma-warning and source-atom order, then check settings
+
+10. accepted normalization before a fatal entry
+setting/input: IP4_DOMAINS=".accepted.example,fatal..empty.example"
+quiet CLI output:
+😦 IP4_DOMAINS accepts ".accepted.example" for now; use accepted.example instead because version 2.0.0 will reject the current spelling
+😡 IP4_DOMAINS has consecutive dots in "fatal..empty.example"; replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😦 IP4_DOMAINS accepts ".accepted.example" for now; use accepted.example instead because version 2.0.0 will reject the current spelling
+   😡 IP4_DOMAINS has consecutive dots in "fatal..empty.example"; replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings in source-atom encounter order, then report the startup failure
+
+11. multiple long consecutive-dot runs
+setting/input: IP4_DOMAINS="a......b.....c.....d"
+quiet CLI output:
+😡 IP4_DOMAINS has consecutive dots in "a......b.....c.....d"; replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😡 IP4_DOMAINS has consecutive dots in "a......b.....c.....d"; replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings, then report the startup failure
+
+12. wildcard-marker and later consecutive-dot runs
+setting/input: PROXIED="sub(*......a.....b)"
+quiet CLI output:
+😡 PROXIED has consecutive dots in sub("*......a.....b"), including a run immediately after the wildcard marker "*"; replace each run with a single dot
+verbose CLI output:
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😡 PROXIED has consecutive dots in sub("*......a.....b"), including a run immediately after the wildcard marker "*"; replace each run with a single dot
+accepted/rejected result: rejected
+heartbeat output: Configuration errors
+notifier output: Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.
+encounter order: Read settings, check settings, then report the startup failure

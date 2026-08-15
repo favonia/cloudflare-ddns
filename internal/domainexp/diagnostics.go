@@ -6,6 +6,7 @@ package domainexp
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -13,9 +14,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
-
-const domainBoundaryNormalizationSentinel = "__DOMAIN_BOUNDARY_NORMALIZATION__ key=%s input=%q context=%s source=%q effective=%s leading=%t extra-trailing=%t"
-const emptyInteriorLabelSentinel = "__EMPTY_INTERIOR_LABEL__ key=%s input=%q context=%s source=%q"
 
 type normalizationContext uint8
 
@@ -32,16 +30,42 @@ type boundaryNormalization struct {
 	normalization domain.Normalization
 }
 
-func (context normalizationContext) String() string {
+func (context normalizationContext) describeSource(source string) string {
 	switch context {
 	case normalizationList:
-		return "list"
+		return fmt.Sprintf("%q", source)
 	case normalizationIs:
-		return "is"
+		return fmt.Sprintf("is(%q)", source)
 	case normalizationSub:
-		return "sub"
+		return fmt.Sprintf("sub(%q)", source)
 	}
 	panic("domainexp: unknown normalization context")
+}
+
+func (context normalizationContext) describeCorrection(effective string) string {
+	switch context {
+	case normalizationList:
+		return effective
+	case normalizationIs:
+		return fmt.Sprintf("is(%s)", effective)
+	case normalizationSub:
+		return fmt.Sprintf("sub(%s)", effective)
+	}
+	panic("domainexp: unknown normalization context")
+}
+
+func boundaryNormalizationMessage(key string, context normalizationContext, source, effective string) string {
+	return fmt.Sprintf(`%s accepts %s for now; use %s instead because version 2.0.0 will reject the current spelling`,
+		key, context.describeSource(source), context.describeCorrection(effective))
+}
+
+func emptyInteriorLabelMessage(key string, context normalizationContext, source string, err error) string {
+	if domain.EmptyInteriorLabelIncludesWildcardMarker(err) {
+		return fmt.Sprintf(`%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; replace each run with a single dot`,
+			key, context.describeSource(source))
+	}
+	return fmt.Sprintf(`%s has consecutive dots in %s; replace each run with a single dot`,
+		key, context.describeSource(source))
 }
 
 type parserState struct {
@@ -114,11 +138,8 @@ func (state *parserState) recordBoundaryNormalization(
 // reportListDiagnostics emits the compatibility warnings accumulated while flattening a domain list.
 func reportListDiagnostics(ppfmt pp.PP, key string, input string, state *parserState) {
 	for _, entry := range state.boundaryNormalizations {
-		arguments := []any{
-			key, input, entry.context.String(), entry.source, entry.effective,
-			entry.normalization.RemovedLeadingDots, entry.normalization.RemovedExtraTrailingDots,
-		}
-		ppfmt.Noticef(pp.EmojiUserWarning, domainBoundaryNormalizationSentinel, arguments...)
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s", boundaryNormalizationMessage(key, entry.context, entry.source, entry.effective))
 	}
 	if state.extraComma {
 		ppfmt.Noticef(pp.EmojiUserWarning,
@@ -186,11 +207,8 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 			key, listSyntaxPreview(input), ws, ws, parent, parent)
 	}
 	for _, entry := range state.boundaryNormalizations {
-		arguments := []any{
-			key, input, entry.context.String(), entry.source, entry.effective,
-			entry.normalization.RemovedLeadingDots, entry.normalization.RemovedExtraTrailingDots,
-		}
-		ppfmt.Noticef(pp.EmojiUserWarning, domainBoundaryNormalizationSentinel, arguments...)
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s", boundaryNormalizationMessage(key, entry.context, entry.source, entry.effective))
 	}
 	if state.extraComma {
 		ppfmt.Noticef(
@@ -234,8 +252,8 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, input[err.Span.Start:err.Span.End])
 	case invalidDomainOK:
 		if errors.Is(invalidDomain.cause, domain.ErrEmptyInteriorLabel) {
-			arguments := []any{key, input, invalidDomain.context.String(), input[err.Span.Start:err.Span.End]}
-			ppfmt.Noticef(pp.EmojiUserError, emptyInteriorLabelSentinel, arguments...)
+			ppfmt.Noticef(pp.EmojiUserError,
+				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, input[err.Span.Start:err.Span.End], invalidDomain.cause))
 			return
 		}
 		ppfmt.Noticef(pp.EmojiUserError,
