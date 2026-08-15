@@ -312,6 +312,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			require.NoError(t, quick.Check(func(left, right string, leading, trailing uint8) bool {
 				input := strings.Repeat(".", int(leading%3)) +
 					tc.buildInput(canonicalLabel(left), canonicalLabel(right)) +
@@ -333,6 +334,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		{name: "multiple empty interior labels", interiorDots: "..."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			require.NoError(t, quick.Check(func(left, right string, leading, trailing uint8) bool {
 				input := strings.Repeat(".", int(leading%3)) +
 					canonicalLabel(left) + tc.interiorDots + canonicalLabel(right) + ".org" +
