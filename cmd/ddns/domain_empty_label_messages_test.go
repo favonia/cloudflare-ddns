@@ -24,7 +24,9 @@ type domainEmptyLabelScenario struct {
 	render   func(*testing.T, pp.Verbosity) (string, bool)
 }
 
+//nolint:paralleltest // Scenario renderers mutate process environment variables.
 func TestDomainEmptyLabelMessages(t *testing.T) {
+	//nolint:paralleltest // Each scenario's renderers mutate process environment variables.
 	for _, scenario := range domainEmptyLabelScenarios() {
 		t.Run(scenario.name, func(t *testing.T) {
 			require.NotEmpty(t, scenario.setting)
@@ -34,6 +36,7 @@ func TestDomainEmptyLabelMessages(t *testing.T) {
 				name      string
 				verbosity pp.Verbosity
 			}{{"quiet", pp.Quiet}, {"verbose", pp.Verbose}} {
+				//nolint:paralleltest // The renderer mutates process environment variables.
 				t.Run(output.name, func(t *testing.T) {
 					actual, accepted := scenario.render(t, output.verbosity)
 					require.Equal(t, scenario.accepted, accepted)
@@ -56,9 +59,11 @@ func TestDomainEmptyLabelMessages(t *testing.T) {
 			}
 			if !scenario.accepted {
 				t.Run("heartbeat", func(t *testing.T) {
+					t.Parallel()
 					requireDomainEmptyLabelGolden(t, scenario.name, "heartbeat", heartbeat.NewMessagef(false, "Configuration errors").Format())
 				})
 				t.Run("notifier", func(t *testing.T) {
+					t.Parallel()
 					requireDomainEmptyLabelGolden(t, scenario.name, "notifier", startupFailureNotification().Format())
 				})
 			}
