@@ -2,12 +2,8 @@ package main
 
 import (
 	"bytes"
-	"flag"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,308 +15,179 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/testenv"
 )
 
-//nolint:gochecknoglobals // The flag package registers test flags through its process-global command-line set.
-var domainEmptyLabelMatrixOutput = flag.String(
-	"domain-empty-label-matrix-output",
-	"",
-	"write the rendered domain empty-label operator matrix to this path",
-)
-
-const domainEmptyLabelMatrixGolden = "testdata/domain_empty_label_messages.txt"
-
-type domainEmptyLabelMatrixScenario struct {
-	name      string
-	setting   string
-	input     string
-	accepted  bool
-	checks    bool
-	encounter string
-	render    func(*testing.T, pp.Verbosity) (string, bool)
+type domainEmptyLabelScenario struct {
+	name     string
+	setting  string
+	input    string
+	accepted bool
+	checks   bool
+	render   func(*testing.T, pp.Verbosity) (string, bool)
 }
 
-// TestRenderDomainEmptyLabelMessageMatrix renders the complete operator-facing
-// matrix without making a network request or requiring usable credentials.
-//
-//nolint:paralleltest // the bootstrap deliberately clears process environment variables.
-func TestRenderDomainEmptyLabelMessageMatrix(t *testing.T) {
-	matrix := renderDomainEmptyLabelMessageMatrix(t)
-	if *domainEmptyLabelMatrixOutput != "" {
-		outputPath, err := domainEmptyLabelMatrixOutputPath(*domainEmptyLabelMatrixOutput)
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(outputPath, []byte(matrix), 0o600))
-	}
-	golden, err := os.ReadFile(domainEmptyLabelMatrixGolden)
-	require.NoError(t, err)
-	require.Equal(t, string(golden), matrix)
-}
-
-//nolint:paralleltest // the subprocess runs the environment-mutating matrix test.
-func TestRenderDomainEmptyLabelMessageMatrixWritesRequestedOutputBeforeGoldenMismatch(t *testing.T) {
-	temporaryDirectory := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(temporaryDirectory, "testdata"), 0o700))
-	require.NoError(t, os.WriteFile(
-		filepath.Join(temporaryDirectory, domainEmptyLabelMatrixGolden),
-		[]byte("stale golden\n"),
-		0o600,
-	))
-
-	executable, err := os.Executable()
-	require.NoError(t, err)
-	outputPath := filepath.Join(temporaryDirectory, "recaptured.txt")
-	command := exec.CommandContext(t.Context(),
-		executable,
-		"-test.run=^TestRenderDomainEmptyLabelMessageMatrix$",
-		"-domain-empty-label-matrix-output="+outputPath,
-	)
-	command.Dir = temporaryDirectory
-	require.Error(t, command.Run())
-
-	recaptured, err := os.ReadFile(outputPath)
-	require.NoError(t, err)
-	require.Contains(t, string(recaptured), "Domain empty-label operator-message matrix\n")
-	require.NotEqual(t, "stale golden\n", string(recaptured))
-}
-
-//nolint:paralleltest // t.Chdir changes process-global state.
-func TestDomainEmptyLabelMatrixOutputPathRejectsGoldenAliases(t *testing.T) {
-	moduleRoot := t.TempDir()
-	packageDirectory := filepath.Join(moduleRoot, "cmd", "ddns")
-	goldenPath := filepath.Join(packageDirectory, domainEmptyLabelMatrixGolden)
-	require.NoError(t, os.MkdirAll(filepath.Dir(goldenPath), 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(moduleRoot, "go.mod"), []byte("module example.com/test\n"), 0o600))
-	require.NoError(t, os.WriteFile(goldenPath, []byte("tracked golden\n"), 0o600))
-	symlinkPath := filepath.Join(moduleRoot, "golden-link.txt")
-	require.NoError(t, os.Symlink(goldenPath, symlinkPath))
-	t.Chdir(packageDirectory)
-
-	for name, targetPath := range map[string]string{
-		"relative lexical alias": filepath.Join("cmd", "ddns", "testdata", "..", "testdata", filepath.Base(goldenPath)),
-		"absolute lexical alias": filepath.Join(packageDirectory, "testdata", "..", "testdata", filepath.Base(goldenPath)),
-		"symlink":                symlinkPath,
-	} {
-		t.Run(name, func(t *testing.T) {
-			_, err := domainEmptyLabelMatrixOutputPath(targetPath)
-			require.Error(t, err)
+func TestDomainEmptyLabelMessages(t *testing.T) {
+	for _, scenario := range domainEmptyLabelScenarios() {
+		t.Run(scenario.name, func(t *testing.T) {
+			require.NotEmpty(t, scenario.setting)
+			require.NotEmpty(t, scenario.input)
+			require.NotNil(t, scenario.render)
+			for _, output := range []struct {
+				name      string
+				verbosity pp.Verbosity
+			}{{"quiet", pp.Quiet}, {"verbose", pp.Verbose}} {
+				t.Run(output.name, func(t *testing.T) {
+					actual, accepted := scenario.render(t, output.verbosity)
+					require.Equal(t, scenario.accepted, accepted)
+					if scenario.accepted {
+						require.Contains(t, actual, "😦")
+					} else {
+						require.Contains(t, actual, "😡")
+					}
+					if output.verbosity == pp.Verbose && scenario.name != "plain-list-leading-dot" {
+						require.Contains(t, actual, "📖 Reading settings . . .")
+						require.Contains(t, actual, "🔸")
+						if scenario.checks {
+							require.Contains(t, actual, "📖 Checking settings . . .")
+						} else {
+							require.NotContains(t, actual, "📖 Checking settings . . .")
+						}
+					}
+					requireDomainEmptyLabelGolden(t, scenario.name, output.name, actual)
+				})
+			}
+			if !scenario.accepted {
+				t.Run("heartbeat", func(t *testing.T) {
+					requireDomainEmptyLabelGolden(t, scenario.name, "heartbeat", heartbeat.NewMessagef(false, "Configuration errors").Format())
+				})
+				t.Run("notifier", func(t *testing.T) {
+					requireDomainEmptyLabelGolden(t, scenario.name, "notifier", startupFailureNotification().Format())
+				})
+			}
 		})
 	}
 }
 
-func domainEmptyLabelMatrixOutputPath(path string) (string, error) {
-	outputPath := path
-	if !filepath.IsAbs(outputPath) {
-		directory, err := os.Getwd()
-		if err != nil {
-			//nolint:wrapcheck // The test-only helper preserves the raw os.Getwd error contract.
-			return "", err
-		}
-		for {
-			if _, err := os.Stat(filepath.Join(directory, "go.mod")); err == nil {
-				outputPath = filepath.Join(directory, outputPath)
-				break
-			}
-			parent := filepath.Dir(directory)
-			if parent == directory {
-				//nolint:err113 // The test-only helper preserves its existing dynamic module-root error text.
-				return "", fmt.Errorf("cannot find module root for %q", path)
-			}
-			directory = parent
-		}
-	}
-
-	outputPath, err := filepath.Abs(outputPath)
-	if err != nil {
-		//nolint:wrapcheck // The test-only helper preserves the raw filepath.Abs error contract.
-		return "", err
-	}
-	goldenPath, err := filepath.Abs(domainEmptyLabelMatrixGolden)
-	if err != nil {
-		//nolint:wrapcheck // The test-only helper preserves the raw filepath.Abs error contract.
-		return "", err
-	}
-	aliasesGolden := outputPath == goldenPath
-	outputInfo, outputErr := os.Stat(outputPath)
-	goldenInfo, goldenErr := os.Stat(goldenPath)
-	if outputErr == nil && goldenErr == nil {
-		aliasesGolden = aliasesGolden || os.SameFile(outputInfo, goldenInfo)
-	}
-	if aliasesGolden {
-		//nolint:err113 // The test-only helper reports the unsafe caller-provided path.
-		return "", fmt.Errorf("output path %q resolves to the tracked golden", path)
-	}
-	return outputPath, nil
-}
-
-func renderDomainEmptyLabelMessageMatrix(t *testing.T) string {
+func requireDomainEmptyLabelGolden(t *testing.T, scenario, surface, actual string) {
 	t.Helper()
-
-	scenarios := []domainEmptyLabelMatrixScenario{
-		{
-			name:      "01. leading-dot compatibility",
-			setting:   "IP4_DOMAINS",
-			input:     ".leading.example",
-			accepted:  true,
-			checks:    true,
-			encounter: "Read settings, then check settings",
-			render:    renderBootstrapScenario("IP4_DOMAINS", ".leading.example"),
-		},
-		{
-			name:      "02. extra-trailing-dot compatibility",
-			setting:   "IP4_DOMAINS",
-			input:     "trailing.example..",
-			accepted:  true,
-			checks:    true,
-			encounter: "Read settings, then check settings",
-			render:    renderBootstrapScenario("IP4_DOMAINS", "trailing.example.."),
-		},
-		{
-			name:      "03. one atom with both normalizations",
-			setting:   "IP4_DOMAINS",
-			input:     ".both.example..",
-			accepted:  true,
-			checks:    true,
-			encounter: "Read settings, then check settings",
-			render:    renderBootstrapScenario("IP4_DOMAINS", ".both.example.."),
-		},
-		{
-			name:      "04. repeated effective targets retain encounter order",
-			setting:   "IP4_DOMAINS",
-			input:     ".repeat.example,repeat.example..,.repeat.example",
-			accepted:  true,
-			checks:    true,
-			encounter: "Read settings in source-atom encounter order, then check settings",
-			render:    renderBootstrapScenario("IP4_DOMAINS", ".repeat.example,repeat.example..,.repeat.example"),
-		},
-		{
-			name:      "05. plain interior empty label",
-			setting:   "IP4_DOMAINS",
-			input:     "plain..empty.example",
-			accepted:  false,
-			checks:    false,
-			encounter: "Read settings, then report the startup failure",
-			render:    renderBootstrapScenario("IP4_DOMAINS", "plain..empty.example"),
-		},
-		{
-			name:      "06. empty label immediately after wildcard marker",
-			setting:   "PROXIED",
-			input:     "sub(*..wildcard.example)",
-			accepted:  false,
-			checks:    true,
-			encounter: "Read settings, check settings, then report the startup failure",
-			render:    renderBootstrapScenario("PROXIED", "sub(*..wildcard.example)"),
-		},
-		{
-			name:      "07. later interior empty label in a wildcard suffix",
-			setting:   "PROXIED",
-			input:     "sub(*.later..empty.example)",
-			accepted:  false,
-			checks:    true,
-			encounter: "Read settings, check settings, then report the startup failure",
-			render:    renderBootstrapScenario("PROXIED", "sub(*.later..empty.example)"),
-		},
-		{
-			name:      "08. equivalent plain-list, is(...), and sub(...) cases",
-			setting:   "DOMAINS / PROXIED",
-			input:     ".equivalent.example / is(.equivalent.example) / sub(.equivalent.example)",
-			accepted:  true,
-			checks:    true,
-			encounter: "Render the plain list, then is(...), then sub(...) in that order",
-			render:    renderEquivalentFormsScenario,
-		},
-		{
-			name:      "09. compatibility output beside extra- and missing-comma warnings",
-			setting:   "IP4_DOMAINS",
-			input:     ",.extra.example .missing.example..",
-			accepted:  true,
-			checks:    true,
-			encounter: "Read settings in the existing comma-warning and source-atom order, then check settings",
-			render:    renderBootstrapScenario("IP4_DOMAINS", ",.extra.example .missing.example.."),
-		},
-		{
-			name:      "10. accepted normalization before a fatal entry",
-			setting:   "IP4_DOMAINS",
-			input:     ".accepted.example,fatal..empty.example",
-			accepted:  false,
-			checks:    false,
-			encounter: "Read settings in source-atom encounter order, then report the startup failure",
-			render:    renderBootstrapScenario("IP4_DOMAINS", ".accepted.example,fatal..empty.example"),
-		},
-		{
-			name:      "11. multiple long consecutive-dot runs",
-			setting:   "IP4_DOMAINS",
-			input:     "a......b.....c.....d",
-			accepted:  false,
-			checks:    false,
-			encounter: "Read settings, then report the startup failure",
-			render:    renderBootstrapScenario("IP4_DOMAINS", "a......b.....c.....d"),
-		},
-		{
-			name:      "12. wildcard-marker and later consecutive-dot runs",
-			setting:   "PROXIED",
-			input:     "sub(*......a.....b)",
-			accepted:  false,
-			checks:    true,
-			encounter: "Read settings, check settings, then report the startup failure",
-			render:    renderBootstrapScenario("PROXIED", "sub(*......a.....b)"),
-		},
-	}
-
-	var output strings.Builder
-	output.WriteString("Domain empty-label operator-message matrix\n")
-	output.WriteString("The harness makes no network request and uses a deliberately unusable API token.\n")
-	for _, scenario := range scenarios {
-		writeDomainEmptyLabelScenario(t, &output, scenario)
-	}
-	return output.String()
+	golden, err := os.ReadFile(filepath.Join("testdata", "domain-empty-label-messages", scenario, surface+".txt"))
+	require.NoError(t, err)
+	require.Equal(t, golden, []byte(actual))
 }
 
-func writeDomainEmptyLabelScenario(t *testing.T, output *strings.Builder, scenario domainEmptyLabelMatrixScenario) {
-	t.Helper()
-
-	require.NotEmpty(t, scenario.setting, "%s setting", scenario.name)
-	require.NotEmpty(t, scenario.input, "%s input", scenario.name)
-	require.NotNil(t, scenario.render, "%s renderer", scenario.name)
-	quiet, quietAccepted := scenario.render(t, pp.Quiet)
-	verbose, verboseAccepted := scenario.render(t, pp.Verbose)
-	require.Equalf(t, scenario.accepted, quietAccepted, "%s quiet result", scenario.name)
-	require.Equalf(t, scenario.accepted, verboseAccepted, "%s verbose result", scenario.name)
-	if scenario.accepted {
-		require.Containsf(t, quiet, "😦", "%s quiet warning emoji", scenario.name)
-		require.Containsf(t, verbose, "😦", "%s verbose warning emoji", scenario.name)
-	} else {
-		require.Containsf(t, quiet, "😡", "%s quiet error emoji", scenario.name)
-		require.Containsf(t, verbose, "😡", "%s verbose error emoji", scenario.name)
+func domainEmptyLabelScenarios() []domainEmptyLabelScenario {
+	return []domainEmptyLabelScenario{
+		{
+			name:     "leading-dot",
+			setting:  "IP4_DOMAINS",
+			input:    ".leading.example",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("IP4_DOMAINS", ".leading.example"),
+		},
+		{
+			name:     "extra-trailing-dots",
+			setting:  "IP4_DOMAINS",
+			input:    "trailing.example..",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("IP4_DOMAINS", "trailing.example.."),
+		},
+		{
+			name:     "leading-and-extra-trailing-dots",
+			setting:  "IP4_DOMAINS",
+			input:    ".both.example..",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("IP4_DOMAINS", ".both.example.."),
+		},
+		{
+			name:     "repeated-effective-target",
+			setting:  "IP4_DOMAINS",
+			input:    ".repeat.example,repeat.example..,.repeat.example",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("IP4_DOMAINS", ".repeat.example,repeat.example..,.repeat.example"),
+		},
+		{
+			name:     "plain-interior-empty-label",
+			setting:  "IP4_DOMAINS",
+			input:    "plain..empty.example",
+			accepted: false,
+			checks:   false,
+			render:   renderBootstrapScenario("IP4_DOMAINS", "plain..empty.example"),
+		},
+		{
+			name:     "wildcard-immediate-empty-label",
+			setting:  "PROXIED",
+			input:    "sub(*..wildcard.example)",
+			accepted: false,
+			checks:   true,
+			render:   renderBootstrapScenario("PROXIED", "sub(*..wildcard.example)"),
+		},
+		{
+			name:     "wildcard-later-empty-label",
+			setting:  "PROXIED",
+			input:    "sub(*.later..empty.example)",
+			accepted: false,
+			checks:   true,
+			render:   renderBootstrapScenario("PROXIED", "sub(*.later..empty.example)"),
+		},
+		{
+			name:     "plain-list-leading-dot",
+			setting:  "DOMAINS",
+			input:    ".equivalent.example",
+			accepted: true,
+			checks:   true,
+			render:   renderPlainListScenario("DOMAINS", ".equivalent.example"),
+		},
+		{
+			name:     "proxied-is-leading-dot",
+			setting:  "PROXIED",
+			input:    "is(.equivalent.example)",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("PROXIED", "is(.equivalent.example)"),
+		},
+		{
+			name:     "proxied-sub-leading-dot",
+			setting:  "PROXIED",
+			input:    "sub(.equivalent.example)",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("PROXIED", "sub(.equivalent.example)"),
+		},
+		{
+			name:     "adjacent-warnings",
+			setting:  "IP4_DOMAINS",
+			input:    ",.extra.example .missing.example..",
+			accepted: true,
+			checks:   true,
+			render:   renderBootstrapScenario("IP4_DOMAINS", ",.extra.example .missing.example.."),
+		},
+		{
+			name:     "accepted-normalization-before-fatal",
+			setting:  "IP4_DOMAINS",
+			input:    ".accepted.example,fatal..empty.example",
+			accepted: false,
+			checks:   false,
+			render:   renderBootstrapScenario("IP4_DOMAINS", ".accepted.example,fatal..empty.example"),
+		},
+		{
+			name:     "multiple-consecutive-dot-runs",
+			setting:  "IP4_DOMAINS",
+			input:    "a......b.....c.....d",
+			accepted: false,
+			checks:   false,
+			render:   renderBootstrapScenario("IP4_DOMAINS", "a......b.....c.....d"),
+		},
+		{
+			name:     "wildcard-multiple-consecutive-dot-runs",
+			setting:  "PROXIED",
+			input:    "sub(*......a.....b)",
+			accepted: false,
+			checks:   true,
+			render:   renderBootstrapScenario("PROXIED", "sub(*......a.....b)"),
+		},
 	}
-	require.Containsf(t, verbose, "📖 Reading settings . . .", "%s verbose reading envelope", scenario.name)
-	require.Containsf(t, verbose, "🔸", "%s verbose default-setting bullet", scenario.name)
-	if scenario.checks {
-		require.Containsf(t, verbose, "📖 Checking settings . . .", "%s verbose checking envelope", scenario.name)
-	} else {
-		require.NotContainsf(t, verbose, "📖 Checking settings . . .", "%s verbose setup", scenario.name)
-	}
-
-	fmt.Fprintf(output, "\n%s\n", scenario.name)
-	fmt.Fprintf(output, "setting/input: %s=%q\n", scenario.setting, scenario.input)
-	writeDomainEmptyLabelOutput(output, "quiet CLI output", quiet)
-	writeDomainEmptyLabelOutput(output, "verbose CLI output", verbose)
-	if scenario.accepted {
-		output.WriteString("accepted/rejected result: accepted\n")
-		output.WriteString("heartbeat output: no feature-specific heartbeat result\n")
-		output.WriteString("notifier output: no feature-specific notifier result\n")
-	} else {
-		output.WriteString("accepted/rejected result: rejected\n")
-		fmt.Fprintf(output, "heartbeat output: %s\n", heartbeat.NewMessagef(false, "Configuration errors").Format())
-		fmt.Fprintf(output, "notifier output: %s\n", startupFailureNotification().Format())
-	}
-	fmt.Fprintf(output, "encounter order: %s\n", scenario.encounter)
-}
-
-func writeDomainEmptyLabelOutput(output *strings.Builder, label, value string) {
-	fmt.Fprintf(output, "%s:\n", label)
-	if value == "" {
-		output.WriteString("<none>\n")
-		return
-	}
-	output.WriteString(value)
 }
 
 func renderBootstrapScenario(setting, input string) func(*testing.T, pp.Verbosity) (string, bool) {
@@ -348,15 +215,6 @@ func renderPlainListScenario(setting, input string) func(*testing.T, pp.Verbosit
 		_, ok := domainexp.ParseList(pp.New(&output, true, verbosity), setting, input)
 		return output.String(), ok
 	}
-}
-
-func renderEquivalentFormsScenario(t *testing.T, verbosity pp.Verbosity) (string, bool) {
-	t.Helper()
-
-	plainOutput, plainOK := renderPlainListScenario("DOMAINS", ".equivalent.example")(t, verbosity)
-	isOutput, isOK := renderBootstrapScenario("PROXIED", "is(.equivalent.example)")(t, verbosity)
-	subOutput, subOK := renderBootstrapScenario("PROXIED", "sub(.equivalent.example)")(t, verbosity)
-	return "plain-list:\n" + plainOutput + "is(...):\n" + isOutput + "sub(...):\n" + subOutput, plainOK && isOK && subOK
 }
 
 func setDomainEmptyLabelBootstrap(t *testing.T, setting, input string) {

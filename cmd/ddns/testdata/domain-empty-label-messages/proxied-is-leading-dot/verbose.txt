@@ -1,0 +1,14 @@
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   🔸 Using default UPDATE_CRON=@every 5m
+   🔸 Using default UPDATE_ON_START=true
+   🔸 Using default DELETE_ON_STOP=false
+   🔸 Using default CACHE_EXPIRATION=6h0m0s
+   🔸 Using default TTL=1
+   🔸 Using default DETECTION_TIMEOUT=5s
+   🔸 Using default UPDATE_TIMEOUT=30s
+📖 Checking settings . . .
+   😦 PROXIED accepts is(".equivalent.example") for now; use is(equivalent.example) instead because version 2.0.0 will reject the current spelling

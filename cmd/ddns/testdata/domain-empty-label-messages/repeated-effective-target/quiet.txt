@@ -1,0 +1,3 @@
+😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS accepts "repeat.example.." for now; use repeat.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS accepts ".repeat.example" for now; use repeat.example instead because version 2.0.0 will reject the current spelling

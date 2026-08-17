@@ -1,0 +1,1 @@
+😡 IP4_DOMAINS has consecutive dots in "plain..empty.example"; replace each run with a single dot

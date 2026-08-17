@@ -1,0 +1,4 @@
+😦 IP4_DOMAINS (",.extra.example .missing.example..") contains extra commas; this is accepted for now but will be rejected in version 2.0.0
+😦 IP4_DOMAINS accepts ".extra.example" for now; use extra.example instead because version 2.0.0 will reject the current spelling
+😦 IP4_DOMAINS (",.extra.example .missing.example..") is missing commas; this is accepted for now but will be rejected in version 2.0.0
+😦 IP4_DOMAINS accepts ".missing.example.." for now; use missing.example instead because version 2.0.0 will reject the current spelling
