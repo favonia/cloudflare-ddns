@@ -29,7 +29,7 @@ The model follows these rules:
 
 1. Apply the existing IDNA lookup mapping before dot-structure classification.
 2. Produce one canonical value for accepted input and occurrence metadata only for compatibility normalization.
-3. Preserve the original source span, canonical effective domain, supplied syntax, and encounter order when reporting accepted occurrences.
+3. Preserve the original source span and canonical effective domain when reporting accepted structured-entry occurrences; preserve the supplied syntax and encounter order when reporting accepted list or expression occurrences.
 4. Add configuration-setting context only at configuration reporting time.
 5. Emit no accepted-normalization diagnostic when that atom or a later field in the same structured entry is rejected.
 6. Return no partial usable list or expression after a fatal domain error; structured parsing may recover only to collect later diagnostics, and a setting with any fatal diagnostic leaves its destination unchanged.
