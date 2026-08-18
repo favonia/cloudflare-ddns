@@ -1,7 +1,5 @@
 package domain
 
-import "strings"
-
 // Wildcard is a fully qualified zone name in its ASCII form, represnting the wildcard domain name
 // under the zone. For example, Wildcard("example.org") represents *.example.org.
 type Wildcard string
@@ -39,15 +37,5 @@ func (w Wildcard) HasStrictSuffix(s Suffix) bool {
 
 // Zones starts from a.b.c for the wildcard domain *.a.b.c.
 func (w Wildcard) Zones(yield func(Suffix) bool) {
-	domain := string(w)
-	for {
-		if !yield(Suffix(domain)) {
-			return
-		}
-		if i := strings.IndexRune(domain, '.'); i == -1 {
-			return
-		} else {
-			domain = domain[i+1:]
-		}
-	}
+	walkZonesASCII(string(w), yield)
 }

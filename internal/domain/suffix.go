@@ -22,17 +22,11 @@ func NewSuffix(input string) (Suffix, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
 	normalized, normalization := normalizeBoundary(ascii)
 
-	if suffix, ok := strings.CutPrefix(normalized, "*."); ok {
-		_, suffixNormalization, suffixErr := newWildcard(suffix, normalization, strings.HasPrefix(suffix, "."))
-		if suffixErr != nil && !errors.Is(suffixErr, ErrTooFewLabels) {
-			return "", Normalization{
-				RemovedLeadingDots:       false,
-				RemovedExtraTrailingDots: false,
-			}, suffixErr
+	if suffix, ok := wildcardSuffix(normalized); ok {
+		_, wildcardErr := validateNormalizedWildcardSuffix(suffix)
+		if wildcardErr != nil {
+			return "", Normalization{}, wildcardErr
 		}
-		return "", normalization.combine(suffixNormalization), ErrWildcardSuffix
-	}
-	if normalized == "*" {
 		return "", normalization, ErrWildcardSuffix
 	}
 
@@ -79,4 +73,17 @@ func hasStrictSuffixASCII(s, suffix string) bool {
 		return s != ""
 	}
 	return strings.HasSuffix(s, suffix) && len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.'
+}
+
+func walkZonesASCII(name string, yield func(Suffix) bool) {
+	for {
+		if !yield(Suffix(name)) {
+			return
+		}
+		if i := strings.IndexRune(name, '.'); i == -1 {
+			return
+		} else {
+			name = name[i+1:]
+		}
+	}
 }

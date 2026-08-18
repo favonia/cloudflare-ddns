@@ -38,6 +38,7 @@ func TestNew(t *testing.T) {
 		{"*.example.org", w("example.org"), normalization(false, false), nil},
 		{"*.example.org.", w("example.org"), normalization(false, false), nil},
 		{"*.example.org..", w("example.org"), normalization(false, true), nil},
+		{"..*.example.org...", w("example.org"), normalization(true, true), nil},
 		{"......", f(""), normalization(false, true), domain.ErrTooFewLabels},
 		{"*......", w(""), normalization(false, true), domain.ErrTooFewLabels},
 		{"a..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
@@ -204,6 +205,15 @@ func TestNewTooFewLabels(t *testing.T) {
 			require.ErrorIs(t, err, domain.ErrTooFewLabels)
 		})
 	}
+}
+
+func TestNewTooFewLabelsTakesPrecedenceOverIDNAErrors(t *testing.T) {
+	t.Parallel()
+
+	got, normalization, err := domain.New("\u0080")
+	require.Equal(t, domain.FQDN("xn--a"), got)
+	require.Empty(t, normalization)
+	require.ErrorIs(t, err, domain.ErrTooFewLabels)
 }
 
 func TestConstructedDomainInvariant(t *testing.T) {

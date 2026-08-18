@@ -58,13 +58,6 @@ type Normalization struct {
 	RemovedExtraTrailingDots bool
 }
 
-func (normalization Normalization) combine(other Normalization) Normalization {
-	return Normalization{
-		RemovedLeadingDots:       normalization.RemovedLeadingDots || other.RemovedLeadingDots,
-		RemovedExtraTrailingDots: normalization.RemovedExtraTrailingDots || other.RemovedExtraTrailingDots,
-	}
-}
-
 // normalizeBoundary removes compatibility dots at a name's boundaries. A
 // single final root dot is silent; two or more final dots are recorded. An
 // all-dot spelling is root cleanup, not leading-dot cleanup.
@@ -93,6 +86,15 @@ func normalizeBoundary(ascii string) (string, Normalization) {
 
 func hasEmptyInteriorLabel(ascii string) bool {
 	return strings.HasPrefix(ascii, ".") || strings.Contains(ascii, "..")
+}
+
+// wildcardSuffix recognizes both a bare wildcard and a wildcard with a suffix
+// after whole-input normalization has exposed its canonical dot separators.
+func wildcardSuffix(ascii string) (string, bool) {
+	if ascii == "*" {
+		return "", true
+	}
+	return strings.CutPrefix(ascii, "*.")
 }
 
 // ErrTooFewLabels means a domain name has fewer than two labels after
@@ -131,11 +133,18 @@ func New(input string) (Domain, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
 	normalized, normalization := normalizeBoundary(ascii)
 
-	if suffix, ok := strings.CutPrefix(normalized, "*."); ok {
-		return newWildcard(suffix, normalization, strings.HasPrefix(suffix, "."))
-	}
-	if normalized == "*" {
-		return Wildcard(""), normalization, ErrTooFewLabels
+	if suffix, ok := wildcardSuffix(normalized); ok {
+		wildcard, wildcardErr := validateNormalizedWildcardSuffix(suffix)
+		if wildcardErr != nil {
+			if errors.Is(wildcardErr, ErrEmptyInteriorLabel) {
+				return nil, Normalization{}, wildcardErr
+			}
+			return wildcard, Normalization{}, wildcardErr
+		}
+		if wildcard == "" {
+			return wildcard, normalization, ErrTooFewLabels
+		}
+		return wildcard, normalization, nil
 	}
 	if strings.IndexByte(normalized, '.') == -1 {
 		return FQDN(normalized), normalization, ErrTooFewLabels
@@ -156,28 +165,20 @@ func New(input string) (Domain, Normalization, error) {
 	return FQDN(normalized), normalization, nil
 }
 
-func newWildcard(
-	suffix string, outerNormalization Normalization, includesWildcardMarker bool,
-) (Domain, Normalization, error) {
+// validateNormalizedWildcardSuffix expects a suffix cut from a whole input
+// after boundary normalization. It re-runs IDNA without the wildcard marker so
+// the marker's own error does not mask errors in the suffix. Target-specific
+// wildcard policy belongs to the caller, so an empty suffix is valid here.
+func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(suffix)
-	normalized, normalization := normalizeBoundary(ascii)
-	normalization = outerNormalization.combine(normalization)
 	if err != nil {
-		return Wildcard(normalized), Normalization{
-			RemovedLeadingDots:       false,
-			RemovedExtraTrailingDots: false,
-		}, err
+		normalized, _ := normalizeBoundary(ascii)
+		return Wildcard(normalized), err
 	}
 	if hasEmptyInteriorLabel(suffix) {
-		return nil, Normalization{
-			RemovedLeadingDots:       false,
-			RemovedExtraTrailingDots: false,
-		}, newEmptyInteriorLabelError(includesWildcardMarker)
+		return "", newEmptyInteriorLabelError(strings.HasPrefix(suffix, "."))
 	}
-	if normalized == "" {
-		return Wildcard(""), normalization, ErrTooFewLabels
-	}
-	return Wildcard(normalized), normalization, nil
+	return Wildcard(ascii), nil
 }
 
 // CompareDomain compares two domains by their ASCII representations.

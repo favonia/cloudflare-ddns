@@ -110,7 +110,9 @@ func TestNewSuffix(t *testing.T) {
 		{"*.a..org", "", expectedNormalization(false, false), domain.ErrEmptyInteriorLabel},
 		{"*.example.org", "", expectedNormalization(false, false), domain.ErrWildcardSuffix},
 		{"*.example.org..", "", expectedNormalization(false, true), domain.ErrWildcardSuffix},
+		{"..*.example.org...", "", expectedNormalization(true, true), domain.ErrWildcardSuffix},
 		{"*", "", expectedNormalization(false, false), domain.ErrWildcardSuffix},
+		{"*......", "", expectedNormalization(false, true), domain.ErrWildcardSuffix},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
