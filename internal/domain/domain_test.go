@@ -90,6 +90,7 @@ func TestEmptyInteriorLabelIncludesWildcardMarker(t *testing.T) {
 			t.Parallel()
 
 			_, _, newErr := domain.New(tc.input)
+			require.EqualError(t, newErr, domain.ErrEmptyInteriorLabel.Error())
 			require.ErrorIs(t, newErr, domain.ErrEmptyInteriorLabel)
 			require.Equal(t, tc.includesWildcard, domain.EmptyInteriorLabelIncludesWildcardMarker(newErr))
 
