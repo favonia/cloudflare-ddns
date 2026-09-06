@@ -4,7 +4,7 @@ Read when: adding or changing configuration inputs, defaults, validation, normal
 
 Defines: the project-wide semantic contract for turning operator configuration into runtime configuration.
 
-Does not define: the syntax or default of an individual setting, package ownership, composition-root wiring, or failures that arise only after configuration has been accepted.
+Feature notes define individual settings and their syntax, defaults, normalization, diagnostics, and local invariants. [Codebase Architecture](codebase-architecture.markdown#configuration-lifecycle) maps this contract to packages and startup code.
 
 ## Operator Intent and Defaults
 
@@ -16,18 +16,14 @@ Every implicit default must be semantically identical to an explicit value, so t
 
 Detect operator misconfigurations at the earliest boundary with enough information to establish the error. Parse and type errors belong at the input boundary, setting-specific semantic errors belong where that setting is assembled, cross-setting errors belong before runtime configuration is admitted, and conditions that depend on runtime observations belong where those observations first become available.
 
-Normalization is an acceptance rule, not error recovery. Only spellings explicitly admitted by a feature contract may produce a canonical value.
-
-## Diagnostics
-
-Diagnostics must make acceptance status unambiguous. A warning may accompany accepted configuration; an error rejects the candidate. Do not report accepted normalization for a value or enclosing setting that is rejected.
+Normalization accepts spellings allowed by the feature contract and converts them to a canonical value. It must not repair rejected input into accepted configuration.
 
 ## Runtime Admission
 
-Configuration input is a candidate until all configuration-time validation succeeds. Runtime code receives configuration only after the complete candidate satisfies its setting-specific and cross-setting invariants. Any configuration error prevents runtime admission; no partial runtime configuration is admitted.
+The complete configuration being validated is a candidate. Runtime code may use it only after all configuration-time checks succeed, including setting-specific and cross-setting invariants. Any configuration error rejects the whole candidate.
 
-Parsing may recover after an error to collect additional diagnostics. Diagnostic recovery must not make a rejected value, setting, list, expression, or candidate available for runtime use.
+Parsing may recover after an error to collect additional diagnostics, but the recovered results must not become a partial runtime configuration.
 
-## Feature Contracts
+## Diagnostics
 
-Feature design notes define their accepted syntax, defaults, normalization, diagnostics, and local invariants within this contract.
+Diagnostics must identify which value or setting they describe. A warning about an accepted value must not imply that the complete candidate has passed validation.
