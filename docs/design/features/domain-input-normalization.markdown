@@ -23,9 +23,9 @@ The root suffix is a special boundary case: `""` and `"."` are accepted silently
 
 Unicode full stop (`U+3002`), fullwidth full stop (`U+FF0E`), and halfwidth ideographic full stop (`U+FF61`) are mapped by the existing IDNA lookup mapping before this classification. Consequently, their leading, trailing, and interior forms follow the same contract as ASCII dots.
 
-## Normalization and Diagnostic Model
+## Domain Parsing and Diagnostics
 
-The model follows these rules:
+Within the shared [Configuration Design](../core/configuration-design.markdown) contract, domain input follows these rules:
 
 1. Apply the existing IDNA lookup mapping before dot-structure classification.
 2. Produce one canonical value for accepted input and occurrence metadata only for compatibility normalization.

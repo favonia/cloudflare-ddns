@@ -31,6 +31,8 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
 
 ## Configuration Lifecycle
 
+This section maps the configuration lifecycle onto the current codebase. [Configuration Design](configuration-design.markdown) defines the semantic contract for defaults, validation, diagnostics, and runtime admission.
+
 `config.DefaultRaw()` creates the baseline updater settings, `(*RawConfig).ReadEnv()` overlays updater environment variables onto that structure, and `(*RawConfig).BuildConfig()` validates cross-field invariants and derives the runtime carriers.
 
 - `RawConfig` holds parsed environment inputs before cross-field validation and derivation.

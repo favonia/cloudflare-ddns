@@ -11,6 +11,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ## Read When Needed
 
+- [`core/configuration-design.markdown`](core/configuration-design.markdown): read when adding or changing configuration inputs, defaults, validation, normalization, diagnostics, or runtime admission.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/go-lint-suppressions.markdown`](guides/go-lint-suppressions.markdown): read when adding or reviewing Go inline `//nolint`.
