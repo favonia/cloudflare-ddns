@@ -38,7 +38,7 @@ Preserve the information needed to explain each accepted normalization:
 - For structured domain entries, preserve the original source span and the canonical domain.
 - For domain lists and expressions, preserve the supplied syntax and report occurrences in input order. Keep the canonical values for evaluation, including in `is(...)` and `sub(...)` expressions.
 
-Structured-entry diagnostics preserve the underlying domain rejection reason, including whether an empty label immediately follows a wildcard marker. Add the configuration-setting context at reporting time, including the setting name for `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS`.
+Structured-entry diagnostics preserve the underlying domain rejection reason, including whether an empty label immediately follows a wildcard marker.
 
 ### Rejection and Recovery
 

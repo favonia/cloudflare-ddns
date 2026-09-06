@@ -45,6 +45,8 @@ This section maps the configuration lifecycle onto the current codebase. [Config
 
 Updater-behavior environment reads are confined to `internal/config/`. Runtime packages below that boundary consume built config values or constructed services instead of reading environment state directly.
 
+For structured domain entries, `internal/domainentry/` supplies diagnostics with source spans and domain-specific details. `internal/config/` adds the setting context when reporting them for `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS`.
+
 ## Composition Root
 
 `cmd/ddns/ddns.go` is the production composition root.
