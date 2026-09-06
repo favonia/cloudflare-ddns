@@ -25,3 +25,5 @@ Parsing may recover after an error to collect additional diagnostics, but the re
 ## Diagnostics
 
 Diagnostics must identify which value or setting they describe. A warning about an accepted value must not imply that the complete candidate has passed validation.
+
+When implementations are similarly simple and predictable, prefer the one that omits secondary warnings likely to distract from correcting fatal configuration errors.

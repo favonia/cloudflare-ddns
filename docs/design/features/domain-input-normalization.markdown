@@ -31,7 +31,7 @@ Diagnostic rendering must preserve the parser's classification, even when it use
 
 ### Information Needed for Diagnostics
 
-For each accepted compatibility normalization, record whether leading dots or extra trailing dots were removed and produce one diagnostic, subject to the rejection rules below. Keep this metadata separate from the canonical configuration value.
+For each accepted compatibility normalization, record whether leading dots or extra trailing dots were removed. Keep this metadata separate from the canonical configuration value. When the setting is accepted, report one diagnostic per normalization occurrence. When fatal errors are present, apply the warning tradeoff in [Configuration Design](../core/configuration-design.markdown#diagnostics).
 
 Preserve the information needed to explain each accepted normalization:
 
@@ -41,8 +41,6 @@ Preserve the information needed to explain each accepted normalization:
 Structured-entry diagnostics preserve the underlying domain rejection reason, including whether an empty label immediately follows a wildcard marker.
 
 ### Rejection and Recovery
-
-Do not emit a normalization diagnostic for a rejected domain atom or for a structured entry whose later field is rejected. An accepted entry may still produce a normalization diagnostic when another entry in the same setting is rejected.
 
 A fatal domain error produces no partial usable list or expression. A setting with any fatal diagnostic leaves its destination unchanged. Structured parsing may resume at later top-level commas solely to collect additional diagnostics.
 
