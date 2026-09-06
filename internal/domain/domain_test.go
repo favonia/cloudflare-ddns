@@ -71,20 +71,19 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestEmptyInteriorLabelIncludesWildcardMarker(t *testing.T) {
+func TestEmptyInteriorLabelRejection(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		name             string
-		input            string
-		includesWildcard bool
+		name  string
+		input string
 	}{
-		{"plain-long-runs", "a......b.....c.....d", false},
-		{"wildcard-immediate-only", "*..a", true},
-		{"wildcard-immediate-and-later", "*......a.....b", true},
-		{"wildcard-later-only", "*.a.....b", false},
-		{"unicode-immediate-and-later", "*｡｡a。｡b", true},
-		{"unicode-later-only", "*.a｡｡b", false},
+		{"plain-long-runs", "a......b.....c.....d"},
+		{"wildcard-immediate-only", "*..a"},
+		{"wildcard-immediate-and-later", "*......a.....b"},
+		{"wildcard-later-only", "*.a.....b"},
+		{"unicode-immediate-and-later", "*｡｡a。｡b"},
+		{"unicode-later-only", "*.a｡｡b"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -92,11 +91,9 @@ func TestEmptyInteriorLabelIncludesWildcardMarker(t *testing.T) {
 			_, _, newErr := domain.New(tc.input)
 			require.EqualError(t, newErr, domain.ErrEmptyInteriorLabel.Error())
 			require.ErrorIs(t, newErr, domain.ErrEmptyInteriorLabel)
-			require.Equal(t, tc.includesWildcard, domain.EmptyInteriorLabelIncludesWildcardMarker(newErr))
 
 			_, _, suffixErr := domain.NewSuffix(tc.input)
 			require.ErrorIs(t, suffixErr, domain.ErrEmptyInteriorLabel)
-			require.Equal(t, tc.includesWildcard, domain.EmptyInteriorLabelIncludesWildcardMarker(suffixErr))
 		})
 	}
 }

@@ -23,41 +23,37 @@ func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		name                   string
-		key                    string
-		input                  string
-		source                 string
-		includesWildcardMarker bool
-		parse                  func(pp.PP, string, string) bool
+		name   string
+		key    string
+		input  string
+		source string
+		parse  func(pp.PP, string, string) bool
 	}{
 		{
-			name:                   "plain-long-runs",
-			key:                    "DOMAINS",
-			input:                  "a......b.....c.....d",
-			source:                 "a......b.....c.....d",
-			includesWildcardMarker: false,
+			name:   "plain-long-runs",
+			key:    "DOMAINS",
+			input:  "a......b.....c.....d",
+			source: "a......b.....c.....d",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseList(formatter, key, input)
 				return ok
 			},
 		},
 		{
-			name:                   "wildcard-immediate-and-later",
-			key:                    "PROXIED",
-			input:                  "sub(*......a.....b)",
-			source:                 "*......a.....b",
-			includesWildcardMarker: true,
+			name:   "wildcard-immediate-and-later",
+			key:    "PROXIED",
+			input:  "sub(*......a.....b)",
+			source: "*......a.....b",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok
 			},
 		},
 		{
-			name:                   "wildcard-later-only",
-			key:                    "PROXIED",
-			input:                  "sub(*.a.....b)",
-			source:                 "*.a.....b",
-			includesWildcardMarker: false,
+			name:   "wildcard-later-only",
+			key:    "PROXIED",
+			input:  "sub(*.a.....b)",
+			source: "*.a.....b",
 			parse: func(formatter pp.PP, key, input string) bool {
 				_, ok := domainexp.ParseExpression(formatter, key, input)
 				return ok
@@ -75,11 +71,6 @@ func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
 			require.Contains(t, rendered, "consecutive dots")
 			require.Contains(t, rendered, "each run")
 			require.Contains(t, rendered, "single dot")
-			if tc.includesWildcardMarker {
-				require.Contains(t, rendered, `wildcard marker "*"`)
-			} else {
-				require.NotContains(t, rendered, "wildcard marker")
-			}
 		})
 	}
 }
@@ -310,7 +301,6 @@ func TestParseListBoundaryNormalization(t *testing.T) {
 	t.Parallel()
 
 	const emptyInteriorLabelMessage = `%s has consecutive dots in %s; replace each run with a single dot`
-	const wildcardInteriorLabelMessage = `%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; replace each run with a single dot`
 	const key = "DOMAINS"
 	type f = domain.FQDN
 
@@ -405,7 +395,7 @@ func TestParseListBoundaryNormalization(t *testing.T) {
 		context string
 	}{
 		{"a..example.org", emptyInteriorLabelMessage, `"a..example.org"`},
-		{"*..example.org", wildcardInteriorLabelMessage, `"*..example.org"`},
+		{"*..example.org", emptyInteriorLabelMessage, `"*..example.org"`},
 		{"*.a..example.org", emptyInteriorLabelMessage, `"*.a..example.org"`},
 	} {
 		t.Run("fatal-empty-interior-label/"+tc.input, func(t *testing.T) {
@@ -456,8 +446,8 @@ func TestParseExpressionEmptyInteriorLabel(t *testing.T) {
 		source string
 	}{
 		{"is(a..example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `is("a..example.org")`},
-		{"sub(*..example.org)", `%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; replace each run with a single dot`, `sub("*..example.org")`},
-		{"sub(*...example.org)", `%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; replace each run with a single dot`, `sub("*...example.org")`},
+		{"sub(*..example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `sub("*..example.org")`},
+		{"sub(*...example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `sub("*...example.org")`},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()

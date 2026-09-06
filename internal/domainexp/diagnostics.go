@@ -59,12 +59,7 @@ func boundaryNormalizationMessage(key string, context normalizationContext, sour
 		key, context.describeSource(source), context.describeCorrection(effective))
 }
 
-func emptyInteriorLabelMessage(key string, context normalizationContext, source string, err error) string {
-	if domain.EmptyInteriorLabelIncludesWildcardMarker(err) {
-		return fmt.Sprintf(`%s has consecutive dots in %s, including a run immediately after the wildcard marker "*"; `+
-			`replace each run with a single dot`,
-			key, context.describeSource(source))
-	}
+func emptyInteriorLabelMessage(key string, context normalizationContext, source string) string {
 	return fmt.Sprintf(`%s has consecutive dots in %s; replace each run with a single dot`,
 		key, context.describeSource(source))
 }
@@ -258,7 +253,7 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 		if errors.Is(invalidDomain.cause, domain.ErrEmptyInteriorLabel) {
 			source := input[err.Span.Start:err.Span.End]
 			ppfmt.Noticef(pp.EmojiUserError,
-				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, source, invalidDomain.cause))
+				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, source))
 			return
 		}
 		ppfmt.Noticef(pp.EmojiUserError,

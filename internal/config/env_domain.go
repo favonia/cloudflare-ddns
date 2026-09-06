@@ -30,13 +30,6 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 	case domainentry.KindInvalidDomain:
 		if errors.Is(diagnostic.Detail, domain.ErrEmptyInteriorLabel) {
 			source := input[diagnostic.Span.Start:diagnostic.Span.End]
-			if domain.EmptyInteriorLabelIncludesWildcardMarker(diagnostic.Detail) {
-				ppfmt.Noticef(pp.EmojiUserError,
-					`%s has consecutive dots in %q, including a run immediately after the wildcard marker "*"; `+
-						`replace each run with a single dot`,
-					key, source)
-				return false
-			}
 			ppfmt.Noticef(pp.EmojiUserError,
 				`%s has consecutive dots in %q; replace each run with a single dot`, key, source)
 			return false

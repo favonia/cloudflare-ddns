@@ -40,7 +40,7 @@ func NewSuffix(input string) (Suffix, Normalization, error) {
 		return "", Normalization{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
-		}, newEmptyInteriorLabelError(false)
+		}, ErrEmptyInteriorLabel
 	}
 	return Suffix(normalized), normalization, nil
 }

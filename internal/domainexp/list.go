@@ -66,7 +66,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 			reportListDiagnostics(ppfmt, key, input, state)
 			if errors.Is(domainErr, domain.ErrEmptyInteriorLabel) {
 				ppfmt.Noticef(pp.EmojiUserError,
-					"%s", emptyInteriorLabelMessage(key, normalizationList, token.Text, domainErr))
+					"%s", emptyInteriorLabelMessage(key, normalizationList, token.Text))
 				return nil, false
 			}
 			if errors.Is(domainErr, domain.ErrTooFewLabels) {

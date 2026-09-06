@@ -231,20 +231,16 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 
 func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
-		input                  string
-		includesWildcardMarker bool
+		input string
 	}{
 		{
-			input:                  "a......b.....c.....d",
-			includesWildcardMarker: false,
+			input: "a......b.....c.....d",
 		},
 		{
-			input:                  "*......a.....b",
-			includesWildcardMarker: true,
+			input: "*......a.....b",
 		},
 		{
-			input:                  "*｡｡a。｡b",
-			includesWildcardMarker: true,
+			input: "*｡｡a。｡b",
 		},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
@@ -257,16 +253,8 @@ func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
 			ok := config.DefaultRaw().ReadEnv(pp.New(&output, false, pp.Quiet))
 			require.False(t, ok)
 			rendered := output.String()
-			require.Contains(t, rendered, "IP4_DOMAINS")
-			require.Contains(t, rendered, strconv.Quote(tc.input))
-			require.Contains(t, rendered, "consecutive dots")
-			require.Contains(t, rendered, "each run")
-			require.Contains(t, rendered, "single dot")
-			if tc.includesWildcardMarker {
-				require.Contains(t, rendered, `wildcard marker "*"`)
-			} else {
-				require.NotContains(t, rendered, "wildcard marker")
-			}
+			require.Equal(t,
+				"IP4_DOMAINS has consecutive dots in "+strconv.Quote(tc.input)+"; replace each run with a single dot\n", rendered)
 		})
 	}
 }

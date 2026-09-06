@@ -58,9 +58,9 @@ type Normalization struct {
 	RemovedExtraTrailingDots bool
 }
 
-// normalizeBoundary removes compatibility dots at a name's boundaries. A
-// single final root dot is silent; two or more final dots are recorded. An
-// all-dot spelling is root cleanup, not leading-dot cleanup.
+// normalizeBoundary removes all leading and trailing dots, recording leading
+// dots and runs of two or more trailing dots in Normalization. An all-dot input
+// counts as trailing dots, not leading dots.
 func normalizeBoundary(ascii string) (string, Normalization) {
 	if strings.Trim(ascii, ".") == "" {
 		return "", Normalization{
@@ -105,26 +105,6 @@ var (
 	ErrEmptyInteriorLabel error = errors.New("empty interior label")
 )
 
-type emptyInteriorLabelError struct {
-	includesWildcardMarker bool
-}
-
-func (err *emptyInteriorLabelError) Error() string { return ErrEmptyInteriorLabel.Error() }
-
-func (err *emptyInteriorLabelError) Unwrap() error { return ErrEmptyInteriorLabel }
-
-// EmptyInteriorLabelIncludesWildcardMarker reports whether err describes a
-// consecutive-dot run immediately after a wildcard marker. It returns false
-// for unrelated errors and empty-label errors without that run.
-func EmptyInteriorLabelIncludesWildcardMarker(err error) bool {
-	var detail *emptyInteriorLabelError
-	return errors.As(err, &detail) && detail.includesWildcardMarker
-}
-
-func newEmptyInteriorLabelError(includesWildcardMarker bool) error {
-	return &emptyInteriorLabelError{includesWildcardMarker: includesWildcardMarker}
-}
-
 // New normalizes a domain to its ASCII form and then stores
 // the normalized domain in its Unicode form when the round trip
 // gives back the same ASCII form without errors. Otherwise,
@@ -160,7 +140,7 @@ func New(input string) (Domain, Normalization, error) {
 		return nil, Normalization{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
-		}, newEmptyInteriorLabelError(false)
+		}, ErrEmptyInteriorLabel
 	}
 	return FQDN(normalized), normalization, nil
 }
@@ -176,7 +156,7 @@ func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 		return Wildcard(normalized), err
 	}
 	if hasEmptyInteriorLabel(suffix) {
-		return "", newEmptyInteriorLabelError(strings.HasPrefix(suffix, "."))
+		return "", ErrEmptyInteriorLabel
 	}
 	return Wildcard(ascii), nil
 }
