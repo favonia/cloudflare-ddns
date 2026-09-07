@@ -14,10 +14,15 @@ type Suffix string
 // strict subdomains, so it cannot be a suffix.
 var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 
-// NewSuffix parses a domain suffix. It is its own parser, parallel to New
-// (not layered on it): it is looser — it accepts a single label (org) and the
-// root (. or "") — and stricter — it rejects any wildcard (* or *.example.org).
-// It applies the same IDNA normalization New uses for the ASCII form.
+// NewSuffix parses an ASCII-backed suffix using the same IDNA and boundary-dot
+// normalization as New. It accepts single labels and the root ("." or ""), but
+// rejects wildcards.
+//
+// ErrWildcardSuffix returns an empty suffix and the input's normalization;
+// the wildcard's suffix has passed validation, so callers may handle it as a
+// wildcard-specific advisory. Invalid wildcard suffixes return their validation
+// error instead. All other errors return zero normalization, and any returned
+// suffix is for diagnostics only, not evaluation.
 func NewSuffix(input string) (Suffix, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
 	normalized, normalization := normalizeBoundaryDots(ascii)
@@ -36,7 +41,7 @@ func NewSuffix(input string) (Suffix, Normalization, error) {
 			RemovedExtraTrailingDots: false,
 		}, err
 	}
-	if hasEmptyInteriorLabel(normalized) {
+	if strings.Contains(normalized, "..") {
 		return "", Normalization{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
@@ -75,6 +80,9 @@ func hasStrictSuffixASCII(s, suffix string) bool {
 	return strings.HasSuffix(s, suffix) && len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.'
 }
 
+// walkZonesASCII visits a canonical ASCII name and then its parents, ending at
+// the single-label suffix without adding the root. An empty name visits the root
+// once. A false yield result stops traversal immediately.
 func walkZonesASCII(name string, yield func(Suffix) bool) {
 	for {
 		if !yield(Suffix(name)) {

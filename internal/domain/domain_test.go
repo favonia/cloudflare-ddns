@@ -214,15 +214,54 @@ func TestNewTooFewLabelsTakesPrecedenceOverIDNAErrors(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrTooFewLabels)
 }
 
+func TestConstructorErrorResults(t *testing.T) {
+	t.Parallel()
+
+	t.Run("short target retains normalization", func(t *testing.T) {
+		t.Parallel()
+		got, n, err := domain.New(".org..")
+		require.ErrorIs(t, err, domain.ErrTooFewLabels)
+		require.Equal(t, domain.FQDN("org"), got)
+		require.Equal(t, normalization(true, true), n)
+	})
+
+	t.Run("invalid wildcard has no usable result", func(t *testing.T) {
+		t.Parallel()
+		got, n, err := domain.New(".*..example.org..")
+		require.ErrorIs(t, err, domain.ErrEmptyInteriorLabel)
+		require.Nil(t, got)
+		require.Zero(t, n)
+		suffix, sn, serr := domain.NewSuffix(".*..example.org..")
+		require.ErrorIs(t, serr, domain.ErrEmptyInteriorLabel)
+		require.Empty(t, suffix)
+		require.Zero(t, sn)
+	})
+
+	t.Run("IDNA failure returns diagnostic value only", func(t *testing.T) {
+		t.Parallel()
+		got, n, err := domain.New(".bad*.example..")
+		require.Error(t, err)
+		require.NotErrorIs(t, err, domain.ErrTooFewLabels)
+		require.NotErrorIs(t, err, domain.ErrEmptyInteriorLabel)
+		require.Equal(t, domain.FQDN("bad*.example"), got)
+		require.Zero(t, n)
+		suffix, sn, serr := domain.NewSuffix(".bad*.example..")
+		require.Error(t, serr)
+		require.NotErrorIs(t, serr, domain.ErrWildcardSuffix)
+		require.Equal(t, domain.Suffix("bad*.example"), suffix)
+		require.Zero(t, sn)
+	})
+}
+
 func TestConstructedDomainInvariant(t *testing.T) {
 	t.Parallel()
 
 	assertDomain := func(t *testing.T, input string) {
 		t.Helper()
 		got, _, err := domain.New(input)
-		if err != nil || got.DNSNameASCII() == "" {
-			return
-		}
+		require.NoError(t, err, "input: %q", input)
+		require.NotNil(t, got)
+		require.NotEmpty(t, got.DNSNameASCII())
 		ascii := got.DNSNameASCII()
 		require.False(t, strings.HasPrefix(ascii, "."))
 		require.False(t, strings.HasSuffix(ascii, "."))
@@ -247,9 +286,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 	assertSuffix := func(t *testing.T, input string) {
 		t.Helper()
 		got, _, err := domain.NewSuffix(input)
-		if err != nil || got.DNSNameASCII() == "" {
-			return
-		}
+		require.NoError(t, err, "input: %q", input)
 		ascii := got.DNSNameASCII()
 		require.False(t, strings.HasPrefix(ascii, "."))
 		require.False(t, strings.HasSuffix(ascii, "."))
@@ -281,8 +318,13 @@ func TestConstructedDomainInvariant(t *testing.T) {
 	}
 
 	require.NoError(t, quick.Check(func(input string) bool {
-		assertDomain(t, input)
-		assertSuffix(t, input)
+		// Arbitrary inputs need only satisfy the invariant when accepted.
+		if _, _, err := domain.New(input); err == nil {
+			assertDomain(t, input)
+		}
+		if _, _, err := domain.NewSuffix(input); err == nil {
+			assertSuffix(t, input)
+		}
 		return true
 	}, nil))
 
@@ -328,6 +370,10 @@ func TestConstructedDomainInvariant(t *testing.T) {
 				assertDomain(t, input)
 				if tc.checkSuffix {
 					assertSuffix(t, input)
+				} else {
+					_, n, err := domain.NewSuffix(input)
+					require.ErrorIs(t, err, domain.ErrWildcardSuffix)
+					require.Equal(t, normalization(leading%3 != 0, trailing%4 >= 2), n)
 				}
 				return true
 			}, nil))
@@ -336,10 +382,11 @@ func TestConstructedDomainInvariant(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		interiorDots string
+		err          error
 	}{
-		{name: "one interior dot", interiorDots: "."},
-		{name: "empty interior label", interiorDots: ".."},
-		{name: "multiple empty interior labels", interiorDots: "..."},
+		{name: "one interior dot", interiorDots: ".", err: nil},
+		{name: "empty interior label", interiorDots: "..", err: domain.ErrEmptyInteriorLabel},
+		{name: "multiple empty interior labels", interiorDots: "...", err: domain.ErrEmptyInteriorLabel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -347,8 +394,19 @@ func TestConstructedDomainInvariant(t *testing.T) {
 				input := strings.Repeat(".", int(leading%3)) +
 					canonicalLabel(left) + tc.interiorDots + canonicalLabel(right) + ".org" +
 					strings.Repeat(".", int(trailing%4))
-				assertDomain(t, input)
-				assertSuffix(t, input)
+				if tc.err == nil {
+					assertDomain(t, input)
+					assertSuffix(t, input)
+				} else {
+					d, dn, derr := domain.New(input)
+					require.ErrorIs(t, derr, tc.err)
+					require.Nil(t, d)
+					require.Zero(t, dn)
+					s, sn, serr := domain.NewSuffix(input)
+					require.ErrorIs(t, serr, tc.err)
+					require.Empty(t, s)
+					require.Zero(t, sn)
+				}
 				return true
 			}, nil))
 		})

@@ -85,10 +85,6 @@ func normalizeBoundaryDots(ascii string) (string, Normalization) {
 	return strings.TrimRight(withoutLeadingDots, "."), normalization
 }
 
-func hasEmptyInteriorLabel(ascii string) bool {
-	return strings.HasPrefix(ascii, ".") || strings.Contains(ascii, "..")
-}
-
 // wildcardSuffix recognizes both a bare wildcard and a wildcard with a suffix
 // after whole-input normalization has exposed its canonical dot separators.
 func wildcardSuffix(ascii string) (string, bool) {
@@ -98,18 +94,23 @@ func wildcardSuffix(ascii string) (string, bool) {
 	return strings.CutPrefix(ascii, "*.")
 }
 
-// ErrTooFewLabels means a domain name has fewer than two labels after
-// normalization — a single label (com, localhost), the empty/root name (.),
-// or a bare "*". Such a name cannot be a reasonable target domain name.
 var (
-	ErrTooFewLabels       error = errors.New("too few labels")
+	// ErrTooFewLabels means the normalized target is a single label, the root,
+	// or a bare wildcard. New returns its value and normalization with this error.
+	ErrTooFewLabels error = errors.New("too few labels")
+	// ErrEmptyInteriorLabel means consecutive dots remain inside the full name
+	// after boundary normalization, including immediately after a wildcard marker.
 	ErrEmptyInteriorLabel error = errors.New("empty interior label")
 )
 
-// New normalizes a domain to its ASCII form and then stores
-// the normalized domain in its Unicode form when the round trip
-// gives back the same ASCII form without errors. Otherwise,
-// the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
+// New parses a target domain into an ASCII-backed FQDN or Wildcard and reports
+// compatibility dot removal separately in Normalization.
+//
+// ErrTooFewLabels returns a non-nil value and its normalization for callers
+// that permit short targets. For non-wildcards, this check precedes IDNA errors;
+// that value is not guaranteed to have passed IDNA validation.
+// ErrEmptyInteriorLabel returns nil and zero normalization. Other errors return
+// a best-effort value for diagnostics only, with zero normalization.
 func New(input string) (Domain, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
 	normalized, normalization := normalizeBoundaryDots(ascii)
@@ -137,7 +138,7 @@ func New(input string) (Domain, Normalization, error) {
 			RemovedExtraTrailingDots: false,
 		}, err
 	}
-	if hasEmptyInteriorLabel(normalized) {
+	if strings.Contains(normalized, "..") {
 		return nil, Normalization{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
@@ -150,13 +151,20 @@ func New(input string) (Domain, Normalization, error) {
 // after boundary normalization. It re-runs IDNA without the wildcard marker so
 // the marker's own error does not mask errors in the suffix. Target-specific
 // wildcard policy belongs to the caller, so an empty suffix is valid here.
+// On an IDNA error it returns a best-effort value for diagnostics only.
+// On an empty-label error it returns an empty value.
 func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(suffix)
 	if err != nil {
 		normalized, _ := normalizeBoundaryDots(ascii)
 		return Wildcard(normalized), err
 	}
-	if hasEmptyInteriorLabel(suffix) {
+	// Removing "*." from "*..example.org" exposes an interior empty label at
+	// the start of the suffix. Do not normalize that newly exposed leading dot.
+	if strings.HasPrefix(suffix, ".") {
+		return "", ErrEmptyInteriorLabel
+	}
+	if strings.Contains(suffix, "..") {
 		return "", ErrEmptyInteriorLabel
 	}
 	return Wildcard(ascii), nil
