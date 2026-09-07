@@ -35,7 +35,8 @@ const (
 	KindExtraComma
 	// KindMissingComma reports missing top-level commas accepted for compatibility.
 	KindMissingComma
-	// KindDomainDotTrimming reports accepted removal of leading or extra trailing dots.
+	// KindDomainDotTrimming reports accepted removal of leading or extra trailing
+	// dots.
 	KindDomainDotTrimming
 )
 

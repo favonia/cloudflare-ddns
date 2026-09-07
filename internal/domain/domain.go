@@ -51,17 +51,17 @@ func StringToASCII(domain string) string {
 	return normalized
 }
 
-// DotTrimming records removal of leading or extra trailing dots.
-// Removing a single final root dot leaves both flags false.
+// DotTrimming records removal of leading or extra trailing dots. Removing a
+// single final root dot leaves both flags false.
 type DotTrimming struct {
 	RemovedLeadingDots       bool
 	RemovedExtraTrailingDots bool
 }
 
-// trimDots removes all leading and trailing dots but leaves interior
-// consecutive dots unchanged for subsequent validation to reject. It records
-// whether leading dots or extra trailing dots were removed. An all-dot input
-// counts as trailing dots, not leading dots.
+// trimDots removes all leading and trailing dots but leaves interior consecutive
+// dots unchanged for subsequent validation to reject. It records whether leading
+// dots or extra trailing dots were removed. An all-dot input counts as trailing
+// dots, not leading dots.
 func trimDots(ascii string) (string, DotTrimming) {
 	if strings.Trim(ascii, ".") == "" {
 		return "", DotTrimming{
@@ -106,9 +106,10 @@ var (
 // New parses a target domain into an ASCII-backed FQDN or Wildcard and reports
 // compatibility dot removal separately in DotTrimming.
 //
-// ErrTooFewLabels returns a non-nil value and its DotTrimming for callers
-// that permit short targets. For non-wildcards, this check precedes IDNA errors;
+// ErrTooFewLabels returns a non-nil value and its DotTrimming for callers that
+// permit short targets. For non-wildcards, this check precedes IDNA errors;
 // that value is not guaranteed to have passed IDNA validation.
+//
 // ErrEmptyInteriorLabel returns nil and zero DotTrimming. Other errors return
 // a best-effort value for diagnostics only, with zero DotTrimming.
 func New(input string) (Domain, DotTrimming, error) {
@@ -148,11 +149,13 @@ func New(input string) (Domain, DotTrimming, error) {
 }
 
 // validateNormalizedWildcardSuffix expects a suffix cut from a whole input
-// whose leading and trailing dots have been trimmed. It re-runs IDNA without the wildcard marker so
-// the marker's own error does not mask errors in the suffix. Target-specific
-// wildcard policy belongs to the caller, so an empty suffix is valid here.
-// On an IDNA error it returns a best-effort value for diagnostics only.
-// On an empty-label error it returns an empty value.
+// whose leading and trailing dots have been trimmed. It re-runs IDNA without
+// the wildcard marker so the marker's own error does not mask errors in the
+// suffix. Target-specific wildcard policy belongs to the caller, so an empty
+// suffix is valid here.
+//
+// On an IDNA error it returns a best-effort value for diagnostics only. On an
+// empty-label error it returns an empty value.
 func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(suffix)
 	if err != nil {

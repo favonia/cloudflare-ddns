@@ -10,18 +10,21 @@ import (
 // be a single label or the root, but it is never a wildcard.
 type Suffix string
 
-// ErrWildcardSuffix means the input is a validated wildcard and therefore not a usable suffix.
+// ErrWildcardSuffix means the input is a validated wildcard and therefore not a
+// usable suffix.
 var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 
 // NewSuffix parses an ASCII-backed suffix using the same IDNA mapping and dot
-// trimming as New. It accepts single labels and the root ("." or ""), but
-// rejects wildcards.
+// trimming as New. It accepts single labels and the root ("." or ""), but rejects
+// wildcards.
 //
-// ErrWildcardSuffix returns an empty suffix and the input's DotTrimming;
-// the wildcard's suffix has passed validation, so callers may handle it as a
+// ErrWildcardSuffix returns an empty suffix and the input's DotTrimming; the
+// wildcard's suffix has passed validation, so callers may handle it as a
 // wildcard-specific advisory. Invalid wildcard suffixes return their validation
-// error instead. All other errors return zero DotTrimming, and any returned
-// suffix is for diagnostics only, not evaluation.
+// error instead.
+//
+// All other errors return zero DotTrimming, and any returned suffix is for
+// diagnostics only, not evaluation.
 func NewSuffix(input string) (Suffix, DotTrimming, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
 	normalized, dotTrimming := trimDots(ascii)
