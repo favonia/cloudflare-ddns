@@ -10,8 +10,7 @@ import (
 // be a single label or the root, but it is never a wildcard.
 type Suffix string
 
-// ErrWildcardSuffix means a suffix argument was a wildcard. A wildcard has no
-// strict subdomains, so it cannot be a suffix.
+// ErrWildcardSuffix means the input is a validated wildcard and therefore not a usable suffix.
 var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 
 // NewSuffix parses an ASCII-backed suffix using the same IDNA and boundary-dot
