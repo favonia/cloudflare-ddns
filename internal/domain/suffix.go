@@ -20,7 +20,7 @@ var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 // It applies the same IDNA normalization New uses for the ASCII form.
 func NewSuffix(input string) (Suffix, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
-	normalized, normalization := normalizeBoundary(ascii)
+	normalized, normalization := normalizeBoundaryDots(ascii)
 
 	if suffix, ok := wildcardSuffix(normalized); ok {
 		_, wildcardErr := validateNormalizedWildcardSuffix(suffix)

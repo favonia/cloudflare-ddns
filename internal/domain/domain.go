@@ -58,10 +58,11 @@ type Normalization struct {
 	RemovedExtraTrailingDots bool
 }
 
-// normalizeBoundary removes all leading and trailing dots, recording leading
-// dots and runs of two or more trailing dots in Normalization. An all-dot input
-// counts as trailing dots, not leading dots.
-func normalizeBoundary(ascii string) (string, Normalization) {
+// normalizeBoundaryDots removes all leading and trailing dots but leaves interior
+// consecutive dots unchanged for subsequent validation to reject. It records
+// leading dots and runs of two or more trailing dots in Normalization. An all-dot
+// input counts as trailing dots, not leading dots.
+func normalizeBoundaryDots(ascii string) (string, Normalization) {
 	if strings.Trim(ascii, ".") == "" {
 		return "", Normalization{
 			RemovedLeadingDots:       false,
@@ -111,7 +112,7 @@ var (
 // the ASCII form (possibly using Punycode) is stored to avoid ambiguity.
 func New(input string) (Domain, Normalization, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
-	normalized, normalization := normalizeBoundary(ascii)
+	normalized, normalization := normalizeBoundaryDots(ascii)
 
 	if suffix, ok := wildcardSuffix(normalized); ok {
 		wildcard, wildcardErr := validateNormalizedWildcardSuffix(suffix)
@@ -152,7 +153,7 @@ func New(input string) (Domain, Normalization, error) {
 func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(suffix)
 	if err != nil {
-		normalized, _ := normalizeBoundary(ascii)
+		normalized, _ := normalizeBoundaryDots(ascii)
 		return Wildcard(normalized), err
 	}
 	if hasEmptyInteriorLabel(suffix) {
