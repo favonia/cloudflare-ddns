@@ -21,6 +21,21 @@ func describeSet(set hostid6.Set) []string {
 	return descriptions
 }
 
+func diagnosticKinds(diagnostics []domainentry.Diagnostic) []domainentry.DiagnosticKind {
+	kinds := make([]domainentry.DiagnosticKind, len(diagnostics))
+	for i, diagnostic := range diagnostics {
+		kinds[i] = diagnostic.Kind
+	}
+	return kinds
+}
+
+func expectedDotTrimming(leading, extraTrailing bool) domain.DotTrimming {
+	return domain.DotTrimming{
+		RemovedLeadingDots:       leading,
+		RemovedExtraTrailingDots: extraTrailing,
+	}
+}
+
 func TestParseEntriesPlainEntryExactSpan(t *testing.T) {
 	t.Parallel()
 
@@ -246,9 +261,11 @@ func TestParseEntriesManyLeadingCommasReturnOneDiagnostic(t *testing.T) {
 		Span:            syntax.Span{Start: commaCount, End: commaCount + len("example.org")},
 	}}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:   syntax.Span{Start: 0, End: 1},
-		Kind:   domainentry.KindExtraComma,
-		Detail: nil,
+		Span:        syntax.Span{Start: 0, End: 1},
+		Kind:        domainentry.KindExtraComma,
+		Detail:      nil,
+		DotTrimming: expectedDotTrimming(false, false),
+		Effective:   nil,
 	}}, diagnostics)
 }
 
@@ -264,9 +281,11 @@ func TestParseEntriesManyMissingCommasReturnOneDiagnostic(t *testing.T) {
 		{Domain: domain.FQDN("example.com"), HostID6Opinions: nil, Span: syntax.Span{Start: 24, End: 35}},
 	}, entries)
 	require.Equal(t, []domainentry.Diagnostic{{
-		Span:   syntax.Span{Start: 11, End: 12},
-		Kind:   domainentry.KindMissingComma,
-		Detail: nil,
+		Span:        syntax.Span{Start: 11, End: 12},
+		Kind:        domainentry.KindMissingComma,
+		Detail:      nil,
+		DotTrimming: expectedDotTrimming(false, false),
+		Effective:   nil,
 	}}, diagnostics)
 }
 
@@ -328,6 +347,152 @@ func TestParseEntriesReportsExtraTrailingCommas(t *testing.T) {
 	require.Equal(t, domainentry.KindExtraComma, diagnostics[0].Kind)
 }
 
+func TestParseEntriesReportsDotTrimmingOccurrences(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name        string
+		input       string
+		span        syntax.Span
+		dotTrimming domain.DotTrimming
+		effective   domain.Domain
+	}{
+		{
+			name:        "leading dots",
+			input:       ".good.example",
+			span:        syntax.Span{Start: 0, End: 13},
+			dotTrimming: expectedDotTrimming(true, false),
+			effective:   domain.FQDN("good.example"),
+		},
+		{
+			name:        "extra trailing dots",
+			input:       "good.example..",
+			span:        syntax.Span{Start: 0, End: 14},
+			dotTrimming: expectedDotTrimming(false, true),
+			effective:   domain.FQDN("good.example"),
+		},
+		{
+			name:        "combined boundary dots",
+			input:       ".good.example..",
+			span:        syntax.Span{Start: 0, End: 15},
+			dotTrimming: expectedDotTrimming(true, true),
+			effective:   domain.FQDN("good.example"),
+		},
+		{
+			name:        "hostid6 field",
+			input:       ".good.example{hostid6=::1}",
+			span:        syntax.Span{Start: 0, End: 13},
+			dotTrimming: expectedDotTrimming(true, false),
+			effective:   domain.FQDN("good.example"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainentry.Parse(tc.input)
+
+			require.Nil(t, err)
+			require.Len(t, entries, 1)
+			require.Equal(t, tc.effective, entries[0].Domain)
+			if tc.name == "hostid6 field" {
+				require.Len(t, entries[0].HostID6Opinions, 1)
+			}
+			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindDomainDotTrimming}, diagnosticKinds(diagnostics))
+			require.Equal(t, tc.span, diagnostics[0].Span)
+			require.NoError(t, diagnostics[0].Detail)
+			require.Equal(t, tc.dotTrimming, diagnostics[0].DotTrimming)
+			require.Equal(t, tc.effective, diagnostics[0].Effective)
+		})
+	}
+}
+
+func TestParseEntriesPreservesRepeatedDotTrimmingOccurrences(t *testing.T) {
+	t.Parallel()
+
+	input := ".good.example,.good.example"
+	entries, diagnostics, err := domainentry.Parse(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domain.Domain{
+		domain.FQDN("good.example"),
+		domain.FQDN("good.example"),
+	}, []domain.Domain{entries[0].Domain, entries[1].Domain})
+	require.Equal(t, []domainentry.DiagnosticKind{
+		domainentry.KindDomainDotTrimming,
+		domainentry.KindDomainDotTrimming,
+	}, diagnosticKinds(diagnostics))
+	for i, span := range []syntax.Span{{Start: 0, End: 13}, {Start: 14, End: 27}} {
+		require.Equal(t, span, diagnostics[i].Span)
+		require.Equal(t, expectedDotTrimming(true, false), diagnostics[i].DotTrimming)
+		require.Equal(t, domain.FQDN("good.example"), diagnostics[i].Effective)
+	}
+}
+
+func TestParseEntriesRecoversAfterEmptyInteriorLabel(t *testing.T) {
+	t.Parallel()
+
+	input := ".good.example,a..bad.example,also.good.example.."
+	entries, diagnostics, err := domainentry.Parse(input)
+
+	require.Nil(t, err)
+	require.Equal(t, []domain.Domain{
+		domain.FQDN("good.example"),
+		domain.FQDN("also.good.example"),
+	}, []domain.Domain{entries[0].Domain, entries[1].Domain})
+	require.Equal(t, []domainentry.DiagnosticKind{
+		domainentry.KindDomainDotTrimming,
+		domainentry.KindInvalidDomain,
+		domainentry.KindDomainDotTrimming,
+	}, diagnosticKinds(diagnostics))
+	require.Equal(t, syntax.Span{Start: 0, End: 13}, diagnostics[0].Span)
+	require.Equal(t, syntax.Span{Start: 14, End: 28}, diagnostics[1].Span)
+	require.ErrorIs(t, diagnostics[1].Detail, domain.ErrEmptyInteriorLabel)
+	require.Zero(t, diagnostics[1].DotTrimming)
+	require.Nil(t, diagnostics[1].Effective)
+	require.Equal(t, syntax.Span{Start: 29, End: 48}, diagnostics[2].Span)
+	require.Equal(t, expectedDotTrimming(false, true), diagnostics[2].DotTrimming)
+	require.Equal(t, domain.FQDN("also.good.example"), diagnostics[2].Effective)
+}
+
+func TestParseEntriesRejectsFatalWildcardEmptyLabels(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		input string
+		span  syntax.Span
+	}{
+		{input: "*..example.org", span: syntax.Span{Start: 0, End: 14}},
+		{input: "*...example.org", span: syntax.Span{Start: 0, End: 15}},
+		{input: "*.a..example.org", span: syntax.Span{Start: 0, End: 16}},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+
+			entries, diagnostics, err := domainentry.Parse(tc.input)
+
+			require.Nil(t, err)
+			require.Empty(t, entries)
+			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindInvalidDomain}, diagnosticKinds(diagnostics))
+			require.Equal(t, tc.span, diagnostics[0].Span)
+			require.ErrorIs(t, diagnostics[0].Detail, domain.ErrEmptyInteriorLabel)
+			require.Zero(t, diagnostics[0].DotTrimming)
+			require.Nil(t, diagnostics[0].Effective)
+		})
+	}
+}
+
+func TestParseEntriesSuppressesDotTrimmingForRejectedFields(t *testing.T) {
+	t.Parallel()
+
+	entries, diagnostics, err := domainentry.Parse(".good.example{unknown=::1}")
+
+	require.Nil(t, err)
+	require.Empty(t, entries)
+	require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindUnknownDomainField}, diagnosticKinds(diagnostics))
+	require.Zero(t, diagnostics[0].DotTrimming)
+	require.Nil(t, diagnostics[0].Effective)
+}
+
 func TestParseEntriesRejectsExtraTrailingCommasInStrictLists(t *testing.T) {
 	t.Parallel()
 
@@ -381,13 +546,29 @@ func TestEntryDiagnosticDescriptionsForCommaKinds(t *testing.T) {
 	require.Equal(t, "missing comma", diagnostics[1].Description(input))
 }
 
+func TestEntryDiagnosticDescriptionForDotTrimming(t *testing.T) {
+	t.Parallel()
+
+	diagnostic := domainentry.Diagnostic{
+		Span:        syntax.Span{Start: 0, End: 13},
+		Kind:        domainentry.KindDomainDotTrimming,
+		Detail:      nil,
+		DotTrimming: expectedDotTrimming(true, false),
+		Effective:   domain.FQDN("good.example"),
+	}
+
+	require.Equal(t, "domain spelling was normalized for compatibility", diagnostic.Description(".good.example"))
+}
+
 func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {
 	t.Parallel()
 
 	diagnostic := domainentry.Diagnostic{
-		Span:   syntax.Span{Start: 0, End: 0},
-		Kind:   domainentry.DiagnosticKind(-1),
-		Detail: nil,
+		Span:        syntax.Span{Start: 0, End: 0},
+		Kind:        domainentry.DiagnosticKind(-1),
+		Detail:      nil,
+		DotTrimming: expectedDotTrimming(false, false),
+		Effective:   nil,
 	}
 	require.Panics(t, func() { _ = diagnostic.Description("") })
 }

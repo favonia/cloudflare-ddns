@@ -64,7 +64,7 @@ func TestFQDNStringDescribe(t *testing.T) {
 	require.Equal(t, "example.org", domain.FQDN("example.org").Describe())
 
 	// An IDN renders Unicode via String(), distinct from the ASCII/Punycode form.
-	d, err := domain.New("café.example")
+	d, _, err := domain.New("café.example")
 	require.NoError(t, err)
 	require.Equal(t, d.String(), d.Describe())
 	require.NotEqual(t, d.DNSNameASCII(), d.String())

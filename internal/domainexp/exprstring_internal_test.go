@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
 // unknownExpr is a test-only Expr implementation outside the parser's vocabulary,
@@ -33,7 +34,7 @@ func TestExprString(t *testing.T) {
 	toDomains := func(ss ...string) []domain.Domain {
 		ds := make([]domain.Domain, len(ss))
 		for i, s := range ss {
-			d, err := domain.New(s)
+			d, _, err := domain.New(s)
 			if err != nil {
 				t.Fatalf("domain.New(%q): %v", s, err)
 			}
@@ -44,7 +45,7 @@ func TestExprString(t *testing.T) {
 	toSuffixes := func(ss ...string) []domain.Suffix {
 		suffixes := make([]domain.Suffix, len(ss))
 		for i, s := range ss {
-			suffix, err := domain.NewSuffix(s)
+			suffix, _, err := domain.NewSuffix(s)
 			if err != nil {
 				t.Fatalf("domain.NewSuffix(%q): %v", s, err)
 			}
@@ -79,4 +80,12 @@ func TestExprString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExprStringCanonicalDotTrimmedValues(t *testing.T) {
+	t.Parallel()
+
+	expr, ok := ParseExpression(pp.NewSilent(), "PROXIED", "is(.example.org..) && sub(..)")
+	require.True(t, ok)
+	require.Equal(t, "is(example.org) && sub(.)", exprString(expr))
 }

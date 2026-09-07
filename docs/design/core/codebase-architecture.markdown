@@ -31,6 +31,8 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
 
 ## Configuration Lifecycle
 
+This section maps the configuration lifecycle onto the current codebase. [Configuration Design](configuration-design.markdown) defines the semantic contract for defaults, validation, diagnostics, and runtime admission.
+
 `config.DefaultRaw()` creates the baseline updater settings, `(*RawConfig).ReadEnv()` overlays updater environment variables onto that structure, and `(*RawConfig).BuildConfig()` validates cross-field invariants and derives the runtime carriers.
 
 - `RawConfig` holds parsed environment inputs before cross-field validation and derivation.
@@ -42,6 +44,8 @@ See the [Go package reference](https://pkg.go.dev/github.com/favonia/cloudflare-
 `SetupPP()` and `SetupReporters()` are parallel bootstrap paths, not parts of `RawConfig`. Reporter services are constructed separately from `BuiltConfig` and passed as runtime dependencies.
 
 Updater-behavior environment reads are confined to `internal/config/`. Runtime packages below that boundary consume built config values or constructed services instead of reading environment state directly.
+
+For structured domain entries, `internal/domainentry/` supplies diagnostics with source spans and domain-specific details. `internal/config/` adds the setting context when reporting them for `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS`.
 
 ## Composition Root
 

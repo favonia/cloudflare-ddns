@@ -1699,3 +1699,28 @@ func TestBuildConfigProxiedLintWarns(t *testing.T) {
 		`PROXIED ("is(a.org) && !is(a.org)") can never match any domain`)
 	require.False(t, built.Update.Proxied[domain.FQDN("a.b.c")])
 }
+
+func TestBuildConfigProxiedDotTrimming(t *testing.T) {
+	t.Parallel()
+
+	raw := config.DefaultRaw()
+	raw.Provider = map[ipnet.Family]provider.Provider{
+		ipnet.IP4: provider.NewCloudflareTrace(),
+		ipnet.IP6: nil,
+	}
+	raw.IP4Domains = entries(domain.FQDN("a.b.c"))
+	raw.ProxiedExpression = "is(.a.b.c...) && !is(a.b.c)"
+
+	var output strings.Builder
+	built, ok := raw.BuildConfig(pp.New(&output, false, pp.Quiet))
+	require.True(t, ok)
+	require.NotNil(t, built)
+	require.False(t, built.Update.Proxied[domain.FQDN("a.b.c")])
+	require.Contains(t, output.String(), ".a.b.c...")
+	require.Less(t, strings.Index(output.String(), ".a.b.c..."), strings.Index(output.String(), "can never match any domain"))
+
+	raw.ProxiedExpression = "is(a..b.c)"
+	built, ok = raw.BuildConfig(pp.NewSilent())
+	require.False(t, ok)
+	require.Nil(t, built)
+}

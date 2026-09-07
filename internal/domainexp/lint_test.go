@@ -434,6 +434,40 @@ func TestParseL1SubWildcard(t *testing.T) {
 	}
 }
 
+func TestLintExpressionDotTrimmingOrdering(t *testing.T) {
+	t.Parallel()
+
+	const input = "sub() || is(.org...) || sub(*.example.org..) || (is(.a.org,, .b.org .c.org) && is(.a.org) && !is(.a.org))"
+	const key = "PROXIED"
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		// Existing semantic advisories remain ahead of the new compatibility notices.
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, gomock.Any(), "sub"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, gomock.Any(), "org"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, gomock.Any(), "*.example.org", "*.example.org", "example.org", "example.org"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".org...\") for now; use is(org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts sub(\"*.example.org..\") for now; use sub(*.example.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".a.org\") for now; use is(a.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".b.org\") for now; use is(b.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".c.org\") for now; use is(c.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".a.org\") for now; use is(a.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".a.org\") for now; use is(a.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, gomock.Any()),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, gomock.Any()),
+		// Lint output remains after all parser diagnostics without locking its prose.
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s", gomock.Any()),
+	)
+
+	lintExpr(t, mockPP, key, input)
+}
+
 // Lint messages echo the expression through the shared advisory preview helper,
 // which quotes the value, so a valid expression whose source carries special
 // characters (here a newline and a tab used as token separators) is escaped

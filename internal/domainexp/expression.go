@@ -47,8 +47,9 @@ func (subExpr) expr() {}
 // is malformed (any error other than the soft, accepted-and-kept cases). It
 // carries the canonical form for quoting.
 type invalidDomainError struct {
-	domain string // canonical text of the rejected argument
-	cause  error  // the underlying domain.New / domain.NewSuffix error
+	context domainContext
+	domain  string // canonical text of the rejected argument
+	cause   error  // the underlying domain.New / domain.NewSuffix error
 }
 
 func (e *invalidDomainError) Error() string { return e.cause.Error() }
@@ -124,17 +125,23 @@ func buildIsCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Pars
 	}
 	domains := make([]domain.Domain, 0, len(list))
 	for _, token := range list {
-		d, derr := domain.New(token.Text)
+		d, dotTrimming, derr := domain.New(token.Text)
 		switch {
 		case derr == nil:
+			state.recordDotTrimming(domainIs, token.Text, d.String(), dotTrimming)
 			domains = append(domains, d)
 		case errors.Is(derr, domain.ErrTooFewLabels):
 			state.recordShortIsTarget(d.String())
+			state.recordDotTrimming(domainIs, token.Text, d.String(), dotTrimming)
 			domains = append(domains, d)
 		default:
+			invalidDomain := domain.StringToASCII(token.Text)
+			if d != nil {
+				invalidDomain = d.String()
+			}
 			return nil, &syntax.ParseError{
 				Span:  token.Span,
-				Cause: &invalidDomainError{domain: d.String(), cause: derr},
+				Cause: &invalidDomainError{context: domainIs, domain: invalidDomain, cause: derr},
 			}
 		}
 	}
@@ -158,19 +165,21 @@ func buildSubCall(tree syntax.Op[formID], state *parserState) (Expr, *syntax.Par
 	}
 	suffixes := make([]domain.Suffix, 0, len(list))
 	for _, token := range list {
-		s, serr := domain.NewSuffix(token.Text)
+		s, dotTrimming, serr := domain.NewSuffix(token.Text)
 		switch {
 		case serr == nil:
+			state.recordDotTrimming(domainSub, token.Text, s.String(), dotTrimming)
 			suffixes = append(suffixes, s)
 		case errors.Is(serr, domain.ErrWildcardSuffix):
 			// Skip + record the wildcard for the L1 advisory. Parse it as a
 			// Domain only to render the canonical "*.X" form for the message.
-			wd, _ := domain.New(token.Text)
+			wd, _, _ := domain.New(token.Text)
 			state.recordSubWildcard(wd)
+			state.recordDotTrimming(domainSub, token.Text, wd.String(), dotTrimming)
 		default:
 			return nil, &syntax.ParseError{
 				Span:  token.Span,
-				Cause: &invalidDomainError{domain: domain.StringToASCII(token.Text), cause: serr},
+				Cause: &invalidDomainError{context: domainSub, domain: domain.StringToASCII(token.Text), cause: serr},
 			}
 		}
 	}
@@ -262,11 +271,12 @@ func buildExpr(tree syntax.Tree[formID], state *parserState) (Expr, *syntax.Pars
 // One can use parentheses to group expressions, such as !(is(hello.org) && (is(hello.io) || is(hello.me))).
 func ParseExpression(ppfmt pp.PP, key string, input string) (Expr, bool) {
 	state := &parserState{
-		emptyCallFunctions: nil,
-		extraComma:         false,
-		missingComma:       false,
-		shortIsTargets:     nil,
-		subWildcards:       nil,
+		emptyCallFunctions:     nil,
+		extraComma:             false,
+		missingComma:           false,
+		shortIsTargets:         nil,
+		subWildcards:           nil,
+		dotTrimmingOccurrences: nil,
 	}
 	tree, err := expressionGrammar.Parse(input)
 	if err != nil {

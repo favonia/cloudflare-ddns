@@ -47,6 +47,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 	state := &parserState{
 		emptyCallFunctions: nil, extraComma: false, missingComma: false,
 		shortIsTargets: nil, subWildcards: nil,
+		dotTrimmingOccurrences: nil,
 	}
 	list, err := flattenDomainList(tree, state)
 	if err != nil {
@@ -60,9 +61,14 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 
 	domains := make([]domain.Domain, 0, len(list))
 	for i, token := range list {
-		d, domainErr := domain.New(token.Text)
+		d, dotTrimming, domainErr := domain.New(token.Text)
 		if domainErr != nil {
 			reportListDiagnostics(ppfmt, key, input, state)
+			if errors.Is(domainErr, domain.ErrEmptyInteriorLabel) {
+				ppfmt.Noticef(pp.EmojiUserError,
+					"%s", emptyInteriorLabelMessage(key, domainList, token.Text))
+				return nil, false
+			}
 			if errors.Is(domainErr, domain.ErrTooFewLabels) {
 				ppfmt.Noticef(
 					pp.EmojiUserError,
@@ -76,6 +82,7 @@ func ParseList(ppfmt pp.PP, key string, input string) ([]domain.Domain, bool) {
 				pp.Ordinal(i+1), key, input, d.String(), domainErr)
 			return nil, false
 		}
+		state.recordDotTrimming(domainList, token.Text, d.String(), dotTrimming)
 		domains = append(domains, d)
 	}
 	reportListDiagnostics(ppfmt, key, input, state)

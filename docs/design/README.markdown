@@ -11,6 +11,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ## Read When Needed
 
+- [`core/configuration-design.markdown`](core/configuration-design.markdown): read when adding or changing configuration inputs, defaults, validation, normalization, diagnostics, or runtime admission.
 - [`guides/readme-writing.markdown`](guides/readme-writing.markdown): read when editing `README.markdown`.
 - [`guides/testing-boundaries.markdown`](guides/testing-boundaries.markdown): read when adding or moving tests.
 - [`guides/go-lint-suppressions.markdown`](guides/go-lint-suppressions.markdown): read when adding or reviewing Go inline `//nolint`.
@@ -32,6 +33,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`features/provider-raw-data-contract.markdown`](features/provider-raw-data-contract.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
 - [`features/ipv6-default-prefix-length-policy.markdown`](features/ipv6-default-prefix-length-policy.markdown): read when changing the default meaning of bare detected IPv6 addresses, including IPv6 lifting defaults or WAF exact-address versus network-presence semantics.
+- [`features/domain-input-normalization.markdown`](features/domain-input-normalization.markdown): read when changing accepted domain spellings, domain-constructor validation, structured-domain diagnostics, or domain-expression diagnostics.
 
 ### Resource-specific instantiations
 

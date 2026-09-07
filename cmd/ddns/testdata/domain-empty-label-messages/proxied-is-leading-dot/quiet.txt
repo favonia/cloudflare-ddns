@@ -1,0 +1,1 @@
+😦 PROXIED accepts is(".equivalent.example") for now; use is(equivalent.example) instead because version 2.0.0 will reject the current spelling

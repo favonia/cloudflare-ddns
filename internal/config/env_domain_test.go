@@ -188,6 +188,171 @@ func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
 	require.Equal(t, domain.FQDN("example.org"), field[0].Domain)
 }
 
+//nolint:paralleltest // The table cases write process-global environment variables.
+func TestReadDomainsReportsDotTrimmingSemantics(t *testing.T) {
+	for _, tc := range []struct {
+		key           string
+		family        *ipnet.Family
+		value         string
+		source        string
+		leading       bool
+		extraTrailing bool
+		hasHostID6    bool
+	}{
+		{
+			key:           "DOMAINS",
+			family:        nil,
+			value:         ".good.example",
+			source:        ".good.example",
+			leading:       true,
+			extraTrailing: false,
+			hasHostID6:    false,
+		},
+		{
+			key:           "IP4_DOMAINS",
+			family:        family(ipnet.IP4),
+			value:         ".good.example..",
+			source:        ".good.example..",
+			leading:       true,
+			extraTrailing: true,
+			hasHostID6:    false,
+		},
+		{
+			key:           "IP6_DOMAINS",
+			family:        family(ipnet.IP6),
+			value:         ".good.example{hostid6=::1}",
+			source:        ".good.example",
+			leading:       true,
+			extraTrailing: false,
+			hasHostID6:    true,
+		},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			store(t, tc.key, tc.value)
+			var field []domainentry.Entry
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(
+				pp.EmojiUserWarning,
+				`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+				tc.key, tc.source, domain.FQDN("good.example"),
+			)
+
+			ok := readDomains(mockPP, tc.key, tc.family, &field)
+
+			require.True(t, ok)
+			require.Len(t, field, 1)
+			require.Equal(t, domain.FQDN("good.example"), field[0].Domain)
+			if tc.hasHostID6 {
+				require.Len(t, field[0].HostID6Opinions, 1)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // The table cases write process-global environment variables.
+func TestReadDomainsReportsEmptyInteriorLabelSemantics(t *testing.T) {
+	for _, tc := range []struct {
+		key    string
+		family *ipnet.Family
+	}{
+		{key: "DOMAINS", family: nil},
+		{key: "IP4_DOMAINS", family: family(ipnet.IP4)},
+		{key: "IP6_DOMAINS", family: family(ipnet.IP6)},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			const value = "a..bad.example"
+			store(t, tc.key, value)
+			oldField := []domainentry.Entry{oldEntry()}
+			field := oldField
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(pp.EmojiUserError,
+				`%s has consecutive dots in %q; replace each run with a single dot`, tc.key, value)
+
+			ok := readDomains(mockPP, tc.key, tc.family, &field)
+
+			require.False(t, ok)
+			require.Equal(t, oldField, field)
+		})
+	}
+}
+
+//nolint:paralleltest // The test writes process-global environment variables.
+func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T) {
+	const value = ",.good.example good.example..,a..bad.example"
+	oldField := []domainentry.Entry{oldEntry()}
+	field := oldField
+	store(t, "DOMAINS", value)
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",.good.example good.example..,a..bad.example"`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, `%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0`, "DOMAINS", `",.good.example good.example..,a..bad.example"`),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", "good.example..", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError,
+			`%s has consecutive dots in %q; replace each run with a single dot`, "DOMAINS", "a..bad.example"),
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.False(t, ok)
+	require.Equal(t, oldField, field)
+}
+
+//nolint:paralleltest // The test writes process-global environment variables.
+func TestReadDomainsReportsRepeatedDotTrimmingOccurrencesBeforeFatalEntry(t *testing.T) {
+	const value = ".good.example,.good.example,a..bad.example"
+	oldField := []domainentry.Entry{oldEntry()}
+	field := oldField
+	store(t, "DOMAINS", value)
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			"DOMAINS", ".good.example", domain.FQDN("good.example")),
+		mockPP.EXPECT().Noticef(pp.EmojiUserError,
+			`%s has consecutive dots in %q; replace each run with a single dot`, "DOMAINS", "a..bad.example"),
+	)
+
+	ok := readDomains(mockPP, "DOMAINS", nil, &field)
+
+	require.False(t, ok)
+	require.Equal(t, oldField, field)
+}
+
+//nolint:paralleltest // The table cases write process-global environment variables.
+func TestReadDomainsSilencesSingleTrailingRootDot(t *testing.T) {
+	for _, tc := range []struct {
+		key    string
+		family *ipnet.Family
+	}{
+		{key: "DOMAINS", family: nil},
+		{key: "IP4_DOMAINS", family: family(ipnet.IP4)},
+		{key: "IP6_DOMAINS", family: family(ipnet.IP6)},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			store(t, tc.key, "good.example.")
+			var field []domainentry.Entry
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+
+			ok := readDomains(mockPP, tc.key, tc.family, &field)
+
+			require.True(t, ok)
+			require.Equal(t, []domainentry.Entry{{
+				Domain:          domain.FQDN("good.example"),
+				HostID6Opinions: nil,
+				Span:            syntax.Span{Start: 0, End: 13},
+			}}, field)
+		})
+	}
+}
+
 //nolint:paralleltest // environment vars are global
 func TestReadDomainsReportsMalformedEntryWithoutParserFormIDs(t *testing.T) {
 	for _, value := range []string{

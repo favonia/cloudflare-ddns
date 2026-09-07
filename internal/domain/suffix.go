@@ -10,33 +10,46 @@ import (
 // be a single label or the root, but it is never a wildcard.
 type Suffix string
 
-// ErrWildcardSuffix means a suffix argument was a wildcard. A wildcard has no
-// strict subdomains, so it cannot be a suffix.
+// ErrWildcardSuffix means the input is a validated wildcard and therefore not a
+// usable suffix.
 var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 
-// NewSuffix parses a domain suffix. It is its own parser, parallel to New
-// (not layered on it): it is looser — it accepts a single label (org) and the
-// root (. or "") — and stricter — it rejects any wildcard (* or *.example.org).
-// It applies the same IDNA normalization New uses for the ASCII form.
-func NewSuffix(suffix string) (Suffix, error) {
-	normalized, err := profileDroppingLeadingDots.ToASCII(suffix)
+// NewSuffix parses an ASCII-backed suffix using the same IDNA mapping and dot
+// trimming as New. It accepts single labels and the root ("." or ""), but rejects
+// wildcards.
+//
+// ErrWildcardSuffix returns an empty suffix and the input's DotTrimming; the
+// wildcard's suffix has passed validation, so callers may handle it as a
+// wildcard-specific advisory. Invalid wildcard suffixes return their validation
+// error instead.
+//
+// All other errors return zero DotTrimming, and any returned suffix is for
+// diagnostics only, not evaluation.
+func NewSuffix(input string) (Suffix, DotTrimming, error) {
+	ascii, err := profileKeepingLeadingDots.ToASCII(input)
+	normalized, dotTrimming := trimDots(ascii)
 
-	// Remove the final dot for consistency, matching New.
-	normalized = strings.TrimRight(normalized, ".")
-
-	// A wildcard has no strict subdomains, so it cannot be a suffix. Detect it on
-	// the normalized form, exactly where New detects it.
-	if normalized == "*" {
-		return "", ErrWildcardSuffix
-	}
-	if _, ok := strings.CutPrefix(normalized, "*."); ok {
-		return "", ErrWildcardSuffix
+	if suffix, ok := wildcardSuffix(normalized); ok {
+		_, wildcardErr := validateNormalizedWildcardSuffix(suffix)
+		if wildcardErr != nil {
+			return "", DotTrimming{}, wildcardErr
+		}
+		return "", dotTrimming, ErrWildcardSuffix
 	}
 
 	if err != nil {
-		return Suffix(normalized), err
+		return Suffix(normalized), DotTrimming{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, err
 	}
-	return Suffix(normalized), nil
+	if strings.Contains(normalized, "..") {
+		return "", DotTrimming{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		}, ErrEmptyInteriorLabel
+	}
+	return Suffix(normalized), dotTrimming, nil
 }
 
 // DNSNameASCII gives the ASCII name used for matching, the Cloudflare zone name,
@@ -67,4 +80,20 @@ func hasStrictSuffixASCII(s, suffix string) bool {
 		return s != ""
 	}
 	return strings.HasSuffix(s, suffix) && len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.'
+}
+
+// walkZonesASCII visits a canonical ASCII name and then its parents, ending at
+// the single-label suffix without adding the root. An empty name visits the root
+// once. A false yield result stops traversal immediately.
+func walkZonesASCII(name string, yield func(Suffix) bool) {
+	for {
+		if !yield(Suffix(name)) {
+			return
+		}
+		if i := strings.IndexRune(name, '.'); i == -1 {
+			return
+		} else {
+			name = name[i+1:]
+		}
+	}
 }

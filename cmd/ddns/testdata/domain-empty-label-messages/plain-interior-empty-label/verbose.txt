@@ -1,0 +1,6 @@
+📖 Reading settings . . .
+   🔸 Using default IP4_DEFAULT_PREFIX_LEN=32
+   🔸 Using default IP6_DEFAULT_PREFIX_LEN=64
+   🔸 Using default IP4_DETECTION_FILTER=keep-all
+   🔸 Using default IP6_DETECTION_FILTER=keep-all
+   😡 IP4_DOMAINS has consecutive dots in "plain..empty.example"; replace each run with a single dot

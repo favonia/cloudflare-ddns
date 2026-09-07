@@ -3,7 +3,11 @@
 package domainexp_test
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,6 +18,167 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
+
+func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		key    string
+		input  string
+		source string
+		parse  func(pp.PP, string, string) bool
+	}{
+		{
+			name:   "plain-long-runs",
+			key:    "DOMAINS",
+			input:  "a......b.....c.....d",
+			source: "a......b.....c.....d",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseList(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:   "wildcard-immediate-and-later",
+			key:    "PROXIED",
+			input:  "sub(*......a.....b)",
+			source: "*......a.....b",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:   "wildcard-later-only",
+			key:    "PROXIED",
+			input:  "sub(*.a.....b)",
+			source: "*.a.....b",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var output bytes.Buffer
+			require.False(t, tc.parse(pp.New(&output, false, pp.Quiet), tc.key, tc.input))
+			rendered := output.String()
+			require.Contains(t, rendered, tc.key)
+			require.Contains(t, rendered, strconv.Quote(tc.source))
+			require.Contains(t, rendered, "consecutive dots")
+			require.Contains(t, rendered, "each run")
+			require.Contains(t, rendered, "single dot")
+		})
+	}
+}
+
+func TestDotTrimmingMessagesSuggestContextualSyntax(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name             string
+		input            string
+		source           string
+		correction       string
+		quotedCorrection string
+		semanticAdvisory string
+		parse            func(pp.PP, string, string) bool
+	}{
+		{
+			name:             "plain-list",
+			input:            ".leading.example",
+			source:           strconv.Quote(".leading.example"),
+			correction:       "leading.example",
+			quotedCorrection: strconv.Quote("leading.example"),
+			semanticAdvisory: "",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseList(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:             "is-wrapper",
+			input:            "is(.equivalent.example)",
+			source:           `is(".equivalent.example")`,
+			correction:       "is(equivalent.example)",
+			quotedCorrection: `is("equivalent.example")`,
+			semanticAdvisory: "",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:             "sub-wrapper",
+			input:            "sub(.equivalent.example)",
+			source:           `sub(".equivalent.example")`,
+			correction:       "sub(equivalent.example)",
+			quotedCorrection: `sub("equivalent.example")`,
+			semanticAdvisory: "",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:             "root-suffix",
+			input:            "sub(..)",
+			source:           `sub("..")`,
+			correction:       "sub(.)",
+			quotedCorrection: `sub(".")`,
+			semanticAdvisory: "",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:             "wildcard-suffix",
+			input:            "sub(*.example.org..)",
+			source:           `sub("*.example.org..")`,
+			correction:       "sub(*.example.org)",
+			quotedCorrection: `sub("*.example.org")`,
+			semanticAdvisory: "matches no domain",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+		{
+			name:             "short-is-target",
+			input:            "is(.org...)",
+			source:           `is(".org...")`,
+			correction:       "is(org)",
+			quotedCorrection: `is("org")`,
+			semanticAdvisory: "too short",
+			parse: func(formatter pp.PP, key, input string) bool {
+				_, ok := domainexp.ParseExpression(formatter, key, input)
+				return ok
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var output bytes.Buffer
+			require.True(t, tc.parse(pp.New(&output, false, pp.Quiet), "PROXIED", tc.input))
+			rendered := output.String()
+			require.Contains(t, rendered, "PROXIED")
+			require.Contains(t, rendered, tc.source)
+			require.Contains(t, rendered, "use "+tc.correction)
+			require.NotContains(t, rendered, "use "+tc.quotedCorrection)
+			require.Contains(t, rendered, "version 2.0.0")
+			require.True(t, tc.parse(pp.NewSilent(), "PROXIED", tc.correction))
+			if tc.semanticAdvisory != "" {
+				require.Contains(t, rendered, tc.semanticAdvisory)
+				require.Less(t, strings.Index(rendered, tc.semanticAdvisory), strings.Index(rendered, "use "+tc.correction))
+			}
+		})
+	}
+}
 
 func TestParseList(t *testing.T) {
 	t.Parallel()
@@ -128,6 +293,170 @@ func TestParseList(t *testing.T) {
 			list, ok := domainexp.ParseList(mockPP, key, tc.input)
 			require.Equal(t, tc.ok, ok)
 			require.Equal(t, tc.expected, list)
+		})
+	}
+}
+
+func TestParseListDotTrimming(t *testing.T) {
+	t.Parallel()
+
+	const emptyInteriorLabelMessage = `%s has consecutive dots in %s; replace each run with a single dot`
+	const key = "DOMAINS"
+	type f = domain.FQDN
+
+	for name, tc := range map[string]struct {
+		input   string
+		want    []domain.Domain
+		ok      bool
+		prepare func(*mocks.MockPP)
+	}{
+		"leading": {
+			input: ".good.example",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+					"DOMAINS accepts \".good.example\" for now; use good.example instead because version 2.0.0 will reject the current spelling")
+			},
+		},
+		"extra-trailing": {
+			input: "good.example..",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+					"DOMAINS accepts \"good.example..\" for now; use good.example instead because version 2.0.0 will reject the current spelling")
+			},
+		},
+		"combined-unicode-separators": {
+			input: "\u3002good.example\uff0e\uff61",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+					"DOMAINS accepts \"。good.example．｡\" for now; use good.example instead because version 2.0.0 will reject the current spelling")
+			},
+		},
+		"repeated-effective-targets-in-encounter-order": {
+			input: ".good.example,good.example..,.good.example",
+			want:  []domain.Domain{f("good.example"), f("good.example"), f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+						"DOMAINS accepts \".good.example\" for now; use good.example instead because version 2.0.0 will reject the current spelling"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+						"DOMAINS accepts \"good.example..\" for now; use good.example instead because version 2.0.0 will reject the current spelling"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+						"DOMAINS accepts \".good.example\" for now; use good.example instead because version 2.0.0 will reject the current spelling"),
+				)
+			},
+		},
+		"dot-trimming-precedes-extra-comma": {
+			input: ",.good.example..",
+			want:  []domain.Domain{f("good.example")},
+			ok:    true,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+						"DOMAINS accepts \".good.example..\" for now; use good.example instead because version 2.0.0 will reject the current spelling"),
+					m.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(), key, `",.good.example.."`),
+				)
+			},
+		},
+		"accepted-normalized-atom-before-fatal-empty-interior-label": {
+			input: ".good.example,a..bad.example",
+			want:  nil,
+			ok:    false,
+			prepare: func(m *mocks.MockPP) {
+				gomock.InOrder(
+					m.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+						"DOMAINS accepts \".good.example\" for now; use good.example instead because version 2.0.0 will reject the current spelling"),
+					m.EXPECT().Noticef(pp.EmojiUserError, "%s",
+						fmt.Sprintf(emptyInteriorLabelMessage, key, `"a..bad.example"`)),
+				)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			tc.prepare(mockPP)
+
+			got, ok := domainexp.ParseList(mockPP, key, tc.input)
+			require.Equal(t, tc.ok, ok)
+			require.Equal(t, tc.want, got)
+		})
+	}
+
+	for _, tc := range []struct {
+		input   string
+		format  string
+		context string
+	}{
+		{"a..example.org", emptyInteriorLabelMessage, `"a..example.org"`},
+		{"*..example.org", emptyInteriorLabelMessage, `"*..example.org"`},
+		{"*.a..example.org", emptyInteriorLabelMessage, `"*.a..example.org"`},
+	} {
+		t.Run("fatal-empty-interior-label/"+tc.input, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(pp.EmojiUserError, "%s", fmt.Sprintf(tc.format, key, tc.context))
+
+			got, ok := domainexp.ParseList(mockPP, key, tc.input)
+			require.False(t, ok)
+			require.Nil(t, got)
+		})
+	}
+}
+
+func TestParseExpressionDotTrimming(t *testing.T) {
+	t.Parallel()
+
+	const key = "PROXIED"
+	const input = "is(.example.org, .example.org, example.org..) || sub(..) || sub(*.example.org..)"
+	mockPP := mocks.NewMockPP(gomock.NewController(t))
+	gomock.InOrder(
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, gomock.Any(),
+			key, gomock.Any(), "*.example.org", "*.example.org", "example.org", "example.org"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".example.org\") for now; use is(example.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\".example.org\") for now; use is(example.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts is(\"example.org..\") for now; use is(example.org) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts sub(\"..\") for now; use sub(.) instead because version 2.0.0 will reject the current spelling"),
+		mockPP.EXPECT().Noticef(pp.EmojiUserWarning, "%s",
+			"PROXIED accepts sub(\"*.example.org..\") for now; use sub(*.example.org) instead because version 2.0.0 will reject the current spelling"),
+	)
+
+	expr, ok := domainexp.ParseExpression(mockPP, key, input)
+	require.True(t, ok)
+	require.True(t, domainexp.Evaluate(expr, domain.FQDN("example.org")))
+	require.True(t, domainexp.Evaluate(expr, domain.FQDN("www.example.org")))
+}
+
+func TestParseExpressionEmptyInteriorLabel(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		input  string
+		format string
+		source string
+	}{
+		{"is(a..example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `is("a..example.org")`},
+		{"sub(*..example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `sub("*..example.org")`},
+		{"sub(*...example.org)", `%s has consecutive dots in %s; replace each run with a single dot`, `sub("*...example.org")`},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			mockPP := mocks.NewMockPP(gomock.NewController(t))
+			mockPP.EXPECT().Noticef(pp.EmojiUserError, "%s", fmt.Sprintf(tc.format, "PROXIED", tc.source))
+
+			expr, ok := domainexp.ParseExpression(mockPP, "PROXIED", tc.input)
+			require.False(t, ok)
+			require.Nil(t, expr)
 		})
 	}
 }

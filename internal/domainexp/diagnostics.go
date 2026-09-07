@@ -6,6 +6,7 @@ package domainexp
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -13,6 +14,54 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
+
+type domainContext uint8
+
+const (
+	domainList domainContext = iota
+	domainIs
+	domainSub
+)
+
+type dotTrimmingOccurrence struct {
+	context   domainContext
+	source    string
+	effective string
+}
+
+func (context domainContext) describeSource(source string) string {
+	switch context {
+	case domainList:
+		return fmt.Sprintf("%q", source)
+	case domainIs:
+		return fmt.Sprintf("is(%q)", source)
+	case domainSub:
+		return fmt.Sprintf("sub(%q)", source)
+	}
+	panic("domainexp: unknown domain context")
+}
+
+func (context domainContext) describeCorrection(effective string) string {
+	switch context {
+	case domainList:
+		return effective
+	case domainIs:
+		return fmt.Sprintf("is(%s)", effective)
+	case domainSub:
+		return fmt.Sprintf("sub(%s)", effective)
+	}
+	panic("domainexp: unknown domain context")
+}
+
+func dotTrimmingMessage(key string, context domainContext, source, effective string) string {
+	return fmt.Sprintf(`%s accepts %s for now; use %s instead because version 2.0.0 will reject the current spelling`,
+		key, context.describeSource(source), context.describeCorrection(effective))
+}
+
+func emptyInteriorLabelMessage(key string, context domainContext, source string) string {
+	return fmt.Sprintf(`%s has consecutive dots in %s; replace each run with a single dot`,
+		key, context.describeSource(source))
+}
 
 type parserState struct {
 	// Empty-call functions are kept in first-occurrence order and deduplicated.
@@ -27,6 +76,8 @@ type parserState struct {
 	// sub(...) wildcard arguments skipped and reported, deduplicated (the L1
 	// advisory).
 	subWildcards []domain.Domain
+	// Dot trimming is reported per occurrence, in parse encounter order.
+	dotTrimmingOccurrences []dotTrimmingOccurrence
 }
 
 // listSyntaxPreview formats potentially long list syntax for advisory messages.
@@ -65,8 +116,29 @@ func (state *parserState) recordSubWildcard(w domain.Domain) {
 	state.subWildcards = append(state.subWildcards, w)
 }
 
+func (state *parserState) recordDotTrimming(
+	context domainContext,
+	source string,
+	effective string,
+	dotTrimming domain.DotTrimming,
+) {
+	if dotTrimming == (domain.DotTrimming{
+		RemovedLeadingDots:       false,
+		RemovedExtraTrailingDots: false,
+	}) {
+		return
+	}
+	state.dotTrimmingOccurrences = append(state.dotTrimmingOccurrences, dotTrimmingOccurrence{
+		context: context, source: source, effective: effective,
+	})
+}
+
 // reportListDiagnostics emits the compatibility warnings accumulated while flattening a domain list.
 func reportListDiagnostics(ppfmt pp.PP, key string, input string, state *parserState) {
+	for _, entry := range state.dotTrimmingOccurrences {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s", dotTrimmingMessage(key, entry.context, entry.source, entry.effective))
+	}
 	if state.extraComma {
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			"%s (%s) contains extra commas; this is accepted for now but will be rejected in version 2.0.0",
@@ -132,6 +204,10 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 				`record itself, or sub(%s) to match subdomains of %s`,
 			key, listSyntaxPreview(input), ws, ws, parent, parent)
 	}
+	for _, entry := range state.dotTrimmingOccurrences {
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			"%s", dotTrimmingMessage(key, entry.context, entry.source, entry.effective))
+	}
 	if state.extraComma {
 		ppfmt.Noticef(
 			pp.EmojiUserWarning,
@@ -173,6 +249,12 @@ func reportExpressionError(ppfmt pp.PP, key string, input string, err *syntax.Pa
 	case errors.Is(err, syntax.ErrUnexpectedToken):
 		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has unexpected token %q`, key, input, input[err.Span.Start:err.Span.End])
 	case invalidDomainOK:
+		if errors.Is(invalidDomain.cause, domain.ErrEmptyInteriorLabel) {
+			source := input[err.Span.Start:err.Span.End]
+			ppfmt.Noticef(pp.EmojiUserError,
+				"%s", emptyInteriorLabelMessage(key, invalidDomain.context, source))
+			return
+		}
 		ppfmt.Noticef(pp.EmojiUserError,
 			`%s (%q) has the domain %q in is(...) or sub(...), but it is malformed: %v`,
 			key, input, invalidDomain.domain, invalidDomain.cause)

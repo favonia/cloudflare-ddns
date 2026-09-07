@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +227,53 @@ func TestReadEnvDomainDiagnostics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		input string
+	}{
+		{
+			input: "a......b.....c.....d",
+		},
+		{
+			input: "*......a.....b",
+		},
+		{
+			input: "*｡｡a。｡b",
+		},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			testenv.ClearAll(t)
+			t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+			t.Setenv("IP4_PROVIDER", "local")
+			t.Setenv("IP4_DOMAINS", tc.input)
+
+			var output bytes.Buffer
+			ok := config.DefaultRaw().ReadEnv(pp.New(&output, false, pp.Quiet))
+			require.False(t, ok)
+			rendered := output.String()
+			require.Equal(t,
+				"IP4_DOMAINS has consecutive dots in "+strconv.Quote(tc.input)+"; replace each run with a single dot\n", rendered)
+		})
+	}
+}
+
+func TestReadEnvDotTrimmingSuggestsValidSyntax(t *testing.T) {
+	testenv.ClearAll(t)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+	t.Setenv("IP4_PROVIDER", "local")
+	t.Setenv("IP4_DOMAINS", ".leading.example")
+
+	var output bytes.Buffer
+	require.True(t, config.DefaultRaw().ReadEnv(pp.New(&output, false, pp.Quiet)))
+
+	rendered := output.String()
+	require.Contains(t, rendered, "IP4_DOMAINS")
+	require.Contains(t, rendered, strconv.Quote(".leading.example"))
+	require.Contains(t, rendered, "use leading.example")
+	require.NotContains(t, rendered, `use "leading.example"`)
+	require.Contains(t, rendered, "version 2.0.0")
 }
 
 //nolint:paralleltest // environment variables are global

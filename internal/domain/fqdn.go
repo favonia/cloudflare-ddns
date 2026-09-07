@@ -1,7 +1,5 @@
 package domain
 
-import "strings"
-
 // FQDN is a fully qualified domain in its ASCII form.
 type FQDN string
 
@@ -33,15 +31,5 @@ func (f FQDN) HasStrictSuffix(s Suffix) bool {
 
 // Zones starts from a.b.c for the domain a.b.c.
 func (f FQDN) Zones(yield func(Suffix) bool) {
-	domain := string(f)
-	for {
-		if !yield(Suffix(domain)) {
-			return
-		}
-		if i := strings.IndexRune(domain, '.'); i == -1 {
-			return
-		} else {
-			domain = domain[i+1:]
-		}
-	}
+	walkZonesASCII(string(f), yield)
 }

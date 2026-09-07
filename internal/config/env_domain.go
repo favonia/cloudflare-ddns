@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/domainentry"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -21,9 +22,22 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 			"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
-	default:
-		ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
+	case domainentry.KindDomainDotTrimming:
+		ppfmt.Noticef(pp.EmojiUserWarning,
+			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
+			key, input[diagnostic.Span.Start:diagnostic.Span.End], diagnostic.Effective)
+		return true
+	case domainentry.KindInvalidDomain:
+		if errors.Is(diagnostic.Detail, domain.ErrEmptyInteriorLabel) {
+			source := input[diagnostic.Span.Start:diagnostic.Span.End]
+			ppfmt.Noticef(pp.EmojiUserError,
+				`%s has consecutive dots in %q; replace each run with a single dot`, key, source)
+			return false
+		}
+	case domainentry.KindUnknownDomainField, domainentry.KindInvalidHostID6, domainentry.KindInvalidMAC:
+		// These existing structured diagnostics use the generic rendering below.
 	}
+	ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
 	return false
 }
 

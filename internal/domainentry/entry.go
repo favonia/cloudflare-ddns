@@ -35,6 +35,9 @@ const (
 	KindExtraComma
 	// KindMissingComma reports missing top-level commas accepted for compatibility.
 	KindMissingComma
+	// KindDomainDotTrimming reports accepted removal of leading or extra trailing
+	// dots.
+	KindDomainDotTrimming
 )
 
 // HostID6Opinion is one parsed hostid6 assignment. Set carries the normalized
@@ -52,13 +55,16 @@ type Entry struct {
 	Span            syntax.Span
 }
 
-// Diagnostic describes one semantic failure in a parsed domain entry. Kind is
-// the classification; Detail carries the underlying error for kinds that have
-// one (it is nil for KindUnknownDomainField and the comma kinds).
+// Diagnostic describes one semantic failure or accepted compatibility cleanup
+// in a parsed domain entry. Kind is the classification; Detail carries the
+// underlying error for kinds that have one (it is nil for
+// KindUnknownDomainField and the compatibility kinds).
 type Diagnostic struct {
-	Span   syntax.Span
-	Kind   DiagnosticKind
-	Detail error
+	Span        syntax.Span
+	Kind        DiagnosticKind
+	Detail      error
+	DotTrimming domain.DotTrimming
+	Effective   domain.Domain
 }
 
 // Description renders the source-specific semantic failure without setting context.
@@ -78,6 +84,8 @@ func (diagnostic Diagnostic) Description(input string) string {
 		return "extra comma"
 	case KindMissingComma:
 		return "missing comma"
+	case KindDomainDotTrimming:
+		return "domain spelling was normalized for compatibility"
 	}
 
 	panic("domainentry: unknown diagnostic kind; this should not happen; please report it")
@@ -169,7 +177,16 @@ func (state *buildState) recordExtraComma(span syntax.Span) {
 		return
 	}
 	state.extraComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindExtraComma, Detail: nil})
+	state.diagnostics = append(state.diagnostics, Diagnostic{
+		Span:   span,
+		Kind:   KindExtraComma,
+		Detail: nil,
+		DotTrimming: domain.DotTrimming{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		},
+		Effective: nil,
+	})
 }
 
 func (state *buildState) recordMissingComma(span syntax.Span) {
@@ -177,7 +194,16 @@ func (state *buildState) recordMissingComma(span syntax.Span) {
 		return
 	}
 	state.missingComma = true
-	state.diagnostics = append(state.diagnostics, Diagnostic{Span: span, Kind: KindMissingComma, Detail: nil})
+	state.diagnostics = append(state.diagnostics, Diagnostic{
+		Span:   span,
+		Kind:   KindMissingComma,
+		Detail: nil,
+		DotTrimming: domain.DotTrimming{
+			RemovedLeadingDots:       false,
+			RemovedExtraTrailingDots: false,
+		},
+		Effective: nil,
+	})
 }
 
 func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnostic) {
@@ -197,13 +223,18 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 	}
 
 	domainAtom := mustAtom(domainTree)
-	dom, err := domain.New(domainAtom.Token.Text)
+	dom, dotTrimming, err := domain.New(domainAtom.Token.Text)
 	if err != nil {
 		var noEntry Entry
 		return noEntry, &Diagnostic{
 			Span:   domainAtom.Span(),
 			Kind:   KindInvalidDomain,
 			Detail: err,
+			DotTrimming: domain.DotTrimming{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	}
 
@@ -212,7 +243,20 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 		var noEntry Entry
 		return noEntry, diagnostic
 	}
-	return Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}, nil
+	entry := Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}
+	if dotTrimming != (domain.DotTrimming{
+		RemovedLeadingDots:       false,
+		RemovedExtraTrailingDots: false,
+	}) {
+		state.diagnostics = append(state.diagnostics, Diagnostic{
+			Span:        domainAtom.Span(),
+			Kind:        KindDomainDotTrimming,
+			Detail:      nil,
+			DotTrimming: dotTrimming,
+			Effective:   dom,
+		})
+	}
+	return entry, nil
 }
 
 func (state *buildState) buildFields(tree syntax.Tree[formID]) ([]HostID6Opinion, *Diagnostic) {
@@ -249,6 +293,11 @@ func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
+			DotTrimming: domain.DotTrimming{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	}
 
@@ -281,6 +330,11 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			Span:   tree.Span(),
 			Kind:   KindInvalidHostID6,
 			Detail: err,
+			DotTrimming: domain.DotTrimming{
+				RemovedLeadingDots:       false,
+				RemovedExtraTrailingDots: false,
+			},
+			Effective: nil,
 		}
 	case syntax.Op[formID]:
 		// Only structured host-ID values are valid here.
@@ -293,6 +347,11 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 					Span:   atom.Span(),
 					Kind:   KindInvalidMAC,
 					Detail: err,
+					DotTrimming: domain.DotTrimming{
+						RemovedLeadingDots:       false,
+						RemovedExtraTrailingDots: false,
+					},
+					Effective: nil,
 				}
 			}
 			return []hostid6.Derivation{hostid6.MAC(mac)}, nil
