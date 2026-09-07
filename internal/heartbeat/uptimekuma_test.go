@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -148,7 +150,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				return m.Ping(context.Background(), ppfmt, heartbeat.NewMessagef(true, "hello"))
 			},
 			"/", "up", "OK", "",
-			[]action{ActionOK},
+			[]action{ActionAbort, ActionAbort, ActionOK},
 			ActionAbort, true,
 			true,
 			successPP,
@@ -220,70 +222,90 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-
-			visited := 0
-			pinged := false
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if !assert.Equal(t, http.MethodGet, r.Method) ||
-					!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
-					panic(http.ErrAbortHandler)
+			synctest.Test(t, func(t *testing.T) {
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
+				if tc.prepareMockPP != nil {
+					tc.prepareMockPP(mockPP)
 				}
 
-				q, err := url.ParseQuery(r.URL.RawQuery)
-				if !assert.NoError(t, err) ||
-					!assert.Equal(t, url.Values{
-						"status": {tc.status},
-						"msg":    {tc.msg},
-						"ping":   {tc.ping},
-					}, q) {
-					panic(http.ErrAbortHandler)
-				}
-
-				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Empty(t, string(reqBody)) {
-					panic(http.ErrAbortHandler)
-				}
-
-				visited++
-				action := tc.defaultAction
-				if visited <= len(tc.actions) {
-					action = tc.actions[visited-1]
-				}
-				switch action {
-				case ActionOK:
-					pinged = true
-					if _, err := io.WriteString(w, `{"ok":true}`); !assert.NoError(t, err) {
+				var attempts []time.Duration
+				started := time.Now()
+				visited := 0
+				pinged := false
+				server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if !assert.Equal(t, http.MethodGet, r.Method) ||
+						!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionNotOK:
-					if _, err := io.WriteString(w, `{"ok":false,"msg":"bad"}`); !assert.NoError(t, err) {
+
+					q, err := url.ParseQuery(r.URL.RawQuery)
+					if !assert.NoError(t, err) ||
+						!assert.Equal(t, url.Values{
+							"status": {tc.status},
+							"msg":    {tc.msg},
+							"ping":   {tc.ping},
+						}, q) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionGarbage:
-					if _, err := io.WriteString(w, `This is [ { not a valid JSON`); !assert.NoError(t, err) {
+
+					if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+						!assert.Empty(t, string(reqBody)) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionAbort:
-					panic(http.ErrAbortHandler)
-				case ActionFail:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
+
+					attempts = append(attempts, time.Since(started))
+					visited++
+					action := tc.defaultAction
+					if visited <= len(tc.actions) {
+						action = tc.actions[visited-1]
+					}
+					switch action {
+					case ActionOK:
+						pinged = true
+						if _, err := io.WriteString(w, `{"ok":true}`); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionNotOK:
+						if _, err := io.WriteString(w, `{"ok":false,"msg":"bad"}`); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionGarbage:
+						if _, err := io.WriteString(w, `This is [ { not a valid JSON`); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionAbort:
+						panic(http.ErrAbortHandler)
+					case ActionFail:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					default:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					}
+				}))
+
+				client := server.Client()
+				m, ok := heartbeat.NewUptimeKuma(mockPP, server.URL)
+				require.True(t, ok)
+				m = heartbeat.UptimeKumaWithClient(m, client)
+				ok = tc.endpoint(mockPP, m)
+				synctest.Wait()
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.pinged, pinged)
+				switch {
+				case tc.actions == nil:
+					require.Equal(t, 10*time.Second, time.Since(started))
+					require.Equal(t, []time.Duration{0, time.Second, 3 * time.Second, 7 * time.Second}, attempts)
+				case len(tc.actions) > 0:
+					wantAttempts := []time.Duration{0, time.Second, 3 * time.Second}[:len(tc.actions)]
+					require.Equal(t, wantAttempts, attempts)
+					require.Equal(t, wantAttempts[len(wantAttempts)-1], time.Since(started))
 				default:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
+					require.Empty(t, attempts)
+					require.Zero(t, time.Since(started))
 				}
-			}))
-
-			m, ok := heartbeat.NewUptimeKuma(mockPP, server.URL)
-			require.True(t, ok)
-			ok = tc.endpoint(mockPP, m)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.pinged, pinged)
+			})
 		})
 	}
 }

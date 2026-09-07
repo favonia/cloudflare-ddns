@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -117,19 +118,18 @@ const (
 	mockAccountID  = api.ID("account456")
 )
 
-func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth) {
+func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth, *http.Client) {
 	t.Helper()
 
 	serveMux := http.NewServeMux()
-	ts := httptest.NewServer(serveMux)
-	t.Cleanup(ts.Close)
+	ts := httptest.NewTestServer(t, serveMux)
 
 	auth := api.CloudflareAuth{
 		Token:   mockToken,
-		BaseURL: ts.URL,
+		BaseURL: "https://api.example.com",
 	}
 
-	return serveMux, auth
+	return serveMux, auth, ts.Client()
 }
 
 type httpHandler struct{ requestLimit *int }
@@ -170,8 +170,15 @@ func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
 func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) (*http.ServeMux, api.Handle, bool) {
 	t.Helper()
 
-	serveMux, auth := newServerAuth(t)
-	h, ok := auth.New(ppfmt, options)
+	serveMux, auth, client := newServerAuth(t)
+	h, ok := auth.NewWithClient(ppfmt, options, client)
+	if ok {
+		// Let every cache cleanup goroutine start before registering its stop.
+		synctest.Wait()
+		ch, isCloudflareHandle := h.(api.CloudflareHandle)
+		require.True(t, isCloudflareHandle)
+		t.Cleanup(ch.StopCaches)
+	}
 
 	return serveMux, h, ok
 }

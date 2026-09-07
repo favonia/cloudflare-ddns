@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"testing"
+	"testing/synctest"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/stretchr/testify/assert"
@@ -113,26 +114,27 @@ func TestListZonesTwo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				zh := newZonesHandler(t, f.serveMux, tc.zones)
 
-			f := newCloudflareHarness(t)
-			zh := newZonesHandler(t, f.serveMux, tc.zones)
-
-			zh.setRequestLimit(tc.requestLimit)
-			output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), tc.input)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.output, output)
-			assertHandlersExhausted(t, zh)
-
-			if tc.requestLimit > 0 {
-				f.cfHandle.FlushCache()
-
-				mockPP := f.newPP()
-				mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "test.org", gomock.Any())
-				output, ok = f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
-				require.False(t, ok)
-				require.Zero(t, output)
+				zh.setRequestLimit(tc.requestLimit)
+				output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), tc.input)
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.output, output)
 				assertHandlersExhausted(t, zh)
-			}
+
+				if tc.requestLimit > 0 {
+					f.cfHandle.FlushCache()
+
+					mockPP := f.newPP()
+					mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "test.org", gomock.Any())
+					output, ok = f.cfHandle.ListZones(context.Background(), mockPP, tc.input)
+					require.False(t, ok)
+					require.Zero(t, output)
+					assertHandlersExhausted(t, zh)
+				}
+			})
 		})
 	}
 }
@@ -230,154 +232,161 @@ func TestZoneIDOfDomain(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
 
-			f := newCloudflareHarness(t)
+				zh := newZonesHandler(t, f.serveMux, tc.zoneStatuses)
+				zh.setRequestLimit(tc.requestLimit)
 
-			zh := newZonesHandler(t, f.serveMux, tc.zoneStatuses)
-			zh.setRequestLimit(tc.requestLimit)
-
-			zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPreparedPP(tc.prepareMockPP), tc.domain)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.expected, zoneID)
-			assertHandlersExhausted(t, zh)
+				zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPreparedPP(tc.prepareMockPP), tc.domain)
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.expected, zoneID)
+				assertHandlersExhausted(t, zh)
+			})
 		})
 	}
 }
 
 func TestListZonesTwoCache(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active", "active"}})
 
-	f := newCloudflareHarness(t)
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active", "active"}})
+		zh.setRequestLimit(1)
+		output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), "test.org")
+		require.True(t, ok)
+		require.Equal(t, mockIDs("test.org", 0, 1), output)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(1)
-	output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), "test.org")
-	require.True(t, ok)
-	require.Equal(t, mockIDs("test.org", 0, 1), output)
-	assertHandlersExhausted(t, zh)
-
-	zh.setRequestLimit(0)
-	output, ok = f.cfHandle.ListZones(context.Background(), f.newPP(), "test.org")
-	require.True(t, ok)
-	require.Equal(t, mockIDs("test.org", 0, 1), output)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(0)
+		output, ok = f.cfHandle.ListZones(context.Background(), f.newPP(), "test.org")
+		require.True(t, ok)
+		require.Equal(t, mockIDs("test.org", 0, 1), output)
+		assertHandlersExhausted(t, zh)
+	})
 }
 
 func TestZoneIDOfDomainCache(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 
-	f := newCloudflareHarness(t)
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+		require.True(t, ok)
+		require.Equal(t, mockID("test.org", 0), zoneID)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(2)
-	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.Equal(t, mockID("test.org", 0), zoneID)
-	assertHandlersExhausted(t, zh)
-
-	zh.setRequestLimit(0)
-	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.Equal(t, mockID("test.org", 0), zoneID)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(0)
+		zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+		require.True(t, ok)
+		require.Equal(t, mockID("test.org", 0), zoneID)
+		assertHandlersExhausted(t, zh)
+	})
 }
 
 func TestZoneIDOfDomainClearsEmptyZoneCacheAfterFailedLookup(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		zoneStatuses := map[string][]string{}
+		zh := newZonesHandler(t, f.serveMux, zoneStatuses)
 
-	f := newCloudflareHarness(t)
-	zoneStatuses := map[string][]string{}
-	zh := newZonesHandler(t, f.serveMux, zoneStatuses)
+		zh.setRequestLimit(3)
+		mockPP := f.newPP()
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
+		zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+		require.False(t, ok)
+		require.Zero(t, zoneID)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(3)
-	mockPP := f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
-	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
-	require.False(t, ok)
-	require.Zero(t, zoneID)
-	assertHandlersExhausted(t, zh)
+		zoneStatuses["test.org"] = []string{"active"}
 
-	zoneStatuses["test.org"] = []string{"active"}
-
-	zh.setRequestLimit(2)
-	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.Equal(t, mockID("test.org", 0), zoneID)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(2)
+		zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+		require.True(t, ok)
+		require.Equal(t, mockID("test.org", 0), zoneID)
+		assertHandlersExhausted(t, zh)
+	})
 }
 
 func TestZoneIDOfDomainFailedLookupDoesNotKeepEmptySuffixCache(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{})
 
-	f := newCloudflareHarness(t)
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{})
+		zh.setRequestLimit(3)
+		mockPP := f.newPP()
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
+		zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+		require.False(t, ok)
+		require.Zero(t, zoneID)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(3)
-	mockPP := f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
-	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
-	require.False(t, ok)
-	require.Zero(t, zoneID)
-	assertHandlersExhausted(t, zh)
-
-	zh.setRequestLimit(3)
-	mockPP = f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
-	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
-	require.False(t, ok)
-	require.Zero(t, zoneID)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(3)
+		mockPP = f.newPP()
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to find the zone for %s; will try again", "sub.test.org")
+		zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+		require.False(t, ok)
+		require.Zero(t, zoneID)
+		assertHandlersExhausted(t, zh)
+	})
 }
 
 func TestZoneIDOfDomainClearsZoneCacheAfterDuplicateZoneFailure(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		zoneStatuses := map[string][]string{
+			"test.org": {"active", "active"},
+			"org":      {},
+		}
+		zh := newZonesHandler(t, f.serveMux, zoneStatuses)
 
-	f := newCloudflareHarness(t)
-	zoneStatuses := map[string][]string{
-		"test.org": {"active", "active"},
-		"org":      {},
-	}
-	zh := newZonesHandler(t, f.serveMux, zoneStatuses)
+		zh.setRequestLimit(1)
+		output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
+		require.True(t, ok)
+		require.Empty(t, output)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(1)
-	output, ok := f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
-	require.True(t, ok)
-	require.Empty(t, output)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(2)
+		mockPP := f.newPP()
+		mockPP.EXPECT().Noticef(pp.EmojiImpossible,
+			"Found multiple active zones named %s (IDs: %s); please report this at %s",
+			"test.org", pp.EnglishJoinOrEmptyLabel(mockIDsAsStrings("test.org", 0, 1), "(none)"), pp.IssueReportingURL)
+		zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+		require.False(t, ok)
+		require.Zero(t, zoneID)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(2)
-	mockPP := f.newPP()
-	mockPP.EXPECT().Noticef(pp.EmojiImpossible,
-		"Found multiple active zones named %s (IDs: %s); please report this at %s",
-		"test.org", pp.EnglishJoinOrEmptyLabel(mockIDsAsStrings("test.org", 0, 1), "(none)"), pp.IssueReportingURL)
-	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
-	require.False(t, ok)
-	require.Zero(t, zoneID)
-	assertHandlersExhausted(t, zh)
+		zoneStatuses["test.org"] = []string{"active"}
 
-	zoneStatuses["test.org"] = []string{"active"}
+		zh.setRequestLimit(0)
+		output, ok = f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
+		require.True(t, ok)
+		require.Empty(t, output)
+		assertHandlersExhausted(t, zh)
 
-	zh.setRequestLimit(0)
-	output, ok = f.cfHandle.ListZones(context.Background(), f.newPP(), "org")
-	require.True(t, ok)
-	require.Empty(t, output)
-	assertHandlersExhausted(t, zh)
-
-	zh.setRequestLimit(2)
-	zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
-	require.True(t, ok)
-	require.Equal(t, mockID("test.org", 0), zoneID)
-	assertHandlersExhausted(t, zh)
+		zh.setRequestLimit(2)
+		zoneID, ok = f.cfHandle.ZoneIDOfDomain(context.Background(), f.newPP(), domain.FQDN("sub.test.org"))
+		require.True(t, ok)
+		require.Equal(t, mockID("test.org", 0), zoneID)
+		assertHandlersExhausted(t, zh)
+	})
 }
 
 func TestZoneIDOfDomainInvalid(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
 
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-
-	mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
-	zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
-	require.False(t, ok)
-	require.Zero(t, zoneID)
+		mockPP.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
+		zoneID, ok := f.cfHandle.ZoneIDOfDomain(context.Background(), mockPP, domain.FQDN("sub.test.org"))
+		require.False(t, ok)
+		require.Zero(t, zoneID)
+	})
 }

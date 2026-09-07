@@ -2,6 +2,7 @@ package cron_test
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,6 @@ func TestMustNewPanicking(t *testing.T) {
 
 func TestNext(t *testing.T) {
 	t.Parallel()
-	const delta = time.Second
 	for _, tc := range [...]struct {
 		spec     string
 		interval time.Duration
@@ -49,7 +49,10 @@ func TestNext(t *testing.T) {
 	} {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-			require.WithinDuration(t, time.Now().Add(tc.interval), cron.Next(cron.MustNew(tc.spec)), delta)
+			synctest.Test(t, func(t *testing.T) {
+				want := time.Now().Truncate(time.Second).Add(tc.interval)
+				require.Equal(t, want, cron.Next(cron.MustNew(tc.spec)))
+			})
 		})
 	}
 }

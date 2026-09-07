@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -247,57 +249,77 @@ func TestHealthchecksEndPoints(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-
-			visited := 0
-			pinged := 0
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if !assert.Equal(t, http.MethodPost, r.Method) ||
-					!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
-					panic(http.ErrAbortHandler)
+			synctest.Test(t, func(t *testing.T) {
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
+				if tc.prepareMockPP != nil {
+					tc.prepareMockPP(mockPP)
 				}
 
-				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Equal(t, tc.message, string(reqBody)) {
-					panic(http.ErrAbortHandler)
-				}
-
-				visited++
-				action := tc.defaultAction
-				if visited <= len(tc.actions) {
-					action = tc.actions[visited-1]
-				}
-				switch action {
-				case ActionOK:
-					pinged++
-					if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
+				var attempts []time.Duration
+				started := time.Now()
+				visited := 0
+				pinged := 0
+				server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if !assert.Equal(t, http.MethodPost, r.Method) ||
+						!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionNotOK:
-					w.WriteHeader(http.StatusBadRequest)
-					if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
+
+					if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+						!assert.Equal(t, tc.message, string(reqBody)) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionAbort:
-					panic(http.ErrAbortHandler)
-				case ActionFail:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
+
+					attempts = append(attempts, time.Since(started))
+					visited++
+					action := tc.defaultAction
+					if visited <= len(tc.actions) {
+						action = tc.actions[visited-1]
+					}
+					switch action {
+					case ActionOK:
+						pinged++
+						if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionNotOK:
+						w.WriteHeader(http.StatusBadRequest)
+						if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionAbort:
+						panic(http.ErrAbortHandler)
+					case ActionFail:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					default:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					}
+				}))
+
+				client := server.Client()
+				m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
+				require.True(t, ok)
+				m = heartbeat.HealthchecksWithClient(m, client)
+				ok = tc.endpoint(mockPP, m)
+				synctest.Wait()
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.pinged, pinged)
+				switch {
+				case tc.actions == nil:
+					require.Equal(t, 10*time.Second, time.Since(started))
+					require.Equal(t, []time.Duration{0, time.Second, 3 * time.Second, 7 * time.Second}, attempts)
+				case len(tc.actions) > 0:
+					wantAttempts := []time.Duration{0, time.Second, 3 * time.Second}[:len(tc.actions)]
+					require.Equal(t, wantAttempts, attempts)
+					require.Equal(t, wantAttempts[len(wantAttempts)-1], time.Since(started))
 				default:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
+					require.Empty(t, attempts)
+					require.Zero(t, time.Since(started))
 				}
-			}))
-
-			m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
-			require.True(t, ok)
-			ok = tc.endpoint(mockPP, m)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.pinged, pinged)
+			})
 		})
 	}
 }
@@ -337,7 +359,7 @@ func TestHealthchecksPingResponseReadFailure(t *testing.T) {
 		),
 	)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/", r.URL.EscapedPath())
 
@@ -366,9 +388,10 @@ func TestHealthchecksPingResponseReadFailure(t *testing.T) {
 			panic(http.ErrAbortHandler)
 		}
 	}))
-	defer server.Close()
+	client := server.Client()
 
 	h, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
 	require.True(t, ok)
+	h = heartbeat.HealthchecksWithClient(h, client)
 	require.False(t, h.Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello")))
 }

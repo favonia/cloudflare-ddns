@@ -51,7 +51,7 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 ) *httptest.Server {
 	t.Helper()
 
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !assert.Equal(t, http.MethodPost, r.Method) ||
 			!assert.Equal(t, "application/dns-message", r.Header.Get("Content-Type")) ||
 			!assert.Equal(t, "application/dns-message", r.Header.Get("Accept")) {
@@ -107,6 +107,8 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 			panic(http.ErrAbortHandler)
 		}
 	}))
+	t.Cleanup(server.Close)
+	return server
 }
 
 func TestDNSOverHTTPSGetRawData(t *testing.T) {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -72,4 +73,23 @@ func (h cloudflareHandle) ListZones(ctx context.Context, ppfmt pp.PP, name strin
 // by the DNS record code paths.
 func (h cloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domain domain.Domain) (ID, bool) {
 	return h.zoneIDOfDomain(ctx, ppfmt, domain)
+}
+
+// NewWithClient keeps black-box HTTP tests on the normal handle construction path
+// while routing SDK requests through an in-memory server inside synctest.
+func (t CloudflareAuth) NewWithClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
+	return t.newWithClient(ppfmt, options, client)
+}
+
+// StopCaches ends the test handle's background cleanup tasks before its bubble exits.
+// Tests must wait for the tasks to start before calling this method.
+func (h cloudflareHandle) StopCaches() {
+	h.cache.listZones.Stop()
+	h.cache.zoneOfDomain.Stop()
+	for _, cache := range h.cache.listRecords {
+		cache.Stop()
+	}
+	h.cache.listLists.Stop()
+	h.cache.listID.Stop()
+	h.cache.listListItems.Stop()
 }

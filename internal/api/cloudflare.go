@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -59,7 +60,12 @@ type CloudflareAuth struct {
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	handle, err := t.newClient()
+	return t.newWithClient(ppfmt, options, nil)
+}
+
+// newWithClient uses the SDK's default transport when client is nil.
+func (t CloudflareAuth) newWithClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
+	handle, err := t.newClient(client)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)
 		return nil, false
@@ -86,8 +92,12 @@ func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
 	return h, true
 }
 
-func (t CloudflareAuth) newClient() (*cloudflare.API, error) {
-	handle, err := cloudflare.NewWithAPIToken(t.Token)
+func (t CloudflareAuth) newClient(client *http.Client) (*cloudflare.API, error) {
+	var options []cloudflare.Option
+	if client != nil {
+		options = append(options, cloudflare.HTTPClient(client))
+	}
+	handle, err := cloudflare.NewWithAPIToken(t.Token, options...)
 	if err != nil {
 		return nil, fmt.Errorf("create Cloudflare API client: %w", err)
 	}

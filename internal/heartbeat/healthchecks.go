@@ -21,6 +21,9 @@ type Healthchecks struct {
 
 	// Timeout for each ping.
 	Timeout time.Duration
+
+	// If nil, each ping uses retryablehttp's default HTTP client.
+	httpClient *http.Client
 }
 
 var _ Heartbeat = Healthchecks{} //nolint:exhaustruct_v5
@@ -100,8 +103,9 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	}
 
 	h := Healthchecks{
-		BaseURL: u,
-		Timeout: HealthchecksDefaultTimeout,
+		BaseURL:    u,
+		Timeout:    HealthchecksDefaultTimeout,
+		httpClient: nil,
 	}
 
 	return h, true
@@ -201,6 +205,9 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, spec healthchecksPi
 
 	c := retryablehttp.NewClient()
 	c.Logger = nil
+	if h.httpClient != nil {
+		c.HTTPClient = h.httpClient
+	}
 
 	resp, err := c.Do(req)
 	if err != nil {
