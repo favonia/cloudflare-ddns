@@ -75,10 +75,10 @@ func (h cloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domai
 	return h.zoneIDOfDomain(ctx, ppfmt, domain)
 }
 
-// NewWithClient keeps black-box HTTP tests on the normal handle construction path
+// NewWithHTTPClient keeps black-box HTTP tests on the normal handle construction path
 // while routing SDK requests through an in-memory server inside synctest.
-func (t CloudflareAuth) NewWithClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
-	return t.newWithClient(ppfmt, options, client)
+func (t CloudflareAuth) NewWithHTTPClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
+	return t.newWithHTTPClient(ppfmt, options, client)
 }
 
 // StopCaches ends the test handle's background cleanup tasks before its bubble exits.

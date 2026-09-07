@@ -60,11 +60,11 @@ type CloudflareAuth struct {
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	return t.newWithClient(ppfmt, options, nil)
+	return t.newWithHTTPClient(ppfmt, options, nil)
 }
 
-// newWithClient uses the SDK's default transport when client is nil.
-func (t CloudflareAuth) newWithClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
+// newWithHTTPClient uses the SDK's default transport when client is nil.
+func (t CloudflareAuth) newWithHTTPClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
 	handle, err := t.newClient(client)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)

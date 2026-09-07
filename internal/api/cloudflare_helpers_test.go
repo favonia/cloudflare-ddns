@@ -171,7 +171,7 @@ func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) 
 	t.Helper()
 
 	serveMux, auth, client := newServerAuth(t)
-	h, ok := auth.NewWithClient(ppfmt, options, client)
+	h, ok := auth.NewWithHTTPClient(ppfmt, options, client)
 	if ok {
 		// Let every cache cleanup goroutine start before registering its stop.
 		synctest.Wait()
