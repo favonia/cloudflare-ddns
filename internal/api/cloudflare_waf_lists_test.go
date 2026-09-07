@@ -338,7 +338,7 @@ func TestFindWAFList(t *testing.T) {
 				{name: "list", size: 12, kind: cloudflare.ListTypeIP},
 			},
 			1,
-			true, (mockID("list", 1)),
+			true, mockID("list", 1),
 			nil,
 		},
 		"2ip1asn": {

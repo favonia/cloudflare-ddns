@@ -30,7 +30,7 @@ func shoutrrrFS(t *testing.T, path, content string) {
 	t.Cleanup(file.ResetFSForTesting)
 }
 
-//nolint:paralleltest,exhaustruct // environment vars and file.FS are global; table cases intentionally omit unused fields
+//nolint:paralleltest,exhaustruct_v5 // environment vars and file.FS are global; table cases intentionally omit unused fields
 func TestSetupReportersShoutrrrFile(t *testing.T) {
 	const url1 = "generic+https://example.com/api/v1/postStuff"
 	const url2 = "pushover://shoutrrr:token@userKey"

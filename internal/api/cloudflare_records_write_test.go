@@ -574,12 +574,10 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration: defaultHandleOptions().CacheExpiration,
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPP()
 
@@ -644,12 +642,13 @@ func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
+		{
+			ID: "record2", IP: mustIP("::3"),
 			TTL:     api.TTLAuto,
 			Proxied: false,
 			Comment: "managed",
 			Tags:    []string{"env:prod"},
-		}},
+		},
 	}, rs)
 
 	id, ok := f.handle.CreateRecord(
@@ -663,12 +662,13 @@ func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
 	require.True(t, cached)
 	require.Equal(t, []api.Record{
 		{ID: "record1", IP: mustIP("::1"), RecordParams: createParams},
-		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
+		{
+			ID: "record2", IP: mustIP("::3"),
 			TTL:     api.TTLAuto,
 			Proxied: false,
 			Comment: "managed",
 			Tags:    []string{"env:prod"},
-		}},
+		},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh, crh)
 }
@@ -778,12 +778,10 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 	managedParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration: defaultHandleOptions().CacheExpiration,
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
 		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,

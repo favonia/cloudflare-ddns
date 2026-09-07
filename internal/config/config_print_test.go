@@ -32,18 +32,18 @@ func printSubItem(t *testing.T, ppfmt *mocks.MockPP, key string, value any) *moc
 }
 
 func defaultPrintedConfig(raw *config.RawConfig) *config.BuiltConfig {
-	handleConfig := &config.HandleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	handleConfig := &config.HandleConfig{} //nolint:exhaustruct_v5 // This helper intentionally starts from the zero value and fills only the fields print tests use.
 	handleConfig.Auth = raw.Auth
 	handleConfig.Options.CacheExpiration = raw.CacheExpiration
 	handleConfig.Options.ManagedRecordsCommentRegex = regexp.MustCompile(raw.ManagedRecordsCommentRegex)
 	handleConfig.Options.ManagedWAFListItemsCommentRegex = regexp.MustCompile(raw.ManagedWAFListItemsCommentRegex)
 
-	lifecycleConfig := &config.LifecycleConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	lifecycleConfig := &config.LifecycleConfig{} //nolint:exhaustruct_v5 // This helper intentionally starts from the zero value and fills only the fields print tests use.
 	lifecycleConfig.UpdateCron = raw.UpdateCron
 	lifecycleConfig.UpdateOnStart = raw.UpdateOnStart
 	lifecycleConfig.DeleteOnStop = raw.DeleteOnStop
 
-	updateConfig := &config.UpdateConfig{} //nolint:exhaustruct // This helper intentionally starts from the zero value and fills only the fields print tests use.
+	updateConfig := &config.UpdateConfig{} //nolint:exhaustruct_v5 // This helper intentionally starts from the zero value and fills only the fields print tests use.
 	updateConfig.Provider = map[ipnet.Family]provider.Provider{
 		ipnet.IP4: raw.Provider[ipnet.IP4],
 		ipnet.IP6: raw.Provider[ipnet.IP6],
@@ -308,9 +308,9 @@ func TestPrintEmpty(t *testing.T) {
 		printItem(t, innerMockPP, "Record/list updating:", "0s"),
 	)
 	builtConfig := &config.BuiltConfig{
-		Handle:    &config.HandleConfig{},    //nolint:exhaustruct
-		Lifecycle: &config.LifecycleConfig{}, //nolint:exhaustruct
-		Update:    &config.UpdateConfig{},    //nolint:exhaustruct
+		Handle:    &config.HandleConfig{},    //nolint:exhaustruct_v5
+		Lifecycle: &config.LifecycleConfig{}, //nolint:exhaustruct_v5
+		Update:    &config.UpdateConfig{},    //nolint:exhaustruct_v5
 	}
 	config.Print(mockPP, builtConfig, heartbeat.NewComposed(), notifier.NewComposed())
 }
@@ -371,9 +371,9 @@ func TestPrintHidden(t *testing.T) {
 	mockPP.EXPECT().IsShowing(pp.Info).Return(false)
 
 	builtConfig := &config.BuiltConfig{
-		Handle:    &config.HandleConfig{},    //nolint:exhaustruct
-		Lifecycle: &config.LifecycleConfig{}, //nolint:exhaustruct
-		Update:    &config.UpdateConfig{},    //nolint:exhaustruct
+		Handle:    &config.HandleConfig{},    //nolint:exhaustruct_v5
+		Lifecycle: &config.LifecycleConfig{}, //nolint:exhaustruct_v5
+		Update:    &config.UpdateConfig{},    //nolint:exhaustruct_v5
 	}
 	config.Print(mockPP, builtConfig, nil, nil)
 }

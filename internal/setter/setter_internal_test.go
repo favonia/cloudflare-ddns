@@ -21,8 +21,8 @@ func TestPartitionRecordsReturnsSparseMatchesAndOrderedUnmatched(t *testing.T) {
 	ip4 := netip.MustParseAddr("::4")
 	targets := []netip.Addr{ip1, ip2, ip3}
 	records := []api.Record{
-		{ID: "record2", IP: ip2, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
-		{ID: "record4", IP: ip4, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
+		{ID: "record2", IP: ip2, TTL: 0, Proxied: false, Comment: "", Tags: nil},
+		{ID: "record4", IP: ip4, TTL: 0, Proxied: false, Comment: "", Tags: nil},
 	}
 
 	matched, unmatched, outdated := partitionRecords(targets, records)
@@ -39,16 +39,16 @@ func TestPartitionRecordsTreatsIPv4MappedIPv6AsMatchingCanonicalIPv4(t *testing.
 	target := netip.MustParseAddr("192.0.2.10")
 	targets := []netip.Addr{target}
 	records := []api.Record{
-		{ID: "mapped", IP: netip.MustParseAddr("::ffff:192.0.2.10"), RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
-		{ID: "invalid", IP: netip.Addr{}, RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}},
+		{ID: "mapped", IP: netip.MustParseAddr("::ffff:192.0.2.10"), TTL: 0, Proxied: false, Comment: "", Tags: nil},
+		{ID: "invalid", IP: netip.Addr{}, TTL: 0, Proxied: false, Comment: "", Tags: nil},
 	}
 
 	matched, unmatched, outdated := partitionRecords(targets, records)
 	require.Len(t, matched, 1)
 	require.Contains(t, matched, target)
-	require.Equal(t, []record{{ID: "mapped", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, matched[target])
+	require.Equal(t, []record{{ID: "mapped", TTL: 0, Proxied: false, Comment: "", Tags: nil}}, matched[target])
 	require.Empty(t, unmatched)
-	require.Equal(t, []record{{ID: "invalid", RecordParams: api.RecordParams{TTL: 0, Proxied: false, Comment: "", Tags: nil}}}, outdated)
+	require.Equal(t, []record{{ID: "invalid", TTL: 0, Proxied: false, Comment: "", Tags: nil}}, outdated)
 }
 
 func TestResolveScalarValue(t *testing.T) {
@@ -108,7 +108,7 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 	records := []record{
 		{ID: "record3", RecordParams: fallback},
 		{ID: "record1", RecordParams: fallback},
-		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
+		{ID: "record2", TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil},
 	}
 
 	resolved, matching, nonMatching := reconcileAndPartitionRecords(
@@ -125,7 +125,7 @@ func TestReconcileAndPartitionRecordsSortsOutputsByID(t *testing.T) {
 		{ID: "record3", RecordParams: fallback},
 	}, matching)
 	require.Equal(t, []record{
-		{ID: "record2", RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil}},
+		{ID: "record2", TTL: api.TTLAuto, Proxied: false, Comment: "other", Tags: nil},
 	}, nonMatching)
 }
 
@@ -140,22 +140,18 @@ func TestReconcileAndPartitionRecordsMixesInheritedAndFallbackFields(t *testing.
 	}
 	records := []record{
 		{
-			ID: "record-b",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "carry-me",
-				Tags:    []string{"env:prod", "team:alpha"},
-			},
+			ID:      "record-b",
+			TTL:     120,
+			Proxied: true,
+			Comment: "carry-me",
+			Tags:    []string{"env:prod", "team:alpha"},
 		},
 		{
-			ID: "record-a",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: false,
-				Comment: "carry-me",
-				Tags:    []string{"env:prod"},
-			},
+			ID:      "record-a",
+			TTL:     120,
+			Proxied: false,
+			Comment: "carry-me",
+			Tags:    []string{"env:prod"},
 		},
 	}
 
@@ -184,24 +180,20 @@ The 2 outdated AAAA records of sub.test.org disagree on tags; will use common se
 	}, resolved)
 	require.Equal(t, []record{
 		{
-			ID: "record-a",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: false,
-				Comment: "carry-me",
-				Tags:    []string{"env:prod"},
-			},
+			ID:      "record-a",
+			TTL:     120,
+			Proxied: false,
+			Comment: "carry-me",
+			Tags:    []string{"env:prod"},
 		},
 	}, matching)
 	require.Equal(t, []record{
 		{
-			ID: "record-b",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "carry-me",
-				Tags:    []string{"env:prod", "team:alpha"},
-			},
+			ID:      "record-b",
+			TTL:     120,
+			Proxied: true,
+			Comment: "carry-me",
+			Tags:    []string{"env:prod", "team:alpha"},
 		},
 	}, nonMatching)
 }
@@ -217,31 +209,25 @@ func TestReconcileAndPartitionRecordsFallsBackWhenEverythingDisagrees(t *testing
 	}
 	records := []record{
 		{
-			ID: "record-c",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "comment-a",
-				Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
-			},
+			ID:      "record-c",
+			TTL:     120,
+			Proxied: true,
+			Comment: "comment-a",
+			Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
 		},
 		{
-			ID: "record-a",
-			RecordParams: api.RecordParams{
-				TTL:     300,
-				Proxied: false,
-				Comment: "comment-b",
-				Tags:    []string{"env:prod", "team:beta"},
-			},
+			ID:      "record-a",
+			TTL:     300,
+			Proxied: false,
+			Comment: "comment-b",
+			Tags:    []string{"env:prod", "team:beta"},
 		},
 		{
-			ID: "record-b",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "comment-c",
-				Tags:    []string{"env:prod", "team:gamma"},
-			},
+			ID:      "record-b",
+			TTL:     120,
+			Proxied: true,
+			Comment: "comment-c",
+			Tags:    []string{"env:prod", "team:gamma"},
 		},
 	}
 
@@ -273,31 +259,25 @@ The 3 outdated AAAA records of sub.test.org disagree on tags; will use common se
 	require.Empty(t, matching)
 	require.Equal(t, []record{
 		{
-			ID: "record-a",
-			RecordParams: api.RecordParams{
-				TTL:     300,
-				Proxied: false,
-				Comment: "comment-b",
-				Tags:    []string{"env:prod", "team:beta"},
-			},
+			ID:      "record-a",
+			TTL:     300,
+			Proxied: false,
+			Comment: "comment-b",
+			Tags:    []string{"env:prod", "team:beta"},
 		},
 		{
-			ID: "record-b",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "comment-c",
-				Tags:    []string{"env:prod", "team:gamma"},
-			},
+			ID:      "record-b",
+			TTL:     120,
+			Proxied: true,
+			Comment: "comment-c",
+			Tags:    []string{"env:prod", "team:gamma"},
 		},
 		{
-			ID: "record-c",
-			RecordParams: api.RecordParams{
-				TTL:     120,
-				Proxied: true,
-				Comment: "comment-a",
-				Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
-			},
+			ID:      "record-c",
+			TTL:     120,
+			Proxied: true,
+			Comment: "comment-a",
+			Tags:    []string{"env:prod", "team:alpha", "dup:one", "dup:ONE"},
 		},
 	}, nonMatching)
 }

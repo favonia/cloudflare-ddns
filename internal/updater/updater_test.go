@@ -51,7 +51,7 @@ const (
 )
 
 func initUpdateConfig() *config.UpdateConfig {
-	conf := &config.UpdateConfig{} //nolint:exhaustruct // Tests build only the runtime fields updater behavior depends on.
+	conf := &config.UpdateConfig{} //nolint:exhaustruct_v5 // Tests build only the runtime fields updater behavior depends on.
 	conf.TTL = api.TTLAuto
 	conf.RecordComment = recordComment
 	conf.WAFListDescription = wafListDescription

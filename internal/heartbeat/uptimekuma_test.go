@@ -301,7 +301,7 @@ func TestUptimeKumaPingRequestCreationFailure(t *testing.T) {
 	)
 
 	ok := (heartbeat.UptimeKuma{
-		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct // Unused URL fields are irrelevant to this request-construction failure fixture.
+		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct_v5 // Unused URL fields are irrelevant to this request-construction failure fixture.
 		Timeout: heartbeat.UptimeKumaDefaultTimeout,
 	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "ignored"))
 	require.False(t, ok)

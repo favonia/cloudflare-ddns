@@ -149,7 +149,7 @@ func TestBuildConfig(t *testing.T) {
 		prepareMockPP func(m *mocks.MockPP)
 	}{
 		"nothing-to-do": {
-			input:    &config.RawConfig{}, //nolint:exhaustruct
+			input:    &config.RawConfig{}, //nolint:exhaustruct_v5
 			ok:       false,
 			expected: nil,
 			prepareMockPP: func(m *mocks.MockPP) {
@@ -162,7 +162,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/update-on-start": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: false,
 				IP4Domains:    entries(domain.FQDN("a.b.c")),
 			},
@@ -178,7 +178,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				DeleteOnStop:  true,
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
@@ -199,7 +199,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop/both-families-invalid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				DeleteOnStop:  true,
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
@@ -222,7 +222,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop/ip6-only-invalid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				DeleteOnStop:  true,
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
@@ -245,7 +245,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop/explicit-empty-single-family": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				DeleteOnStop:        true,
 				UpdateOnStart:       true,
 				IP4DefaultPrefixLen: 32,
@@ -258,14 +258,14 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 					DeleteOnStop:  true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 					},
@@ -291,7 +291,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"once/delete-on-stop/explicit-empty-both-families": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				DeleteOnStop:        true,
 				UpdateOnStart:       true,
 				IP4DefaultPrefixLen: 32,
@@ -306,14 +306,14 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 					DeleteOnStop:  true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 						ipnet.IP6: provider.NewStaticEmpty(),
@@ -341,7 +341,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"nilprovider": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP4: nil,
@@ -362,7 +362,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"dns6empty": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart:       true,
 				DetectionTimeout:    5 * time.Second,
 				IP4DefaultPrefixLen: 32,
@@ -376,13 +376,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewCloudflareTrace(),
@@ -407,7 +407,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"dns6empty-ip4none": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -427,7 +427,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"both-static-empty-warning": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart:       true,
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
@@ -441,13 +441,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 						ipnet.IP6: provider.NewStaticEmpty(),
@@ -475,7 +475,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"both-static-empty-warning/domains-and-waf": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -489,13 +489,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 						ipnet.IP6: provider.NewStaticEmpty(),
@@ -523,7 +523,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"both-static-empty-warning/waf-only": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -537,13 +537,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 						ipnet.IP6: provider.NewStaticEmpty(),
@@ -570,7 +570,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ip4-none-ip6-static-empty/domains": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -582,13 +582,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewStaticEmpty(),
 					},
@@ -614,7 +614,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ip4-static-empty-ip6-none/domains": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -626,13 +626,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewStaticEmpty(),
 					},
@@ -658,7 +658,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ip4none": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -672,13 +672,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
@@ -704,7 +704,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/dns": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -720,7 +720,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -730,10 +730,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					WAFLists:         []api.WAFList{{AccountID: "account", Name: "list"}},
 					TTL:              10000,
 					RecordComment:    "hello",
@@ -762,7 +762,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-record-regex/valid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -777,7 +777,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -787,10 +787,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					RecordComment:    "hello-123",
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
@@ -815,7 +815,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-record-regex/invalid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -836,7 +836,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-record-regex/mismatch": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				RecordComment: "hello",
 				Provider: map[ipnet.Family]provider.Provider{
@@ -858,7 +858,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-waf-item-regex/valid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:             32,
 				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
@@ -874,17 +874,17 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{ //nolint:exhaustruct_v5
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
 							ManagedWAFListItemsCommentRegex: regexp.MustCompile(`^managed-[0-9]+$`),
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					WAFLists:           []api.WAFList{{AccountID: "account", Name: "list"}},
 					TTL:                api.TTLAuto,
 					WAFListItemComment: "managed-123",
@@ -909,7 +909,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ownership-warning/dns-isolated-waf-not": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:        32,
 				IP6DefaultPrefixLen:        64,
 				UpdateOnStart:              true,
@@ -925,7 +925,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -935,10 +935,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
@@ -969,7 +969,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ownership-warning/waf-isolated-dns-not": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:             32,
 				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
@@ -985,7 +985,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -995,10 +995,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
@@ -1029,7 +1029,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ownership-warning/dns-isolated-waf-not-without-comment-signal": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:        32,
 				IP6DefaultPrefixLen:        64,
 				UpdateOnStart:              true,
@@ -1044,7 +1044,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -1054,10 +1054,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
@@ -1080,7 +1080,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ownership-warning/waf-isolated-dns-not-without-comment-signal": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:             32,
 				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
@@ -1095,7 +1095,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
 					Options: api.HandleOptions{
 						CacheExpiration: 0,
 						HandleOwnershipPolicy: api.HandleOwnershipPolicy{
@@ -1105,10 +1105,10 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
@@ -1131,7 +1131,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-waf-item-regex/invalid": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart:                   true,
 				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
 				TTL:                             api.TTLAuto,
@@ -1153,7 +1153,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"managed-waf-item-regex/mismatch": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart:                   true,
 				WAFLists:                        []api.WAFList{{AccountID: "account", Name: "list"}},
 				TTL:                             api.TTLAuto,
@@ -1176,7 +1176,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/waf": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -1190,13 +1190,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					WAFListDescription: "My list",
 					DetectionTimeout:   5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
@@ -1223,7 +1223,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/waf/quoted-preview": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen:             32,
 				IP6DefaultPrefixLen:             64,
 				UpdateOnStart:                   true,
@@ -1239,13 +1239,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					WAFListDescription: strings.Repeat("a", 48),
 					WAFListItemComment: strings.Repeat("b", 49),
 					DetectionTimeout:   5 * time.Second,
@@ -1283,7 +1283,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/ip4-prefix-len": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 24,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -1296,13 +1296,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
@@ -1331,7 +1331,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/ip6-prefix-len": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 48,
 				UpdateOnStart:       true,
@@ -1344,13 +1344,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP4: provider.NewCloudflareTrace(),
@@ -1379,7 +1379,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"ignored/ip4-prefix-len-at-default": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -1392,13 +1392,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
@@ -1422,7 +1422,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"proxied": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -1435,13 +1435,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					DetectionTimeout: 5 * time.Second,
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
@@ -1467,7 +1467,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"proxied/empty-list": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				IP4DefaultPrefixLen: 32,
 				IP6DefaultPrefixLen: 64,
 				UpdateOnStart:       true,
@@ -1479,13 +1479,13 @@ func TestBuildConfig(t *testing.T) {
 			},
 			ok: true,
 			expected: &builtConfig{
-				handle: &config.HandleConfig{ //nolint:exhaustruct
-					Options: api.HandleOptions{}, //nolint:exhaustruct
+				handle: &config.HandleConfig{ //nolint:exhaustruct_v5
+					Options: api.HandleOptions{},
 				},
-				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct
+				lifecycle: &config.LifecycleConfig{ //nolint:exhaustruct_v5
 					UpdateOnStart: true,
 				},
-				update: &config.UpdateConfig{ //nolint:exhaustruct
+				update: &config.UpdateConfig{ //nolint:exhaustruct_v5
 					Provider: map[ipnet.Family]provider.Provider{
 						ipnet.IP6: provider.NewCloudflareTrace(),
 					},
@@ -1511,7 +1511,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"proxied/invalid/1": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -1531,7 +1531,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"proxied/invalid/2": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),
@@ -1551,7 +1551,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 		},
 		"proxied/invalid/3": {
-			input: &config.RawConfig{ //nolint:exhaustruct
+			input: &config.RawConfig{ //nolint:exhaustruct_v5
 				UpdateOnStart: true,
 				Provider: map[ipnet.Family]provider.Provider{
 					ipnet.IP6: provider.NewCloudflareTrace(),

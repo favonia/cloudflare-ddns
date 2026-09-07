@@ -127,8 +127,7 @@ func fetchURL(target, method string, timeout time.Duration, userAgent string) pr
 // classifyRequestError unwraps url.Error so operator diagnostics focus on the
 // transport failure that actually mattered.
 func classifyRequestError(err error) string {
-	var urlError *url.Error
-	if errors.As(err, &urlError) {
+	if urlError, ok := errors.AsType[*url.Error](err); ok {
 		if urlError.Err != nil {
 			return urlError.Err.Error()
 		}

@@ -2,6 +2,8 @@ version: "2"
 linters:
   default: all
   disable:
+    - exhaustruct # replaced by exhaustruct_v5
+    - gomodguard # replaced by gomodguard_v2
     - cyclop # okay for a small script
     - err113 # okay for a small script
     - funlen # okay for a small script
@@ -17,6 +19,6 @@ linters:
     rules:
       - path: cases.go
         linters:
-          - exhaustruct
+          - exhaustruct_v5
           - gochecknoglobals
           - lll

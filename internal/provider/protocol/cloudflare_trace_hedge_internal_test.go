@@ -58,7 +58,7 @@ func traceTestAttemptResult(status traceAttemptStatus) traceAttemptResult {
 		status:   status,
 		rawData:  NewUnavailableDetectionResult(),
 		warnings: nil,
-		failure:  traceFailure{}, //nolint:exhaustruct // Tests need only the scheduler status.
+		failure:  traceFailure{}, //nolint:exhaustruct_v5 // Tests need only the scheduler status.
 	}
 }
 

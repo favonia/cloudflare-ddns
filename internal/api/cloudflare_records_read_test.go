@@ -25,7 +25,7 @@ import (
 )
 
 func mockDNSRecord(id string, ipFamily ipnet.Family, domain string, ip string) cloudflare.DNSRecord {
-	return cloudflare.DNSRecord{ //nolint:exhaustruct
+	return cloudflare.DNSRecord{ //nolint:exhaustruct_v5
 		ID:      id,
 		Type:    ipFamily.RecordType(),
 		Name:    domain,
@@ -136,12 +136,13 @@ func TestListRecords(t *testing.T) {
 			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: []string{"Team:Alpha", "env:prod"}}},
 			1,
 			domain.FQDN("sub.test.org"), params, managedRecordsCommentRegex,
-			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
+			[]api.Record{{
+				ID: "record1", IP: mustIP("::1"),
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "",
 				Tags:    []string{"Team:Alpha", "env:prod"},
-			}}},
+			}},
 			true,
 			nil,
 		},
@@ -208,12 +209,13 @@ func TestListRecords(t *testing.T) {
 				Tags:    nil,
 			},
 			regexp.MustCompile("^managed$"),
-			[]api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{
+			[]api.Record{{
+				ID: "record1", IP: mustIP("::1"),
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "managed",
 				Tags:    nil,
-			}}},
+			}},
 			true,
 			nil,
 		},
@@ -298,12 +300,10 @@ func TestListRecords(t *testing.T) {
 			t.Parallel()
 
 			f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-				CacheExpiration: defaultHandleOptions().CacheExpiration,
-				HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-					ManagedRecordsCommentRegex:        tc.managedRecordsCommentRegex,
-					ManagedWAFListItemsCommentRegex:   nil,
-					AllowWholeWAFListDeleteOnShutdown: true,
-				},
+				CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+				ManagedRecordsCommentRegex:        tc.managedRecordsCommentRegex,
+				ManagedWAFListItemsCommentRegex:   nil,
+				AllowWholeWAFListDeleteOnShutdown: true,
 			})
 
 			zh := newZonesHandler(t, f.serveMux, tc.zones)
@@ -342,14 +342,12 @@ func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{{
-		ID: "record1",
-		IP: mustIP("::1"),
-		RecordParams: api.RecordParams{
-			TTL:     api.TTLAuto,
-			Proxied: false,
-			Comment: "",
-			Tags:    []string{"env", ":prod", "team:"},
-		},
+		ID:      "record1",
+		IP:      mustIP("::1"),
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "",
+		Tags:    []string{"env", ":prod", "team:"},
 	}}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 
@@ -359,14 +357,12 @@ func TestListRecordsWarnsUndocumentedTagsOnlyOnFreshResponses(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{{
-		ID: "record1",
-		IP: mustIP("::1"),
-		RecordParams: api.RecordParams{
-			TTL:     api.TTLAuto,
-			Proxied: false,
-			Comment: "",
-			Tags:    []string{"env", ":prod", "team:"},
-		},
+		ID:      "record1",
+		IP:      mustIP("::1"),
+		TTL:     api.TTLAuto,
+		Proxied: false,
+		Comment: "",
+		Tags:    []string{"env", ":prod", "team:"},
 	}}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 }
@@ -407,12 +403,10 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
 
 	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration: defaultHandleOptions().CacheExpiration,
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
+		CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+		ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	})
 	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
 	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
@@ -427,7 +421,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
+		{ID: "record1", IP: mustIP("::1"), TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 
@@ -438,7 +432,7 @@ func TestListRecordsCacheManagedRecords(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, cached)
 	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}},
+		{ID: "record1", IP: mustIP("::1"), TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil},
 	}, rs)
 	assertHandlersExhausted(t, zh, lrh)
 }

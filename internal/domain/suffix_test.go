@@ -129,7 +129,7 @@ func TestNewSuffix(t *testing.T) {
 
 	_, dotTrimming, err := domain.NewSuffix("\u0080.com")
 	require.Zero(t, dotTrimming)
-	require.EqualError(t, err, "idna: disallowed rune U+0080")
+	require.EqualError(t, err, `idna: invalid label "\u0080"`)
 }
 
 func TestNewSuffixWildcardError(t *testing.T) {

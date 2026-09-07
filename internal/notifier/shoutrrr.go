@@ -22,7 +22,7 @@ type Shoutrrr struct {
 	ServiceDescriptions []string
 }
 
-var _ Notifier = Shoutrrr{} //nolint:exhaustruct
+var _ Notifier = Shoutrrr{} //nolint:exhaustruct_v5
 
 const (
 	// shoutrrrDefaultTimeout is the default timeout for a Shoutrrr notification.
@@ -68,7 +68,7 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 	r, err := shoutrrr.CreateSender(rawURLs...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", err)
-		return Shoutrrr{}, false //nolint:exhaustruct
+		return Shoutrrr{}, false //nolint:exhaustruct_v5
 	}
 
 	r.Timeout = shoutrrrDefaultTimeout

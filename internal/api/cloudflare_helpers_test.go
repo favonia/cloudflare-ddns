@@ -99,7 +99,7 @@ func mockResultInfo(totalNum, pageSize int) cloudflare.ResultInfo {
 		Count:      totalNum,
 		Total:      totalNum,
 		Cursor:     "",
-		Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustruct
+		Cursors:    cloudflare.ResultInfoCursors{}, //nolint:exhaustruct_v5
 	}
 }
 
@@ -155,12 +155,10 @@ func checkToken(t *testing.T, r *http.Request) bool {
 
 func defaultHandleOptions() api.HandleOptions {
 	return api.HandleOptions{
-		CacheExpiration: time.Hour * 24 * 365, // a year
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        nil,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
+		CacheExpiration:                   time.Hour * 24 * 365, // a year
+		ManagedRecordsCommentRegex:        nil,
+		ManagedWAFListItemsCommentRegex:   nil,
+		AllowWholeWAFListDeleteOnShutdown: true,
 	}
 }
 

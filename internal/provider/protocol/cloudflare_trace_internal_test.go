@@ -29,9 +29,9 @@ func newTraceAttemptServer(
 	}
 	listener, err := net.Listen(network, address) //nolint:noctx // Test listener creation has no context-aware variant.
 	require.NoError(t, err)
-	server := &httptest.Server{ //nolint:exhaustruct // Test server uses a family-specific listener.
+	server := &httptest.Server{ //nolint:exhaustruct_v5 // Test server uses a family-specific listener.
 		Listener: listener,
-		Config: &http.Server{ //nolint:exhaustruct // Test server needs only a handler and read-header timeout.
+		Config: &http.Server{ //nolint:exhaustruct_v5 // Test server needs only a handler and read-header timeout.
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				_, _ = fmt.Fprint(w, response(req))
 			}),
@@ -50,14 +50,14 @@ func TestAttemptCloudflareTraceValid(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 24)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 24, server.Client())
 
 	require.Equal(t, traceAttemptSucceeded, result.status)
 	require.Equal(t, NewKnownDetectionResult([]ipnet.RawEntry{
 		ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 24),
 	}), result.rawData)
 	require.Empty(t, result.warnings)
-	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct // The zero value means no failure.
+	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct_v5 // The zero value means no failure.
 }
 
 // These cases catch redirect suppression, validation against the original host,
@@ -99,7 +99,7 @@ func TestAttemptCloudflareTraceRedirectHost(t *testing.T) {
 			t.Cleanup(source.Close)
 			originalHost = source.Listener.Addr().String()
 
-			result := attemptCloudflareTrace(context.Background(), source.URL+"/start", ipnet.IP4, 24)
+			result := attemptCloudflareTrace(context.Background(), source.URL+"/start", ipnet.IP4, 24, source.Client())
 
 			require.Equal(t, tc.wantStatus, result.status)
 			require.Empty(t, result.warnings)
@@ -125,7 +125,7 @@ func TestAttemptCloudflareTraceTransportFailure(t *testing.T) {
 	traceURL := server.URL
 	server.Close()
 
-	result := attemptCloudflareTrace(context.Background(), traceURL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), traceURL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -147,12 +147,12 @@ func TestAttemptCloudflareTraceCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	result := attemptCloudflareTrace(ctx, server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(ctx, server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptCanceled, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
 	require.Empty(t, result.warnings)
-	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct // Cancellation is not a definite failure.
+	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct_v5 // Cancellation is not a definite failure.
 }
 
 func TestAttemptCloudflareTraceMissingHWarning(t *testing.T) {
@@ -162,14 +162,14 @@ func TestAttemptCloudflareTraceMissingHWarning(t *testing.T) {
 		return "ip=192.0.2.1\nwarp=off\n"
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptSucceeded, result.status)
 	require.Equal(t, NewKnownDetectionResult([]ipnet.RawEntry{
 		ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 32),
 	}), result.rawData)
 	require.Equal(t, []traceWarningKind{traceWarningMissingH}, result.warnings)
-	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct // The zero value means no failure.
+	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct_v5 // The zero value means no failure.
 }
 
 func TestAttemptCloudflareTraceMismatchedH(t *testing.T) {
@@ -179,7 +179,7 @@ func TestAttemptCloudflareTraceMismatchedH(t *testing.T) {
 		return "h=wrong.example.com\nip=192.0.2.1\nwarp=off\n"
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -200,14 +200,14 @@ func TestAttemptCloudflareTraceMissingWarpWarning(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptSucceeded, result.status)
 	require.Equal(t, NewKnownDetectionResult([]ipnet.RawEntry{
 		ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 32),
 	}), result.rawData)
 	require.Equal(t, []traceWarningKind{traceWarningMissingWarp}, result.warnings)
-	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct // The zero value means no failure.
+	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct_v5 // The zero value means no failure.
 }
 
 func TestAttemptCloudflareTraceWarpOn(t *testing.T) {
@@ -217,7 +217,7 @@ func TestAttemptCloudflareTraceWarpOn(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=on\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -237,7 +237,7 @@ func TestAttemptCloudflareTraceMissingIP(t *testing.T) {
 		return fmt.Sprintf("h=%s\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -257,7 +257,7 @@ func TestAttemptCloudflareTraceUnparseableIP(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=not-an-ip\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -277,7 +277,7 @@ func TestAttemptCloudflareTraceCloudflareRange(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=104.16.0.1\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -297,7 +297,7 @@ func TestAttemptCloudflareTraceFamilyMismatch(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=2001:db8::1\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP4, 32, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -317,7 +317,7 @@ func TestAttemptCloudflareTraceMappedIPv6Hint(t *testing.T) {
 		return fmt.Sprintf("h=%s\nip=::ffff:192.0.2.1\nwarp=off\n", req.Host)
 	})
 
-	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP6, 128)
+	result := attemptCloudflareTrace(context.Background(), server.URL, ipnet.IP6, 128, server.Client())
 
 	require.Equal(t, traceAttemptFailed, result.status)
 	require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
@@ -333,7 +333,7 @@ func TestAttemptCloudflareTraceMappedIPv6Hint(t *testing.T) {
 func TestDescribeCloudflareTraceFailureUnknownKind(t *testing.T) {
 	t.Parallel()
 
-	failure := traceFailure{ //nolint:exhaustruct // An unknown kind carries no recognized failure details.
+	failure := traceFailure{ //nolint:exhaustruct_v5 // An unknown kind carries no recognized failure details.
 		kind: traceFailureKind(255),
 	}
 

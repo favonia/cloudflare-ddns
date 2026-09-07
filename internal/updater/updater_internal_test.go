@@ -143,7 +143,7 @@ func captureCloudflareTraceDetectionTranscript(
 		detectionTimeout = 100 * time.Millisecond
 	}
 	endpoints := cloudflareTraceTranscriptEndpoints(server.URL)
-	conf := &config.UpdateConfig{ //nolint:exhaustruct // Transcript test needs only detection settings.
+	conf := &config.UpdateConfig{ //nolint:exhaustruct_v5 // Transcript test needs only detection settings.
 		Provider: map[ipnet.Family]provider.Provider{
 			ipnet.IP4: protocol.CloudflareTrace{
 				ProviderName: "cloudflare.trace",
@@ -358,8 +358,8 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 	missing := domain.FQDN("missing.example")
 	present := domain.FQDN("present.example")
 	ip := netip.MustParseAddr("192.0.2.1")
-	params := api.RecordParams{TTL: api.TTLAuto} //nolint:exhaustruct
-	conf := &config.UpdateConfig{                //nolint:exhaustruct
+	params := api.RecordParams{TTL: api.TTLAuto} //nolint:exhaustruct_v5
+	conf := &config.UpdateConfig{                //nolint:exhaustruct_v5
 		Domains:       map[ipnet.Family][]domain.Domain{ipnet.IP4: {missing, present}},
 		Proxied:       map[domain.Domain]bool{},
 		TTL:           api.TTLAuto,

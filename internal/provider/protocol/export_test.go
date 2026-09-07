@@ -1,7 +1,9 @@
 package protocol
 
 import (
+	"context"
 	"net"
+	"net/http"
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -20,4 +22,12 @@ func SelectAndNormalizeInterfaceIPs(
 	ppfmt pp.PP, iface string, ipFamily ipnet.Family, defaultPrefixLen int, addrs []net.Addr,
 ) DetectionResult {
 	return selectAndNormalizeInterfaceIPs(ppfmt, iface, ipFamily, defaultPrefixLen, addrs)
+}
+
+// GetRawDataWithClient lets external behavior tests use an in-memory HTTP server
+// inside synctest while exercising the complete trace detection flow.
+func (p CloudflareTrace) GetRawDataWithClient(
+	ctx context.Context, ppfmt pp.PP, family ipnet.Family, prefixLen int, client *http.Client,
+) DetectionResult {
+	return p.getRawDataWithClient(ctx, ppfmt, family, prefixLen, client)
 }

@@ -30,7 +30,7 @@ type UptimeKuma struct {
 	Timeout time.Duration
 }
 
-var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct
+var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct_v5
 
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
@@ -42,12 +42,12 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	switch u.Scheme {
@@ -59,7 +59,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	// By default, the URL provided by Uptime Kuma has this:
@@ -71,7 +71,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 		q, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-			return UptimeKuma{}, false //nolint:exhaustruct
+			return UptimeKuma{}, false //nolint:exhaustruct_v5
 		}
 
 		for k, vs := range q {
@@ -143,7 +143,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param uptimeKumaReque
 	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 	defer cancel()
 
-	url := *h.BaseURL
+	url := h.BaseURL.Clone()
 	v, _ := query.Values(param)
 	url.RawQuery = v.Encode()
 

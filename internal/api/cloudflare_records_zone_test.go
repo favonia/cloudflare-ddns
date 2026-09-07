@@ -22,11 +22,11 @@ import (
 )
 
 func mockZone(name string, i int, status string) *cloudflare.Zone {
-	return &cloudflare.Zone{ //nolint:exhaustruct
+	return &cloudflare.Zone{ //nolint:exhaustruct_v5
 		ID:      string(mockID(name, i)),
 		Name:    name,
 		Status:  status,
-		Account: cloudflare.Account{ID: string(mockAccountID)}, //nolint:exhaustruct
+		Account: cloudflare.Account{ID: string(mockAccountID)}, //nolint:exhaustruct_v5
 	}
 }
 

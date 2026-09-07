@@ -30,7 +30,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
 
       - name: 🔎 Check the built-in Cloudflare drift watches
         working-directory: scripts/github-actions/cloudflare-doc-watch
@@ -59,7 +59,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
           cache-dependency-path: scripts/github-actions/cloudflare-auth-error-watch/go.sum
 
       - name: 🧪 Run auth-error behavior watch
@@ -86,7 +86,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
           cache-dependency-path: scripts/github-actions/link-check/go.mod
       - name: 🌐 Probe external links
         working-directory: scripts/github-actions/link-check

@@ -255,7 +255,7 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 
 	raw, _, err := h.cf.ListDNSRecords(ctx,
 		cloudflare.ZoneIdentifier(string(zone.ID)),
-		//nolint:exhaustruct // Query params intentionally set only fields used by the selector.
+		//nolint:exhaustruct_v5 // Query params intentionally set only fields used by the selector.
 		cloudflare.ListDNSRecordsParams{
 			Type: ipFamily.RecordType(),
 			Name: domain.DNSNameASCII(),
@@ -284,14 +284,12 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 		}
 
 		record := Record{
-			ID: ID(rawRecord.ID),
-			IP: ip,
-			RecordParams: RecordParams{
-				TTL:     TTL(rawRecord.TTL),
-				Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
-				Comment: rawRecord.Comment,
-				Tags:    rawRecord.Tags,
-			},
+			ID:      ID(rawRecord.ID),
+			IP:      ip,
+			TTL:     TTL(rawRecord.TTL),
+			Proxied: rawRecord.Proxied != nil && *rawRecord.Proxied, // by default, proxied = false
+			Comment: rawRecord.Comment,
+			Tags:    rawRecord.Tags,
 		}
 		hintUndocumentedTags(ppfmt, ipFamily, domain, id, apitags.Undocumented(record.Tags))
 		managedRecords = append(managedRecords, record)
@@ -351,7 +349,7 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	}
 	dashboardURL := cloudflareDNSRecordsDeeplink(zone.AccountID, zone.ID)
 
-	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct):
+	// Keep this mutating request literal exhaustive (do not add //nolint:exhaustruct_v5):
 	// - Reconciled-on-update fields: type/name/content + desired metadata
 	//   (ttl/proxied/comment/tags).
 	// - Cloudflare API docs (edit DNS record):

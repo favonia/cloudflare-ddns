@@ -316,7 +316,7 @@ func TestHealthchecksPingRequestCreationFailure(t *testing.T) {
 
 	// A space in the host makes net/http reject the URL during request creation before any network I/O happens.
 	ok := (heartbeat.Healthchecks{
-		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct // Unused URL fields are irrelevant to this request-construction failure fixture.
+		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct_v5 // Unused URL fields are irrelevant to this request-construction failure fixture.
 		Timeout: heartbeat.HealthchecksDefaultTimeout,
 	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello"))
 	require.False(t, ok)

@@ -30,7 +30,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -108,7 +108,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -144,7 +144,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -189,7 +189,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -228,19 +228,13 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
       - name: 🩹 Run `go fix`
         run: |
-          go fix ./...
-      - name: 🔍 Check if any files are changed
-        run: |
-          if ! git diff --exit-code; then
-            echo "Please run 'go fix ./...'"
-            exit 1
-          fi
+          go fix -diff ./...
 
   test-scripts:
     name: "Unit: scripts (${{ matrix.module.name }})"
@@ -275,7 +269,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
       - name: 📡 Run `go telemetry on`
         run: |
@@ -322,7 +316,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
       - name: 📡 Run `go telemetry on`
         run: |
@@ -330,10 +324,4 @@ jobs:
       - name: 🩹 Run `go fix`
         working-directory: ${{ matrix.module.directory }}
         run: |
-          go fix ./...
-      - name: 🔍 Check if any files are changed
-        run: |
-          if ! git diff --exit-code; then
-            echo "Please run 'go fix ./...'"
-            exit 1
-          fi
+          go fix -diff ./...

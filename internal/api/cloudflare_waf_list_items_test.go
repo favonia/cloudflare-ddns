@@ -183,7 +183,7 @@ func checkListItemCreateRequestPayload(t *testing.T, r *http.Request, expectedIt
 func TestListWAFListItems(t *testing.T) {
 	t.Parallel()
 
-	emptyListMeta := listMeta{} //nolint:exhaustruct
+	emptyListMeta := listMeta{} //nolint:exhaustruct_v5
 
 	for name, tc := range map[string]struct {
 		managedWAFListItemsCommentRegex *regexp.Regexp
@@ -209,9 +209,9 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			true, true,
 			[]api.WAFListItem{
-				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: ""},
-				{ID: (mockID("2001:db8::/32", 0)), Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: ""},
-				{ID: (mockID("10.0.0.0/20", 0)), Prefix: netip.MustParsePrefix("10.0.0.0/20"), Comment: ""},
+				{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: ""},
+				{ID: mockID("2001:db8::/32", 0), Prefix: netip.MustParsePrefix("2001:db8::/32"), Comment: ""},
+				{ID: mockID("10.0.0.0/20", 0), Prefix: netip.MustParsePrefix("10.0.0.0/20"), Comment: ""},
 			},
 			"",
 			nil,
@@ -301,7 +301,7 @@ func TestListWAFListItems(t *testing.T) {
 			1,
 			true, true,
 			[]api.WAFListItem{
-				{ID: (mockID("10.0.0.1", 0)), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "hello"},
+				{ID: mockID("10.0.0.1", 0), Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "hello"},
 			},
 			"hello",
 			nil,

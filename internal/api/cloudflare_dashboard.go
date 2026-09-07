@@ -26,7 +26,7 @@ func cloudflareDashboardDeeplink(segments ...string) string {
 	}
 	query := url.Values{}
 	query.Set("to", "/"+strings.Join(escaped, "/"))
-	//nolint:exhaustruct // url.URL is intentionally populated with only the fields used here.
+	//nolint:exhaustruct_v5 // url.URL is intentionally populated with only the fields used here.
 	return (&url.URL{
 		Scheme:   "https",
 		Host:     "dash.cloudflare.com",

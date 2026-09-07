@@ -32,7 +32,7 @@ func randUint16(ppfmt pp.PP) uint16 {
 
 func newDNSQuery(ppfmt pp.PP, id uint16, name string, class dnsmessage.Class) ([]byte, bool) {
 	msg, err := (&dnsmessage.Message{
-		Header: dnsmessage.Header{ //nolint:exhaustruct
+		Header: dnsmessage.Header{ //nolint:exhaustruct_v5
 			ID:               id,
 			Response:         false, // query
 			OpCode:           0,     // query
@@ -151,7 +151,7 @@ func getIPFromDNS(
 		return invalidIP, false
 	}
 
-	c := httpCore{ //nolint:exhaustruct // maxReadLength zero uses the default limit.
+	c := httpCore{ //nolint:exhaustruct_v5 // maxReadLength zero uses the default limit.
 		ipFamily: ipFamily,
 		url:      url,
 		method:   http.MethodPost,

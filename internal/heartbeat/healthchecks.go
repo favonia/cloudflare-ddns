@@ -23,7 +23,7 @@ type Healthchecks struct {
 	Timeout time.Duration
 }
 
-var _ Heartbeat = Healthchecks{} //nolint:exhaustruct
+var _ Heartbeat = Healthchecks{} //nolint:exhaustruct_v5
 
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
@@ -77,13 +77,13 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" || u.RawQuery != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
 		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	switch u.Scheme {
@@ -96,7 +96,7 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
 		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	h := Healthchecks{

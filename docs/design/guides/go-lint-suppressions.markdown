@@ -25,9 +25,9 @@ Write suppressions in the local form `//nolint:<linter> // reason`.
 
 ## Durable Recurring Judgments
 
-### `exhaustruct`
+### `exhaustruct_v5`
 
-Use `//nolint:exhaustruct` only for intentionally partial literals whose omitted fields are irrelevant at that site.
+Use `//nolint:exhaustruct_v5` only for intentionally partial literals whose omitted fields are irrelevant at that site.
 
 - Focused test fixtures and expectation values may initialize only the fields the test reads.
 - Non-mutating selector, query, or protocol literals may set only the fields the call path uses.
