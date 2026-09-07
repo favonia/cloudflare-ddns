@@ -60,8 +60,8 @@ type Normalization struct {
 
 // normalizeBoundaryDots removes all leading and trailing dots but leaves interior
 // consecutive dots unchanged for subsequent validation to reject. It records
-// leading dots and runs of two or more trailing dots in Normalization. An all-dot
-// input counts as trailing dots, not leading dots.
+// whether leading dots or extra trailing dots were removed. An all-dot input
+// counts as trailing dots, not leading dots.
 func normalizeBoundaryDots(ascii string) (string, Normalization) {
 	if strings.Trim(ascii, ".") == "" {
 		return "", Normalization{

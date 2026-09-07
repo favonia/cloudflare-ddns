@@ -22,6 +22,8 @@ The complete updater configuration being validated is a candidate. The updater m
 
 Parsing may recover after an error to collect additional diagnostics, but the recovered results must not become a partial updater configuration.
 
+<a id="diagnostics"></a>
+
 ## Diagnostics
 
 Diagnostics must identify which value or setting they describe. A warning about an accepted value must not imply that the complete candidate has passed validation.
