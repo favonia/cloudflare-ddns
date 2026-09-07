@@ -22,7 +22,7 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 			"%s (%s) is missing commas; this is accepted for now but will be rejected in version 2.0.0",
 			key, pp.QuotePreviewOrEmptyLabel(input, pp.AdvisoryPreviewLimit, "empty"))
 		return true
-	case domainentry.KindDomainBoundaryNormalization:
+	case domainentry.KindDomainDotTrimming:
 		ppfmt.Noticef(pp.EmojiUserWarning,
 			`%s accepts %q for now; use %s instead because version 2.0.0 will reject the current spelling`,
 			key, input[diagnostic.Span.Start:diagnostic.Span.End], diagnostic.Effective)

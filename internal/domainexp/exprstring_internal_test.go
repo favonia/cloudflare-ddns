@@ -82,7 +82,7 @@ func TestExprString(t *testing.T) {
 	}
 }
 
-func TestExprStringCanonicalBoundaryAcceptedValues(t *testing.T) {
+func TestExprStringCanonicalDotTrimmedValues(t *testing.T) {
 	t.Parallel()
 
 	expr, ok := ParseExpression(pp.NewSilent(), "PROXIED", "is(.example.org..) && sub(..)")

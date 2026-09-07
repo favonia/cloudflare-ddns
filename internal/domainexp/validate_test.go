@@ -114,7 +114,7 @@ func TestSubBareStarAdvisory(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestValidateBoundaryNormalizedExpressions(t *testing.T) {
+func TestValidateDotTrimmedExpressions(t *testing.T) {
 	t.Parallel()
 
 	match, ok := parseQuiet(t, "is(.example.org..)")

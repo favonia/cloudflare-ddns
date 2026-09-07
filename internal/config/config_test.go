@@ -259,7 +259,7 @@ func TestReadEnvConsecutiveDotDiagnostics(t *testing.T) {
 	}
 }
 
-func TestReadEnvBoundaryNormalizationSuggestsValidSyntax(t *testing.T) {
+func TestReadEnvDotTrimmingSuggestsValidSyntax(t *testing.T) {
 	testenv.ClearAll(t)
 	t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
 	t.Setenv("IP4_PROVIDER", "local")

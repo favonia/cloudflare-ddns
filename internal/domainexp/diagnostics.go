@@ -15,51 +15,50 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/syntax"
 )
 
-type normalizationContext uint8
+type domainContext uint8
 
 const (
-	normalizationList normalizationContext = iota
-	normalizationIs
-	normalizationSub
+	domainList domainContext = iota
+	domainIs
+	domainSub
 )
 
-type boundaryNormalization struct {
-	context       normalizationContext
-	source        string
-	effective     string
-	normalization domain.Normalization
+type dotTrimmingOccurrence struct {
+	context   domainContext
+	source    string
+	effective string
 }
 
-func (context normalizationContext) describeSource(source string) string {
+func (context domainContext) describeSource(source string) string {
 	switch context {
-	case normalizationList:
+	case domainList:
 		return fmt.Sprintf("%q", source)
-	case normalizationIs:
+	case domainIs:
 		return fmt.Sprintf("is(%q)", source)
-	case normalizationSub:
+	case domainSub:
 		return fmt.Sprintf("sub(%q)", source)
 	}
-	panic("domainexp: unknown normalization context")
+	panic("domainexp: unknown domain context")
 }
 
-func (context normalizationContext) describeCorrection(effective string) string {
+func (context domainContext) describeCorrection(effective string) string {
 	switch context {
-	case normalizationList:
+	case domainList:
 		return effective
-	case normalizationIs:
+	case domainIs:
 		return fmt.Sprintf("is(%s)", effective)
-	case normalizationSub:
+	case domainSub:
 		return fmt.Sprintf("sub(%s)", effective)
 	}
-	panic("domainexp: unknown normalization context")
+	panic("domainexp: unknown domain context")
 }
 
-func boundaryNormalizationMessage(key string, context normalizationContext, source, effective string) string {
+func dotTrimmingMessage(key string, context domainContext, source, effective string) string {
 	return fmt.Sprintf(`%s accepts %s for now; use %s instead because version 2.0.0 will reject the current spelling`,
 		key, context.describeSource(source), context.describeCorrection(effective))
 }
 
-func emptyInteriorLabelMessage(key string, context normalizationContext, source string) string {
+func emptyInteriorLabelMessage(key string, context domainContext, source string) string {
 	return fmt.Sprintf(`%s has consecutive dots in %s; replace each run with a single dot`,
 		key, context.describeSource(source))
 }
@@ -77,8 +76,8 @@ type parserState struct {
 	// sub(...) wildcard arguments skipped and reported, deduplicated (the L1
 	// advisory).
 	subWildcards []domain.Domain
-	// Boundary normalizations remain per occurrence, in parse encounter order.
-	boundaryNormalizations []boundaryNormalization
+	// Dot trimming is reported per occurrence, in parse encounter order.
+	dotTrimmingOccurrences []dotTrimmingOccurrence
 }
 
 // listSyntaxPreview formats potentially long list syntax for advisory messages.
@@ -117,28 +116,28 @@ func (state *parserState) recordSubWildcard(w domain.Domain) {
 	state.subWildcards = append(state.subWildcards, w)
 }
 
-func (state *parserState) recordBoundaryNormalization(
-	context normalizationContext,
+func (state *parserState) recordDotTrimming(
+	context domainContext,
 	source string,
 	effective string,
-	normalization domain.Normalization,
+	dotTrimming domain.DotTrimming,
 ) {
-	if normalization == (domain.Normalization{
+	if dotTrimming == (domain.DotTrimming{
 		RemovedLeadingDots:       false,
 		RemovedExtraTrailingDots: false,
 	}) {
 		return
 	}
-	state.boundaryNormalizations = append(state.boundaryNormalizations, boundaryNormalization{
-		context: context, source: source, effective: effective, normalization: normalization,
+	state.dotTrimmingOccurrences = append(state.dotTrimmingOccurrences, dotTrimmingOccurrence{
+		context: context, source: source, effective: effective,
 	})
 }
 
 // reportListDiagnostics emits the compatibility warnings accumulated while flattening a domain list.
 func reportListDiagnostics(ppfmt pp.PP, key string, input string, state *parserState) {
-	for _, entry := range state.boundaryNormalizations {
+	for _, entry := range state.dotTrimmingOccurrences {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s", boundaryNormalizationMessage(key, entry.context, entry.source, entry.effective))
+			"%s", dotTrimmingMessage(key, entry.context, entry.source, entry.effective))
 	}
 	if state.extraComma {
 		ppfmt.Noticef(pp.EmojiUserWarning,
@@ -205,9 +204,9 @@ func reportExpressionDiagnostics(ppfmt pp.PP, key string, input string, state *p
 				`record itself, or sub(%s) to match subdomains of %s`,
 			key, listSyntaxPreview(input), ws, ws, parent, parent)
 	}
-	for _, entry := range state.boundaryNormalizations {
+	for _, entry := range state.dotTrimmingOccurrences {
 		ppfmt.Noticef(pp.EmojiUserWarning,
-			"%s", boundaryNormalizationMessage(key, entry.context, entry.source, entry.effective))
+			"%s", dotTrimmingMessage(key, entry.context, entry.source, entry.effective))
 	}
 	if state.extraComma {
 		ppfmt.Noticef(

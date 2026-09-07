@@ -189,7 +189,7 @@ func TestReadDomainsReportsExtraTrailingCommasForVersion2(t *testing.T) {
 }
 
 //nolint:paralleltest // The table cases write process-global environment variables.
-func TestReadDomainsReportsBoundaryNormalizationSemantics(t *testing.T) {
+func TestReadDomainsReportsDotTrimmingSemantics(t *testing.T) {
 	for _, tc := range []struct {
 		key           string
 		family        *ipnet.Family
@@ -303,7 +303,7 @@ func TestReadDomainsOrdersBoundaryDiagnosticsWithCommaCompatibility(t *testing.T
 }
 
 //nolint:paralleltest // The test writes process-global environment variables.
-func TestReadDomainsReportsRepeatedBoundaryNormalizationsBeforeFatalEntry(t *testing.T) {
+func TestReadDomainsReportsRepeatedDotTrimmingOccurrencesBeforeFatalEntry(t *testing.T) {
 	const value = ".good.example,.good.example,a..bad.example"
 	oldField := []domainentry.Entry{oldEntry()}
 	field := oldField

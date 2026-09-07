@@ -51,38 +51,38 @@ func StringToASCII(domain string) string {
 	return normalized
 }
 
-// Normalization records compatibility cleanup applied while constructing a
-// canonical domain value.
-type Normalization struct {
+// DotTrimming records removal of leading or extra trailing dots.
+// Removing a single final root dot leaves both flags false.
+type DotTrimming struct {
 	RemovedLeadingDots       bool
 	RemovedExtraTrailingDots bool
 }
 
-// normalizeBoundaryDots removes all leading and trailing dots but leaves interior
+// trimDots removes all leading and trailing dots but leaves interior
 // consecutive dots unchanged for subsequent validation to reject. It records
 // whether leading dots or extra trailing dots were removed. An all-dot input
 // counts as trailing dots, not leading dots.
-func normalizeBoundaryDots(ascii string) (string, Normalization) {
+func trimDots(ascii string) (string, DotTrimming) {
 	if strings.Trim(ascii, ".") == "" {
-		return "", Normalization{
+		return "", DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: len(ascii) >= 2,
 		}
 	}
 
-	normalization := Normalization{
+	dotTrimming := DotTrimming{
 		RemovedLeadingDots:       false,
 		RemovedExtraTrailingDots: false,
 	}
 	withoutLeadingDots := strings.TrimLeft(ascii, ".")
 	if withoutLeadingDots != ascii {
-		normalization.RemovedLeadingDots = true
+		dotTrimming.RemovedLeadingDots = true
 	}
 	trailingDots := len(withoutLeadingDots) - len(strings.TrimRight(withoutLeadingDots, "."))
 	if trailingDots >= 2 {
-		normalization.RemovedExtraTrailingDots = true
+		dotTrimming.RemovedExtraTrailingDots = true
 	}
-	return strings.TrimRight(withoutLeadingDots, "."), normalization
+	return strings.TrimRight(withoutLeadingDots, "."), dotTrimming
 }
 
 // wildcardSuffix recognizes both a bare wildcard and a wildcard with a suffix
@@ -96,59 +96,59 @@ func wildcardSuffix(ascii string) (string, bool) {
 
 var (
 	// ErrTooFewLabels means the normalized target is a single label, the root,
-	// or a bare wildcard. New returns its value and normalization with this error.
+	// or a bare wildcard. New returns its value and DotTrimming with this error.
 	ErrTooFewLabels error = errors.New("too few labels")
 	// ErrEmptyInteriorLabel means consecutive dots remain inside the full name
-	// after boundary normalization, including immediately after a wildcard marker.
+	// after trimming, including immediately after a wildcard marker.
 	ErrEmptyInteriorLabel error = errors.New("empty interior label")
 )
 
 // New parses a target domain into an ASCII-backed FQDN or Wildcard and reports
-// compatibility dot removal separately in Normalization.
+// compatibility dot removal separately in DotTrimming.
 //
-// ErrTooFewLabels returns a non-nil value and its normalization for callers
+// ErrTooFewLabels returns a non-nil value and its DotTrimming for callers
 // that permit short targets. For non-wildcards, this check precedes IDNA errors;
 // that value is not guaranteed to have passed IDNA validation.
-// ErrEmptyInteriorLabel returns nil and zero normalization. Other errors return
-// a best-effort value for diagnostics only, with zero normalization.
-func New(input string) (Domain, Normalization, error) {
+// ErrEmptyInteriorLabel returns nil and zero DotTrimming. Other errors return
+// a best-effort value for diagnostics only, with zero DotTrimming.
+func New(input string) (Domain, DotTrimming, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
-	normalized, normalization := normalizeBoundaryDots(ascii)
+	normalized, dotTrimming := trimDots(ascii)
 
 	if suffix, ok := wildcardSuffix(normalized); ok {
 		wildcard, wildcardErr := validateNormalizedWildcardSuffix(suffix)
 		if wildcardErr != nil {
 			if errors.Is(wildcardErr, ErrEmptyInteriorLabel) {
-				return nil, Normalization{}, wildcardErr
+				return nil, DotTrimming{}, wildcardErr
 			}
-			return wildcard, Normalization{}, wildcardErr
+			return wildcard, DotTrimming{}, wildcardErr
 		}
 		if wildcard == "" {
-			return wildcard, normalization, ErrTooFewLabels
+			return wildcard, dotTrimming, ErrTooFewLabels
 		}
-		return wildcard, normalization, nil
+		return wildcard, dotTrimming, nil
 	}
 	if strings.IndexByte(normalized, '.') == -1 {
-		return FQDN(normalized), normalization, ErrTooFewLabels
+		return FQDN(normalized), dotTrimming, ErrTooFewLabels
 	}
 
 	if err != nil {
-		return FQDN(normalized), Normalization{
+		return FQDN(normalized), DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		}, err
 	}
 	if strings.Contains(normalized, "..") {
-		return nil, Normalization{
+		return nil, DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		}, ErrEmptyInteriorLabel
 	}
-	return FQDN(normalized), normalization, nil
+	return FQDN(normalized), dotTrimming, nil
 }
 
 // validateNormalizedWildcardSuffix expects a suffix cut from a whole input
-// after boundary normalization. It re-runs IDNA without the wildcard marker so
+// whose leading and trailing dots have been trimmed. It re-runs IDNA without the wildcard marker so
 // the marker's own error does not mask errors in the suffix. Target-specific
 // wildcard policy belongs to the caller, so an empty suffix is valid here.
 // On an IDNA error it returns a best-effort value for diagnostics only.
@@ -156,11 +156,11 @@ func New(input string) (Domain, Normalization, error) {
 func validateNormalizedWildcardSuffix(suffix string) (Wildcard, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(suffix)
 	if err != nil {
-		normalized, _ := normalizeBoundaryDots(ascii)
+		normalized, _ := trimDots(ascii)
 		return Wildcard(normalized), err
 	}
 	// Removing "*." from "*..example.org" exposes an interior empty label at
-	// the start of the suffix. Do not normalize that newly exposed leading dot.
+	// the start of the suffix. Do not trim that newly exposed leading dot.
 	if strings.HasPrefix(suffix, ".") {
 		return "", ErrEmptyInteriorLabel
 	}

@@ -13,40 +13,40 @@ type Suffix string
 // ErrWildcardSuffix means the input is a validated wildcard and therefore not a usable suffix.
 var ErrWildcardSuffix error = errors.New("wildcard cannot be a suffix")
 
-// NewSuffix parses an ASCII-backed suffix using the same IDNA and boundary-dot
-// normalization as New. It accepts single labels and the root ("." or ""), but
+// NewSuffix parses an ASCII-backed suffix using the same IDNA mapping and dot
+// trimming as New. It accepts single labels and the root ("." or ""), but
 // rejects wildcards.
 //
-// ErrWildcardSuffix returns an empty suffix and the input's normalization;
+// ErrWildcardSuffix returns an empty suffix and the input's DotTrimming;
 // the wildcard's suffix has passed validation, so callers may handle it as a
 // wildcard-specific advisory. Invalid wildcard suffixes return their validation
-// error instead. All other errors return zero normalization, and any returned
+// error instead. All other errors return zero DotTrimming, and any returned
 // suffix is for diagnostics only, not evaluation.
-func NewSuffix(input string) (Suffix, Normalization, error) {
+func NewSuffix(input string) (Suffix, DotTrimming, error) {
 	ascii, err := profileKeepingLeadingDots.ToASCII(input)
-	normalized, normalization := normalizeBoundaryDots(ascii)
+	normalized, dotTrimming := trimDots(ascii)
 
 	if suffix, ok := wildcardSuffix(normalized); ok {
 		_, wildcardErr := validateNormalizedWildcardSuffix(suffix)
 		if wildcardErr != nil {
-			return "", Normalization{}, wildcardErr
+			return "", DotTrimming{}, wildcardErr
 		}
-		return "", normalization, ErrWildcardSuffix
+		return "", dotTrimming, ErrWildcardSuffix
 	}
 
 	if err != nil {
-		return Suffix(normalized), Normalization{
+		return Suffix(normalized), DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		}, err
 	}
 	if strings.Contains(normalized, "..") {
-		return "", Normalization{
+		return "", DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		}, ErrEmptyInteriorLabel
 	}
-	return Suffix(normalized), normalization, nil
+	return Suffix(normalized), dotTrimming, nil
 }
 
 // DNSNameASCII gives the ASCII name used for matching, the Cloudflare zone name,

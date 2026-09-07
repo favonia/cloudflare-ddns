@@ -11,8 +11,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 )
 
-func normalization(leading, extraTrailing bool) domain.Normalization {
-	return domain.Normalization{
+func dotTrimming(leading, extraTrailing bool) domain.DotTrimming {
+	return domain.DotTrimming{
 		RemovedLeadingDots:       leading,
 		RemovedExtraTrailingDots: extraTrailing,
 	}
@@ -23,45 +23,45 @@ func TestNew(t *testing.T) {
 	type f = domain.FQDN
 	type w = domain.Wildcard
 	for _, tc := range [...]struct {
-		input         string
-		expected      domain.Domain
-		normalization domain.Normalization
-		err           error
+		input       string
+		expected    domain.Domain
+		dotTrimming domain.DotTrimming
+		err         error
 	}{
-		{"example.org", f("example.org"), normalization(false, false), nil},
-		{"example.org.", f("example.org"), normalization(false, false), nil},
-		{".example.org", f("example.org"), normalization(true, false), nil},
-		{"..example.org", f("example.org"), normalization(true, false), nil},
-		{"example.org..", f("example.org"), normalization(false, true), nil},
-		{"example.org...", f("example.org"), normalization(false, true), nil},
-		{"..example.org...", f("example.org"), normalization(true, true), nil},
-		{"*.example.org", w("example.org"), normalization(false, false), nil},
-		{"*.example.org.", w("example.org"), normalization(false, false), nil},
-		{"*.example.org..", w("example.org"), normalization(false, true), nil},
-		{"..*.example.org...", w("example.org"), normalization(true, true), nil},
-		{"......", f(""), normalization(false, true), domain.ErrTooFewLabels},
-		{"*......", w(""), normalization(false, true), domain.ErrTooFewLabels},
-		{"a..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"*..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"*...example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"*.a..example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"\u3002example.org", f("example.org"), normalization(true, false), nil},
-		{"\uff0eexample.org", f("example.org"), normalization(true, false), nil},
-		{"\uff61example.org", f("example.org"), normalization(true, false), nil},
-		{"example.org\u3002\u3002", f("example.org"), normalization(false, true), nil},
-		{"example.org\uff0e\uff0e", f("example.org"), normalization(false, true), nil},
-		{"example.org\uff61\uff61", f("example.org"), normalization(false, true), nil},
-		{"\u3002example.org\uff0e\uff61", f("example.org"), normalization(true, true), nil},
-		{"a\u3002\u3002example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"a\uff0e\uff0eexample.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"a\uff61\uff61example.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
-		{"a\u3002\uff0eexample.org", nil, normalization(false, false), domain.ErrEmptyInteriorLabel},
+		{"example.org", f("example.org"), dotTrimming(false, false), nil},
+		{"example.org.", f("example.org"), dotTrimming(false, false), nil},
+		{".example.org", f("example.org"), dotTrimming(true, false), nil},
+		{"..example.org", f("example.org"), dotTrimming(true, false), nil},
+		{"example.org..", f("example.org"), dotTrimming(false, true), nil},
+		{"example.org...", f("example.org"), dotTrimming(false, true), nil},
+		{"..example.org...", f("example.org"), dotTrimming(true, true), nil},
+		{"*.example.org", w("example.org"), dotTrimming(false, false), nil},
+		{"*.example.org.", w("example.org"), dotTrimming(false, false), nil},
+		{"*.example.org..", w("example.org"), dotTrimming(false, true), nil},
+		{"..*.example.org...", w("example.org"), dotTrimming(true, true), nil},
+		{"......", f(""), dotTrimming(false, true), domain.ErrTooFewLabels},
+		{"*......", w(""), dotTrimming(false, true), domain.ErrTooFewLabels},
+		{"a..example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"*..example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"*...example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"*.a..example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"\u3002example.org", f("example.org"), dotTrimming(true, false), nil},
+		{"\uff0eexample.org", f("example.org"), dotTrimming(true, false), nil},
+		{"\uff61example.org", f("example.org"), dotTrimming(true, false), nil},
+		{"example.org\u3002\u3002", f("example.org"), dotTrimming(false, true), nil},
+		{"example.org\uff0e\uff0e", f("example.org"), dotTrimming(false, true), nil},
+		{"example.org\uff61\uff61", f("example.org"), dotTrimming(false, true), nil},
+		{"\u3002example.org\uff0e\uff61", f("example.org"), dotTrimming(true, true), nil},
+		{"a\u3002\u3002example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff0e\uff0eexample.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\uff61\uff61example.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
+		{"a\u3002\uff0eexample.org", nil, dotTrimming(false, false), domain.ErrEmptyInteriorLabel},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			got, normalization, err := domain.New(tc.input)
+			got, dotTrimming, err := domain.New(tc.input)
 			require.Equal(t, tc.expected, got)
-			require.Equal(t, tc.normalization, normalization)
+			require.Equal(t, tc.dotTrimming, dotTrimming)
 			if tc.err == nil {
 				require.NoError(t, err)
 			} else {
@@ -181,9 +181,9 @@ func TestNewIDNA(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			normalized, normalization, err := domain.New(tc.input)
+			normalized, dotTrimming, err := domain.New(tc.input)
 			require.Equal(t, tc.expected, normalized)
-			require.Empty(t, normalization)
+			require.Empty(t, dotTrimming)
 			if tc.ok {
 				require.NoError(t, err)
 				require.Empty(t, tc.errString)
@@ -208,21 +208,21 @@ func TestNewTooFewLabels(t *testing.T) {
 func TestNewTooFewLabelsTakesPrecedenceOverIDNAErrors(t *testing.T) {
 	t.Parallel()
 
-	got, normalization, err := domain.New("\u0080")
+	got, dotTrimming, err := domain.New("\u0080")
 	require.Equal(t, domain.FQDN("xn--a"), got)
-	require.Empty(t, normalization)
+	require.Empty(t, dotTrimming)
 	require.ErrorIs(t, err, domain.ErrTooFewLabels)
 }
 
 func TestConstructorErrorResults(t *testing.T) {
 	t.Parallel()
 
-	t.Run("short target retains normalization", func(t *testing.T) {
+	t.Run("short target retains dot trimming flags", func(t *testing.T) {
 		t.Parallel()
 		got, n, err := domain.New(".org..")
 		require.ErrorIs(t, err, domain.ErrTooFewLabels)
 		require.Equal(t, domain.FQDN("org"), got)
-		require.Equal(t, normalization(true, true), n)
+		require.Equal(t, dotTrimming(true, true), n)
 	})
 
 	t.Run("invalid wildcard has no usable result", func(t *testing.T) {
@@ -266,9 +266,9 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		require.False(t, strings.HasPrefix(ascii, "."))
 		require.False(t, strings.HasSuffix(ascii, "."))
 		require.NotContains(t, ascii, "..")
-		reparsed, reparsedNormalization, reparsedErr := domain.New(ascii)
+		reparsed, reparsedDotTrimming, reparsedErr := domain.New(ascii)
 		require.NoError(t, reparsedErr)
-		require.Equal(t, normalization(false, false), reparsedNormalization)
+		require.Equal(t, dotTrimming(false, false), reparsedDotTrimming)
 		require.Equal(t, got, reparsed)
 		require.NotEmpty(t, got.String())
 		require.NotEmpty(t, got.Describe())
@@ -291,9 +291,9 @@ func TestConstructedDomainInvariant(t *testing.T) {
 		require.False(t, strings.HasPrefix(ascii, "."))
 		require.False(t, strings.HasSuffix(ascii, "."))
 		require.NotContains(t, ascii, "..")
-		reparsed, reparsedNormalization, reparsedErr := domain.NewSuffix(ascii)
+		reparsed, reparsedDotTrimming, reparsedErr := domain.NewSuffix(ascii)
 		require.NoError(t, reparsedErr)
-		require.Equal(t, normalization(false, false), reparsedNormalization)
+		require.Equal(t, dotTrimming(false, false), reparsedDotTrimming)
 		require.Equal(t, got, reparsed)
 		require.NotEmpty(t, got.String())
 	}
@@ -373,7 +373,7 @@ func TestConstructedDomainInvariant(t *testing.T) {
 				} else {
 					_, n, err := domain.NewSuffix(input)
 					require.ErrorIs(t, err, domain.ErrWildcardSuffix)
-					require.Equal(t, normalization(leading%3 != 0, trailing%4 >= 2), n)
+					require.Equal(t, dotTrimming(leading%3 != 0, trailing%4 >= 2), n)
 				}
 				return true
 			}, nil))

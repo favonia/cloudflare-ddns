@@ -75,7 +75,7 @@ func TestEmptyInteriorLabelMessagesDescribeConsecutiveDots(t *testing.T) {
 	}
 }
 
-func TestBoundaryNormalizationMessagesSuggestContextualSyntax(t *testing.T) {
+func TestDotTrimmingMessagesSuggestContextualSyntax(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
@@ -297,7 +297,7 @@ func TestParseList(t *testing.T) {
 	}
 }
 
-func TestParseListBoundaryNormalization(t *testing.T) {
+func TestParseListDotTrimming(t *testing.T) {
 	t.Parallel()
 
 	const emptyInteriorLabelMessage = `%s has consecutive dots in %s; replace each run with a single dot`
@@ -352,7 +352,7 @@ func TestParseListBoundaryNormalization(t *testing.T) {
 				)
 			},
 		},
-		"normalization-precedes-extra-comma": {
+		"dot-trimming-precedes-extra-comma": {
 			input: ",.good.example..",
 			want:  []domain.Domain{f("good.example")},
 			ok:    true,
@@ -410,7 +410,7 @@ func TestParseListBoundaryNormalization(t *testing.T) {
 	}
 }
 
-func TestParseExpressionBoundaryNormalization(t *testing.T) {
+func TestParseExpressionDotTrimming(t *testing.T) {
 	t.Parallel()
 
 	const key = "PROXIED"

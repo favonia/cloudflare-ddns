@@ -434,7 +434,7 @@ func TestParseL1SubWildcard(t *testing.T) {
 	}
 }
 
-func TestLintExpressionBoundaryNormalizationOrdering(t *testing.T) {
+func TestLintExpressionDotTrimmingOrdering(t *testing.T) {
 	t.Parallel()
 
 	const input = "sub() || is(.org...) || sub(*.example.org..) || (is(.a.org,, .b.org .c.org) && is(.a.org) && !is(.a.org))"

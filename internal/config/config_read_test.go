@@ -1700,7 +1700,7 @@ func TestBuildConfigProxiedLintWarns(t *testing.T) {
 	require.False(t, built.Update.Proxied[domain.FQDN("a.b.c")])
 }
 
-func TestBuildConfigProxiedBoundaryNormalization(t *testing.T) {
+func TestBuildConfigProxiedDotTrimming(t *testing.T) {
 	t.Parallel()
 
 	raw := config.DefaultRaw()

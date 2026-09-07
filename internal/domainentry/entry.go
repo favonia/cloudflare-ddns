@@ -35,8 +35,8 @@ const (
 	KindExtraComma
 	// KindMissingComma reports missing top-level commas accepted for compatibility.
 	KindMissingComma
-	// KindDomainBoundaryNormalization reports accepted domain-boundary cleanup.
-	KindDomainBoundaryNormalization
+	// KindDomainDotTrimming reports accepted removal of leading or extra trailing dots.
+	KindDomainDotTrimming
 )
 
 // HostID6Opinion is one parsed hostid6 assignment. Set carries the normalized
@@ -59,11 +59,11 @@ type Entry struct {
 // underlying error for kinds that have one (it is nil for
 // KindUnknownDomainField and the compatibility kinds).
 type Diagnostic struct {
-	Span          syntax.Span
-	Kind          DiagnosticKind
-	Detail        error
-	Normalization domain.Normalization
-	Effective     domain.Domain
+	Span        syntax.Span
+	Kind        DiagnosticKind
+	Detail      error
+	DotTrimming domain.DotTrimming
+	Effective   domain.Domain
 }
 
 // Description renders the source-specific semantic failure without setting context.
@@ -83,7 +83,7 @@ func (diagnostic Diagnostic) Description(input string) string {
 		return "extra comma"
 	case KindMissingComma:
 		return "missing comma"
-	case KindDomainBoundaryNormalization:
+	case KindDomainDotTrimming:
 		return "domain spelling was normalized for compatibility"
 	}
 
@@ -180,7 +180,7 @@ func (state *buildState) recordExtraComma(span syntax.Span) {
 		Span:   span,
 		Kind:   KindExtraComma,
 		Detail: nil,
-		Normalization: domain.Normalization{
+		DotTrimming: domain.DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		},
@@ -197,7 +197,7 @@ func (state *buildState) recordMissingComma(span syntax.Span) {
 		Span:   span,
 		Kind:   KindMissingComma,
 		Detail: nil,
-		Normalization: domain.Normalization{
+		DotTrimming: domain.DotTrimming{
 			RemovedLeadingDots:       false,
 			RemovedExtraTrailingDots: false,
 		},
@@ -222,14 +222,14 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 	}
 
 	domainAtom := mustAtom(domainTree)
-	dom, normalization, err := domain.New(domainAtom.Token.Text)
+	dom, dotTrimming, err := domain.New(domainAtom.Token.Text)
 	if err != nil {
 		var noEntry Entry
 		return noEntry, &Diagnostic{
 			Span:   domainAtom.Span(),
 			Kind:   KindInvalidDomain,
 			Detail: err,
-			Normalization: domain.Normalization{
+			DotTrimming: domain.DotTrimming{
 				RemovedLeadingDots:       false,
 				RemovedExtraTrailingDots: false,
 			},
@@ -243,16 +243,16 @@ func (state *buildState) buildEntry(tree syntax.Tree[formID]) (Entry, *Diagnosti
 		return noEntry, diagnostic
 	}
 	entry := Entry{Domain: dom, HostID6Opinions: opinions, Span: tree.Span()}
-	if normalization != (domain.Normalization{
+	if dotTrimming != (domain.DotTrimming{
 		RemovedLeadingDots:       false,
 		RemovedExtraTrailingDots: false,
 	}) {
 		state.diagnostics = append(state.diagnostics, Diagnostic{
-			Span:          domainAtom.Span(),
-			Kind:          KindDomainBoundaryNormalization,
-			Detail:        nil,
-			Normalization: normalization,
-			Effective:     dom,
+			Span:        domainAtom.Span(),
+			Kind:        KindDomainDotTrimming,
+			Detail:      nil,
+			DotTrimming: dotTrimming,
+			Effective:   dom,
 		})
 	}
 	return entry, nil
@@ -292,7 +292,7 @@ func (state *buildState) buildAssignment(tree syntax.Op[formID]) (HostID6Opinion
 			Span:   field.Span(),
 			Kind:   KindUnknownDomainField,
 			Detail: nil,
-			Normalization: domain.Normalization{
+			DotTrimming: domain.DotTrimming{
 				RemovedLeadingDots:       false,
 				RemovedExtraTrailingDots: false,
 			},
@@ -329,7 +329,7 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 			Span:   tree.Span(),
 			Kind:   KindInvalidHostID6,
 			Detail: err,
-			Normalization: domain.Normalization{
+			DotTrimming: domain.DotTrimming{
 				RemovedLeadingDots:       false,
 				RemovedExtraTrailingDots: false,
 			},
@@ -346,7 +346,7 @@ func buildHostID6Values(tree syntax.Tree[formID]) ([]hostid6.Derivation, *Diagno
 					Span:   atom.Span(),
 					Kind:   KindInvalidMAC,
 					Detail: err,
-					Normalization: domain.Normalization{
+					DotTrimming: domain.DotTrimming{
 						RemovedLeadingDots:       false,
 						RemovedExtraTrailingDots: false,
 					},
