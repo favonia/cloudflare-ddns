@@ -4,9 +4,7 @@ Read when: adding or reviewing Go inline `//nolint`.
 
 Defines: repository convention for Go inline `//nolint`, derived from [Project Principles](../core/project-principles.markdown).
 
-Does not define: repository-wide Go lint configuration, which belongs in [`.golangci.yaml`](../../../.golangci.yaml).
-
-This note records how the decision tree is applied to Go inline suppressions. It does not independently authorize broader lint policy.
+Repository-wide lint decisions, stable false positives, and path-based exclusions belong in [`.golangci.yaml`](../../../.golangci.yaml).
 
 ## Local Exception First
 
@@ -24,15 +22,6 @@ Write suppressions in the local form `//nolint:<linter> // reason`.
 - Give a concrete local reason when the exception is not already obvious from nearby code.
 - Do not add semantically empty or misleading code solely to silence a linter; when the code is correct by an invariant the linter cannot see, use a precise suppression with a reason.
 - Do not use bare `//nolint`, `//nolint:all`, or file-wide suppression as normal practice.
-
-## Narrowest Durable Home
-
-Choose the narrowest durable home for the rule:
-
-- Put repository-wide lint decisions, stable false positives, and path-based exclusions in [`.golangci.yaml`](../../../.golangci.yaml).
-- Put one-off exceptions inline at the enforcement point.
-- If the same suppression repeats because of a shared code shape, move the durable rule to the smallest correct shared home, such as a helper, code comment, test helper, or existing design note.
-- Prefer changing code over suppressing a warning when the warning points to a real local readability, correctness, or maintenance problem.
 
 ## Durable Recurring Judgments
 
@@ -73,26 +62,3 @@ Do not address `unparam` mechanically by deleting a parameter just because one c
 - First check whether the parameter is part of the helper's honest contract.
 - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
 - Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
-
-## Review Checks
-
-When reviewing a new `//nolint`, ask:
-
-- Is the exception truly local?
-- Is the linter named explicitly?
-- Is the reason concrete and local?
-- Is there a narrower durable home for the rule?
-- Would a small code change remove the suppression more cleanly?
-
-If those answers are weak, rewrite or remove the suppression instead of normalizing it.
-
-## Scope Boundary
-
-This note defines how to apply the project principles to Go inline `//nolint`.
-
-It does not define:
-
-- which linters are enabled repository-wide
-- feature-specific correctness rules
-- one-off justifications that belong at the suppression site instead of in this note
-- general refactoring policy beyond recurring lint-driven judgments such as the cases above

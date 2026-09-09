@@ -30,9 +30,11 @@ If you have code ready, please make a pull request. Before you do:
 
    Use [docs/README.markdown](README.markdown) as the map for public docs. If you edit `docs/design/`, start with [docs/design/README.markdown](design/README.markdown). If you edit `README.markdown`, follow [docs/design/guides/readme-writing.markdown](design/guides/readme-writing.markdown).
 
+   Keep existing explanations aligned with code changes. Remove them only when they no longer apply or their information has moved to a smaller correct maintained home.
+
 5. Open the pull request.
 
-   Keep the summary focused on behavior and include test evidence when relevant. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title. Use `fix:` for bugs in released code, `fixup:` for bugs introduced during the current development cycle, `ux:` for UI/UX improvements, and `fv:` for formal-verification work (Lean models, proofs, oracles, and differential tests).
+   Keep the summary focused on behavior. We loosely follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the maintainer may normalize the pull-request title. Use `fix:` for bugs in released code, `fixup:` for bugs introduced during the current development cycle, `ux:` for UI/UX improvements, and `fv:` for formal-verification work (Lean models, proofs, oracles, and differential tests).
 
 ## 🧑‍⚖️ Who’s in Charge
 

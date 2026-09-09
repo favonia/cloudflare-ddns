@@ -4,46 +4,17 @@ Read when: editing `README.markdown`.
 
 Defines: README-specific writing rules derived from [Project Principles](../core/project-principles.markdown).
 
-Does not define: feature semantics, a second decision tree, or local wording rules outside the README.
+## Operator Decisions
 
-This note applies project-principle consequences to README readers as operators. Use [Project Principles](../core/project-principles.markdown) for tradeoffs. Use this note for the README-writing consequences of those tradeoffs.
+Keep the README focused on what operators must decide, expect, configure, or verify, following [Project Principles](../core/project-principles.markdown).
 
-## The Reader-Decision Test
-
-This is the README's governing rule; every section below is a corollary of it. One question decides everything: does this change what the reader must decide, expect, configure, or verify? If yes, make it clear and local at the point of action. If not, prefer the lightest treatment that still lets the reader act correctly — plain prose, a later technical section, or leaving it to the point where it surfaces, such as a runtime message. The sections that follow are this one test applied to four axes: phrasing (Operator-Facing Explanations), placement (Point-Of-Use Clarity, Layering And Placement), terms (Stable Terms And Reader Decisions), and markers (Fixed README Markers).
-
-## Operator-Facing Explanations
-
-- Explain behavior through user-visible outcomes, required decisions, and actionable setup or upgrade steps.
-- Prefer plain, concrete wording when it stays accurate enough for the reader to act correctly.
-- Mention internal mechanisms only when they change what the reader must choose, configure, or verify.
-- In early setup text, prefer the common-case operator-visible outcome unless an edge case changes the immediate setup or upgrade decision.
-
-## Point-Of-Use Clarity
-
-- At the point where the reader acts, repeat short required facts such as permissions, prerequisites, or one-time manual steps when omitting them would risk a wrong setup.
-- Prefer local repetition of required setup facts over forcing the reader to recover them from another section.
-- When a setup example may interact with domains, records, or lists that already exist in Cloudflare, explain that starting state in the example or nearby prose if it changes the expected outcome or the reader's next step.
-- Use concrete setting names, section names, or direct links when pointing elsewhere in the README.
-- Avoid positional references such as "above" or "below" unless the referent is immediate and unlikely to drift.
-
-## Layering And Placement
-
-- Keep examples and nearby prose focused on the minimum information a reader needs to choose and apply the configuration correctly.
-- Move exact reconciliation rules, edge cases, and implementation-level caveats to tables or later technical sections when they do not change the immediate setup or upgrade decision.
-- Keep a short warning in the example or nearby prose when omitting that warning would likely cause a wrong setup or a misleading expectation.
-- Keep advanced features and deep technical detail in advanced sections.
-- Mention advanced features briefly in early setup sections only when needed for discoverability or because they are prerequisites for correct setup.
-
-## Stable Terms And Reader Decisions
-
-- Use terms consistently when they affect reader decisions.
-- Words such as `optional` should keep one clear README meaning within the surrounding topic.
-- Prefer direct descriptions of the user-visible state, such as "already exist", when that wording better explains the reader's decision than an internal-process term such as "already managed" or "already updated".
+- Keep required permissions, prerequisites, and one-time manual steps at the point of setup, repeating them when omission would risk a wrong setup.
+- When a setup example may interact with domains, records, or lists that already exist in Cloudflare, explain that starting state if it changes the expected outcome or next step.
+- Keep advanced features and exact reconciliation rules in advanced or technical sections, with early pointers when needed for discoverability or correct setup.
 
 ## Fixed README Markers
 
-Use this fixed marker set only when it sharpens a reader's decision, expectation, or reading order; do not add markers mechanically. Keep each marker stable in meaning across the README. This README uses the fixed marker set below.
+Use these fixed markers only when they sharpen a reader's decision, expectation, or reading order. Keep their meanings stable across the README.
 
 | Marker                            | Stable meaning                                  | Use when                                                                                                                                                                                  | Do not use when                                                                                                                                        |
 | --------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -53,18 +24,5 @@ Use this fixed marker set only when it sharpens a reader's decision, expectation
 | `(unreleased)`                    | Availability marker for not-yet-stable features | The feature is not in the latest stable release yet, and that stable-version gap changes the reader's decision or expectation.                                                            | The point is contract stability or general newness.                                                                                                    |
 | `(available since version X.Y.Z)` | Availability marker for stable-version floor    | The feature is available in stable releases starting with version `X.Y.Z`, and that version boundary changes whether the reader can use it.                                               | The point is merely historical context or change log detail that does not affect the reader's current version decision.                                |
 
-- Availability markers answer stable-version availability. Use `(unreleased)` or `(available since version X.Y.Z)` when that version boundary changes the reader's decision or expectation.
-- If the exact stable-version boundary does not matter to the reader's current decision, omit the availability marker instead of adding it mechanically.
 - If several nearby points compete for `⚠️`, keep it on the highest-risk point and rewrite the others in plain prose or section structure.
-- Do not use `🧪` as a release-status marker.
 - Do not invent additional fixed markers unless they solve a repeated README-level reader-decision problem. Decorative section emojis and one-off callout icons do not carry stable marker semantics.
-
-## Scope Boundary
-
-This note applies only to `README.markdown`.
-
-It does not define:
-
-- durable feature semantics, which belong in `docs/design/features/`
-- local message wording outside the README
-- changelog style or release-note policy beyond the README's need to signal operator-relevant availability or contract stability

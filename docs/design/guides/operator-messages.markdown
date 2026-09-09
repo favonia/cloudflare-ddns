@@ -6,28 +6,14 @@ Defines: repository-wide operator-message rules derived from [Project Principles
 
 Does not define: `README.markdown` writing rules, feature semantics, or exact package-local message text.
 
-This note records the durable operator-message consequences of the project principles. It is not a general prose style guide.
-
-## Design From The Final Message
-
-- Design operator-facing wording from the final operator-visible message, not from internal implementation structure.
-- You do not need to literally draft the message first, but the final wording must be equivalent to having started there.
-- Refactor the code as needed so it generates that message shape intentionally.
-- If the wording sounds driven by parser tokens, placeholders, helper names, or other implementation details, rewrite it.
-- Use the later sections of this note as constraints on that outcome.
-
 ## Verbosity Intent
 
-- Design each verbosity level around the operator job it serves.
 - Quiet output is for status surfaces and quick scans. Preserve essential outcomes, material risks, and decisions the operator may need to make next; omit detail that is mainly explanatory, inspectable, or educational.
 - Normal output is for an operator actively reading the run. It may include context, configuration summaries, and remediation guidance, but should still read as an outcome-oriented narrative rather than a debug dump.
-- When changing message levels, review the complete output for each verbosity level against that level's job.
 
 ## One-Time Detail When It Helps
 
-- When extra nuance is useful but not part of the primary outcome, emit it as follow-up detail with `NoticeOncef` or `InfoOncef` instead of bloating the main message.
-- Good follow-up detail includes migration hints, setup guidance, timeout advice, or clarification that affects operator choice but would make the primary message harder to scan.
-- Keep summary and follow-up detail semantically aligned. The detail may refine the message, but it should not reverse or contradict it.
+When extra nuance is useful but not part of the primary outcome, emit it as follow-up detail with `NoticeOncef` or `InfoOncef` instead of bloating the main message.
 
 ## Channel-Specific Shape
 
@@ -48,8 +34,7 @@ This note records the durable operator-message consequences of the project princ
 
 ## Runtime Message Style
 
-- Keep short operational `Noticef` and `Infof` messages compact; in current repository usage, that normally means no trailing period.
-- Factor repeated guidance into helper functions when the repetition is semantic, such as permission or mismatch hints, instead of duplicating long message text.
+Keep short operational `Noticef` and `Infof` messages compact; in current repository usage, that normally means no trailing period.
 
 ## Honest Failure Claims
 
@@ -59,13 +44,3 @@ Keep failure wording aligned with what the code can honestly claim about remote 
 - When that ambiguous mutation outcome can leave managed state uncertain, keep the follow-up risk explicit, such as `records might be inconsistent` or `content may be inconsistent`.
 - For read, probe, lookup, parse, or local setup failures that do not create remote-state ambiguity, plain `failed to ...` wording is acceptable.
 - If the code has conclusive evidence for a stronger operator-facing classification, say that stronger fact directly instead of preserving generic failure wording.
-
-## Scope Boundary
-
-This note applies to operator-facing runtime messages outside `README.markdown`.
-
-It does not define:
-
-- `README.markdown` explanations, which belong in [README Writing](readme-writing.markdown)
-- one-off local wording that does not need a durable repository-wide rule
-- feature-specific warning triggers or contracts, which belong in `docs/design/features/` when they are durable
