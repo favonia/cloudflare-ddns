@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/go-retryablehttp"
 
@@ -61,34 +62,37 @@ func (h httpCore) getBodyWithRetryableClient(
 	return body, true
 }
 
-// getBodyOnce performs one application-level request and rejects redirects so
-// one hedged attempt cannot move beyond its configured endpoint. It clones the
-// shared client before changing its redirect policy, leaving other providers
-// unchanged.
-func (h httpCore) getBodyOnce(ctx context.Context) ([]byte, error) {
+// getBodyWithoutRetry currently serves only attemptCloudflareTrace, whose
+// hedging coordinator schedules alternative attempts. It uses the shared
+// IP-family client without adding retries or changing client policy; redirects
+// and transport-level retries can still send additional requests. The caller
+// must bound ctx and select a supported IP family.
+//
+// On success it returns the size-limited body and final request URL after any
+// redirects, with the response body closed. On failure both returned values are
+// nil. It does not reject HTTP status codes: Cloudflare Trace validates the body
+// and its h field against the final URL. Other callers must define their own
+// status and body validation before reusing this helper.
+func (h httpCore) getBodyWithoutRetry(ctx context.Context) ([]byte, *url.URL, error) {
 	req, err := http.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare request: %w", err)
+		return nil, nil, fmt.Errorf("failed to prepare request: %w", err)
 	}
 	for header, value := range h.additionalHeaders {
 		req.Header.Set(header, value)
 	}
 
-	client := *SharedSplitClient(h.ipFamily)
-	client.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-	resp, err := client.Do(req)
+	resp, err := SharedSplitClient(h.ipFamily).Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := h.readBody(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, nil, fmt.Errorf("failed to read response: %w", err)
 	}
-	return body, nil
+	return body, resp.Request.URL, nil
 }
 
 func (h httpCore) readBody(reader io.Reader) ([]byte, error) {
