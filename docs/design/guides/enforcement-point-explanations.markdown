@@ -4,29 +4,12 @@ Read when: writing code comments, design-note pointers, or other non-README expl
 
 Defines: repository-wide rule for explaining rules at the enforcement point, derived from [Project Principles](../core/project-principles.markdown).
 
-Does not define: feature semantics, README-specific writing rules, or a general writing style guide.
-
-This note records one repository-wide explanation rule. Use [Project Principles](../core/project-principles.markdown) for tradeoffs and this note for the local explanatory consequence of those tradeoffs.
+For feature semantics, see `docs/design/features/`; for README prose, see [README Writing](readme-writing.markdown); for design-document retrieval and placement, see [Design Documents](../README.markdown).
 
 ## Enforcement-Point Explanations
 
-At the enforcement point, prefer the shortest comment or design-note pointer that preserves the intended rule.
-
-Document nontrivial function contracts, including those of internal helpers.
+Document nontrivial function contracts, including those of internal helpers. At the enforcement point, prefer the shortest explanation that preserves the intended rule: a code comment for local context, or a design-note pointer when the full rule is shared across sites or needs durable cross-file context.
 
 - During other code changes, preserve existing explanations and update them to match the changed code; remove them only when they no longer apply or their information has moved to a smaller correct durable home.
-- Prefer a short code comment when the rule is local and the required context fits there.
-- Prefer a design-note pointer when the full rule is shared across sites or needs durable cross-file context.
 - Do not add explanatory padding that only restates obvious code, anticipates unlikely objections, or defends the decision against readers who are not the target audience.
 - Mention internal mechanisms only when they change operator decisions, maintenance work, or local correctness constraints.
-
-## Scope Boundary
-
-This note applies across the repository to explanatory text at the site where code, tests, or developer docs enforce or point to a rule, outside `README.markdown`.
-
-It does not define:
-
-- feature-specific behavior, which belongs in `docs/design/features/`
-- `README.markdown` writing rules, which belong in [README Writing](readme-writing.markdown)
-- retrieval or placement rules for `docs/design/`, which belong in [docs/design/README.markdown](../README.markdown)
-- local one-off wording that does not need a durable repository-wide rule
