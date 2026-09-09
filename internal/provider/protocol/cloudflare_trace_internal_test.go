@@ -60,6 +60,64 @@ func TestAttemptCloudflareTraceValid(t *testing.T) {
 	require.Equal(t, traceFailure{}, result.failure) //nolint:exhaustruct // The zero value means no failure.
 }
 
+// These cases catch redirect suppression, validation against the original host,
+// and accidentally accepting a mismatched h after a redirect.
+func TestAttemptCloudflareTraceRedirectHost(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		crossHost  bool
+		wrongHost  bool
+		wantStatus traceAttemptStatus
+	}{
+		"same-host":              {false, false, traceAttemptSucceeded},
+		"cross-host":             {true, false, traceAttemptSucceeded},
+		"original-host-rejected": {true, true, traceAttemptFailed},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			var originalHost string
+			target := newTraceAttemptServer(t, ipnet.IP4, func(req *http.Request) string {
+				host := req.Host
+				if tc.wrongHost {
+					host = originalHost
+				}
+				return fmt.Sprintf("h=%s\nip=192.0.2.1\nwarp=off\n", host)
+			})
+			source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if req.URL.Path == "/start" {
+					location := "/cdn-cgi/trace"
+					if tc.crossHost {
+						location = target.URL + location
+					}
+					http.Redirect(w, req, location, http.StatusFound)
+					return
+				}
+				w.Header().Set("Content-Type", "text/plain")
+				_, _ = fmt.Fprintf(w, "h=%s\nip=192.0.2.1\nwarp=off\n", originalHost)
+			}))
+			t.Cleanup(source.Close)
+			originalHost = source.Listener.Addr().String()
+
+			result := attemptCloudflareTrace(context.Background(), source.URL+"/start", ipnet.IP4, 24)
+
+			require.Equal(t, tc.wantStatus, result.status)
+			require.Empty(t, result.warnings)
+			if tc.wantStatus == traceAttemptSucceeded {
+				require.Equal(t, NewKnownDetectionResult([]ipnet.RawEntry{
+					ipnet.RawEntryFrom(netip.MustParseAddr("192.0.2.1"), 24),
+				}), result.rawData)
+			} else {
+				require.Equal(t, NewUnavailableDetectionResult(), result.rawData)
+				require.Equal(t, traceFailureMismatchedH, result.failure.kind)
+				expectedHost := target.Listener.Addr().String()
+				require.Equal(t, expectedHost, result.failure.expected)
+				require.Equal(t, originalHost, result.failure.observed)
+			}
+		})
+	}
+}
+
 func TestAttemptCloudflareTraceTransportFailure(t *testing.T) {
 	t.Parallel()
 

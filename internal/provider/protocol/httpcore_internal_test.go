@@ -23,7 +23,7 @@ var (
 	errReadFailure      = errors.New("read failure")
 )
 
-func TestHTTPCoreGetBodyOnceDoesNotRetry(t *testing.T) {
+func TestHTTPCoreGetBodyWithoutRetryDoesNotRetry(t *testing.T) {
 	t.Parallel()
 
 	var requests atomic.Int64
@@ -38,18 +38,19 @@ func TestHTTPCoreGetBodyOnceDoesNotRetry(t *testing.T) {
 		url:      server.URL,
 		method:   http.MethodGet,
 	}
-	_, err := h.getBodyOnce(context.Background())
+	_, _, err := h.getBodyWithoutRetry(context.Background())
 
 	require.NoError(t, err)
 	require.EqualValues(t, 1, requests.Load())
 }
 
-func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
+func TestHTTPCoreGetBodyWithoutRetryFollowsRedirects(t *testing.T) {
 	t.Parallel()
 
 	var sourceRequests atomic.Int64
 	var targetRequests atomic.Int64
-	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "redirected body")
 		targetRequests.Add(1)
 	}))
 	t.Cleanup(target.Close)
@@ -65,14 +66,16 @@ func TestHTTPCoreGetBodyOnceDoesNotFollowRedirects(t *testing.T) {
 		url:      source.URL,
 		method:   http.MethodGet,
 	}
-	_, err := h.getBodyOnce(context.Background())
+	body, finalURL, err := h.getBodyWithoutRetry(context.Background())
 
 	require.NoError(t, err)
+	require.Equal(t, "redirected body", string(body))
+	require.Equal(t, target.URL, finalURL.String())
 	require.EqualValues(t, 1, sourceRequests.Load())
-	require.EqualValues(t, 0, targetRequests.Load())
+	require.EqualValues(t, 1, targetRequests.Load())
 }
 
-func TestHTTPCoreGetBodyOnceAppliesAdditionalHeaders(t *testing.T) {
+func TestHTTPCoreGetBodyWithoutRetryAppliesAdditionalHeaders(t *testing.T) {
 	t.Parallel()
 
 	const headerName = "X-Cloudflare-Trace-Test"
@@ -92,22 +95,22 @@ func TestHTTPCoreGetBodyOnceAppliesAdditionalHeaders(t *testing.T) {
 			headerName: headerValue,
 		},
 	}
-	body, err := h.getBodyOnce(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background())
 
-	// Mutation caught: omitting configured headers from the one-shot request path.
+	// Mutation caught: omitting configured headers from the request path without retries.
 	require.NoError(t, err)
 	require.Equal(t, []byte("response body"), body)
 	require.Equal(t, headerValue, (<-receivedHeaders).Get(headerName))
 }
 
-func TestHTTPCoreGetBodyOnceReportsRequestPreparationFailure(t *testing.T) {
+func TestHTTPCoreGetBodyWithoutRetryReportsRequestPreparationFailure(t *testing.T) {
 	t.Parallel()
 
 	h := httpCore{ //nolint:exhaustruct // The invalid method fails before transport setup matters.
 		url:    "http://example.com/",
 		method: "GET\n",
 	}
-	body, err := h.getBodyOnce(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background())
 
 	// Mutation caught: losing the request-preparation category while propagating constructor errors.
 	require.Nil(t, body)
@@ -129,13 +132,14 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
+func TestHTTPCoreGetBodyWithoutRetryClosesResponseBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 99
 	var closed atomic.Bool
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
-		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{ //nolint:exhaustruct // Test response needs only status and body.
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{ //nolint:exhaustruct // Test response needs status, request, and body.
 				StatusCode: http.StatusOK,
+				Request:    req,
 				Body: trackingReadCloser{
 					Reader: strings.NewReader("response body"),
 					closed: &closed,
@@ -150,14 +154,14 @@ func TestHTTPCoreGetBodyOnceClosesResponseBody(t *testing.T) { //nolint:parallel
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, err := h.getBodyOnce(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background())
 
 	require.NoError(t, err)
 	require.Equal(t, []byte("response body"), body)
 	require.True(t, closed.Load())
 }
 
-func TestHTTPCoreGetBodyOnceReportsTransportFailure(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
+func TestHTTPCoreGetBodyWithoutRetryReportsTransportFailure(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 100
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
 		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
@@ -171,15 +175,15 @@ func TestHTTPCoreGetBodyOnceReportsTransportFailure(t *testing.T) { //nolint:par
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, err := h.getBodyOnce(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background())
 
-	// Mutation caught: swallowing or misclassifying a one-shot transport failure.
+	// Mutation caught: swallowing or misclassifying a transport failure.
 	require.Nil(t, body)
 	require.ErrorIs(t, err, errTransportFailure)
 	require.ErrorContains(t, err, "request failed")
 }
 
-func TestHTTPCoreGetBodyOnceReportsReadFailureAndClosesBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
+func TestHTTPCoreGetBodyWithoutRetryReportsReadFailureAndClosesBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
 	const testFamily ipnet.Family = 101
 	var closed atomic.Bool
 	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
@@ -200,7 +204,7 @@ func TestHTTPCoreGetBodyOnceReportsReadFailureAndClosesBody(t *testing.T) { //no
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, err := h.getBodyOnce(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background())
 
 	// Mutation caught: swallowing or misclassifying a read failure, or leaking its response body.
 	require.Nil(t, body)

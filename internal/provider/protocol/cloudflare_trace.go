@@ -119,7 +119,7 @@ func attemptCloudflareTrace(
 	ipFamily ipnet.Family,
 	defaultPrefixLen int,
 ) traceAttemptResult {
-	parsedURL, err := url.Parse(traceURL)
+	_, err := url.Parse(traceURL)
 	if err != nil {
 		return traceAttemptResult{
 			status:   traceAttemptFailed,
@@ -138,7 +138,7 @@ func attemptCloudflareTrace(
 		method:        http.MethodGet,
 		maxReadLength: traceMaxReadLength,
 	}
-	body, err := c.getBodyOnce(ctx)
+	body, finalURL, err := c.getBodyWithoutRetry(ctx)
 	if err != nil {
 		if ctx.Err() != nil {
 			return traceAttemptResult{ //nolint:exhaustruct // Cancellation is not a definite failure.
@@ -160,12 +160,12 @@ func attemptCloudflareTrace(
 	fields := parseTraceBody(body)
 	var warnings []traceWarningKind
 
-	// Validate h: integrity check on the response source.
+	// Validate h against the final request host, which can change after redirects.
 	// A missing h is unexpected but tolerated; a mismatched h is a hard failure.
 	switch {
 	case fields.h == "":
 		warnings = append(warnings, traceWarningMissingH)
-	case fields.h != parsedURL.Host:
+	case fields.h != finalURL.Host:
 		return traceAttemptResult{
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
@@ -173,7 +173,7 @@ func attemptCloudflareTrace(
 			failure: traceFailure{ //nolint:exhaustruct // This failure compares the observed and expected hosts.
 				kind:     traceFailureMismatchedH,
 				observed: fields.h,
-				expected: parsedURL.Host,
+				expected: finalURL.Host,
 			},
 		}
 	}
