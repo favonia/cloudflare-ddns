@@ -29,7 +29,7 @@ type UptimeKuma struct {
 	// Timeout for each ping
 	Timeout time.Duration
 
-	// If nil, each ping uses retryablehttp's default HTTP client.
+	// If nil, each ping uses http.DefaultClient and its shared connection pool.
 	httpClient *http.Client
 }
 
@@ -159,6 +159,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param uptimeKumaReque
 
 	c := retryablehttp.NewClient()
 	c.Logger = nil
+	c.HTTPClient = http.DefaultClient
 	if h.httpClient != nil {
 		c.HTTPClient = h.httpClient
 	}

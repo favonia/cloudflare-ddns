@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -60,43 +59,42 @@ type CloudflareAuth struct {
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	return t.newWithHTTPClient(ppfmt, options, nil)
+	return t.newWithOptions(ppfmt, options)
 }
 
-// newWithHTTPClient uses the SDK's default transport when client is nil.
-func (t CloudflareAuth) newWithHTTPClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
-	handle, err := t.newClient(client)
+// newWithOptions applies SDK options before constructing the handle and its caches.
+// An empty option list retains the SDK defaults.
+func (t CloudflareAuth) newWithOptions(
+	ppfmt pp.PP, handleOptions HandleOptions, clientOptions ...cloudflare.Option,
+) (Handle, bool) {
+	handle, err := t.newClient(clientOptions...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)
 		return nil, false
 	}
 
-	options.HandleOwnershipPolicy = options.Sanitize(ppfmt)
+	handleOptions.HandleOwnershipPolicy = handleOptions.Sanitize(ppfmt)
 
 	h := cloudflareHandle{
 		cf:      handle,
-		options: options,
+		options: handleOptions,
 		cache: cloudflareCache{
-			listZones:    newCache[string, []zoneMeta](options.CacheExpiration),
-			zoneOfDomain: newCache[string, zoneMeta](options.CacheExpiration),
+			listZones:    newCache[string, []zoneMeta](handleOptions.CacheExpiration),
+			zoneOfDomain: newCache[string, zoneMeta](handleOptions.CacheExpiration),
 			listRecords: map[ipnet.Family]*ttlcache.Cache[string, *[]Record]{
-				ipnet.IP4: newCache[string, *[]Record](options.CacheExpiration),
-				ipnet.IP6: newCache[string, *[]Record](options.CacheExpiration),
+				ipnet.IP4: newCache[string, *[]Record](handleOptions.CacheExpiration),
+				ipnet.IP6: newCache[string, *[]Record](handleOptions.CacheExpiration),
 			},
-			listLists:     newCache[ID, *[]wafListMeta](options.CacheExpiration),
-			listID:        newCache[WAFList, ID](options.CacheExpiration),
-			listListItems: newCache[WAFList, *[]WAFListItem](options.CacheExpiration),
+			listLists:     newCache[ID, *[]wafListMeta](handleOptions.CacheExpiration),
+			listID:        newCache[WAFList, ID](handleOptions.CacheExpiration),
+			listListItems: newCache[WAFList, *[]WAFListItem](handleOptions.CacheExpiration),
 		},
 	}
 
 	return h, true
 }
 
-func (t CloudflareAuth) newClient(client *http.Client) (*cloudflare.API, error) {
-	var options []cloudflare.Option
-	if client != nil {
-		options = append(options, cloudflare.HTTPClient(client))
-	}
+func (t CloudflareAuth) newClient(options ...cloudflare.Option) (*cloudflare.API, error) {
 	handle, err := cloudflare.NewWithAPIToken(t.Token, options...)
 	if err != nil {
 		return nil, fmt.Errorf("create Cloudflare API client: %w", err)

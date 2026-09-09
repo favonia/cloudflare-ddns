@@ -288,7 +288,7 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				client := server.Client()
 				m, ok := heartbeat.NewUptimeKuma(mockPP, server.URL)
 				require.True(t, ok)
-				m = heartbeat.UptimeKumaWithClient(m, client)
+				m = heartbeat.UptimeKumaWithHTTPClient(m, client)
 				ok = tc.endpoint(mockPP, m)
 				synctest.Wait()
 				require.Equal(t, tc.ok, ok)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/cloudflare/cloudflare-go"
+
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
@@ -78,7 +80,7 @@ func (h cloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domai
 // NewWithHTTPClient keeps black-box HTTP tests on the normal handle construction path
 // while routing SDK requests through an in-memory server inside synctest.
 func (t CloudflareAuth) NewWithHTTPClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
-	return t.newWithHTTPClient(ppfmt, options, client)
+	return t.newWithOptions(ppfmt, options, cloudflare.HTTPClient(client))
 }
 
 // StopCaches ends the test handle's background cleanup tasks before its bubble exits.
