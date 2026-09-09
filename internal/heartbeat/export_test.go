@@ -2,15 +2,15 @@ package heartbeat
 
 import "net/http"
 
-// HealthchecksWithHTTPClient keeps endpoint behavior tests external: their generated
-// PP mocks import heartbeat, so same-package tests would create an import cycle.
-func HealthchecksWithHTTPClient(h Healthchecks, client *http.Client) Healthchecks {
+// SetHTTPClient overrides the client for subsequent pings in tests; nil restores
+// http.DefaultClient. Call it before using the heartbeat concurrently.
+// External tests need this hook because their generated PP mocks import heartbeat.
+func (h *Healthchecks) SetHTTPClient(client *http.Client) {
 	h.httpClient = client
-	return h
 }
 
-// UptimeKumaWithHTTPClient provides the same test-only HTTP seam for Uptime Kuma.
-func UptimeKumaWithHTTPClient(h UptimeKuma, client *http.Client) UptimeKuma {
+// SetHTTPClient overrides the client for subsequent pings in tests; nil restores
+// http.DefaultClient. Call it before using the heartbeat concurrently.
+func (h *UptimeKuma) SetHTTPClient(client *http.Client) {
 	h.httpClient = client
-	return h
 }
