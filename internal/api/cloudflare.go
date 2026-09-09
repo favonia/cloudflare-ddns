@@ -59,15 +59,15 @@ type CloudflareAuth struct {
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	return t.newWithOptions(ppfmt, options)
+	return t.newWithSDKOptions(ppfmt, options)
 }
 
-// newWithOptions applies SDK options before constructing the handle and its caches.
+// newWithSDKOptions applies SDK options before constructing the handle and its caches.
 // An empty option list retains the SDK defaults.
-func (t CloudflareAuth) newWithOptions(
-	ppfmt pp.PP, handleOptions HandleOptions, clientOptions ...cloudflare.Option,
+func (t CloudflareAuth) newWithSDKOptions(
+	ppfmt pp.PP, handleOptions HandleOptions, sdkOptions ...cloudflare.Option,
 ) (Handle, bool) {
-	handle, err := t.newClient(clientOptions...)
+	handle, err := t.newClient(sdkOptions...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)
 		return nil, false
