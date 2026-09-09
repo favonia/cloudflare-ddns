@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/cloudflare/cloudflare-go"
 
@@ -77,10 +76,12 @@ func (h cloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domai
 	return h.zoneIDOfDomain(ctx, ppfmt, domain)
 }
 
-// NewWithHTTPClient keeps black-box HTTP tests on the normal handle construction path
-// while routing SDK requests through an in-memory server inside synctest.
-func (t CloudflareAuth) NewWithHTTPClient(ppfmt pp.PP, options HandleOptions, client *http.Client) (Handle, bool) {
-	return t.newWithSDKOptions(ppfmt, options, cloudflare.HTTPClient(client))
+// NewWithSDKOptions lets black-box tests configure the SDK endpoint and HTTP client
+// while retaining normal handle and cache construction.
+func (t CloudflareAuth) NewWithSDKOptions(
+	ppfmt pp.PP, handleOptions HandleOptions, sdkOptions ...cloudflare.Option,
+) (Handle, bool) {
+	return t.newWithSDKOptions(ppfmt, handleOptions, sdkOptions...)
 }
 
 // StopCaches ends the test handle's background cleanup tasks before its bubble exits.

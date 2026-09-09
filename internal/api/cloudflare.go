@@ -53,8 +53,7 @@ type cloudflareHandle struct {
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [cloudflareHandle].
 type CloudflareAuth struct {
-	Token   string
-	BaseURL string
+	Token string
 }
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
@@ -98,11 +97,6 @@ func (t CloudflareAuth) newClient(options ...cloudflare.Option) (*cloudflare.API
 	handle, err := cloudflare.NewWithAPIToken(t.Token, options...)
 	if err != nil {
 		return nil, fmt.Errorf("create Cloudflare API client: %w", err)
-	}
-
-	// set the base URL (mostly for testing)
-	if t.BaseURL != "" {
-		handle.BaseURL = t.BaseURL
 	}
 
 	return handle, nil

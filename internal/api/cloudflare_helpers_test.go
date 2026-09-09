@@ -124,10 +124,7 @@ func newServerAuth(t *testing.T) (*http.ServeMux, api.CloudflareAuth, *http.Clie
 	serveMux := http.NewServeMux()
 	ts := httptest.NewTestServer(t, serveMux)
 
-	auth := api.CloudflareAuth{
-		Token:   mockToken,
-		BaseURL: "https://api.example.com",
-	}
+	auth := api.CloudflareAuth{Token: mockToken}
 
 	return serveMux, auth, ts.Client()
 }
@@ -171,7 +168,10 @@ func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) 
 	t.Helper()
 
 	serveMux, auth, client := newServerAuth(t)
-	h, ok := auth.NewWithHTTPClient(ppfmt, options, client)
+	h, ok := auth.NewWithSDKOptions(ppfmt, options,
+		cloudflare.BaseURL("https://api.example.com"),
+		cloudflare.HTTPClient(client),
+	)
 	if ok {
 		// Let every cache cleanup goroutine start before registering its stop.
 		synctest.Wait()

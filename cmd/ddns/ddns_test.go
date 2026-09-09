@@ -61,7 +61,6 @@ func TestInitConfigManagedRecordsCommentRegex(t *testing.T) {
 	auth, ok := handleConfig.Auth.(*api.CloudflareAuth)
 	require.True(t, ok)
 	require.Equal(t, "deadbeaf", auth.Token)
-	require.Empty(t, auth.BaseURL)
 	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP4]))
 	require.Equal(t, "cloudflare.trace", provider.Name(updateConfig.Provider[ipnet.IP6]))
 	require.Equal(t, map[ipnet.Family][]domain.Domain{

@@ -315,8 +315,7 @@ func TestReadEnvDomainCompatibilityWarningUsesBoundedPreview(t *testing.T) {
 }
 
 type authSummary struct {
-	token   string
-	baseURL string
+	token string
 }
 
 type handleConfigSummary struct {
@@ -361,19 +360,16 @@ func summarizeAuth(t *testing.T, auth api.Auth) authSummary {
 	case *api.CloudflareAuth:
 		if a == nil {
 			return authSummary{
-				token:   "",
-				baseURL: "",
+				token: "",
 			}
 		}
 		return authSummary{
-			token:   a.Token,
-			baseURL: a.BaseURL,
+			token: a.Token,
 		}
 	default:
 		t.Fatalf("unexpected auth type %T", auth)
 		return authSummary{
-			token:   "",
-			baseURL: "",
+			token: "",
 		}
 	}
 }
