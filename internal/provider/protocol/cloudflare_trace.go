@@ -328,8 +328,8 @@ func (p CloudflareTrace) GetRawData(
 
 // getRawDataWithHTTPClient performs GetRawData using the supplied client for all
 // concurrent attempts. ipFamily selects endpoints and validates the returned IP;
-// the caller must configure the client's transport to enforce the dialing family.
-// In-memory tests may supply a client that performs no network dialing.
+// for network requests, the caller must configure the client's transport to
+// enforce the dialing family.
 func (p CloudflareTrace) getRawDataWithHTTPClient(
 	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int, client *http.Client,
 ) DetectionResult {

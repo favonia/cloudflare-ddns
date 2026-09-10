@@ -84,8 +84,8 @@ func (t CloudflareAuth) NewWithSDKOptions(
 	return t.newWithSDKOptions(ppfmt, handleOptions, sdkOptions...)
 }
 
-// StopCaches ends the test handle's background cleanup tasks before its bubble exits.
-// Tests must wait for the tasks to start before calling this method.
+// StopCaches stops the handle's background cache cleanup tasks and waits for them
+// to exit. Callers must wait for the tasks to start before calling this method.
 func (h cloudflareHandle) StopCaches() {
 	h.cache.listZones.Stop()
 	h.cache.zoneOfDomain.Stop()
