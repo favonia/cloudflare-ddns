@@ -22,18 +22,20 @@ type heartbeatWithHTTPClient interface {
 }
 
 type heartbeatHTTPTestCase struct {
-	name         string
-	responseBody string
-	newHeartbeat func(*testing.T, string) heartbeatWithHTTPClient
+	name           string
+	responseBody   string
+	defaultTimeout time.Duration
+	newHeartbeat   func(*testing.T, string) heartbeatWithHTTPClient
 }
 
 // heartbeatHTTPTestCases constructs real heartbeats; each case owns its service
-// response and constructor, while the tests share only HTTP lifecycle assertions.
+// response, default timeout, and constructor; tests share HTTP lifecycle assertions.
 func heartbeatHTTPTestCases() []heartbeatHTTPTestCase {
 	return []heartbeatHTTPTestCase{
 		{
-			name:         "healthchecks",
-			responseBody: "OK",
+			name:           "healthchecks",
+			responseBody:   "OK",
+			defaultTimeout: heartbeat.HealthchecksDefaultTimeout,
 			newHeartbeat: func(t *testing.T, url string) heartbeatWithHTTPClient {
 				t.Helper()
 				h, ok := heartbeat.NewHealthchecks(pp.NewSilent(), url)
@@ -42,8 +44,9 @@ func heartbeatHTTPTestCases() []heartbeatHTTPTestCase {
 			},
 		},
 		{
-			name:         "uptime-kuma",
-			responseBody: `{"ok":true}`,
+			name:           "uptime-kuma",
+			responseBody:   `{"ok":true}`,
+			defaultTimeout: heartbeat.UptimeKumaDefaultTimeout,
 			newHeartbeat: func(t *testing.T, url string) heartbeatWithHTTPClient {
 				t.Helper()
 				h, ok := heartbeat.NewUptimeKuma(pp.NewSilent(), url)
@@ -111,14 +114,15 @@ func TestHeartbeatCancelsBlockedRequest(t *testing.T) {
 				h := tc.newHeartbeat(t, "https://heartbeat.example")
 				h.SetHTTPClient(client)
 				// Bound the test even if the heartbeat stops applying its own timeout.
-				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+				ctx, cancel := context.WithTimeout(t.Context(), tc.defaultTimeout+time.Minute)
 				defer cancel()
 				start := time.Now()
 				require.False(t, h.Ping(ctx, pp.NewSilent(), heartbeat.NewMessage()))
 				synctest.Wait()
 				require.True(t, canceled)
-				// The request never responds, so completion must come from the heartbeat timeout.
-				require.Equal(t, 10*time.Second, time.Since(start))
+				// This transport returns as soon as cancellation arrives, so virtual time
+				// measures the configured deadline without network or retry-backoff delays.
+				require.Equal(t, tc.defaultTimeout, time.Since(start))
 			})
 		})
 	}

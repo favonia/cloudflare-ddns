@@ -19,7 +19,8 @@ type Healthchecks struct {
 	// The success endpoint that can be used to derive all other endpoints.
 	BaseURL *url.URL
 
-	// Timeout for each ping.
+	// Timeout bounds each whole ping, including retries. The caller's context
+	// may cancel it sooner.
 	Timeout time.Duration
 
 	// If nil, each ping uses http.DefaultClient and its shared connection pool.
