@@ -114,7 +114,7 @@ func TestCloudflareTraceGetRawDataValidatesPrimarySuccess(t *testing.T) {
 		}))
 
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
 
 		// Mutation caught: failing to transmit or validate a clean primary response.
 		// A ready primary must finish before either hedge starts.
@@ -150,11 +150,13 @@ func TestCloudflareTraceGetRawDataUsesFallbackAfterPrimaryFailure(t *testing.T) 
 			}
 		}))
 
+		start := time.Now()
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
 
 		// Mutation caught: failing to use a valid fallback after a definite primary failure.
-		// A definite failure starts the fallback without waiting for a hedge timer.
+		// Both responses are ready: failure acceleration must not advance virtual time.
+		require.Zero(t, time.Since(start))
 		require.True(t, result.Available)
 		require.Equal(t, int32(1), counts[0].Load())
 		require.Equal(t, int32(1), counts[1].Load())
@@ -190,7 +192,7 @@ func TestCloudflareTraceGetRawDataHedgesAndCancels(t *testing.T) {
 		resultChannel := make(chan protocol.DetectionResult, 1)
 		go func() {
 			resultChannel <- cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-				GetRawDataWithClient(ctx, pp.NewSilent(), ipnet.IP4, 32, client)
+				GetRawDataWithHTTPClient(ctx, pp.NewSilent(), ipnet.IP4, 32, client)
 		}()
 
 		// Mutation caught: an early or late hedge, or leaving the losing HTTP request running.
@@ -228,7 +230,7 @@ func TestCloudflareTraceGetRawDataAttemptsEachEndpointOnce(t *testing.T) {
 		}))
 
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.NewSilent(), ipnet.IP4, 32, server.Client())
 
 		// Mutation caught: retrying an endpoint or omitting a configured endpoint after all failures.
 		require.False(t, result.Available)
@@ -257,7 +259,7 @@ func TestCloudflareTraceGetRawDataHidesLosingDiagnosticsAfterSuccess(t *testing.
 
 		var output strings.Builder
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
 
 		// Mutation caught: replaying warnings or terminal failures from a losing attempt after success.
 		require.True(t, result.Available)
@@ -287,7 +289,7 @@ func TestCloudflareTraceGetRawDataReplaysWinnerWarnings(t *testing.T) {
 
 		var output strings.Builder
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
 		transcript := output.String()
 		winnerURL := "https://trace.example.com/fallback"
 
@@ -319,7 +321,7 @@ func TestCloudflareTraceGetRawDataReportsMissingWarpFromWinner(t *testing.T) {
 
 		var output strings.Builder
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
 
 		// Mutation caught: dropping or mislabeling the sole missing-warp warning from a successful primary response.
 		require.True(t, result.Available)
@@ -375,7 +377,7 @@ func TestCloudflareTraceGetRawDataReportsFailuresInEndpointOrder(t *testing.T) {
 		resultChannel := make(chan protocol.DetectionResult, 1)
 		go func() {
 			resultChannel <- cloudflareTraceTestProvider(endpoints).
-				GetRawDataWithClient(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
+				GetRawDataWithHTTPClient(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
 		}()
 		for index := range started {
 			select {
@@ -436,7 +438,7 @@ func TestCloudflareTraceGetRawDataReportsSharedTimeoutOnce(t *testing.T) {
 		start := time.Now()
 		var output strings.Builder
 		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-			GetRawDataWithClient(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
+			GetRawDataWithHTTPClient(ctx, pp.New(&output, false, pp.Verbose), ipnet.IP4, 32, server.Client())
 		require.Equal(t, 5*time.Second, time.Since(start))
 		transcript := output.String()
 

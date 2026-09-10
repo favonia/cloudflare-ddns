@@ -323,10 +323,14 @@ func reportCloudflareTraceWinnerWarnings(
 func (p CloudflareTrace) GetRawData(
 	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
 ) DetectionResult {
-	return p.getRawDataWithClient(ctx, ppfmt, ipFamily, defaultPrefixLen, SharedSplitClient(ipFamily))
+	return p.getRawDataWithHTTPClient(ctx, ppfmt, ipFamily, defaultPrefixLen, SharedSplitClient(ipFamily))
 }
 
-func (p CloudflareTrace) getRawDataWithClient(
+// getRawDataWithHTTPClient performs GetRawData using the supplied client for all
+// concurrent attempts. ipFamily selects endpoints and validates the returned IP;
+// the caller must configure the client's transport to enforce the dialing family.
+// In-memory tests may supply a client that performs no network dialing.
+func (p CloudflareTrace) getRawDataWithHTTPClient(
 	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int, client *http.Client,
 ) DetectionResult {
 	endpoints, found := p.URLs[ipFamily]

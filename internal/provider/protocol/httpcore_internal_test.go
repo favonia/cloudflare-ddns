@@ -107,7 +107,7 @@ func TestHTTPCoreGetBodyWithoutRetryReportsRequestPreparationFailure(t *testing.
 		url:    "http://example.com/",
 		method: "GET\n",
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background(), nil)
+	body, _, err := h.getBodyWithoutRetry(context.Background(), http.DefaultClient)
 
 	// Mutation caught: losing the request-preparation category while propagating constructor errors.
 	require.Nil(t, body)

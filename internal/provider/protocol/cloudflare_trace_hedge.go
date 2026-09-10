@@ -23,6 +23,10 @@ type indexedTraceAttemptResult struct {
 	result traceAttemptResult
 }
 
+// cloudflareTraceHedgeDelay selects the current scheduling heuristic: one twentieth
+// of the remaining deadline budget, capped at 250 ms, or 250 ms without a deadline.
+// The caller supplies the scheduling start time; an expired budget yields a
+// nonpositive delay. This policy can be tuned independently of the coordinator.
 func cloudflareTraceHedgeDelay(ctx context.Context, now time.Time) time.Duration {
 	deadline, hasDeadline := ctx.Deadline()
 	if !hasDeadline {
@@ -31,10 +35,18 @@ func cloudflareTraceHedgeDelay(ctx context.Context, now time.Time) time.Duration
 	return min(deadline.Sub(now)/20, maxCloudflareTraceHedgeDelay)
 }
 
-// runCloudflareTraceAttempts launches endpoints in order, accelerating the next
-// launch after a definite failure, and accepts the first successful completion.
-// Parent cancellation takes precedence, and every started worker is drained
-// before return.
+// runCloudflareTraceAttempts launches each endpoint at most once, in order. It
+// starts the first immediately, then waits hedgeDelay after each launch before
+// starting the next. A definite failure launches the next endpoint without
+// waiting and restarts that interval; a nonpositive delay launches all endpoints
+// without waiting. Cancellation observed by the coordinator stops new launches.
+//
+// The first success observed by the coordinator wins unless parent cancellation
+// is already observed. Success or parent cancellation cancels the other attempts;
+// every started worker is drained before return. Thus attempt must cooperate with
+// cancellation and return; the parent deadline alone cannot bound draining time.
+// An empty endpoint list or a run without success returns winnerIndex == -1.
+// timedOut reports whether parent cancellation was observed as a deadline expiry.
 func runCloudflareTraceAttempts(
 	ctx context.Context,
 	endpoints []string,

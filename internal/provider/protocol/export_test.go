@@ -24,10 +24,10 @@ func SelectAndNormalizeInterfaceIPs(
 	return selectAndNormalizeInterfaceIPs(ppfmt, iface, ipFamily, defaultPrefixLen, addrs)
 }
 
-// GetRawDataWithClient lets external behavior tests use an in-memory HTTP server
+// GetRawDataWithHTTPClient lets external behavior tests use an in-memory HTTP server
 // inside synctest while exercising the complete trace detection flow.
-func (p CloudflareTrace) GetRawDataWithClient(
+func (p CloudflareTrace) GetRawDataWithHTTPClient(
 	ctx context.Context, ppfmt pp.PP, family ipnet.Family, prefixLen int, client *http.Client,
 ) DetectionResult {
-	return p.getRawDataWithClient(ctx, ppfmt, family, prefixLen, client)
+	return p.getRawDataWithHTTPClient(ctx, ppfmt, family, prefixLen, client)
 }

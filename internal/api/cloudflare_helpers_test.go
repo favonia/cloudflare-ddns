@@ -159,11 +159,14 @@ func defaultHandleOptions() api.HandleOptions {
 	}
 }
 
+// newHandle uses default options with the bubble and cleanup contract of newHandleWithOptions.
 func newHandle(t *testing.T, ppfmt pp.PP) (*http.ServeMux, api.Handle, bool) {
 	t.Helper()
 	return newHandleWithOptions(t, ppfmt, defaultHandleOptions())
 }
 
+// newHandleWithOptions must run inside synctest with its bubble-local t.
+// It registers server and cache cleanup on t so no background work escapes the bubble.
 func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) (*http.ServeMux, api.Handle, bool) {
 	t.Helper()
 
@@ -191,11 +194,14 @@ type cloudflareHarness struct {
 	cfHandle api.CloudflareHandle
 }
 
+// newCloudflareHarness uses default options with the contract of newCloudflareHarnessWithOptions.
 func newCloudflareHarness(t *testing.T) *cloudflareHarness {
 	t.Helper()
 	return newCloudflareHarnessWithOptions(t, defaultHandleOptions())
 }
 
+// newCloudflareHarnessWithOptions requires a bubble-local t, as newHandleWithOptions does.
+// It adds strict PP mocks and fails the test if handle construction fails.
 func newCloudflareHarnessWithOptions(t *testing.T, options api.HandleOptions) *cloudflareHarness {
 	t.Helper()
 

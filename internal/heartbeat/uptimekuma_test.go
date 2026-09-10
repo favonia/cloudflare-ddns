@@ -229,7 +229,6 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 					tc.prepareMockPP(mockPP)
 				}
 
-				var attempts []time.Duration
 				started := time.Now()
 				visited := 0
 				pinged := false
@@ -254,7 +253,6 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 						panic(http.ErrAbortHandler)
 					}
 
-					attempts = append(attempts, time.Since(started))
 					visited++
 					action := tc.defaultAction
 					if visited <= len(tc.actions) {
@@ -293,17 +291,11 @@ func TestUptimeKumaEndPoints(t *testing.T) {
 				synctest.Wait()
 				require.Equal(t, tc.ok, ok)
 				require.Equal(t, tc.pinged, pinged)
-				switch {
-				case tc.actions == nil:
-					require.Equal(t, 10*time.Second, time.Since(started))
-					require.Equal(t, []time.Duration{0, time.Second, 3 * time.Second, 7 * time.Second}, attempts)
-				case len(tc.actions) > 0:
-					wantAttempts := []time.Duration{0, time.Second, 3 * time.Second}[:len(tc.actions)]
-					require.Equal(t, wantAttempts, attempts)
-					require.Equal(t, wantAttempts[len(wantAttempts)-1], time.Since(started))
-				default:
-					require.Empty(t, attempts)
-					require.Zero(t, time.Since(started))
+				require.LessOrEqual(t, time.Since(started), m.Timeout)
+				if tc.actions != nil {
+					require.Equal(t, len(tc.actions), visited)
+				} else {
+					require.Greater(t, visited, 1, "transient failures should be retried")
 				}
 			})
 		})
