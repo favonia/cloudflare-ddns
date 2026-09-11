@@ -11,7 +11,7 @@ A Transport owns the connection pool. Separate HTTP clients and retry wrappers m
 - **IP detection:** keep separate IPv4 and IPv6 pools. The updater calls `CloseIdleConnections()` on these pools after each round's detection work to reduce reuse of connections established under an earlier network state.
 - **General HTTP traffic:** use the process-default pool for clients this project constructs or supplies to libraries. Let the shared pool reclaim idle connections automatically. The default five-minute update interval does not justify separate pools merely to optimize reuse.
 
-Configure shared clients and Transports before use. Copying a struct containing a client pointer preserves sharing; it does not create an independent pool. Do not mutate shared transport settings for an individual request.
+Once a shared client or Transport starts serving requests, treat its configuration as read-only. Copying a struct containing a client pointer preserves sharing; it does not create an independent pool.
 
 ## Cleanup Boundaries
 
