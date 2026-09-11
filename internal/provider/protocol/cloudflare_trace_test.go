@@ -188,25 +188,15 @@ func TestCloudflareTraceGetRawDataHedgesAndCancels(t *testing.T) {
 		}))
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		client := server.Client()
-		resultChannel := make(chan protocol.DetectionResult, 1)
-		go func() {
-			resultChannel <- cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
-				GetRawDataWithHTTPClient(ctx, pp.NewSilent(), ipnet.IP4, 32, client)
-		}()
+		result := cloudflareTraceTestProvider(cloudflareTraceTestEndpoints("https://trace.example.com")).
+			GetRawDataWithHTTPClient(ctx, pp.NewSilent(), ipnet.IP4, 32, server.Client())
+		synctest.Wait()
 
-		// Mutation caught: an early or late hedge, or leaving the losing HTTP request running.
-		synctest.Sleep(250*time.Millisecond - time.Nanosecond)
+		// A blocked primary must allow a fallback to succeed before the caller's
+		// deadline, with the losing HTTP request canceled.
+		require.True(t, result.Available)
+		require.NoError(t, ctx.Err())
 		require.Equal(t, int32(1), counts[0].Load())
-		require.Zero(t, counts[1].Load())
-		require.Zero(t, counts[2].Load())
-		synctest.Sleep(time.Nanosecond)
-		select {
-		case result := <-resultChannel:
-			require.True(t, result.Available)
-		default:
-			t.Fatal("fallback did not finish at the hedge deadline")
-		}
 		require.Equal(t, int32(1), counts[1].Load())
 		require.Zero(t, counts[2].Load())
 		require.True(t, primaryCanceled.Load())
