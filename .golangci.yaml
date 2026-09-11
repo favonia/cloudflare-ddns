@@ -69,11 +69,6 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      # Test-only SetHTTPClient methods mutate otherwise value-based heartbeats.
-      - linters:
-          - recvcheck
-        path: internal/heartbeat/(healthchecks|uptimekuma)\.go$
-        text: "the methods of \"(Healthchecks|UptimeKuma)\" use pointer receiver and non-pointer receiver"
       - linters:
           - dupl
           - lll

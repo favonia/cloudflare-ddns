@@ -16,16 +16,11 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
 
-type heartbeatWithHTTPClient interface {
-	heartbeat.BasicHeartbeat
-	SetHTTPClient(client *http.Client)
-}
-
 type heartbeatHTTPTestCase struct {
 	name           string
 	responseBody   string
 	defaultTimeout time.Duration
-	newHeartbeat   func(*testing.T, string) heartbeatWithHTTPClient
+	newHeartbeat   func(*testing.T, string, *http.Client) heartbeat.BasicHeartbeat
 }
 
 // heartbeatHTTPTestCases constructs real heartbeats; each case owns its service
@@ -36,22 +31,22 @@ func heartbeatHTTPTestCases() []heartbeatHTTPTestCase {
 			name:           "healthchecks",
 			responseBody:   "OK",
 			defaultTimeout: heartbeat.HealthchecksDefaultTimeout,
-			newHeartbeat: func(t *testing.T, url string) heartbeatWithHTTPClient {
+			newHeartbeat: func(t *testing.T, url string, client *http.Client) heartbeat.BasicHeartbeat {
 				t.Helper()
 				h, ok := heartbeat.NewHealthchecks(pp.NewSilent(), url)
 				require.True(t, ok)
-				return &h
+				return h.WithHTTPClient(client)
 			},
 		},
 		{
 			name:           "uptime-kuma",
 			responseBody:   `{"ok":true}`,
 			defaultTimeout: heartbeat.UptimeKumaDefaultTimeout,
-			newHeartbeat: func(t *testing.T, url string) heartbeatWithHTTPClient {
+			newHeartbeat: func(t *testing.T, url string, client *http.Client) heartbeat.BasicHeartbeat {
 				t.Helper()
 				h, ok := heartbeat.NewUptimeKuma(pp.NewSilent(), url)
 				require.True(t, ok)
-				return &h
+				return h.WithHTTPClient(client)
 			},
 		},
 	}
@@ -89,7 +84,7 @@ func TestHeartbeatUsesDefaultTransport(t *testing.T) {
 			})
 
 			for range 2 {
-				h := tc.newHeartbeat(t, "https://heartbeat.example")
+				h := tc.newHeartbeat(t, "https://heartbeat.example", nil)
 				require.True(t, h.Ping(t.Context(), pp.NewSilent(), heartbeat.NewMessage()))
 			}
 			require.Equal(t, 2, requests)
@@ -111,8 +106,7 @@ func TestHeartbeatCancelsBlockedRequest(t *testing.T) {
 						return nil, fmt.Errorf("blocked request: %w", req.Context().Err())
 					}),
 				}
-				h := tc.newHeartbeat(t, "https://heartbeat.example")
-				h.SetHTTPClient(client)
+				h := tc.newHeartbeat(t, "https://heartbeat.example", client)
 				// Bound the test even if the heartbeat stops applying its own timeout.
 				ctx, cancel := context.WithTimeout(t.Context(), tc.defaultTimeout+time.Minute)
 				defer cancel()

@@ -176,7 +176,8 @@ func newHandleWithOptions(t *testing.T, ppfmt pp.PP, options api.HandleOptions) 
 		cloudflare.HTTPClient(client),
 	)
 	if ok {
-		// Let every cache cleanup goroutine start before registering its stop.
+		// Construction schedules cache.Start goroutines. Let them start before
+		// cleanup can call StopCaches, so none can start after cleanup returns.
 		synctest.Wait()
 		ch, isCloudflareHandle := h.(api.CloudflareHandle)
 		require.True(t, isCloudflareHandle)

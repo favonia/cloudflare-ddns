@@ -300,7 +300,7 @@ func TestHealthchecksEndPoints(t *testing.T) {
 				client := server.Client()
 				m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
 				require.True(t, ok)
-				m.SetHTTPClient(client)
+				m = m.WithHTTPClient(client)
 				ok = tc.endpoint(mockPP, m)
 				synctest.Wait()
 				require.Equal(t, tc.ok, ok)
@@ -384,6 +384,6 @@ func TestHealthchecksPingResponseReadFailure(t *testing.T) {
 
 	h, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
 	require.True(t, ok)
-	h.SetHTTPClient(client)
+	h = h.WithHTTPClient(client)
 	require.False(t, h.Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello")))
 }

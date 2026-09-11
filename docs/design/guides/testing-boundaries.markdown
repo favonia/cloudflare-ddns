@@ -20,4 +20,4 @@ When placing a test, choose the first shape that fits:
 
 Do not add production exports to satisfy tests.
 
-Reasons for test placement and package boundaries belong with the maintained design for those decisions. Reference this guide when its rules already explain the choice; record additional rationale only when future changes need it. Hook comments should describe how to use the hook and any reasons for its own constraints.
+Explain why a package needs its test hooks in a file-level comment at the start of its `export_test.go`. Describe each hook's behavior and caller obligations in its function comment. This guide owns the shared test-placement rules.

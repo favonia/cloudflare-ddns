@@ -1,3 +1,8 @@
+// This file lets protocol_test supply interface addresses and HTTP clients
+// while exercising detection results and diagnostics from outside the package.
+// In particular, Cloudflare Trace tests need HTTP injection to control response
+// timing and cancellation without changing production transport configuration.
+
 package protocol
 
 import (
@@ -24,8 +29,8 @@ func SelectAndNormalizeInterfaceIPs(
 	return selectAndNormalizeInterfaceIPs(ppfmt, iface, ipFamily, defaultPrefixLen, addrs)
 }
 
-// GetRawDataWithHTTPClient lets external behavior tests use an in-memory HTTP server
-// inside synctest while exercising the complete trace detection flow.
+// GetRawDataWithHTTPClient runs trace detection using client for concurrent attempts.
+// The client controls the dialing family; family selects endpoints and validates IPs.
 func (p CloudflareTrace) GetRawDataWithHTTPClient(
 	ctx context.Context, ppfmt pp.PP, family ipnet.Family, prefixLen int, client *http.Client,
 ) DetectionResult {

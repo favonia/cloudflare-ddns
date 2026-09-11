@@ -1,3 +1,12 @@
+// This file exposes Cloudflare lookup and cache operations to api_test while
+// keeping the concrete handle private in production. The external tests use
+// the shared mocks package, which imports api; moving them into package api
+// would create an import cycle.
+//
+// SDK options let those tests use in-memory HTTP servers with normal handle
+// construction. StopCaches lets their harness clean up the background cache
+// tasks created by that construction before a synctest bubble exits.
+
 package api
 
 import (
@@ -8,29 +17,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 )
-
-// This file exposes a narrow test-only view of selected Cloudflare
-// implementation details for black-box tests in package api_test.
-//
-// Rationale:
-// - Production code should keep the concrete Cloudflare helpers private.
-// - Several black-box tests live in package api_test so they can exercise the
-//   package the same way external callers do.
-// - Those tests also reuse mocks from internal/mocks, which already imports
-//   this package. Moving the tests into package api would therefore create an
-//   import cycle.
-//
-// The compromise is to keep the production surface small and provide only the
-// minimal aliases/wrappers needed by api_test, in a *_test.go file so none of
-// this is compiled into normal builds.
-//
-// Important boundary:
-// - Do add wrappers here when a package api_test integration-style test needs
-//   a narrow internal hook and cannot be moved without creating an import
-//   cycle.
-// - Do not add wrappers here for small white-box tests of private helpers.
-//   Those tests should live in package api instead; see
-//   cloudflare_internal_test.go and cloudflare_waf_internal_test.go.
 
 // CloudflareHandle is a test-only alias for the concrete Cloudflare-backed
 // handle. External tests use it for type assertions when they need to verify
@@ -76,8 +62,7 @@ func (h cloudflareHandle) ZoneIDOfDomain(ctx context.Context, ppfmt pp.PP, domai
 	return h.zoneIDOfDomain(ctx, ppfmt, domain)
 }
 
-// NewWithSDKOptions lets black-box tests configure the SDK endpoint and HTTP client
-// while retaining normal handle and cache construction.
+// NewWithSDKOptions constructs a handle and its caches with the supplied SDK options.
 func (t CloudflareAuth) NewWithSDKOptions(
 	ppfmt pp.PP, handleOptions HandleOptions, sdkOptions ...cloudflare.Option,
 ) (Handle, bool) {
@@ -85,7 +70,7 @@ func (t CloudflareAuth) NewWithSDKOptions(
 }
 
 // StopCaches stops the handle's background cache cleanup tasks and waits for them
-// to exit. Callers must wait for the tasks to start before calling this method.
+// to exit.
 func (h cloudflareHandle) StopCaches() {
 	h.cache.listZones.Stop()
 	h.cache.zoneOfDomain.Stop()
