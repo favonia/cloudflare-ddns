@@ -2,7 +2,7 @@ module github.com/favonia/cloudflare-ddns/scripts/github-actions/cloudflare-auth
 
 go 1.26.0
 
-require github.com/cloudflare/cloudflare-go v0.117.0
+require github.com/cloudflare/cloudflare-go v0.118.0
 
 require (
 	github.com/goccy/go-json v0.10.6 // indirect
