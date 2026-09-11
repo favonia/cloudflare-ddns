@@ -373,12 +373,12 @@ func classifyErrorType(err error) string {
 
 // errorCodeExtractor is implemented by cloudflare-go's error types.
 type errorCodeExtractor interface {
+	error
 	ErrorCodes() []int
 }
 
 func extractErrorCodes(err error) []int {
-	var extractor errorCodeExtractor
-	if errors.As(err, &extractor) {
+	if extractor, ok := errors.AsType[errorCodeExtractor](err); ok {
 		return extractor.ErrorCodes()
 	}
 	return nil

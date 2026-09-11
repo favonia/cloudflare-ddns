@@ -27,18 +27,17 @@ func TestHTTPCoreGetBodyWithoutRetryDoesNotRetry(t *testing.T) {
 	t.Parallel()
 
 	var requests atomic.Int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	t.Cleanup(server.Close)
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
 		ipFamily: ipnet.IP4,
-		url:      server.URL,
+		url:      "https://example.com/",
 		method:   http.MethodGet,
 	}
-	_, _, err := h.getBodyWithoutRetry(context.Background())
+	_, _, err := h.getBodyWithoutRetry(context.Background(), server.Client())
 
 	require.NoError(t, err)
 	require.EqualValues(t, 1, requests.Load())
@@ -49,28 +48,27 @@ func TestHTTPCoreGetBodyWithoutRetryFollowsRedirects(t *testing.T) {
 
 	var sourceRequests atomic.Int64
 	var targetRequests atomic.Int64
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, "redirected body")
-		targetRequests.Add(1)
-	}))
-	t.Cleanup(target.Close)
-	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/target" {
+			targetRequests.Add(1)
+			_, _ = io.WriteString(w, "redirected body")
+			return
+		}
 		sourceRequests.Add(1)
-		w.Header().Set("Location", target.URL)
+		w.Header().Set("Location", "https://example.com/target")
 		w.WriteHeader(http.StatusFound)
 	}))
-	t.Cleanup(source.Close)
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
 		ipFamily: ipnet.IP4,
-		url:      source.URL,
+		url:      "https://example.com/",
 		method:   http.MethodGet,
 	}
-	body, finalURL, err := h.getBodyWithoutRetry(context.Background())
+	body, finalURL, err := h.getBodyWithoutRetry(context.Background(), server.Client())
 
 	require.NoError(t, err)
 	require.Equal(t, "redirected body", string(body))
-	require.Equal(t, target.URL, finalURL.String())
+	require.Equal(t, "https://example.com/target", finalURL.String())
 	require.EqualValues(t, 1, sourceRequests.Load())
 	require.EqualValues(t, 1, targetRequests.Load())
 }
@@ -81,21 +79,20 @@ func TestHTTPCoreGetBodyWithoutRetryAppliesAdditionalHeaders(t *testing.T) {
 	const headerName = "X-Cloudflare-Trace-Test"
 	const headerValue = "present"
 	receivedHeaders := make(chan http.Header, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		receivedHeaders <- req.Header.Clone()
 		_, _ = io.WriteString(w, "response body")
 	}))
-	t.Cleanup(server.Close)
 
-	h := httpCore{ //nolint:exhaustruct // GET request needs only the tested headers and endpoint.
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request needs only the tested headers and endpoint.
 		ipFamily: ipnet.IP4,
-		url:      server.URL,
+		url:      "https://example.com/",
 		method:   http.MethodGet,
 		additionalHeaders: map[string]string{
 			headerName: headerValue,
 		},
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background(), server.Client())
 
 	// Mutation caught: omitting configured headers from the request path without retries.
 	require.NoError(t, err)
@@ -106,11 +103,11 @@ func TestHTTPCoreGetBodyWithoutRetryAppliesAdditionalHeaders(t *testing.T) {
 func TestHTTPCoreGetBodyWithoutRetryReportsRequestPreparationFailure(t *testing.T) {
 	t.Parallel()
 
-	h := httpCore{ //nolint:exhaustruct // The invalid method fails before transport setup matters.
+	h := httpCore{ //nolint:exhaustruct_v5 // The invalid method fails before transport setup matters.
 		url:    "http://example.com/",
 		method: "GET\n",
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background(), http.DefaultClient)
 
 	// Mutation caught: losing the request-preparation category while propagating constructor errors.
 	require.Nil(t, body)
@@ -132,12 +129,12 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-func TestHTTPCoreGetBodyWithoutRetryClosesResponseBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
-	const testFamily ipnet.Family = 99
+func TestHTTPCoreGetBodyWithoutRetryClosesResponseBody(t *testing.T) {
+	t.Parallel()
 	var closed atomic.Bool
-	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
+	client := &http.Client{ //nolint:exhaustruct_v5 // Test client needs only its transport.
 		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{ //nolint:exhaustruct // Test response needs status, request, and body.
+			return &http.Response{ //nolint:exhaustruct_v5 // Test response needs only status and body.
 				StatusCode: http.StatusOK,
 				Request:    req,
 				Body: trackingReadCloser{
@@ -147,35 +144,33 @@ func TestHTTPCoreGetBodyWithoutRetryClosesResponseBody(t *testing.T) { //nolint:
 			}, nil
 		}),
 	}
-	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
-		ipFamily: testFamily,
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
+		ipFamily: ipnet.IP4,
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background(), client)
 
 	require.NoError(t, err)
 	require.Equal(t, []byte("response body"), body)
 	require.True(t, closed.Load())
 }
 
-func TestHTTPCoreGetBodyWithoutRetryReportsTransportFailure(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
-	const testFamily ipnet.Family = 100
-	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
+func TestHTTPCoreGetBodyWithoutRetryReportsTransportFailure(t *testing.T) {
+	t.Parallel()
+	client := &http.Client{ //nolint:exhaustruct_v5 // Test client needs only its transport.
 		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
 			return nil, errTransportFailure
 		}),
 	}
-	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
-		ipFamily: testFamily,
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
+		ipFamily: ipnet.IP4,
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background(), client)
 
 	// Mutation caught: swallowing or misclassifying a transport failure.
 	require.Nil(t, body)
@@ -183,12 +178,12 @@ func TestHTTPCoreGetBodyWithoutRetryReportsTransportFailure(t *testing.T) { //no
 	require.ErrorContains(t, err, "request failed")
 }
 
-func TestHTTPCoreGetBodyWithoutRetryReportsReadFailureAndClosesBody(t *testing.T) { //nolint:paralleltest // Mutates sharedSplitClient.
-	const testFamily ipnet.Family = 101
+func TestHTTPCoreGetBodyWithoutRetryReportsReadFailureAndClosesBody(t *testing.T) {
+	t.Parallel()
 	var closed atomic.Bool
-	sharedSplitClient[testFamily] = &http.Client{ //nolint:exhaustruct // Test client needs only its transport.
+	client := &http.Client{ //nolint:exhaustruct_v5 // Test client needs only its transport.
 		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			return &http.Response{ //nolint:exhaustruct // Test response needs only status and body.
+			return &http.Response{ //nolint:exhaustruct_v5 // Test response needs only status and body.
 				StatusCode: http.StatusOK,
 				Body: trackingReadCloser{
 					Reader: iotest.ErrReader(errReadFailure),
@@ -197,14 +192,13 @@ func TestHTTPCoreGetBodyWithoutRetryReportsReadFailureAndClosesBody(t *testing.T
 			}, nil
 		}),
 	}
-	t.Cleanup(func() { delete(sharedSplitClient, testFamily) })
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
-		ipFamily: testFamily,
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
+		ipFamily: ipnet.IP4,
 		url:      "http://example.com/",
 		method:   http.MethodGet,
 	}
-	body, _, err := h.getBodyWithoutRetry(context.Background())
+	body, _, err := h.getBodyWithoutRetry(context.Background(), client)
 
 	// Mutation caught: swallowing or misclassifying a read failure, or leaking its response body.
 	require.Nil(t, body)
@@ -217,18 +211,19 @@ func TestHTTPCoreGetBodyRetainsRetryableHTTPBehavior(t *testing.T) {
 	t.Parallel()
 
 	var requests atomic.Int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	t.Cleanup(server.Close)
 
-	h := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+	h := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
 		ipFamily: ipnet.IP4,
-		url:      server.URL,
+		url:      "https://example.com/",
 		method:   http.MethodGet,
 	}
-	client := SharedRetryableSplitClient(ipnet.IP4)
+	client := retryablehttp.NewClient()
+	client.Logger = nil
+	client.HTTPClient = server.Client()
 	client.RetryWaitMin = 0
 	client.RetryWaitMax = 0
 	_, _ = h.getBodyWithRetryableClient(context.Background(), pp.NewSilent(), client)
@@ -244,7 +239,7 @@ func TestHTTPCoreGetBodyWithRetryableClientReportsReadFailureAndClosesBody(t *te
 	client.Logger = nil
 	client.RetryMax = 0
 	client.HTTPClient.Transport = roundTripperFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{ //nolint:exhaustruct // Test response needs only status and a controlled body.
+		return &http.Response{ //nolint:exhaustruct_v5 // Test response needs only status and a controlled body.
 			StatusCode: http.StatusOK,
 			Body: trackingReadCloser{
 				Reader: iotest.ErrReader(errReadFailure),
@@ -252,7 +247,7 @@ func TestHTTPCoreGetBodyWithRetryableClientReportsReadFailureAndClosesBody(t *te
 			},
 		}, nil
 	})
-	h := httpCore{ //nolint:exhaustruct // Test supplies a local retryable client directly.
+	h := httpCore{ //nolint:exhaustruct_v5 // Test supplies a local retryable client directly.
 		url:    "http://example.com/",
 		method: http.MethodGet,
 	}

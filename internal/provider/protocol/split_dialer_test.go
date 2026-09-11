@@ -36,9 +36,9 @@ func mustListen(ipFamily ipnet.Family) net.Listener {
 }
 
 func newSplitServer(ipFamily ipnet.Family, h http.HandlerFunc) *httptest.Server {
-	s := &httptest.Server{ //nolint:exhaustruct
+	s := &httptest.Server{ //nolint:exhaustruct_v5
 		Listener: mustListen(ipFamily),
-		Config:   &http.Server{Handler: h, ReadHeaderTimeout: time.Minute}, //nolint:exhaustruct
+		Config:   &http.Server{Handler: h, ReadHeaderTimeout: time.Minute}, //nolint:exhaustruct_v5
 	}
 	s.Start()
 	return s

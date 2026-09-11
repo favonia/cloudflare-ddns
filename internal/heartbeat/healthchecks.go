@@ -19,11 +19,15 @@ type Healthchecks struct {
 	// The success endpoint that can be used to derive all other endpoints.
 	BaseURL *url.URL
 
-	// Timeout for each ping.
+	// Timeout bounds each whole ping, including retries. The caller's context
+	// may cancel it sooner.
 	Timeout time.Duration
+
+	// If nil, each ping uses http.DefaultClient and its shared connection pool.
+	httpClient *http.Client
 }
 
-var _ Heartbeat = Healthchecks{} //nolint:exhaustruct
+var _ Heartbeat = Healthchecks{} //nolint:exhaustruct_v5
 
 const (
 	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
@@ -77,13 +81,13 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Healthchecks URL (redacted)")
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" || u.RawQuery != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
 		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	switch u.Scheme {
@@ -96,12 +100,13 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, `The Healthchecks URL (redacted) is not a valid URL`)
 		ppfmt.Noticef(pp.EmojiUserError, `Expected a URL like "https://hc-ping.com/01234567-0123-0123-0123-0123456789abc"`)
-		return Healthchecks{}, false //nolint:exhaustruct
+		return Healthchecks{}, false //nolint:exhaustruct_v5
 	}
 
 	h := Healthchecks{
-		BaseURL: u,
-		Timeout: HealthchecksDefaultTimeout,
+		BaseURL:    u,
+		Timeout:    HealthchecksDefaultTimeout,
+		httpClient: nil,
 	}
 
 	return h, true
@@ -201,6 +206,10 @@ func (h Healthchecks) ping(ctx context.Context, ppfmt pp.PP, spec healthchecksPi
 
 	c := retryablehttp.NewClient()
 	c.Logger = nil
+	c.HTTPClient = http.DefaultClient
+	if h.httpClient != nil {
+		c.HTTPClient = h.httpClient
+	}
 
 	resp, err := c.Do(req)
 	if err != nil {

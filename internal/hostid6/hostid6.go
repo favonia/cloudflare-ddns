@@ -41,7 +41,7 @@ type Set struct {
 
 // Preserve constructs a derivation that preserves observed host bits.
 func Preserve() Derivation {
-	return Derivation{kind: kindPreserve} //nolint:exhaustruct
+	return Derivation{kind: kindPreserve} //nolint:exhaustruct_v5
 }
 
 // Literal constructs a derivation from an IPv6 host-ID literal.
@@ -50,12 +50,12 @@ func Literal(addr netip.Addr) (Derivation, error) {
 		return Derivation{}, errInvalidLiteral
 	}
 
-	return Derivation{kind: kindLiteral, literal: addr}, nil //nolint:exhaustruct
+	return Derivation{kind: kindLiteral, literal: addr}, nil //nolint:exhaustruct_v5
 }
 
 // MAC constructs a derivation from a 48-bit MAC address.
 func MAC(addr [6]byte) Derivation {
-	return Derivation{kind: kindMAC, mac: addr} //nolint:exhaustruct
+	return Derivation{kind: kindMAC, mac: addr} //nolint:exhaustruct_v5
 }
 
 // NewSet constructs a canonical non-empty derivation set.

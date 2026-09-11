@@ -193,6 +193,6 @@ func readAuth(ppfmt pp.PP, field *api.Auth) bool {
 		ppfmt.Noticef(pp.EmojiUserWarning, "CF_ACCOUNT_ID is ignored since 1.14.0")
 	}
 
-	*field = &api.CloudflareAuth{Token: token, BaseURL: ""}
+	*field = &api.CloudflareAuth{Token: token}
 	return true
 }

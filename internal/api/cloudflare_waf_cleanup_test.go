@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/stretchr/testify/assert"
@@ -166,29 +167,30 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				options := defaultHandleOptions()
+				options.AllowWholeWAFListDeleteOnShutdown = true
+				f := newCloudflareHarnessWithOptions(t, options)
 
-			options := defaultHandleOptions()
-			options.AllowWholeWAFListDeleteOnShutdown = true
-			f := newCloudflareHarnessWithOptions(t, options)
+				lh := newListListsHandler(t, f.serveMux, tc.lists)
+				dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
+				lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
+				dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteListItemIDs)
 
-			lh := newListListsHandler(t, f.serveMux, tc.lists)
-			dh := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
-			lih := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
-			dih := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteListItemIDs)
-
-			lh.setRequestLimit(tc.listRequestLimit)
-			dh.setRequestLimit(tc.deleteListLimit)
-			lih.setRequestLimit(tc.listItemsLimit)
-			dih.setRequestLimit(tc.deleteListItemsLimit)
-			code := f.cfHandle.FinalCleanWAFList(
-				context.Background(),
-				f.newPreparedPP(tc.prepareMocks),
-				mockWAFList,
-				"description",
-				cleanupFamilies(ipnet.IP4, ipnet.IP6),
-			)
-			require.Equal(t, tc.code, code)
-			assertHandlersExhausted(t, lh, dh, lih, dih)
+				lh.setRequestLimit(tc.listRequestLimit)
+				dh.setRequestLimit(tc.deleteListLimit)
+				lih.setRequestLimit(tc.listItemsLimit)
+				dih.setRequestLimit(tc.deleteListItemsLimit)
+				code := f.cfHandle.FinalCleanWAFList(
+					context.Background(),
+					f.newPreparedPP(tc.prepareMocks),
+					mockWAFList,
+					"description",
+					cleanupFamilies(ipnet.IP4, ipnet.IP6),
+				)
+				require.Equal(t, tc.code, code)
+				assertHandlersExhausted(t, lh, dh, lih, dih)
+			})
 		})
 	}
 }
@@ -242,62 +244,64 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				options := defaultHandleOptions()
+				options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
+				options.AllowWholeWAFListDeleteOnShutdown = false
+				f := newCloudflareHarnessWithOptions(t, options)
 
-			options := defaultHandleOptions()
-			options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
-			options.AllowWholeWAFListDeleteOnShutdown = false
-			f := newCloudflareHarnessWithOptions(t, options)
+				listHandler := newListListsHandler(t, f.serveMux, tc.lists)
+				itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
+				deleteHandler := newDeleteListItemsHandler(
+					t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
 
-			listHandler := newListListsHandler(t, f.serveMux, tc.lists)
-			itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.listItems)
-			deleteHandler := newDeleteListItemsHandler(
-				t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
-
-			listHandler.setRequestLimit(tc.listRequestLimit)
-			itemsHandler.setRequestLimit(tc.listItemsLimit)
-			deleteHandler.setRequestLimit(tc.deleteItemsLimit)
-			code := f.cfHandle.FinalCleanWAFList(
-				context.Background(),
-				f.newPreparedPP(tc.prepareMocks),
-				mockWAFList,
-				"description",
-				cleanupFamilies(ipnet.IP4, ipnet.IP6),
-			)
-			require.Equal(t, tc.code, code)
-			assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+				listHandler.setRequestLimit(tc.listRequestLimit)
+				itemsHandler.setRequestLimit(tc.listItemsLimit)
+				deleteHandler.setRequestLimit(tc.deleteItemsLimit)
+				code := f.cfHandle.FinalCleanWAFList(
+					context.Background(),
+					f.newPreparedPP(tc.prepareMocks),
+					mockWAFList,
+					"description",
+					cleanupFamilies(ipnet.IP4, ipnet.IP6),
+				)
+				require.Equal(t, tc.code, code)
+				assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+			})
 		})
 	}
 }
 
 func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		options := defaultHandleOptions()
+		options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
+		options.AllowWholeWAFListDeleteOnShutdown = false
+		f := newCloudflareHarnessWithOptions(t, options)
 
-	options := defaultHandleOptions()
-	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
-	options.AllowWholeWAFListDeleteOnShutdown = false
-	f := newCloudflareHarnessWithOptions(t, options)
+		listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
+		itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0),
+			[]listItem{{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"}})
+		deleteHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil)
 
-	listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
-	itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0),
-		[]listItem{{ID: "foreign-v4", Prefix: "10.0.0.2/32", Comment: "foreign"}})
-	deleteHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil)
+		listHandler.setRequestLimit(1)
+		itemsHandler.setRequestLimit(1)
+		deleteHandler.setRequestLimit(0)
+		items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
+		require.True(t, ok)
+		require.True(t, alreadyExisting)
+		require.False(t, cached)
+		require.Empty(t, items)
 
-	listHandler.setRequestLimit(1)
-	itemsHandler.setRequestLimit(1)
-	deleteHandler.setRequestLimit(0)
-	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
-	require.True(t, ok)
-	require.True(t, alreadyExisting)
-	require.False(t, cached)
-	require.Empty(t, items)
-
-	cleanupPP := f.newPP()
-	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in the list %s were already deleted (cached)", "account456/list")
-	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-		cleanupFamilies(ipnet.IP4, ipnet.IP6))
-	require.Equal(t, api.WAFListCleanupNoop, code)
-	assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+		cleanupPP := f.newPP()
+		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+			"Managed items in the list %s were already deleted (cached)", "account456/list")
+		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+		require.Equal(t, api.WAFListCleanupNoop, code)
+		assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+	})
 }
 
 func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
@@ -344,136 +348,140 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: len(tc.initialItems), kind: cloudflare.ListTypeIP}})
+				itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.initialItems)
+				deleteHandler := newDeleteListItemsHandler(
+					t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
 
-			f := newCloudflareHarness(t)
-			listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: len(tc.initialItems), kind: cloudflare.ListTypeIP}})
-			itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), tc.initialItems)
-			deleteHandler := newDeleteListItemsHandler(
-				t, f.serveMux, mockID("list", 0), mockID("op", 0), tc.deleteItemIDs)
+				listHandler.setRequestLimit(1)
+				itemsHandler.setRequestLimit(1)
+				deleteHandler.setRequestLimit(tc.deleteItemsLimit)
 
-			listHandler.setRequestLimit(1)
-			itemsHandler.setRequestLimit(1)
-			deleteHandler.setRequestLimit(tc.deleteItemsLimit)
+				items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(
+					context.Background(), f.newPP(), mockWAFList, "description", "managed")
+				require.True(t, ok)
+				require.True(t, alreadyExisting)
+				require.False(t, cached)
+				require.NotNil(t, items)
 
-			items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(
-				context.Background(), f.newPP(), mockWAFList, "description", "managed")
-			require.True(t, ok)
-			require.True(t, alreadyExisting)
-			require.False(t, cached)
-			require.NotNil(t, items)
+				cleanupPP := f.newPreparedPP(tc.prepareCleanupPP)
+				code := f.cfHandle.FinalCleanWAFList(
+					context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies)
+				require.Equal(t, tc.expectedCode, code)
 
-			cleanupPP := f.newPreparedPP(tc.prepareCleanupPP)
-			code := f.cfHandle.FinalCleanWAFList(
-				context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies)
-			require.Equal(t, tc.expectedCode, code)
-
-			if tc.expectedCachedRun {
-				listHandler.setRequestLimit(0)
-				itemsHandler.setRequestLimit(0)
-			}
-			assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+				if tc.expectedCachedRun {
+					listHandler.setRequestLimit(0)
+					itemsHandler.setRequestLimit(0)
+				}
+				assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
+			})
 		})
 	}
 }
 
 func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresOutdatedCache(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		options := defaultHandleOptions()
+		options.AllowWholeWAFListDeleteOnShutdown = true
+		f := newCloudflareHarnessWithOptions(t, options)
 
-	options := defaultHandleOptions()
-	options.AllowWholeWAFListDeleteOnShutdown = true
-	f := newCloudflareHarnessWithOptions(t, options)
+		listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
+		deleteListHandler := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
+		itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), nil)
+		deleteItemsHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil)
 
-	listHandler := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
-	deleteListHandler := newDeleteListHandler(t, f.serveMux, mockID("list", 0))
-	itemsHandler := newListListItemsHandler(t, f.serveMux, mockID("list", 0), nil)
-	deleteItemsHandler := newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), nil)
+		listHandler.setRequestLimit(1)
+		deleteListHandler.setRequestLimit(0)
+		// First ListListItems call primes cache; second call verifies fallback re-fetches.
+		itemsHandler.setRequestLimit(2)
+		deleteItemsHandler.setRequestLimit(0)
 
-	listHandler.setRequestLimit(1)
-	deleteListHandler.setRequestLimit(0)
-	// First ListListItems call primes cache; second call verifies fallback re-fetches.
-	itemsHandler.setRequestLimit(2)
-	deleteItemsHandler.setRequestLimit(0)
+		items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
+		require.True(t, ok)
+		require.True(t, alreadyExisting)
+		require.False(t, cached)
+		require.Empty(t, items)
 
-	items, alreadyExisting, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", "")
-	require.True(t, ok)
-	require.True(t, alreadyExisting)
-	require.False(t, cached)
-	require.Empty(t, items)
-
-	cleanupPP := f.newPP()
-	gomock.InOrder(
-		cleanupPP.EXPECT().Noticef(pp.EmojiError,
-			"Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
-		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-			"Managed items in the list %s were already deleted", "account456/list"),
-	)
-	code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-		cleanupFamilies(ipnet.IP4, ipnet.IP6))
-	require.Equal(t, api.WAFListCleanupNoop, code)
-	assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
+		cleanupPP := f.newPP()
+		gomock.InOrder(
+			cleanupPP.EXPECT().Noticef(pp.EmojiError,
+				"Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
+			cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+				"Managed items in the list %s were already deleted", "account456/list"),
+		)
+		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+		require.Equal(t, api.WAFListCleanupNoop, code)
+		assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
+	})
 }
 
 func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		newPP := mocks.NewMockPP(mockCtrl)
+		options := defaultHandleOptions()
+		options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
+		options.AllowWholeWAFListDeleteOnShutdown = true
 
-	mockCtrl := gomock.NewController(t)
-	newPP := mocks.NewMockPP(mockCtrl)
-	options := defaultHandleOptions()
-	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile("^managed$")
-	options.AllowWholeWAFListDeleteOnShutdown = true
+		newPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			"DELETE_ON_STOP is enabled, but "+
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
+				"the updater will keep the list and delete only items managed by this updater",
+			`"^managed$"`,
+		)
+		serveMux, h, ok := newHandleWithOptions(t, newPP, options)
+		require.True(t, ok)
+		cfHandle, ok := h.(api.CloudflareHandle)
+		require.True(t, ok)
 
-	newPP.EXPECT().Noticef(pp.EmojiUserWarning,
-		"DELETE_ON_STOP is enabled, but "+
-			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
-			"the updater will keep the list and delete only items managed by this updater",
-		`"^managed$"`,
-	)
-	serveMux, h, ok := newHandleWithOptions(t, newPP, options)
-	require.True(t, ok)
-	cfHandle, ok := h.(api.CloudflareHandle)
-	require.True(t, ok)
+		listHandler := newListListsHandler(t, serveMux, nil)
+		listHandler.setRequestLimit(1)
 
-	listHandler := newListListsHandler(t, serveMux, nil)
-	listHandler.setRequestLimit(1)
-
-	cleanupPP := mocks.NewMockPP(mockCtrl)
-	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in the list %s were already deleted", "account456/list")
-	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-		cleanupFamilies(ipnet.IP4, ipnet.IP6))
-	require.Equal(t, api.WAFListCleanupNoop, code)
-	assertHandlersExhausted(t, listHandler)
+		cleanupPP := mocks.NewMockPP(mockCtrl)
+		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+			"Managed items in the list %s were already deleted", "account456/list")
+		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+		require.Equal(t, api.WAFListCleanupNoop, code)
+		assertHandlersExhausted(t, listHandler)
+	})
 }
 
 func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		newPP := mocks.NewMockPP(mockCtrl)
+		options := defaultHandleOptions()
+		regex := strings.Repeat("a", 49)
+		options.ManagedWAFListItemsCommentRegex = regexp.MustCompile(regex)
+		options.AllowWholeWAFListDeleteOnShutdown = true
 
-	mockCtrl := gomock.NewController(t)
-	newPP := mocks.NewMockPP(mockCtrl)
-	options := defaultHandleOptions()
-	regex := strings.Repeat("a", 49)
-	options.ManagedWAFListItemsCommentRegex = regexp.MustCompile(regex)
-	options.AllowWholeWAFListDeleteOnShutdown = true
+		newPP.EXPECT().Noticef(pp.EmojiUserWarning,
+			"DELETE_ON_STOP is enabled, but "+
+				"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
+				"the updater will keep the list and delete only items managed by this updater",
+			`"`+strings.Repeat("a", 48)+`..."`,
+		)
+		serveMux, h, ok := newHandleWithOptions(t, newPP, options)
+		require.True(t, ok)
+		cfHandle, ok := h.(api.CloudflareHandle)
+		require.True(t, ok)
 
-	newPP.EXPECT().Noticef(pp.EmojiUserWarning,
-		"DELETE_ON_STOP is enabled, but "+
-			"MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX (%s) is non-empty; "+
-			"the updater will keep the list and delete only items managed by this updater",
-		`"`+strings.Repeat("a", 48)+`..."`,
-	)
-	serveMux, h, ok := newHandleWithOptions(t, newPP, options)
-	require.True(t, ok)
-	cfHandle, ok := h.(api.CloudflareHandle)
-	require.True(t, ok)
+		listHandler := newListListsHandler(t, serveMux, nil)
+		listHandler.setRequestLimit(1)
 
-	listHandler := newListListsHandler(t, serveMux, nil)
-	listHandler.setRequestLimit(1)
-
-	cleanupPP := mocks.NewMockPP(mockCtrl)
-	cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
-		"Managed items in the list %s were already deleted", "account456/list")
-	code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-		cleanupFamilies(ipnet.IP4, ipnet.IP6))
-	require.Equal(t, api.WAFListCleanupNoop, code)
-	assertHandlersExhausted(t, listHandler)
+		cleanupPP := mocks.NewMockPP(mockCtrl)
+		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
+			"Managed items in the list %s were already deleted", "account456/list")
+		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
+			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+		require.Equal(t, api.WAFListCleanupNoop, code)
+		assertHandlersExhausted(t, listHandler)
+	})
 }

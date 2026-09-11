@@ -130,12 +130,12 @@ func NormalizeRawEntryIP(family Family, entry RawEntry) (
 
 	norm, unmapped, issue, wants4in6Hint, valid := ValidateAndNormalizeIP(family, addr)
 	if !valid {
-		return RawEntry{}, issue, wants4in6Hint, false //nolint:exhaustruct
+		return RawEntry{}, issue, wants4in6Hint, false
 	}
 
 	if unmapped {
 		if bits < 96 {
-			return RawEntry{}, //nolint:exhaustruct
+			return RawEntry{},
 				"is an IPv4-mapped IPv6 address with a prefix length shorter than /96 and cannot be used",
 				false, false
 		}
@@ -153,14 +153,14 @@ func normalizeDetectedRawEntry(t Family, ppfmt pp.PP, entry RawEntry) (RawEntry,
 			`Detected address is invalid; this should not happen. Please report it at %s`,
 			pp.IssueReportingURL,
 		)
-		return RawEntry{}, false //nolint:exhaustruct
+		return RawEntry{}, false
 	}
 
 	normalized, problem, wants4in6Hint, ok := NormalizeRawEntryIP(t, entry)
 	if !ok {
 		ppfmt.Noticef(pp.EmojiError, "Detected address %s %s", entry.String(), problem)
 		Emit4in6Hint(ppfmt, wants4in6Hint)
-		return RawEntry{}, false //nolint:exhaustruct
+		return RawEntry{}, false
 	}
 
 	return normalized, true

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"testing"
+	"testing/synctest"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/stretchr/testify/assert"
@@ -81,33 +82,35 @@ func TestDeleteRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			f := newCloudflareHarness(t)
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
 
-			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-			zh.setRequestLimit(tc.zoneRequestLimit)
+				zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+				zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
-			lrh.setRequestLimit(tc.listRequestLimit)
+				lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
+				lrh.setRequestLimit(tc.listRequestLimit)
 
-			drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
-			drh.setRequestLimit(tc.deleteRequestLimit)
+				drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
+				drh.setRequestLimit(tc.deleteRequestLimit)
 
-			ok := f.handle.DeleteRecord(context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-			require.Equal(t, tc.ok, ok)
-			assertHandlersExhausted(t, zh, lrh, drh)
-
-			if ok {
-				lrh.setRequestLimit(1)
-				drh.setRequestLimit(1)
-				mockPP := f.newPreparedPP(tc.prepareMocks)
-				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				_ = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				ok := f.handle.DeleteRecord(context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
 				require.Equal(t, tc.ok, ok)
-				require.True(t, cached)
-				require.Empty(t, rs)
 				assertHandlersExhausted(t, zh, lrh, drh)
-			}
+
+				if ok {
+					lrh.setRequestLimit(1)
+					drh.setRequestLimit(1)
+					mockPP := f.newPreparedPP(tc.prepareMocks)
+					f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					_ = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+					rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.Equal(t, tc.ok, ok)
+					require.True(t, cached)
+					require.Empty(t, rs)
+					assertHandlersExhausted(t, zh, lrh, drh)
+				}
+			})
 		})
 	}
 }
@@ -278,56 +281,58 @@ func TestUpdateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			f := newCloudflareHarness(t)
-			mockPP := f.newPreparedPP(tc.prepareMocks)
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				mockPP := f.newPreparedPP(tc.prepareMocks)
 
-			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-			zh.setRequestLimit(tc.zoneRequestLimit)
+				zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+				zh.setRequestLimit(tc.zoneRequestLimit)
 
-			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
-			lrh.setRequestLimit(tc.listRequestLimit)
+				lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
+				lrh.setRequestLimit(tc.listRequestLimit)
 
-			responseParams := tc.desiredParams
-			if name == "mismatched-attributes" {
-				responseParams = api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
-			}
-			if name == "mismatched-tags" {
-				responseParams = api.RecordParams{
-					TTL:     tc.desiredParams.TTL,
-					Proxied: tc.desiredParams.Proxied,
-					Comment: tc.desiredParams.Comment,
-					Tags:    []string{"team:ddns"},
+				responseParams := tc.desiredParams
+				if name == "mismatched-attributes" {
+					responseParams = api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
 				}
-			}
-			if name == "policy-equivalent-tags" {
-				responseParams = api.RecordParams{
-					TTL:     tc.desiredParams.TTL,
-					Proxied: tc.desiredParams.Proxied,
-					Comment: tc.desiredParams.Comment,
-					Tags:    []string{"x:Two", "NAME:value", "name:value"},
+				if name == "mismatched-tags" {
+					responseParams = api.RecordParams{
+						TTL:     tc.desiredParams.TTL,
+						Proxied: tc.desiredParams.Proxied,
+						Comment: tc.desiredParams.Comment,
+						Tags:    []string{"team:ddns"},
+					}
 				}
-			}
-			urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, responseParams)
-			urh.setRequestLimit(tc.updateRequestLimit)
+				if name == "policy-equivalent-tags" {
+					responseParams = api.RecordParams{
+						TTL:     tc.desiredParams.TTL,
+						Proxied: tc.desiredParams.Proxied,
+						Comment: tc.desiredParams.Comment,
+						Tags:    []string{"x:Two", "NAME:value", "name:value"},
+					}
+				}
+				urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, responseParams)
+				urh.setRequestLimit(tc.updateRequestLimit)
 
-			ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", mustIP("::2"), tc.desiredParams)
-			require.Equal(t, tc.ok, ok)
-			assertHandlersExhausted(t, zh, lrh, urh)
-
-			if ok {
-				lrh.setRequestLimit(1)
-				urh.setRequestLimit(1)
-				mockPP = f.newPreparedPP(tc.prepareMocksForCached)
-				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				_ = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
 					"record1", mustIP("::2"), tc.desiredParams)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.Equal(t, tc.ok, ok)
-				require.True(t, cached)
-				require.Equal(t, []api.Record{{"record1", mustIP("::2"), responseParams}}, rs)
 				assertHandlersExhausted(t, zh, lrh, urh)
-			}
+
+				if ok {
+					lrh.setRequestLimit(1)
+					urh.setRequestLimit(1)
+					mockPP = f.newPreparedPP(tc.prepareMocksForCached)
+					f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					_ = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+						"record1", mustIP("::2"), tc.desiredParams)
+					rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.Equal(t, tc.ok, ok)
+					require.True(t, cached)
+					require.Equal(t, []api.Record{{"record1", mustIP("::2"), responseParams}}, rs)
+					assertHandlersExhausted(t, zh, lrh, urh)
+				}
+			})
 		})
 	}
 }
@@ -446,14 +451,570 @@ func TestCreateRecord(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				mockPP := f.newPreparedPP(tc.prepareMocks)
+
+				zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+				zh.setRequestLimit(tc.zoneRequestLimit)
+
+				lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+				lrh.setRequestLimit(tc.listRequestLimit)
+
+				crh := newCreateRecordHandlerWithParams(
+					t,
+					f.serveMux,
+					"record1",
+					ipnet.IP6,
+					"sub.test.org",
+					"::1",
+					api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+					api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+				)
+				crh.setRequestLimit(tc.createRequestLimit)
+
+				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				actualID, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+				require.Equal(t, tc.ok, ok)
+				if ok {
+					require.Equal(t, api.ID("record1"), actualID)
+					rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.True(t, ok)
+					require.True(t, cached)
+					require.Equal(t, []api.Record{{"record1", mustIP("::1"), params}}, rs)
+				} else {
+					require.Zero(t, actualID)
+				}
+			})
+		})
+	}
+}
+
+func TestCreateRecordWithTags(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    []string{"team:ddns", "Env:Prod"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+		lrh.setRequestLimit(0)
+		crh := newCreateRecordHandlerWithCommentAndTags(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "managed",
+			[]string{"team:ddns", "Env:Prod"})
+		crh.setRequestLimit(1)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    []string{"team:ddns"},
+		}
+		responseParams := api.RecordParams{
+			TTL:     params.TTL,
+			Proxied: params.Proxied,
+			Comment: params.Comment,
+			Tags:    []string{"team:ddns", "featureflag", ":prod"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+			expectUndocumentedTagsWarning(t, ppfmt, `"featureflag" and ":prod"`, "AAAA", "sub.test.org", api.ID("record1"))
+		})
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+		lrh.setRequestLimit(0)
+		crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, responseParams)
+		crh.setRequestLimit(1)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    []string{"featureflag", "team:ddns"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
+		lrh.setRequestLimit(0)
+		crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, params)
+		crh.setRequestLimit(1)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		managedRecordsCommentRegex := regexp.MustCompile("^managed$")
+		params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil}
+
+		f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
+			CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   nil,
+			AllowWholeWAFListDeleteOnShutdown: true,
+		})
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+		lrh.setRequestLimit(1)
+
+		crh := newCreateRecordHandlerWithComment(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "unmanaged")
+		crh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Empty(t, rs)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Empty(t, rs)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		listParams := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "managed",
+			Tags:    nil,
+		}
+		createParams := api.RecordParams{
+			TTL:     300,
+			Proxied: true,
+			Comment: "managed",
+			Tags:    []string{"team:ddns"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+			{ID: "record2", IP: "::3", Comment: "managed", Tags: []string{"env:prod"}},
+		})
+		lrh.setRequestLimit(1)
+
+		crh := newCreateRecordHandlerWithParams(
+			t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", createParams, createParams,
+		)
+		crh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{
+			{
+				ID: "record2", IP: mustIP("::3"),
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "managed",
+				Tags:    []string{"env:prod"},
+			},
+		}, rs)
+
+		id, ok := f.handle.CreateRecord(
+			context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), createParams,
+		)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Equal(t, []api.Record{
+			{ID: "record1", IP: mustIP("::1"), RecordParams: createParams},
+			{
+				ID: "record2", IP: mustIP("::3"),
+				TTL:     api.TTLAuto,
+				Proxied: false,
+				Comment: "managed",
+				Tags:    []string{"env:prod"},
+			},
+		}, rs)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordManagedCacheUsesDesiredMetadataEvenIfCreateResponseDiffers(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		requestParams := api.RecordParams{
+			TTL:     300,
+			Proxied: true,
+			Comment: "managed",
+			Tags:    []string{"Team:Alpha", "env:prod"},
+		}
+		responseParams := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"env:prod", "team:alpha"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
+		lrh.setRequestLimit(1)
+
+		crh := newCreateRecordHandlerWithParams(
+			t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", requestParams, responseParams,
+		)
+		crh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Empty(t, rs)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), requestParams)
+		require.True(t, ok)
+		require.Equal(t, api.ID("record1"), id)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Equal(t, []api.Record{
+			{ID: "record1", IP: mustIP("::1"), RecordParams: requestParams},
+		}, rs)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+			ppfmt.EXPECT().Noticef(
+				pp.EmojiError,
+				"Could not confirm creation of new %s record for %s: %v",
+				"AAAA", "sub.test.org", gomock.Any(),
+			)
+		})
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+			{ID: "record1", IP: "::2", Comment: "", Tags: nil},
+		})
+		lrh.setRequestLimit(2)
+
+		crh := newCreateRecordHandlerWithParams(
+			t,
+			f.serveMux,
+			"record2",
+			ipnet.IP6,
+			"sub.test.org",
+			"::1",
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+		)
+		crh.setRequestLimit(0)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
+
+		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		require.False(t, ok)
+		require.Zero(t, id)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
+		assertHandlersExhausted(t, zh, lrh, crh)
+	})
+}
+
+func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		managedRecordsCommentRegex := regexp.MustCompile("^managed$")
+		managedParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
+
+		f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
+			CacheExpiration:                   defaultHandleOptions().CacheExpiration,
+			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
+			ManagedWAFListItemsCommentRegex:   nil,
+			AllowWholeWAFListDeleteOnShutdown: true,
+		})
+		mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+			ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
+				`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
+				"AAAA", "sub.test.org", api.ID("record1"),
+				`"unmanaged"`, `"managed"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
+			)
+		})
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+			{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
+		})
+		lrh.setRequestLimit(1)
+
+		urh := newUpdateRecordHandler(
+			t,
+			f.serveMux,
+			"record1",
+			"::2",
+			"::2",
+			managedParams,
+			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil},
+		)
+		urh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{
+			{ID: "record1", IP: mustIP("::1"), RecordParams: managedParams},
+		}, rs)
+
+		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record1", mustIP("::2"), managedParams)
+		require.True(t, ok)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Empty(t, rs)
+		assertHandlersExhausted(t, zh, lrh, urh)
+	})
+}
+
+func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"team:ddns"},
+		}
+		responseParams := api.RecordParams{
+			TTL:     params.TTL,
+			Proxied: params.Proxied,
+			Comment: params.Comment,
+			Tags:    []string{"team:ddns", "featureflag"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
+			expectUndocumentedTagsWarning(t, ppfmt, `"featureflag"`, "AAAA", "sub.test.org", api.ID("record1"))
+		})
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, responseParams)
+		urh.setRequestLimit(1)
+
+		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+		require.True(t, ok)
+		assertHandlersExhausted(t, zh, urh)
+	})
+}
+
+func TestUpdateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{
+			TTL:     api.TTLAuto,
+			Proxied: false,
+			Comment: "",
+			Tags:    []string{"featureflag", "team:ddns"},
+		}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, params)
+		urh.setRequestLimit(1)
+
+		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+		require.True(t, ok)
+		assertHandlersExhausted(t, zh, urh)
+	})
+}
+
+func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+		f := newCloudflareHarness(t)
+		mockPP := f.newPP()
+
+		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+		zh.setRequestLimit(2)
+
+		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
+			{ID: "record2", IP: "::3", Comment: "", Tags: nil},
+		})
+		lrh.setRequestLimit(1)
+
+		urh := newUpdateRecordHandler(
+			t,
+			f.serveMux,
+			"record1",
+			"::2",
+			"::2",
+			params,
+			params,
+		)
+		urh.setRequestLimit(1)
+
+		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.False(t, cached)
+		require.Equal(t, []api.Record{
+			{ID: "record2", IP: mustIP("::3"), RecordParams: params},
+		}, rs)
+
+		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+			"record1", mustIP("::2"), params)
+		require.True(t, ok)
+
+		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+		require.True(t, ok)
+		require.True(t, cached)
+		require.Equal(t, []api.Record{
+			{ID: "record1", IP: mustIP("::2"), RecordParams: params},
+			{ID: "record2", IP: mustIP("::3"), RecordParams: params},
+		}, rs)
+		assertHandlersExhausted(t, zh, lrh, urh)
+	})
+}
+
+func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
+	t.Parallel()
+
+	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
+
+	t.Run("update+delete", func(t *testing.T) {
+		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
 			f := newCloudflareHarness(t)
-			mockPP := f.newPreparedPP(tc.prepareMocks)
+			mockPP := f.newPP()
 
 			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-			zh.setRequestLimit(tc.zoneRequestLimit)
+			zh.setRequestLimit(2)
+
+			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
+				[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
+			lrh.setRequestLimit(1)
+
+			urh := newUpdateRecordHandler(
+				t,
+				f.serveMux,
+				"record1",
+				"::2",
+				"::2",
+				params,
+				params,
+			)
+			urh.setRequestLimit(1)
+
+			drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
+			drh.setRequestLimit(1)
+
+			rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.False(t, cached)
+			require.Equal(t, []api.Record{
+				{"record1", mustIP("::1"), params},
+				{"record2", mustIP("::3"), params},
+			}, rs)
+
+			ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record1", mustIP("::2"), params)
+			require.True(t, ok)
+
+			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record2", api.RegularDeletionMode)
+			require.True(t, ok)
+
+			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.True(t, cached)
+			require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
+			assertHandlersExhausted(t, zh, lrh, urh, drh)
+		})
+	})
+
+	t.Run("create+delete", func(t *testing.T) {
+		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			f := newCloudflareHarness(t)
+			mockPP := f.newPP()
+
+			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+			zh.setRequestLimit(2)
 
 			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
-			lrh.setRequestLimit(tc.listRequestLimit)
+			lrh.setRequestLimit(1)
 
 			crh := newCreateRecordHandlerWithParams(
 				t,
@@ -465,638 +1026,99 @@ func TestCreateRecord(t *testing.T) {
 				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
 				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
 			)
-			crh.setRequestLimit(tc.createRequestLimit)
+			crh.setRequestLimit(1)
 
-			f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-			actualID, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-			require.Equal(t, tc.ok, ok)
-			if ok {
-				require.Equal(t, api.ID("record1"), actualID)
-				rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				require.True(t, ok)
-				require.True(t, cached)
-				require.Equal(t, []api.Record{{"record1", mustIP("::1"), params}}, rs)
-			} else {
-				require.Zero(t, actualID)
-			}
+			drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
+			drh.setRequestLimit(1)
+
+			rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.False(t, cached)
+			require.Empty(t, rs)
+
+			id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+			require.True(t, ok)
+			require.Equal(t, api.ID("record1"), id)
+
+			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record1", api.RegularDeletionMode)
+			require.True(t, ok)
+
+			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.True(t, cached)
+			require.Empty(t, rs)
+			assertHandlersExhausted(t, zh, lrh, crh, drh)
 		})
-	}
-}
-
-func TestCreateRecordWithTags(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "managed",
-		Tags:    []string{"team:ddns", "Env:Prod"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
-	lrh.setRequestLimit(0)
-	crh := newCreateRecordHandlerWithCommentAndTags(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "managed",
-		[]string{"team:ddns", "Env:Prod"})
-	crh.setRequestLimit(1)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "managed",
-		Tags:    []string{"team:ddns"},
-	}
-	responseParams := api.RecordParams{
-		TTL:     params.TTL,
-		Proxied: params.Proxied,
-		Comment: params.Comment,
-		Tags:    []string{"team:ddns", "featureflag", ":prod"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		expectUndocumentedTagsWarning(t, ppfmt, `"featureflag" and ":prod"`, "AAAA", "sub.test.org", api.ID("record1"))
-	})
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
-	lrh.setRequestLimit(0)
-	crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, responseParams)
-	crh.setRequestLimit(1)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "managed",
-		Tags:    []string{"featureflag", "team:ddns"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", nil)
-	lrh.setRequestLimit(0)
-	crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, params)
-	crh.setRequestLimit(1)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
-	t.Parallel()
-
-	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil}
-
-	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration: defaultHandleOptions().CacheExpiration,
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
-	})
-	mockPP := f.newPP()
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
-	lrh.setRequestLimit(1)
-
-	crh := newCreateRecordHandlerWithComment(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", "unmanaged")
-	crh.setRequestLimit(1)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Empty(t, rs)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Empty(t, rs)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
-	t.Parallel()
-
-	listParams := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "managed",
-		Tags:    nil,
-	}
-	createParams := api.RecordParams{
-		TTL:     300,
-		Proxied: true,
-		Comment: "managed",
-		Tags:    []string{"team:ddns"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record2", IP: "::3", Comment: "managed", Tags: []string{"env:prod"}},
-	})
-	lrh.setRequestLimit(1)
-
-	crh := newCreateRecordHandlerWithParams(
-		t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", createParams, createParams,
-	)
-	crh.setRequestLimit(1)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
-			TTL:     api.TTLAuto,
-			Proxied: false,
-			Comment: "managed",
-			Tags:    []string{"env:prod"},
-		}},
-	}, rs)
-
-	id, ok := f.handle.CreateRecord(
-		context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), createParams,
-	)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), listParams)
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: createParams},
-		{ID: "record2", IP: mustIP("::3"), RecordParams: api.RecordParams{
-			TTL:     api.TTLAuto,
-			Proxied: false,
-			Comment: "managed",
-			Tags:    []string{"env:prod"},
-		}},
-	}, rs)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordManagedCacheUsesDesiredMetadataEvenIfCreateResponseDiffers(t *testing.T) {
-	t.Parallel()
-
-	requestParams := api.RecordParams{
-		TTL:     300,
-		Proxied: true,
-		Comment: "managed",
-		Tags:    []string{"Team:Alpha", "env:prod"},
-	}
-	responseParams := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "",
-		Tags:    []string{"env:prod", "team:alpha"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
-	lrh.setRequestLimit(1)
-
-	crh := newCreateRecordHandlerWithParams(
-		t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", requestParams, responseParams,
-	)
-	crh.setRequestLimit(1)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Empty(t, rs)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), requestParams)
-	require.True(t, ok)
-	require.Equal(t, api.ID("record1"), id)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), requestParams)
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: requestParams},
-	}, rs)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		ppfmt.EXPECT().Noticef(
-			pp.EmojiError,
-			"Could not confirm creation of new %s record for %s: %v",
-			"AAAA", "sub.test.org", gomock.Any(),
-		)
-	})
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::2", Comment: "", Tags: nil},
-	})
-	lrh.setRequestLimit(2)
-
-	crh := newCreateRecordHandlerWithParams(
-		t,
-		f.serveMux,
-		"record2",
-		ipnet.IP6,
-		"sub.test.org",
-		"::1",
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-	)
-	crh.setRequestLimit(0)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
-
-	id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-	require.False(t, ok)
-	require.Zero(t, id)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
-	assertHandlersExhausted(t, zh, lrh, crh)
-}
-
-func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
-	t.Parallel()
-
-	managedRecordsCommentRegex := regexp.MustCompile("^managed$")
-	managedParams := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
-
-	f := newCloudflareHarnessWithOptions(t, api.HandleOptions{
-		CacheExpiration: defaultHandleOptions().CacheExpiration,
-		HandleOwnershipPolicy: api.HandleOwnershipPolicy{
-			ManagedRecordsCommentRegex:        managedRecordsCommentRegex,
-			ManagedWAFListItemsCommentRegex:   nil,
-			AllowWholeWAFListDeleteOnShutdown: true,
-		},
-	})
-	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
-			`The comment on the %s record for %s (ID: %s) is %s, which is different from the fallback comment %s. You can change the comment in the Cloudflare dashboard at %s if you want to.`,
-			"AAAA", "sub.test.org", api.ID("record1"),
-			`"unmanaged"`, `"managed"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
-		)
-	})
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record1", IP: "::1", Comment: "managed", Tags: nil},
-	})
-	lrh.setRequestLimit(1)
-
-	urh := newUpdateRecordHandler(
-		t,
-		f.serveMux,
-		"record1",
-		"::2",
-		"::2",
-		managedParams,
-		api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "unmanaged", Tags: nil},
-	)
-	urh.setRequestLimit(1)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::1"), RecordParams: managedParams},
-	}, rs)
-
-	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-		"record1", mustIP("::2"), managedParams)
-	require.True(t, ok)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Empty(t, rs)
-	assertHandlersExhausted(t, zh, lrh, urh)
-}
-
-func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "",
-		Tags:    []string{"team:ddns"},
-	}
-	responseParams := api.RecordParams{
-		TTL:     params.TTL,
-		Proxied: params.Proxied,
-		Comment: params.Comment,
-		Tags:    []string{"team:ddns", "featureflag"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPreparedPP(func(ppfmt *mocks.MockPP) {
-		expectUndocumentedTagsWarning(t, ppfmt, `"featureflag"`, "AAAA", "sub.test.org", api.ID("record1"))
-	})
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, responseParams)
-	urh.setRequestLimit(1)
-
-	ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
-	require.True(t, ok)
-	assertHandlersExhausted(t, zh, urh)
-}
-
-func TestUpdateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{
-		TTL:     api.TTLAuto,
-		Proxied: false,
-		Comment: "",
-		Tags:    []string{"featureflag", "team:ddns"},
-	}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-	urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, params)
-	urh.setRequestLimit(1)
-
-	ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
-	require.True(t, ok)
-	assertHandlersExhausted(t, zh, urh)
-}
-
-func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
-
-	f := newCloudflareHarness(t)
-	mockPP := f.newPP()
-
-	zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-	zh.setRequestLimit(2)
-
-	lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{
-		{ID: "record2", IP: "::3", Comment: "", Tags: nil},
-	})
-	lrh.setRequestLimit(1)
-
-	urh := newUpdateRecordHandler(
-		t,
-		f.serveMux,
-		"record1",
-		"::2",
-		"::2",
-		params,
-		params,
-	)
-	urh.setRequestLimit(1)
-
-	rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.False(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record2", IP: mustIP("::3"), RecordParams: params},
-	}, rs)
-
-	ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-		"record1", mustIP("::2"), params)
-	require.True(t, ok)
-
-	rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-	require.True(t, ok)
-	require.True(t, cached)
-	require.Equal(t, []api.Record{
-		{ID: "record1", IP: mustIP("::2"), RecordParams: params},
-		{ID: "record2", IP: mustIP("::3"), RecordParams: params},
-	}, rs)
-	assertHandlersExhausted(t, zh, lrh, urh)
-}
-
-func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
-	t.Parallel()
-
-	params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
-
-	t.Run("update+delete", func(t *testing.T) {
-		t.Parallel()
-		f := newCloudflareHarness(t)
-		mockPP := f.newPP()
-
-		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-		zh.setRequestLimit(2)
-
-		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
-		lrh.setRequestLimit(1)
-
-		urh := newUpdateRecordHandler(
-			t,
-			f.serveMux,
-			"record1",
-			"::2",
-			"::2",
-			params,
-			params,
-		)
-		urh.setRequestLimit(1)
-
-		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
-		drh.setRequestLimit(1)
-
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.False(t, cached)
-		require.Equal(t, []api.Record{
-			{"record1", mustIP("::1"), params},
-			{"record2", mustIP("::3"), params},
-		}, rs)
-
-		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", mustIP("::2"), params)
-		require.True(t, ok)
-
-		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record2", api.RegularDeletionMode)
-		require.True(t, ok)
-
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.True(t, cached)
-		require.Equal(t, []api.Record{{"record1", mustIP("::2"), params}}, rs)
-		assertHandlersExhausted(t, zh, lrh, urh, drh)
-	})
-
-	t.Run("create+delete", func(t *testing.T) {
-		t.Parallel()
-		f := newCloudflareHarness(t)
-		mockPP := f.newPP()
-
-		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-		zh.setRequestLimit(2)
-
-		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{})
-		lrh.setRequestLimit(1)
-
-		crh := newCreateRecordHandlerWithParams(
-			t,
-			f.serveMux,
-			"record1",
-			ipnet.IP6,
-			"sub.test.org",
-			"::1",
-			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-		)
-		crh.setRequestLimit(1)
-
-		drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
-		drh.setRequestLimit(1)
-
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.False(t, cached)
-		require.Empty(t, rs)
-
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
-		require.True(t, ok)
-		require.Equal(t, api.ID("record1"), id)
-
-		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", api.RegularDeletionMode)
-		require.True(t, ok)
-
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.True(t, cached)
-		require.Empty(t, rs)
-		assertHandlersExhausted(t, zh, lrh, crh, drh)
 	})
 
 	t.Run("mixed/update+create+delete", func(t *testing.T) {
 		t.Parallel()
-		f := newCloudflareHarness(t)
-		mockPP := f.newPP()
+		synctest.Test(t, func(t *testing.T) {
+			f := newCloudflareHarness(t)
+			mockPP := f.newPP()
 
-		zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
-		zh.setRequestLimit(2)
+			zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+			zh.setRequestLimit(2)
 
-		lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
-			[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
-		lrh.setRequestLimit(1)
+			lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org",
+				[]formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}, {ID: "record2", IP: "::3", Comment: "", Tags: nil}})
+			lrh.setRequestLimit(1)
 
-		urh := newUpdateRecordHandler(
-			t,
-			f.serveMux,
-			"record1",
-			"::2",
-			"::2",
-			params,
-			params,
-		)
-		urh.setRequestLimit(1)
+			urh := newUpdateRecordHandler(
+				t,
+				f.serveMux,
+				"record1",
+				"::2",
+				"::2",
+				params,
+				params,
+			)
+			urh.setRequestLimit(1)
 
-		crh := newCreateRecordHandlerWithParams(
-			t,
-			f.serveMux,
-			"record3",
-			ipnet.IP6,
-			"sub.test.org",
-			"::4",
-			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
-		)
-		crh.setRequestLimit(1)
+			crh := newCreateRecordHandlerWithParams(
+				t,
+				f.serveMux,
+				"record3",
+				ipnet.IP6,
+				"sub.test.org",
+				"::4",
+				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+				api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil},
+			)
+			crh.setRequestLimit(1)
 
-		drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
-		drh.setRequestLimit(1)
+			drh := newDeleteRecordHandler(t, f.serveMux, "record2", "::3")
+			drh.setRequestLimit(1)
 
-		rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.False(t, cached)
-		require.Equal(t, []api.Record{
-			{"record1", mustIP("::1"), params},
-			{"record2", mustIP("::3"), params},
-		}, rs)
+			rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.False(t, cached)
+			require.Equal(t, []api.Record{
+				{"record1", mustIP("::1"), params},
+				{"record2", mustIP("::3"), params},
+			}, rs)
 
-		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", mustIP("::2"), params)
-		require.True(t, ok)
+			ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record1", mustIP("::2"), params)
+			require.True(t, ok)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params)
-		require.True(t, ok)
-		require.Equal(t, api.ID("record3"), id)
+			id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params)
+			require.True(t, ok)
+			require.Equal(t, api.ID("record3"), id)
 
-		ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record2", api.RegularDeletionMode)
-		require.True(t, ok)
+			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+				"record2", api.RegularDeletionMode)
+			require.True(t, ok)
 
-		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-		require.True(t, ok)
-		require.True(t, cached)
-		require.Equal(t, []api.Record{
-			{"record3", mustIP("::4"), params},
-			{"record1", mustIP("::2"), params},
-		}, rs)
-		assertHandlersExhausted(t, zh, lrh, urh, crh, drh)
+			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+			require.True(t, ok)
+			require.True(t, cached)
+			require.Equal(t, []api.Record{
+				{"record3", mustIP("::4"), params},
+				{"record1", mustIP("::2"), params},
+			}, rs)
+			assertHandlersExhausted(t, zh, lrh, urh, crh, drh)
+		})
 	})
 }

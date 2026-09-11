@@ -18,7 +18,7 @@ import (
 func TestInvalidKindGuards(t *testing.T) {
 	t.Parallel()
 
-	bad := Derivation{kind: Kind(255)} //nolint:exhaustruct
+	bad := Derivation{kind: Kind(255)} //nolint:exhaustruct_v5
 	raw := ipnet.RawEntryFrom(netip.MustParseAddr("2001:db8::"), 64)
 
 	for name, call := range map[string]func(){

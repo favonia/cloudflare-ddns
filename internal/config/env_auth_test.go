@@ -261,7 +261,7 @@ func TestReadAuth(t *testing.T) {
 			ok := readAuth(mockPP, &field)
 			require.Equal(t, tc.ok, ok)
 			if tc.expected != "" {
-				require.Equal(t, &api.CloudflareAuth{Token: tc.expected, BaseURL: ""}, field)
+				require.Equal(t, &api.CloudflareAuth{Token: tc.expected}, field)
 			} else {
 				require.Nil(t, field)
 			}

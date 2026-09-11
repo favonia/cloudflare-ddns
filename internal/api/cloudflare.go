@@ -53,48 +53,50 @@ type cloudflareHandle struct {
 
 // A CloudflareAuth implements the [Auth] interface, holding the authentication data to create a [cloudflareHandle].
 type CloudflareAuth struct {
-	Token   string
-	BaseURL string
+	Token string
 }
 
 // New creates a [cloudflareHandle] from the authentication data and handle options.
 func (t CloudflareAuth) New(ppfmt pp.PP, options HandleOptions) (Handle, bool) {
-	handle, err := t.newClient()
+	return t.newWithSDKOptions(ppfmt, options)
+}
+
+// newWithSDKOptions applies SDK options before constructing the handle and its caches.
+// An empty option list retains the SDK defaults.
+func (t CloudflareAuth) newWithSDKOptions(
+	ppfmt pp.PP, handleOptions HandleOptions, sdkOptions ...cloudflare.Option,
+) (Handle, bool) {
+	handle, err := t.newClient(sdkOptions...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to prepare the Cloudflare API client: %v", err)
 		return nil, false
 	}
 
-	options.HandleOwnershipPolicy = options.Sanitize(ppfmt)
+	handleOptions.HandleOwnershipPolicy = handleOptions.Sanitize(ppfmt)
 
 	h := cloudflareHandle{
 		cf:      handle,
-		options: options,
+		options: handleOptions,
 		cache: cloudflareCache{
-			listZones:    newCache[string, []zoneMeta](options.CacheExpiration),
-			zoneOfDomain: newCache[string, zoneMeta](options.CacheExpiration),
+			listZones:    newCache[string, []zoneMeta](handleOptions.CacheExpiration),
+			zoneOfDomain: newCache[string, zoneMeta](handleOptions.CacheExpiration),
 			listRecords: map[ipnet.Family]*ttlcache.Cache[string, *[]Record]{
-				ipnet.IP4: newCache[string, *[]Record](options.CacheExpiration),
-				ipnet.IP6: newCache[string, *[]Record](options.CacheExpiration),
+				ipnet.IP4: newCache[string, *[]Record](handleOptions.CacheExpiration),
+				ipnet.IP6: newCache[string, *[]Record](handleOptions.CacheExpiration),
 			},
-			listLists:     newCache[ID, *[]wafListMeta](options.CacheExpiration),
-			listID:        newCache[WAFList, ID](options.CacheExpiration),
-			listListItems: newCache[WAFList, *[]WAFListItem](options.CacheExpiration),
+			listLists:     newCache[ID, *[]wafListMeta](handleOptions.CacheExpiration),
+			listID:        newCache[WAFList, ID](handleOptions.CacheExpiration),
+			listListItems: newCache[WAFList, *[]WAFListItem](handleOptions.CacheExpiration),
 		},
 	}
 
 	return h, true
 }
 
-func (t CloudflareAuth) newClient() (*cloudflare.API, error) {
-	handle, err := cloudflare.NewWithAPIToken(t.Token)
+func (t CloudflareAuth) newClient(options ...cloudflare.Option) (*cloudflare.API, error) {
+	handle, err := cloudflare.NewWithAPIToken(t.Token, options...)
 	if err != nil {
 		return nil, fmt.Errorf("create Cloudflare API client: %w", err)
-	}
-
-	// set the base URL (mostly for testing)
-	if t.BaseURL != "" {
-		handle.BaseURL = t.BaseURL
 	}
 
 	return handle, nil

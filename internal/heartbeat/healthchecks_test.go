@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -247,57 +249,69 @@ func TestHealthchecksEndPoints(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			mockCtrl := gomock.NewController(t)
-			mockPP := mocks.NewMockPP(mockCtrl)
-			if tc.prepareMockPP != nil {
-				tc.prepareMockPP(mockPP)
-			}
-
-			visited := 0
-			pinged := 0
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if !assert.Equal(t, http.MethodPost, r.Method) ||
-					!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
-					panic(http.ErrAbortHandler)
+			synctest.Test(t, func(t *testing.T) {
+				mockCtrl := gomock.NewController(t)
+				mockPP := mocks.NewMockPP(mockCtrl)
+				if tc.prepareMockPP != nil {
+					tc.prepareMockPP(mockPP)
 				}
 
-				if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
-					!assert.Equal(t, tc.message, string(reqBody)) {
-					panic(http.ErrAbortHandler)
-				}
-
-				visited++
-				action := tc.defaultAction
-				if visited <= len(tc.actions) {
-					action = tc.actions[visited-1]
-				}
-				switch action {
-				case ActionOK:
-					pinged++
-					if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
+				started := time.Now()
+				visited := 0
+				pinged := 0
+				server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if !assert.Equal(t, http.MethodPost, r.Method) ||
+						!assert.Equal(t, tc.url, r.URL.EscapedPath()) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionNotOK:
-					w.WriteHeader(http.StatusBadRequest)
-					if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
+
+					if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
+						!assert.Equal(t, tc.message, string(reqBody)) {
 						panic(http.ErrAbortHandler)
 					}
-				case ActionAbort:
-					panic(http.ErrAbortHandler)
-				case ActionFail:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
-				default:
-					assert.Fail(t, "failing the test")
-					panic(http.ErrAbortHandler)
-				}
-			}))
 
-			m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
-			require.True(t, ok)
-			ok = tc.endpoint(mockPP, m)
-			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.pinged, pinged)
+					visited++
+					action := tc.defaultAction
+					if visited <= len(tc.actions) {
+						action = tc.actions[visited-1]
+					}
+					switch action {
+					case ActionOK:
+						pinged++
+						if _, err := io.WriteString(w, "OK"); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionNotOK:
+						w.WriteHeader(http.StatusBadRequest)
+						if _, err := io.WriteString(w, "invalid url format"); !assert.NoError(t, err) {
+							panic(http.ErrAbortHandler)
+						}
+					case ActionAbort:
+						panic(http.ErrAbortHandler)
+					case ActionFail:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					default:
+						assert.Fail(t, "failing the test")
+						panic(http.ErrAbortHandler)
+					}
+				}))
+
+				client := server.Client()
+				m, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
+				require.True(t, ok)
+				m = m.WithHTTPClient(client)
+				ok = tc.endpoint(mockPP, m)
+				synctest.Wait()
+				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.pinged, pinged)
+				require.LessOrEqual(t, time.Since(started), m.Timeout)
+				if tc.actions != nil {
+					require.Equal(t, len(tc.actions), visited)
+				} else {
+					require.Greater(t, visited, 1, "transient failures should be retried")
+				}
+			})
 		})
 	}
 }
@@ -316,7 +330,7 @@ func TestHealthchecksPingRequestCreationFailure(t *testing.T) {
 
 	// A space in the host makes net/http reject the URL during request creation before any network I/O happens.
 	ok := (heartbeat.Healthchecks{
-		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct // Unused URL fields are irrelevant to this request-construction failure fixture.
+		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct_v5 // Unused URL fields are irrelevant to this request-construction failure fixture.
 		Timeout: heartbeat.HealthchecksDefaultTimeout,
 	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello"))
 	require.False(t, ok)
@@ -337,7 +351,7 @@ func TestHealthchecksPingResponseReadFailure(t *testing.T) {
 		),
 	)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/", r.URL.EscapedPath())
 
@@ -366,9 +380,10 @@ func TestHealthchecksPingResponseReadFailure(t *testing.T) {
 			panic(http.ErrAbortHandler)
 		}
 	}))
-	defer server.Close()
+	client := server.Client()
 
 	h, ok := heartbeat.NewHealthchecks(mockPP, server.URL)
 	require.True(t, ok)
+	h = h.WithHTTPClient(client)
 	require.False(t, h.Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "hello")))
 }

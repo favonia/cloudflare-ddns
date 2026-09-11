@@ -114,10 +114,7 @@ type traceAttemptResult struct {
 }
 
 func attemptCloudflareTrace(
-	ctx context.Context,
-	traceURL string,
-	ipFamily ipnet.Family,
-	defaultPrefixLen int,
+	ctx context.Context, traceURL string, ipFamily ipnet.Family, defaultPrefixLen int, client *http.Client,
 ) traceAttemptResult {
 	_, err := url.Parse(traceURL)
 	if err != nil {
@@ -125,23 +122,23 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: nil,
-			failure: traceFailure{ //nolint:exhaustruct // This failure carries only its parse error.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // This failure carries only its parse error.
 				kind:  traceFailureInvalidEndpoint,
 				cause: err,
 			},
 		}
 	}
 
-	c := httpCore{ //nolint:exhaustruct // GET request; no additional headers or body needed.
+	c := httpCore{ //nolint:exhaustruct_v5 // GET request; no additional headers or body needed.
 		ipFamily:      ipFamily,
 		url:           traceURL,
 		method:        http.MethodGet,
 		maxReadLength: traceMaxReadLength,
 	}
-	body, finalURL, err := c.getBodyWithoutRetry(ctx)
+	body, finalURL, err := c.getBodyWithoutRetry(ctx, client)
 	if err != nil {
 		if ctx.Err() != nil {
-			return traceAttemptResult{ //nolint:exhaustruct // Cancellation is not a definite failure.
+			return traceAttemptResult{ //nolint:exhaustruct_v5 // Cancellation is not a definite failure.
 				status:  traceAttemptCanceled,
 				rawData: NewUnavailableDetectionResult(),
 			}
@@ -150,7 +147,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: nil,
-			failure: traceFailure{ //nolint:exhaustruct // This failure carries only its request error.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // This failure carries only its request error.
 				kind:  traceFailureRequest,
 				cause: err,
 			},
@@ -170,7 +167,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure: traceFailure{ //nolint:exhaustruct // This failure compares the observed and expected hosts.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // This failure compares the observed and expected hosts.
 				kind:     traceFailureMismatchedH,
 				observed: fields.h,
 				expected: finalURL.Host,
@@ -189,7 +186,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure: traceFailure{ //nolint:exhaustruct // The observed WARP state is sufficient.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // The observed WARP state is sufficient.
 				kind:     traceFailureWarpOn,
 				observed: fields.warp,
 			},
@@ -202,7 +199,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure:  traceFailure{kind: traceFailureMissingIP}, //nolint:exhaustruct // No supporting fields needed.
+			failure:  traceFailure{kind: traceFailureMissingIP}, //nolint:exhaustruct_v5 // No supporting fields needed.
 		}
 	}
 	ip, err := netip.ParseAddr(fields.ip)
@@ -211,7 +208,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure: traceFailure{ //nolint:exhaustruct // The unparseable value is sufficient.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // The unparseable value is sufficient.
 				kind:     traceFailureUnparseableIP,
 				observed: fields.ip,
 			},
@@ -222,7 +219,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure: traceFailure{ //nolint:exhaustruct // The detected Cloudflare address is sufficient.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // The detected Cloudflare address is sufficient.
 				kind:     traceFailureCloudflareIP,
 				observed: ip.String(),
 			},
@@ -235,7 +232,7 @@ func attemptCloudflareTrace(
 			status:   traceAttemptFailed,
 			rawData:  NewUnavailableDetectionResult(),
 			warnings: warnings,
-			failure: traceFailure{ //nolint:exhaustruct // Validation supplies the problem and optional hint flag.
+			failure: traceFailure{ //nolint:exhaustruct_v5 // Validation supplies the problem and optional hint flag.
 				kind:             traceFailureInvalidDetectedIP,
 				observed:         ip.String(),
 				problem:          problem,
@@ -250,7 +247,7 @@ func attemptCloudflareTrace(
 			ipnet.LiftValidatedIPsToRawEntries([]netip.Addr{normalized}, defaultPrefixLen),
 		),
 		warnings: warnings,
-		failure:  traceFailure{}, //nolint:exhaustruct // The zero value means no failure.
+		failure:  traceFailure{}, //nolint:exhaustruct_v5 // The zero value means no failure.
 	}
 }
 
@@ -326,6 +323,16 @@ func reportCloudflareTraceWinnerWarnings(
 func (p CloudflareTrace) GetRawData(
 	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int,
 ) DetectionResult {
+	return p.getRawDataWithHTTPClient(ctx, ppfmt, ipFamily, defaultPrefixLen, SharedSplitClient(ipFamily))
+}
+
+// getRawDataWithHTTPClient performs GetRawData using the supplied client for all
+// concurrent attempts. ipFamily selects endpoints and validates the returned IP;
+// for network requests, the caller must configure the client's transport to
+// enforce the dialing family.
+func (p CloudflareTrace) getRawDataWithHTTPClient(
+	ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, defaultPrefixLen int, client *http.Client,
+) DetectionResult {
 	endpoints, found := p.URLs[ipFamily]
 	if !found || len(endpoints) == 0 {
 		ppfmt.Noticef(pp.EmojiImpossible, "Unhandled IP family: %s", ipFamily.Describe())
@@ -338,7 +345,7 @@ func (p CloudflareTrace) GetRawData(
 		endpoints,
 		cloudflareTraceHedgeDelay(ctx, coordinatorStart),
 		func(attemptCtx context.Context, endpoint string) traceAttemptResult {
-			return attemptCloudflareTrace(attemptCtx, endpoint, ipFamily, defaultPrefixLen)
+			return attemptCloudflareTrace(attemptCtx, endpoint, ipFamily, defaultPrefixLen, client)
 		},
 	)
 

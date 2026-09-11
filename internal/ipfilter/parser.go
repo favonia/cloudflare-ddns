@@ -34,12 +34,12 @@ func Parse(ppfmt pp.PP, key string, family ipnet.Family, input string) (Filter, 
 	tree, err := grammar.Parse(input)
 	if err != nil {
 		syntaxFault{err: err}.report(ppfmt, key, input)
-		return Filter{}, false //nolint:exhaustruct
+		return Filter{}, false //nolint:exhaustruct_v5
 	}
 	expr, f := buildExpr(tree, family, true)
 	if f != nil {
 		f.report(ppfmt, key, input)
-		return Filter{}, false //nolint:exhaustruct
+		return Filter{}, false //nolint:exhaustruct_v5
 	}
 	return Filter{expr: expr, text: expr.string()}, true
 }

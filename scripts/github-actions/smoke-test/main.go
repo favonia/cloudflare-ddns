@@ -167,8 +167,7 @@ func runDDNS(binaryPath, coverageOutputDir string, definition smokeCase) (string
 	output, err := command.CombinedOutput()
 	actualExitCode := 0
 	if err != nil {
-		var exitError *exec.ExitError
-		if errors.As(err, &exitError) {
+		if exitError, ok := errors.AsType[*exec.ExitError](err); ok {
 			actualExitCode = exitError.ExitCode()
 		} else {
 			return "", fmt.Errorf("run ddns: %w", err)

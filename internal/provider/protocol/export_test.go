@@ -1,7 +1,14 @@
+// This file lets protocol_test supply interface addresses and HTTP clients
+// while exercising detection results and diagnostics from outside the package.
+// In particular, Cloudflare Trace tests need HTTP injection to control response
+// timing and cancellation without changing production transport configuration.
+
 package protocol
 
 import (
+	"context"
 	"net"
+	"net/http"
 	"net/netip"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
@@ -20,4 +27,12 @@ func SelectAndNormalizeInterfaceIPs(
 	ppfmt pp.PP, iface string, ipFamily ipnet.Family, defaultPrefixLen int, addrs []net.Addr,
 ) DetectionResult {
 	return selectAndNormalizeInterfaceIPs(ppfmt, iface, ipFamily, defaultPrefixLen, addrs)
+}
+
+// GetRawDataWithHTTPClient runs trace detection using client for concurrent attempts.
+// The client controls the dialing family; family selects endpoints and validates IPs.
+func (p CloudflareTrace) GetRawDataWithHTTPClient(
+	ctx context.Context, ppfmt pp.PP, family ipnet.Family, prefixLen int, client *http.Client,
+) DetectionResult {
+	return p.getRawDataWithHTTPClient(ctx, ppfmt, family, prefixLen, client)
 }

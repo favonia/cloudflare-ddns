@@ -2,6 +2,8 @@ version: "2"
 linters:
   default: all
   disable:
+    - exhaustruct # replaced by exhaustruct_v5
+    - gomodguard # replaced by gomodguard_v2
     - goconst # never leads to actual code changes
     - mnd # never leads to actual code changes
 
@@ -24,6 +26,13 @@ linters:
     - ireturn # doesn't work for private struct types; see https://github.com/butuzov/ireturn/issues/31
     - nonamedreturns # named returns are needed in the internal setter package for partitioning records
   settings:
+    exhaustruct_v5:
+      # Remove once golangci-lint includes exhaustruct >= 5.1.0:
+      # https://github.com/golangci/golangci-lint/issues/6780
+      # Version 5.0.3 panics on these types after Go 1.27's embedlit fixer.
+      ignore-patterns:
+        - "^github\\.com/favonia/cloudflare-ddns/internal/api\\.(Record|HandleOptions)$"
+        - "^github\\.com/favonia/cloudflare-ddns/internal/setter\\.record$"
     exhaustive:
       default-signifies-exhaustive: true
     gosec:

@@ -23,6 +23,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 ### Shared lifecycle and resource models
 
 - [`features/lifecycle-model.markdown`](features/lifecycle-model.markdown): read when changing how one updater run starts, detects raw data, derives resource-specific targets, reconciles managed state, or cleans up on shutdown.
+- [`features/http-client-lifecycle.markdown`](features/http-client-lifecycle.markdown): read when changing HTTP client construction, transport sharing, or connection cleanup.
 - [`features/ownership-model.markdown`](features/ownership-model.markdown): read when changing the shared ownership predicates or deletion-eligibility inference across DNS and WAF.
 - [`features/reconciliation-algorithm.markdown`](features/reconciliation-algorithm.markdown): read when changing reconciliation semantics or interruption-risk policy across managed resources.
 

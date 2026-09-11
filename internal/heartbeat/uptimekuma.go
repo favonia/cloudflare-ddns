@@ -26,11 +26,15 @@ type UptimeKuma struct {
 	// The endpoint
 	BaseURL *url.URL
 
-	// Timeout for each ping
+	// Timeout bounds each whole ping, including retries. The caller's context
+	// may cancel it sooner.
 	Timeout time.Duration
+
+	// If nil, each ping uses http.DefaultClient and its shared connection pool.
+	httpClient *http.Client
 }
 
-var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct
+var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct_v5
 
 const (
 	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
@@ -42,12 +46,12 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	if !u.IsAbs() || u.Host == "" || u.Opaque != "" {
 		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	switch u.Scheme {
@@ -59,7 +63,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 
 	default:
 		ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-		return UptimeKuma{}, false //nolint:exhaustruct
+		return UptimeKuma{}, false //nolint:exhaustruct_v5
 	}
 
 	// By default, the URL provided by Uptime Kuma has this:
@@ -71,7 +75,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 		q, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
 			ppfmt.Noticef(pp.EmojiUserError, `The Uptime Kuma URL (redacted) is not a valid URL`)
-			return UptimeKuma{}, false //nolint:exhaustruct
+			return UptimeKuma{}, false //nolint:exhaustruct_v5
 		}
 
 		for k, vs := range q {
@@ -92,8 +96,9 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 	}
 
 	h := UptimeKuma{
-		BaseURL: u,
-		Timeout: UptimeKumaDefaultTimeout,
+		BaseURL:    u,
+		Timeout:    UptimeKumaDefaultTimeout,
+		httpClient: nil,
 	}
 
 	return h, true
@@ -143,7 +148,7 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param uptimeKumaReque
 	ctx, cancel := context.WithTimeout(ctx, h.Timeout)
 	defer cancel()
 
-	url := *h.BaseURL
+	url := h.BaseURL.Clone()
 	v, _ := query.Values(param)
 	url.RawQuery = v.Encode()
 
@@ -155,6 +160,10 @@ func (h UptimeKuma) ping(ctx context.Context, ppfmt pp.PP, param uptimeKumaReque
 
 	c := retryablehttp.NewClient()
 	c.Logger = nil
+	c.HTTPClient = http.DefaultClient
+	if h.httpClient != nil {
+		c.HTTPClient = h.httpClient
+	}
 
 	resp, err := c.Do(req)
 	if err != nil {

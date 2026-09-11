@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,7 +84,7 @@ func TestShoutrrrSend(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		path          string
-		pinged        int
+		pinged        int32
 		service       func(serverURL string) string
 		notification  notifier.Notification
 		ok            bool
@@ -150,7 +151,7 @@ func TestShoutrrrSend(t *testing.T) {
 				tc.prepareMockPP(mockPP)
 			}
 
-			pinged := 0
+			var pinged atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				if !assert.Equal(t, http.MethodPost, r.Method) ||
 					!assert.Equal(t, tc.path, r.URL.EscapedPath()) {
@@ -162,14 +163,16 @@ func TestShoutrrrSend(t *testing.T) {
 					panic(http.ErrAbortHandler)
 				}
 
-				pinged++
+				pinged.Add(1)
 			}))
+
+			t.Cleanup(server.Close)
 
 			s, ok := notifier.NewShoutrrr(mockPP, []string{tc.service(server.URL)})
 			require.True(t, ok)
 			ok = s.Send(context.Background(), mockPP, tc.notification)
 			require.Equal(t, tc.ok, ok)
-			require.Equal(t, tc.pinged, pinged)
+			require.Equal(t, tc.pinged, pinged.Load())
 		})
 	}
 }
@@ -178,13 +181,13 @@ func TestShoutrrrSendMultipleServices(t *testing.T) {
 	t.Parallel()
 
 	notification := notifier.NewNotificationf(notifier.KindUpdate, "hello")
-	pinged := 0
+	var pinged atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		if reqBody, err := io.ReadAll(r.Body); !assert.NoError(t, err) ||
 			!assert.Equal(t, notification.Format(), string(reqBody)) {
 			panic(http.ErrAbortHandler)
 		}
-		pinged++
+		pinged.Add(1)
 	}))
 	t.Cleanup(server.Close)
 
@@ -201,5 +204,5 @@ func TestShoutrrrSendMultipleServices(t *testing.T) {
 	s, ok := notifier.NewShoutrrr(mockPP, []string{service, service})
 	require.True(t, ok)
 	require.True(t, s.Send(context.Background(), mockPP, notification))
-	require.Equal(t, 2, pinged)
+	require.Equal(t, int32(2), pinged.Load())
 }

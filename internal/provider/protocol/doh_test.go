@@ -38,7 +38,7 @@ func (testIPAccepter) RejectRawIP(_ netip.Addr) (bool, string) {
 func TestDNSOverHTTPSName(t *testing.T) {
 	t.Parallel()
 
-	p := protocol.DNSOverHTTPS{ //nolint:exhaustruct // only testing Name()
+	p := protocol.DNSOverHTTPS{ //nolint:exhaustruct_v5 // only testing Name()
 		ProviderName: "very secret name",
 		Param:        nil,
 	}
@@ -51,7 +51,7 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 ) *httptest.Server {
 	t.Helper()
 
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !assert.Equal(t, http.MethodPost, r.Method) ||
 			!assert.Equal(t, "application/dns-message", r.Header.Get("Content-Type")) ||
 			!assert.Equal(t, "application/dns-message", r.Header.Get("Accept")) {
@@ -107,6 +107,8 @@ func setupServer(t *testing.T, name string, class dnsmessage.Class,
 			panic(http.ErrAbortHandler)
 		}
 	}))
+	t.Cleanup(server.Close)
+	return server
 }
 
 func TestDNSOverHTTPSGetRawData(t *testing.T) {
@@ -133,11 +135,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -154,11 +156,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{}, //nolint:exhaustruct
+			&dnsmessage.Header{}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test"),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -177,11 +179,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -200,11 +202,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			10,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -223,7 +225,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{},
 			nil,
@@ -236,11 +238,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{}, //nolint:exhaustruct
+			&dnsmessage.Header{}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -259,11 +261,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, Truncated: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true, Truncated: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -282,11 +284,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeFormatError}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeFormatError}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -305,11 +307,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassINET,
 					},
@@ -318,7 +320,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -335,11 +337,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -348,7 +350,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -365,11 +367,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test.another."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -388,11 +390,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -401,7 +403,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test.another."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -418,11 +420,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -431,7 +433,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -448,11 +450,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -471,11 +473,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -494,11 +496,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -507,7 +509,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 					},
 				},
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -526,11 +528,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -549,11 +551,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			false,
-			&dnsmessage.Header{}, //nolint:exhaustruct
+			&dnsmessage.Header{}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -572,11 +574,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassINET,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassINET,
 					},
@@ -593,11 +595,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -614,11 +616,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeServerFailure}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeServerFailure}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -637,11 +639,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeNameError}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true, RCode: dnsmessage.RCodeNameError}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -660,11 +662,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{Response: true}, //nolint:exhaustruct
+			&dnsmessage.Header{Response: true}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -683,11 +685,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP4, ipnet.IP6, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{}, //nolint:exhaustruct
+			&dnsmessage.Header{}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -706,11 +708,11 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 			ipnet.IP6, ipnet.IP4, "test.",
 			dnsmessage.ClassCHAOS,
 			true,
-			&dnsmessage.Header{}, //nolint:exhaustruct
+			&dnsmessage.Header{}, //nolint:exhaustruct_v5
 			0,
 			[]dnsmessage.Resource{
 				{
-					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct
+					Header: dnsmessage.ResourceHeader{ //nolint:exhaustruct_v5
 						Name:  dnsmessage.MustNewName("test."),
 						Class: dnsmessage.ClassCHAOS,
 					},
@@ -764,7 +766,7 @@ func TestDNSOverHTTPSGetRawData(t *testing.T) {
 func TestDNSOverHTTPSNameIsExplicitEmpty(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, protocol.DNSOverHTTPS{ //nolint:exhaustruct // only testing IsExplicitEmpty()
+	require.False(t, protocol.DNSOverHTTPS{ //nolint:exhaustruct_v5 // only testing IsExplicitEmpty()
 		ProviderName: "",
 		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
 			ipnet.IP4: {"https://localhost", "hello.", dnsmessage.ClassCHAOS},

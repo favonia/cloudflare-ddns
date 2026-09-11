@@ -36,7 +36,7 @@ func filterIP4Only(_ context.Context, network, _ string, _ syscall.RawConn) erro
 }
 
 func newControlledDialer(control func(context.Context, string, string, syscall.RawConn) error) *net.Dialer {
-	return &net.Dialer{ //nolint:exhaustruct
+	return &net.Dialer{ //nolint:exhaustruct_v5
 		Timeout:        30 * time.Second,
 		KeepAlive:      30 * time.Second,
 		ControlContext: control,
@@ -48,7 +48,7 @@ func newControlledTransport(control func(context.Context, string, string, syscal
 	protocols.SetHTTP1(true)
 	protocols.SetHTTP2(true)
 
-	return &http.Transport{ //nolint:exhaustruct
+	return &http.Transport{ //nolint:exhaustruct_v5
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           newControlledDialer(control).DialContext,
 		Protocols:             protocols,
@@ -60,7 +60,7 @@ func newControlledTransport(control func(context.Context, string, string, syscal
 }
 
 func newControlledClient(control func(context.Context, string, string, syscall.RawConn) error) *http.Client {
-	return &http.Client{Transport: newControlledTransport(control)} //nolint:exhaustruct
+	return &http.Client{Transport: newControlledTransport(control)} //nolint:exhaustruct_v5
 }
 
 //nolint:gochecknoglobals

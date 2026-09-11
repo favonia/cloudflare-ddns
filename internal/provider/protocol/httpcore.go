@@ -63,17 +63,17 @@ func (h httpCore) getBodyWithRetryableClient(
 }
 
 // getBodyWithoutRetry currently serves only attemptCloudflareTrace, whose
-// hedging coordinator schedules alternative attempts. It uses the shared
-// IP-family client without adding retries or changing client policy; redirects
+// hedging coordinator schedules alternative attempts. It uses the supplied
+// HTTP client without adding retries or changing client policy; redirects
 // and transport-level retries can still send additional requests. The caller
-// must bound ctx and select a supported IP family.
+// must bound ctx and supply an appropriate client.
 //
 // On success it returns the size-limited body and final request URL after any
 // redirects, with the response body closed. On failure both returned values are
 // nil. It does not reject HTTP status codes: Cloudflare Trace validates the body
 // and its h field against the final URL. Other callers must define their own
 // status and body validation before reusing this helper.
-func (h httpCore) getBodyWithoutRetry(ctx context.Context) ([]byte, *url.URL, error) {
+func (h httpCore) getBodyWithoutRetry(ctx context.Context, client *http.Client) ([]byte, *url.URL, error) {
 	req, err := http.NewRequestWithContext(ctx, h.method, h.url, h.requestBody)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to prepare request: %w", err)
@@ -82,7 +82,7 @@ func (h httpCore) getBodyWithoutRetry(ctx context.Context) ([]byte, *url.URL, er
 		req.Header.Set(header, value)
 	}
 
-	resp, err := SharedSplitClient(h.ipFamily).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("request failed: %w", err)
 	}
