@@ -42,6 +42,12 @@ func TestNewUptimeKuma(t *testing.T) {
 				m.EXPECT().Noticef(pp.EmojiUserError, "The Uptime Kuma URL (redacted) contains an unexpected query parameter %s=...; it will be ignored", "random")
 			},
 		},
+		"malformed-url": {
+			"https://user:pass@host/%zz", false,
+			func(m *mocks.MockPP) {
+				m.EXPECT().Noticef(pp.EmojiUserError, "Failed to parse the Uptime Kuma URL (redacted)")
+			},
+		},
 		"malformed-query": {
 			"https://user:pass@host/path?status=up;msg=OK;ping=", false,
 			func(m *mocks.MockPP) {
