@@ -1,3 +1,9 @@
 wrap = "keep"
 number = true
-extensions = ["gfm"]
+extensions = ["gfm", "front_matters"]
+
+[plugin.front_matters]
+strict_front_matter = true
+
+[plugin.tables]
+compact_tables = true

@@ -16,11 +16,11 @@ Providers currently operate per in-scope IP family and return one family-specifi
 
 This note specifies how in-scope providers produce raw data under the reconciliation intents defined by [Lifecycle Model](lifecycle-model.markdown):
 
-| reconciliation intent | meaning                                      | carried raw data        |
-| --------------------- | -------------------------------------------- | ----------------------- |
-| `abort`               | admissible raw data unavailable for this run | not applicable          |
-| `clear`               | known empty admissible raw data              | not applicable or empty |
-| `update`              | known non-empty admissible raw data          | non-empty raw data      |
+| reconciliation intent | meaning | carried raw data |
+| -- | -- | -- |
+| `abort` | admissible raw data unavailable for this run | not applicable |
+| `clear` | known empty admissible raw data | not applicable or empty |
+| `update` | known non-empty admissible raw data | non-empty raw data |
 
 Out-of-scope families are outside this contract because no provider is called for them.
 

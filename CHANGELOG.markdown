@@ -89,12 +89,12 @@ The IP prefix length work in this release lays the groundwork for several upcomi
   - `IP4_DETECTION_FILTER=!addr-in(10.0.0.0/8) && !addr-in(192.168.0.0/16)`
   - `IP6_DETECTION_FILTER=contains(2002:dead:beef::/100) || contains(2005:dead:beef::/100)`
 
-| input        | `addr-in(1.1.0.0/16)`              | `subnet-in(1.1.0.0/16)` | `contains(1.1.0.0/16)` |
-| ------------ | ---------------------------------- | ----------------------- | ---------------------- |
-| `1.1.1.1/8`  | ✔️                                 | ❌                      | ✔️                     |
-| `1.1.1.1/16` | ✔️                                 | ✔️                      | ✔️                     |
-| `1.1.1.1/24` | ✔️                                 | ✔️                      | ❌                     |
-| `1.2.2.2/8`  | ❌ (`1.2.2.2` not in `1.1.0.0/16`) | ❌                      | ✔️                     |
+| input | `addr-in(1.1.0.0/16)` | `subnet-in(1.1.0.0/16)` | `contains(1.1.0.0/16)` |
+| -- | -- | -- | -- |
+| `1.1.1.1/8` | ✔️ | ❌ | ✔️ |
+| `1.1.1.1/16` | ✔️ | ✔️ | ✔️ |
+| `1.1.1.1/24` | ✔️ | ✔️ | ❌ |
+| `1.2.2.2/8` | ❌ (`1.2.2.2` not in `1.1.0.0/16`) | ❌ | ✔️ |
 
 Also planned: a linter for boolean expressions targeting advanced usage of `PROXIED` and the upcoming `IP4/6_DETECTION_FILTER`, and further robustness improvements to the default `cloudflare.trace` provider.
 
