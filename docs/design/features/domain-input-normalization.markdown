@@ -10,12 +10,12 @@ This contract applies to untrusted domain text from configuration. Trusted direc
 
 Domain-like input first passes through the repository's existing IDNA lookup mapping. The mapped dot structure is then classified. Accepted input produces one canonical value.
 
-| input shape after IDNA mapping     | 1.x result                                | 2.0.0 transition                      |
-| ---------------------------------- | ----------------------------------------- | ------------------------------------- |
-| one final root dot                 | accepted and removed silently             | remains accepted and removed silently |
-| one or more leading dots           | accepted after removal, with a warning    | reject the non-canonical spelling     |
-| two or more final dots             | accepted after removal, with a warning    | reject the non-canonical spelling     |
-| any remaining empty interior label | reject with an empty-interior-label error | remains rejected                      |
+| input shape after IDNA mapping | 1.x result | 2.0.0 transition |
+| -- | -- | -- |
+| one final root dot | accepted and removed silently | remains accepted and removed silently |
+| one or more leading dots | accepted after removal, with a warning | reject the non-canonical spelling |
+| two or more final dots | accepted after removal, with a warning | reject the non-canonical spelling |
+| any remaining empty interior label | reject with an empty-interior-label error | remains rejected |
 
 For root suffixes, `""` and `"."` are accepted silently; spellings consisting of two or more dots are accepted with an extra-trailing-dot warning. Root and one-label suffixes are permitted, while root and one-label target domains are rejected as having too few labels.
 
