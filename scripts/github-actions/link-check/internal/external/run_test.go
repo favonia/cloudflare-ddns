@@ -46,6 +46,8 @@ func TestCollectURLsUsesDefaultOperationalEndpointExclusions(t *testing.T) {
 	testutil.WriteFile(t, root, "operational.go", strings.Join([]string{
 		`const zonesURL = "https://api.cloudflare.com/client/v4/zones"`,
 		`const wafListsURL = "https://api.cloudflare.com/client/v4/accounts/" + accountID + "/rules/lists"`,
+		`const websiteTraceURL = "https://www.cloudflare.com/cdn-cgi/trace"`,
+		`const connectivityTraceURL = "https://connectivity.cloudflareclient.com/cdn-cgi/trace"`,
 		`const docsURL = "https://developers.cloudflare.com/api/"`,
 	}, "\n"))
 

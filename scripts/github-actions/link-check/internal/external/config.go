@@ -89,8 +89,11 @@ func defaultConfig() config {
 					"https://api.github.com",
 					// These endpoints are operational probes or auth-only APIs rather than
 					// durable documentation targets, so probing them adds noise.
+					// Trace endpoints can return 404 to HEAD while serving valid GET responses.
 					"https://one.one.one.one/cdn-cgi/trace",
 					"https://api.cloudflare.com/cdn-cgi/trace",
+					"https://www.cloudflare.com/cdn-cgi/trace",
+					"https://connectivity.cloudflareclient.com/cdn-cgi/trace",
 					"https://api.cloudflare.com/client/v4/zones",
 					"https://api.cloudflare.com/client/v4/accounts/",
 					"https://token.actions.githubusercontent.com",
