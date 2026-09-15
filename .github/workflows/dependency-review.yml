@@ -15,6 +15,7 @@ jobs:
     name: "Dependency review"
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: Harden Runner

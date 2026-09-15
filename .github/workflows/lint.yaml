@@ -13,6 +13,7 @@ jobs:
     name: "Go: core"
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -43,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     strategy:
       fail-fast: false
@@ -85,6 +87,7 @@ jobs:
     name: GitHub Actions (actionlint)
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -122,6 +125,7 @@ jobs:
     name: GitHub Actions (zizmor)
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       security-events: write
       contents: read
     steps:
@@ -143,6 +147,7 @@ jobs:
     name: Dockerfile
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -165,6 +170,7 @@ jobs:
     name: YAML
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -197,6 +203,7 @@ jobs:
     name: JSON
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -233,6 +240,7 @@ jobs:
     name: Markdown
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner

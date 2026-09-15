@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -67,6 +68,7 @@ jobs:
     timeout-minutes: 10
     continue-on-error: ${{ matrix.target.experimental }}
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     concurrency:
       group: ${{ github.workflow }}-fuzz-${{ matrix.target.name }}-${{ github.ref }}
@@ -128,6 +130,7 @@ jobs:
     name: Smoke
     runs-on: ubuntu-latest
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -173,6 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -212,6 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
@@ -241,6 +246,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     strategy:
       fail-fast: false
@@ -288,6 +294,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     strategy:
       fail-fast: false
