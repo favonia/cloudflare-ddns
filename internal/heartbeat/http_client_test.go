@@ -30,7 +30,7 @@ func heartbeatHTTPTestCases() []heartbeatHTTPTestCase {
 		{
 			name:           "healthchecks",
 			responseBody:   "OK",
-			defaultTimeout: heartbeat.HealthchecksDefaultTimeout,
+			defaultTimeout: 10 * time.Second,
 			newHeartbeat: func(t *testing.T, url string, client *http.Client) heartbeat.BasicHeartbeat {
 				t.Helper()
 				h, ok := heartbeat.NewHealthchecks(pp.NewSilent(), url)
@@ -41,7 +41,7 @@ func heartbeatHTTPTestCases() []heartbeatHTTPTestCase {
 		{
 			name:           "uptime-kuma",
 			responseBody:   `{"ok":true}`,
-			defaultTimeout: heartbeat.UptimeKumaDefaultTimeout,
+			defaultTimeout: 10 * time.Second,
 			newHeartbeat: func(t *testing.T, url string, client *http.Client) heartbeat.BasicHeartbeat {
 				t.Helper()
 				h, ok := heartbeat.NewUptimeKuma(pp.NewSilent(), url)
