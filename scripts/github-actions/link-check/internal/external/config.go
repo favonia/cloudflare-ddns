@@ -111,6 +111,9 @@ func defaultConfig() config {
 					"^https://some\\.host\\.name(?:[/:?]|$)",
 					"^https://user:pass@host(?:[/:?]|$)",
 					"%s",
+					// Skip literal ${NAME} placeholders with ASCII shell variable names.
+					// This recognizes only that spelling; it does not parse or expand shell syntax.
+					`\$\{[A-Za-z_][A-Za-z0-9_]*\}`,
 				},
 			},
 		},
