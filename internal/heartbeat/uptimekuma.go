@@ -37,8 +37,8 @@ type UptimeKuma struct {
 var _ BasicHeartbeat = UptimeKuma{} //nolint:exhaustruct_v5
 
 const (
-	// UptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
-	UptimeKumaDefaultTimeout = 10 * time.Second
+	// uptimeKumaDefaultTimeout is the default timeout for a UptimeKuma ping.
+	uptimeKumaDefaultTimeout = 10 * time.Second
 )
 
 // NewUptimeKuma creates a new Uptime Kuma heartbeat service.
@@ -97,7 +97,7 @@ func NewUptimeKuma(ppfmt pp.PP, rawURL string) (UptimeKuma, bool) {
 
 	h := UptimeKuma{
 		BaseURL:    u,
-		Timeout:    UptimeKumaDefaultTimeout,
+		Timeout:    uptimeKumaDefaultTimeout,
 		httpClient: nil,
 	}
 

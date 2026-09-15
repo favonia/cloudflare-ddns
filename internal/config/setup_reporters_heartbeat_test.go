@@ -4,6 +4,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -73,7 +74,7 @@ func TestSetupReportersHeartbeat(t *testing.T) {
 				require.Equal(t,
 					heartbeat.NewComposed(heartbeat.Healthchecks{
 						BaseURL: urlMustParse(t, "https://hi.org/1234"),
-						Timeout: heartbeat.HealthchecksDefaultTimeout,
+						Timeout: 10 * time.Second,
 					}),
 					hb,
 				)
@@ -92,7 +93,7 @@ func TestSetupReportersHeartbeat(t *testing.T) {
 				require.Equal(t,
 					heartbeat.NewComposed(heartbeat.UptimeKuma{
 						BaseURL: urlMustParse(t, "https://hi.org/1234"),
-						Timeout: heartbeat.UptimeKumaDefaultTimeout,
+						Timeout: 10 * time.Second,
 					}),
 					hb,
 				)
@@ -112,11 +113,11 @@ func TestSetupReportersHeartbeat(t *testing.T) {
 					heartbeat.NewComposed(
 						heartbeat.Healthchecks{
 							BaseURL: urlMustParse(t, "https://healthchecks.example/1234"),
-							Timeout: heartbeat.HealthchecksDefaultTimeout,
+							Timeout: 10 * time.Second,
 						},
 						heartbeat.UptimeKuma{
 							BaseURL: urlMustParse(t, "https://uptime.example/1234"),
-							Timeout: heartbeat.UptimeKumaDefaultTimeout,
+							Timeout: 10 * time.Second,
 						},
 					),
 					hb,

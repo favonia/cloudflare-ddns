@@ -12,11 +12,11 @@ const (
 	intervalHugeGap  time.Duration = time.Minute * 10
 )
 
-// DescribeIntuitively describes a time but omits years or dates when
+// describeIntuitively describes a time but omits years or dates when
 // they are the same as those of the current time. Therefore,
 // - "12:33" means 12:33 today.
 // - "14 Jun 12:33" means 14 Jun 12:23 this year.
-func DescribeIntuitively(now, target time.Time) string {
+func describeIntuitively(now, target time.Time) string {
 	now = now.In(time.Local)
 	target = target.In(time.Local)
 
@@ -47,7 +47,7 @@ func PrintCountdown(ppfmt pp.PP, activity string, now, target time.Time) {
 		ppfmt.Infof(pp.EmojiAlarm, "%s in about %v (%v) . . .",
 			activity,
 			interval.Round(intervalUnit),
-			DescribeIntuitively(now, target),
+			describeIntuitively(now, target),
 		)
 	}
 }

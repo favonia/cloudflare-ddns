@@ -30,8 +30,8 @@ type Healthchecks struct {
 var _ Heartbeat = Healthchecks{} //nolint:exhaustruct_v5
 
 const (
-	// HealthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
-	HealthchecksDefaultTimeout = 10 * time.Second
+	// healthchecksDefaultTimeout is the default timeout for a Healthchecks ping.
+	healthchecksDefaultTimeout = 10 * time.Second
 )
 
 type healthchecksPingSpec struct {
@@ -105,7 +105,7 @@ func NewHealthchecks(ppfmt pp.PP, rawURL string) (Healthchecks, bool) {
 
 	h := Healthchecks{
 		BaseURL:    u,
-		Timeout:    HealthchecksDefaultTimeout,
+		Timeout:    healthchecksDefaultTimeout,
 		httpClient: nil,
 	}
 

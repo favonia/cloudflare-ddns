@@ -16,25 +16,26 @@ type Handle struct {
 	channel chan os.Signal
 }
 
-// Signals contains the signals to mask and catch.
+// signals contains the signals to mask and catch.
 //
 //nolint:gochecknoglobals
-var Signals = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
+var signals = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 
-// Setup masks signals in [Signals] and return the handle.
+// Setup masks interrupt and termination signals and returns the handle.
 func Setup() Handle {
-	chanSignal := make(chan os.Signal, len(Signals))
-	signal.Notify(chanSignal, Signals...)
+	chanSignal := make(chan os.Signal, len(signals))
+	signal.Notify(chanSignal, signals...)
 
 	return Handle{channel: chanSignal}
 }
 
-// NotifyContext gives a copy of the context that will be canceled by signals in [Signals].
+// NotifyContext gives a copy of the context that will be canceled by interrupt or termination signals.
 func NotifyContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(ctx, Signals...)
+	return signal.NotifyContext(ctx, signals...)
 }
 
-// WaitForSignalsUntil waits for a period of time. It returns true if it is interrupted by signals in [Signals].
+// WaitForSignalsUntil waits for a period of time.
+// It returns true if it is interrupted by an interrupt or termination signal.
 func (h Handle) WaitForSignalsUntil(ppfmt pp.PP, t time.Time) bool {
 	timer := time.NewTimer(time.Until(t))
 	for {

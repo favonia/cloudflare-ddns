@@ -74,7 +74,7 @@ func TestNewUptimeKuma(t *testing.T) {
 			if ok {
 				require.Equal(t, heartbeat.UptimeKuma{
 					BaseURL: parsedBaseURL,
-					Timeout: heartbeat.UptimeKumaDefaultTimeout,
+					Timeout: 10 * time.Second,
 				}, m)
 			} else {
 				require.Zero(t, m)
@@ -322,7 +322,7 @@ func TestUptimeKumaPingRequestCreationFailure(t *testing.T) {
 
 	ok := (heartbeat.UptimeKuma{
 		BaseURL: &url.URL{Scheme: "http", Host: "bad host", Path: "/"}, //nolint:exhaustruct_v5 // Unused URL fields are irrelevant to this request-construction failure fixture.
-		Timeout: heartbeat.UptimeKumaDefaultTimeout,
+		Timeout: 10 * time.Second,
 	}).Ping(context.Background(), mockPP, heartbeat.NewMessagef(true, "ignored"))
 	require.False(t, ok)
 }
