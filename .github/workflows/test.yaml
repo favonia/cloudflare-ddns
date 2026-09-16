@@ -38,6 +38,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -126,6 +127,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -177,6 +179,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -232,6 +235,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -281,6 +285,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -332,6 +337,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -389,6 +395,7 @@ jobs:
             storage.googleapis.com:443
             sum.golang.org:443
             telemetry.go.dev:443
+
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
