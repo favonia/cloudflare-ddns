@@ -13,15 +13,14 @@ jobs:
     name: "Go: core"
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: golangci-lint
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
 
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -44,7 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     strategy:
       fail-fast: false
@@ -63,8 +61,8 @@ jobs:
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: golangci-lint
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -87,15 +85,14 @@ jobs:
     name: GitHub Actions (actionlint)
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: go-tooling
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,7 +122,6 @@ jobs:
     name: GitHub Actions (zizmor)
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       security-events: write
       contents: read
     steps:
@@ -133,8 +129,9 @@ jobs:
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
+          # The zizmor composite action invokes Docker.
           disable-sudo: true
-          policy: github-hosted-tooling
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -147,15 +144,15 @@ jobs:
     name: Dockerfile
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
+          # The hadolint action runs in Docker.
           disable-sudo: true
-          policy: github-hosted-tooling
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -170,15 +167,14 @@ jobs:
     name: YAML
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: go-tooling
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -203,15 +199,14 @@ jobs:
     name: JSON
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: github-hosted-tooling
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -240,15 +235,14 @@ jobs:
     name: Markdown
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # for fetching the named StepSecurity policy via OIDC
       contents: read
     steps:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
-          disable-sudo: true
-          policy: python-tooling
+          disable-sudo-and-containers: true
+          allowed-endpoints: github.com:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
