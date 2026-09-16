@@ -35,7 +35,18 @@ jobs:
           disable-sudo-and-containers: true
           # Include Lean releases, cold-cache Go downloads, and Go telemetry.
           allowed-endpoints: >-
-            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 release.lean-lang.org:443 releases.lean-lang.org:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
+            api.github.com:443
+            dl.google.com:443
+            github.com:443
+            go.dev:443
+            proxy.golang.org:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            release.lean-lang.org:443
+            releases.lean-lang.org:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+            telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

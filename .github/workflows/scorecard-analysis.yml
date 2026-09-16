@@ -28,7 +28,16 @@ jobs:
           # The Scorecard action runs in Docker.
           disable-sudo: true
           allowed-endpoints: >-
-            api.deps.dev:443 api.github.com:443 api.osv.dev:443 api.scorecard.dev:443 fulcio.sigstore.dev:443 github.com:443 oss-fuzz-build-logs.storage.googleapis.com:443 rekor.sigstore.dev:443 tuf-repo-cdn.sigstore.dev:443 www.bestpractices.dev:443
+            api.deps.dev:443
+            api.github.com:443
+            api.osv.dev:443
+            api.scorecard.dev:443
+            fulcio.sigstore.dev:443
+            github.com:443
+            oss-fuzz-build-logs.storage.googleapis.com:443
+            rekor.sigstore.dev:443
+            tuf-repo-cdn.sigstore.dev:443
+            www.bestpractices.dev:443
       - name: "Checkout code"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
