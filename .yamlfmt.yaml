@@ -2,3 +2,4 @@ formatter:
   type: basic
   retain_line_breaks_single: true
   force_quote_style: double
+  scan_folded_as_literal: true
