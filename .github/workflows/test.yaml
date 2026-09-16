@@ -19,10 +19,12 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          # Keep Codecov uploads and its Sentry telemetry reachable.
+          allowed-endpoints: >-
+            api.github.com:443 cli.codecov.io:443 dl.google.com:443 github.com:443 go.dev:443 ingest.codecov.io:443 keybase.io:443 o26192.ingest.us.sentry.io:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -97,10 +99,11 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          allowed-endpoints: >-
+            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -133,10 +136,12 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          # Keep Codecov uploads and its Sentry telemetry reachable.
+          allowed-endpoints: >-
+            api.github.com:443 cli.codecov.io:443 dl.google.com:443 github.com:443 go.dev:443 ingest.codecov.io:443 keybase.io:443 o26192.ingest.us.sentry.io:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -178,10 +183,11 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          allowed-endpoints: >-
+            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -217,10 +223,11 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          allowed-endpoints: >-
+            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -258,10 +265,11 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          allowed-endpoints: >-
+            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -305,10 +313,11 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           disable-sudo-and-containers: true
-          allowed-endpoints: github.com:443
-
+          # Include cold-cache Go downloads and telemetry.
+          allowed-endpoints: >-
+            api.github.com:443 dl.google.com:443 github.com:443 go.dev:443 proxy.golang.org:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 telemetry.go.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -29,11 +29,12 @@ jobs:
       - name: 🛡️ Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
           # Image builds and publishing require Docker.
           disable-sudo: true
-          allowed-endpoints: github.com:443
-
+          # Include registry publishing and release-only Cosign signing.
+          allowed-endpoints: >-
+            api.github.com:443 auth.docker.io:443 fulcio.sigstore.dev:443 ghcr.io:443 github.com:443 index.docker.io:443 pkg-containers.githubusercontent.com:443 production.cloudfront.docker.com:443 proxy.golang.org:443 raw.githubusercontent.com:443 registry-1.docker.io:443 rekor.sigstore.dev:443 release-assets.githubusercontent.com:443 storage.googleapis.com:443 sum.golang.org:443 timestamp.sigstore.dev:443 tuf-repo-cdn.sigstore.dev:443
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
