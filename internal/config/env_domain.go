@@ -38,6 +38,9 @@ func reportEntryDiagnostic(ppfmt pp.PP, key string, input string, diagnostic dom
 		// These existing structured diagnostics use the generic rendering below.
 	}
 	ppfmt.Noticef(pp.EmojiUserError, `%s (%q) has %s`, key, input, diagnostic.Description(input))
+	if suggestion := diagnostic.HostID6Suggestion(input); suggestion != "" {
+		ppfmt.Noticef(pp.EmojiHint, "Did you mean %q?", suggestion)
+	}
 	return false
 }
 
