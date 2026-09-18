@@ -1,0 +1,86 @@
+---
+description: Attributes and metadata for DNS records.
+title: Record attributes
+image: https://developers.cloudflare.com/og-docs.png
+---
+
+[Skip to content](#main-content)
+
+> Documentation Index  
+> Fetch the complete documentation index at: https://developers.cloudflare.com/dns/llms.txt  
+> Use this file to discover all available pages before exploring further.
+
+# Record attributes
+
+Last updated Aug 14, 2026|Copy as Markdown| [View as Markdown](https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/index.md)| [Agent setup](https://developers.cloudflare.com/agent-setup/)
+
+Use DNS record comments and tags to categorize and clarify the purpose of DNS records within Cloudflare.
+
+Comments provide a unique descriptions for specific records, whereas tags group similar records into categories.
+
+These attributes are particularly useful when:
+
+- Multiple teams are managing DNS records within the same zone.
+- Your zone contains a large number of DNS records.
+- You want to filter your DNS records based on matching attributes (for example, when they are managed by the same team or used for the same application).
+
+Note
+
+The information in record attributes will not impact DNS record resolution or propagation timing and is only meant for your private reference. This information is only visible to [members](https://developers.cloudflare.com/fundamentals/manage-members/manage/) of your Cloudflare account and is not visible publicly.
+
+---
+
+## Availability
+
+Comments and tags are only supported for [primary zones (full setup)](https://developers.cloudflare.com/dns/zone-setups/full-setup/) and [partial zones (CNAME setup)](https://developers.cloudflare.com/dns/zone-setups/partial-setup/).
+
+### Record comments
+
+|  | Free | Pro | Business | Enterprise |
+| --- | --- | --- | --- | --- |
+| Availability | Yes | Yes | Yes | Yes |
+| Character limit | 100 | 500 | 500 | 500 |
+| Comments per record | 1 | 1 | 1 | 1 |
+
+### Record tags
+
+|  | Free | Pro | Business | Enterprise |
+| --- | --- | --- | --- | --- |
+| Availability | No | Yes | Yes | Yes |
+| Name character limit (everything before the colon) | N/A | 32 | 32 | 32 |
+| Value character limit (everything after the colon) | N/A | 100 | 100 | 100 |
+| Tags per record | N/A | 20 | 20 | 20 |
+
+---
+
+## Add or edit record attributes
+
+Create or edit record attributes just like any other aspect of DNS records, whether through the [dashboard](https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/) or [API](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/).
+
+You can also add or edit attributes by [exporting and re-importing](https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/#dns-record-attributes) your records, or using the [Batch record changes API](https://developers.cloudflare.com/dns/manage-dns-records/how-to/batch-record-changes/#use-the-api).
+
+When exporting and importing, special tags starting by `cf-` allow you to control specific Cloudflare configurations. On export, these tags are automatically added to reflect the current configuration for each record on your zone. Refer to [reserved cf- tags](https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/#reserved-cf--tags) for details.
+
+---
+
+## Reference
+
+### Comments
+
+Comments are treated as [graphic Unicode characters ↗](https://en.wikipedia.org/wiki/Graphic_character), meaning that they are case-sensitive and do not have any character limitations. However, comments do not support newline (`\n`) or carriage return (`\r`) characters.
+
+### Tags
+
+Tags are treated as an array of `name:value` pairs, meaning that tag names are not case-sensitive and can only contain letters, numbers, `-`, and `_`. For tag values, the same character restrictions apply as for comments.
+
+Was this helpful?
+
+YesNo
+
+## On this page
+
+[![](https://developers.cloudflare.com/_astro/logo.te5VL_aD.svg)Docs](https://developers.cloudflare.com/)
+
+```json
+{"@context":"https://schema.org","@type":"TechArticle","@id":"https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/#page","headline":"DNS record comments and tags · Cloudflare DNS docs","description":"Attributes and metadata for DNS records.","url":"https://developers.cloudflare.com/dns/manage-dns-records/reference/record-attributes/","inLanguage":"en","image":"https://developers.cloudflare.com/og-docs.png","dateModified":"2026-08-14","publisher":{"@type":"Organization","name":"Cloudflare","description":"One platform for your apps, agents, and workforce. Build, secure, and scale without managing infrastructure","url":"https://www.cloudflare.com/","sameAs":["https://github.com/cloudflare","https://www.linkedin.com/company/cloudflare","https://x.com/cloudflare"],"logo":{"@type":"ImageObject","url":"https://developers.cloudflare.com/logo.svg"},"address":{"@type":"PostalAddress","streetAddress":"101 Townsend St","addressLocality":"San Francisco","addressRegion":"CA","postalCode":"94107","addressCountry":"US"},"contactPoint":[{"@type":"ContactPoint","contactType":"Customer Support","url":"https://support.cloudflare.com/","availableLanguage":["English"]},{"@type":"ContactPoint","contactType":"Sales","url":"https://www.cloudflare.com/contact/","availableLanguage":["English"]}]},"isPartOf":{"@type":"WebSite","@id":"https://developers.cloudflare.com/#website","name":"Cloudflare Docs","url":"https://developers.cloudflare.com/"}}
+```

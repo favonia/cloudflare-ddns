@@ -44,6 +44,10 @@ type config struct {
 	JSONRouteSelectors []jsonRouteSelector
 	JSONPointers       []jsonPointerSelector
 	KeySets            []keySetSelector
+
+	// ExpectedFragments checks exact substrings anywhere in PageURL content.
+	// Extra text, ordering, and occurrence counts are deliberately ignored.
+	ExpectedFragments []string
 }
 
 type jsonRouteSelector struct {
@@ -324,15 +328,14 @@ func checkTargets(cfg config) []string {
 			targets = append(targets, fmt.Sprintf("dashboard route %q under parent %q (%s)", selector.Name, parentLabel, label))
 		}
 		return targets
+	case len(cfg.ExpectedFragments) > 0:
+		return phraseTargets(cfg.ExpectedFragments)
 	case cfg.WatchedHeading != "":
 		targets := []string{fmt.Sprintf("heading %q", cfg.WatchedHeading)}
 		if cfg.StopHeading != "" {
 			targets = append(targets, fmt.Sprintf("stop before heading %q", cfg.StopHeading))
 		}
-		for _, line := range cfg.ExpectedLines {
-			targets = append(targets, fmt.Sprintf("expected phrase %q", line))
-		}
-		return targets
+		return append(targets, phraseTargets(cfg.ExpectedLines)...)
 	case cfg.WatchedSection != "":
 		targets := []string{fmt.Sprintf("HTML section %q", cfg.WatchedSection)}
 		for _, bullet := range cfg.ExpectedBullets {
@@ -351,6 +354,14 @@ func checkTargets(cfg config) []string {
 	default:
 		return nil
 	}
+}
+
+func phraseTargets(phrases []string) []string {
+	targets := make([]string, 0, len(phrases))
+	for _, phrase := range phrases {
+		targets = append(targets, fmt.Sprintf("expected phrase %q", phrase))
+	}
+	return targets
 }
 
 func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, error) {
@@ -407,6 +418,9 @@ func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, err
 		if err != nil {
 			return nil, nil, err
 		}
+		if len(cfg.ExpectedFragments) > 0 {
+			return cfg.ExpectedFragments, matchingFragments(document, cfg.ExpectedFragments), nil
+		}
 		if cfg.WatchedHeading == "" {
 			// Plain text mode: compare all non-empty trimmed lines.
 			actual := extractPlainTextLines(document)
@@ -422,6 +436,18 @@ func collectWatchItems(ctx context.Context, cfg config) ([]string, []string, err
 		actual, err := extractWatchedBullets(document, cfg.WatchedSection)
 		return cfg.ExpectedBullets, actual, err
 	}
+}
+
+// matchingFragments returns the expected fragments present verbatim anywhere in
+// document, in expected order. Text outside the fragments is not compared.
+func matchingFragments(document string, expected []string) []string {
+	found := make([]string, 0, len(expected))
+	for _, fragment := range expected {
+		if strings.Contains(document, fragment) {
+			found = append(found, fragment)
+		}
+	}
+	return found
 }
 
 func githubGetJSON(ctx context.Context, requestURL string, target any) error {
