@@ -1,6 +1,8 @@
 package domainentry_test
 
 import (
+	"fmt"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -571,4 +573,64 @@ func TestEntryDiagnosticDescriptionPanicsOnUnknownKind(t *testing.T) {
 		Effective:   nil,
 	}
 	require.Panics(t, func() { _ = diagnostic.Description("") })
+}
+
+// TestHostID6MissingColonHint checks that suggestions never accept malformed
+// configuration or replace the original diagnostic, and only suggest valid
+// host-ID literals obtained by completing a missing leading double colon.
+func TestHostID6MissingColonHint(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		value      string
+		suggestion string
+		accepted   bool
+	}{
+		{":111a:222b:333c:444d", "::111a:222b:333c:444d", false},
+		{":ABCD:0:1", "::ABCD:0:1", false},
+		{":", "::", false},
+		{"1111", "::1111", false},
+		{"ABCD", "::ABCD", false},
+		{"0", "::0", false},
+		{"12345", "", false},
+		{"gggg", "", false},
+		{"1%eth0", "", false},
+		{":gggg", "", false},
+		{":1:2:3:4:5:6:7:8", "", false},
+		{":::1", "", false},
+		{"::gggg", "", false},
+		{":1%eth0", "", false},
+		{":ffff:192.0.2.1", "", false},
+		{"111a:222b:333c:444d", "", false},
+		{"192.0.2.1", "", false},
+		{"::1%eth0", "", false},
+		{"::ffff:192.0.2.1", "", false},
+		{"::111a:222b:333c:444d", "", true},
+		{"1:2:3:4:5:6:7:8", "", true},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
+			input := "example.org{hostid6=" + tc.value + "}"
+			entries, diagnostics, parseErr := domainentry.Parse(input)
+			require.Nil(t, parseErr)
+			if tc.accepted {
+				require.Len(t, entries, 1)
+				require.Empty(t, diagnostics)
+				return
+			}
+			require.Empty(t, entries)
+			require.Len(t, diagnostics, 1)
+			diagnostic := diagnostics[0]
+			require.Equal(t, domainentry.KindInvalidHostID6, diagnostic.Kind)
+			require.Equal(t, tc.value, input[diagnostic.Span.Start:diagnostic.Span.End])
+			addr, originalErr := netip.ParseAddr(tc.value)
+			if originalErr == nil {
+				_, originalErr = hostid6.Literal(addr)
+			}
+			require.Equal(t, originalErr, diagnostic.Detail)
+			original := fmt.Sprintf("invalid hostid6 value %q: %v", tc.value, originalErr)
+			description := diagnostic.Description(input)
+			require.Equal(t, original, description)
+			require.Equal(t, tc.suggestion, diagnostic.HostID6Suggestion(input))
+		})
+	}
 }

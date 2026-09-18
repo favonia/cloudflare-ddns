@@ -10,6 +10,7 @@ package domainentry
 import (
 	"fmt"
 	"net/netip"
+	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
@@ -89,6 +90,39 @@ func (diagnostic Diagnostic) Description(input string) string {
 	}
 
 	panic("domainentry: unknown diagnostic kind; this should not happen; please report it")
+}
+
+// HostID6Suggestion suggests completing a missing leading "::" for an invalid
+// hostid6 diagnostic. It adds one colon to a single-colon prefix, or two when
+// the source contains no colons, only if the original fails address parsing
+// and the candidate is a valid host-ID literal. It preserves source spelling
+// and never supplies a replacement value for parsing. An empty result means
+// there is no suggestion. input must be the original input to Parse.
+func (diagnostic Diagnostic) HostID6Suggestion(input string) string {
+	if diagnostic.Kind != KindInvalidHostID6 {
+		return ""
+	}
+	source := input[diagnostic.Span.Start:diagnostic.Span.End]
+	if _, err := netip.ParseAddr(source); err == nil {
+		return ""
+	}
+	var suggestion string
+	switch {
+	case strings.HasPrefix(source, ":") && !strings.HasPrefix(source, "::"):
+		suggestion = ":" + source
+	case !strings.Contains(source, ":"):
+		suggestion = "::" + source
+	default:
+		return ""
+	}
+	addr, err := netip.ParseAddr(suggestion)
+	if err != nil {
+		return ""
+	}
+	if _, err := hostid6.Literal(addr); err != nil {
+		return ""
+	}
+	return suggestion
 }
 
 // Parse parses structured domain entries without merging declarations or assignments.

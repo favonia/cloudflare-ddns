@@ -453,3 +453,42 @@ func TestBuildConfigProjectsStructuredDomainEntries(t *testing.T) {
 	require.Equal(t, []string{"example.org"}, summarizeDomains(built.Update.Domains[ipnet.IP4]))
 	require.Equal(t, []string{"example.org"}, summarizeDomains(built.Update.Domains[ipnet.IP6]))
 }
+
+// TestReadEnvHostID6Hint checks that each hint follows its error on its own
+// line, remains visible in quiet mode, and never makes the config acceptable.
+func TestReadEnvHostID6Hint(t *testing.T) {
+	for _, key := range []string{"DOMAINS", "IP4_DOMAINS", "IP6_DOMAINS"} {
+		t.Run(key, func(t *testing.T) {
+			for _, verbosity := range []pp.Verbosity{pp.Quiet, pp.Verbose} {
+				for _, emoji := range []bool{false, true} {
+					testenv.ClearAll(t)
+					t.Setenv("CLOUDFLARE_API_TOKEN", "deadbeef")
+					t.Setenv(key, "one.example{hostid6=:111a:222b:333c:444d},two.example{hostid6=2}")
+					var output bytes.Buffer
+					require.False(t, config.DefaultRaw().ReadEnv(pp.New(&output, emoji, verbosity)))
+					lines := strings.Split(strings.TrimSpace(output.String()), "\n")
+					hints := 0
+					for i, line := range lines {
+						if !strings.Contains(line, "Did you mean") {
+							continue
+						}
+						hints++
+						require.Positive(t, i)
+						require.Contains(t, lines[i-1], key)
+						require.Contains(t, lines[i-1], "has invalid hostid6 value")
+						prefix := ""
+						if emoji {
+							prefix = "💡 "
+						}
+						if hints == 1 {
+							require.Equal(t, prefix+`Did you mean "::111a:222b:333c:444d"?`, strings.TrimSpace(line))
+						} else {
+							require.Equal(t, prefix+`Did you mean "::2"?`, strings.TrimSpace(line))
+						}
+					}
+					require.Equal(t, 2, hints)
+				}
+			}
+		})
+	}
+}
