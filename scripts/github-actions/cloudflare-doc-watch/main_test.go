@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"slices"
 	"strings"
@@ -132,7 +136,6 @@ func TestPublishedMarkdownWatches(t *testing.T) {
 			mutations: [][2]string{
 				{"| Number of custom lists (any type) | 1 |", "| Number of custom lists (any type) | 2 |"},
 				{"highest quota.", "lowest quota."},
-				{"Notes:", "Notes:\n\n- A newly documented quota restriction."},
 			},
 		},
 		{
@@ -141,7 +144,6 @@ func TestPublishedMarkdownWatches(t *testing.T) {
 			mutations: [][2]string{
 				{"50 characters", "100 characters"},
 				{"lowercase letters", "uppercase letters"},
-				{"## List names", "## List names\n\n- A newly documented naming restriction."},
 			},
 		},
 	} {
@@ -168,8 +170,8 @@ func TestPublishedMarkdownWatches(t *testing.T) {
 						t.Fatalf("fixture lacks %q", mutation[0])
 					}
 					changed := strings.Replace(document, mutation[0], mutation[1], 1)
-					actual, err := extractMarkdownSectionLines(changed, cfg.WatchedHeading, cfg.StopHeading, cfg.LineFilters)
-					if err == nil && slices.Equal(actual, cfg.ExpectedLines) {
+					expected, actual, err := collectTestDocument(t, cfg, changed)
+					if err == nil && slices.Equal(actual, expected) {
 						t.Fatalf("watch missed change from %q to %q", mutation[0], mutation[1])
 					}
 				})
@@ -182,6 +184,7 @@ func TestNormalizeMarkdownLinePreservesContent(t *testing.T) {
 	t.Parallel()
 	for _, line := range []string{
 		"-1", "---", "**bold**", "`- literal`", "1. Ordered rule",
+		"- Unchanged marker", "+ Unchanged marker",
 		"* Keep %5F and ( `_`) unchanged.",
 	} {
 		if actual := normalizeMarkdownLine(line); actual != line {
@@ -192,17 +195,66 @@ func TestNormalizeMarkdownLinePreservesContent(t *testing.T) {
 
 func checkPublishedMarkdown(t *testing.T, cfg config, document string) {
 	t.Helper()
-	for _, marker := range []string{"-", "*", "+"} {
+	for _, marker := range []string{"-", "*", "+", "prefix"} {
 		t.Run(marker, func(t *testing.T) {
 			t.Parallel()
 			rendered := strings.ReplaceAll(document, "\n- ", "\n"+marker+" ")
-			actual, err := extractMarkdownSectionLines(rendered, cfg.WatchedHeading, cfg.StopHeading, cfg.LineFilters)
+			expected, actual, err := collectTestDocument(t, cfg, rendered)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(actual, cfg.ExpectedLines) {
-				t.Fatalf("published content differs: got %q, want %q", actual, cfg.ExpectedLines)
+			if !slices.Equal(actual, expected) {
+				t.Fatalf("published content differs: got %q, want %q", actual, expected)
 			}
 		})
+	}
+}
+
+// Exercise the same collection path used by runWatch without contacting upstream.
+func collectTestDocument(t *testing.T, cfg config, document string) ([]string, []string, error) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, document)
+	}))
+	defer server.Close()
+	cfg.PageURL = server.URL
+	return collectWatchItems(context.Background(), cfg)
+}
+
+func TestWAFFragmentsIgnoreSurroundingContent(t *testing.T) {
+	t.Parallel()
+	data, err := os.ReadFile("testdata/lists.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	document := strings.ReplaceAll(string(data), "## ", "## Renamed ") + "\nAn additional restriction.\n"
+	for _, name := range []string{"Cloudflare WAF list availability", "Cloudflare WAF list name rules"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			watches, err := selectedWatches("^" + name + "$")
+			if err != nil {
+				t.Fatal(err)
+			}
+			expected, actual, err := collectTestDocument(t, watches[0], document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(actual, expected) {
+				t.Fatalf("collected %q, want %q", actual, expected)
+			}
+		})
+	}
+}
+
+func TestMatchingFragments(t *testing.T) {
+	t.Parallel()
+	// Order and repetition in the article do not matter; missing fragments do.
+	actual := matchingFragments("second; prefix first suffix; first", []string{"first", "missing", "second"})
+	want := []string{"first", "second"}
+	if !slices.Equal(actual, want) {
+		t.Fatalf("matchingFragments = %q, want %q", actual, want)
+	}
+	if actual := matchingFragments("unrelated", []string{"first"}); len(actual) != 0 {
+		t.Fatalf("matchingFragments found absent content: %q", actual)
 	}
 }
