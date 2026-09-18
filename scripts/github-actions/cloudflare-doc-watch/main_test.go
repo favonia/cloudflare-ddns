@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"slices"
+	"strings"
+	"testing"
+)
 
 func TestSelectedWatchesRunPattern(t *testing.T) {
 	t.Parallel()
@@ -100,5 +105,104 @@ Outside the watched section.
 		if actual[index] != want[index] {
 			t.Fatalf("extractMarkdownSectionLines = %v, want %v", actual, want)
 		}
+	}
+}
+
+// The fixtures capture the published index.md pages on 2026-09-18, before
+// normalization. They reproduce renderer changes independently of our baselines.
+func TestPublishedMarkdownWatches(t *testing.T) {
+	t.Parallel()
+	for _, testCase := range []struct {
+		name      string
+		fixture   string
+		mutations [][2]string
+	}{
+		{
+			name:    "Cloudflare DNS record attributes",
+			fixture: "record-attributes",
+			mutations: [][2]string{
+				{"| Character limit | 100 |", "| Character limit | 200 |"},
+				{"case-sensitive", "case-insensitive"},
+				{"Graphic_character", "Different_character"},
+			},
+		},
+		{
+			name:    "Cloudflare WAF list availability",
+			fixture: "lists",
+			mutations: [][2]string{
+				{"| Number of custom lists (any type) | 1 |", "| Number of custom lists (any type) | 2 |"},
+				{"highest quota.", "lowest quota."},
+				{"Notes:", "Notes:\n\n- A newly documented quota restriction."},
+			},
+		},
+		{
+			name:    "Cloudflare WAF list name rules",
+			fixture: "lists",
+			mutations: [][2]string{
+				{"50 characters", "100 characters"},
+				{"lowercase letters", "uppercase letters"},
+				{"## List names", "## List names\n\n- A newly documented naming restriction."},
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			data, err := os.ReadFile("testdata/" + testCase.fixture + ".txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+			document := string(data)
+			watches, err := selectedWatches("^" + testCase.name + "$")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(watches) != 1 {
+				t.Fatalf("selected %d watches, want 1", len(watches))
+			}
+			cfg := watches[0]
+			checkPublishedMarkdown(t, cfg, document)
+			for _, mutation := range testCase.mutations {
+				t.Run(mutation[0], func(t *testing.T) {
+					t.Parallel()
+					if !strings.Contains(document, mutation[0]) {
+						t.Fatalf("fixture lacks %q", mutation[0])
+					}
+					changed := strings.Replace(document, mutation[0], mutation[1], 1)
+					actual, err := extractMarkdownSectionLines(changed, cfg.WatchedHeading, cfg.StopHeading, cfg.LineFilters)
+					if err == nil && slices.Equal(actual, cfg.ExpectedLines) {
+						t.Fatalf("watch missed change from %q to %q", mutation[0], mutation[1])
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestNormalizeMarkdownLinePreservesContent(t *testing.T) {
+	t.Parallel()
+	for _, line := range []string{
+		"-1", "---", "**bold**", "`- literal`", "1. Ordered rule",
+		"* Keep %5F and ( `_`) unchanged.",
+	} {
+		if actual := normalizeMarkdownLine(line); actual != line {
+			t.Errorf("normalizeMarkdownLine(%q) = %q", line, actual)
+		}
+	}
+}
+
+func checkPublishedMarkdown(t *testing.T, cfg config, document string) {
+	t.Helper()
+	for _, marker := range []string{"-", "*", "+"} {
+		t.Run(marker, func(t *testing.T) {
+			t.Parallel()
+			rendered := strings.ReplaceAll(document, "\n- ", "\n"+marker+" ")
+			actual, err := extractMarkdownSectionLines(rendered, cfg.WatchedHeading, cfg.StopHeading, cfg.LineFilters)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(actual, cfg.ExpectedLines) {
+				t.Fatalf("published content differs: got %q, want %q", actual, cfg.ExpectedLines)
+			}
+		})
 	}
 }

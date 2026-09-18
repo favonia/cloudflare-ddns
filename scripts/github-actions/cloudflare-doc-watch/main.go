@@ -586,10 +586,17 @@ func normalizeHTMLText(value string) string {
 	return strings.TrimSpace(value)
 }
 
+// normalizeMarkdownLine unescapes HTML and collapses whitespace, then uses * for
+// unordered-list markers before filtering and comparison. All remaining text,
+// including URLs and inline code, is retained so semantic changes remain visible.
 func normalizeMarkdownLine(value string) string {
 	value = html.UnescapeString(value)
 	value = spacePattern.ReplaceAllString(value, " ")
-	return strings.TrimSpace(value)
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "- ") || strings.HasPrefix(value, "+ ") {
+		value = "*" + value[1:]
+	}
+	return value
 }
 
 func extractMarkdownSectionLines(document, watchedHeading, stopHeading string, lineFilters []string) ([]string, error) {
