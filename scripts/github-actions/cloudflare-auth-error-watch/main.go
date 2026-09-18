@@ -4,8 +4,9 @@
 // hintWAFListPermission) — with well-formed-but-invalid and malformed tokens,
 // and compares the observed responses against built-in expected values. It
 // guards the AuthenticationError/AuthorizationError classification those hints
-// depend on. It is intended for GitHub Actions and reports API behavior drift
-// through stderr, workflow error annotations, and GITHUB_STEP_SUMMARY.
+// depend on. It reports mismatches and failed observations through stderr,
+// workflow error annotations, and GITHUB_STEP_SUMMARY. A failed watch does not
+// by itself establish authentication-contract drift.
 package main
 
 import (
@@ -20,10 +21,12 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 // --- config types ---
@@ -110,6 +113,22 @@ type observedSDK struct {
 	ErrorMessage string
 }
 
+// diagnostic separates a single-line probe label from its literal observation.
+// Expected is set only for a mismatch; an empty Expected denotes a plain result.
+// Markdown is added only at the summary boundary, never parsed out of log text.
+type diagnostic struct {
+	Label    string
+	Detail   string
+	Expected string
+}
+
+func (d diagnostic) text() string {
+	if d.Expected != "" {
+		return fmt.Sprintf("%s: expected {%s}, observed {%s}", d.Label, d.Expected, d.Detail)
+	}
+	return d.Label + ": " + d.Detail
+}
+
 // --- main ---
 
 func main() {
@@ -130,6 +149,12 @@ func run() error {
 		return err
 	}
 
+	return runConfig(cfg)
+}
+
+// runConfig checks every selected raw and SDK observation independently. Any
+// mismatch or failed observation fails the watch without stopping later probes.
+func runConfig(cfg config) error {
 	pause, err := time.ParseDuration(cfg.PauseBetweenRuns)
 	if err != nil {
 		return fmt.Errorf("invalid pause_between_runs %q: %w", cfg.PauseBetweenRuns, err)
@@ -139,32 +164,36 @@ func run() error {
 		return fmt.Errorf("invalid request_timeout %q: %w", cfg.RequestTimeout, err)
 	}
 
-	var drifts []string
-	var lines []string
+	var failures []diagnostic
+	var lines []diagnostic
 
 	for _, entry := range cfg.Probes {
-		rawDrifts, rawLines := runRawProbe(cfg, entry, timeout)
-		drifts = append(drifts, rawDrifts...)
+		rawFailures, rawLines := runRawProbe(cfg, entry, timeout)
+		failures = append(failures, rawFailures...)
 		lines = append(lines, rawLines...)
 		sleep(pause)
 
 		if entry.ExpectedSDK == nil {
 			continue
 		}
-		sdkDrifts, sdkLines := runSDKProbe(entry, timeout)
-		drifts = append(drifts, sdkDrifts...)
+		sdkFailures, sdkLines := runSDKProbe(entry, timeout)
+		failures = append(failures, sdkFailures...)
 		lines = append(lines, sdkLines...)
 		sleep(pause)
 	}
 
-	if len(drifts) > 0 {
-		writeSummary(buildDriftSummary(cfg, lines, drifts))
+	if len(failures) > 0 {
+		writeSummary(buildFailureSummary(cfg, lines, failures))
+		failureText := make([]string, 0, len(failures))
+		for _, failure := range failures {
+			failureText = append(failureText, failure.text())
+		}
 		message := fmt.Sprintf(
-			"%s API behavior drifted:\n%s",
-			cfg.Name, strings.Join(drifts, "\n"),
+			"%s failed:\n%s",
+			cfg.Name, strings.Join(failureText, "\n"),
 		)
 		fmt.Fprintln(os.Stderr, message)
-		return errors.New(message)
+		return fmt.Errorf("%s failed", cfg.Name)
 	}
 
 	writeSummary(buildMatchSummary(cfg, lines))
@@ -216,70 +245,58 @@ func builtInConfig(runPattern string) (config, error) {
 	return cfg, nil
 }
 
-func runRawProbe(cfg config, entry probe, timeout time.Duration) ([]string, []string) {
+func runRawProbe(cfg config, entry probe, timeout time.Duration) ([]diagnostic, []diagnostic) {
 	fmt.Fprintf(os.Stderr, "Probing raw %s...\n", entry.Name)
+	label := fmt.Sprintf("Raw %s [%s]", entry.Name, entry.Kind)
 	raw, err := probeRaw(entry.Endpoint, cfg.UserAgent, entry, timeout)
 	if err != nil {
-		line := fmt.Sprintf(
-			"- Raw %s [%s]: transport error: %v",
-			entry.Name, entry.Kind, err,
-		)
-		return []string{line}, []string{line}
+		detail := err.Error()
+		if raw.StatusCode != 0 {
+			detail = fmt.Sprintf("HTTP %d: %s", raw.StatusCode, detail)
+		}
+		line := diagnostic{Label: label, Detail: detail, Expected: ""}
+		return []diagnostic{line}, []diagnostic{line}
 	}
-
-	rawExpected := formatExpectedRaw(entry.ExpectedRaw)
-	rawObserved := formatObservedRaw(raw)
-	fmt.Fprintf(os.Stderr, "  observed: %s\n", rawObserved)
-
-	var drifts []string
-	if rawExpected != rawObserved {
-		drifts = append(drifts, fmt.Sprintf(
-			"raw %s [%s]: expected {%s}, observed {%s}",
-			entry.Name, entry.Kind, rawExpected, rawObserved,
-		))
+	expected := formatExpectedRaw(entry.ExpectedRaw)
+	observed := formatObservedRaw(raw)
+	fmt.Fprintf(os.Stderr, "  observed: %s\n", observed)
+	var failures []diagnostic
+	if expected != observed {
+		failures = append(failures, diagnostic{Label: label, Detail: observed, Expected: expected})
 	}
-	line := fmt.Sprintf("- Raw %s [%s]: %s", entry.Name, entry.Kind, rawObserved)
-	return drifts, []string{line}
+	return failures, []diagnostic{{Label: label, Detail: observed, Expected: ""}}
 }
 
-func runSDKProbe(entry probe, timeout time.Duration) ([]string, []string) {
+func runSDKProbe(entry probe, timeout time.Duration) ([]diagnostic, []diagnostic) {
 	fmt.Fprintf(os.Stderr, "Probing cloudflare-go %s...\n", entry.Name)
+	label := fmt.Sprintf("cloudflare-go %s [%s]", entry.Name, entry.Kind)
 	sdk, err := probeSDK(entry, timeout)
 	if err != nil {
-		line := fmt.Sprintf(
-			"- cloudflare-go %s [%s]: unexpected: %v",
-			entry.Name, entry.Kind, err,
-		)
-		return []string{line}, []string{line}
+		line := diagnostic{Label: label, Detail: fmt.Sprintf("unexpected: %v", err), Expected: ""}
+		return []diagnostic{line}, []diagnostic{line}
 	}
-
-	sdkExpected := formatExpectedSDK(*entry.ExpectedSDK)
-	sdkObserved := formatObservedSDK(sdk)
-	fmt.Fprintf(os.Stderr, "  observed: %s\n", sdkObserved)
-
-	var drifts []string
-	if sdkExpected != sdkObserved {
-		drifts = append(drifts, fmt.Sprintf(
-			"cloudflare-go %s [%s]: expected {%s}, observed {%s}",
-			entry.Name, entry.Kind, sdkExpected, sdkObserved,
-		))
+	expected := formatExpectedSDK(*entry.ExpectedSDK)
+	observed := formatObservedSDK(sdk)
+	fmt.Fprintf(os.Stderr, "  observed: %s\n", observed)
+	var failures []diagnostic
+	if expected != observed {
+		failures = append(failures, diagnostic{Label: label, Detail: observed, Expected: expected})
 	}
-	line := fmt.Sprintf(
-		"- cloudflare-go %s [%s]: %s",
-		entry.Name, entry.Kind, sdkObserved,
-	)
-	return drifts, []string{line}
+	return failures, []diagnostic{{Label: label, Detail: observed, Expected: ""}}
 }
 
 // --- probers ---
 
+// probeRaw retries transient HTTP failures at most three times within timeout,
+// including Retry-After waits. It preserves a received status even when the body
+// cannot be read or decoded. A final 429 cannot establish the auth baseline.
 func probeRaw(
 	verifyURL, userAgent string, entry probe, timeout time.Duration,
 ) (observedRaw, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, verifyURL, nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, verifyURL, nil)
 	if err != nil {
 		return observedRaw{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -290,21 +307,40 @@ func probeRaw(
 		req.Header.Set("Authorization", "Bearer "+entry.Token)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return observedRaw{}, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close() //nolint:errcheck // best-effort close
+	client := retryablehttp.NewClient()
+	client.HTTPClient = http.DefaultClient
+	client.RetryMax = 3
+	client.Logger = nil
+	// The watch needs the final HTTP response even after retry exhaustion.
+	client.ErrorHandler = retryablehttp.PassthroughErrorHandler
+	resp, err := client.Do(req)
+	return readRawResponse(resp, err)
+}
 
+// readRawResponse owns and closes any response body, even alongside a request
+// error. With no request error, resp and its body must be nonnil. Status remains
+// available when receiving or decoding the body fails.
+func readRawResponse(resp *http.Response, requestErr error) (observedRaw, error) {
+	var raw observedRaw
+	if resp != nil {
+		raw.StatusCode = resp.StatusCode
+		defer resp.Body.Close() //nolint:errcheck // best-effort close
+	}
+	if requestErr != nil {
+		return raw, fmt.Errorf("request failed: %w", requestErr)
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return raw, errors.New("rate limited; authentication response not verified")
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return observedRaw{}, fmt.Errorf("failed to read response body: %w", err)
+		return raw, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var parsed apiResponse
 	if trimmed := strings.TrimSpace(string(body)); trimmed != "" {
 		if err := json.Unmarshal(body, &parsed); err != nil {
-			return observedRaw{}, fmt.Errorf(
+			return raw, fmt.Errorf(
 				"failed to decode response body %s: %w",
 				string(body), err,
 			)
@@ -466,33 +502,23 @@ func formatNullableString(value *string) string {
 
 // --- summary builders ---
 
-func buildMatchSummary(cfg config, lines []string) string {
+func buildMatchSummary(cfg config, lines []diagnostic) string {
 	var builder strings.Builder
 	writeHeader(&builder, cfg)
 	builder.WriteString("- Status: all probes match the expected API behavior\n")
-	builder.WriteString("\n### Observed API behavior\n\n")
-	for _, line := range lines {
-		builder.WriteString(line)
-		builder.WriteByte('\n')
-	}
+	builder.WriteString("\n### Observed results\n\n")
+	writeDiagnostics(&builder, lines)
 	return builder.String()
 }
 
-func buildDriftSummary(cfg config, lines, drifts []string) string {
+func buildFailureSummary(cfg config, lines, failures []diagnostic) string {
 	var builder strings.Builder
 	writeHeader(&builder, cfg)
-	builder.WriteString("- Status: **API behavior drifted**\n")
-	builder.WriteString("\n### Observed API behavior\n\n")
-	for _, line := range lines {
-		builder.WriteString(line)
-		builder.WriteByte('\n')
-	}
-	builder.WriteString("\n### Drifted probes\n\n")
-	for _, drift := range drifts {
-		builder.WriteString("- ")
-		builder.WriteString(drift)
-		builder.WriteByte('\n')
-	}
+	builder.WriteString("- Status: **failed**\n")
+	builder.WriteString("\n### Observed results\n\n")
+	writeDiagnostics(&builder, lines)
+	builder.WriteString("\n### Failed checks\n\n")
+	writeDiagnostics(&builder, failures)
 	if len(cfg.Reminders) > 0 {
 		builder.WriteString("\n### Reminders\n\n")
 		builder.WriteString(formatBullets(cfg.Reminders))
@@ -502,6 +528,75 @@ func buildDriftSummary(cfg config, lines, drifts []string) string {
 		builder.WriteString(formatBullets(cfg.RelatedPaths))
 	}
 	return builder.String()
+}
+
+func writeDiagnostics(builder *strings.Builder, entries []diagnostic) {
+	for _, entry := range entries {
+		if entry.Expected == "" {
+			writeDiagnosticValue(builder, "", entry.Label, entry.Detail)
+			continue
+		}
+		fmt.Fprintf(builder, "- %s:\n", markdownLabel(entry.Label))
+		writeDiagnosticValue(builder, "  ", "Expected", entry.Expected)
+		writeDiagnosticValue(builder, "  ", "Observed", entry.Detail)
+	}
+}
+
+// markdownLabel escapes punctuation in built-in, single-line labels.
+func markdownLabel(label string) string {
+	var builder strings.Builder
+	for _, char := range label {
+		if strings.ContainsRune("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", char) {
+			builder.WriteByte('\\')
+		}
+		builder.WriteRune(char)
+	}
+	return builder.String()
+}
+
+// writeDiagnosticValue uses inline code for ordinary single-line values. It
+// normalizes line endings and nests multiline blocks under their list item.
+// Other ASCII controls are displayed as quoted escapes rather than interpreted.
+func writeDiagnosticValue(builder *strings.Builder, indent, label, value string) {
+	if value == "" || strings.ContainsFunc(value, func(char rune) bool {
+		return (char < ' ' && char != '\n' && char != '\r' && char != '\t') || char == 127
+	}) {
+		value = strconv.Quote(value)
+	}
+	value = strings.ReplaceAll(strings.ReplaceAll(value, "\r\n", "\n"), "\r", "\n")
+	if strings.Contains(value, "\n") {
+		fmt.Fprintf(builder, "%s- %s:\n\n", indent, markdownLabel(label))
+		var block strings.Builder
+		writeCodeBlock(&block, value)
+		for line := range strings.SplitSeq(strings.TrimSuffix(block.String(), "\n"), "\n") {
+			fmt.Fprintf(builder, "%s  %s\n", indent, line)
+		}
+		builder.WriteByte('\n')
+		return
+	}
+	fence := "`"
+	for strings.Contains(value, fence) {
+		fence += "`"
+	}
+	if strings.HasPrefix(value, "`") || strings.HasSuffix(value, "`") ||
+		(strings.HasPrefix(value, " ") && strings.HasSuffix(value, " ") && strings.Trim(value, " ") != "") {
+		value = " " + value + " "
+	}
+	fmt.Fprintf(builder, "%s- %s: %s%s%s\n", indent, markdownLabel(label), fence, value, fence)
+}
+
+// writeCodeBlock quotes diagnostic text literally in Markdown. Its fence is
+// longer than any backtick run in the content, so remote text cannot close it.
+func writeCodeBlock(builder *strings.Builder, text string) {
+	fence := "```"
+	for strings.Contains(text, fence) {
+		fence += "`"
+	}
+	fmt.Fprintf(builder, "%stext\n%s", fence, text)
+	if !strings.HasSuffix(text, "\n") {
+		builder.WriteByte('\n')
+	}
+	fmt.Fprintf(builder, "%s\n", fence)
 }
 
 func writeHeader(builder *strings.Builder, cfg config) {
