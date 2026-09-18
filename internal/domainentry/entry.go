@@ -94,7 +94,7 @@ func (diagnostic Diagnostic) Description(input string) string {
 
 // HostID6Suggestion suggests completing a missing leading "::" for an invalid
 // hostid6 diagnostic. It adds one colon to a single-colon prefix, or two when
-// the source contains no colons, only if the original fails address parsing
+// the source has no leading colon, only if the original fails address parsing
 // and the candidate is a valid host-ID literal. It preserves source spelling
 // and never supplies a replacement value for parsing. An empty result means
 // there is no suggestion. input must be the original input to Parse.
@@ -108,12 +108,12 @@ func (diagnostic Diagnostic) HostID6Suggestion(input string) string {
 	}
 	var suggestion string
 	switch {
-	case strings.HasPrefix(source, ":") && !strings.HasPrefix(source, "::"):
-		suggestion = ":" + source
-	case !strings.Contains(source, ":"):
-		suggestion = "::" + source
-	default:
+	case strings.HasPrefix(source, "::"):
 		return ""
+	case strings.HasPrefix(source, ":"):
+		suggestion = ":" + source
+	default:
+		suggestion = "::" + source
 	}
 	addr, err := netip.ParseAddr(suggestion)
 	if err != nil {
