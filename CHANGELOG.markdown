@@ -1,4 +1,4 @@
-# [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-19)
+# [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-20)
 
 This release improves Cloudflare trace IP detection, adds a GitHub Container Registry mirror, and makes configuration errors easier to diagnose.
 
