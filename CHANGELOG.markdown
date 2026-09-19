@@ -1,3 +1,14 @@
+# [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-19)
+
+This release improves Cloudflare trace IP detection, adds a GitHub Container Registry mirror, and makes configuration errors easier to diagnose.
+
+## Improvements
+
+- **More resilient IP detection.** The built-in `cloudflare.trace` provider now tries multiple [Cloudflare endpoints](README.markdown#ip-detection) and uses the first validated response, allowing detection to succeed when an endpoint is slow or unavailable. This also removes `cloudflare.trace:<url>`, an unofficial workaround for past temporary Cloudflare server outages. ([#1262](https://github.com/favonia/cloudflare-ddns/pull/1262), [#1263](https://github.com/favonia/cloudflare-ddns/pull/1263))
+- **GHCR mirror.** Docker images are also available at `ghcr.io/favonia/cloudflare-ddns`, with the same tags as Docker Hub and cosign verification for release images. ([#1264](https://github.com/favonia/cloudflare-ddns/pull/1264))
+- **Clearer domain validation.** Domain names with empty interior labels are now rejected with correction guidance. Names accepted after removing leading or extra trailing dots now produce warnings showing the effective spelling. ([#1268](https://github.com/favonia/cloudflare-ddns/pull/1268))
+- **Hints for incomplete IPv6 host IDs.** Startup diagnostics now suggest a valid IPv6 spelling for invalid `hostid6` values missing leading colons. ([#1282](https://github.com/favonia/cloudflare-ddns/pull/1282))
+
 # [1.17.0](https://github.com/favonia/cloudflare-ddns/compare/v1.16.2...v1.17.0) (2026-07-28)
 
 This release adds experimental controls for per-domain IPv6 host IDs and detected-address filtering, and makes advanced configuration easier to validate. It also removes the startup token-verification request that produced misleading warnings for valid account API tokens.
