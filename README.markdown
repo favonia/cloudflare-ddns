@@ -123,7 +123,7 @@ CLOUDFLARE_API_TOKEN=YOUR-CLOUDFLARE-API-TOKEN \
 
 ### 📦 Step 1: Updating the Compose File
 
-Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template looks a bit scary only because it includes various optional flags for extra security protection.
+Incorporate the following fragment into the compose file (typically `docker-compose.yml` or `docker-compose.yaml`). The template may look a bit scary because it includes several optional settings for extra security protection.
 
 ```yaml
 services:
@@ -247,14 +247,14 @@ After testing is done, switch `DOMAINS`, `IP4_PROVIDER`, and `IP6_PROVIDER` to y
 
 Use this when you want to test how the updater responds after DNS records are changed directly in Cloudflare.
 
-By default, the updater caches Cloudflare API responses to reduce network traffic. To make it fetch the latest DNS records every time, disable that cache:
+By default, the updater caches Cloudflare API responses to reduce network traffic. To fetch fresh DNS records on each check, make the cache expire right away:
 
 ```yaml
 environment:
   - CACHE_EXPIRATION=1ns
 ```
 
-With `CACHE_EXPIRATION=1ns`, you can edit DNS records in Cloudflare and watch the updater reconcile them right away.
+After editing DNS records in Cloudflare, watch the updater logs to see how they are reconciled on the next scheduled check.
 
 `CACHE_EXPIRATION` affects cached Cloudflare API responses. It does not affect public IP detection. The updater still detects the current public IP addresses each time it runs.
 
@@ -290,7 +290,7 @@ After removing `network_mode: host`, follow the [official Docker instructions fo
 
 #### Route through a specific host interface
 
-Use this when the updater runs in Docker and should route all outbound requests through a particular host network interface. This is useful when you want Cloudflare-based providers (`cloudflare.doh`, `cloudflare.dot`) or other IP detection websites (`url:<url>`) to see the public IPs via a specific interface.
+Use this when the updater runs in Docker and should route all outbound requests through a particular host network interface. This is useful when you want Cloudflare-based providers (`cloudflare.trace`, `cloudflare.doh`) or other IP detection websites (`url:<url>`) to see the public IPs via a specific interface.
 
 One possible approach is to use [IPvlan network driver](https://docs.docker.com/engine/network/drivers/ipvlan/) to create a virtual network attached to that host interface, and then attach this updater to it. Add the following snippet to your Compose file where `<iface>` is the name of the host interface:
 
@@ -384,7 +384,7 @@ Use this when multiple updater instances may overlap and each instance should ma
 
 #### Share DNS domains across updater instances
 
-Use this when multiple instances share DNS domains. This setup does not use WAF lists. Give each instance its own DNS record comment value and matching selector:
+Use this when multiple instances share DNS domains. Give each instance its own DNS record comment value and matching selector:
 
 1. Set a unique `RECORD_COMMENT`.
 2. Set `MANAGED_RECORDS_COMMENT_REGEX` to match that same DNS comment, typically with `^...$`.
@@ -398,7 +398,7 @@ Example:
 
 #### Share WAF lists across updater instances
 
-Use this when multiple instances share WAF lists. This setup does not use the DNS settings in Share DNS domains across updater instances. Give each instance its own WAF list item comment and matching selector:
+Use this when multiple instances share WAF lists. Give each instance its own WAF list item comment and matching selector:
 
 1. Set a unique `WAF_LIST_ITEM_COMMENT`.
 2. Set `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX` to match that same WAF list item comment, typically with `^...$`.
@@ -416,7 +416,7 @@ These setups are for runtimes that are not additive changes on top of the Docker
 
 ### ⚙️ Deploy as a system service
 
-The repository currently includes [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD. Additional service-manager examples, such as `systemd`, belong there too.
+The repository currently includes [community-contributed sample configurations](./contrib/README.markdown) for OpenBSD.
 
 ### 🦭 Run the container with Podman
 
@@ -570,7 +570,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `IP6_PROVIDER` | This specifies how to detect the current IPv6 address. Available providers include `cloudflare.trace`, `cloudflare.doh`, `local`, `local.iface:<iface>`, `url:<url>`, `url.via4:<url>`, `url.via6:<url>`, `static:<ip1>,<ip2>,...`, `static.empty`, `file:<absolute-path>`, and `none`. The special `none` provider stops managing IPv6. See the provider table in this section for the detailed explanation. | `cloudflare.trace` |
 | 🧪 `IP4_DETECTION_FILTER` (available since version 1.17.0) | 🧪 Keep only detected IPv4 addresses that match the filter before updating `A` records or IPv4 WAF list items. If no detected IPv4 address matches, IPv4 is skipped for that round and existing managed IPv4 records and WAF list items are preserved. | `keep-all` |
 | 🧪 `IP6_DETECTION_FILTER` (available since version 1.17.0) | 🧪 Keep only detected IPv6 addresses that match the filter before updating `AAAA` records or IPv6 WAF list items. If no detected IPv6 address matches, IPv6 is skipped for that round and existing managed IPv6 records and WAF list items are preserved. | `keep-all` |
-| `IP4_DEFAULT_PREFIX_LEN` (available since version 1.16.0) | The default CIDR prefix length for detected bare IPv4 addresses. When a provider discovers a bare address (without CIDR notation), this prefix length is attached. DNS records currently ignore this setting, but future features may use it. WAF lists use the prefix length to determine the stored range: for example, `24` stores each bare detection as a `/24` range. Valid range: 8–32. | `32` |
+| `IP4_DEFAULT_PREFIX_LEN` (available since version 1.16.0) | The default CIDR prefix length for detected bare IPv4 addresses. When a provider discovers a bare address (without CIDR notation), this prefix length is attached. This setting currently does not affect `A` records. WAF lists use the prefix length to determine the stored range: for example, `24` stores each bare detection as a `/24` range. Valid range: 8–32. | `32` |
 | `IP6_DEFAULT_PREFIX_LEN` (available since version 1.16.0) | The default CIDR prefix length for detected bare IPv6 addresses. When a provider discovers a bare address (without CIDR notation), this prefix length is attached. For `AAAA` records, this length decides how many trailing bits `hostid6` replaces. WAF lists use the prefix length to determine the stored range: for example, `48` stores each bare detection as a `/48` range. Valid range: 12–128. 🤖 See [IPv6 Default Prefix Length Policy](docs/design/features/ipv6-default-prefix-length-policy.markdown) for the design rationale behind the `/64` default (instead of `/128`). | `64` |
 
 > 👉 The option `IP4_PROVIDER` governs `A`-type DNS records and IPv4 addresses in WAF lists, while the option `IP6_PROVIDER` governs `AAAA`-type DNS records and IPv6 addresses in WAF lists. The two options act independently of each other. You can specify different address providers for IPv4 and IPv6.
@@ -629,7 +629,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `CACHE_EXPIRATION` | The expiration of cached Cloudflare API responses. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `6h0m0s` (6 hours) |
 | `DELETE_ON_STOP` | <p>Whether managed DNS records and managed WAF content are deleted when the updater exits. It accepts any boolean value supported by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>DNS cleanup applies only to the IP families this updater is managing in that run.</p><p>🧪 For WAF lists, the updater deletes the whole list only when the updater manages both IP families and no filtering is enabled by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. Otherwise shutdown cleanup keeps the list and deletes only managed items in the managed IP families.</p> | `false` |
 | `TZ` | <p>The timezone used for logging messages and parsing `UPDATE_CRON`. It can be any timezone accepted by [time.LoadLocation](https://pkg.go.dev/time#LoadLocation), including any IANA Time Zone.</p><p>🤖 The pre-built Docker images come with the embedded timezone database via the [time/tzdata](https://pkg.go.dev/time/tzdata) package.</p> | `UTC` |
-| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` means the updater will terminate immediately after updating the DNS records or WAF lists, effectively disabling the scheduling feature.</p><p>🤖 The update schedule _does not_ take the time to update records into consideration. For example, if the schedule is `@every 5m`, and if the updating itself takes 2 minutes, then the actual interval between adjacent updates is 3 minutes, not 5 minutes.</p> | `@every 5m` (every 5 minutes) |
+| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` means the updater will terminate immediately after updating the DNS records or WAF lists, effectively disabling the scheduling feature.</p><p>🤖 With `@every 5m`, checks start five minutes apart. If a check and its updates take two minutes, the updater waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
 | `UPDATE_ON_START` | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`. | `true` |
 
 > 💡 Active cleanup tip: set one or both IP providers to `static.empty` and use `UPDATE_CRON=@once` to remove managed DNS records or managed WAF items and then exit. If both providers are `static.empty`, you can add `DELETE_ON_STOP=true` to make the updater try to delete the WAF list itself too.
@@ -663,12 +663,12 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 
 > 🤖 For DNS records, the updater recycles existing records when it can (instead of delete-then-create). Cloudflare does not support updating one WAF list item in place, so WAF changes always use delete-then-create.
 >
-> 🤖 For advanced users: `PROXIED` can also be a domain-dependent boolean expression. This lets you enable Cloudflare proxying for some managed domains but not others. Here are some example expressions:
+> 🤖 For advanced users: `PROXIED` can also be a domain-dependent boolean expression, allowing different fallback proxy values for different domains. For example:
 >
-> - `PROXIED=is(example.org)`: proxy only the domain `example.org`
-> - `PROXIED=is(example1.org) || sub(example2.org)`: proxy only the domain `example1.org` and subdomains of `example2.org`
-> - `PROXIED=!is(example.org)`: proxy every managed domain _except for_ `example.org`
-> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: proxy only the domains `example1.org`, `example2.org`, and `example3.org`
+> - `PROXIED=is(example.org)`: `true` for `example.org`, `false` otherwise
+> - `PROXIED=is(example1.org) || sub(example2.org)`: `true` for `example1.org` and subdomains of `example2.org`, `false` otherwise
+> - `PROXIED=!is(example.org)`: `false` for `example.org`, `true` otherwise
+> - `PROXIED=is(example1.org) || is(example2.org) || is(example3.org)`: `true` for `example1.org`, `example2.org`, and `example3.org`, `false` otherwise
 >
 > A boolean expression can take one of the following forms (all whitespace is ignored):
 >
