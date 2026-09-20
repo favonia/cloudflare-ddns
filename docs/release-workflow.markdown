@@ -4,12 +4,11 @@ This note records maintainer-facing conventions for preparing releases, especial
 
 ## Changelog
 
-The changelog helps operators understand the release's value and make informed upgrade and configuration decisions.
+Help operators understand the release's value and prepare for upgrades.
 
-1. **Establish the evidence.** Review every commit in the release range and the complete diff from the previous release tag to the tree being prepared. Consult `README.markdown` and relevant design documents for current behavior and terminology. Keep a working inventory of the changes and their effects.
-2. **Synthesize and select.** Group related commits into final user-visible outcomes, checking both versions' final contents so superseded changes and development-cycle fixes are accounted for. Select outcomes that materially help readers understand what the release offers or what it requires of them. A verified difference or an existing draft entry does not by itself justify inclusion; an omitted change should not leave a materially misleading picture of the release.
-3. **Choose the explanation.** Describe each selected outcome at the level readers need to understand its value or act on it. When runtime diagnostics clearly explain a problem and its remedy, a brief description of the improvement usually suffices. Give advance guidance when readers need to prepare before upgrading or when an effect would otherwise be silent or misleading. The existence of a diagnostic alone determines neither inclusion nor omission.
-4. **Review the whole release.** Check coverage and relevance together: preserve material outcomes and remove detail that does not help the reader's release-level decisions or expectations. Organize the selected outcomes for those readers, combining overlap. When feedback identifies an omission or excessive detail, reconsider the affected outcome in the context of the whole release rather than applying a blanket inclusion or omission rule.
+1. Review every commit and the complete diff from the previous release tag, consulting current documentation as needed. Build a working inventory before selecting entries.
+2. Group related changes by their final user-visible outcome compared with the previous release. Select material capabilities, fixes, and compatibility changes; check that omissions do not give a misleading picture of the release.
+3. Explain each outcome only as far as needed to understand its value or act on it. Include advance guidance when upgrading requires preparation or would otherwise have silent or misleading effects. Clear runtime diagnostics may reduce or eliminate the need for instructions in the changelog.
 
 ## Release Checks
 
