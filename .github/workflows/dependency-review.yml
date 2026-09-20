@@ -23,7 +23,9 @@ jobs:
           egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
+            api.deps.dev:443
             api.github.com:443
+            api.securityscorecards.dev:443
             github.com:443
 
       - name: "Checkout Repository"
