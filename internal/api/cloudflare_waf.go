@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/jellydator/ttlcache/v3"
@@ -294,9 +296,10 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 
 // FinalCleanWAFList removes managed WAF content during shutdown.
 //
-// Whole-list ownership tries deleting the list first, then falls back to async
-// item deletion. Shared ownership deletes only items selected by the handle's
-// managed-item selector.
+// Whole-list ownership tries deleting the list first, then falls back to item
+// deletion: a list may still be referenced by a rule and cannot be deleted.
+// Shared ownership deletes only items selected by the handle's managed-item
+// selector. mode controls confirmation of item deletion, not its scope.
 //
 // We delete cached data in listListItems and listID when the underlying list
 // or its managed-item view may have changed, but we keep listLists so that we
@@ -306,7 +309,7 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 // invalidates managed-item cache before fallback item deletion so fallback
 // never trusts outdated managed-item views.
 func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
-	list WAFList, fallbackDescription string, managedFamilies map[ipnet.Family]bool,
+	list WAFList, fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode CleanupMode,
 ) WAFListCleanupCode {
 	allFamiliesInScope := true
 	for ipFamily := range ipnet.All {
@@ -382,6 +385,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	alreadyDeletedCachedMessage := finalWAFListManagedItemsAlreadyDeletedCachedMessage
 	deleteFailedMessage := finalWAFListManagedItemsDeleteFailedMessage
 	deletingMessage := finalWAFListManagedItemsDeletingMessage
+	deletedMessage := "Deleted managed items in the list %s"
 	if !allFamiliesInScope {
 		familiesDescription := describeInScopeWAFFamilies(managedFamilies)
 		alreadyDeletedMessage = "Managed " + familiesDescription + " items in the list %s were already deleted"
@@ -389,6 +393,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		deleteFailedMessage = "Could not confirm deletion of managed " + familiesDescription +
 			" items in the list %s; list content may be inconsistent"
 		deletingMessage = "Deleting managed " + familiesDescription + " items in the list %s asynchronously"
+		deletedMessage = "Deleted managed " + familiesDescription + " items in the list %s"
 	}
 
 	if len(itemsToDelete) == 0 {
@@ -404,13 +409,17 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	for _, item := range itemsToDelete {
 		ids = append(ids, item.ID)
 	}
-	if !h.startDeletingWAFListItemsAsync(ctx, ppfmt, list, listID, ids) {
+	if !h.deleteWAFListItemsForCleanup(ctx, ppfmt, list, listID, ids, mode) {
 		ppfmt.Noticef(pp.EmojiError, deleteFailedMessage, list.Describe())
 		return WAFListCleanupFailed
 	}
 
-	ppfmt.Noticef(pp.EmojiClear, deletingMessage, list.Describe())
-	return WAFListCleanupUpdating
+	if mode == CleanupAllowAsync {
+		ppfmt.Noticef(pp.EmojiClear, deletingMessage, list.Describe())
+		return WAFListCleanupUpdating
+	}
+	ppfmt.Noticef(pp.EmojiClear, deletedMessage, list.Describe())
+	return WAFListCleanupUpdated
 }
 
 const (
@@ -466,8 +475,8 @@ func (h cloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	return items, true
 }
 
-func (h cloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, ppfmt pp.PP,
-	list WAFList, listID ID, ids []ID,
+func (h cloudflareHandle) deleteWAFListItemsForCleanup(ctx context.Context, ppfmt pp.PP,
+	list WAFList, listID ID, ids []ID, mode CleanupMode,
 ) bool {
 	if len(ids) == 0 {
 		return true
@@ -478,15 +487,22 @@ func (h cloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, pp
 		itemRequests = append(itemRequests, cloudflare.ListItemDeleteItemRequest{ID: string(id)})
 	}
 
-	_, err := h.cf.DeleteListItemsAsync(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
-		cloudflare.ListDeleteItemsParams{
-			ID:    string(listID),
-			Items: cloudflare.ListItemDeleteRequest{Items: itemRequests},
-		},
-	)
+	params := cloudflare.ListDeleteItemsParams{
+		ID:    string(listID),
+		Items: cloudflare.ListItemDeleteRequest{Items: itemRequests},
+	}
+	result, err := h.cf.DeleteListItemsAsync(ctx, cloudflare.AccountIdentifier(string(list.AccountID)), params)
+	if err == nil && mode == CleanupWait {
+		err = h.waitForWAFListCleanup(ctx, list.AccountID, result.Result.OperationID)
+	}
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm that item deletion started in the list %s: %v", list.Describe(), err)
+		if mode == CleanupAllowAsync {
+			ppfmt.Noticef(pp.EmojiError,
+				"Could not confirm that item deletion started in the list %s: %v", list.Describe(), err)
+		} else {
+			ppfmt.Noticef(pp.EmojiError,
+				"Could not confirm completion of item deletion in the list %s: %v", list.Describe(), err)
+		}
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return false
@@ -495,6 +511,34 @@ func (h cloudflareHandle) startDeletingWAFListItemsAsync(ctx context.Context, pp
 	h.cache.listListItems.Delete(list)
 	return true
 }
+
+// waitForWAFListCleanup confirms only the operation outcome. The SDK's synchronous
+// deletion also reads list contents afterwards, which could fail after success.
+func (h cloudflareHandle) waitForWAFListCleanup(ctx context.Context, accountID ID, operationID string) error {
+	for delay := time.Second; ; delay = min(2*delay, 8*time.Second) {
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("waiting for WAF list cleanup: %w", ctx.Err())
+		case <-timer.C:
+		}
+		operation, err := h.cf.GetListBulkOperation(ctx, cloudflare.AccountIdentifier(string(accountID)), operationID)
+		if err != nil {
+			return fmt.Errorf("checking WAF list cleanup: %w", err)
+		}
+		switch operation.Status {
+		case "completed":
+			return nil
+		case "pending", "running":
+			continue
+		default:
+			return fmt.Errorf("%w: %s: %s", errWAFListCleanupOperation, operation.Status, operation.Error)
+		}
+	}
+}
+
+var errWAFListCleanupOperation = errors.New("WAF list cleanup operation did not complete")
 
 func readWAFListItems(ppfmt pp.PP, list WAFList, rawItems []cloudflare.ListItem) ([]WAFListItem, bool) {
 	items := make([]WAFListItem, 0, len(rawItems))

@@ -32,16 +32,17 @@ func TestMatchManagedWAFListItemComment(t *testing.T) {
 	require.False(t, policyWithRegex.MatchManagedWAFListItemComment("foreign"))
 }
 
-func TestStartDeletingWAFListItemsAsyncWithNoIDs(t *testing.T) {
+func TestDeleteWAFListItemsForCleanupWithNoIDs(t *testing.T) {
 	t.Parallel()
 
 	var h cloudflareHandle
-	ok := h.startDeletingWAFListItemsAsync(
+	ok := h.deleteWAFListItemsForCleanup(
 		context.Background(),
 		pp.NewSilent(),
 		WAFList{AccountID: "", Name: ""},
 		"",
 		nil,
+		CleanupAllowAsync,
 	)
 	require.True(t, ok)
 }

@@ -44,6 +44,8 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 Use `docs/design/` only for durable design information that is broader than one local edit.
 
+Keep these repeatedly read, normative notes concise: retain governing decisions and necessary rationale, with local implementation details documented in code.
+
 - use `core/` for project-wide principles and architecture that affect many tasks
 - use `guides/` for shared editing or explanation rules reused across unrelated topics
 - use `features/` for durable feature contracts, invariants, and scope boundaries

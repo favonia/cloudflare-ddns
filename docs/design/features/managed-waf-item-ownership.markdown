@@ -105,6 +105,8 @@ For WAF, the resources eligible for deletion are managed items and, when full ow
 - When that condition holds, shutdown may delete the whole list.
 - Otherwise, shutdown may delete only managed items.
 
+If whole-list deletion fails, fall back to managed-item deletion: a rule may still reference the list. Successful fallback satisfies cleanup even if the list remains.
+
 The empty selector default can still imply full ownership, but selector emptiness alone is not the semantic rule.
 
 ## Caching Contract

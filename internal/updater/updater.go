@@ -351,7 +351,9 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 
 // finalClearWAFLists extracts relevant settings from the configuration
 // and calls [setter.Setter.FinalClearWAFList] with a deadline.
-func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
+func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter,
+	mode api.CleanupMode,
+) Message {
 	resps := emptySetterWAFListResponses()
 	managedFamilies := map[ipnet.Family]bool{}
 	for ipFamily, p := range ipnet.Bindings(c.Provider) {
@@ -363,7 +365,7 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 	for _, l := range c.WAFLists {
 		resps.register(l.Describe(),
 			wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-				return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies)
+				return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies, mode)
 			}),
 		)
 	}
@@ -423,8 +425,14 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 	)
 }
 
-// FinalDeleteIPs removes all DNS records of managed domains.
-func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
+// FinalDeleteIPs cleans managed DNS records and WAF content under shutdown
+// ownership rules. Each resource is bounded by UpdateTimeout and ctx.
+// mode controls waiting for asynchronous cleanup operations (see api.CleanupMode).
+// Completed fallback item cleanup counts as success even if the list itself
+// could not be deleted.
+func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter,
+	mode api.CleanupMode,
+) Message {
 	var msgs []Message
 
 	for ipFamily, provider := range ipnet.Bindings(c.Provider) {
@@ -434,7 +442,7 @@ func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s 
 	}
 
 	// Clear WAF lists
-	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s))
+	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s, mode))
 
 	return classifyNotification(
 		mergeMessages(msgs...),

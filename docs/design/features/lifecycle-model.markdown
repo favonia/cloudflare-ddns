@@ -93,7 +93,11 @@ Cleanup is shutdown-time mutation after the process has decided to stop.
 
 Cleanup deletes the resources that are eligible for shutdown deletion.
 
+With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, run cleanup directly instead of first reconciling empty targets.
+
 Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and instantiated for WAF in [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
+
+Ordinary shutdown may skip completion polling when the API allows it and the result cannot guide further cleanup. This shortens shutdown and reduces the risk of forced termination after the container stop grace period, at the cost of an unknown final outcome. One-shot cleanup instead waits within the configured timeout because confirming completion is its purpose.
 
 ## Phase Boundaries
 

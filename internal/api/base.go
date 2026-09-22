@@ -68,6 +68,23 @@ type WAFListCreateItem struct {
 // WAFListCleanupCode summarizes final shutdown cleanup for one WAF list.
 type WAFListCleanupCode int
 
+// CleanupMode controls whether cleanup may leave asynchronous operations pending.
+// It does not change ownership, deletion eligibility, or fallback policy.
+// Both modes wait for API request responses. Operations without asynchronous
+// API support, including DNS and whole-list deletion, complete synchronously.
+type CleanupMode bool
+
+const (
+	// CleanupWait also waits for asynchronous operations to finish within the caller's context.
+	CleanupWait CleanupMode = false
+	// CleanupAllowAsync skips waiting for completion when the API supports it
+	// and the result cannot affect subsequent cleanup actions. It still waits
+	// for request acceptance and results needed to choose a fallback.
+	// This permits a shorter shutdown at the cost of leaving the final outcome unknown.
+	// Callers that need confirmed completion must use CleanupWait.
+	CleanupAllowAsync CleanupMode = true
+)
+
 const (
 	// WAFListCleanupNoop means the managed WAF content was already gone.
 	WAFListCleanupNoop WAFListCleanupCode = iota
@@ -154,8 +171,10 @@ type Handle interface {
 	//
 	// The handle should not be reused for any further update operations after
 	// calling this method.
+	// CleanupWait never returns WAFListCleanupUpdating. If deleting an eligible
+	// whole list fails, completed fallback item deletion still counts as success.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
-		fallbackDescription string, managedFamilies map[ipnet.Family]bool,
+		fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode CleanupMode,
 	) WAFListCleanupCode
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.

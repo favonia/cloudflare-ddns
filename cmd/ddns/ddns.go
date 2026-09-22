@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
 	"github.com/favonia/cloudflare-ddns/internal/cron"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
@@ -68,10 +69,24 @@ func stopUpdating(
 	s setter.Setter,
 ) {
 	if lifecycleConfig.DeleteOnStop {
-		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s)
+		// Prefer a shorter shutdown over confirming the final item-deletion
+		// outcome: there is no further fallback, and waiting risks exhausting
+		// the container stop grace period. See the lifecycle design note.
+		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s, api.CleanupAllowAsync)
 		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
 		nt.Send(ctx, ppfmt, msg.Notification())
 	}
+}
+
+// runOnceCleanup confirms cleanup using workCtx and reports the outcome using
+// reportCtx, which remains usable if workCtx is canceled. Startup has validated
+// that every in-scope provider is static.empty.
+func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
+	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
+) {
+	msg := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
+	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
+	nt.Send(reportCtx, ppfmt, msg.Notification())
 }
 
 func main() {
@@ -123,6 +138,13 @@ func realMain() int {
 	// We only needs lifecycleConfig and updateConfig from now on, and builtConfig should not be used.
 	lifecycleConfig := builtConfig.Lifecycle
 	updateConfig := builtConfig.Update
+
+	if lifecycleConfig.UpdateCron == nil && lifecycleConfig.DeleteOnStop {
+		ppfmt.BlankLineIfVerbose()
+		runOnceCleanup(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+		ppfmt.Infof(pp.EmojiBye, "Bye!")
+		return 0
+	}
 
 	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
 	if lifecycleConfig.UpdateCron != nil {

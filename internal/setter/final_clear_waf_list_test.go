@@ -29,35 +29,35 @@ func TestFinalClearWAFList(t *testing.T) {
 			name: "already-cleaned/response-noop",
 			resp: setter.ResponseNoop,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies).Return(api.WAFListCleanupNoop)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies, api.CleanupAllowAsync).Return(api.WAFListCleanupNoop)
 			},
 		},
 		{
 			name: "list-exists/delete-list/response-updated",
 			resp: setter.ResponseUpdated,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies).Return(api.WAFListCleanupUpdated)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies, api.CleanupAllowAsync).Return(api.WAFListCleanupUpdated)
 			},
 		},
 		{
 			name: "list-exists/clear-list-async/response-updating",
 			resp: setter.ResponseUpdating,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies).Return(api.WAFListCleanupUpdating)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies, api.CleanupAllowAsync).Return(api.WAFListCleanupUpdating)
 			},
 		},
 		{
 			name: "list-exists/delete-and-clear/response-failed",
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies).Return(api.WAFListCleanupFailed)
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies, api.CleanupAllowAsync).Return(api.WAFListCleanupFailed)
 			},
 		},
 		{
 			name: "unknown-cleanup-code/response-failed",
 			resp: setter.ResponseFailed,
 			prepareMocks: func(ctx context.Context, _ func(), p *mocks.MockPP, m *mocks.MockHandle) {
-				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies).Return(api.WAFListCleanupCode(99))
+				m.EXPECT().FinalCleanWAFList(ctx, p, wafList, listDescription, managedFamilies, api.CleanupAllowAsync).Return(api.WAFListCleanupCode(99))
 			},
 		},
 	}
@@ -69,7 +69,7 @@ func TestFinalClearWAFList(t *testing.T) {
 			ctx, h := newSetterHarness(t)
 			h.prepare(ctx, tc.prepareMocks)
 
-			resp := h.setter.FinalClearWAFList(ctx, h.mockPP, wafList, listDescription, managedFamilies)
+			resp := h.setter.FinalClearWAFList(ctx, h.mockPP, wafList, listDescription, managedFamilies, api.CleanupAllowAsync)
 			require.Equal(t, tc.resp, resp)
 		})
 	}
