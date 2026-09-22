@@ -3,6 +3,7 @@
   "extends": [
     "config:best-practices",
     "group:allNonMajor",
+    "security:gomodIndirectSecurityUpdates",
     ":semanticCommitTypeAll(build)",
     "customManagers:githubActionsVersions"
   ],
