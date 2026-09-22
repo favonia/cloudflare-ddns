@@ -39,6 +39,13 @@ func TestOnceCleanupProcess(t *testing.T) {
 		"IP6_PROVIDER=static.empty", "WAF_LISTS=account456/list",
 		"WAF_LIST_DESCRIPTION=description",
 	}
+	if directory := os.Getenv("GOCOVERDIR"); testing.CoverMode() != "" && directory != "" {
+		// This is a test binary, so forward Go's coverage-directory flag as
+		// well as the environment variable used by ordinary covered binaries.
+		// Sharing the parent's directory lets go test collect the child data.
+		command.Args = append(command.Args, "-test.gocoverdir="+directory)
+		command.Env = append(command.Env, "GOCOVERDIR="+directory)
+	}
 	output, err := command.CombinedOutput()
 	require.NoError(t, err, "%s", output)
 }

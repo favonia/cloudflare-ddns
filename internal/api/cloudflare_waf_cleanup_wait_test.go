@@ -50,17 +50,19 @@ func TestFinalCleanWAFListCompletionOutcomes(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
 		status                string
+		queryFails            bool
 		wholeList             bool
 		cancelAfterAcceptance bool
 		mode                  api.CleanupMode
 		want                  api.WAFListCleanupCode
 	}{
-		{"fallback-completed", "completed", true, false, api.CleanupWait, api.WAFListCleanupUpdated},
-		{"fallback-failed", "failed", true, false, api.CleanupWait, api.WAFListCleanupFailed},
-		{"items-failed", "failed", false, false, api.CleanupWait, api.WAFListCleanupFailed},
-		{"items-timeout", "pending", false, false, api.CleanupWait, api.WAFListCleanupFailed},
-		{"items-canceled", "pending", false, true, api.CleanupWait, api.WAFListCleanupFailed},
-		{"items-accepted", "pending", false, false, api.CleanupAllowAsync, api.WAFListCleanupUpdating},
+		{"fallback-completed", "completed", false, true, false, api.CleanupWait, api.WAFListCleanupUpdated},
+		{"fallback-failed", "failed", false, true, false, api.CleanupWait, api.WAFListCleanupFailed},
+		{"status-query-failed", "", true, false, false, api.CleanupWait, api.WAFListCleanupFailed},
+		{"items-failed", "failed", false, false, false, api.CleanupWait, api.WAFListCleanupFailed},
+		{"items-timeout", "pending", false, false, false, api.CleanupWait, api.WAFListCleanupFailed},
+		{"items-canceled", "pending", false, false, true, api.CleanupWait, api.WAFListCleanupFailed},
+		{"items-accepted", "pending", false, false, false, api.CleanupAllowAsync, api.WAFListCleanupUpdating},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -90,6 +92,10 @@ func TestFinalCleanWAFListCompletionOutcomes(t *testing.T) {
 				f.serveMux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
 					func(w http.ResponseWriter, _ *http.Request) {
 						polls++
+						if tc.queryFails {
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
 						response := mockListBulkOperationResponse(operationID)
 						response.Result.Status = tc.status
 						response.Result.Error = "fixture failure"
