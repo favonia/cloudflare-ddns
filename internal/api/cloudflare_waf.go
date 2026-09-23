@@ -332,7 +332,8 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 				"The list %s was not found during final cleanup; treating it as already cleaned",
 				list.Describe())
 		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, finalWAFListManagedItemsAlreadyDeletedMessage, list.Describe())
+			ppfmt.Infof(pp.EmojiAlreadyDone,
+				"Managed items in the list %s were already deleted", list.Describe())
 		}
 		return WAFListCleanupNoop
 	}
@@ -381,10 +382,10 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	alreadyDeletedMessage := finalWAFListManagedItemsAlreadyDeletedMessage
-	alreadyDeletedCachedMessage := finalWAFListManagedItemsAlreadyDeletedCachedMessage
-	deleteFailedMessage := finalWAFListManagedItemsDeleteFailedMessage
-	deletingMessage := finalWAFListManagedItemsDeletingMessage
+	alreadyDeletedMessage := "Managed items in the list %s were already deleted"
+	alreadyDeletedCachedMessage := "Managed items in the list %s were already deleted (cached)"
+	deleteFailedMessage := "Could not confirm deletion of managed items in the list %s; list content may be inconsistent"
+	deletingMessage := "Deleting managed items in the list %s asynchronously"
 	deletedMessage := "Deleted managed items in the list %s"
 	if !allFamiliesInScope {
 		familiesDescription := describeInScopeWAFFamilies(managedFamilies)
@@ -409,26 +410,19 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	for _, item := range itemsToDelete {
 		ids = append(ids, item.ID)
 	}
-	if !h.deleteWAFListItemsForCleanup(ctx, ppfmt, list, listID, ids, mode) {
+	result := h.deleteWAFListItemsForCleanup(ctx, ppfmt, list, listID, ids, mode)
+	switch result {
+	case WAFListCleanupFailed:
 		ppfmt.Noticef(pp.EmojiError, deleteFailedMessage, list.Describe())
-		return WAFListCleanupFailed
-	}
-
-	if mode == CleanupAllowAsync {
+	case WAFListCleanupUpdating:
 		ppfmt.Noticef(pp.EmojiClear, deletingMessage, list.Describe())
-		return WAFListCleanupUpdating
+	case WAFListCleanupUpdated:
+		ppfmt.Noticef(pp.EmojiClear, deletedMessage, list.Describe())
+	case WAFListCleanupNoop:
+		// Empty cleanup is reported before calling the helper.
 	}
-	ppfmt.Noticef(pp.EmojiClear, deletedMessage, list.Describe())
-	return WAFListCleanupUpdated
+	return result
 }
-
-const (
-	finalWAFListManagedItemsAlreadyDeletedMessage       = "Managed items in the list %s were already deleted"
-	finalWAFListManagedItemsAlreadyDeletedCachedMessage = "Managed items in the list %s were already deleted (cached)"
-	finalWAFListManagedItemsDeleteFailedMessage         = "Could not confirm deletion of managed items in the list %s; " +
-		"list content may be inconsistent"
-	finalWAFListManagedItemsDeletingMessage = "Deleting managed items in the list %s asynchronously"
-)
 
 func describeInScopeWAFFamilies(managedFamilies map[ipnet.Family]bool) string {
 	ip4InScope := managedFamilies[ipnet.IP4]
@@ -475,11 +469,15 @@ func (h cloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	return items, true
 }
 
+// deleteWAFListItemsForCleanup returns Noop for no IDs, Updating for accepted
+// deletion without completion confirmation, Updated for confirmed completion,
+// or Failed when the requested confirmation fails. It reports API errors;
+// the caller owns messages describing the managed scope.
 func (h cloudflareHandle) deleteWAFListItemsForCleanup(ctx context.Context, ppfmt pp.PP,
 	list WAFList, listID ID, ids []ID, mode CleanupMode,
-) bool {
+) WAFListCleanupCode {
 	if len(ids) == 0 {
-		return true
+		return WAFListCleanupNoop
 	}
 
 	itemRequests := make([]cloudflare.ListItemDeleteItemRequest, 0, len(ids))
@@ -505,11 +503,14 @@ func (h cloudflareHandle) deleteWAFListItemsForCleanup(ctx context.Context, ppfm
 		}
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
-		return false
+		return WAFListCleanupFailed
 	}
 
 	h.cache.listListItems.Delete(list)
-	return true
+	if mode == CleanupAllowAsync {
+		return WAFListCleanupUpdating
+	}
+	return WAFListCleanupUpdated
 }
 
 // waitForWAFListCleanup confirms only the operation outcome. The SDK's synchronous

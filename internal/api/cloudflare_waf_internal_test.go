@@ -36,7 +36,7 @@ func TestDeleteWAFListItemsForCleanupWithNoIDs(t *testing.T) {
 	t.Parallel()
 
 	var h cloudflareHandle
-	ok := h.deleteWAFListItemsForCleanup(
+	result := h.deleteWAFListItemsForCleanup(
 		context.Background(),
 		pp.NewSilent(),
 		WAFList{AccountID: "", Name: ""},
@@ -44,7 +44,7 @@ func TestDeleteWAFListItemsForCleanupWithNoIDs(t *testing.T) {
 		nil,
 		CleanupAllowAsync,
 	)
-	require.True(t, ok)
+	require.Equal(t, WAFListCleanupNoop, result)
 }
 
 func TestHintUnexpectedWAFListItemCommentAfterMutationAcceptsNewExpectedComment(t *testing.T) {
