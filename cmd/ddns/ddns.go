@@ -62,31 +62,58 @@ func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*con
 	return builtConfig, s, true
 }
 
+// stopUpdating reports final cleanup and returns its result without waiting
+// for asynchronous operations when their result cannot guide further cleanup.
 func stopUpdating(
 	ctx context.Context, ppfmt pp.PP,
 	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
 	hb heartbeat.Heartbeat, nt notifier.Notifier,
 	s setter.Setter,
-) {
+) int {
 	if lifecycleConfig.DeleteOnStop {
 		// Prefer a shorter shutdown over confirming the final item-deletion
 		// outcome: there is no further fallback, and waiting risks exhausting
 		// the container stop grace period. See the lifecycle design note.
 		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s, api.CleanupAllowAsync)
+		code := operationExitCode(msg)
 		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
 		nt.Send(ctx, ppfmt, msg.Notification())
+		return code
 	}
+	return 0
 }
 
 // runOnceCleanup confirms cleanup using workCtx and reports the outcome using
 // reportCtx, which remains usable if workCtx is canceled. Startup has validated
-// that every in-scope provider is static.empty.
+// that every in-scope provider is static.empty. Reporter delivery does not
+// change the returned work result.
 func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
-) {
+) int {
 	msg := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
+	code := operationExitCode(msg)
 	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
 	nt.Send(reportCtx, ppfmt, msg.Notification())
+	return code
+}
+
+// runOnceUpdate returns the update result independently of later signals or
+// reporter delivery. reportCtx remains usable when workCtx is canceled.
+func runOnceUpdate(workCtx, reportCtx context.Context, ppfmt pp.PP,
+	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
+) int {
+	msg := updater.UpdateIPs(workCtx, ppfmt, updateConfig, s)
+	code := operationExitCode(msg)
+	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
+	nt.Send(reportCtx, ppfmt, msg.Notification())
+	return code
+}
+
+func operationExitCode(msg updater.Message) int {
+	if msg.Failed() {
+		return 1
+	}
+	return 0
 }
 
 func main() {
@@ -139,26 +166,25 @@ func realMain() int {
 	lifecycleConfig := builtConfig.Lifecycle
 	updateConfig := builtConfig.Update
 
-	if lifecycleConfig.UpdateCron == nil && lifecycleConfig.DeleteOnStop {
+	if lifecycleConfig.UpdateCron == nil {
 		ppfmt.BlankLineIfVerbose()
-		runOnceCleanup(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+		var code int
+		if lifecycleConfig.DeleteOnStop {
+			code = runOnceCleanup(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+		} else {
+			code = runOnceUpdate(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+		}
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
-		return 0
+		return code
 	}
 
-	// If UPDATE_CRON is not `@once` (not single-run mode), then send a notification to signal the start.
-	if lifecycleConfig.UpdateCron != nil {
-		nt.Send(ctx, ppfmt, startupNotification())
-	}
+	nt.Send(ctx, ppfmt, startupNotification())
 
 	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
 	// is not happy with completely empty log. As a workaround, we will print a Notice here.
 	// See GitHub issue #426.
-	//
-	// We still want to keep the quiet mode extremely quiet for the single-run mode (UPDATE_CRON=@once),
-	// hence we are checking whether cron is enabled or not. (The single-run mode is defined as
-	// having the internal cron disabled.)
-	if lifecycleConfig.UpdateCron != nil && !ppfmt.IsShowing(pp.Verbose) {
+	// One-shot execution returns above, preserving its quiet-mode behavior.
+	if !ppfmt.IsShowing(pp.Verbose) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
 
@@ -184,12 +210,6 @@ func realMain() int {
 			goto signaled
 		}
 
-		// Check if cron was disabled
-		if lifecycleConfig.UpdateCron == nil {
-			ppfmt.Infof(pp.EmojiBye, "Bye!")
-			return 0
-		}
-
 		first = false
 
 		// If there's nothing scheduled in the near future
@@ -212,13 +232,11 @@ func realMain() int {
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
 		if sig.WaitForSignalsUntil(ppfmt, next) {
-			stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
+			code := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Exit(ctx, ppfmt, "Stopped")
-			if lifecycleConfig.UpdateCron != nil {
-				nt.Send(ctx, ppfmt, shutdownNotification())
-			}
+			nt.Send(ctx, ppfmt, shutdownNotification())
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
-			return 0
+			return code
 		}
 	} // mainLoop
 }

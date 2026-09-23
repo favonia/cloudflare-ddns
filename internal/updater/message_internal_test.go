@@ -1,10 +1,12 @@
 package updater
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestMessageFailed(t *testing.T) {
