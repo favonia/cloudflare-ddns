@@ -373,7 +373,8 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 	return generateFinalClearWAFListsMessage(resps)
 }
 
-// UpdateIPs detects IP addresses and updates DNS records of managed domains.
+// UpdateIPs detects IP addresses and updates managed DNS records and WAF lists.
+// Its result fails if any managed detection, derivation, or update fails.
 func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter) Message {
 	var msgs []Message
 	targetsForWAF := map[ipnet.Family]setter.WAFTargets{}
@@ -428,6 +429,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 // FinalDeleteIPs cleans managed DNS records and WAF content under shutdown
 // ownership rules. Each resource is bounded by UpdateTimeout and ctx.
 // mode controls waiting for asynchronous cleanup operations (see api.CleanupMode).
+// Its result fails if any managed cleanup fails.
 // Completed fallback item cleanup counts as success even if the list itself
 // could not be deleted.
 func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter,

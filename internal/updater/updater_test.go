@@ -353,6 +353,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			}
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
+			require.Equal(t, !tc.ok, resp.Failed())
 			wantKind := notifier.KindUpdateFailure
 			if tc.ok {
 				wantKind = notifier.KindUpdate
@@ -461,6 +462,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 				tc.prepareMocks(mockPP, mockSetter)
 			}
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter, api.CleanupAllowAsync)
+			require.Equal(t, !tc.ok, resp.Failed())
 			wantKind := notifier.KindCleanupFailure
 			if tc.ok {
 				wantKind = notifier.KindCleanup
@@ -723,6 +725,7 @@ func TestUpdateIPs(t *testing.T) {
 			t.Parallel()
 
 			resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			require.Equal(t, !tc.ok, resp.Failed())
 			wantKind := notifier.KindUpdateFailure
 			if tc.ok {
 				wantKind = notifier.KindUpdate
@@ -1316,6 +1319,7 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 
 			synctest.Test(t, func(t *testing.T) {
 				resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				require.Equal(t, !tc.ok, resp.Failed())
 				wantKind := notifier.KindUpdateFailure
 				if tc.ok {
 					wantKind = notifier.KindUpdate
@@ -1489,6 +1493,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			t.Parallel()
 
 			resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+			require.Equal(t, !tc.ok, resp.Failed())
 			wantKind := notifier.KindCleanupFailure
 			if tc.ok {
 				wantKind = notifier.KindCleanup
@@ -1569,6 +1574,7 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 
 			synctest.Test(t, func(t *testing.T) {
 				resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
+				require.Equal(t, !tc.ok, resp.Failed())
 				wantKind := notifier.KindCleanupFailure
 				if tc.ok {
 					wantKind = notifier.KindCleanup
