@@ -397,15 +397,6 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		deletedMessage = "Deleted managed " + familiesDescription + " items in the list %s"
 	}
 
-	if len(itemsToDelete) == 0 {
-		if cached {
-			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedCachedMessage, list.Describe())
-		} else {
-			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedMessage, list.Describe())
-		}
-		return WAFListCleanupNoop
-	}
-
 	ids := make([]ID, 0, len(itemsToDelete))
 	for _, item := range itemsToDelete {
 		ids = append(ids, item.ID)
@@ -419,7 +410,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	case WAFListCleanupUpdated:
 		ppfmt.Noticef(pp.EmojiClear, deletedMessage, list.Describe())
 	case WAFListCleanupNoop:
-		// Empty cleanup is reported before calling the helper.
+		if cached {
+			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedCachedMessage, list.Describe())
+		} else {
+			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedMessage, list.Describe())
+		}
 	}
 	return result
 }
@@ -469,7 +464,7 @@ func (h cloudflareHandle) listWAFListItemsByID(ctx context.Context, ppfmt pp.PP,
 	return items, true
 }
 
-// deleteWAFListItemsForCleanup returns Noop for no IDs, Updating for accepted
+// deleteWAFListItemsForCleanup returns Noop without API calls for no item IDs, Updating for accepted
 // deletion without completion confirmation, Updated for confirmed completion,
 // or Failed when the requested confirmation fails. It reports API errors;
 // the caller owns messages describing the managed scope.

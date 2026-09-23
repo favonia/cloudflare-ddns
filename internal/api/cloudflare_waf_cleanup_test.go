@@ -79,6 +79,15 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 		code                 api.WAFListCleanupCode
 		prepareMocks         func(*mocks.MockPP)
 	}{
+		"empty-list-still-deleted": {
+			[]listMeta{{name: "list", size: 0, kind: cloudflare.ListTypeIP}},
+			nil,
+			1, 1, 0, 0, nil,
+			api.WAFListCleanupUpdated,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "The list %s was deleted", "account456/list")
+			},
+		},
 		"success": {
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			nil,
