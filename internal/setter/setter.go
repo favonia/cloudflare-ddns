@@ -537,9 +537,9 @@ func prefixContainsPrefix(container, target netip.Prefix) bool {
 
 // FinalClearWAFList removes managed WAF content during shutdown.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
-	managedFamilies map[ipnet.Family]bool,
+	managedFamilies map[ipnet.Family]bool, mode api.CleanupMode,
 ) ResponseCode {
-	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription, managedFamilies) {
+	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription, managedFamilies, mode) {
 	case api.WAFListCleanupNoop:
 		return ResponseNoop
 	case api.WAFListCleanupUpdated:

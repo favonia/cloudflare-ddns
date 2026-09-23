@@ -525,6 +525,19 @@ func mockListItemDeleteResponse(id ID) cloudflare.ListItemDeleteResponse {
 func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operationID ID, expectedIDs []api.ID) httpHandler {
 	t.Helper()
 
+	handler := newDeleteListItemsRequestHandler(t, mux, listID, operationID, expectedIDs)
+
+	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
+		func(w http.ResponseWriter, r *http.Request) {
+			handleListBulkOperation(t, operationID, w, r)
+		})
+
+	return handler
+}
+
+func newDeleteListItemsRequestHandler(t *testing.T, mux *http.ServeMux, listID, operationID ID, expectedIDs []api.ID) httpHandler {
+	t.Helper()
+
 	var requestLimit int
 
 	mux.HandleFunc(fmt.Sprintf("DELETE /accounts/%s/rules/lists/%s/items", mockAccountID, listID),
@@ -558,11 +571,6 @@ func newDeleteListItemsHandler(t *testing.T, mux *http.ServeMux, listID, operati
 			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(mockListItemDeleteResponse(operationID))
 			assert.NoError(t, err)
-		})
-
-	mux.HandleFunc(fmt.Sprintf("GET /accounts/%s/rules/lists/bulk_operations/%s", mockAccountID, operationID),
-		func(w http.ResponseWriter, r *http.Request) {
-			handleListBulkOperation(t, operationID, w, r)
 		})
 
 	return httpHandler{requestLimit: &requestLimit}

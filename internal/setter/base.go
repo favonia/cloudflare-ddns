@@ -90,12 +90,14 @@ type Setter interface {
 		fallbackItemComment string,
 	) ResponseCode
 
-	// FinalClearWAFList removes managed WAF content during shutdown in managed family scope.
+	// FinalClearWAFList removes managed WAF content in managed family scope.
+	// mode controls waiting for asynchronous cleanup operations (see api.CleanupMode).
 	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
 		list api.WAFList,
 		listDescription string,
 		managedFamilies map[ipnet.Family]bool,
+		mode api.CleanupMode,
 	) ResponseCode
 }

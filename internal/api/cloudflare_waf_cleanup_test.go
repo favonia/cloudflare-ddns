@@ -79,6 +79,15 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 		code                 api.WAFListCleanupCode
 		prepareMocks         func(*mocks.MockPP)
 	}{
+		"empty-list-still-deleted": {
+			[]listMeta{{name: "list", size: 0, kind: cloudflare.ListTypeIP}},
+			nil,
+			1, 1, 0, 0, nil,
+			api.WAFListCleanupUpdated,
+			func(ppfmt *mocks.MockPP) {
+				ppfmt.EXPECT().Noticef(pp.EmojiDeletion, "The list %s was deleted", "account456/list")
+			},
+		},
 		"success": {
 			[]listMeta{{name: "list", size: 5, kind: cloudflare.ListTypeIP}},
 			nil,
@@ -187,6 +196,7 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 					mockWAFList,
 					"description",
 					cleanupFamilies(ipnet.IP4, ipnet.IP6),
+					api.CleanupAllowAsync,
 				)
 				require.Equal(t, tc.code, code)
 				assertHandlersExhausted(t, lh, dh, lih, dih)
@@ -264,6 +274,7 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 					mockWAFList,
 					"description",
 					cleanupFamilies(ipnet.IP4, ipnet.IP6),
+					api.CleanupAllowAsync,
 				)
 				require.Equal(t, tc.code, code)
 				assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
@@ -298,7 +309,7 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 			"Managed items in the list %s were already deleted (cached)", "account456/list")
 		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
 		require.Equal(t, api.WAFListCleanupNoop, code)
 		assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 	})
@@ -368,7 +379,7 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 
 				cleanupPP := f.newPreparedPP(tc.prepareCleanupPP)
 				code := f.cfHandle.FinalCleanWAFList(
-					context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies)
+					context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies, api.CleanupAllowAsync)
 				require.Equal(t, tc.expectedCode, code)
 
 				if tc.expectedCachedRun {
@@ -413,7 +424,7 @@ func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresOutdatedCache(t *test
 				"Managed items in the list %s were already deleted", "account456/list"),
 		)
 		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
 		require.Equal(t, api.WAFListCleanupNoop, code)
 		assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
 	})
@@ -446,7 +457,7 @@ func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 			"Managed items in the list %s were already deleted", "account456/list")
 		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
 		require.Equal(t, api.WAFListCleanupNoop, code)
 		assertHandlersExhausted(t, listHandler)
 	})
@@ -480,7 +491,7 @@ func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.
 		cleanupPP.EXPECT().Infof(pp.EmojiAlreadyDone,
 			"Managed items in the list %s were already deleted", "account456/list")
 		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
-			cleanupFamilies(ipnet.IP4, ipnet.IP6))
+			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
 		require.Equal(t, api.WAFListCleanupNoop, code)
 		assertHandlersExhausted(t, listHandler)
 	})

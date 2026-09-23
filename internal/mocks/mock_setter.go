@@ -47,17 +47,17 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 }
 
 // FinalClearWAFList mocks base method.
-func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, managedFamilies map[ipnet.Family]bool) setter.ResponseCode {
+func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, managedFamilies map[ipnet.Family]bool, mode api.CleanupMode) setter.ResponseCode {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalClearWAFList", ctx, ppfmt, list, listDescription, managedFamilies)
+	ret := m.ctrl.Call(m, "FinalClearWAFList", ctx, ppfmt, list, listDescription, managedFamilies, mode)
 	ret0, _ := ret[0].(setter.ResponseCode)
 	return ret0
 }
 
 // FinalClearWAFList indicates an expected call of FinalClearWAFList.
-func (mr *MockSetterMockRecorder) FinalClearWAFList(ctx, ppfmt, list, listDescription, managedFamilies any) *MockSetterFinalClearWAFListCall {
+func (mr *MockSetterMockRecorder) FinalClearWAFList(ctx, ppfmt, list, listDescription, managedFamilies, mode any) *MockSetterFinalClearWAFListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFList", reflect.TypeOf((*MockSetter)(nil).FinalClearWAFList), ctx, ppfmt, list, listDescription, managedFamilies)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalClearWAFList", reflect.TypeOf((*MockSetter)(nil).FinalClearWAFList), ctx, ppfmt, list, listDescription, managedFamilies, mode)
 	return &MockSetterFinalClearWAFListCall{Call: call}
 }
 
@@ -73,13 +73,13 @@ func (c *MockSetterFinalClearWAFListCall) Return(arg0 setter.ResponseCode) *Mock
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
