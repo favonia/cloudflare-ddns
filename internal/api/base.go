@@ -89,13 +89,14 @@ const (
 	// WAFListCleanupNoop means the managed WAF content was already gone.
 	WAFListCleanupNoop WAFListCleanupCode = iota
 
-	// WAFListCleanupUpdated means the managed WAF content was removed synchronously.
+	// WAFListCleanupUpdated means removal of the managed WAF content was confirmed complete.
 	WAFListCleanupUpdated
 
 	// WAFListCleanupUpdating means WAF cleanup was started asynchronously.
 	WAFListCleanupUpdating
 
-	// WAFListCleanupFailed means shutdown cleanup did not finish successfully.
+	// WAFListCleanupFailed means cleanup could not be confirmed.
+	// The remote state may already have changed.
 	WAFListCleanupFailed
 )
 
