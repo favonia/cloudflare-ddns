@@ -202,7 +202,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		},
 	)
 
-	require.Zero(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockNotifier, mockSetter))
+	require.True(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockNotifier, mockSetter))
 }
 
 func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
@@ -213,7 +213,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 
-	require.Zero(t, stopUpdating(
+	require.True(t, stopUpdating(
 		context.Background(),
 		pp.NewSilent(),
 		&config.LifecycleConfig{
@@ -309,5 +309,5 @@ func TestRunOnceCleanup(t *testing.T) {
 		},
 	)
 
-	require.Zero(t, runOnceCleanup(context.Background(), context.Background(), ppfmt, updateConfig, mockHeartbeat, mockNotifier, mockSetter))
+	require.True(t, runOnceCleanup(context.Background(), context.Background(), ppfmt, updateConfig, mockHeartbeat, mockNotifier, mockSetter))
 }

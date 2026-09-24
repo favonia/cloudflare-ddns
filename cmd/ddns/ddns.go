@@ -62,58 +62,51 @@ func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*con
 	return builtConfig, s, true
 }
 
-// stopUpdating reports final cleanup and returns its result without waiting
-// for asynchronous operations when their result cannot guide further cleanup.
+// stopUpdating reports whether final cleanup succeeded, or was not needed.
+// Accepted asynchronous cleanup counts as success; reporter delivery is separate.
 func stopUpdating(
 	ctx context.Context, ppfmt pp.PP,
 	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
 	hb heartbeat.Heartbeat, nt notifier.Notifier,
 	s setter.Setter,
-) int {
+) bool {
 	if lifecycleConfig.DeleteOnStop {
 		// Prefer a shorter shutdown over confirming the final item-deletion
 		// outcome: there is no further fallback, and waiting risks exhausting
 		// the container stop grace period. See the lifecycle design note.
 		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s, api.CleanupAllowAsync)
-		code := operationExitCode(msg)
+		ok := !msg.Failed()
 		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
 		nt.Send(ctx, ppfmt, msg.Notification())
-		return code
+		return ok
 	}
-	return 0
+	return true
 }
 
 // runOnceCleanup confirms cleanup using workCtx and reports the outcome using
 // reportCtx, which remains usable if workCtx is canceled. Startup has validated
 // that every in-scope provider is static.empty. Reporter delivery does not
-// change the returned work result.
+// change the returned success flag.
 func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
-) int {
+) bool {
 	msg := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
-	code := operationExitCode(msg)
+	ok := !msg.Failed()
 	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
 	nt.Send(reportCtx, ppfmt, msg.Notification())
-	return code
+	return ok
 }
 
-// runOnceUpdate returns the update result independently of later signals or
+// runOnceUpdate reports whether the update succeeded, independently of later signals or
 // reporter delivery. reportCtx remains usable when workCtx is canceled.
 func runOnceUpdate(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
-) int {
+) bool {
 	msg := updater.UpdateIPs(workCtx, ppfmt, updateConfig, s)
-	code := operationExitCode(msg)
+	ok := !msg.Failed()
 	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
 	nt.Send(reportCtx, ppfmt, msg.Notification())
-	return code
-}
-
-func operationExitCode(msg updater.Message) int {
-	if msg.Failed() {
-		return 1
-	}
-	return 0
+	return ok
 }
 
 func main() {
@@ -168,14 +161,17 @@ func realMain() int {
 
 	if lifecycleConfig.UpdateCron == nil {
 		ppfmt.BlankLineIfVerbose()
-		var code int
+		var ok bool
 		if lifecycleConfig.DeleteOnStop {
-			code = runOnceCleanup(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+			ok = runOnceCleanup(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
 		} else {
-			code = runOnceUpdate(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
+			ok = runOnceUpdate(ctxWithSignals, ctx, ppfmt, updateConfig, hb, nt, s)
 		}
 		ppfmt.Infof(pp.EmojiBye, "Bye!")
-		return code
+		if !ok {
+			return 1
+		}
+		return 0
 	}
 
 	nt.Send(ctx, ppfmt, startupNotification())
@@ -232,11 +228,14 @@ func realMain() int {
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
 		if sig.WaitForSignalsUntil(ppfmt, next) {
-			code := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
+			ok := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, nt, s)
 			hb.Exit(ctx, ppfmt, "Stopped")
 			nt.Send(ctx, ppfmt, shutdownNotification())
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
-			return code
+			if !ok {
+				return 1
+			}
+			return 0
 		}
 	} // mainLoop
 }

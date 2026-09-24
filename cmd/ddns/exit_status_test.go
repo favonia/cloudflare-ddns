@@ -19,7 +19,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-func TestOperationExitStatus(t *testing.T) {
+func TestOperationSuccess(t *testing.T) {
 	t.Parallel()
 	for _, mode := range []string{"update", "cleanup", "stop"} {
 		for _, tc := range []struct {
@@ -29,17 +29,17 @@ func TestOperationExitStatus(t *testing.T) {
 			cancelOnReport bool
 			cancelInWork   bool
 			timeout        bool
-			want           int
+			want           bool
 		}{
-			{"noop", setter.ResponseNoop, true, false, false, false, 0},
-			{"updated", setter.ResponseUpdated, true, false, false, false, 0},
-			{"failed", setter.ResponseFailed, true, false, false, false, 1},
-			{"async", setter.ResponseUpdating, true, false, false, false, 0},
-			{"report-failed", setter.ResponseUpdated, false, false, false, false, 0},
-			{"late-cancel", setter.ResponseUpdated, false, true, false, false, 0},
-			{"failure-preserved", setter.ResponseFailed, false, true, false, false, 1},
-			{"interrupted", setter.ResponseFailed, true, false, true, false, 1},
-			{"timeout", setter.ResponseFailed, true, false, false, true, 1},
+			{"noop", setter.ResponseNoop, true, false, false, false, true},
+			{"updated", setter.ResponseUpdated, true, false, false, false, true},
+			{"failed", setter.ResponseFailed, true, false, false, false, false},
+			{"async", setter.ResponseUpdating, true, false, false, false, true},
+			{"report-failed", setter.ResponseUpdated, false, false, false, false, true},
+			{"late-cancel", setter.ResponseUpdated, false, true, false, false, true},
+			{"failure-preserved", setter.ResponseFailed, false, true, false, false, false},
+			{"interrupted", setter.ResponseFailed, true, false, true, false, false},
+			{"timeout", setter.ResponseFailed, true, false, false, true, false},
 		} {
 			if mode == "cleanup" && tc.response == setter.ResponseUpdating {
 				continue // CleanupWait does not return an in-progress result.
@@ -99,7 +99,7 @@ func TestOperationExitStatus(t *testing.T) {
 						cancel()
 					}
 					require.NoError(t, ctx.Err())
-					require.Equal(t, tc.want == 0, msg.OK)
+					require.Equal(t, tc.want, msg.OK)
 					return tc.reporterOK
 				}
 				if mode == "stop" {
@@ -111,16 +111,16 @@ func TestOperationExitStatus(t *testing.T) {
 					require.NoError(t, ctx.Err())
 					return tc.reporterOK
 				})
-				var code int
+				var ok bool
 				switch mode {
 				case "update":
-					code = runOnceUpdate(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
+					ok = runOnceUpdate(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
 				case "cleanup":
-					code = runOnceCleanup(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
+					ok = runOnceCleanup(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
 				case "stop":
-					code = stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, nt, s)
+					ok = stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, nt, s)
 				}
-				require.Equal(t, tc.want, code)
+				require.Equal(t, tc.want, ok)
 			})
 		}
 	}
