@@ -176,10 +176,8 @@ func realMain() int {
 
 	nt.Send(ctx, ppfmt, startupNotification())
 
-	// Without the following line, the quiet mode can be too quiet, and some system (Portainer)
-	// is not happy with completely empty log. As a workaround, we will print a Notice here.
-	// See GitHub issue #426.
-	// One-shot execution returns above, preserving its quiet-mode behavior.
+	// Keep scheduled runs from producing an empty log in quiet mode, which
+	// causes problems for Portainer. See GitHub issue #426.
 	if !ppfmt.IsShowing(pp.Verbose) {
 		ppfmt.Noticef(pp.EmojiMute, "Quiet mode enabled")
 	}
