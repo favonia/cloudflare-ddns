@@ -426,7 +426,9 @@ Start with the same image and environment variables shown in [Quick Start](#quic
 
 Due to high maintenance costs, the dedicated Kubernetes instructions have been removed. You can still generate Kubernetes configurations from the Docker Compose template using [Kompose](https://kompose.io/) version 1.35.0 or later. A simple [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) is sufficient here; there is no inbound traffic, so a [Service](https://kubernetes.io/docs/concepts/services-networking/service/) is not required. This README does not maintain first-party Kubernetes manifests.
 
-## Exit Status
+<a id="exit-status"></a>
+
+## 🚦 Exit Status
 
 By default, the updater keeps running on its configured schedule, including after a failed update. When stopped normally, it exits with 0; with `DELETE_ON_STOP=true`, failed shutdown cleanup instead returns 1 (unreleased). Earlier update failures do not affect this result. Asynchronous shutdown cleanup can return 0 once accepted, before remote completion.
 
