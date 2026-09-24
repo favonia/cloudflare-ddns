@@ -426,6 +426,14 @@ Start with the same image and environment variables shown in [Quick Start](#quic
 
 Due to high maintenance costs, the dedicated Kubernetes instructions have been removed. You can still generate Kubernetes configurations from the Docker Compose template using [Kompose](https://kompose.io/) version 1.35.0 or later. A simple [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) is sufficient here; there is no inbound traffic, so a [Service](https://kubernetes.io/docs/concepts/services-networking/service/) is not required. This README does not maintain first-party Kubernetes manifests.
 
+## Exit Status
+
+By default, the updater keeps running on its configured schedule, including after a failed update. When stopped normally, it exits with 0; with `DELETE_ON_STOP=true`, failed shutdown cleanup instead returns 1 (unreleased). Earlier update failures do not affect this result. Asynchronous shutdown cleanup can return 0 once accepted, before remote completion.
+
+With `UPDATE_CRON=@once`, the updater exits after its update or cleanup: 0 when it succeeds, including when no changes are needed, or 1 when it fails or is interrupted before completion (unreleased).
+
+Startup failures and schedules with no future update time also return 1. Heartbeat and notification delivery failures do not change the exit status.
+
 ## 🛠️ Troubleshooting
 
 ### 🤔 I got <code>exec /bin/ddns: operation not permitted</code>
@@ -632,7 +640,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` means the updater will terminate immediately after updating the DNS records or WAF lists, effectively disabling the scheduling feature.</p><p>🤖 With `@every 5m`, if a check and its updates take two minutes, the updater only waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
 | `UPDATE_ON_START` | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`. | `true` |
 
-**Exit status (unreleased):** With `UPDATE_CRON=@once`, the updater exits with 0 when its update or cleanup succeeds, including when no changes are needed, and 1 when it fails or is interrupted before completion. In scheduled mode, a normal stop exits with 1 if final cleanup fails, otherwise 0; earlier update failures do not affect this result. Ordinary shutdown may return 0 after asynchronous cleanup is accepted without waiting for completion. Heartbeat and notification delivery failures do not change these results.
+See [Exit Status](#exit-status) for how the updater reports success or failure.
 
 > 💡 Active cleanup tip: set one or both IP providers to `static.empty` and use `UPDATE_CRON=@once` to remove managed DNS records or managed WAF items and then exit. If both providers are `static.empty`, you can add `DELETE_ON_STOP=true` to make the updater try to delete the WAF list itself too.
 
