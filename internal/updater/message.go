@@ -8,11 +8,17 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 )
 
-// Message encapsulates the messages to both heartbeat services and notifiers.
+// Message carries the updater work result and messages for heartbeat services and notifiers.
 type Message struct {
 	HeartbeatMessage heartbeat.Message
 	NotifierMessage  notifier.Message
 	NotificationKind notifier.Kind
+}
+
+// Failed reports whether updater work had an unrecovered failure.
+// Accepted asynchronous work is not a failure. Reporter delivery is separate.
+func (m Message) Failed() bool {
+	return !m.HeartbeatMessage.OK
 }
 
 // Notification returns the notifier-facing message with its classification.
