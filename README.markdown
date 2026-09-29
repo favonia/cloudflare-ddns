@@ -1,7 +1,7 @@
 # 🌟 Cloudflare DDNS
 
 [![Github Source](https://img.shields.io/badge/source-github-orange)](https://github.com/favonia/cloudflare-ddns)
-[![Codecov](https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
+[![Codecov](https://codecov.io/gh/favonia/cloudflare-ddns/branch/main/graph/badge.svg?precision=2)](https://app.codecov.io/gh/favonia/cloudflare-ddns)
 [![Docker Image Size](https://img.shields.io/docker/image-size/favonia/cloudflare-ddns/latest)](https://hub.docker.com/r/favonia/cloudflare-ddns)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/6680/badge)](https://www.bestpractices.dev/en/projects/6680/passing)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/favonia/cloudflare-ddns?label=openssf+scorecard)](https://securityscorecards.dev/viewer/?uri=github.com/favonia/cloudflare-ddns)
@@ -29,7 +29,7 @@ A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It 
 
 ### 🧱 Reliability
 
-- <img src="https://img.shields.io/codecov/c/gh/favonia/cloudflare-ddns?label=" alt="Codecov" align="top"> The code is extensively tested.
+- <img src="https://codecov.io/gh/favonia/cloudflare-ddns/branch/main/graph/badge.svg?precision=2" alt="Codecov" align="top"> The code is extensively tested.
 - 🔬 Compatibility with the Cloudflare API is verified periodically with [dedicated scripts](scripts/README.markdown).
 - 🧰 The updater is designed to recover from transient network failures.
 
