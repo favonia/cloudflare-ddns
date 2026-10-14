@@ -122,3 +122,41 @@ func TestRecordMutationUnconfirmedMembership(t *testing.T) {
 		})
 	}
 }
+
+func TestRecordMutationUpdateUnconfirmedMembership(t *testing.T) {
+	t.Parallel()
+	for _, selector := range []*regexp.Regexp{nil, regexp.MustCompile(""), regexp.MustCompile("^managed$")} {
+		name := "nil"
+		if selector != nil {
+			name = selector.String()
+			if name == "" {
+				name = "empty"
+			}
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				options := defaultHandleOptions()
+				options.ManagedRecordsCommentRegex = selector
+				f := newCloudflareHarnessWithOptions(t, options)
+				p := f.newPP()
+				params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
+				zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+				zh.setRequestLimit(2)
+				urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, params)
+				urh.setRequestLimit(0)
+				p.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
+				result := f.handle.UpdateRecord(context.Background(), p, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+				require.Equal(t, api.MutationUnconfirmed, result.Status)
+				require.Equal(t, api.RecordUpdate, result.Kind)
+				require.Equal(t, api.RecordFact{ID: "record1", IP: mustIP("::2")}, result.Record)
+				expected := api.MembershipManaged
+				if selector != nil && selector.String() != "" {
+					expected = api.MembershipUnknown
+				}
+				require.Equal(t, expected, result.Membership)
+				assertHandlersExhausted(t, zh, urh)
+			})
+		})
+	}
+}
