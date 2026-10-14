@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
@@ -20,9 +19,8 @@ func (s setterWAFListResponses) register(name string, code setter.ResponseCode) 
 }
 
 // Heartbeat success lines are intentionally terse status labels. Failure lines
-// can be longer because they are the ones users need to inspect. The notifier
-// variants below carry the fuller user-facing prose for Shoutrrr-style
-// channels. See docs/design/guides/operator-messages.markdown.
+// can be longer because they are the ones users need to inspect. See
+// docs/design/guides/operator-messages.markdown.
 func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
@@ -46,40 +44,9 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
-	var fragments []string
-
-	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments, fmt.Sprintf(
-			"Could not confirm update of WAF list(s) %s", describeDomainsInEnglish(domains)))
-	}
-
-	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		fragments = appendNotifierFragmentf(
-			fragments,
-			"Updating WAF list(s) %s",
-			"; updating %s",
-			describeDomainsInEnglish(domains),
-		)
-	}
-
-	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		fragments = appendNotifierFragmentf(
-			fragments,
-			"Updated WAF list(s) %s",
-			"; updated %s",
-			describeDomainsInEnglish(domains),
-		)
-	}
-
-	return finishNotifierMessage(fragments)
-}
-
 func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
 		HeartbeatMessage: generateUpdateWAFListsHeartbeatMessage(s),
-		NotifierMessage:  generateUpdateWAFListsNotifierMessage(s),
-		NotificationKind: "",
 		dns:              nil,
 		waf:              nil,
 		problems:         nil,
@@ -110,41 +77,9 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateFinalClearWAFListsNotifierMessage(s setterWAFListResponses) notifier.Message {
-	var fragments []string
-
-	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
-		fragments = append(fragments,
-			fmt.Sprintf("Could not confirm cleanup of WAF list(s) %s",
-				describeDomainsInEnglish(domains)))
-	}
-
-	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		fragments = appendNotifierFragmentf(
-			fragments,
-			"Cleaning WAF list(s) %s",
-			"; cleaning %s",
-			describeDomainsInEnglish(domains),
-		)
-	}
-
-	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
-		fragments = appendNotifierFragmentf(
-			fragments,
-			"Cleaned WAF list(s) %s",
-			"; cleaned %s",
-			describeDomainsInEnglish(domains),
-		)
-	}
-
-	return finishNotifierMessage(fragments)
-}
-
 func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
 	return Message{
 		HeartbeatMessage: generateFinalClearWAFListsHeartbeatMessage(s),
-		NotifierMessage:  generateFinalClearWAFListsNotifierMessage(s),
-		NotificationKind: "",
 		dns:              nil,
 		waf:              nil,
 		problems:         nil,

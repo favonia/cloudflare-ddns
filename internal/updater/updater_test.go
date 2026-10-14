@@ -21,7 +21,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -88,12 +87,10 @@ func initUpdateConfig() *config.UpdateConfig {
 	return conf
 }
 
-// Public results retain their legacy surfaces while private evidence evolves.
+// Check the public heartbeat contract without coupling to private semantic evidence.
 func requirePublicMessageEqual(t *testing.T, want, got updater.Message) {
 	t.Helper()
 	require.Equal(t, want.HeartbeatMessage, got.HeartbeatMessage)
-	require.Equal(t, want.NotifierMessage, got.NotifierMessage)
-	require.Equal(t, want.NotificationKind, got.NotificationKind)
 }
 
 func hostID6Literal(t *testing.T, text string) hostid6.Derivation {
@@ -278,7 +275,6 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
@@ -287,10 +283,6 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			[]string{
 				"Could not confirm that A records for ip4.hello2 were updated to 127.0.0.1, 127.0.0.2",
 				"Could not confirm update of WAF list(s) xxxxxxxx/list2",
-			},
-			[]string{
-				"Could not confirm that A records for ip4.hello2 were updated to 127.0.0.1 and 127.0.0.2; updated A records for ip4.hello1 and ip4.hello4 to 127.0.0.1 and 127.0.0.2.",
-				`Could not confirm update of WAF list(s) xxxxxxxx/list2; updating 12341234/list1; updated zzz/list4.`,
 			},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
@@ -315,10 +307,6 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				"Set A records for ip4.hello1, ip4.hello3, ip4.hello4 to 127.0.0.1, 127.0.0.2",
 				"Updating WAF list(s) 12341234/list1",
 				"Updated WAF list(s) AAAAAAAA/list3, zzz/list4",
-			},
-			[]string{
-				"Updated A records for ip4.hello1, ip4.hello3, and ip4.hello4 to 127.0.0.1 and 127.0.0.2.",
-				`Updating WAF list(s) 12341234/list1; updated AAAAAAAA/list3 and zzz/list4.`,
 			},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
@@ -362,17 +350,11 @@ func TestUpdateIPsMultiple(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindUpdateFailure
-			if tc.ok {
-				wantKind = notifier.KindUpdate
-			}
 			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -399,20 +381,15 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 	lists := []api.WAFList{list1, list2, list3, list4}
 
 	for name, tc := range map[string]struct {
-		ok               bool
-		monitorMessages  []string
-		notifierMessages []string
-		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
+		ok              bool
+		monitorMessages []string
+		prepareMocks    func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"1yes1doing1no": {
 			false,
 			[]string{
 				"Could not confirm that A records for ip4.hello2 were deleted",
 				"Could not confirm cleanup of WAF list(s) xxxxxxxx/list2",
-			},
-			[]string{
-				"Could not confirm that A records for ip4.hello2 were deleted; deleted A records for ip4.hello1 and ip4.hello4.",
-				`Could not confirm cleanup of WAF list(s) xxxxxxxx/list2; cleaning 12341234/list1; cleaned zzz/list4.`,
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -432,10 +409,6 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			[]string{
 				"Deleted A records for ip4.hello1, ip4.hello3, ip4.hello4",
 				"Cleaned WAF list(s) 12341234/list1, AAAAAAAA/list3, zzz/list4",
-			},
-			[]string{
-				"Deleted A records for ip4.hello1, ip4.hello3, and ip4.hello4.",
-				`Cleaned WAF list(s) 12341234/list1, AAAAAAAA/list3, and zzz/list4.`,
 			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -471,17 +444,11 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			}
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter, api.CleanupAllowAsync)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindCleanupFailure
-			if tc.ok {
-				wantKind = notifier.KindCleanup
-			}
 			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -510,12 +477,11 @@ func TestUpdateIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
 		"ip4-only": {
-			true, nil, nil,
+			true, nil,
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -530,7 +496,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip4-only/clear": {
 			true,
 			[]string{"Cleared A records for ip4.hello", "Updated WAF list(s) 12341234/list"},
-			[]string{"Cleared A records for ip4.hello.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -545,7 +510,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip4-only/set-fail": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1", "Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1.", `Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -560,7 +524,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip4-only/dns-updated-waf-updating": {
 			true,
 			[]string{"Set A records for ip4.hello to 127.0.0.1", "Updating WAF list(s) 12341234/list"},
-			[]string{"Updated A records for ip4.hello to 127.0.0.1.", `Updating WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -575,7 +538,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip6-only": {
 			true,
 			[]string{"Set AAAA records for ip6.hello to ::1", "Updated WAF list(s) 12341234/list"},
-			[]string{"Updated AAAA records for ip6.hello to ::1.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -590,7 +552,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip6-only/set-fail": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1", "Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1.", `Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -603,7 +564,7 @@ func TestUpdateIPs(t *testing.T) {
 			},
 		},
 		"dual": {
-			true, nil, nil,
+			true, nil,
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -622,7 +583,6 @@ func TestUpdateIPs(t *testing.T) {
 		"dual/set-fail/1": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -641,7 +601,6 @@ func TestUpdateIPs(t *testing.T) {
 		"dual/set-fail/2": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -660,7 +619,6 @@ func TestUpdateIPs(t *testing.T) {
 		"dual/set-fail/3": {
 			false,
 			[]string{`Could not confirm update of WAF list(s) 12341234/list`},
-			[]string{`Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -679,7 +637,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip4-detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses"},
-			[]string{"Failed to detect any IPv4 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -697,7 +654,6 @@ func TestUpdateIPs(t *testing.T) {
 		"ip6-detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv6 addresses"},
-			[]string{"Failed to detect any IPv6 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -715,7 +671,6 @@ func TestUpdateIPs(t *testing.T) {
 		"dual/detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses", "Failed to detect any IPv6 addresses"},
-			[]string{"Failed to detect any IPv4 addresses.", "Failed to detect any IPv6 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
@@ -734,17 +689,11 @@ func TestUpdateIPs(t *testing.T) {
 
 			resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindUpdateFailure
-			if tc.ok {
-				wantKind = notifier.KindUpdate
-			}
 			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -777,8 +726,6 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -811,8 +758,6 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -840,8 +785,6 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredDetection(t *testing.T
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -871,8 +814,6 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredPluralDetection(t *tes
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8, 198.51.100.9"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8 and 198.51.100.9."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -918,12 +859,6 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 			OK:    false,
 			Lines: []string{"No detected IPv4 addresses remain after filtering"},
 		},
-		NotifierMessage: notifier.Message{
-			"No detected IPv4 addresses remain after filtering.",
-			"Updated AAAA records for ip6.hello to 2001:db8::8.",
-			"Updated WAF list(s) 12341234/list.",
-		},
-		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -950,8 +885,6 @@ func TestUpdateIPsDetectionFilterDoesNotChangeExplicitClear(t *testing.T) {
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Cleared A records for ip4.hello"}},
-		NotifierMessage:  notifier.Message{"Cleared A records for ip4.hello."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -975,8 +908,6 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 
 	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{"Failed to detect any IPv4 addresses"}},
-		NotifierMessage:  notifier.Message{"Failed to detect any IPv4 addresses."},
-		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -1020,8 +951,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 
 		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
-			NotifierMessage:  nil,
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1054,8 +983,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 
 		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
-			NotifierMessage:  nil,
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1090,11 +1017,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					"Updated WAF list(s) 12341234/list",
 				},
 			},
-			NotifierMessage: notifier.Message{
-				"Cleared AAAA records for alpha.example and beta.example.",
-				"Updated WAF list(s) 12341234/list.",
-			},
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1138,10 +1060,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1181,10 +1099,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1228,10 +1142,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 }
@@ -1258,14 +1168,12 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
 		"detect-timeout": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses"},
-			[]string{"Failed to detect any IPv4 addresses."},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1284,7 +1192,6 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 		"set-timeout": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1."},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1304,7 +1211,6 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 		"set-list-timeout": {
 			false,
 			[]string{"Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1328,17 +1234,11 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 				require.Equal(t, !tc.ok, resp.Failed())
-				wantKind := notifier.KindUpdateFailure
-				if tc.ok {
-					wantKind = notifier.KindUpdate
-				}
 				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage:  notifier.Message(tc.notifierMessages),
-					NotificationKind: wantKind,
 				}, resp)
 			})
 		})
@@ -1365,14 +1265,12 @@ func TestFinalDeleteIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"ip4-only": {
 			true,
 			[]string{"Deleted A records for ip4.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{"Deleted A records for ip4.hello.", `Cleaned WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1384,10 +1282,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"ip4-only/fail": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted", "Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{
-				"Could not confirm that A records for ip4.hello were deleted.",
-				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1399,10 +1293,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"ip4-only/dns-deleted-waf-cleaning": {
 			true,
 			[]string{"Deleted A records for ip4.hello", "Cleaning WAF list(s) 12341234/list"},
-			[]string{
-				"Deleted A records for ip4.hello.",
-				`Cleaning WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1414,10 +1304,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"ip6-only": {
 			true,
 			[]string{"Deleted AAAA records for ip6.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{
-				"Deleted AAAA records for ip6.hello.",
-				`Cleaned WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1429,10 +1315,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"ip6-only/fail": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were deleted", "Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{
-				"Could not confirm that AAAA records for ip6.hello were deleted.",
-				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1444,10 +1326,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"dual": {
 			true,
 			[]string{"Deleted A records for ip4.hello", "Deleted AAAA records for ip6.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{
-				"Deleted A records for ip4.hello.", "Deleted AAAA records for ip6.hello.",
-				`Cleaned WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1460,7 +1338,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"dual/fail/1": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted"},
-			[]string{"Could not confirm that A records for ip4.hello were deleted."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1473,7 +1350,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"dual/fail/2": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were deleted"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were deleted."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1486,7 +1362,6 @@ func TestFinalDeleteIPs(t *testing.T) {
 		"dual/fail/3": {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1502,17 +1377,11 @@ func TestFinalDeleteIPs(t *testing.T) {
 
 			resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindCleanupFailure
-			if tc.ok {
-				wantKind = notifier.KindCleanup
-			}
 			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -1538,14 +1407,12 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"delete-timeout": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted"},
-			[]string{"Could not confirm that A records for ip4.hello were deleted."},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1562,7 +1429,6 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 		"delete-list-timeout": {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1583,17 +1449,11 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 				require.Equal(t, !tc.ok, resp.Failed())
-				wantKind := notifier.KindCleanupFailure
-				if tc.ok {
-					wantKind = notifier.KindCleanup
-				}
 				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage:  notifier.Message(tc.notifierMessages),
-					NotificationKind: wantKind,
 				}, resp)
 			})
 		})

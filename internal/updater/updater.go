@@ -14,7 +14,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/hostid6"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -441,11 +440,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 		msgs = append(msgs, setWAFLists(ctx, ppfmt, c, s, targetsForWAF))
 	}
 
-	return classifyNotification(
-		mergeMessages(msgs...),
-		notifier.KindUpdate,
-		notifier.KindUpdateFailure,
-	)
+	return mergeMessages(msgs...)
 }
 
 // FinalDeleteIPs cleans managed DNS records and WAF content under shutdown
@@ -468,9 +463,5 @@ func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s 
 	// Clear WAF lists
 	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s, mode))
 
-	return classifyNotification(
-		mergeMessages(msgs...),
-		notifier.KindCleanup,
-		notifier.KindCleanupFailure,
-	)
+	return mergeMessages(msgs...)
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
@@ -31,7 +30,6 @@ import (
 type cloudflareTraceTranscriptCapture struct {
 	transcript     string
 	heartbeat      string
-	notifier       string
 	endpoints      []string
 	requestCounts  [3]int32
 	winnerWarnings bool
@@ -180,7 +178,6 @@ func captureCloudflareTraceDetectionTranscript(
 	capture := cloudflareTraceTranscriptCapture{
 		transcript:    output.String(),
 		heartbeat:     msg.HeartbeatMessage.Format(),
-		notifier:      msg.NotifierMessage.Format(),
 		endpoints:     append([]string(nil), endpoints...),
 		requestCounts: [3]int32{requestCounts[0].Load(), requestCounts[1].Load(), requestCounts[2].Load()},
 		winnerWarnings: strings.Contains(output.String(), `response is missing the "h" (host)`) ||
@@ -210,7 +207,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				case "primary-clean-success":
 					// Mutation caught: adding provider chatter to a clean primary success.
 					require.Empty(t, capture.heartbeat)
-					require.Empty(t, capture.notifier)
 					require.Equal(t, int32(1), capture.requestCounts[0])
 					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
 					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
@@ -222,7 +218,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				case "fallback-clean-success":
 					// Mutation caught: claiming the primary failed, exposing loser diagnostics, or losing quiet suppression.
 					require.Empty(t, capture.heartbeat)
-					require.Empty(t, capture.notifier)
 					require.Equal(t, int32(1), capture.requestCounts[0])
 					require.Equal(t, int32(1), capture.requestCounts[1])
 					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
@@ -238,7 +233,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				case "complete-mixed-failure":
 					// Mutation caught: omitting endpoint context, replaying failed-attempt warnings, or promising another run.
 					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
-					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
 					require.Equal(t, [3]int32{1, 1, 1}, capture.requestCounts)
 					require.False(t, capture.winnerWarnings)
 					host := strings.TrimSuffix(strings.TrimPrefix(capture.endpoints[0], "http://"), "/primary")
@@ -254,7 +248,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				case "shared-detection-timeout":
 					// Mutation caught: repeating worker deadlines or placing family guidance before timeout remediation.
 					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
-					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
 					require.Equal(t, int32(1), capture.requestCounts[0])
 					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
 					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
@@ -302,7 +295,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 				// choosing the wrong endpoint role or missing-field grammar, or repeating the issue action.
 				require.Equal(t, wantTranscript, capture.transcript)
 				require.Empty(t, capture.heartbeat)
-				require.Empty(t, capture.notifier)
 				require.True(t, capture.winnerWarnings)
 				require.Equal(t, 1, strings.Count(capture.transcript, "please report this at"))
 				if tc.winnerIndex == 0 {
@@ -315,40 +307,6 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
 				}
 			}
-		})
-	}
-}
-
-func TestClassifyNotification(t *testing.T) {
-	t.Parallel()
-
-	for name, tc := range map[string]struct {
-		ok       bool
-		wantKind notifier.Kind
-	}{
-		"success": {true, notifier.KindUpdate},
-		"failure": {false, notifier.KindUpdateFailure},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			msg := Message{
-				HeartbeatMessage: heartbeat.NewMessagef(tc.ok, "heartbeat"),
-				NotifierMessage:  notifier.NewMessagef("notification"),
-				NotificationKind: "",
-				dns:              nil,
-				waf:              nil,
-				problems:         nil,
-				cleanup:          false,
-			}
-			got := classifyNotification(
-				msg,
-				notifier.KindUpdate,
-				notifier.KindUpdateFailure,
-			)
-			require.Equal(t, tc.wantKind, got.NotificationKind)
-			require.Equal(t,
-				notifier.NewNotification(tc.wantKind, msg.NotifierMessage),
-				got.Notification())
 		})
 	}
 }
@@ -387,17 +345,10 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 			OK:    false,
 			Lines: []string{"Could not update A records for missing.example"},
 		},
-		NotifierMessage: notifier.Message{
-			"Could not update A records for missing.example because of an internal error; check the logs for details.",
-			"Updated A records for present.example to 192.0.2.1.",
-		},
-		NotificationKind: "",
-		dns:              nil,
-		waf:              nil,
-		problems:         nil,
-		cleanup:          false,
+		dns:      nil,
+		waf:      nil,
+		problems: nil,
+		cleanup:  false,
 	}
 	require.Equal(t, want.HeartbeatMessage, msg.HeartbeatMessage)
-	require.Equal(t, want.NotifierMessage, msg.NotifierMessage)
-	require.Equal(t, want.NotificationKind, msg.NotificationKind)
 }

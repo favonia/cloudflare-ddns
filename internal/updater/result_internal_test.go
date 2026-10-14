@@ -17,7 +17,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/provider/protocol"
@@ -180,7 +179,6 @@ func TestMessageExplicitEmptyAndUnmanagedFamily(t *testing.T) {
 	require.NotNil(t, msg.dns[0].result.Before)
 	require.Empty(t, msg.problems)
 	require.Equal(t, heartbeat.Message{OK: true, Lines: nil}, msg.HeartbeatMessage)
-	require.Equal(t, notifier.KindUpdate, msg.NotificationKind)
 	require.False(t, msg.cleanup)
 }
 
@@ -204,7 +202,6 @@ func TestMessageRetainsCleanupAndWAFOutcomes(t *testing.T) {
 	require.Equal(t, []wafOutcome{{list: list, code: setter.ResponseFailed, cleanup: true}}, msg.waf)
 	require.True(t, msg.cleanup)
 	require.True(t, msg.Failed())
-	require.Equal(t, notifier.KindCleanupFailure, msg.NotificationKind)
 
 	c = semanticConfig()
 	msg = FinalDeleteIPs(context.Background(), pp.NewSilent(), c, s, api.CleanupWait)
@@ -212,7 +209,6 @@ func TestMessageRetainsCleanupAndWAFOutcomes(t *testing.T) {
 	require.Empty(t, msg.dns)
 	require.Empty(t, msg.waf)
 	require.False(t, msg.Failed())
-	require.Equal(t, notifier.KindCleanup, msg.NotificationKind)
 }
 
 func TestMessageRetainsWAFNoop(t *testing.T) {
