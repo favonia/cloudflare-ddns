@@ -283,3 +283,53 @@ func TestDNSInferencePartialEffectsSoundness(t *testing.T) {
 		}
 	}
 }
+
+func TestDNSInferenceMappedAddresses(t *testing.T) {
+	t.Parallel()
+	mapped := netip.MustParseAddr("::ffff:192.0.2.1")
+	t.Run("equivalent observations", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("r", 0)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || m.assess(inferenceRead("r", 0)) || m.assess(before) {
+			t.Fatal("mapped and canonical addresses reported a discrepancy")
+		}
+	})
+	t.Run("equivalent identity facts retain precision", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("rr", 0, 0)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || !m.assess(inferenceRead("r", 1)) {
+			t.Fatal("equivalent identity facts invalidated the baseline")
+		}
+	})
+	t.Run("different identity facts remain contradictory", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("rr", 0, 1)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || m.assess(inferenceRead("r", 2)) {
+			t.Fatal("genuinely conflicting identity facts established precision")
+		}
+	})
+	for _, status := range []api.MutationStatus{api.MutationCompleted, api.MutationUnconfirmed} {
+		for _, kind := range []api.RecordMutationKind{api.RecordCreate, api.RecordUpdate} {
+			for _, membership := range []api.ManagedMembership{api.MembershipManaged, api.MembershipUnknown} {
+				var m dnsInference
+				before := inferenceRead("")
+				if kind == api.RecordUpdate {
+					before = inferenceRead("r", 1)
+				}
+				m.assess(before)
+				effect := inferenceEffect(status, kind, "r", 0, membership)
+				effect.Effects[0].Record.IP = mapped
+				m.assess(effect)
+				if m.assess(inferenceRead("r", 0)) {
+					t.Errorf("mapped effect excluded canonical outcome: status=%v kind=%v membership=%v", status, kind, membership)
+				}
+			}
+		}
+	}
+}

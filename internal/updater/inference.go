@@ -8,7 +8,7 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-// recordFactor chooses exactly one address, or absence when absent is true.
+// recordFactor chooses exactly one unmapped address, or absence when absent is true.
 // An empty id is a symbolic create whose identity has not been established.
 type recordFactor struct {
 	id        api.ID
@@ -17,7 +17,8 @@ type recordFactor struct {
 }
 
 // compatibleFactors reports whether independent factor choices can produce
-// exactly the observed address set. Multiplicity of observed addresses is ignored.
+// exactly the observed address set. Inputs must use unmapped addresses;
+// multiplicity of observed addresses is ignored.
 func compatibleFactors(factors []recordFactor, observed []netip.Addr) bool {
 	addresses := make([]netip.Addr, 0, len(observed))
 	for _, ip := range observed {
@@ -103,7 +104,8 @@ func (m *dnsInference) assess(result setter.DNSResult) bool {
 	return unexplained
 }
 
-// inferenceSnapshot normalizes repeated identical identities. Distinct IDs
+// inferenceSnapshot unmaps addresses before normalizing repeated identities,
+// matching the setter's address equivalence. Distinct IDs
 // sharing an address remain separate factors. Missing/conflicting identities
 // cannot establish an exact baseline under the API's list admission contract.
 func inferenceSnapshot(records []api.RecordFact) ([]recordFactor, []netip.Addr, bool) {
@@ -114,6 +116,7 @@ func inferenceSnapshot(records []api.RecordFact) ([]recordFactor, []netip.Addr, 
 		if r.ID == "" || !r.IP.IsValid() {
 			return nil, nil, false
 		}
+		r.IP = r.IP.Unmap()
 		if prior, exists := identities[r.ID]; exists {
 			if prior != r.IP {
 				return nil, nil, false
@@ -185,11 +188,11 @@ func (m *dnsInference) apply(effect api.RecordMutation) {
 		}
 		switch effect.Membership {
 		case api.MembershipManaged:
-			next.addresses = []netip.Addr{effect.Record.IP}
+			next.addresses = []netip.Addr{effect.Record.IP.Unmap()}
 		case api.MembershipUnmanaged:
 			next.absent = true
 		case api.MembershipUnknown:
-			next.addresses = []netip.Addr{effect.Record.IP}
+			next.addresses = []netip.Addr{effect.Record.IP.Unmap()}
 			next.absent = true
 		default:
 			m.widen()
