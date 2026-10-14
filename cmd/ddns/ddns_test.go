@@ -138,7 +138,6 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
-	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 	ppfmt := pp.NewSilent()
 
@@ -193,16 +192,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 			return true
 		},
 	)
-	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ pp.PP, notification notifier.Notification) bool {
-			require.Equal(t, notifier.KindCleanup, notification.Kind)
-			require.Contains(t, notification.Format(), "Deleted A records for example.org")
-			require.Contains(t, notification.Format(), "Cleaned WAF list(s) acc/office")
-			return true
-		},
-	)
-
-	require.True(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockNotifier, mockSetter))
+	require.False(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockSetter).Failed())
 }
 
 func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
@@ -210,10 +200,9 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
-	mockNotifier := mocks.NewMockNotifier(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 
-	require.True(t, stopUpdating(
+	require.Nil(t, stopUpdating(
 		context.Background(),
 		pp.NewSilent(),
 		&config.LifecycleConfig{
@@ -240,7 +229,6 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			UpdateTimeout:      0,
 		},
 		mockHeartbeat,
-		mockNotifier,
 		mockSetter,
 	))
 }
@@ -303,8 +291,8 @@ func TestRunOnceCleanup(t *testing.T) {
 	mockNotifier.EXPECT().Send(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ pp.PP, notification notifier.Notification) bool {
 			require.Equal(t, notifier.KindCleanup, notification.Kind)
-			require.Contains(t, notification.Format(), "Deleted A records for example.org")
-			require.Contains(t, notification.Format(), "Cleaned WAF list(s) acc/office")
+			require.Contains(t, notification.Format(), "cleanup=true")
+			require.Contains(t, notification.Format(), "waf list=acc/office")
 			return true
 		},
 	)
