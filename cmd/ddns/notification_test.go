@@ -21,22 +21,6 @@ func TestLifecycleNotifications(t *testing.T) {
 			notifier.KindStartupFailure,
 			"Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.",
 		},
-		"startup": {
-			startupNotification,
-			notifier.KindStartup,
-			"Cloudflare DDNS has started.",
-		},
-		"scheduling failure": {
-			func() notifier.Notification { return schedulingFailureNotification("@every 5m") },
-			notifier.KindSchedulingFailure,
-			"Cloudflare DDNS stopped because no updates are scheduled in the near future. " +
-				"Consider changing the value of UPDATE_CRON (@every 5m).",
-		},
-		"shutdown": {
-			shutdownNotification,
-			notifier.KindShutdown,
-			"Cloudflare DDNS has stopped.",
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

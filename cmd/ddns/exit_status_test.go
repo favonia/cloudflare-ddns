@@ -107,10 +107,13 @@ func TestOperationSuccess(t *testing.T) {
 				} else {
 					hb.EXPECT().Ping(reportCtx, ppfmt, gomock.Any()).DoAndReturn(report)
 				}
-				nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).DoAndReturn(func(ctx context.Context, _ pp.PP, _ notifier.Notification) bool {
-					require.NoError(t, ctx.Err())
-					return tc.reporterOK
-				})
+				if mode != "stop" && tc.response != setter.ResponseNoop {
+					nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).DoAndReturn(func(ctx context.Context, _ pp.PP, _ notifier.Notification) bool {
+						require.NoError(t, ctx.Err())
+						return tc.reporterOK
+					})
+				}
+
 				var ok bool
 				switch mode {
 				case "update":
@@ -118,7 +121,8 @@ func TestOperationSuccess(t *testing.T) {
 				case "cleanup":
 					ok = runOnceCleanup(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
 				case "stop":
-					ok = stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, nt, s)
+					msg := stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, s)
+					ok = msg == nil || !msg.Failed()
 				}
 				require.Equal(t, tc.want, ok)
 			})
