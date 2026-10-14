@@ -88,6 +88,14 @@ func initUpdateConfig() *config.UpdateConfig {
 	return conf
 }
 
+// Public results retain their legacy surfaces while private evidence evolves.
+func requirePublicMessageEqual(t *testing.T, want, got updater.Message) {
+	t.Helper()
+	require.Equal(t, want.HeartbeatMessage, got.HeartbeatMessage)
+	require.Equal(t, want.NotifierMessage, got.NotifierMessage)
+	require.Equal(t, want.NotificationKind, got.NotificationKind)
+}
+
 func hostID6Literal(t *testing.T, text string) hostid6.Derivation {
 	t.Helper()
 
@@ -358,7 +366,7 @@ func TestUpdateIPsMultiple(t *testing.T) {
 			if tc.ok {
 				wantKind = notifier.KindUpdate
 			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -467,7 +475,7 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			if tc.ok {
 				wantKind = notifier.KindCleanup
 			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -730,7 +738,7 @@ func TestUpdateIPs(t *testing.T) {
 			if tc.ok {
 				wantKind = notifier.KindUpdate
 			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -767,7 +775,7 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
 		NotificationKind: notifier.KindUpdate,
@@ -801,7 +809,7 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
 		NotificationKind: notifier.KindUpdate,
@@ -830,7 +838,7 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredDetection(t *testing.T
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
 		NotificationKind: notifier.KindUpdate,
@@ -861,7 +869,7 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredPluralDetection(t *tes
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8, 198.51.100.9"}},
 		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8 and 198.51.100.9."},
 		NotificationKind: notifier.KindUpdate,
@@ -905,7 +913,7 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
 			Lines: []string{"No detected IPv4 addresses remain after filtering"},
@@ -940,7 +948,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeExplicitClear(t *testing.T) {
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Cleared A records for ip4.hello"}},
 		NotifierMessage:  notifier.Message{"Cleared A records for ip4.hello."},
 		NotificationKind: notifier.KindUpdate,
@@ -965,7 +973,7 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{"Failed to detect any IPv4 addresses"}},
 		NotifierMessage:  notifier.Message{"Failed to detect any IPv4 addresses."},
 		NotificationKind: notifier.KindUpdateFailure,
@@ -1010,7 +1018,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
 			NotifierMessage:  nil,
 			NotificationKind: notifier.KindUpdate,
@@ -1044,7 +1052,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
 			NotifierMessage:  nil,
 			NotificationKind: notifier.KindUpdate,
@@ -1074,7 +1082,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK: true,
 				Lines: []string{
@@ -1125,7 +1133,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
@@ -1168,7 +1176,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
@@ -1215,7 +1223,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
@@ -1324,7 +1332,7 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 				if tc.ok {
 					wantKind = notifier.KindUpdate
 				}
-				require.Equal(t, updater.Message{
+				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
@@ -1498,7 +1506,7 @@ func TestFinalDeleteIPs(t *testing.T) {
 			if tc.ok {
 				wantKind = notifier.KindCleanup
 			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
@@ -1579,7 +1587,7 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 				if tc.ok {
 					wantKind = notifier.KindCleanup
 				}
-				require.Equal(t, updater.Message{
+				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,

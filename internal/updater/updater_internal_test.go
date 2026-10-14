@@ -324,6 +324,10 @@ func TestClassifyNotification(t *testing.T) {
 				HeartbeatMessage: heartbeat.NewMessagef(tc.ok, "heartbeat"),
 				NotifierMessage:  notifier.NewMessagef("notification"),
 				NotificationKind: "",
+				dns:              nil,
+				waf:              nil,
+				problems:         nil,
+				cleanup:          false,
 			}
 			got := classifyNotification(
 				msg,
@@ -367,7 +371,7 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 		present: {ip},
 	})
 
-	require.Equal(t, Message{
+	want := Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
 			Lines: []string{"Could not update A records for missing.example"},
@@ -377,5 +381,12 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 			"Updated A records for present.example to 192.0.2.1.",
 		},
 		NotificationKind: "",
-	}, msg)
+		dns:              nil,
+		waf:              nil,
+		problems:         nil,
+		cleanup:          false,
+	}
+	require.Equal(t, want.HeartbeatMessage, msg.HeartbeatMessage)
+	require.Equal(t, want.NotifierMessage, msg.NotifierMessage)
+	require.Equal(t, want.NotificationKind, msg.NotificationKind)
 }

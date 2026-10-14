@@ -2,6 +2,7 @@ package updater
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
@@ -13,6 +14,13 @@ type Message struct {
 	HeartbeatMessage heartbeat.Message
 	NotifierMessage  notifier.Message
 	NotificationKind notifier.Kind
+
+	// Semantic entries own their slices and retain encounter order independently
+	// of heartbeat/notifier grouping. A problem never invents a DNS outcome.
+	dns      []dnsOutcome
+	waf      []wafOutcome
+	problems []operationProblem
+	cleanup  bool
 }
 
 // Failed reports whether updater work had an unrecovered failure.
@@ -32,6 +40,10 @@ func newMessage() Message {
 		HeartbeatMessage: heartbeat.NewMessage(),
 		NotifierMessage:  notifier.NewMessage(),
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         nil,
+		cleanup:          false,
 	}
 }
 
@@ -39,17 +51,25 @@ func newMessage() Message {
 func mergeMessages(msgs ...Message) Message {
 	hms := make([]heartbeat.Message, len(msgs))
 	nms := make([]notifier.Message, len(msgs))
+	merged := newMessage()
 
-	for i := range msgs {
-		hms[i] = msgs[i].HeartbeatMessage
-		nms[i] = msgs[i].NotifierMessage
+	for i, msg := range msgs {
+		hms[i] = msg.HeartbeatMessage
+		nms[i] = msg.NotifierMessage
+		for _, outcome := range msg.dns {
+			merged.dns = append(merged.dns, outcome.clone())
+		}
+		merged.waf = append(merged.waf, msg.waf...)
+		for _, problem := range msg.problems {
+			problem.domains = slices.Clone(problem.domains)
+			merged.problems = append(merged.problems, problem)
+		}
+		merged.cleanup = merged.cleanup || msg.cleanup
 	}
 
-	return Message{
-		HeartbeatMessage: heartbeat.MergeMessages(hms...),
-		NotifierMessage:  notifier.MergeMessages(nms...),
-		NotificationKind: "",
-	}
+	merged.HeartbeatMessage = heartbeat.MergeMessages(hms...)
+	merged.NotifierMessage = notifier.MergeMessages(nms...)
+	return merged
 }
 
 func classifyNotification(msg Message, successKind, failureKind notifier.Kind) Message {
