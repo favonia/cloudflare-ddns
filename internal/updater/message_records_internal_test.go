@@ -22,23 +22,22 @@ func TestGenerateClearHeartbeatMessage(t *testing.T) {
 			OK:    false,
 			Lines: []string{"Could not confirm that A records for alpha.example were cleared"},
 		}, generateClearHeartbeatMessage(ipnet.IP4, setterResponses{
-			setter.ResponseFailed:   {"alpha.example"},
-			setter.ResponseUpdating: {"beta.example"},
-			setter.ResponseUpdated:  {"gamma.example"},
+			setter.ResponseFailed:  {"alpha.example"},
+			setter.ResponseNoop:    {"beta.example"},
+			setter.ResponseUpdated: {"gamma.example"},
 		}))
 	})
 
-	t.Run("updating-and-updated", func(t *testing.T) {
+	t.Run("noop-and-updated", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, heartbeat.Message{
 			OK: true,
 			Lines: []string{
-				"Clearing A records for alpha.example",
 				"Cleared A records for beta.example",
 			},
 		}, generateClearHeartbeatMessage(ipnet.IP4, setterResponses{
-			setter.ResponseUpdating: {"alpha.example"},
-			setter.ResponseUpdated:  {"beta.example"},
+			setter.ResponseNoop:    {"alpha.example"},
+			setter.ResponseUpdated: {"beta.example"},
 		}))
 	})
 }
@@ -49,11 +48,11 @@ func TestGenerateClearNotifierMessage(t *testing.T) {
 	t.Run("failed-with-followups", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, notifier.Message{
-			"Could not confirm that A records for alpha.example were cleared; clearing A records for beta.example; cleared A records for gamma.example.",
+			"Could not confirm that A records for alpha.example were cleared; cleared A records for gamma.example.",
 		}, generateClearNotifierMessage(ipnet.IP4, setterResponses{
-			setter.ResponseFailed:   {"alpha.example"},
-			setter.ResponseUpdating: {"beta.example"},
-			setter.ResponseUpdated:  {"gamma.example"},
+			setter.ResponseFailed:  {"alpha.example"},
+			setter.ResponseNoop:    {"beta.example"},
+			setter.ResponseUpdated: {"gamma.example"},
 		}))
 	})
 
@@ -77,23 +76,22 @@ func TestGenerateUpdateHeartbeatMessage(t *testing.T) {
 			OK:    false,
 			Lines: []string{"Could not confirm that A records for alpha.example were updated to 127.0.0.1, 127.0.0.2"},
 		}, generateUpdateHeartbeatMessage(ipnet.IP4, ip4Targets, setterResponses{
-			setter.ResponseFailed:   {"alpha.example"},
-			setter.ResponseUpdating: {"beta.example"},
-			setter.ResponseUpdated:  {"gamma.example"},
+			setter.ResponseFailed:  {"alpha.example"},
+			setter.ResponseNoop:    {"beta.example"},
+			setter.ResponseUpdated: {"gamma.example"},
 		}))
 	})
 
-	t.Run("updating-and-updated", func(t *testing.T) {
+	t.Run("noop-and-updated", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, heartbeat.Message{
 			OK: true,
 			Lines: []string{
-				"Setting A records for alpha.example to 127.0.0.1, 127.0.0.2",
 				"Set A records for beta.example to 127.0.0.1, 127.0.0.2",
 			},
 		}, generateUpdateHeartbeatMessage(ipnet.IP4, ip4Targets, setterResponses{
-			setter.ResponseUpdating: {"alpha.example"},
-			setter.ResponseUpdated:  {"beta.example"},
+			setter.ResponseNoop:    {"alpha.example"},
+			setter.ResponseUpdated: {"beta.example"},
 		}))
 	})
 }
@@ -111,21 +109,21 @@ func TestGenerateUpdateNotifierMessage(t *testing.T) {
 
 		responses := emptySetterResponses()
 		responses.register(domain.FQDN("alpha.example"), setter.ResponseUpdated)
-		responses.register(domain.FQDN("beta.example"), setter.ResponseUpdating)
+		responses.register(domain.FQDN("beta.example"), setter.ResponseUpdated)
 
 		require.Equal(t, notifier.Message{
-			"Updating A records for beta.example to 127.0.0.1 and 127.0.0.2; updated A records for alpha.example to 127.0.0.1 and 127.0.0.2.",
+			"Updated A records for alpha.example and beta.example to 127.0.0.1 and 127.0.0.2.",
 		}, generateUpdateNotifierMessage(ipnet.IP4, ip4Targets, responses))
 	})
 
 	t.Run("failed-with-followups", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, notifier.Message{
-			"Could not confirm that A records for alpha.example were updated to 127.0.0.1 and 127.0.0.2; updating A records for beta.example to 127.0.0.1 and 127.0.0.2; updated A records for gamma.example to 127.0.0.1 and 127.0.0.2.",
+			"Could not confirm that A records for alpha.example were updated to 127.0.0.1 and 127.0.0.2; updated A records for gamma.example to 127.0.0.1 and 127.0.0.2.",
 		}, generateUpdateNotifierMessage(ipnet.IP4, ip4Targets, setterResponses{
-			setter.ResponseFailed:   {"alpha.example"},
-			setter.ResponseUpdating: {"beta.example"},
-			setter.ResponseUpdated:  {"gamma.example"},
+			setter.ResponseFailed:  {"alpha.example"},
+			setter.ResponseNoop:    {"beta.example"},
+			setter.ResponseUpdated: {"gamma.example"},
 		}))
 	})
 

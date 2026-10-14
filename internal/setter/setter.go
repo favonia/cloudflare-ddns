@@ -233,15 +233,18 @@ func reconcileAndSortRecords(
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
 	fallbackParams api.RecordParams,
-) ResponseCode {
+) (result DNSResult) {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 	targets := ips
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
+
+	result.Before = snapshotRecords(rs, cached)
 
 	matchedByIP, unmatchedTargets, outdatedRecords := partitionRecords(targets, rs)
 
@@ -257,7 +260,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				"The %s records for %s are already up to date",
 				recordType, domainDescription)
 		}
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
 	// Satisfy each uncovered target deterministically:
@@ -283,13 +287,14 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 			recycled := outdatedRecords[0]
 			outdatedRecords = outdatedRecords[1:]
 			mutated = true
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, recycled.ID, target,
+			if ok := result.admit(s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, recycled.ID, target,
 				resolvedParamsForNewTargets,
-			); !ok {
+			)); !ok {
 				ppfmt.Noticef(pp.EmojiError,
 					"Could not confirm update of %s records for %s; the records might be inconsistent",
 					recordType, domainDescription)
-				return ResponseFailed
+				result.Code = ResponseFailed
+				return result
 			}
 			ppfmt.Noticef(pp.EmojiUpdate,
 				"Updated an outdated %s record for %s (ID: %s)",
@@ -298,12 +303,15 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		}
 
 		mutated = true
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, target, resolvedParamsForNewTargets)
+		effect := s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, target, resolvedParamsForNewTargets)
+		ok := result.admit(effect)
+		id := effect.Record.ID
 		if !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records for %s; the records might be inconsistent",
 				recordType, domainDescription)
-			return ResponseFailed
+			result.Code = ResponseFailed
+			return result
 		}
 		ppfmt.Noticef(pp.EmojiCreation,
 			"Added a new %s record for %s (ID: %s)", recordType, domainDescription, id)
@@ -312,11 +320,12 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// Stage 2: delete outdated/out-of-target leftovers.
 	for _, r := range outdatedRecords {
 		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDeletionMode); !ok {
+		if ok := result.admit(s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDeletionMode)); !ok {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm update of %s records for %s; the records might be inconsistent",
 				recordType, domainDescription)
-			return ResponseFailed
+			result.Code = ResponseFailed
+			return result
 		}
 
 		ppfmt.Noticef(pp.EmojiDeletion,
@@ -324,23 +333,28 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	}
 
 	if !mutated {
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
-	return ResponseUpdated
+	result.Code = ResponseUpdated
+	return result
 }
 
 // FinalDelete deletes all managed DNS records.
 func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 	fallbackParams api.RecordParams,
-) ResponseCode {
+) (result DNSResult) {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
+
+	result.Before = snapshotRecords(rs, cached)
 
 	// Sorting is not needed for correctness, but it will make the function deterministic.
 	unmatchedIDs := make([]api.ID, 0, len(rs))
@@ -354,19 +368,21 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records for %s were already deleted", recordType, domainDescription)
 		}
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
 	allOK := true
 	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode) {
+		if !result.admit(s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode)) {
 			allOK = false
 
 			if ctx.Err() != nil {
 				ppfmt.Infof(pp.EmojiTimeout,
 					"Deletion of %s records for %s was aborted by a timeout or signal; the records might be inconsistent",
 					recordType, domainDescription)
-				return ResponseFailed
+				result.Code = ResponseFailed
+				return result
 			}
 			continue
 		}
@@ -377,10 +393,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 		ppfmt.Noticef(pp.EmojiError,
 			"Could not confirm deletion of %s records for %s; the records might be inconsistent",
 			recordType, domainDescription)
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
 
-	return ResponseUpdated
+	result.Code = ResponseUpdated
+	return result
 }
 
 // SetWAFList updates a WAF list.

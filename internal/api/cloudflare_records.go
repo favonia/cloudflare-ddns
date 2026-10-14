@@ -315,12 +315,20 @@ func (h cloudflareHandle) ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily
 func (h cloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, id ID,
 	mode DeletionMode,
-) bool {
-	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
-	if !ok {
-		return false
+) RecordMutation {
+	result := RecordMutation{
+		Status:     MutationNoEffect,
+		Kind:       RecordDelete,
+		Record:     RecordFact{ID: id, IP: netip.Addr{}},
+		Membership: MembershipUnknown,
 	}
 
+	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
+	if !ok {
+		return result
+	}
+
+	result.Status = MutationUnconfirmed
 	if err := h.cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), string(id)); err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm deletion of an outdated %s record for %s (ID: %s): %v",
 			ipFamily.RecordType(), domain.Describe(), id, err)
@@ -328,24 +336,33 @@ func (h cloudflareHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP,
 		if mode == RegularDeletionMode {
 			h.cache.listRecords[ipFamily].Delete(domain.DNSNameASCII())
 		}
-		return false
+		return result
 	}
+
+	result.Status = MutationCompleted
 
 	if rs := h.cache.listRecords[ipFamily].Get(domain.DNSNameASCII()); rs != nil {
 		*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
 	}
 
-	return true
+	return result
 }
 
 // UpdateRecord calls cloudflare.UpdateDNSRecord.
 func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, id ID, ip netip.Addr,
 	desiredParams RecordParams,
-) bool {
+) RecordMutation {
+	result := RecordMutation{
+		Status:     MutationNoEffect,
+		Kind:       RecordUpdate,
+		Record:     RecordFact{ID: id, IP: ip},
+		Membership: MembershipUnknown,
+	}
+
 	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
-		return false
+		return result
 	}
 	dashboardURL := cloudflareDNSRecordsDeeplink(zone.AccountID, zone.ID)
 
@@ -387,6 +404,10 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		},
 	}
 
+	result.Status = MutationUnconfirmed
+	if selector := h.options.ManagedRecordsCommentRegex; selector == nil || selector.String() == "" {
+		result.Membership = MembershipManaged
+	}
 	r, err := h.cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), updateRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v",
@@ -395,7 +416,13 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 
 		h.cache.listRecords[ipFamily].Delete(domain.DNSNameASCII())
 
-		return false
+		return result
+	}
+
+	result.Status = MutationCompleted
+	result.Membership = MembershipUnmanaged
+	if h.options.MatchManagedRecordComment(r.Comment) {
+		result.Membership = MembershipManaged
 	}
 
 	if TTL(r.TTL) != desiredParams.TTL {
@@ -420,7 +447,7 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 	if rs := h.cache.listRecords[ipFamily].Get(domain.DNSNameASCII()); rs != nil {
 		if !h.options.MatchManagedRecordComment(currentParams.Comment) {
 			*rs.Value() = slices.DeleteFunc(*rs.Value(), func(r Record) bool { return r.ID == id })
-			return true
+			return result
 		}
 
 		updatedRecord := Record{
@@ -431,22 +458,29 @@ func (h cloudflareHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP,
 		for i, record := range *rs.Value() {
 			if record.ID == id {
 				(*rs.Value())[i] = updatedRecord
-				return true
+				return result
 			}
 		}
 		*rs.Value() = append([]Record{updatedRecord}, *rs.Value()...)
 	}
 
-	return true
+	return result
 }
 
 // CreateRecord calls cloudflare.CreateDNSRecord.
 func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ip netip.Addr, desiredParams RecordParams,
-) (ID, bool) {
+) RecordMutation {
+	result := RecordMutation{
+		Status:     MutationNoEffect,
+		Kind:       RecordCreate,
+		Record:     RecordFact{ID: "", IP: ip},
+		Membership: MembershipUnknown,
+	}
+
 	zone, ok := h.zoneMetaOfDomain(ctx, ppfmt, domain)
 	if !ok {
-		return "", false
+		return result
 	}
 
 	createRequestParams := cloudflare.CreateDNSRecordParams{
@@ -480,6 +514,10 @@ func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 		},
 	}
 
+	result.Status = MutationUnconfirmed
+	if selector := h.options.ManagedRecordsCommentRegex; selector == nil || selector.String() == "" {
+		result.Membership = MembershipManaged
+	}
 	res, err := h.cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(string(zone.ID)), createRequestParams)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm creation of new %s record for %s: %v",
@@ -488,8 +526,15 @@ func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 		h.cache.listRecords[ipFamily].Delete(domain.DNSNameASCII())
 
-		return "", false
+		return result
 	}
+
+	result.Status = MutationCompleted
+	result.Membership = MembershipUnmanaged
+	if h.options.MatchManagedRecordComment(res.Comment) {
+		result.Membership = MembershipManaged
+	}
+	result.Record.ID = ID(res.ID)
 
 	if rs := h.cache.listRecords[ipFamily].Get(domain.DNSNameASCII()); rs != nil &&
 		h.options.MatchManagedRecordComment(desiredParams.Comment) {
@@ -498,5 +543,5 @@ func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 
 	hintUndocumentedTags(ppfmt, ipFamily, domain, ID(res.ID), newUndocumentedTags(res.Tags, desiredParams.Tags))
 
-	return ID(res.ID), true
+	return result
 }

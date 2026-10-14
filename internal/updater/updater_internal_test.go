@@ -371,7 +371,7 @@ func TestSetIPsSkipsManagedDomainWithoutTargets(t *testing.T) {
 			"No target set was provided for managed domain %s; this should not happen. Please report it at %s",
 			missing.Describe(), pp.IssueReportingURL),
 		s.EXPECT().SetIPs(gomock.Any(), ppfmt, ipnet.IP4, present, []netip.Addr{ip}, params).
-			Return(setter.ResponseUpdated),
+			Return(setter.DNSResult{Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 	)
 
 	msg := setIPs(context.Background(), ppfmt, conf, s, ipnet.IP4, dnsTargetsByDomain{
