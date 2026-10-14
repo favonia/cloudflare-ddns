@@ -6,6 +6,8 @@ Defines: repository-wide operator-message rules derived from [Project Principles
 
 Does not define: `README.markdown` writing rules, feature semantics, or exact package-local message text.
 
+Notification triggers, first-known address coverage, observation inference, lifecycle composition, and state-evidence principles are owned by [Notification Model](../features/notification-model.markdown).
+
 ## Verbosity Intent
 
 - Quiet output is for status surfaces and quick scans. Preserve essential outcomes, material risks, and decisions the operator may need to make next; omit detail that is mainly explanatory, inspectable, or educational.
@@ -21,6 +23,8 @@ When extra nuance is useful but not part of the primary outcome, emit it as foll
 - Notifier messages are prose-like summaries. When combining multiple outcomes, join follow-up fragments into one sentence with semicolons and finish the whole notifier message with a trailing period.
 - For multi-item lists inside heartbeat messages, prefer compact joins such as `a, b`. For notifier prose, prefer English joins such as `a and b` or `a, b, and c`.
 - Keep the sentence case of notifier follow-up fragments explicit at the call site so the first fragment reads as a sentence start and later fragments read naturally after `;`.
+- A combined notification has one primary kind but must retain all constituent failures in its content. Keep domain/family identity visible and distinguish historical addresses, desired targets, completed operations, and unconfirmed outcomes; grouping follows the Notification Model.
+- Review composed runtime output in encounter order with adjacent CLI, heartbeat, and notifier messages. When exact human-facing wording is deferred, obtain maintainer approval of the recaptured production output before locking exact-text tests or goldens.
 
 ## Quoting And Value Shapes
 
