@@ -2,6 +2,7 @@ package updater
 
 import (
 	"net/netip"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -241,6 +242,24 @@ func TestReportingGroupingIgnoresEquivalentMechanicsAndCoverageReason(t *testing
 	b.result.Before.Cached = true
 	b.result.Effects = nil
 	require.True(t, Compose(s.Assess(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+}
+
+func TestReportingGroupingCanonicalizesMappedCompletionAddresses(t *testing.T) {
+	t.Parallel()
+	a := reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
+	a.result.Effects = []api.RecordMutation{
+		{Status: api.MutationCompleted, Kind: api.RecordUpdate, Record: api.RecordFact{ID: "record", IP: netip.MustParseAddr("::ffff:192.0.2.2")}, Membership: api.MembershipManaged},
+		{Status: api.MutationCompleted, Kind: api.RecordUpdate, Record: api.RecordFact{ID: "record", IP: netip.MustParseAddr("192.0.2.2")}, Membership: api.MembershipManaged},
+	}
+	b := a.clone()
+	b.scope.domain = domain.FQDN("b.example")
+	b.result.Effects = b.result.Effects[1:]
+	assessment := NewReportingState(false).Assess(reportingMessage(a, b))
+	envelope := Compose(assessment, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	require.Len(t, envelope.Notification().Message, 1)
+	require.NotContains(t, envelope.Notification().Format(), "::ffff:")
+	require.Equal(t, 1, strings.Count(envelope.Notification().Format(), "address=192.0.2.2"))
+	require.Equal(t, a.result.Effects, assessment.dns[0].outcome.result.Effects)
 }
 
 func TestReportingGroupingRetainsObservationContext(t *testing.T) {

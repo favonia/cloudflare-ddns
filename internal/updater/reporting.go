@@ -216,7 +216,7 @@ func makeDNSRow(entry assessedDNS) dnsRow {
 		fact := completionFact{
 			status:     effect.Status,
 			removal:    effect.Kind == api.RecordDelete,
-			address:    effect.Record.IP,
+			address:    effect.Record.IP.Unmap(),
 			membership: effect.Membership,
 		}
 		row.completion = append(row.completion, fact)
