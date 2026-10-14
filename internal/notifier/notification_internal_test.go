@@ -24,6 +24,7 @@ func TestNotificationDescription(t *testing.T) {
 		"cleanup":            {KindCleanup, "a cleanup notification"},
 		"cleanup failure":    {KindCleanupFailure, "a cleanup failure notification"},
 		"shutdown":           {KindShutdown, "a shutdown notification"},
+		"state observation":  {KindStateObservation, "a notification"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
