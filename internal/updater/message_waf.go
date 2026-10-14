@@ -80,6 +80,10 @@ func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
 		HeartbeatMessage: generateUpdateWAFListsHeartbeatMessage(s),
 		NotifierMessage:  generateUpdateWAFListsNotifierMessage(s),
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         nil,
+		cleanup:          false,
 	}
 }
 
@@ -141,5 +145,9 @@ func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
 		HeartbeatMessage: generateFinalClearWAFListsHeartbeatMessage(s),
 		NotifierMessage:  generateFinalClearWAFListsNotifierMessage(s),
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         nil,
+		cleanup:          true,
 	}
 }

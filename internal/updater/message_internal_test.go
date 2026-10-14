@@ -20,6 +20,6 @@ func TestMessageFailed(t *testing.T) {
 	}
 	require.False(t, mergeMessages().Failed())
 	require.True(t, mergeMessages(generateDetectMessage(ipnet.IP4, false), generateDetectMessage(ipnet.IP6, true)).Failed())
-	require.True(t, generateIP6DerivationFailureMessage().Failed())
+	require.True(t, generateIP6DerivationFailureMessage(nil).Failed())
 	require.True(t, generateFilterAbortDetectMessage(ipnet.IP4).Failed())
 }

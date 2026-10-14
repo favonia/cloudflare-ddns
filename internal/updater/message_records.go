@@ -3,6 +3,7 @@ package updater
 import (
 	"fmt"
 	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
@@ -36,6 +37,10 @@ func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
 				fmt.Sprintf("Failed to detect any %s addresses.", ipFamily.Describe()),
 			},
 			NotificationKind: "",
+			dns:              nil,
+			waf:              nil,
+			problems:         []operationProblem{{kind: problemDetection, family: ipFamily, domains: nil}},
+			cleanup:          false,
 		}
 	}
 }
@@ -51,10 +56,14 @@ func generateFilterAbortDetectMessage(ipFamily ipnet.Family) Message {
 			summary + ".",
 		},
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         []operationProblem{{kind: problemFiltering, family: ipFamily, domains: nil}},
+		cleanup:          false,
 	}
 }
 
-func generateIP6DerivationFailureMessage() Message {
+func generateIP6DerivationFailureMessage(domains []domain.Domain) Message {
 	message := "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
 	return Message{
 		HeartbeatMessage: heartbeat.Message{
@@ -65,6 +74,10 @@ func generateIP6DerivationFailureMessage() Message {
 			message + ".",
 		},
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         []operationProblem{{kind: problemDerivation, family: ipnet.IP6, domains: slices.Clone(domains)}},
+		cleanup:          false,
 	}
 }
 
@@ -77,6 +90,10 @@ func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Do
 			summary + " because of an internal error; check the logs for details.",
 		},
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         []operationProblem{{kind: problemMissingTarget, family: ipFamily, domains: slices.Clone(domains)}},
+		cleanup:          false,
 	}
 }
 
@@ -232,12 +249,20 @@ func generateClearOrUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s set
 			HeartbeatMessage: generateClearHeartbeatMessage(ipFamily, s),
 			NotifierMessage:  generateClearNotifierMessage(ipFamily, s),
 			NotificationKind: "",
+			dns:              nil,
+			waf:              nil,
+			problems:         nil,
+			cleanup:          false,
 		}
 	} else {
 		return Message{
 			HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
 			NotifierMessage:  generateUpdateNotifierMessage(ipFamily, ips, s),
 			NotificationKind: "",
+			dns:              nil,
+			waf:              nil,
+			problems:         nil,
+			cleanup:          false,
 		}
 	}
 }
@@ -307,5 +332,9 @@ func generateFinalDeleteMessage(ipFamily ipnet.Family, s setterResponses) Messag
 		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipFamily, s),
 		NotifierMessage:  generateFinalDeleteNotifierMessage(ipFamily, s),
 		NotificationKind: "",
+		dns:              nil,
+		waf:              nil,
+		problems:         nil,
+		cleanup:          true,
 	}
 }
