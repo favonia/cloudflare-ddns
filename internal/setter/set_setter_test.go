@@ -244,7 +244,7 @@ func TestSetIPsSingleton(t *testing.T) {
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record1),
 					h.EXPECT().DeleteRecord(
 						ctx, p, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
+						Do(wrapCancelAsDelete(cancel)).Return(api.RecordMutation{Status: api.MutationUnconfirmed, Kind: api.RecordDelete, Record: api.RecordFact{ID: fixture.record2, IP: netip.Addr{}}, Membership: api.MembershipUnknown}),
 					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
@@ -295,7 +295,7 @@ func TestSetIPsSingleton(t *testing.T) {
 			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{tc.ip}, fixture.params)
-			require.Equal(t, tc.resp, resp)
+			require.Equal(t, tc.resp, resp.Code)
 		})
 	}
 }

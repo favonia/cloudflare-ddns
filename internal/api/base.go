@@ -126,6 +126,10 @@ type Handle interface {
 	// The managed-record selector is bound into the handle options because
 	// implementations may cache filtered records by domain/IP-family scope.
 	//
+	// The returned records are borrowed and may change during mutations; callers
+	// retaining facts must copy them before mutating. Successful listings preserve
+	// provider identities without checking empty IDs or conflicting duplicate IDs;
+	// consumers requiring a coherent identity map must conservatively handle these.
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		fallbackParams RecordParams,
@@ -139,19 +143,19 @@ type Handle interface {
 	// - ttl/proxied/comment/tags: desiredParams
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		id ID, ip netip.Addr, desiredParams RecordParams,
-	) bool
+	) RecordMutation
 
 	// CreateRecord creates one managed DNS record with the given desired metadata.
-	// It returns the ID of the new record.
+	// It returns operation and returned-membership evidence.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
-		ip netip.Addr, desiredParams RecordParams) (ID, bool)
+		ip netip.Addr, desiredParams RecordParams) RecordMutation
 
 	// DeleteRecord deletes one managed DNS record by ID.
 	//
 	// mode controls cache invalidation behavior for failure handling.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family,
 		domain domain.Domain, id ID, mode DeletionMode,
-	) bool
+	) RecordMutation
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
 	// It does not create the list if it does not exist.

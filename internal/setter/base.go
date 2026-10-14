@@ -56,7 +56,7 @@ type Setter interface {
 		Domain domain.Domain,
 		IPs []netip.Addr,
 		fallbackParams api.RecordParams,
-	) ResponseCode
+	) DNSResult
 
 	// FinalDelete removes DNS records of a particular domain.
 	FinalDelete(
@@ -65,7 +65,7 @@ type Setter interface {
 		ipFamily ipnet.Family,
 		Domain domain.Domain,
 		fallbackParams api.RecordParams,
-	) ResponseCode
+	) DNSResult
 
 	// SetWAFList reconciles one WAF list against family target states.
 	//

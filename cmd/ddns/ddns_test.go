@@ -183,7 +183,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		UpdateTimeout:      time.Second,
 	}
 
-	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
+	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Code: setter.ResponseUpdated, Before: nil, Effects: nil})
 	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list", gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated)
 	mockHeartbeat.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
@@ -290,7 +290,7 @@ func TestRunOnceCleanup(t *testing.T) {
 		UpdateTimeout:      time.Second,
 	}
 
-	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated)
+	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Code: setter.ResponseUpdated, Before: nil, Effects: nil})
 	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list", gomock.Any(), api.CleanupWait).Return(setter.ResponseUpdated)
 	mockHeartbeat.EXPECT().Ping(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
