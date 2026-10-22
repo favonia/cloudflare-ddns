@@ -65,7 +65,11 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 
 // NewShoutrrr creates a new shoutrrr notifier.
 func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
-	r, err := shoutrrr.CreateSenderWithOptions(types.SenderOptions{}, rawURLs...)
+	r, err := shoutrrr.CreateSenderWithOptions(types.SenderOptions{
+		HTTPClient:  nil,
+		DialContext: nil,
+		Timeout:     0,
+	}, rawURLs...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", err)
 		return Shoutrrr{}, false //nolint:exhaustruct_v5
