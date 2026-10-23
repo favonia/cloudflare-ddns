@@ -12,6 +12,10 @@ Keep the README focused on what operators must decide, expect, configure, or ver
 - When a setup example may interact with domains, records, or lists that already exist in Cloudflare, explain that starting state if it changes the expected outcome or next step.
 - Keep advanced features and exact reconciliation rules in advanced or technical sections, with early pointers when needed for discoverability or correct setup.
 
+## Version Notes
+
+Describe current behavior first. Add version context when it changes whether an operator can use a feature or rely on the described behavior. Use an availability marker for a newly introduced capability; for a correction or behavior change, explain the relevant difference and version boundary in prose. Choose wording for the reader's decision rather than requiring one format for every change. Keep history that does not affect that decision in the changelog.
+
 ## Fixed README Markers
 
 Use these fixed markers only when they sharpen a reader's decision, expectation, or reading order. Keep their meanings stable across the README.
