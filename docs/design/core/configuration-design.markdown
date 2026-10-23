@@ -14,7 +14,7 @@ Every implicit default must be semantically identical to an explicit value, so t
 
 Detect operator misconfigurations at the earliest boundary with enough information to establish the error. Parse and type errors belong at the input boundary, setting-specific semantic errors belong where that setting is assembled, cross-setting errors belong before runtime configuration is admitted, and conditions that depend on runtime observations belong where those observations first become available.
 
-Normalization accepts spellings allowed by the setting's input contract and converts them to a canonical value. It must not repair rejected input into accepted configuration.
+Normalization accepts spellings allowed by the setting’s input contract and converts them to a canonical value. It must not repair rejected input into accepted configuration.
 
 ## Runtime Admission
 

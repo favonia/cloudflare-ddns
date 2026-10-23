@@ -52,7 +52,7 @@ Filtering is pointwise. Each normalized raw entry is evaluated independently, an
 
 `addr-in(P)` checks only the raw entry address. The detected prefix length remains attached to the raw entry and continues into downstream DNS and WAF derivation, but the predicate does not compare that prefix length.
 
-Filtering preserves the normalized set's deterministic ordering. It must not introduce provider-specific ordering or deduplication behavior.
+Filtering preserves the normalized set’s deterministic ordering. It must not introduce provider-specific ordering or deduplication behavior.
 
 ## Detection Intents
 

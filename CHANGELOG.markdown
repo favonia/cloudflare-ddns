@@ -4,7 +4,9 @@
 
 ## Security
 
-Docker images are built with Go 1.27.3, which rejects certificate chains containing certain intermediate certificates due to security concerns about their certificate authority ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0).
+[Compromised eMudhra certificate authority keys](https://blog.mozilla.org/security/2026/10/20/protecting-firefox-users-following-the-compromise-of-emudhra-intermediate-certificates/) allow attackers to forge HTTPS certificates for websites they do not control. An attacker who can intercept or redirect the updater’s HTTPS connections could use these certificates to impersonate an IP detection service or the Cloudflare API. The default configuration is affected.
+
+Docker images are built with Go 1.27.3, which rejects certificate chains containing the compromised keys ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0).
 
 To upgrade, pull the updated image and recreate your container. If you build from source, rebuild with Go 1.27.3 or a later patched version.
 
@@ -30,10 +32,10 @@ This release adds experimental controls for per-domain IPv6 host IDs and detecte
 
 ## Highlights
 
-1. **Per-domain IPv6 host IDs.** Advanced IPv6 setups can now control the host bits of each domain's `AAAA` records by adding the experimental `hostid6` field to entries in `DOMAINS` or `IP6_DOMAINS`, for example `example.org{hostid6=::1}`. A domain can preserve the detected host bits, replace them with a fixed host ID, or derive one from a MAC address. This changes only `AAAA` record derivation; WAF lists continue to use the raw detected prefixes. ([#1224](https://github.com/favonia/cloudflare-ddns/pull/1224))
-2. **IPv4 and IPv6 detection filters.** New experimental `IP4_DETECTION_FILTER` and `IP6_DETECTION_FILTER` expressions select detected addresses before both DNS and WAF reconciliation. If a filter removes every address for one family, the updater preserves that family's existing managed content for the round. ([#1231](https://github.com/favonia/cloudflare-ddns/pull/1231))
+1. **Per-domain IPv6 host IDs.** Advanced IPv6 setups can now control the host bits of each domain’s `AAAA` records by adding the experimental `hostid6` field to entries in `DOMAINS` or `IP6_DOMAINS`, for example `example.org{hostid6=::1}`. A domain can preserve the detected host bits, replace them with a fixed host ID, or derive one from a MAC address. This changes only `AAAA` record derivation; WAF lists continue to use the raw detected prefixes. ([#1224](https://github.com/favonia/cloudflare-ddns/pull/1224))
+2. **IPv4 and IPv6 detection filters.** New experimental `IP4_DETECTION_FILTER` and `IP6_DETECTION_FILTER` expressions select detected addresses before both DNS and WAF reconciliation. If a filter removes every address for one family, the updater preserves that family’s existing managed content for the round. ([#1231](https://github.com/favonia/cloudflare-ddns/pull/1231))
 3. **Advisory linting for `PROXIED`.** The updater now warns about suspicious boolean expressions, including constant results and redundant or subsumed terms. ([#1235](https://github.com/favonia/cloudflare-ddns/pull/1235))
-4. **Account API tokens no longer trigger misleading startup warnings.** The updater no longer calls Cloudflare's user-token verification endpoint during startup. Malformed token values are still rejected locally. A well-formed token that is invalid or lacks permission for an attempted DNS or WAF operation is instead reported when that operation fails, with the corresponding permission guidance. ([#1240](https://github.com/favonia/cloudflare-ddns/pull/1240))
+4. **Account API tokens no longer trigger misleading startup warnings.** The updater no longer calls Cloudflare’s user-token verification endpoint during startup. Malformed token values are still rejected locally. A well-formed token that is invalid or lacks permission for an attempted DNS or WAF operation is instead reported when that operation fails, with the corresponding permission guidance. ([#1240](https://github.com/favonia/cloudflare-ddns/pull/1240))
 
 ## Other Notable Changes
 
@@ -182,7 +184,7 @@ As a reminder, since 1.13.0, **the updater no longer drops superuser privileges 
 This is a major release with many improvements:
 
 1. **New `CLOUDFLARE_*` variables**: Cloudflare is transitioning its tools to use the new prefix `CLOUDFLARE_*`. Therefore, the updater now accepts `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_API_TOKEN_FILE`. The old `CF_API_TOKEN` and `CF_API_TOKEN_FILE` will still be fully supported until 2.0.0, then deprecated (but still supported) until 3.0.0.
-2. **Improved custom IP providers**: The updater now forces IPv4 or IPv6 when connecting to custom IP providers `url:<URL>`. This solves a long-standing issue where custom providers couldn't be used on dual-stack machines supporting both IPv4 and IPv6. This enforcement ensures predictable IPv4/IPv6 detection on such machines.
+2. **Improved custom IP providers**: The updater now forces IPv4 or IPv6 when connecting to custom IP providers `url:<URL>`. This solves a long-standing issue where custom providers couldn’t be used on dual-stack machines supporting both IPv4 and IPv6. This enforcement ensures predictable IPv4/IPv6 detection on such machines.
 3. **Stricter IP validation**: The updater now rejects unusual IP addresses for updating DNS records, such as link-local addresses or IPv4-mapped IPv6 addresses for AAAA records. These addresses are unsuitable and may cause trouble.
 4. **Experimental support of using a network interface’s IP address** (not finalized until 1.16.0): Experimental support lets you use the address assigned to a specific network interface, bypassing the routing table used by the `local` provider. The syntax for this feature is under development and will not be finalized until 1.16.0. Please refer to [README](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown) and join the discussion on [GitHub issue #713](https://github.com/favonia/cloudflare-ddns/issues/713) if you are interested.
 
@@ -284,7 +286,7 @@ This is a major release that no longer drops superuser privileges. Please review
 
 - In case you are using the `*-nocapdrop` Docker tags, they will no longer be maintained. The updater will no longer drop superuser privileges, and thus the `nocapdrop` builds are identical to the regular ones. Just use the regular Docker tags such as `latest`.
 
-- The older versions used to add the comment “Created by cloudflare-ddns” to all newly created DNS records. Since this version, the comment has become configurable, but by default it is empty. To restore the old behavior, add the configuration `RECORD_COMMENT=Created by cloudflare-ddns` (or any comment you want to use).
+- The older versions used to add the comment `Created by cloudflare-ddns` to all newly created DNS records. Since this version, the comment has become configurable, but by default it is empty. To restore the old behavior, add the configuration `RECORD_COMMENT=Created by cloudflare-ddns` (or any comment you want to use).
 
 ### Features
 
@@ -402,7 +404,7 @@ The feature to disable cron is experimental. The intention is to use another mec
 
 # [1.8.4](https://github.com/favonia/cloudflare-ddns/compare/v1.8.3...v1.8.4) (2023-03-03)
 
-This release comes with no user-visible changes. It was compiled by version 1.20.1 of Go (instead of 1.20) and was shipped with version 0.62.0 of the [cloudflare-go library](https://github.com/cloudflare/cloudflare-go/) that [fixed a bug about proxy settings](https://github.com/cloudflare/cloudflare-go/pull/1222). I believe the bug does not affect the updater, but there's no reason not to use the fixed version. 😄
+This release comes with no user-visible changes. It was compiled by version 1.20.1 of Go (instead of 1.20) and was shipped with version 0.62.0 of the [cloudflare-go library](https://github.com/cloudflare/cloudflare-go/) that [fixed a bug about proxy settings](https://github.com/cloudflare/cloudflare-go/pull/1222). I believe the bug does not affect the updater, but there’s no reason not to use the fixed version. 😄
 
 # [1.8.3](https://github.com/favonia/cloudflare-ddns/compare/v1.8.2...v1.8.3) (2023-02-11)
 

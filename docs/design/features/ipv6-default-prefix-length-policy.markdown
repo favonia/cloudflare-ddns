@@ -28,7 +28,7 @@ A bare observed IPv6 address usually carries two different kinds of information 
 - a prefix that locates the current network attachment
 - lower bits that identify one interface within that attachment
 
-The product model therefore cannot stop at "an address string was observed." It needs one default way to lift that observation into an observed prefix plus lower bits before DNS and WAF derive their resource-specific targets.
+The product model therefore cannot stop at “an address string was observed.” It needs one default way to lift that observation into an observed prefix plus lower bits before DNS and WAF derive their resource-specific targets.
 
 That shared observed-prefix model matters on both sides of the product.
 
@@ -66,7 +66,7 @@ Those are real counterarguments, not edge cases to dismiss. Now that downstream 
 
 `/128` is still too literal to be the one shared fallback when the updater has only a bare observation and no stronger operator signal.
 
-- It collapses the ordinary host-ID derivation space to zero, so richer DNS-side derivation would often need extra operator choice or a different hidden default before it could do anything beyond "reuse this exact address."
+- It collapses the ordinary host-ID derivation space to zero, so richer DNS-side derivation would often need extra operator choice or a different hidden default before it could do anything beyond “reuse this exact address.”
 - It makes default attachment-level interpretation brittle when interface identifiers change but the relevant site or network presence has not.
 - It weakens the coherence of the shared observed-prefix model by making the default observed object an exact endpoint while other planned derivations still want prefix-plus-host-bits semantics.
 
@@ -81,7 +81,7 @@ This is a reason to prefer `/64` as the default under incomplete information, no
 
 ## When `/64` Is The Wrong Default
 
-`/64` is the wrong default when the operator's real intent is narrower than stable attachment identity or when a `/64` exceeds the practical trust boundary.
+`/64` is the wrong default when the operator’s real intent is narrower than stable attachment identity or when a `/64` exceeds the practical trust boundary.
 
 Examples:
 
@@ -113,6 +113,6 @@ Historical context is still useful because Cloudflare capability changed over ti
 ## Extension Points
 
 - If future evidence shows that most users mean exact endpoint identity rather than stable network presence, revisit this default.
-- Configurable prefix lengths are now exposed as one shared knob per IP family (`IP4_DEFAULT_PREFIX_LEN`, `IP6_DEFAULT_PREFIX_LEN`), each shared across DNS-side and WAF-side derivation. Split a family's knob into separate DNS-side and WAF-side knobs only if the two projections stop moving together in ordinary use or if the product gains a clear resource-specific reason to prefer different defaults.
+- Configurable prefix lengths are now exposed as one shared knob per IP family (`IP4_DEFAULT_PREFIX_LEN`, `IP6_DEFAULT_PREFIX_LEN`), each shared across DNS-side and WAF-side derivation. Split a family’s knob into separate DNS-side and WAF-side knobs only if the two projections stop moving together in ordinary use or if the product gains a clear resource-specific reason to prefer different defaults.
 - If future DNS-side derivation stops needing ordinary host-bit space under the observed prefix, or future WAF use cases stop preferring attachment-level semantics, treat the current convergence as broken and revisit this note.
 - If future design work adopts a different default attachment boundary, update this note and its linked lifecycle or provider notes together.
