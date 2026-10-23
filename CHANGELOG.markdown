@@ -1,3 +1,16 @@
+# [1.18.0](https://github.com/favonia/cloudflare-ddns/compare/v1.17.1...v1.18.0) (2026-10-23)
+
+This release updates Go for HTTPS security, reports failed updater work through exit status, and fixes one-shot WAF list cleanup.
+
+## Security
+
+Docker images are built with Go 1.27.3, which rejects certificate chains containing certain intermediate certificates due to security concerns about their certificate authority ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0). Upgrade promptly by pulling the updated image and recreating your container. If you build from source, rebuild with Go 1.27.3 or a later patched version.
+
+## Improvements and Fixes
+
+- **Exit status reflects failed work.** With `UPDATE_CRON=@once`, failed or interrupted updates and cleanup now return 1. For scheduled runs, failed cleanup with `DELETE_ON_STOP=true` also returns 1 when stopping; earlier update failures do not affect that shutdown result. Scripts, job runners, and restart policies that react to nonzero exit status will now see these failures. Heartbeat and notification delivery failures do not change the exit status. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+- **One-shot WAF cleanup attempts whole-list deletion.** With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, cleanup now attempts to delete eligible WAF lists directly instead of only reconciling their items to an empty target. Ownership restrictions still apply. When item deletion is needed, one-shot cleanup waits for completion within the configured timeout. ([#1289](https://github.com/favonia/cloudflare-ddns/pull/1289), [#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+
 # [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-20)
 
 This release improves Cloudflare trace IP detection, adds a GitHub Container Registry mirror, and makes configuration errors easier to diagnose.

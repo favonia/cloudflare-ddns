@@ -430,9 +430,9 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🚦 Exit Status
 
-By default, the updater keeps running on its configured schedule, including after a failed update. When stopped normally, it exits with 0; with `DELETE_ON_STOP=true`, failed shutdown cleanup instead returns 1 (unreleased). Earlier update failures do not affect this result. Asynchronous shutdown cleanup can return 0 once accepted, before remote completion.
+By default, the updater keeps running on its configured schedule, including after a failed update. When stopped normally, it exits with 0; with `DELETE_ON_STOP=true`, failed shutdown cleanup instead returns 1 (available since version 1.18.0). Earlier update failures do not affect this result. Asynchronous shutdown cleanup can return 0 once accepted, before remote completion.
 
-With `UPDATE_CRON=@once`, the updater exits after its update or cleanup: 0 when it succeeds, including when no changes are needed, or 1 when it fails or is interrupted before completion (unreleased).
+With `UPDATE_CRON=@once`, the updater exits after its update or cleanup: 0 when it succeeds, including when no changes are needed, or 1 when it fails or is interrupted before completion (available since version 1.18.0).
 
 Startup failures and schedules with no future update time also return 1. Heartbeat and notification delivery failures do not change the exit status.
 
