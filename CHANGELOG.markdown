@@ -4,7 +4,9 @@
 
 ## Security
 
-Docker images are built with Go 1.27.3, which rejects certificate chains containing certain intermediate certificates due to security concerns about their certificate authority ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0).
+[Compromised eMudhra certificate authority keys](https://blog.mozilla.org/security/2026/10/20/protecting-firefox-users-following-the-compromise-of-emudhra-intermediate-certificates/) allow attackers to forge HTTPS certificates for websites they do not control. An attacker who can intercept or redirect the updater’s HTTPS connections could use these certificates to impersonate an IP detection service or the Cloudflare API. The default configuration is affected.
+
+Docker images are built with Go 1.27.3, which rejects certificate chains containing the compromised keys ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0).
 
 To upgrade, pull the updated image and recreate your container. If you build from source, rebuild with Go 1.27.3 or a later patched version.
 
