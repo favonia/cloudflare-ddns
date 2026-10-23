@@ -1,15 +1,17 @@
 # [1.18.0](https://github.com/favonia/cloudflare-ddns/compare/v1.17.1...v1.18.0) (2026-10-23)
 
-Update promptly to this version (1.18.0) for HTTPS security fixes. This release also reports failed updater work through exit status and fixes one-shot WAF list cleanup.
+Update promptly to this version (1.18.0) for HTTPS security fixes. This release also fixes failure reporting for one-shot work and shutdown cleanup, along with one-shot WAF list deletion.
 
 ## Security
 
-Docker images are built with Go 1.27.3, which rejects certificate chains containing certain intermediate certificates due to security concerns about their certificate authority ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0). Upgrade promptly by pulling the updated image and recreating your container. If you build from source, rebuild with Go 1.27.3 or a later patched version.
+Docker images are built with Go 1.27.3, which rejects certificate chains containing certain intermediate certificates due to security concerns about their certificate authority ([CVE-2026-111943 and the Go security announcement](https://groups.google.com/g/golang-announce/c/66pojueaQek)). The images also include the [security fixes in Go 1.27.2](https://go.dev/doc/devel/release#go1.27.0).
+
+To upgrade, pull the updated image and recreate your container. If you build from source, rebuild with Go 1.27.3 or a later patched version.
 
 ## Improvements and Fixes
 
-- **Exit status reflects failed work.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) now returns 1 instead of 0. Failed shutdown cleanup (`DELETE_ON_STOP=true`) also returns 1 instead of 0. Scripts and job runners can now detect these failures through the exit status. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
-- **One-shot WAF cleanup attempts whole-list deletion.** With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, the updater now attempts to delete eligible WAF lists themselves instead of only clearing their managed items. When cleanup requires deleting individual items, it waits for deletion to finish within the configured timeout. ([#1289](https://github.com/favonia/cloudflare-ddns/pull/1289), [#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+- **Exit status reports failures to scripts and job runners.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) and failed shutdown cleanup (`DELETE_ON_STOP=true`) now return 1 instead of 0. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+- **One-shot cleanup can now delete WAF lists.** Previously, runs with `UPDATE_CRON=@once` and `DELETE_ON_STOP=true` cleared managed WAF items but did not attempt to delete the lists themselves. ([#1289](https://github.com/favonia/cloudflare-ddns/pull/1289), [#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
 
 # [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-20)
 
