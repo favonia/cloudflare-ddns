@@ -648,7 +648,7 @@ The updater does not add timestamps itself because most runtimes already do:
 
 See [Exit Status](#exit-status) for how the updater reports success or failure.
 
-> 💡 Active cleanup tip: set one or both IP providers to `static.empty` and use `UPDATE_CRON=@once` to remove managed DNS records or managed WAF items for those IP families and then exit. To leave the other IP family unchanged, set its provider to `none`. For deleting WAF lists themselves, see [`DELETE_ON_STOP`](#delete-on-stop).
+> 💡 Active cleanup tip: to clear both IPv4 and IPv6 content, set both IP providers to `static.empty`. To clear one family’s content and preserve the other’s, use `static.empty` for the family to clear and `none` for the family to preserve. Use `UPDATE_CRON=@once` to remove the selected families’ managed DNS records and WAF items, then exit. For deleting WAF lists themselves, see [`DELETE_ON_STOP`](#delete-on-stop).
 
 </details>
 
