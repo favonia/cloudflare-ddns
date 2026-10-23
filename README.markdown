@@ -432,13 +432,12 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🚦 Exit Status
 
-**One-shot runs (`UPDATE_CRON=@once`)** exit after a single update or cleanup. The exit status is **0** if the update or cleanup succeeds, including when no changes are needed, or **1** if it fails or is interrupted before completion.
-
-**Scheduled runs** continue after failed updates. When stopped normally, they return **0** unless cleanup requested by `DELETE_ON_STOP=true` fails, in which case they return **1**.
+- **Scheduled runs (the default):** The updater repeats updates on its schedule and continues after failed updates. When stopped normally, it returns **0**, or **1** if cleanup requested by `DELETE_ON_STOP=true` fails.
+- **One-shot runs (`UPDATE_CRON=@once`):** The updater exits after one update or cleanup. It returns **0** on success, including when no changes are needed, or **1** if the update or cleanup fails or is interrupted before completion.
 
 Startup and configuration errors return **1**.
 
-🤖 One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
+🤖 Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish. One-shot cleanup waits for completion within the configured timeout.
 
 🤖 Heartbeat and notification delivery failures do not change the exit status.
 
