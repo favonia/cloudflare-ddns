@@ -10,7 +10,7 @@ To upgrade, pull the updated image and recreate your container. If you build fro
 
 ## Improvements and Fixes
 
-- **Exit status reports failures to scripts and job runners.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) and failed shutdown cleanup (`DELETE_ON_STOP=true`) now return 1 instead of 0. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+- **Exit status reports failed work.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) and failed shutdown cleanup (`DELETE_ON_STOP=true`) now return 1 instead of 0. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
 - **One-shot cleanup can now delete WAF lists.** Previously, runs with `UPDATE_CRON=@once` and `DELETE_ON_STOP=true` cleared managed WAF items but did not attempt to delete the lists themselves. ([#1289](https://github.com/favonia/cloudflare-ddns/pull/1289), [#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
 
 # [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-20)
