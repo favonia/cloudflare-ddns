@@ -1,6 +1,6 @@
 # [1.18.0](https://github.com/favonia/cloudflare-ddns/compare/v1.17.1...v1.18.0) (2026-10-23)
 
-Update promptly to 1.18.0 for HTTPS security fixes. This release also reports failed updater work through exit status and fixes one-shot WAF list cleanup.
+Update promptly to this version (1.18.0) for HTTPS security fixes. This release also reports failed updater work through exit status and fixes one-shot WAF list cleanup.
 
 ## Security
 
