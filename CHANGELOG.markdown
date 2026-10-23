@@ -8,7 +8,7 @@ Docker images are built with Go 1.27.3, which rejects certificate chains contain
 
 ## Improvements and Fixes
 
-- **Exit status reflects failed work.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) now returns 1 instead of 0. Failed shutdown cleanup (`DELETE_ON_STOP=true`) also returns 1 instead of 0. Scripts, job runners, and restart policies that react to nonzero exit status will now see these failures. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
+- **Exit status reflects failed work.** Failed or interrupted one-shot work (`UPDATE_CRON=@once`) now returns 1 instead of 0. Failed shutdown cleanup (`DELETE_ON_STOP=true`) also returns 1 instead of 0. Scripts and job runners can now detect these failures through the exit status. Update failures during a scheduled run do not affect its exit status on normal shutdown. See [Exit Status](README.markdown#exit-status) for details. ([#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
 - **One-shot WAF cleanup attempts whole-list deletion.** With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, cleanup now attempts to delete eligible WAF lists directly instead of only reconciling their items to an empty target. Ownership restrictions still apply. When item deletion is needed, one-shot cleanup waits for completion within the configured timeout. ([#1289](https://github.com/favonia/cloudflare-ddns/pull/1289), [#1290](https://github.com/favonia/cloudflare-ddns/pull/1290))
 
 # [1.17.1](https://github.com/favonia/cloudflare-ddns/compare/v1.17.0...v1.17.1) (2026-09-20)

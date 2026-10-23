@@ -434,7 +434,7 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 **Scheduled runs** continue after failed updates. When stopped normally, they return **0** unless cleanup requested by `DELETE_ON_STOP=true` fails, in which case they return **1**.
 
-One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once asynchronous deletion is accepted, before remote completion.
+One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
 
 Startup failures and schedules with no future update time return **1**. Heartbeat and notification delivery failures do not change the exit status.
 
