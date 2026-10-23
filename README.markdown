@@ -8,6 +8,8 @@
 
 A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It detects your machine’s public IP addresses and updates DNS records through the Cloudflare API.
 
+The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
+
 ## ✨ Highlights
 
 ### ✅ Comprehensive Support of Domain Names
@@ -430,11 +432,15 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🚦 Exit Status
 
-By default, the updater keeps running on its configured schedule, including after a failed update. When stopped normally, it exits with 0; with `DELETE_ON_STOP=true`, failed shutdown cleanup instead returns 1 (unreleased). Earlier update failures do not affect this result. Asynchronous shutdown cleanup can return 0 once accepted, before remote completion.
+**One-shot runs (`UPDATE_CRON=@once`)** perform one update—or cleanup when `DELETE_ON_STOP=true`—then exit. The exit status is **0** if that work succeeds, including when no changes are needed, or **1** if it fails or is interrupted before completion.
 
-With `UPDATE_CRON=@once`, the updater exits after its update or cleanup: 0 when it succeeds, including when no changes are needed, or 1 when it fails or is interrupted before completion (unreleased).
+**Scheduled runs** continue after failed updates. When stopped normally, they return **0** unless cleanup requested by `DELETE_ON_STOP=true` fails, in which case they return **1**.
 
-Startup failures and schedules with no future update time also return 1. Heartbeat and notification delivery failures do not change the exit status.
+Startup and configuration errors return **1**.
+
+🤖 One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
+
+🤖 Heartbeat and notification delivery failures do not change the exit status.
 
 ## 🛠️ Troubleshooting
 
@@ -486,8 +492,6 @@ The updater does not add timestamps itself because most runtimes already do:
 <a id="all-settings"></a>
 
 ### ⚙️ All Settings
-
-The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
 <summary>🔐 Cloudflare API Access <sup><em>click to expand</em></sup></summary>
@@ -639,7 +643,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 | `CACHE_EXPIRATION` | The expiration of cached Cloudflare API responses. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `6h0m0s` (6 hours) |
 | `DELETE_ON_STOP` | <p>Whether managed DNS records and managed WAF content are deleted when the updater exits. It accepts any boolean value supported by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>DNS cleanup applies only to the IP families this updater is managing in that run.</p><p>🧪 For WAF lists, the updater deletes the whole list only when the updater manages both IP families and no filtering is enabled by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. Otherwise shutdown cleanup keeps the list and deletes only managed items in the managed IP families.</p> | `false` |
 | `TZ` | <p>The timezone used for logging messages and parsing `UPDATE_CRON`. It can be any timezone accepted by [time.LoadLocation](https://pkg.go.dev/time#LoadLocation), including any IANA Time Zone.</p><p>🤖 The pre-built Docker images come with the embedded timezone database via the [time/tzdata](https://pkg.go.dev/time/tzdata) package.</p> | `UTC` |
-| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` means the updater will terminate immediately after updating the DNS records or WAF lists, effectively disabling the scheduling feature.</p><p>🤖 With `@every 5m`, if a check and its updates take two minutes, the updater only waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
+| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` runs one update, or cleanup instead when `DELETE_ON_STOP=true`, then exits without scheduling further updates.</p><p>🤖 With `@every 5m`, if a check and its updates take two minutes, the updater only waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
 | `UPDATE_ON_START` | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`. | `true` |
 
 See [Exit Status](#exit-status) for how the updater reports success or failure.

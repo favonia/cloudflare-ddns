@@ -24,7 +24,7 @@ import (
 func TestExitStatusProcess(t *testing.T) {
 	t.Parallel()
 	for _, scenario := range []string{
-		"update-success", "update-noop", "update-failure", "detection-failure", "detection-signal",
+		"update-success", "update-noop", "update-failure", "detection-failure", "detection-signal", "detection-scheduled-signal",
 		"cleanup-failure", "cleanup-fallback", "stop-after-update-failure", "stop-cleanup-failure", "schedule-failure",
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestExitStatusProcessHelper(t *testing.T) {
 	case "update-success", "update-noop":
 	case "update-failure", "cleanup-failure", "detection-failure", "detection-signal", "stop-cleanup-failure", "schedule-failure":
 		expected = 1
-	case "cleanup-fallback", "stop-after-update-failure":
+	case "cleanup-fallback", "stop-after-update-failure", "detection-scheduled-signal":
 	default:
 		t.Fatalf("unknown scenario %s", scenario)
 	}
@@ -85,9 +85,14 @@ func TestExitStatusProcessHelper(t *testing.T) {
 			t.Setenv("UPDATE_CRON", "0 0 31 2 *")
 		}
 	}
+	if scenario == "detection-scheduled-signal" {
+		// Cancel an in-flight scheduled update before it reaches the signal check.
+		// Unlike one-shot cancellation, stopping without cleanup must exit successfully.
+		t.Setenv("UPDATE_CRON", "@every 1h")
+	}
 	if strings.HasPrefix(scenario, "detection-") {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario == "detection-signal" {
+			if strings.HasSuffix(scenario, "-signal") {
 				assert.NoError(t, syscall.Kill(os.Getpid(), syscall.SIGTERM))
 				<-r.Context().Done()
 				return

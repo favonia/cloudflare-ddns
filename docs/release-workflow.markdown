@@ -12,11 +12,13 @@ Help operators understand the release's value and prepare for upgrades.
 
 ## Release Checks
 
-- Before publication, verify the version header, compare link, and release date. Check README availability notes and experimental markers against the release being prepared; follow [README Writing](design/guides/readme-writing.markdown) for README conventions.
+- Before publication, verify the version header, compare link, and release date. Check README availability notes, historical behavior notes, and experimental markers against the release being prepared; follow [README Writing](design/guides/readme-writing.markdown) for README conventions.
 - Verify that features still marked experimental in `README.markdown` emit a warning when enabled.
 - After publication, verify published artifacts, documented image tags, and signatures.
 
 ## Feature-Note Lifecycle
+
+When preparing a release, reassess README version notes against the behavior being shipped and the operator decisions they support; follow [README Writing: Version Notes](design/guides/readme-writing.markdown#version-notes). The lifecycle below applies to new features; fixes and changes to existing behavior may need a different explanation.
 
 1. For each newly introduced user-facing feature, add a note in `README.markdown` when the feature needs extra rollout or stability context.
 2. During development, label a feature as `unreleased` until it is included in preparation for a specific release.

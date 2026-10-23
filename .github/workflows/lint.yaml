@@ -40,14 +40,14 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
       - name: 🧹 Run golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.13.2
+          version: v2.14.0
 
   golangci-scripts:
     name: "Go: scripts (${{ matrix.module.name }})"
@@ -93,7 +93,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.3"
           cache-dependency-path: ${{ matrix.module.directory }}/go.mod
       - name: 📡 Run `go telemetry on`
         run: |
@@ -101,7 +101,7 @@ jobs:
       - name: 🧹 Run golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.13.2
+          version: v2.14.0
           working-directory: ${{ matrix.module.directory }}
 
   actionlint:
@@ -135,7 +135,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
@@ -233,7 +233,7 @@ jobs:
       - name: 🏗️ Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.3"
       - name: 📡 Run `go telemetry on`
         run: |
           go telemetry on
