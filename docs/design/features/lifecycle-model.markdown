@@ -101,7 +101,7 @@ Ordinary shutdown may skip completion polling when the API allows it and the res
 
 ## Exit Status
 
-Exit status reports the final result of the work the invocation is responsible for: the update or cleanup in one-shot mode, and final cleanup on normal scheduled-mode shutdown. Success returns 0; an unrecovered failure returns 1. No-op, successful fallback, and accepted asynchronous work under the cleanup waiting policy count as success. Earlier scheduled update failures do not accumulate into the shutdown result. Startup and scheduling failures return 1.
+Exit status reports the final result of the work the invocation is responsible for: the update or cleanup in one-shot mode, and final cleanup on normal scheduled-mode shutdown. Success returns 0; an unrecovered failure returns 1. No-op, successful fallback, and accepted asynchronous work under the cleanup waiting policy count as success. Failures in scheduled update rounds do not accumulate into the shutdown result. Startup and scheduling failures return 1.
 
 Cancellation that prevents one-shot work from succeeding is a failure; a normal scheduled stop is not. Signals after successful work and heartbeat/notification delivery failures do not change the work result. Exit status adds no waiting requirement and does not universally certify remote completion.
 
