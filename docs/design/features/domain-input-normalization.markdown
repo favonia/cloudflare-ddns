@@ -8,7 +8,7 @@ This contract applies to untrusted domain text from configuration. Trusted direc
 
 ## 1.x Input Contract and 2.0.0 Transition
 
-Domain-like input first passes through the repository's existing IDNA lookup mapping. The mapped dot structure is then classified. Accepted input produces one canonical value.
+Domain-like input first passes through the repository’s existing IDNA lookup mapping. The mapped dot structure is then classified. Accepted input produces one canonical value.
 
 | input shape after IDNA mapping | 1.x result | 2.0.0 transition |
 | -- | -- | -- |
@@ -27,7 +27,7 @@ Unicode full stop (`U+3002`), fullwidth full stop (`U+FF0E`), and halfwidth ideo
 
 Domain parsing follows the shared [Configuration Design](../core/configuration-design.markdown) contract.
 
-Diagnostic rendering must preserve the parser's classification, even when it uses best-effort ASCII conversion. Accepted values retain both canonical ASCII and Unicode forms.
+Diagnostic rendering must preserve the parser’s classification, even when it uses best-effort ASCII conversion. Accepted values retain both canonical ASCII and Unicode forms.
 
 ### Information Needed for Diagnostics
 

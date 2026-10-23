@@ -178,7 +178,7 @@ The value of `DOMAINS` should be a list of [fully qualified domain names (FQDNs)
 
 Keep `PROXIED=true` when you want [Cloudflare’s proxy](https://developers.cloudflare.com/dns/proxy-status/) for the domains managed by this updater. Proxying lets Cloudflare cache webpages and hide your IP addresses.
 
-| If you want... | Do this |
+| If you want… | Do this |
 | -- | -- |
 | Create new records that expose your real IP addresses | Remove `PROXIED=true` or change it to `PROXIED=false` |
 | Create new records for non-HTTP(S) traffic | Remove `PROXIED=true` or change it to `PROXIED=false`, because Cloudflare cannot proxy it |
@@ -459,7 +459,7 @@ There have been reports of intermittent issues with the default provider `cloudf
 
 ### 🤔 I got <code>context deadline exceeded</code> and IP detection failed
 
-First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test every current built-in endpoint from a diagnostic container that shares the updater container's existing network stack. The commands below use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure. If the updater receives explicit proxy environment variables, pass the same variables to the diagnostic container.
+First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test every current built-in endpoint from a diagnostic container that shares the updater container’s existing network stack. The commands below use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure. If the updater receives explicit proxy environment variables, pass the same variables to the diagnostic container.
 
 ```bash
 DDNS_CONTAINER="$(docker-compose ps -q cloudflare-ddns)"
@@ -469,7 +469,7 @@ docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest -
 docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://connectivity.cloudflareclient.com/cdn-cgi/trace
 ```
 
-If `curl` reports `Could not resolve host`, DNS resolution failed in the updater's container network. Check the host's DNS configuration and Docker's [DNS services](https://docs.docker.com/engine/network/#dns-services). A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+If `curl` reports `Could not resolve host`, DNS resolution failed in the updater’s container network. Check the host’s DNS configuration and Docker’s [DNS services](https://docs.docker.com/engine/network/#dns-services). A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
 
 If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
 
@@ -608,7 +608,7 @@ The updater does not add timestamps itself because most runtimes already do:
 
 | Provider Name | Explanation |
 | -- | -- |
-| `cloudflare.trace` | <p>Get the IP address from Cloudflare's HTTPS trace endpoints. It may contact the following hosts and uses the first validated response:</p><ul><li><a href="https://api.cloudflare.com/cdn-cgi/trace">api.cloudflare.com</a></li><li><a href="https://www.cloudflare.com/cdn-cgi/trace">www.cloudflare.com</a></li><li><a href="https://connectivity.cloudflareclient.com/cdn-cgi/trace">connectivity.cloudflareclient.com</a></li></ul><p>**This is the default provider.**</p> |
+| `cloudflare.trace` | <p>Get the IP address from Cloudflare’s HTTPS trace endpoints. It may contact the following hosts and uses the first validated response:</p><ul><li><a href="https://api.cloudflare.com/cdn-cgi/trace">api.cloudflare.com</a></li><li><a href="https://www.cloudflare.com/cdn-cgi/trace">www.cloudflare.com</a></li><li><a href="https://connectivity.cloudflareclient.com/cdn-cgi/trace">connectivity.cloudflareclient.com</a></li></ul><p>**This is the default provider.**</p> |
 | `cloudflare.doh` | Get the IP address by querying `whoami.cloudflare.` against [Cloudflare via DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/). |
 | `local` | <p>Get the IP address via local network interfaces and routing tables. The updater will use the local address that _would have_ been used for outbound UDP connections to Cloudflare servers. (No data will be transmitted.)</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater will detect the addresses inside [the default bridge network in Docker](https://docs.docker.com/engine/network/drivers/bridge/) instead of those in the host network.</p> |
 | 🧪 `local.iface:<iface>` (available since version 1.15.0) | <p>🧪 Get IP addresses via the specific local network interface `iface`. Since version 1.16.0, the updater collects all matching global unicast addresses of the selected IP family (IPv4 or IPv6) instead of just the first one, then reconciles DNS records and WAF lists against that full set.</p><p>⚠️ The updater needs access to the host network (such as `network_mode: host` in Docker Compose) for this provider, for otherwise the updater cannot access host network interfaces.</p><p>🤖 The updater ignores the prefix length reported by the interface, because it commonly describes its local subnet, not the range the updater should claim. The updater uses the default prefix lengths from `IP4_DEFAULT_PREFIX_LEN` or `IP6_DEFAULT_PREFIX_LEN` instead.</p> |

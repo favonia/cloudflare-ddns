@@ -119,7 +119,7 @@ Cloudflare item-creation and item-deletion APIs return whole-list content, so ma
 
 ## Tradeoffs
 
-- The design favors strict ownership isolation over reusing foreign items. This may leave parallel items that cover the same IP address, but it avoids mutating another deployment's entries.
+- The design favors strict ownership isolation over reusing foreign items. This may leave parallel items that cover the same IP address, but it avoids mutating another deployment’s entries.
 - Regex selectors allow flexible grouping, but exact ownership boundaries require explicit anchors such as `^managed-by-a$`.
 - The selector name is intentionally distinct from `WAF_LIST_ITEM_COMMENT` to reduce operator confusion.
 

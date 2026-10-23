@@ -11,12 +11,12 @@ Each standalone Go module under `scripts/github-actions/*` may define its own `.
 ## Policy Boundary
 
 - Repository-wide judgments belong in [`.golangci.yaml`](../../../.golangci.yaml).
-- Stable exceptions arising from a standalone script module's context belong in that module's `.golangci.yaml` and apply only to that module.
+- Stable exceptions arising from a standalone script module’s context belong in that module’s `.golangci.yaml` and apply only to that module.
 - Statement-local or declaration-local exceptions belong inline as `//nolint:<linter> // reason`; follow [Go Lint Suppressions](go-lint-suppressions.markdown).
 
 ## Module-Wide Exceptions
 
-Script modules still follow the repository's correctness, security, resilience, and operator-clarity priorities from [Project Principles](../core/project-principles.markdown).
+Script modules still follow the repository’s correctness, security, resilience, and operator-clarity priorities from [Project Principles](../core/project-principles.markdown).
 
 Do not relax a linter at module scope when it materially protects required behavior, security properties, failure handling, or operator-facing clarity.
 

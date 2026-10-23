@@ -1,14 +1,14 @@
-# `proofs/` — Lean 4 Formalization
+# `proofs/`—Lean 4 Formalization
 
 This directory contains a Lean 4 formalization of the documented claims of `internal/hostid6.Derive`, plus a standalone oracle binary used for differential testing. Nothing here is linked into the production binary; `CGO_ENABLED=0` is unaffected.
 
 ## Who needs Lean
 
-Only contributors who modify `internal/hostid6.Derive` (or its documented claims) or the `proofs/` directory. Everyone else can ignore it — `go test ./...` runs the always-on regression tests with no Lean dependency.
+Only contributors who modify `internal/hostid6.Derive` (or its documented claims) or the `proofs/` directory. Everyone else can ignore it—`go test ./...` runs the always-on regression tests with no Lean dependency.
 
 ## Toolchain
 
-The pinned toolchain version is in `proofs/lean-toolchain`. You need `elan`, `lake`, and `lean` on your PATH; with `elan` present, the pinned toolchain auto-installs on the first `lake` invocation. There is no Mathlib dependency — only Lean core and `Std` (`bv_decide` via `import Std.Tactic.BVDecide`).
+The pinned toolchain version is in `proofs/lean-toolchain`. You need `elan`, `lake`, and `lean` on your PATH; with `elan` present, the pinned toolchain auto-installs on the first `lake` invocation. There is no Mathlib dependency—only Lean core and `Std` (`bv_decide` via `import Std.Tactic.BVDecide`).
 
 ## Build and check the proofs
 
@@ -44,8 +44,8 @@ The differential test (`derive_diff_test.go`) compares `hostid6.Derive` against 
 Changing `Derive` or any of its documented claims requires updating **all** of the following together:
 
 1. The prose in `derive.go` (the `Derive` doc comment and `Incompatibility` constant comments).
-2. `proofs/Hostid6/Model.lean` — the Lean model.
-3. `proofs/Hostid6/Proofs.lean` — the theorems.
+2. `proofs/Hostid6/Model.lean`—the Lean model.
+3. `proofs/Hostid6/Proofs.lean`—the theorems.
 4. The Go tests in `internal/hostid6/`.
 
 Then verify:

@@ -59,11 +59,11 @@ IPv4 DNS derivation forgets prefix length, so provider-valid IPv4 raw entries ar
 
 For IPv6, let `r` be a raw entry, `d` an in-scope DNS domain, and `h` a member of the effective `hostid6` set for `d`. The raw IPv6 set is DNS-admissible exactly when every `r` is compatible with every effective `h` for every in-scope `d`.
 
-Each derivation combines the observed prefix with host bits: the result keeps the network bits inside the observed prefix and replaces everything below it with the derivation's host bits, so any bit that neither the prefix nor the host bits set becomes zero. Compatibility is the static rule that keeps this combination well-defined:
+Each derivation combines the observed prefix with host bits: the result keeps the network bits inside the observed prefix and replaces everything below it with the derivation’s host bits, so any bit that neither the prefix nor the host bits set becomes zero. Compatibility is the static rule that keeps this combination well-defined:
 
 - `preserve` is compatible with every valid raw IPv6 entry and produces its observed address
 - an IPv6 literal is compatible when its non-zero bits do not overlap the observed prefix
-- `mac(...)` is compatible only when the observed prefix is exactly `/64`, and produces a Modified EUI-64 host ID from the configured 48-bit MAC address ([RFC 4291](https://datatracker.ietf.org/doc/html/rfc4291), Appendix A, "Creating Modified EUI-64 Format Interface Identifiers"). A Modified EUI-64 interface identifier is a 64-bit value ([RFC 4291](https://datatracker.ietf.org/doc/html/rfc4291), §2.5.1, "Interface Identifiers") defined only within a `/64`: a longer prefix leaves fewer than 64 host bits, and a shorter prefix leaves the subnet bits between the prefix and `/64` undefined by the MAC. The two failures are reported distinctly, because only the short-prefix case has a literal workaround: the MAC determines the interface identifier, but the operator must supply the subnet bits, which the tool cannot infer and should not silently assume.
+- `mac(...)` is compatible only when the observed prefix is exactly `/64`, and produces a Modified EUI-64 host ID from the configured 48-bit MAC address ([RFC 4291](https://datatracker.ietf.org/doc/html/rfc4291), Appendix A, “Creating Modified EUI-64 Format Interface Identifiers”). A Modified EUI-64 interface identifier is a 64-bit value ([RFC 4291](https://datatracker.ietf.org/doc/html/rfc4291), §2.5.1, “Interface Identifiers”) defined only within a `/64`: a longer prefix leaves fewer than 64 host bits, and a shorter prefix leaves the subnet bits between the prefix and `/64` undefined by the MAC. The two failures are reported distinctly, because only the short-prefix case has a literal workaround: the MAC determines the interface identifier, but the operator must supply the subnet bits, which the tool cannot infer and should not silently assume.
 
 For each domain, the desired DNS target set is the union of targets produced by the cross-product of its effective `hostid6` set and the raw IPv6 set. Equal target addresses collapse under set semantics.
 
@@ -93,7 +93,7 @@ For scalar DNS metadata fields (`TTL`, `PROXIED`, `RECORD_COMMENT`), DNS uses th
 - a tag is inherited only if every recyclable managed record has that canonical tag
 - otherwise the fallback for that tag is used
 
-With today's exposed config surface, the fallback tag set is empty, so DNS tag reconciliation reduces to the canonical intersection/common subset of recyclable managed records.
+With today’s exposed config surface, the fallback tag set is empty, so DNS tag reconciliation reduces to the canonical intersection/common subset of recyclable managed records.
 
 ### Interruption-Aware Priority
 
@@ -132,7 +132,7 @@ This requires one handle and its bound setter to use one stable managed-record f
 
 ## Tradeoffs
 
-- The design prefers strict ownership isolation over reusing foreign records. This may leave parallel records with the same IP address, but it avoids mutating another deployment's records.
+- The design prefers strict ownership isolation over reusing foreign records. This may leave parallel records with the same IP address, but it avoids mutating another deployment’s records.
 - Regex selectors allow flexible grouping, but exact ownership boundaries require explicit anchors such as `^managed-by-a$`.
 - The selector name is intentionally distinct from `RECORD_COMMENT` to reduce operator confusion.
 

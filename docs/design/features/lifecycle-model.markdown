@@ -76,7 +76,7 @@ Concrete detection and provider contracts are owned by [Provider Raw-Data Contra
 Admissibility is semantically prior to target derivation: the raw data must be suitable for every in-scope resource before any derived target may authorize mutation. A pure operation may decide admissibility and produce candidate targets together, provided it discards those targets when the raw data is inadmissible.
 
 - IPv4 DNS derivation turns each raw entry into a DNS address target by forgetting the prefix length.
-- IPv6 DNS derivation uses each observed prefix and each domain's effective `hostid6` set under the compatibility and target-set rules in [DNS Ownership Instantiation](managed-record-ownership.markdown).
+- IPv6 DNS derivation uses each observed prefix and each domain’s effective `hostid6` set under the compatibility and target-set rules in [DNS Ownership Instantiation](managed-record-ownership.markdown).
 - WAF derivation turns each raw IP address with prefix length into a WAF prefix target by taking its subnet.
 
 Admissibility preflight for one IP family must finish before any mutation for that family. If any raw entry is inadmissible for any in-scope resource, that family yields `abort`: existing DNS and WAF content for the family is preserved for the round. The other IP family remains independent. This preflight rule does not claim transactional mutation after preflight succeeds.

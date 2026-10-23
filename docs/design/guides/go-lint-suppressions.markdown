@@ -59,6 +59,6 @@ Use `//nolint:gochecknoglobals` only for intentional process-wide values.
 
 Do not address `unparam` mechanically by deleting a parameter just because one current call path passes the same value every time.
 
-- First check whether the parameter is part of the helper's honest contract.
+- First check whether the parameter is part of the helper’s honest contract.
 - If removing it would hard-code a real dependency into a generic-looking helper, prefer deleting the thin wrapper and calling a more explicit helper directly, or keep the parameter with a local suppression and reason.
-- Avoid "fixing" `unparam` by turning an explicit dependency into hidden coupling.
+- Avoid “fixing” `unparam` by turning an explicit dependency into hidden coupling.
