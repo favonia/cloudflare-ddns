@@ -69,7 +69,9 @@ This is a bugfix release for the new `static.empty` provider introduced in 1.16.
 
 - Set `UPDATE_CRON=@once` for a single-run execution.
 - Set `IP4_PROVIDER=static.empty` and `IP6_PROVIDER=static.empty` to clear all managed DNS records and WAF items.
-- Optionally set `DELETE_ON_STOP=true` to make the updater also try to delete the WAF lists themselves.
+- ~~Optionally set `DELETE_ON_STOP=true` to make the updater also try to delete the WAF lists themselves.~~
+
+*The list-deletion instruction above was incorrect.* In 1.16.1, this workflow clears managed WAF items but leaves the lists in place. To also attempt list deletion, use version 1.18.0 or later with `DELETE_ON_STOP=true`.
 
 Note: this workflow is for using the updater as a single-run command, not as a long-running Docker deployment.
 
