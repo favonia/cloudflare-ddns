@@ -105,7 +105,7 @@ Exit status reports the outcome of the work the invocation is responsible for: t
 
 On scheduled shutdown, cleanup finalizes a process that has already decided to stop. Enabling `DELETE_ON_STOP` makes this cleanup part of the requested work. An observed cleanup failure returns 1 so callers can detect the finalization problem while the process proceeds with shutdown.
 
-Cancellation that prevents one-shot work from succeeding is a failure; a normal scheduled stop is not. Signals after successful work and heartbeat/notification delivery failures do not change the work result. Exit status adds no waiting requirement.
+Cancellation that prevents one-shot work from succeeding is a failure; a normal scheduled stop is not. Signals after successful work and heartbeat/notification delivery failures do not change the work result.
 
 ## Phase Boundaries
 
