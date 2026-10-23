@@ -8,6 +8,8 @@
 
 A feature-rich and robust Cloudflare DDNS updater with a small Docker image. It detects your machine’s public IP addresses and updates DNS records through the Cloudflare API.
 
+The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
+
 ## ✨ Highlights
 
 ### ✅ Comprehensive Support of Domain Names
@@ -434,9 +436,11 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 **Scheduled runs** continue after failed updates. When stopped normally, they return **0** unless cleanup requested by `DELETE_ON_STOP=true` fails, in which case they return **1**.
 
-One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
+Startup and configuration errors return **1**.
 
-Startup failures and schedules with no future update time return **1**. Heartbeat and notification delivery failures do not change the exit status.
+🤖 One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
+
+🤖 Heartbeat and notification delivery failures do not change the exit status.
 
 ## 🛠️ Troubleshooting
 
@@ -488,8 +492,6 @@ The updater does not add timestamps itself because most runtimes already do:
 <a id="all-settings"></a>
 
 ### ⚙️ All Settings
-
-The emoji “🧪” marks experimental features, and the emoji “🤖” marks technical details that most readers can skip on a first pass.
 
 <details>
 <summary>🔐 Cloudflare API Access <sup><em>click to expand</em></sup></summary>
