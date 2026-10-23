@@ -93,7 +93,7 @@ Cleanup is shutdown-time mutation after the process has decided to stop.
 
 Cleanup deletes the resources that are eligible for shutdown deletion.
 
-With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, run cleanup directly instead of first reconciling empty targets.
+With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, run cleanup directly instead of first reconciling empty targets. Startup validates that every managed IP family uses `static.empty`; families using `none` are outside the cleanup scope.
 
 Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and instantiated for WAF in [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
 

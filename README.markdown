@@ -273,7 +273,7 @@ environment:
   - IP6_PROVIDER=none
 ```
 
-Use `IP6_PROVIDER=none` to stop managing IPv6, or `IP4_PROVIDER=none` to stop managing IPv4. Existing managed DNS records of that IP family are preserved. 🧪 If you also use WAF lists, existing managed items of that IP family are preserved there too.
+Use `IP6_PROVIDER=none` to stop managing IPv6, or `IP4_PROVIDER=none` to stop managing IPv4. Existing DNS records of that IP family are preserved. 🧪 If you also use WAF lists, existing items of that IP family are preserved there too.
 
 #### Use IPv6 without sharing the host network
 
@@ -432,13 +432,12 @@ Due to high maintenance costs, the dedicated Kubernetes instructions have been r
 
 ## 🚦 Exit Status
 
-**One-shot runs (`UPDATE_CRON=@once`)** perform one update—or cleanup when `DELETE_ON_STOP=true`—then exit. The exit status is **0** if that work succeeds, including when no changes are needed, or **1** if it fails or is interrupted before completion.
-
-**Scheduled runs** continue after failed updates. When stopped normally, they return **0** unless cleanup requested by `DELETE_ON_STOP=true` fails, in which case they return **1**.
+- **Scheduled runs (the default):** The updater repeats updates on its schedule and continues after failed updates. When stopped normally, it returns **0**, or **1** if cleanup requested by `DELETE_ON_STOP=true` fails.
+- **One-shot runs (`UPDATE_CRON=@once`):** The updater exits after one update or cleanup. It returns **0** on success, including when no changes are needed, or **1** if the update or cleanup fails or is interrupted before completion.
 
 Startup and configuration errors return **1**.
 
-🤖 One-shot cleanup waits for completion within the configured timeout. Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish.
+🤖 Scheduled shutdown cleanup can return **0** once Cloudflare accepts the deletion request, without waiting for deletion to finish. One-shot cleanup waits for completion within the configured timeout.
 
 🤖 Heartbeat and notification delivery failures do not change the exit status.
 
@@ -530,7 +529,7 @@ The updater does not add timestamps itself because most runtimes already do:
 
 | Name | Meaning | Default Value |
 | -- | -- | -- |
-| `MANAGED_RECORDS_COMMENT_REGEX` (available since version 1.16.0) | Regex that selects which DNS records this updater manages by their comments. Matched records are updated or deleted as needed; new records are created with comments that match. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (the Go `regexp` syntax, not Perl/PCRE). | `""` (empty regex; manages all DNS records) |
+| <a id="managed-records-comment-regex"></a>`MANAGED_RECORDS_COMMENT_REGEX` (available since version 1.16.0) | Regex that selects which DNS records this updater manages by their comments. Matched records are updated or deleted as needed; new records are created with comments that match. Uses [RE2](https://github.com/google/re2/wiki/Syntax) syntax (the Go `regexp` syntax, not Perl/PCRE). | `""` (empty regex; manages all DNS records) |
 
 > 🔗 `DOMAINS`, `IP4_DOMAINS`, and `IP6_DOMAINS` are additive; they do not override each other. For example, setting `DOMAINS=a.org` and `IP4_DOMAINS=b.org` means the updater manages `A` records for both `a.org` and `b.org` (and `AAAA` records for `a.org`).
 >
@@ -618,8 +617,8 @@ The updater does not add timestamps itself because most runtimes already do:
 | `url.via6:<url>` (available since version 1.16.0) | <p>Fetch the IP address from a URL while always connecting to that URL over IPv6. It accepts the same CIDR notation and 🧪 multiple-address text format as `url:`.</p><p>The intention is to get an IPv4 address over IPv6 with `IP4_PROVIDER=url.via6:<url>`. In comparison, `IP4_PROVIDER=url:<url>` will get an IPv4 address over the matching IP family (IPv4).</p> |
 | `file:<absolute-path>` (available since version 1.16.0) | <p>Read the IP address from a local file. The path must be absolute.</p><p>The file is re-read on every detection cycle, so you can update it without restarting the updater.</p><p>🧪 The file may also use the line-based text format described after this table for multiple addresses.</p><p>⚠️ The file must be readable by the user configured by `user: "UID:GID"`.</p> |
 | `static:<ip1>,<ip2>,...` (available since version 1.16.0) | <p>Use one or more explicit IP addresses or addresses in CIDR notation as a fixed set, separated by commas. This is an advanced provider for tests, debugging, and special fixed-input setups.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p><p>🤖 The entries are parsed, deduplicated, sorted, and validated for the selected IP family via the same normalization pipeline used by other providers.</p> |
-| `static.empty` (available since version 1.16.0) | <p>Clear existing managed content for the selected IP family. In contrast, `none` preserves existing managed content for that family.</p><p>🧪 If you also use WAF lists, this clears managed items of that IP family but does not delete the list itself. The updater will try to delete the list on exit only when `DELETE_ON_STOP` is enabled.</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p> |
-| `none` | <p>Stop managing the specified IP family for this run. For example `IP4_PROVIDER=none` stops managing IPv4. Existing managed DNS records of that IP family are preserved.</p><p>🧪 Existing managed WAF list items of that IP family are preserved too, because that family is out of scope. Use `static.empty` if you want to clear managed content for that family. As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p> |
+| `static.empty` (available since version 1.16.0) | <p>Clear existing managed content for the selected IP family. In contrast, `none` preserves existing content for that family.</p><p>🧪 If you also use WAF lists, this clears managed items of that IP family but does not delete the list itself. For deleting WAF lists themselves, see [`DELETE_ON_STOP`](#delete-on-stop).</p><p>⚠️ Most users should not use it for normal long-running DDNS.</p> |
+| `none` | <p>Stop managing the specified IP family for this run. For example `IP4_PROVIDER=none` stops managing IPv4. Existing DNS records of that IP family are preserved.</p><p>🧪 Existing WAF list items of that IP family are preserved too, because that family is out of scope. Use `static.empty` if you want to clear managed content for that family. As the support of WAF lists is still experimental, please [provide feedback](https://github.com/favonia/cloudflare-ddns/issues/new/choose) if this does not match your needs.</p> |
 
 > 🧪 The `url`, `url.via4`, `url.via6`, and `file` providers can use the following line-based text format for multiple addresses. Each line is one IP address or an address in CIDR notation (e.g., `198.51.100.1/24`). Blank lines are ignored and `#` starts a comment. All entries must belong to the selected IP family; mismatched entries are rejected. Entries are deduplicated and sorted. There must be at least one entry.
 >
@@ -641,14 +640,14 @@ The updater does not add timestamps itself because most runtimes already do:
 | Name | Meaning | Default Value |
 | -- | -- | -- |
 | `CACHE_EXPIRATION` | The expiration of cached Cloudflare API responses. It can be any positive time duration accepted by [time.ParseDuration](https://pkg.go.dev/time#ParseDuration), such as `1h` or `10m`. | `6h0m0s` (6 hours) |
-| `DELETE_ON_STOP` | <p>Whether managed DNS records and managed WAF content are deleted when the updater exits. It accepts any boolean value supported by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>DNS cleanup applies only to the IP families this updater is managing in that run.</p><p>🧪 For WAF lists, the updater deletes the whole list only when the updater manages both IP families and no filtering is enabled by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. Otherwise shutdown cleanup keeps the list and deletes only managed items in the managed IP families.</p> | `false` |
+| <a id="delete-on-stop"></a>`DELETE_ON_STOP` | <p>Whether managed DNS records and managed WAF content are deleted when the updater exits. It accepts any boolean value supported by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`.</p><p>DNS cleanup applies to the domains and IP families this updater manages. It deletes only records whose comments match [`MANAGED_RECORDS_COMMENT_REGEX`](#managed-records-comment-regex).</p><p>🧪 For WAF lists, the updater tries to delete the whole list only when the updater manages both IP families and no filtering is enabled by `MANAGED_WAF_LIST_ITEMS_COMMENT_REGEX`. Otherwise shutdown cleanup keeps the list and deletes only managed items in the managed IP families.</p> | `false` |
 | `TZ` | <p>The timezone used for logging messages and parsing `UPDATE_CRON`. It can be any timezone accepted by [time.LoadLocation](https://pkg.go.dev/time#LoadLocation), including any IANA Time Zone.</p><p>🤖 The pre-built Docker images come with the embedded timezone database via the [time/tzdata](https://pkg.go.dev/time/tzdata) package.</p> | `UTC` |
-| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` runs one update, or cleanup instead when `DELETE_ON_STOP=true`, then exits without scheduling further updates.</p><p>🤖 With `@every 5m`, if a check and its updates take two minutes, the updater only waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
-| `UPDATE_ON_START` | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`. | `true` |
+| `UPDATE_CRON` | <p>The schedule to re-check IP addresses and update DNS records and WAF lists (if needed). The format is [any cron expression accepted by the `cron` library](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) or the special value `@once`. The special value `@once` runs one update or cleanup, then exits without scheduling further updates.</p><p>With `@once`, enabling `DELETE_ON_STOP` runs cleanup directly. This combination requires `static.empty` for each managed IP family; use `none` for an IP family you want to leave unchanged.</p><p>🤖 With `@every 5m`, if a check and its updates take two minutes, the updater only waits about three minutes before starting the next check.</p> | `@every 5m` (every 5 minutes) |
+| `UPDATE_ON_START` | Whether to check IP addresses (and possibly update DNS records and WAF lists) _immediately_ on start, regardless of the update schedule specified by `UPDATE_CRON`. It can be any boolean value accepted by [strconv.ParseBool](https://pkg.go.dev/strconv#ParseBool), such as `true`, `false`, `0`, or `1`. With `UPDATE_CRON=@once`, this must be `true`. | `true` |
 
 See [Exit Status](#exit-status) for how the updater reports success or failure.
 
-> 💡 Active cleanup tip: set one or both IP providers to `static.empty` and use `UPDATE_CRON=@once` to remove managed DNS records or managed WAF items and then exit. If both providers are `static.empty`, you can add `DELETE_ON_STOP=true` to make the updater try to delete the WAF list itself too.
+> 💡 Active cleanup tip: to clear both IPv4 and IPv6 content, set both IP providers to `static.empty`. To clear one family’s content and preserve the other’s, use `static.empty` for the family to clear and `none` for the family to preserve. Use `UPDATE_CRON=@once` to remove the selected families’ managed DNS records and WAF items, then exit. For deleting WAF lists themselves, see [`DELETE_ON_STOP`](#delete-on-stop).
 
 </details>
 
