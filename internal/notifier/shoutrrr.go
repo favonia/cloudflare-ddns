@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/containrrr/shoutrrr"
-	"github.com/containrrr/shoutrrr/pkg/router"
-	"github.com/containrrr/shoutrrr/pkg/types"
+	"github.com/nicholas-fedor/shoutrrr"
+	"github.com/nicholas-fedor/shoutrrr/pkg/router"
+	"github.com/nicholas-fedor/shoutrrr/pkg/types"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -65,7 +65,11 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 
 // NewShoutrrr creates a new shoutrrr notifier.
 func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
-	r, err := shoutrrr.CreateSender(rawURLs...)
+	r, err := shoutrrr.CreateSenderWithOptions(types.SenderOptions{
+		HTTPClient:  nil,
+		DialContext: nil,
+		Timeout:     0,
+	}, rawURLs...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", err)
 		return Shoutrrr{}, false //nolint:exhaustruct_v5
