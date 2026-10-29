@@ -167,6 +167,8 @@ type Handle interface {
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
+	// The fourth indicates success; false leaves item contents unknown. Items may
+	// borrow cache storage: consumers retaining evidence must copy at admission.
 	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription, fallbackItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
@@ -178,17 +180,22 @@ type Handle interface {
 	// calling this method.
 	// CleanupWait never returns WAFListCleanupUpdating. If deleting an eligible
 	// whole list fails, completed fallback item deletion still counts as success.
+	// The result owns admitted contents and reached cleanup stages; it never
+	// adds a read to populate evidence. See WAFCleanupResult for read chronology.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
 		fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode CleanupMode,
-	) WAFListCleanupCode
+	) WAFCleanupResult
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string, ids []ID) bool
+	// The result preserves the work Boolean independently of completion and
+	// actual returned managed membership. Empty input succeeds without dispatch.
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string, ids []ID) WAFBatchResult
 
 	// CreateWAFListItems creates managed WAF list items with the given prefixes
-	// and per-item comments.
+	// and per-item comments. The result preserves the work Boolean independently
+	// of completion and returned membership. Empty input succeeds without dispatch.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string,
-		items []WAFListCreateItem) bool
+		items []WAFListCreateItem) WAFBatchResult
 }
 
 // An Auth contains authentication information.

@@ -209,28 +209,10 @@ func expectRecordAlreadyDeletedInfo(p *mocks.MockPP, ipFamily ipnet.Family, doma
 	)
 }
 
-func expectRecordSetFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiError,
-		"Could not confirm update of %s records for %s; the records might be inconsistent",
-		ipFamily.RecordType(),
-		domain.Describe(),
-	)
-}
-
-func expectRecordFinalDeleteFailedNotice(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiError,
-		"Could not confirm deletion of %s records for %s; the records might be inconsistent",
-		ipFamily.RecordType(),
-		domain.Describe(),
-	)
-}
-
 func expectRecordDeleteTimeoutInfo(p *mocks.MockPP, ipFamily ipnet.Family, domain domain.Domain) any {
 	return p.EXPECT().Infof(
 		pp.EmojiTimeout,
-		"Deletion of %s records for %s was aborted by a timeout or signal; the records might be inconsistent",
+		"Deletion of %s records for %s was aborted by a timeout or signal",
 		ipFamily.RecordType(),
 		domain.Describe(),
 	)
@@ -322,9 +304,8 @@ func expectWAFListMutation(
 	if len(createItems) > 0 || !want.createOK {
 		calls = append(calls, m.EXPECT().
 			CreateWAFListItems(ctx, p, list, want.listDescription, createItems).
-			Return(want.createOK))
+			Return(wafBatchResultForTest(want.createOK)))
 		if !want.createOK {
-			calls = append(calls, expectWAFListErrorNotice(p, list))
 			gomock.InOrder(calls...)
 			return
 		}
@@ -332,7 +313,6 @@ func expectWAFListMutation(
 	}
 	calls = append(calls, expectWAFListDelete(ctx, p, m, list, want.listDescription, wafItemIDs(want.deleteItems), want.deleteOK))
 	if !want.deleteOK {
-		calls = append(calls, expectWAFListErrorNotice(p, list))
 		gomock.InOrder(calls...)
 		return
 	}
@@ -354,14 +334,6 @@ func expectWAFListNoopNotice(p *mocks.MockPP, list api.WAFList, cached bool) any
 		return p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date (cached)", list.Describe())
 	}
 	return p.EXPECT().Infof(pp.EmojiAlreadyDone, "The list %s is already up to date", list.Describe())
-}
-
-func expectWAFListErrorNotice(p *mocks.MockPP, list api.WAFList) any {
-	return p.EXPECT().Noticef(
-		pp.EmojiError,
-		"Could not confirm update of the list %s; its content may be inconsistent",
-		list.Describe(),
-	)
 }
 
 func expectWAFCreateNotices(p *mocks.MockPP, list api.WAFList, prefixes []netip.Prefix) []any {
@@ -399,7 +371,7 @@ func expectWAFListDelete(
 	ids []api.ID,
 	ok bool,
 ) any {
-	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, ids).Return(ok)
+	return m.EXPECT().DeleteWAFListItems(ctx, p, list, listDescription, ids).Return(wafBatchResultForTest(ok))
 }
 
 func wafItemIDs(items []api.WAFListItem) []api.ID {
@@ -422,4 +394,12 @@ func mutationMembership(ok bool) api.ManagedMembership {
 		return api.MembershipManaged
 	}
 	return api.MembershipUnknown
+}
+
+func wafBatchResultForTest(ok bool) api.WAFBatchResult {
+	status := api.WAFBatchUnconfirmed
+	if ok {
+		status = api.WAFBatchCompleted
+	}
+	return api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: ok, Status: status}
 }

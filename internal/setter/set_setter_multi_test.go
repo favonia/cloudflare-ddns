@@ -139,7 +139,6 @@ func TestSetIPs(t *testing.T) {
 					),
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDeletionMode, false),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},

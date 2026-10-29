@@ -48,7 +48,6 @@ func TestSetIPsSingleton(t *testing.T) {
 					expectRecordList(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.params, []api.Record{}, true, true),
 					expectRecordCreate(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.ip1, fixture.params, fixture.record1, false),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -96,7 +95,6 @@ func TestSetIPsSingleton(t *testing.T) {
 						fixture.params,
 						false,
 					),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -245,7 +243,6 @@ func TestSetIPsSingleton(t *testing.T) {
 					h.EXPECT().DeleteRecord(
 						ctx, p, fixture.ipFamily, fixture.domain, fixture.record2, api.RegularDeletionMode).
 						Do(wrapCancelAsDelete(cancel)).Return(api.RecordMutation{Status: api.MutationUnconfirmed, Kind: api.RecordDelete, Record: api.RecordFact{ID: fixture.record2, IP: netip.Addr{}}, Membership: api.MembershipUnknown}),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -273,7 +270,6 @@ func TestSetIPsSingleton(t *testing.T) {
 						fixture.params,
 						false,
 					),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},

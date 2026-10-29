@@ -46,7 +46,9 @@ func mergeMessages(msgs ...Message) Message {
 		for _, outcome := range msg.dns {
 			merged.dns = append(merged.dns, outcome.clone())
 		}
-		merged.waf = append(merged.waf, msg.waf...)
+		for _, outcome := range msg.waf {
+			merged.waf = append(merged.waf, outcome.clone())
+		}
 		for _, problem := range msg.problems {
 			problem.domains = slices.Clone(problem.domains)
 			merged.problems = append(merged.problems, problem)

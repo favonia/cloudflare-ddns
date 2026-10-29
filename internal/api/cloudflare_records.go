@@ -537,7 +537,7 @@ func (h cloudflareHandle) CreateRecord(ctx context.Context, ppfmt pp.PP,
 	result.Record.ID = ID(res.ID)
 
 	if rs := h.cache.listRecords[ipFamily].Get(domain.DNSNameASCII()); rs != nil &&
-		h.options.MatchManagedRecordComment(desiredParams.Comment) {
+		h.options.MatchManagedRecordComment(res.Comment) {
 		*rs.Value() = append([]Record{{ID: ID(res.ID), IP: ip, RecordParams: desiredParams}}, *rs.Value()...)
 	}
 

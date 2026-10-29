@@ -1611,6 +1611,8 @@ func TestBuildConfig(t *testing.T) {
 				if tc.expected.update.DetectionFilter == nil {
 					tc.expected.update.DetectionFilter = defaultDetectionFilter(tc.expected.update.Provider)
 				}
+				tc.expected.update.ManagedRecordsFiltered = raw.ManagedRecordsCommentRegex != ""
+				tc.expected.update.ManagedWAFListItemsFiltered = raw.ManagedWAFListItemsCommentRegex != ""
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)
@@ -1723,4 +1725,27 @@ func TestBuildConfigProxiedDotTrimming(t *testing.T) {
 	built, ok = raw.BuildConfig(pp.NewSilent())
 	require.False(t, ok)
 	require.Nil(t, built)
+}
+
+func TestBuildConfigReportingSelectors(t *testing.T) {
+	t.Parallel()
+	for _, selector := range []string{"", ".*", "^owned$"} {
+		t.Run(selector, func(t *testing.T) {
+			t.Parallel()
+			raw := config.DefaultRaw()
+			raw.IP4Domains = entries(domain.FQDN("a.example"))
+			raw.WAFLists = []api.WAFList{{AccountID: "account", Name: "list"}}
+			raw.RecordComment = "owned"
+			raw.WAFListItemComment = "owned"
+			raw.ManagedRecordsCommentRegex = selector
+			raw.ManagedWAFListItemsCommentRegex = selector
+			built, ok := raw.BuildConfig(pp.NewSilent())
+			require.True(t, ok)
+			require.Equal(t, selector != "", built.Update.ManagedRecordsFiltered)
+			require.Equal(t, selector != "", built.Update.ManagedWAFListItemsFiltered)
+			require.Equal(t, selector, built.Handle.Options.ManagedRecordsCommentRegex.String())
+			require.Equal(t, selector, built.Handle.Options.ManagedWAFListItemsCommentRegex.String())
+			require.Equal(t, selector == "", built.Handle.Options.AllowWholeWAFListDeleteOnShutdown)
+		})
+	}
 }

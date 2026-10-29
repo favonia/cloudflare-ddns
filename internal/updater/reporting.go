@@ -1,11 +1,10 @@
 package updater
 
 import (
-	"cmp"
 	"net/netip"
 	"slices"
+	"strings"
 
-	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
@@ -70,9 +69,12 @@ type Assessment struct {
 func (s *ReportingState) Assess(message Message) Assessment {
 	a := Assessment{
 		dns:      make([]assessedDNS, 0, len(message.dns)),
-		waf:      slices.Clone(message.waf),
+		waf:      make([]wafOutcome, 0, len(message.waf)),
 		problems: make([]operationProblem, 0, len(message.problems)),
 		cleanup:  message.cleanup,
+	}
+	for _, o := range message.waf {
+		a.waf = append(a.waf, o.clone())
 	}
 	for _, o := range message.dns {
 		entry := assessedDNS{outcome: o.clone(), firstKnown: false, unexplained: false}
@@ -120,26 +122,24 @@ func (s *ReportingState) Submitted(e Envelope) {
 	}
 }
 
-// completionFact preserves supported operation evidence, without implying a
-// read-back or exact final managed membership. Create/update share the same
-// address-operation claim. IDs, multiplicity and operation order are not rendered.
-type completionFact struct {
-	status     api.MutationStatus
-	removal    bool
-	address    netip.Addr
-	membership api.ManagedMembership
-}
-
 type dnsRow struct {
-	domains     []domain.Domain
-	family      ipnet.Family
-	cleanup     bool
-	code        setter.ResponseCode
-	beforeKnown bool
-	before      []netip.Addr
-	target      []netip.Addr
-	completion  []completionFact
-	unexplained bool
+	// Each grouped constituent retains its own identity/visibility qualifications.
+	// A renderer must check removal anchors per source before sharing a line.
+	sources      []dnsEvidence
+	evidence     dnsEvidence
+	disclosure   dnsDisclosure
+	filtered     bool
+	domains      []domain.Domain
+	family       ipnet.Family
+	cleanup      bool
+	code         setter.ResponseCode
+	beforeKnown  bool
+	beforeCached bool
+	before       []netip.Addr
+	target       []netip.Addr
+	satisfied    []netip.Addr
+	operations   []setter.DNSOperation
+	unexplained  bool
 }
 
 // Compose purely selects and groups semantic facts from an owned assessment.
@@ -154,13 +154,16 @@ func Compose(a Assessment, lifecycle LifecycleContext) Envelope {
 			continue
 		}
 		row := makeDNSRow(entry)
-		if row.beforeKnown {
+		if row.evidence.coveredBy(row.disclosure) {
 			beforeScopes = append(beforeScopes, entry.outcome.scope)
 		}
 		grouped := false
+		body, _ := renderDNSBody(row)
 		for i := range rows {
-			if rows[i].sameFacts(row) {
+			otherBody, _ := renderDNSBody(rows[i])
+			if rows[i].sameFacts(row) && slices.Equal(body, otherBody) {
 				rows[i].domains = append(rows[i].domains, row.domains...)
+				rows[i].sources = append(rows[i].sources, row.sources...)
 				grouped = true
 				break
 			}
@@ -173,16 +176,27 @@ func Compose(a Assessment, lifecycle LifecycleContext) Envelope {
 	if lifecycle.Kind != LifecycleNone {
 		message = append(message, renderLifecycle(lifecycle))
 	}
-	for _, row := range rows {
-		message = append(message, renderDNS(row))
+	for _, family := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
+		for _, problem := range a.problems {
+			if problem.family == family {
+				message = append(message, renderProblem(problem))
+			}
+		}
+		for _, row := range rows {
+			if row.family == family {
+				message = append(message, renderDNS(row))
+			}
+		}
 	}
 	for _, o := range a.waf {
-		if o.code != setter.ResponseNoop || lifecycle.Kind == LifecycleStartup {
+		if wafHasOperation(o) || lifecycle.Kind == LifecycleStartup {
 			message = append(message, renderWAF(o))
 		}
 	}
-	for _, p := range a.problems {
-		message = append(message, renderProblem(p))
+	// This producer owns block boundaries. One element preserves its newlines
+	// through Message.Format without changing unrelated notifier constructors.
+	if len(message) > 0 {
+		message = notifier.Message{strings.Join(message, "\n\n")}
 	}
 	return Envelope{
 		notification: notifier.NewNotification(notificationKind(a, lifecycle), message),
@@ -193,36 +207,38 @@ func Compose(a Assessment, lifecycle LifecycleContext) Envelope {
 func makeDNSRow(entry assessedDNS) dnsRow {
 	o := entry.outcome
 	row := dnsRow{
-		domains:     []domain.Domain{o.scope.domain},
-		family:      o.scope.family,
-		cleanup:     o.cleanup,
-		code:        o.result.Code,
-		beforeKnown: o.result.Before != nil,
-		before:      nil,
-		target:      canonicalAddresses(o.target),
-		completion:  nil,
-		unexplained: entry.unexplained,
+		sources:      nil,
+		evidence:     makeDNSEvidence(o),
+		disclosure:   dnsDisclosure{addresses: nil, knownEmpty: false},
+		filtered:     o.filtered,
+		domains:      []domain.Domain{o.scope.domain},
+		family:       o.scope.family,
+		cleanup:      o.cleanup,
+		code:         o.result.Code,
+		beforeKnown:  o.result.Before != nil,
+		beforeCached: false,
+		before:       nil,
+		target:       canonicalAddresses(o.target),
+		satisfied:    nil,
+		operations:   nil,
+		unexplained:  entry.unexplained,
 	}
 	if o.result.Before != nil {
+		row.beforeCached = o.result.Before.Cached
 		for _, r := range o.result.Before.Records {
 			row.before = append(row.before, r.IP)
 		}
 		row.before = canonicalAddresses(row.before)
 	}
-	for _, effect := range o.result.Effects {
-		if effect.Status == api.MutationNoEffect {
-			continue
+	if o.result.Progress != nil {
+		row.satisfied = canonicalAddresses(o.result.Progress.Satisfied)
+		row.operations = slices.Clone(o.result.Progress.Operations)
+		for i := range row.operations {
+			row.operations[i].Record.IP = row.operations[i].Record.IP.Unmap()
 		}
-		fact := completionFact{
-			status:     effect.Status,
-			removal:    effect.Kind == api.RecordDelete,
-			address:    effect.Record.IP.Unmap(),
-			membership: effect.Membership,
-		}
-		row.completion = append(row.completion, fact)
 	}
-	slices.SortFunc(row.completion, compareCompletion)
-	row.completion = slices.Compact(row.completion)
+	_, row.disclosure = renderDNSBody(row)
+	row.sources = []dnsEvidence{row.evidence}
 	return row
 }
 
@@ -235,24 +251,10 @@ func canonicalAddresses(addresses []netip.Addr) []netip.Addr {
 	return slices.Compact(owned)
 }
 
-func compareCompletion(a, b completionFact) int {
-	removalOrder := 0
-	if a.removal != b.removal {
-		if a.removal {
-			removalOrder = 1
-		} else {
-			removalOrder = -1
-		}
-	}
-	return cmp.Or(cmp.Compare(a.status, b.status), removalOrder,
-		a.address.Compare(b.address), cmp.Compare(a.membership, b.membership))
-}
-
-func (r dnsRow) sameFacts(other dnsRow) bool {
-	return r.family == other.family && r.cleanup == other.cleanup && r.code == other.code &&
-		r.beforeKnown == other.beforeKnown && slices.Equal(r.before, other.before) &&
-		slices.Equal(r.target, other.target) && slices.Equal(r.completion, other.completion) &&
-		r.unexplained == other.unexplained
+// Reached cleanup stages remain reportable even when a later fresh empty
+// fallback makes the aggregate work result a successful no-op.
+func wafHasOperation(o wafOutcome) bool {
+	return o.code != setter.ResponseNoop || (o.result.Cleanup != nil && len(o.result.Cleanup.Stages) > 0)
 }
 
 func notificationKind(a Assessment, lifecycle LifecycleContext) notifier.Kind {
@@ -269,7 +271,7 @@ func notificationKind(a Assessment, lifecycle LifecycleContext) notifier.Kind {
 	}
 	for _, o := range a.waf {
 		failed = failed || o.code == setter.ResponseFailed
-		operation = operation || o.code != setter.ResponseNoop
+		operation = operation || wafHasOperation(o)
 		cleanup = cleanup || o.cleanup
 	}
 	switch {

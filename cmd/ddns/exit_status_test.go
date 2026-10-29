@@ -59,6 +59,7 @@ func TestOperationSuccess(t *testing.T) {
 				reportCtx := t.Context()
 				list := api.WAFList{AccountID: "account", Name: "list"}
 				cfg := &config.UpdateConfig{
+					ManagedRecordsFiltered: false, ManagedWAFListItemsFiltered: false,
 					Provider: map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewStaticEmpty()},
 					Domains:  nil, HostID6: nil, WAFLists: []api.WAFList{list},
 					DefaultPrefixLen: map[ipnet.Family]int{ipnet.IP4: 32}, DetectionFilter: nil,
@@ -81,8 +82,8 @@ func TestOperationSuccess(t *testing.T) {
 				}
 				if mode == "update" {
 					s.EXPECT().SetWAFList(gomock.Any(), ppfmt, list, "", gomock.Any(), "").DoAndReturn(
-						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]setter.WAFTargets, _ string) setter.ResponseCode {
-							return respond(ctx)
+						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]setter.WAFTargets, _ string) setter.WAFResult {
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: respond(ctx)}
 						})
 				} else {
 					cleanupMode := api.CleanupWait
@@ -90,8 +91,8 @@ func TestOperationSuccess(t *testing.T) {
 						cleanupMode = api.CleanupAllowAsync
 					}
 					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, "", gomock.Any(), cleanupMode).DoAndReturn(
-						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]bool, _ api.CleanupMode) setter.ResponseCode {
-							return respond(ctx)
+						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]bool, _ api.CleanupMode) setter.WAFResult {
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: respond(ctx)}
 						})
 				}
 				report := func(ctx context.Context, _ pp.PP, msg heartbeat.Message) bool {
