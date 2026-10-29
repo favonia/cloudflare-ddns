@@ -47,10 +47,10 @@ func (m *MockSetter) EXPECT() *MockSetterMockRecorder {
 }
 
 // FinalClearWAFList mocks base method.
-func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, managedFamilies map[ipnet.Family]bool, mode api.CleanupMode) setter.ResponseCode {
+func (m *MockSetter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, managedFamilies map[ipnet.Family]bool, mode api.CleanupMode) setter.WAFResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FinalClearWAFList", ctx, ppfmt, list, listDescription, managedFamilies, mode)
-	ret0, _ := ret[0].(setter.ResponseCode)
+	ret0, _ := ret[0].(setter.WAFResult)
 	return ret0
 }
 
@@ -67,19 +67,19 @@ type MockSetterFinalClearWAFListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSetterFinalClearWAFListCall) Return(arg0 setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) Return(arg0 setter.WAFResult) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.WAFResult) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.ResponseCode) *MockSetterFinalClearWAFListCall {
+func (c *MockSetterFinalClearWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) setter.WAFResult) *MockSetterFinalClearWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -161,10 +161,10 @@ func (c *MockSetterSetIPsCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.
 }
 
 // SetWAFList mocks base method.
-func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]setter.WAFTargets, fallbackItemComment string) setter.ResponseCode {
+func (m *MockSetter) SetWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string, targetsByFamily map[ipnet.Family]setter.WAFTargets, fallbackItemComment string) setter.WAFResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetWAFList", ctx, ppfmt, list, listDescription, targetsByFamily, fallbackItemComment)
-	ret0, _ := ret[0].(setter.ResponseCode)
+	ret0, _ := ret[0].(setter.WAFResult)
 	return ret0
 }
 
@@ -181,19 +181,19 @@ type MockSetterSetWAFListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSetterSetWAFListCall) Return(arg0 setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) Return(arg0 setter.WAFResult) *MockSetterSetWAFListCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.WAFResult) *MockSetterSetWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.ResponseCode) *MockSetterSetWAFListCall {
+func (c *MockSetterSetWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]setter.WAFTargets, string) setter.WAFResult) *MockSetterSetWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

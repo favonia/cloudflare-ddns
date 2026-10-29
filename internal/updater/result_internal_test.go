@@ -52,9 +52,9 @@ func TestMessageRetainsScopeEvidence(t *testing.T) {
 	otherIPs := []netip.Addr{netip.MustParseAddr("192.0.2.10")}
 	beforeA := &setter.DNSSnapshot{Cached: true, Records: []api.RecordFact{{ID: "a", IP: netip.MustParseAddr("192.0.2.1")}}}
 	beforeB := &setter.DNSSnapshot{Cached: false, Records: []api.RecordFact{{ID: "b", IP: netip.MustParseAddr("192.0.2.2")}}}
-	resultA := setter.DNSResult{Code: setter.ResponseUpdated, Before: beforeA, Effects: nil}
-	resultB := setter.DNSResult{Code: setter.ResponseUpdated, Before: beforeB, Effects: nil}
-	resultUnchanged := setter.DNSResult{Code: setter.ResponseNoop, Before: nil, Effects: nil}
+	resultA := setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: beforeA, Effects: nil}
+	resultB := setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: beforeB, Effects: nil}
+	resultUnchanged := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}
 	gomock.InOrder(
 		s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, a, ips, semanticParams()).Return(resultA),
 		s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, unchanged, otherIPs, semanticParams()).Return(resultUnchanged),
@@ -62,9 +62,9 @@ func TestMessageRetainsScopeEvidence(t *testing.T) {
 	)
 	msg := setIPs(context.Background(), pp.NewSilent(), c, s, ipnet.IP4, dnsTargetsByDomain{a: ips, unchanged: otherIPs, b: ips})
 	require.Equal(t, []dnsOutcome{
-		{scope: dnsScope{domain: a, family: ipnet.IP4}, cleanup: false, target: ips, result: resultA},
-		{scope: dnsScope{domain: unchanged, family: ipnet.IP4}, cleanup: false, target: otherIPs, result: resultUnchanged},
-		{scope: dnsScope{domain: b, family: ipnet.IP4}, cleanup: false, target: ips, result: resultB},
+		{filtered: false, scope: dnsScope{domain: a, family: ipnet.IP4}, cleanup: false, target: ips, result: resultA},
+		{filtered: false, scope: dnsScope{domain: unchanged, family: ipnet.IP4}, cleanup: false, target: otherIPs, result: resultUnchanged},
+		{filtered: false, scope: dnsScope{domain: b, family: ipnet.IP4}, cleanup: false, target: ips, result: resultB},
 	}, msg.dns)
 	require.Equal(t, heartbeat.Message{OK: true, Lines: []string{"Set A records for a.example, b.example to 192.0.2.9"}}, msg.HeartbeatMessage)
 	require.False(t, msg.Failed())
@@ -83,7 +83,7 @@ func TestMessageOwnsTargetsAndBefore(t *testing.T) {
 	before := &setter.DNSSnapshot{Cached: true, Records: []api.RecordFact{{ID: "old", IP: ip}}}
 	effect := api.RecordMutation{Status: api.MutationUnconfirmed, Kind: api.RecordDelete, Record: api.RecordFact{ID: "old", IP: netip.Addr{}}, Membership: api.MembershipUnknown}
 	effects := []api.RecordMutation{effect}
-	s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, d, ips, semanticParams()).Return(setter.DNSResult{Code: setter.ResponseFailed, Before: before, Effects: effects})
+	s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, d, ips, semanticParams()).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: before, Effects: effects})
 	msg := setIPs(context.Background(), pp.NewSilent(), c, s, ipnet.IP4, sharedDNSTargets(c.Domains[ipnet.IP4], ips))
 	require.Len(t, msg.dns, 1)
 	ips[0] = netip.MustParseAddr("192.0.2.99")
@@ -112,6 +112,7 @@ func TestMessagePrerequisiteProblems(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			s := mocks.NewMockSetter(ctrl) // No setter operation is authorized by any prerequisite failure.
 			c := semanticConfig()
+			c.WAFLists = []api.WAFList{{AccountID: "account", Name: "must-not-invoke"}}
 			d := domain.FQDN("a.example")
 			var msg Message
 			var want operationProblem
@@ -170,7 +171,7 @@ func TestMessageExplicitEmptyAndUnmanagedFamily(t *testing.T) {
 	c.Domains[ipnet.IP4] = []domain.Domain{d}
 	c.Domains[ipnet.IP6] = []domain.Domain{domain.FQDN("unmanaged.example")}
 	c.Provider[ipnet.IP4] = provider.NewStaticEmpty()
-	result := setter.DNSResult{Code: setter.ResponseNoop, Before: &setter.DNSSnapshot{Cached: false, Records: nil}, Effects: nil}
+	result := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: &setter.DNSSnapshot{Cached: false, Records: nil}, Effects: nil}
 	s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, d, gomock.Len(0), semanticParams()).Return(result)
 	msg := UpdateIPs(context.Background(), pp.NewSilent(), c, s)
 	require.Len(t, msg.dns, 1)
@@ -192,14 +193,14 @@ func TestMessageRetainsCleanupAndWAFOutcomes(t *testing.T) {
 	c.Provider[ipnet.IP4] = provider.NewStaticEmpty()
 	list := api.WAFList{AccountID: "account", Name: "list"}
 	c.WAFLists = []api.WAFList{list}
-	result := setter.DNSResult{Code: setter.ResponseNoop, Before: &setter.DNSSnapshot{Cached: true, Records: nil}, Effects: nil}
+	result := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: &setter.DNSSnapshot{Cached: true, Records: nil}, Effects: nil}
 	gomock.InOrder(
 		s.EXPECT().FinalDelete(gomock.Any(), gomock.Any(), ipnet.IP4, d, semanticParams()).Return(result),
-		s.EXPECT().FinalClearWAFList(gomock.Any(), gomock.Any(), list, "", map[ipnet.Family]bool{ipnet.IP4: true}, api.CleanupWait).Return(setter.ResponseFailed),
+		s.EXPECT().FinalClearWAFList(gomock.Any(), gomock.Any(), list, "", map[ipnet.Family]bool{ipnet.IP4: true}, api.CleanupWait).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 	)
 	msg := FinalDeleteIPs(context.Background(), pp.NewSilent(), c, s, api.CleanupWait)
-	require.Equal(t, []dnsOutcome{{scope: dnsScope{domain: d, family: ipnet.IP4}, cleanup: true, target: nil, result: result}}, msg.dns)
-	require.Equal(t, []wafOutcome{{list: list, code: setter.ResponseFailed, cleanup: true}}, msg.waf)
+	require.Equal(t, []dnsOutcome{{filtered: false, scope: dnsScope{domain: d, family: ipnet.IP4}, cleanup: true, target: nil, result: result}}, msg.dns)
+	require.Equal(t, []wafOutcome{{list: list, code: setter.ResponseFailed, cleanup: true, result: setter.WAFResult{Code: setter.ResponseFailed, Before: nil, Batches: nil, Cleanup: nil}, filtered: true, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}}, msg.waf)
 	require.True(t, msg.cleanup)
 	require.True(t, msg.Failed())
 
@@ -219,9 +220,34 @@ func TestMessageRetainsWAFNoop(t *testing.T) {
 	list := api.WAFList{AccountID: "account", Name: "list"}
 	c.WAFLists = []api.WAFList{list}
 	c.Provider[ipnet.IP4] = provider.NewStaticEmpty()
-	s.EXPECT().SetWAFList(gomock.Any(), gomock.Any(), list, "", map[ipnet.Family]setter.WAFTargets{ipnet.IP4: setter.NewAvailableWAFTargets([]netip.Prefix{})}, "").Return(setter.ResponseNoop)
+	s.EXPECT().SetWAFList(gomock.Any(), gomock.Any(), list, "", map[ipnet.Family]setter.WAFTargets{ipnet.IP4: setter.NewAvailableWAFTargets([]netip.Prefix{})}, "").Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop})
 	msg := UpdateIPs(context.Background(), pp.NewSilent(), c, s)
-	require.Equal(t, []wafOutcome{{list: list, code: setter.ResponseNoop, cleanup: false}}, msg.waf)
+	require.Equal(t, []wafOutcome{{list: list, code: setter.ResponseNoop, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Before: nil, Batches: nil, Cleanup: nil}, filtered: true, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}}, msg.waf)
 	require.False(t, msg.Failed())
 	require.Empty(t, msg.HeartbeatMessage.Lines)
+}
+
+func TestMessageOwnsProgress(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	s := mocks.NewMockSetter(ctrl)
+	c := semanticConfig()
+	d := domain.FQDN("a.example")
+	ip := netip.MustParseAddr("192.0.2.1")
+	c.Domains[ipnet.IP4] = []domain.Domain{d}
+	operation := reportingOperation(api.RecordDelete, setter.DNSOperationUnconfirmed, "record", "192.0.2.1")
+	progress := &setter.DNSProgress{Satisfied: []netip.Addr{ip}, Operations: []setter.DNSOperation{operation}}
+	s.EXPECT().SetIPs(gomock.Any(), gomock.Any(), ipnet.IP4, d, []netip.Addr{ip}, semanticParams()).Return(setter.DNSResult{
+		Code: setter.ResponseFailed, Before: reportingSnapshot("192.0.2.1"), Progress: progress, Effects: nil,
+	})
+	msg := setIPs(context.Background(), pp.NewSilent(), c, s, ipnet.IP4, sharedDNSTargets(c.Domains[ipnet.IP4], []netip.Addr{ip}))
+	progress.Satisfied[0] = netip.Addr{}
+	progress.Operations[0].Status = setter.DNSOperationCompleted
+	require.Equal(t, []netip.Addr{ip}, msg.dns[0].result.Progress.Satisfied)
+	require.Equal(t, []setter.DNSOperation{operation}, msg.dns[0].result.Progress.Operations)
+	merged := mergeMessages(msg)
+	msg.dns[0].result.Progress.Satisfied[0] = netip.Addr{}
+	msg.dns[0].result.Progress.Operations[0].Record.ID = "changed"
+	require.Equal(t, []netip.Addr{ip}, merged.dns[0].result.Progress.Satisfied)
+	require.Equal(t, []setter.DNSOperation{operation}, merged.dns[0].result.Progress.Operations)
 }

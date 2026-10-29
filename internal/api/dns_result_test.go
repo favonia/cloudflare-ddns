@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -50,12 +51,12 @@ func TestRecordMutationPrerequisiteFailure(t *testing.T) {
 
 func TestRecordMutationReturnedMembership(t *testing.T) {
 	t.Parallel()
-	for _, comment := range []string{"managed", "unmanaged"} {
+	for _, comment := range []string{"managed", "managed-other", "unmanaged"} {
 		t.Run(comment, func(t *testing.T) {
 			t.Parallel()
 			synctest.Test(t, func(t *testing.T) {
 				options := defaultHandleOptions()
-				options.ManagedRecordsCommentRegex = regexp.MustCompile("^managed$")
+				options.ManagedRecordsCommentRegex = regexp.MustCompile("^managed")
 				f := newCloudflareHarnessWithOptions(t, options)
 				p := f.newPP()
 				params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
@@ -80,7 +81,11 @@ func TestRecordMutationReturnedMembership(t *testing.T) {
 				rs, cached, ok := f.handle.ListRecords(context.Background(), p, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 				require.True(t, ok)
 				require.True(t, cached)
-				require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: params}}, rs)
+				if membership == api.MembershipManaged {
+					require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::1"), RecordParams: params}}, rs)
+				} else {
+					require.Empty(t, rs)
+				}
 				assertHandlersExhausted(t, zh, lrh, crh)
 			})
 		})
@@ -156,6 +161,68 @@ func TestRecordMutationUpdateUnconfirmedMembership(t *testing.T) {
 				}
 				require.Equal(t, expected, result.Membership)
 				assertHandlersExhausted(t, zh, urh)
+			})
+		})
+	}
+}
+
+func TestRecordCreateSelectiveCacheReentry(t *testing.T) {
+	t.Parallel()
+	for _, cache := range []string{"valid", "expired", "absent"} {
+		t.Run(cache, func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				options := defaultHandleOptions()
+				options.CacheExpiration = time.Minute
+				options.ManagedRecordsCommentRegex = regexp.MustCompile("^managed$")
+				f := newCloudflareHarnessWithOptions(t, options)
+				p := f.newPP()
+				params := api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "managed", Tags: nil}
+				zh := newZonesHandler(t, f.serveMux, map[string][]string{"test.org": {"active"}})
+				remote := []formattedRecord{{ID: "existing", IP: "::9", Comment: "managed", Tags: nil}}
+				lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", remote)
+				zh.setRequestLimit(2)
+				lrh.setRequestLimit(0)
+				if cache != "absent" {
+					lrh.setRequestLimit(1)
+					_, _, ok := f.handle.ListRecords(t.Context(), p, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.True(t, ok)
+					if cache == "expired" {
+						synctest.Sleep(time.Minute + time.Nanosecond)
+						zh.setRequestLimit(2)
+					}
+				}
+				returned := params
+				returned.Comment = "outside"
+				crh := newCreateRecordHandlerWithParams(t, f.serveMux, "created", ipnet.IP6, "sub.test.org", "::1", params, returned)
+				crh.setRequestLimit(1)
+				result := f.handle.CreateRecord(t.Context(), p, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+				require.Equal(t, api.MutationCompleted, result.Status)
+				require.Equal(t, api.MembershipUnmanaged, result.Membership)
+				if cache == "valid" {
+					rs, cached, ok := f.handle.ListRecords(t.Context(), p, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.True(t, ok)
+					require.True(t, cached)
+					require.Equal(t, []api.Record{{ID: "existing", IP: mustIP("::9"), RecordParams: params}}, rs)
+				}
+				if cache != "valid" {
+					remote[0].Comment = "outside"
+					lrh.setRequestLimit(1)
+					rs, cached, ok := f.handle.ListRecords(t.Context(), p, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+					require.True(t, ok)
+					require.False(t, cached)
+					require.Empty(t, rs)
+				}
+				// The next fresh read can admit the same identity again; exclusion is not permanent.
+				remote[0] = formattedRecord{ID: "created", IP: "::1", Comment: "managed", Tags: nil}
+				synctest.Sleep(time.Minute + time.Nanosecond)
+				zh.setRequestLimit(2)
+				lrh.setRequestLimit(1)
+				rs, cached, ok := f.handle.ListRecords(t.Context(), p, ipnet.IP6, domain.FQDN("sub.test.org"), params)
+				require.True(t, ok)
+				require.False(t, cached)
+				require.Equal(t, []api.Record{{ID: "created", IP: mustIP("::1"), RecordParams: params}}, rs)
+				assertHandlersExhausted(t, zh, lrh, crh)
 			})
 		})
 	}

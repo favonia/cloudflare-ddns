@@ -394,11 +394,13 @@ func (c *RawConfig) BuildConfig(ppfmt pp.PP) (*BuiltConfig, bool) {
 		detectionFilter[ipnet.IP6] = c.IP6DetectionFilter
 	}
 	updateConfig := &UpdateConfig{
-		Provider:        providerMap,
-		Domains:         domains,
-		HostID6:         hostID6Policies,
-		WAFLists:        c.WAFLists,
-		DetectionFilter: detectionFilter,
+		ManagedRecordsFiltered:      c.ManagedRecordsCommentRegex != "",
+		ManagedWAFListItemsFiltered: c.ManagedWAFListItemsCommentRegex != "",
+		Provider:                    providerMap,
+		Domains:                     domains,
+		HostID6:                     hostID6Policies,
+		WAFLists:                    c.WAFLists,
+		DetectionFilter:             detectionFilter,
 		DefaultPrefixLen: map[ipnet.Family]int{
 			ipnet.IP4: c.IP4DefaultPrefixLen,
 			ipnet.IP6: c.IP6DefaultPrefixLen,

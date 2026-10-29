@@ -41,6 +41,10 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing the DNS instantiation of the shared ownership and reconciliation models, including DNS attribute-based ownership, filtering, or metadata reconciliation.
 - [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing the WAF instantiation of the shared ownership and reconciliation models, including WAF attribute-based ownership, filtering, or deletion-target consequences.
 
+## Rationale
+
+For lower-frequency review of notification presentation choices, see [Notification Messages rationale](../rationale/notification-messages.markdown). It records arguments and candidate alternatives without replacing the contracts above.
+
 ## Directory Scope
 
 Use `docs/design/` only for durable design information that is broader than one local edit.

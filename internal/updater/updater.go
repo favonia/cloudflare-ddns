@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"slices"
 
@@ -245,8 +246,9 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 			return result.Code
 		})
 		outcomes = append(outcomes, dnsOutcome{
-			scope:   dnsScope{domain: configuredDomain, family: ipFamily},
-			cleanup: false, target: ips, result: result,
+			filtered: c.ManagedRecordsFiltered,
+			scope:    dnsScope{domain: configuredDomain, family: ipFamily},
+			cleanup:  false, target: ips, result: result,
 		}.clone())
 
 		groupIndex := slices.IndexFunc(groups, func(group targetGroup) bool {
@@ -336,8 +338,9 @@ func finalDeleteIP(
 			return result.Code
 		})
 		outcomes = append(outcomes, dnsOutcome{
-			scope:   dnsScope{domain: domain, family: ipFamily},
-			cleanup: true, target: nil, result: result,
+			filtered: c.ManagedRecordsFiltered,
+			scope:    dnsScope{domain: domain, family: ipFamily},
+			cleanup:  true, target: nil, result: result,
 		}.clone())
 		resps.register(domain, result.Code)
 	}
@@ -355,10 +358,16 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 	outcomes := make([]wafOutcome, 0, len(c.WAFLists))
 
 	for _, l := range c.WAFLists {
+		var result setter.WAFResult
 		code := wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-			return s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, targets, c.WAFListItemComment)
+			result = s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, targets, c.WAFListItemComment)
+			return result.Code
 		})
-		outcomes = append(outcomes, wafOutcome{list: l, code: code, cleanup: false})
+		outcome := newWAFOutcome(c, l, result, false)
+		for family, target := range targets {
+			outcome.active[family] = target.Available
+		}
+		outcomes = append(outcomes, outcome.clone())
 		resps.register(l.Describe(), code)
 	}
 
@@ -382,10 +391,14 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 	}
 
 	for _, l := range c.WAFLists {
+		var result setter.WAFResult
 		code := wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
-			return s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies, mode)
+			result = s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies, mode)
+			return result.Code
 		})
-		outcomes = append(outcomes, wafOutcome{list: l, code: code, cleanup: true})
+		outcome := newWAFOutcome(c, l, result, true)
+		maps.Copy(outcome.active, managedFamilies)
+		outcomes = append(outcomes, outcome.clone())
 		resps.register(l.Describe(), code)
 	}
 
@@ -464,4 +477,18 @@ func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s 
 	msgs = append(msgs, finalClearWAFLists(ctx, ppfmt, c, s, mode))
 
 	return mergeMessages(msgs...)
+}
+
+func newWAFOutcome(c *config.UpdateConfig, list api.WAFList, result setter.WAFResult, cleanup bool) wafOutcome {
+	configured := make(map[ipnet.Family]bool)
+	for family, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
+			configured[family] = true
+		}
+	}
+	return wafOutcome{
+		list: list, code: result.Code, cleanup: cleanup, result: result,
+		configured: configured, active: make(map[ipnet.Family]bool),
+		filtered: c.ManagedWAFListItemsFiltered || !configured[ipnet.IP4] || !configured[ipnet.IP6],
+	}
 }

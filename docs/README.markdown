@@ -9,6 +9,7 @@ This directory holds the public documentation set beyond the top-level `README.m
 - `docs/SECURITY.md`: supported versions and vulnerability reporting.
 - `docs/release-workflow.markdown`: maintainer release and feature-note conventions.
 - `docs/design/`: durable design documents for future developers, including AI agents.
+- `docs/rationale/`: non-normative design arguments, alternatives, evidence limits, and revisit conditions; start with [the rationale index](rationale/README.markdown).
 
 For `docs/design/`, start with [`docs/design/README.markdown`](design/README.markdown).
 

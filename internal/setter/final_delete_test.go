@@ -69,7 +69,6 @@ func TestFinalDelete(t *testing.T) {
 					}, true, true),
 					expectRecordDelete(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.FinalDeletionMode, false),
-					expectRecordFinalDeleteFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},

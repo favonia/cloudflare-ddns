@@ -74,11 +74,11 @@ func inferenceRead(ids string, addresses ...int) setter.DNSResult {
 	for i, a := range addresses {
 		records[i] = api.RecordFact{ID: api.ID(string(ids[i])), IP: inferenceAddresses()[a]}
 	}
-	return setter.DNSResult{Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: records}}
+	return setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: records}}
 }
 
 func inferenceEffect(status api.MutationStatus, kind api.RecordMutationKind, id string, address int, membership api.ManagedMembership) setter.DNSResult {
-	return setter.DNSResult{Code: setter.ResponseNoop, Before: nil, Effects: []api.RecordMutation{{Status: status, Kind: kind, Record: api.RecordFact{ID: api.ID(id), IP: inferenceAddresses()[address]}, Membership: membership}}}
+	return setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: []api.RecordMutation{{Status: status, Kind: kind, Record: api.RecordFact{ID: api.ID(id), IP: inferenceAddresses()[address]}, Membership: membership}}}
 }
 
 func TestDNSInferenceTransitions(t *testing.T) {
@@ -127,7 +127,7 @@ func TestDNSInferenceCachedAndMissingReads(t *testing.T) {
 	m.assess(inferenceEffect(api.MutationUnconfirmed, api.RecordUpdate, "r", 1, api.MembershipManaged))
 	cached := inferenceRead("r", 0)
 	cached.Before.Cached = true
-	if m.assess(cached) || m.assess(setter.DNSResult{Code: setter.ResponseNoop, Before: nil, Effects: nil}) || m.assess(inferenceRead("r", 1)) {
+	if m.assess(cached) || m.assess(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}) || m.assess(inferenceRead("r", 1)) {
 		t.Fatal("cached or missing input refined alternatives")
 	}
 	var empty dnsInference
@@ -150,7 +150,7 @@ func TestDNSInferenceCompareBeforeEffects(t *testing.T) {
 func TestDNSInferenceWidenAndRecover(t *testing.T) {
 	t.Parallel()
 	var m dnsInference
-	large := setter.DNSResult{Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: nil}}
+	large := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: nil}}
 	for i := range 257 {
 		large.Before.Records = append(large.Before.Records, api.RecordFact{ID: api.ID(strconv.Itoa(i)), IP: inferenceAddresses()[0]})
 	}
@@ -231,7 +231,7 @@ func TestDNSInferenceIdentityAndPresence(t *testing.T) {
 		for _, fact := range []api.RecordFact{{ID: "", IP: inferenceAddresses()[1]}, {ID: "r", IP: netip.Addr{}}} {
 			var m dnsInference
 			m.assess(inferenceRead("r", 0))
-			if m.assess(setter.DNSResult{Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: []api.RecordFact{fact}}}) || m.assess(inferenceRead("r", 2)) || !m.assess(inferenceRead("")) {
+			if m.assess(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: []api.RecordFact{fact}}}) || m.assess(inferenceRead("r", 2)) || !m.assess(inferenceRead("")) {
 				t.Fatal("invalid snapshot created false precision")
 			}
 		}

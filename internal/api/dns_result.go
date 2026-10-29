@@ -43,7 +43,11 @@ const (
 // RecordMutation owns its values. IP is the requested address for create/update;
 // delete carries only the supplied ID. An unconfirmed create has no known ID.
 // Membership on completed create/update reports returned metadata independently
-// of cache admission, which retains existing policy. On unconfirmed create/update,
+// of operation completion. Returned selector mismatch means MembershipUnmanaged;
+// it does not establish a previous comment or a change from one. Create admission
+// and update eviction use returned membership. Creation still caches desired
+// metadata for admitted records. A later fresh matching read can readmit a record.
+// On unconfirmed create/update,
 // MembershipManaged guarantees any resulting record is managed under a match-all
 // selector; selective selectors remain unknown. This does not confirm existence.
 // Prerequisite failures and deletions carry MembershipUnknown.
