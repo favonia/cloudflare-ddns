@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
@@ -214,18 +215,28 @@ func TestDNSKnownEmptyRetainsMutationChronology(t *testing.T) {
 	}
 }
 
+// Compose owns grouping and per-scope coverage. Equivalent display facts may
+// group despite different IDs; submission must cover each original scope.
 func TestDNSGroupedSourcesRemainIndependent(t *testing.T) {
 	t.Parallel()
 	a := reportingOutcome("a.example", setter.ResponseFailed, reportingSnapshot("192.0.2.1"))
 	b := a.clone()
+	b.scope.domain = domain.FQDN("b.example")
 	b.result.Before.Records[0].ID = "other"
 	b.result.Progress.Operations[0].Record.ID = "other"
-	rows := appendDNSRow(nil, makeDNSRow(assessedDNS{outcome: a, firstKnown: false, unexplained: false}))
-	rows = appendDNSRow(rows, makeDNSRow(assessedDNS{outcome: b, firstKnown: false, unexplained: false}))
-	require.Len(t, rows, 1)
-	require.Len(t, rows[0].sources, 2)
-	require.Equal(t, api.ID("record"), rows[0].sources[0].records[0].ID)
-	require.Equal(t, api.ID("other"), rows[0].sources[1].records[0].ID)
+	state := NewReportingState(true)
+	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
+	envelope := Compose(state.Assess(reportingMessage(a, b)), context)
+	require.Len(t, envelope.Notification().Message, 1)
+	require.Contains(t, envelope.Notification().Format(), "a.example")
+	require.Contains(t, envelope.Notification().Format(), "b.example")
+	state.Submitted(envelope)
+	for _, outcome := range []dnsOutcome{a, b} {
+		outcome.result.Code = setter.ResponseNoop
+		outcome.result.Before.Cached = true
+		outcome.result.Progress = &setter.DNSProgress{Satisfied: []netip.Addr{outcome.result.Before.Records[0].IP}, Operations: nil}
+		require.True(t, Compose(state.Assess(reportingMessage(outcome)), context).IsEmpty())
+	}
 }
 
 func TestDNSContradictoryDeletionDoesNotEstablishCountOrDelta(t *testing.T) {

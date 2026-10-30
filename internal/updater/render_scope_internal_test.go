@@ -212,3 +212,19 @@ func TestRenderWAFPrefixOnlyReturnRetainsCompletedAddition(t *testing.T) {
 		})
 	}
 }
+
+// An absent list with an empty desired set is a no-op, not an existing empty
+// list. Lifecycle selection may still disclose that known absence.
+func TestRenderWAFNoopPreservesKnownMissingList(t *testing.T) {
+	t.Parallel()
+	var o wafOutcome
+	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
+	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+	o.code = setter.ResponseNoop
+	o.result.Code = setter.ResponseNoop
+	o.result.Before = &api.WAFSnapshot{Exists: false, Cached: false, Items: nil}
+	text := renderWAF(o)
+	require.Contains(t, text, "Current: list does not exist")
+	require.NotContains(t, text, "no items")
+	require.NotContains(t, text, "before")
+}

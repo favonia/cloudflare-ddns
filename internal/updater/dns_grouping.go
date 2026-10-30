@@ -82,16 +82,3 @@ func (r dnsRow) sameFacts(other dnsRow) bool {
 	}
 	return slices.Equal(r.evidence.displayOperations(), other.evidence.displayOperations())
 }
-
-// appendDNSRow groups only equivalent display qualifications while retaining
-// every original scope's evidence for visibility-dependent rendering decisions.
-func appendDNSRow(rows []dnsRow, row dnsRow) []dnsRow {
-	for i := range rows {
-		if rows[i].sameFacts(row) {
-			rows[i].domains = append(rows[i].domains, row.domains...)
-			rows[i].sources = append(rows[i].sources, row.sources...)
-			return rows
-		}
-	}
-	return append(rows, row)
-}

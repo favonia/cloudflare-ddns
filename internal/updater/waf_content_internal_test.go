@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"fmt"
 	"net/netip"
 	"testing"
 
@@ -205,6 +206,55 @@ func TestWAFDeltaMembershipUsesConfiguredOwnership(t *testing.T) {
 					require.Equal(t, []api.WAFListItem{old}, c.unchanged)
 				}
 			}
+		}
+	}
+}
+
+// These are defensive evidence-contract cases, not claims that normal cleanup
+// produces mismatched IDs. Equal prefix values and equal counts cannot prove
+// that the admitted managed identities were all targeted or removed.
+func TestWAFCleanupCompletenessRequiresAdmittedIdentities(t *testing.T) {
+	t.Parallel()
+	original := api.WAFListItem{ID: "original", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "owned"}
+	for _, status := range []api.WAFBatchStatus{api.WAFBatchAccepted, api.WAFBatchCompleted} {
+		for _, change := range []string{"identity", "metadata", "repeated target"} {
+			t.Run(fmt.Sprintf("%d/%s", status, change), func(t *testing.T) {
+				t.Parallel()
+				target := original
+				switch change {
+				case "identity":
+					target.ID = "different"
+				case "metadata":
+					target.Comment = "different"
+				}
+				targets := []api.WAFListItem{target}
+				if change == "repeated target" {
+					targets = append(targets, target)
+				}
+				var o wafOutcome
+				o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
+				o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+				o.filtered, o.cleanup = true, true
+				o.code = setter.ResponseUpdating
+				if status == api.WAFBatchCompleted {
+					o.code = setter.ResponseUpdated
+				}
+				before := &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{original}}
+				o.result.Cleanup = &api.WAFCleanupResult{Before: before, Code: api.WAFListCleanupUpdating, Stages: []api.WAFCleanupStage{
+					{WholeList: false, Items: targets, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: status, Returned: nil, ReturnedItems: nil}},
+				}}
+				if status == api.WAFBatchCompleted {
+					o.result.Cleanup.Code = api.WAFListCleanupUpdated
+				}
+				content := o.content()
+				require.False(t, content.deltaKnown)
+				require.Empty(t, content.removed)
+				text := renderWAF(o)
+				require.NotContains(t, text, "all managed items")
+				require.NotContains(t, text, "No managed items remain")
+				require.Contains(t, text, "before cleanup")
+				require.Contains(t, text, original.Prefix.String())
+			})
 		}
 	}
 }

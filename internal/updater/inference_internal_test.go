@@ -333,3 +333,79 @@ func TestDNSInferenceMappedAddresses(t *testing.T) {
 		}
 	}
 }
+
+// A create response is not promised to reject an ID already in the admitted
+// snapshot. Test conservative recovery through assess's observable decision,
+// rather than asserting the private factor layout or a Cloudflare occurrence.
+func TestDNSInferenceCreateIdentityCollisionRecovers(t *testing.T) {
+	t.Parallel()
+	for _, membership := range []api.ManagedMembership{api.MembershipManaged, api.MembershipUnmanaged} {
+		var m dnsInference
+		m.assess(inferenceRead("r", 0))
+		m.assess(inferenceEffect(api.MutationCompleted, api.RecordCreate, "r", 1, membership))
+		if m.assess(inferenceRead("r", 2)) {
+			t.Fatal("ambiguous create identity must not manufacture an unexplained change")
+		}
+		if !m.assess(inferenceRead("r", 0)) {
+			t.Fatal("a coherent fresh read must restore discrepancy detection")
+		}
+	}
+}
+
+// Enumerate concrete single-record states independently of the factor model.
+// Two successive requests may each complete or leave their input unchanged;
+// selective ownership can additionally exclude the resulting record. Check
+// both accepted and rejected observations, so widening everything cannot pass.
+func TestDNSInferenceSequentialUpdatesMatchConcreteOutcomes(t *testing.T) {
+	t.Parallel()
+	type transition struct {
+		status     api.MutationStatus
+		membership api.ManagedMembership
+	}
+	choices := []transition{
+		{api.MutationNoEffect, api.MembershipUnknown},
+		{api.MutationCompleted, api.MembershipManaged},
+		{api.MutationCompleted, api.MembershipUnmanaged},
+		{api.MutationUnconfirmed, api.MembershipManaged},
+		{api.MutationUnconfirmed, api.MembershipUnknown},
+	}
+	for _, first := range choices {
+		for _, second := range choices {
+			// Index zero is absence; indices 1..3 are the three fixture addresses.
+			possible := [4]bool{false, true, false, false}
+			for i, step := range []transition{first, second} {
+				if step.status == api.MutationNoEffect {
+					continue
+				}
+				next := [4]bool{}
+				if step.status == api.MutationUnconfirmed {
+					next = possible
+				}
+				if step.membership != api.MembershipUnmanaged {
+					if i == 0 {
+						next[2] = true
+					} else {
+						next[3] = true
+					}
+				}
+				if step.membership != api.MembershipManaged {
+					next[0] = true
+				}
+				possible = next
+			}
+			for observation, compatible := range possible {
+				var m dnsInference
+				m.assess(inferenceRead("r", 0))
+				m.assess(inferenceEffect(first.status, api.RecordUpdate, "r", 1, first.membership))
+				m.assess(inferenceEffect(second.status, api.RecordUpdate, "r", 2, second.membership))
+				read := inferenceRead("")
+				if observation > 0 {
+					read = inferenceRead("r", observation-1)
+				}
+				if got := m.assess(read); got == compatible {
+					t.Fatalf("steps=%v,%v observation=%d: unexplained=%v, compatible=%v", first, second, observation, got, compatible)
+				}
+			}
+		}
+	}
+}
