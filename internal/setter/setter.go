@@ -338,11 +338,6 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		}
 	}
 
-	if len(result.Progress.Operations) == 0 {
-		result.Code = ResponseNoop
-		return result
-	}
-
 	result.Code = ResponseUpdated
 	return result
 }
