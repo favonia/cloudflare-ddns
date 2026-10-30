@@ -6,6 +6,8 @@ The governing contracts are [Notification Model](../design/features/notification
 
 The organizing question is what an operator can reasonably understand from one notification without knowing the rendererâ€™s hidden rules. [Reader interpretation](#reader-interpretation) explains the product assumptions; [Evidence and outcomes](#evidence-and-outcomes) explains what can be claimed; [Presentation choices](#presentation-choices) compares formats; [Review and revision](#review-and-revision) describes how to challenge the arguments.
 
+<a id="reader-interpretation"></a>
+
 ## Reader Interpretation
 
 ### A Notification Must Work Without Its Explanation
@@ -76,6 +78,8 @@ An ordinary no-op is useful work but usually not a new event. Sending the same â
 Startup and first-known observations provide context without requiring perpetual success reminders. First-known means the first usable information included during this process, not a reconstruction of what existed at process startup. A later IPv6 failure should not cause unrelated already-covered IPv4 no-op content to be repeated merely to make a message look complete.
 
 The design separates selection from wording: information useful in a selected notification need not create another notification trigger. Revisit that product choice if operators require an explicit periodic activity signal; such a requirement belongs in lifecycle or heartbeat policy, not an accidental extra notifier row. This rationale does not change repeated-failure policy.
+
+<a id="evidence-and-outcomes"></a>
 
 ## Evidence And Outcomes
 
@@ -175,6 +179,8 @@ A failed whole-list deletion followed by an empty item-cleanup fallback supplies
 
 The notification should describe the existing waiting and cancellation policy, including accepted unwaited shutdown cleanup. Adding waits or reads solely to produce a stronger sentence changes runtime behavior and needs a separate design decision. The governing distinction belongs in the lifecycle model rather than a collection of wording exceptions.
 
+<a id="presentation-choices"></a>
+
 ## Presentation Choices
 
 ### Compare Templates Across The Same Situations
@@ -237,6 +243,8 @@ Lifecycle context explains why an otherwise quiet observation appears. Family an
 Grouping only by desired target would combine scopes whose old state, provenance, outcome, or uncertainty differ. That reduces line count by discarding distinctions. Separate blocks can therefore be clearer even when they repeat the same target. Within one block, an operation-specific warning belongs near the operation, while a complete inventory belongs after the facts it helps interpret.
 
 A resource-independent footer is a weak place to explain scoped ownership or partial failure: the reader must reconstruct which blocks it qualifies. The countervailing cost is repeated labels in a long message. Revisit grouping through complete multi-domain, IPv4/IPv6, and WAF examples; do not judge it from an isolated line.
+
+<a id="review-and-revision"></a>
 
 ## Review And Revision
 

@@ -38,6 +38,8 @@ A failed initial read leaves that scope uncovered while other scopes can be repo
 
 Coverage advances only when a nonempty envelope completely representing that scope's admitted pre-operation address information is submitted to `Notifier.Send`, irrespective of its delivery Boolean. Representation may be distributed across Removed, Unchanged, old update operands, and explicit context; it does not require a literal Before field. A complete delta from explicitly known-empty input may represent that empty context. Known-empty and historical input attached to a failure count when fully represented; a desired target alone does not. Obtaining a snapshot or omitting known facts during rendering does not count. A conservative fallback must preserve undisplayed facts or leave coverage unset. This disclosure test does not remove selected failures or other notification scopes. Coverage does not reset after cache expiry, later failure, or address changes. Keep it process-local, with no persistent history or delivery retries.
 
+<a id="observation-differences"></a>
+
 ## Observation Differences
 
 Keep observation inference separate from first-known coverage and delivery. For each domain/family, retain the latest admitted fresh remote observation and the completed effects or possible completed outcomes of subsequent own mutations. Compare a fresh pre-operation read with that model before applying this round's writes.
