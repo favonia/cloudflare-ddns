@@ -59,10 +59,8 @@ func TestRenderWAFMissingInputRemainsDistinct(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{ID: "new", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: ""}
 	var o wafOutcome
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-	o.code = setter.ResponseUpdated
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
+	o.scope = wafScope{ipnet.IP4: true}
+	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: false, Cached: false, Items: nil}
 	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedItems: []api.WAFListItem{item}}}}
 	require.Contains(t, renderWAF(o), "did not exist before the update")
@@ -74,13 +72,13 @@ func TestRenderWAFCleanupAndMembership(t *testing.T) {
 	t.Parallel()
 	for _, status := range []api.WAFBatchStatus{api.WAFBatchCompleted, api.WAFBatchAccepted} {
 		var o wafOutcome
-		o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
+		o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
 		o.cleanup = true
-		o.code = setter.ResponseUpdated
+		o.result.Code = setter.ResponseUpdated
 		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: nil, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: status, Returned: nil, ReturnedItems: nil}}}}
 		if status == api.WAFBatchAccepted {
 			item := api.WAFListItem{ID: "item", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: ""}
-			o.code = setter.ResponseUpdating
+			o.result.Code = setter.ResponseUpdating
 			o.result.Cleanup.Code = api.WAFListCleanupUpdating
 			o.result.Cleanup.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}
 			o.result.Cleanup.Stages = []api.WAFCleanupStage{
@@ -102,10 +100,8 @@ func TestRenderWAFCleanupAndMembership(t *testing.T) {
 	}
 	old := api.WAFListItem{ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24"), Comment: "owned"}
 	var o wafOutcome
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-	o.code = setter.ResponseUpdated
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
+	o.scope = wafScope{ipnet.IP4: true}
+	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
 	o.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: nil, ReturnedItems: nil}}}
 	text := renderWAF(o)
@@ -130,7 +126,7 @@ func TestRenderFamilyProblemsPrecedeWAF(t *testing.T) {
 	t.Parallel()
 	m := generateDetectMessage(ipnet.IP6, false)
 	var waf wafOutcome
-	waf.code = setter.ResponseFailed
+	waf.result.Code = setter.ResponseFailed
 	m.waf = []wafOutcome{waf}
 	text := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.Less(t, strings.Index(text, "IPv6"), strings.Index(text, "WAF"))
@@ -195,8 +191,8 @@ func TestRenderWAFOperationGroups(t *testing.T) {
 							creates = append(creates, api.WAFListCreateItem{Prefix: prefix, Comment: "owned"})
 						}
 						var o wafOutcome
-						o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-						o.code = setter.ResponseFailed
+						o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
+						o.result.Code = setter.ResponseFailed
 						o.result.Before = &api.WAFSnapshot{Exists: true, Cached: cached, Items: items}
 						batch := setter.WAFBatch{Create: creates, Delete: nil, Result: status.result}
 						label := "Addition " + status.name
@@ -241,8 +237,8 @@ func TestRenderWAFAcceptedCleanupGroups(t *testing.T) {
 					items = append(items, api.WAFListItem{ID: api.ID(strconv.Itoa(i)), Prefix: netip.MustParsePrefix(fmt.Sprintf("192.0.2.%d/32", i+1)), Comment: "owned"})
 				}
 				var o wafOutcome
-				o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-				o.cleanup, o.code = true, setter.ResponseUpdating
+				o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
+				o.cleanup, o.result.Code = true, setter.ResponseUpdating
 				o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: items}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: items, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: nil, ReturnedItems: nil}}}}
 				text := renderWAF(o)
 				require.Equal(t, 1, strings.Count(text, "Cleanup started"))

@@ -14,6 +14,9 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+// reportingOutcome supplies consistent default progress and reached effects.
+// Tests that replace individual fields to isolate rendering qualifications are
+// projections, not complete setter traces; stateful tests rebuild whole rounds.
 func reportingOutcome(name string, code setter.ResponseCode, before *setter.DNSSnapshot) dnsOutcome {
 	var progress *setter.DNSProgress
 	if before != nil {
@@ -35,19 +38,59 @@ func reportingOutcome(name string, code setter.ResponseCode, before *setter.DNSS
 					progress.Operations = append(progress.Operations, reportingOperation(api.RecordDelete, status, string(record.ID), record.IP.String()))
 				}
 			}
-			if status == setter.DNSOperationCompleted {
-				for i := range progress.Operations {
-					progress.Operations[i].Membership = api.MembershipManaged
+			for i := range progress.Operations {
+				op := &progress.Operations[i]
+				if status == setter.DNSOperationCompleted && op.Kind != api.RecordDelete {
+					op.Membership = api.MembershipManaged
+				}
+				if status == setter.DNSOperationBlocked && i > 0 {
+					op.Status = setter.DNSOperationNotAttempted
+				}
+				if op.Kind == api.RecordCreate && status != setter.DNSOperationCompleted {
+					op.Record.ID = ""
 				}
 			}
 		}
 	}
-	return dnsOutcome{
+	o := dnsOutcome{
 		filtered: false,
 		scope:    dnsScope{domain: domain.FQDN(name), family: ipnet.IP4},
 		cleanup:  false,
 		target:   []netip.Addr{netip.MustParseAddr("192.0.2.2")},
 		result:   setter.DNSResult{Progress: progress, Code: code, Before: before, Effects: nil},
+	}
+	if code == setter.ResponseNoop && progress != nil {
+		o.target = canonicalAddresses(progress.Satisfied)
+		progress.Satisfied = canonicalAddresses(progress.Satisfied)
+	}
+	reportingSyncEffects(&o)
+	return o
+}
+
+// reportingSyncEffects rebuilds the API projection after a test changes progress.
+// It does not infer progress from effects or change the facts under test.
+func reportingSyncEffects(o *dnsOutcome) {
+	o.result.Effects = nil
+	if o.result.Progress == nil {
+		return
+	}
+	for _, op := range o.result.Progress.Operations {
+		var status api.MutationStatus
+		switch op.Status {
+		case setter.DNSOperationCompleted:
+			status = api.MutationCompleted
+		case setter.DNSOperationUnconfirmed:
+			status = api.MutationUnconfirmed
+		default:
+			continue
+		}
+		fact := op.Record
+		if op.Kind == api.RecordDelete {
+			fact.IP = netip.Addr{}
+		}
+		o.result.Effects = append(o.result.Effects, api.RecordMutation{
+			Status: status, Kind: op.Kind, Record: fact, Membership: op.Membership,
+		})
 	}
 }
 
@@ -73,8 +116,7 @@ func TestReportingDeferredCoverage(t *testing.T) {
 	first := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindUpdateFailure, first.Notification().Kind)
 	s.Submitted(first)
-	b.result.Code = setter.ResponseNoop
-	b.result.Before = reportingSnapshot("")
+	b = reportingOutcome("b.example", setter.ResponseNoop, reportingSnapshot(""))
 	second := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindStateObservation, second.Notification().Kind)
 	require.NotContains(t, second.Notification().Format(), "a.example")
@@ -93,11 +135,10 @@ func TestReportingCoverageUsesHistoricalBeforeNotTarget(t *testing.T) {
 			s := NewReportingState(true)
 			o := reportingOutcome("a.example", setter.ResponseFailed, nil)
 			if known {
-				o.result.Before = reportingSnapshot("")
+				o = reportingOutcome("a.example", setter.ResponseFailed, reportingSnapshot(""))
 			}
 			s.Submitted(Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
-			o.result.Code = setter.ResponseNoop
-			o.result.Before = reportingSnapshot("")
+			o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot(""))
 			require.Equal(t, known, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 		})
 	}
@@ -108,9 +149,9 @@ func TestReportingOneShotNoCrossRoundTracking(t *testing.T) {
 	s := NewReportingState(false)
 	o := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
 	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
-	o.result.Before = reportingSnapshot("192.0.2.2")
+	o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
 	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
-	o.result.Code = setter.ResponseUpdated
+	o = reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	require.Equal(t, notifier.KindUpdate, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Kind)
 }
 
@@ -119,7 +160,7 @@ func TestReportingObservationAdvancesOnAssess(t *testing.T) {
 	s := NewReportingState(true)
 	o := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
 	s.Submitted(Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
-	o.result.Before = reportingSnapshot("192.0.2.2")
+	o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
 	a := s.Assess(reportingMessage(o))
 	first := Compose(a, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindStateObservation, first.Notification().Kind)
@@ -128,6 +169,20 @@ func TestReportingObservationAdvancesOnAssess(t *testing.T) {
 	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 }
 
+func TestReportingReachedEffectsExplainNextFreshRead(t *testing.T) {
+	t.Parallel()
+	state := NewReportingState(true)
+	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
+	updated := reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
+	state.Submitted(Compose(state.Assess(reportingMessage(updated)), context))
+	after := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
+	require.True(t, Compose(state.Assess(reportingMessage(after)), context).IsEmpty())
+	unexpected := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.3"))
+	require.False(t, Compose(state.Assess(reportingMessage(unexpected)), context).IsEmpty())
+}
+
+// Each row below isolates one grouping qualification, rather than claiming the
+// modified outcome is a complete producer trace.
 func TestReportingGroupingUsesAllRenderedFacts(t *testing.T) {
 	t.Parallel()
 	for name, modify := range map[string]func(*dnsOutcome){
@@ -202,7 +257,7 @@ func TestReportingLifecyclePriorityAndConstituentFailures(t *testing.T) {
 			m := reportingMessage(reportingOutcome("failed.example", setter.ResponseFailed, nil))
 			m.cleanup = tc.cleanup
 			m.dns[0].cleanup = tc.cleanup
-			m.waf = []wafOutcome{{result: setter.WAFResult{Code: setter.ResponseNoop, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, configured: nil, active: nil, list: api.WAFList{AccountID: "account", Name: "failed-list"}, code: setter.ResponseFailed, cleanup: tc.cleanup}}
+			m.waf = []wafOutcome{{result: setter.WAFResult{Code: setter.ResponseFailed, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, scope: nil, list: api.WAFList{AccountID: "account", Name: "failed-list"}, cleanup: tc.cleanup}}
 			m.problems = []operationProblem{{kind: problemDetection, family: ipnet.IP4, domains: nil}, {kind: problemFiltering, family: ipnet.IP6, domains: nil}, {kind: problemDerivation, family: ipnet.IP6, domains: []domain.Domain{domain.FQDN("derive.example")}}, {kind: problemMissingTarget, family: ipnet.IP4, domains: []domain.Domain{domain.FQDN("missing.example")}}}
 			e := Compose(NewReportingState(true).Assess(m), LifecycleContext{Kind: tc.lifecycle, Schedule: "schedule"})
 			require.Equal(t, tc.want, e.Notification().Kind)
@@ -270,19 +325,21 @@ func TestReportingGroupingIgnoresEquivalentMechanicsAndCoverageReason(t *testing
 	s := NewReportingState(true)
 	a := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
 	s.Submitted(Compose(s.Assess(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
-	a.result.Code = setter.ResponseUpdated
+	a = reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	a.result.Progress.Operations = []setter.DNSOperation{{Status: setter.DNSOperationCompleted, Kind: api.RecordUpdate, Record: api.RecordFact{ID: "record", IP: a.target[0]}, Membership: api.MembershipManaged}}
 	b := a.clone()
 	b.scope.domain = domain.FQDN("b.example")
 	b.result.Progress.Operations[0].Kind = api.RecordCreate
 	b.result.Progress.Operations[0].Record.ID = "different-id"
 	b.result.Progress.Operations = append(b.result.Progress.Operations, reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, "record", "192.0.2.1"))
+	reportingSyncEffects(&a)
+	reportingSyncEffects(&b)
 	e := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 1)
 	s.Submitted(e)
-	b.result.Code = setter.ResponseNoop
+	b = reportingOutcome("b.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
+	b.result.Before.Records[0].ID = "different-id"
 	b.result.Before.Cached = true
-	b.result.Progress.Operations = nil
 	require.True(t, Compose(s.Assess(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 }
 
@@ -309,7 +366,7 @@ func TestReportingGroupingRetainsObservationContext(t *testing.T) {
 	s := NewReportingState(true)
 	a := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
 	s.Submitted(Compose(s.Assess(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
-	a.result.Before = reportingSnapshot("192.0.2.2")
+	a = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
 	b := a.clone()
 	b.scope.domain = domain.FQDN("b.example")
 	e := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
@@ -338,7 +395,7 @@ func TestReportingWAFPendingCleanupAndLifecycleOnly(t *testing.T) {
 			t.Parallel()
 			m := newMessage()
 			m.cleanup = true
-			m.waf = []wafOutcome{{result: setter.WAFResult{Code: setter.ResponseNoop, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, configured: nil, active: nil, list: api.WAFList{AccountID: "account", Name: "list"}, code: tc.code, cleanup: true}}
+			m.waf = []wafOutcome{{result: setter.WAFResult{Code: tc.code, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, scope: nil, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: true}}
 			e := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: tc.lifecycle, Schedule: ""})
 			require.Equal(t, tc.empty, e.IsEmpty())
 			require.Equal(t, tc.want, e.Notification().Kind)
@@ -528,7 +585,7 @@ func TestReportingWAFEmptyFallbackRetainsAttempt(t *testing.T) {
 			result := setter.WAFResult{Code: setter.ResponseNoop, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupNoop, Before: before, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}}}}}
 			m := newMessage()
 			m.cleanup = true
-			m.waf = []wafOutcome{{result: result, filtered: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, active: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "account", Name: "list"}, code: setter.ResponseNoop, cleanup: true}}
+			m.waf = []wafOutcome{{result: result, filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: true}}
 			e := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: lifecycle, Schedule: ""})
 			require.Contains(t, e.Notification().Format(), "List deletion unconfirmed")
 			require.Contains(t, e.Notification().Format(), "Current: no items")
@@ -537,6 +594,8 @@ func TestReportingWAFEmptyFallbackRetainsAttempt(t *testing.T) {
 	}
 }
 
+// Deliberately cross status and membership, including combinations the current
+// producer never emits, to verify conservative exclusion-label eligibility.
 func TestReportingCommentExclusionRequiresCompletedReturnedMismatch(t *testing.T) {
 	t.Parallel()
 	for _, kind := range []api.RecordMutationKind{api.RecordCreate, api.RecordUpdate} {

@@ -40,9 +40,8 @@ func TestRenderWAFObservationAndCause(t *testing.T) {
 	added := api.WAFListItem{ID: "new", Prefix: netip.MustParsePrefix("192.0.2.2/32"), Comment: "owned"}
 	var o wafOutcome
 	o.filtered = true
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.code = setter.ResponseUpdated
+	o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: false}
+	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
 	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{added}}, ReturnedItems: []api.WAFListItem{added}}}}
 	text := renderWAF(o)
@@ -79,9 +78,8 @@ func TestRenderWAFIdentityCardinality(t *testing.T) {
 	duplicate.ID = "two"
 	var o wafOutcome
 	o.filtered = true
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.code = setter.ResponseUpdated
+	o.scope = wafScope{ipnet.IP4: true}
+	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
 	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, duplicate}}, ReturnedItems: []api.WAFListItem{item, duplicate}}}}
 	text := renderWAF(o)
@@ -96,10 +94,9 @@ func TestRenderWAFAcceptedCleanupScope(t *testing.T) {
 	for _, cached := range []bool{false, true} {
 		var o wafOutcome
 		o.filtered = true
-		o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-		o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+		o.scope = wafScope{ipnet.IP4: true}
 		o.cleanup = true
-		o.code = setter.ResponseUpdating
+		o.result.Code = setter.ResponseUpdating
 		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{PrerequisiteMutation: false, Status: api.WAFBatchAccepted, OK: true, Returned: nil, ReturnedItems: nil}}}}
 		text := renderWAF(o)
 		require.NotContains(t, text, "all managed")
@@ -123,9 +120,8 @@ func TestRenderWAFBlockedInputAndResponseOrdering(t *testing.T) {
 	old := api.WAFListItem{ID: "one", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "owned"}
 	var o wafOutcome
 	o.filtered = true
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.code = setter.ResponseFailed
+	o.scope = wafScope{ipnet.IP4: true}
+	o.result.Code = setter.ResponseFailed
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{old}}
 	o.result.Batches = []setter.WAFBatch{
 		{Create: []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("192.0.2.2/32"), Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchNoEffect, Returned: nil, ReturnedItems: nil}},
@@ -154,9 +150,8 @@ func TestRenderWAFEmptyInventoryUsesItems(t *testing.T) {
 		for _, cached := range []bool{false, true} {
 			var o wafOutcome
 			o.filtered = filtered
-			o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-			o.active = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-			o.code = setter.ResponseNoop
+			o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
+			o.result.Code = setter.ResponseNoop
 			o.result.Before = &api.WAFSnapshot{Exists: true, Cached: cached, Items: nil}
 			text := renderWAF(o)
 			require.NotContains(t, text, "prefix")
@@ -189,9 +184,8 @@ func TestRenderWAFPrefixOnlyReturnRetainsCompletedAddition(t *testing.T) {
 			t.Parallel()
 			var o wafOutcome
 			o.filtered = true
-			o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-			o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-			o.code = setter.ResponseUpdated
+			o.scope = wafScope{ipnet.IP4: true}
+			o.result.Code = setter.ResponseUpdated
 			o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: tc.before}
 			full := append([]api.WAFListItem{foreign}, tc.before...)
 			o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: foreign.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: tc.before}, ReturnedItems: full}}}
@@ -218,9 +212,8 @@ func TestRenderWAFPrefixOnlyReturnRetainsCompletedAddition(t *testing.T) {
 func TestRenderWAFNoopPreservesKnownMissingList(t *testing.T) {
 	t.Parallel()
 	var o wafOutcome
-	o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.active = map[ipnet.Family]bool{ipnet.IP4: true}
-	o.code = setter.ResponseNoop
+	o.scope = wafScope{ipnet.IP4: true}
+	o.result.Code = setter.ResponseNoop
 	o.result.Code = setter.ResponseNoop
 	o.result.Before = &api.WAFSnapshot{Exists: false, Cached: false, Items: nil}
 	text := renderWAF(o)

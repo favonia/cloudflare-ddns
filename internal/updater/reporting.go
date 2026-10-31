@@ -55,7 +55,8 @@ type assessedDNS struct {
 }
 
 // Assessment owns an immutable snapshot of one assessed round and its selection
-// context. Its zero value can be composed with lifecycle-only context.
+// context. Recomposition retains this original context even after submission;
+// it does not query later reporting state. Its zero value supports lifecycle-only context.
 type Assessment struct {
 	dns      []assessedDNS
 	waf      []wafOutcome
@@ -112,7 +113,8 @@ func (e Envelope) Notification() notifier.Notification {
 func (e Envelope) IsEmpty() bool { return e.notification.IsEmpty() }
 
 // Submitted records only known Before information included in a nonempty envelope.
-// Call immediately before Notifier.Send, irrespective of its eventual return value.
+// The envelope must come from this state and ownership scope. Call immediately
+// before Notifier.Send, irrespective of its eventual return value.
 func (s *ReportingState) Submitted(e Envelope) {
 	if !s.scheduled || e.IsEmpty() {
 		return
@@ -254,7 +256,7 @@ func canonicalAddresses(addresses []netip.Addr) []netip.Addr {
 // Reached cleanup stages remain reportable even when a later fresh empty
 // fallback makes the aggregate work result a successful no-op.
 func wafHasOperation(o wafOutcome) bool {
-	return o.code != setter.ResponseNoop || (o.result.Cleanup != nil && len(o.result.Cleanup.Stages) > 0)
+	return o.result.Code != setter.ResponseNoop || (o.result.Cleanup != nil && len(o.result.Cleanup.Stages) > 0)
 }
 
 func notificationKind(a Assessment, lifecycle LifecycleContext) notifier.Kind {
@@ -270,7 +272,7 @@ func notificationKind(a Assessment, lifecycle LifecycleContext) notifier.Kind {
 		cleanup = cleanup || entry.outcome.cleanup
 	}
 	for _, o := range a.waf {
-		failed = failed || o.code == setter.ResponseFailed
+		failed = failed || o.result.Code == setter.ResponseFailed
 		operation = operation || wafHasOperation(o)
 		cleanup = cleanup || o.cleanup
 	}

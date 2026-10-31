@@ -44,7 +44,7 @@ func TestNotificationProblemRenderingCapture(t *testing.T) {
 			if scenario.message.cleanup {
 				kind = notifier.KindCleanupFailure
 			}
-			if strings.HasPrefix(scenario.name, "defensive-waf-") && scenario.message.waf[0].code != setter.ResponseFailed {
+			if strings.HasPrefix(scenario.name, "defensive-waf-") && scenario.message.waf[0].result.Code != setter.ResponseFailed {
 				kind = notifier.KindUpdate
 				if scenario.message.cleanup {
 					kind = notifier.KindCleanup

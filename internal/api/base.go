@@ -135,18 +135,19 @@ type Handle interface {
 		fallbackParams RecordParams,
 	) ([]Record, bool, bool)
 
-	// UpdateRecord reconciles one managed DNS record to the desired state.
-	//
-	// Implementations must apply the desired DNS content and metadata in
-	// desiredParams for this record:
-	// - content/IP: ip
-	// - ttl/proxied/comment/tags: desiredParams
+	// UpdateRecord requests reconciliation of one DNS record to ip and the
+	// TTL, proxy, comment, and tag values in desiredParams. Completion and
+	// returned membership are separate evidence; requested metadata alone does
+	// not establish that the resulting record matches the managed selector.
+	// See RecordMutation for the returned address and membership guarantees.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		id ID, ip netip.Addr, desiredParams RecordParams,
 	) RecordMutation
 
-	// CreateRecord creates one managed DNS record with the given desired metadata.
-	// It returns operation and returned-membership evidence.
+	// CreateRecord requests creation of one DNS record with ip and desiredParams.
+	// Its result distinguishes completion from returned managed membership;
+	// requesting creation does not guarantee admission to the managed set.
+	// See RecordMutation for the returned address and membership guarantees.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		ip netip.Addr, desiredParams RecordParams) RecordMutation
 
@@ -164,6 +165,12 @@ type Handle interface {
 	// implementations may cache filtered items by WAF-list scope.
 	// fallbackItemComment is the fallback comment target for newly created
 	// managed list items; implementations may use it for advisory mismatch hints.
+	//
+	// After a dispatched item mutation, implementations must replace the item
+	// cache with usable returned contents or invalidate it, including when the
+	// mutation completed but its response could not be parsed. A later listing
+	// must not reuse that pre-mutation inventory. This does not promise freshness
+	// against changes made outside this handle.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.

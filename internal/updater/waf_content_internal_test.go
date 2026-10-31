@@ -19,16 +19,16 @@ func TestWAFObservedInventoryAndChronology(t *testing.T) {
 	inactive := api.WAFListItem{Comment: "", ID: "inactive", Prefix: netip.MustParsePrefix("2001:db8::/32")}
 	next := api.WAFListItem{Comment: "", ID: "next", Prefix: netip.MustParsePrefix("198.51.100.0/24")}
 	for _, cached := range []bool{false, true} {
-		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}}
 		o.result.Before = &api.WAFSnapshot{Exists: true, Cached: cached, Items: []api.WAFListItem{old, inactive}}
 		c := o.content()
 		require.Equal(t, o.result.Before, c.observed)
 		require.False(t, c.inputHistorical)
 		c.observed.Items[0].ID = "detached"
 		require.Equal(t, api.ID("old"), o.result.Before.Items[0].ID)
-		o.configured[ipnet.IP6] = false
+		delete(o.scope, ipnet.IP6)
 		require.Equal(t, []api.WAFListItem{old}, o.content().observed.Items)
-		o.configured[ipnet.IP6] = true
+		o.scope[ipnet.IP6] = false
 		request := []api.WAFListCreateItem{{Comment: "", Prefix: next.Prefix}}
 		for _, structural := range []bool{false, true} {
 			o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: request, Result: &api.WAFBatchResult{OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchNoEffect, PrerequisiteMutation: structural}}}
@@ -37,7 +37,7 @@ func TestWAFObservedInventoryAndChronology(t *testing.T) {
 			require.Equal(t, !structural, c.observed != nil)
 		}
 		returned := &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{next, inactive}}
-		o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: request, Result: &api.WAFBatchResult{ReturnedItems: nil, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: returned}}, {Create: nil, Delete: nil, Result: &api.WAFBatchResult{Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchNoEffect}}}
+		o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: request, Result: &api.WAFBatchResult{ReturnedItems: returned.Items, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: returned}}, {Create: nil, Delete: nil, Result: &api.WAFBatchResult{Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchNoEffect}}}
 		c = o.content()
 		require.True(t, c.deltaKnown)
 		require.True(t, c.inputHistorical)
@@ -57,7 +57,7 @@ func TestWAFContentIssuesAndTerminalRecovery(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{Comment: "", ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	for _, invalid := range []bool{false, true} {
-		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 		o.result.Before = &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}
 		result := &api.WAFBatchResult{OK: false, Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, Status: api.WAFBatchCompleted}
 		want := wafReturnedContentsUnavailable
@@ -88,7 +88,7 @@ func TestWAFExclusionsTrackIdentityTransitions(t *testing.T) {
 	outside.Comment = "foreign"
 	other := outside
 	other.ID = "other"
-	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Before = &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}
 	response := func(selected, all []api.WAFListItem) setter.WAFBatch {
 		return setter.WAFBatch{Delete: nil, Create: []api.WAFListCreateItem{{Comment: "", Prefix: old.Prefix}}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: selected}, ReturnedItems: all}}
@@ -112,7 +112,7 @@ func TestWAFReturnedIdentityMustAgreeAcrossViews(t *testing.T) {
 	item := api.WAFListItem{Comment: "", ID: "same", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	conflicting := item
 	conflicting.Prefix = netip.MustParsePrefix("198.51.100.0/24")
-	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Before = &api.WAFSnapshot{Cached: false, Items: nil, Exists: true}
 	o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: []api.WAFListCreateItem{{Comment: "", Prefix: item.Prefix}}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}, ReturnedItems: []api.WAFListItem{conflicting}}}}
 	c := o.content()
@@ -124,12 +124,12 @@ func TestWAFReturnedIdentityMustAgreeAcrossViews(t *testing.T) {
 func TestWAFObservedUnknownMissingEmpty(t *testing.T) {
 	t.Parallel()
 	for _, input := range []*api.WAFSnapshot{nil, {Cached: false, Items: nil, Exists: false}, {Cached: false, Items: nil, Exists: true}, {Items: nil, Exists: true, Cached: true}} {
-		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, active: nil, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}}
+		o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: false}}
 		o.result.Before = input
 		require.Equal(t, input, o.content().observed)
 	}
 	item := api.WAFListItem{Comment: "", ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
-	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Cleanup = &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}, Stages: []api.WAFCleanupStage{{Items: nil, WholeList: true, Result: api.WAFBatchResult{OK: false, Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, Status: api.WAFBatchUnconfirmed}}}}
 	// Fallback input follows the failed whole-list operation.
 	require.False(t, o.content().inputHistorical)
@@ -147,8 +147,10 @@ func TestWAFExclusionsRespectConfiguredOwnership(t *testing.T) {
 	outside.Comment = "foreign"
 	for _, configured := range []bool{false, true} {
 		var o wafOutcome
-		o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: configured}
-		o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+		o.scope = wafScope{ipnet.IP4: true}
+		if configured {
+			o.scope[ipnet.IP6] = false
+		}
 		o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
 		o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedItems: []api.WAFListItem{outside}}}}
 		if configured {
@@ -171,8 +173,10 @@ func TestWAFDeltaMembershipUsesConfiguredOwnership(t *testing.T) {
 	for _, configured := range []bool{false, true} {
 		for _, laterResponse := range []bool{false, true} {
 			var o wafOutcome
-			o.configured = map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: configured}
-			o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+			o.scope = wafScope{ipnet.IP4: true}
+			if configured {
+				o.scope[ipnet.IP6] = false
+			}
 			o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, six}}
 			returned := []api.WAFListItem{old, added}
 			full := []api.WAFListItem{old, added, outside}
@@ -232,12 +236,11 @@ func TestWAFCleanupCompletenessRequiresAdmittedIdentities(t *testing.T) {
 					targets = append(targets, target)
 				}
 				var o wafOutcome
-				o.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-				o.active = map[ipnet.Family]bool{ipnet.IP4: true}
+				o.scope = wafScope{ipnet.IP4: true}
 				o.filtered, o.cleanup = true, true
-				o.code = setter.ResponseUpdating
+				o.result.Code = setter.ResponseUpdating
 				if status == api.WAFBatchCompleted {
-					o.code = setter.ResponseUpdated
+					o.result.Code = setter.ResponseUpdated
 				}
 				before := &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{original}}
 				o.result.Cleanup = &api.WAFCleanupResult{Before: before, Code: api.WAFListCleanupUpdating, Stages: []api.WAFCleanupStage{
@@ -255,6 +258,41 @@ func TestWAFCleanupCompletenessRequiresAdmittedIdentities(t *testing.T) {
 				require.Contains(t, text, "before cleanup")
 				require.Contains(t, text, original.Prefix.String())
 			})
+		}
+	}
+}
+
+// Work success and trustworthy inventory are separate evidence. The current
+// parser reports nil inventory on failure, but WAFBatchResult does not promise
+// that every usable observation implies OK. Preserve that boundary without
+// interpreting an observed target as proof that all requested work succeeded.
+func TestWAFObservedInventoryDoesNotImplyWorkSuccess(t *testing.T) {
+	t.Parallel()
+	old := api.WAFListItem{ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24"), Comment: "owned"}
+	next := api.WAFListItem{ID: "next", Prefix: netip.MustParsePrefix("198.51.100.0/24"), Comment: "owned"}
+	for _, ok := range []bool{false, true} {
+		var o wafOutcome
+		o.scope = wafScope{ipnet.IP4: true}
+		o.result.Before = &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{old}}
+		returned := &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, next}}
+		o.result.Batches = []setter.WAFBatch{{
+			Create: []api.WAFListCreateItem{{Prefix: next.Prefix, Comment: next.Comment}},
+			Delete: nil,
+			Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: ok, Status: api.WAFBatchCompleted, Returned: returned, ReturnedItems: returned.Items},
+		}}
+		content := o.content()
+		require.Equal(t, returned, content.observed)
+		require.True(t, content.inputHistorical)
+		require.Empty(t, content.issues)
+		require.Equal(t, ok, content.deltaKnown)
+		if ok {
+			require.Empty(t, content.removed)
+			require.Equal(t, []api.WAFListItem{old}, content.unchanged)
+			require.Equal(t, []api.WAFListItem{next}, content.added)
+		} else {
+			require.Empty(t, content.removed)
+			require.Empty(t, content.added)
+			require.Empty(t, content.unchanged)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package updater
 import (
 	"net/netip"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func TestWAFProjectionRetainsFullCurrentAndActualPrefixes(t *testing.T) {
 	t.Parallel()
 	v4 := api.WAFListItem{Comment: "", ID: "v4", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	v6 := api.WAFListItem{Comment: "", ID: "v6", Prefix: netip.MustParsePrefix("2001:db8::/32")}
-	o := wafOutcome{filtered: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "", Name: ""}, code: setter.ResponseNoop, cleanup: false, result: setter.WAFResult{Code: 0, Batches: nil, Cleanup: nil, Before: &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{v4, v6}}}, active: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: false}}
+	o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Batches: nil, Cleanup: nil, Before: &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{v4, v6}}}}
 	content := o.content()
 	require.NotNil(t, content.before)
 	require.Equal(t, []api.WAFListItem{v4, v6}, content.before.Items)
@@ -118,13 +119,13 @@ func TestDNSRemovalSingularRequiresCompleteIdentity(t *testing.T) {
 func TestWAFContentUnknownMissingEmptyAndFailedBatches(t *testing.T) {
 	t.Parallel()
 	for _, snapshot := range []*api.WAFSnapshot{nil, {Cached: false, Items: nil, Exists: false}, {Cached: false, Items: nil, Exists: true}, {Items: nil, Exists: true, Cached: true}} {
-		o := wafOutcome{filtered: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, active: nil, list: api.WAFList{AccountID: "", Name: ""}, code: setter.ResponseNoop, cleanup: false, result: setter.WAFResult{Code: 0, Batches: nil, Cleanup: nil, Before: snapshot}}
+		o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: false, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Batches: nil, Cleanup: nil, Before: snapshot}}
 		require.Equal(t, snapshot, o.content().before)
 	}
 	old := api.WAFListItem{Comment: "", ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	next := api.WAFListItem{Comment: "", ID: "new", Prefix: netip.MustParsePrefix("192.0.2.1/32")}
-	for _, result := range []*api.WAFBatchResult{nil, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchNoEffect}, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}, {PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: false}, {PrerequisiteMutation: false, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: true, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{next}}}} {
-		o := wafOutcome{filtered: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "", Name: ""}, code: setter.ResponseNoop, cleanup: false, active: map[ipnet.Family]bool{ipnet.IP4: true}, result: setter.WAFResult{Code: 0, Cleanup: nil, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, Batches: []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: result}}}}
+	for _, result := range []*api.WAFBatchResult{nil, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchNoEffect}, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}, {PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: false}, {PrerequisiteMutation: false, ReturnedItems: []api.WAFListItem{next}, Status: api.WAFBatchCompleted, OK: true, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{next}}}} {
+		o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Cleanup: nil, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, Batches: []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: result}}}}
 		content := o.content()
 		known := result != nil && result.OK
 		require.Equal(t, known, content.deltaKnown)
@@ -141,7 +142,7 @@ func TestWAFContentUnknownMissingEmptyAndFailedBatches(t *testing.T) {
 func TestWAFCleanupSnapshotFollowsWholeListFailure(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{Comment: "", ID: "post-failure", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
-	o := wafOutcome{filtered: false, configured: map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "", Name: ""}, code: setter.ResponseNoop, cleanup: false, active: map[ipnet.Family]bool{ipnet.IP4: true}, result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}, Stages: []api.WAFCleanupStage{
+	o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Before: nil, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}, Stages: []api.WAFCleanupStage{
 		{Items: nil, WholeList: true, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}},
 		{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: true}},
 	}}}}
@@ -180,8 +181,7 @@ func TestWAFCleanupDoesNotPromoteConflictingIdentity(t *testing.T) {
 	conflicting := item
 	conflicting.Prefix = netip.MustParsePrefix("192.0.3.0/24")
 	var outcome wafOutcome
-	outcome.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-	outcome.active = map[ipnet.Family]bool{ipnet.IP4: true}
+	outcome.scope = wafScope{ipnet.IP4: true}
 	outcome.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, conflicting}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: nil, ReturnedItems: nil}}}}
 	content := outcome.content()
 	require.False(t, content.deltaKnown)
@@ -194,8 +194,7 @@ func TestWAFMembershipAnomalyRetainsOperationWithoutContentDelta(t *testing.T) {
 	changed := item
 	changed.Comment = "outside-selector"
 	var outcome wafOutcome
-	outcome.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-	outcome.active = map[ipnet.Family]bool{ipnet.IP4: true}
+	outcome.scope = wafScope{ipnet.IP4: true}
 	outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}
 	outcome.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{item}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedItems: []api.WAFListItem{changed}}}}
 	content := outcome.content()
@@ -277,8 +276,7 @@ func TestWAFContentTracksOwnershipAcrossBatches(t *testing.T) {
 				selected = nil
 			}
 			var outcome wafOutcome
-			outcome.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-			outcome.active = map[ipnet.Family]bool{ipnet.IP4: true}
+			outcome.scope = wafScope{ipnet.IP4: true}
 			outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
 			outcome.result.Batches = []setter.WAFBatch{
 				{Create: []api.WAFListCreateItem{{Prefix: created.Prefix, Comment: created.Comment}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, created}}, ReturnedItems: []api.WAFListItem{old, created}}},
@@ -319,8 +317,7 @@ func TestWAFContentComparesRetainedPrefixes(t *testing.T) {
 			}
 			added := api.WAFListItem{ID: "added", Prefix: netip.MustParsePrefix("198.51.100.0/24"), Comment: "owned-new"}
 			var outcome wafOutcome
-			outcome.configured = map[ipnet.Family]bool{ipnet.IP4: true}
-			outcome.active = map[ipnet.Family]bool{ipnet.IP4: true}
+			outcome.scope = wafScope{ipnet.IP4: true}
 			outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
 			outcome.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: added.Comment}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{retained, added}}, ReturnedItems: []api.WAFListItem{retained, added}}}}
 			content := outcome.content()
@@ -339,7 +336,7 @@ func TestWAFPrefixOnlyDoesNotAttributeExclusion(t *testing.T) {
 	t.Parallel()
 	old := api.WAFListItem{Comment: "", ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	foreign := api.WAFListItem{ID: "foreign", Prefix: netip.MustParsePrefix("198.51.100.0/24"), Comment: "foreign"}
-	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Before = &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}
 	o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: []api.WAFListCreateItem{{Comment: "", Prefix: foreign.Prefix}}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, ReturnedItems: []api.WAFListItem{old, foreign}}}}
 	content := o.content()
@@ -355,10 +352,88 @@ func TestWAFCleanupSubtractsIdentityBeforePrefixProjection(t *testing.T) {
 	first := api.WAFListItem{Comment: "", ID: "first", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	second := first
 	second.ID = "second"
-	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, code: 0, cleanup: false, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}}
+	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Cleanup = &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted}}}}
 	c := o.content()
 	require.True(t, c.deltaKnown)
 	require.Empty(t, c.removed)
 	require.Equal(t, []api.WAFListItem{first}, c.unchanged)
+}
+
+// Reconciliation can complete an update and several removals before a later
+// removal becomes unconfirmed. Grouping must ignore record IDs while preserving
+// which old address was updated and how many identities each removal describes.
+func TestDNSGroupingMixedPartialOperations(t *testing.T) {
+	t.Parallel()
+	makeOutcome := func(name, prefix string) dnsOutcome {
+		o := reportingOutcome(name, setter.ResponseFailed, reportingSnapshot(""))
+		o.result.Progress.Operations = nil
+		for i, address := range []string{"192.0.2.1", "192.0.2.3", "192.0.2.5", "192.0.2.4"} {
+			id := prefix + strconv.Itoa(i)
+			o.result.Before.Records = append(o.result.Before.Records, api.RecordFact{ID: api.ID(id), IP: netip.MustParseAddr(address)})
+			kind, target, status := api.RecordDelete, address, setter.DNSOperationCompleted
+			if i == 0 {
+				kind, target = api.RecordUpdate, "192.0.2.2"
+			}
+			if i == 3 {
+				status = setter.DNSOperationUnconfirmed
+			}
+			op := reportingOperation(kind, status, id, target)
+			if kind == api.RecordUpdate {
+				op.Membership = api.MembershipManaged
+			}
+			o.result.Progress.Operations = append(o.result.Progress.Operations, op)
+		}
+		return o
+	}
+	for _, difference := range []string{"identity only", "old update operand", "removal count"} {
+		t.Run(difference, func(t *testing.T) {
+			t.Parallel()
+			a, b := makeOutcome("a.example", "a"), makeOutcome("b.example", "b")
+			switch difference {
+			case "old update operand":
+				// Same input address set and target, but different recycled record.
+				b.result.Progress.Operations[0].Record.ID = "b1"
+				b.result.Progress.Operations[1].Record = b.result.Before.Records[0]
+			case "removal count":
+				// Defensive admitted input: distinct identities may share an address.
+				// No claim is made that Cloudflare normally creates such duplicates.
+				extra := api.RecordFact{ID: "extra", IP: netip.MustParseAddr("192.0.2.3")}
+				b.result.Before.Records = append(b.result.Before.Records, extra)
+				op := reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, string(extra.ID), extra.IP.String())
+				b.result.Progress.Operations = append(b.result.Progress.Operations[:3], op, b.result.Progress.Operations[3])
+			}
+			for _, o := range []*dnsOutcome{&a, &b} {
+				for _, op := range o.result.Progress.Operations {
+					status := api.MutationCompleted
+					if op.Status == setter.DNSOperationUnconfirmed {
+						status = api.MutationUnconfirmed
+					}
+					fact := op.Record
+					if op.Kind == api.RecordDelete {
+						fact.IP = netip.Addr{}
+					}
+					o.result.Effects = append(o.result.Effects, api.RecordMutation{Kind: op.Kind, Status: status, Record: fact, Membership: op.Membership})
+				}
+			}
+			state := NewReportingState(true)
+			envelope := Compose(state.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			wantBlocks := 2
+			if difference == "identity only" {
+				wantBlocks = 1
+			}
+			text := envelope.Notification().Format()
+			require.Equal(t, wantBlocks, strings.Count(text, "IPv4 DNS for "))
+			require.Contains(t, text, "a.example")
+			require.Contains(t, text, "b.example")
+			require.Contains(t, text, "192.0.2.1 → 192.0.2.2")
+			require.Contains(t, text, "Removal unconfirmed: 192.0.2.4")
+			if difference == "old update operand" {
+				require.Contains(t, text, "192.0.2.3 → 192.0.2.2")
+			}
+			if difference == "removal count" {
+				require.Contains(t, text, "192.0.2.3 (2 records)")
+			}
+		})
+	}
 }
