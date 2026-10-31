@@ -27,16 +27,29 @@ type dnsOutcome struct {
 	result   setter.DNSResult
 }
 
-// wafOutcome owns admitted evidence and immutable ownership separately from
-// availability. code is the legacy renderer projection of result.Code.
+// wafScope records managed families by key presence and operation selection by
+// value. A false value retains owned inventory while excluding that family from
+// this operation's delta. Selection does not promise successful completion.
+// A missing key is unmanaged, including when its inventory would be empty.
+type wafScope map[ipnet.Family]bool
+
+func (s wafScope) manages(family ipnet.Family) bool {
+	_, present := s[family]
+	return present
+}
+
+func (s wafScope) selects(family ipnet.Family) bool { return s[family] }
+
+// wafOutcome owns admitted evidence and scope. cleanup records invocation intent,
+// while result.Cleanup carries admitted cleanup evidence; neither is inferred
+// from the work code. Production cleanup selects every managed family; consumers
+// also preserve scope distinctions when supplied a partial cleanup selection.
 type wafOutcome struct {
-	result     setter.WAFResult
-	filtered   bool
-	configured map[ipnet.Family]bool
-	active     map[ipnet.Family]bool
-	list       api.WAFList
-	code       setter.ResponseCode
-	cleanup    bool
+	result   setter.WAFResult
+	filtered bool
+	scope    wafScope
+	list     api.WAFList
+	cleanup  bool
 }
 
 type operationProblemKind uint8
@@ -78,8 +91,7 @@ func (o dnsOutcome) clone() dnsOutcome {
 
 // clone detaches all nested producer evidence at each retention boundary.
 func (o wafOutcome) clone() wafOutcome {
-	o.configured = maps.Clone(o.configured)
-	o.active = maps.Clone(o.active)
+	o.scope = maps.Clone(o.scope)
 	o.result.Before = cloneWAFSnapshot(o.result.Before)
 	o.result.Batches = slices.Clone(o.result.Batches)
 	for i := range o.result.Batches {

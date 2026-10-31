@@ -69,6 +69,10 @@ func TestCompatibleFactorsEnumeration(t *testing.T) {
 	}
 }
 
+// These fixtures project the evidence consumed by assess, not complete setter
+// results or claims that every sequence is a reachable reconciliation trace.
+// Missing progress and intermediate read omissions keep the unit model focused
+// on inference; effects retain the API identity/address and admission rules.
 func inferenceRead(ids string, addresses ...int) setter.DNSResult {
 	records := make([]api.RecordFact, len(addresses))
 	for i, a := range addresses {
@@ -78,7 +82,19 @@ func inferenceRead(ids string, addresses ...int) setter.DNSResult {
 }
 
 func inferenceEffect(status api.MutationStatus, kind api.RecordMutationKind, id string, address int, membership api.ManagedMembership) setter.DNSResult {
-	return setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: []api.RecordMutation{{Status: status, Kind: kind, Record: api.RecordFact{ID: api.ID(id), IP: inferenceAddresses()[address]}, Membership: membership}}}
+	result := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}
+	if status == api.MutationNoEffect {
+		return result
+	}
+	ip := inferenceAddresses()[address]
+	if kind == api.RecordDelete {
+		ip = netip.Addr{}
+	}
+	if kind == api.RecordCreate && status == api.MutationUnconfirmed {
+		id = ""
+	}
+	result.Effects = []api.RecordMutation{{Status: status, Kind: kind, Record: api.RecordFact{ID: api.ID(id), IP: ip}, Membership: membership}}
+	return result
 }
 
 func TestDNSInferenceTransitions(t *testing.T) {
@@ -249,34 +265,63 @@ func TestDNSInferenceIdentityAndPresence(t *testing.T) {
 	})
 }
 
-// Independent concrete outcomes check effect construction, not merely matching.
-// One update and one delete may independently complete or leave their old fact.
+// Enumerate concrete address sets independently of the factor representation.
+// The population is two independent record effects, with an optional third
+// identity sharing the deleted record's address. This unit projection checks
+// inference's accepted and rejected outcomes; it does not claim every combination
+// is a setter-produced plan (the setter stops at its first failed operation).
 func TestDNSInferencePartialEffectsSoundness(t *testing.T) {
 	t.Parallel()
-	for _, updateStatus := range []api.MutationStatus{api.MutationNoEffect, api.MutationUnconfirmed, api.MutationCompleted} {
-		for _, deleteStatus := range []api.MutationStatus{api.MutationNoEffect, api.MutationUnconfirmed, api.MutationCompleted} {
-			for _, updated := range []bool{false, true} {
-				if updateStatus == api.MutationNoEffect && updated || updateStatus == api.MutationCompleted && !updated {
-					continue
-				}
-				for _, deleted := range []bool{false, true} {
-					if deleteStatus == api.MutationNoEffect && deleted || deleteStatus == api.MutationCompleted && !deleted {
-						continue
+	statuses := []api.MutationStatus{api.MutationNoEffect, api.MutationUnconfirmed, api.MutationCompleted}
+	for _, kind := range []api.RecordMutationKind{api.RecordCreate, api.RecordUpdate} {
+		for _, changeStatus := range statuses {
+			for _, deleteStatus := range statuses {
+				for _, survivor := range []bool{false, true} {
+					possible := [8]bool{}
+					for _, changed := range []bool{false, true} {
+						if changeStatus == api.MutationNoEffect && changed || changeStatus == api.MutationCompleted && !changed {
+							continue
+						}
+						for _, deleted := range []bool{false, true} {
+							if deleteStatus == api.MutationNoEffect && deleted || deleteStatus == api.MutationCompleted && !deleted {
+								continue
+							}
+							set := 0
+							if changed {
+								set |= 1 << 1
+							} else if kind == api.RecordUpdate {
+								set |= 1 << 0
+							}
+							if !deleted || survivor {
+								set |= 1 << 2
+							}
+							possible[set] = true
+						}
 					}
-					var m dnsInference
-					m.assess(inferenceRead("rs", 0, 2))
-					m.assess(inferenceEffect(updateStatus, api.RecordUpdate, "r", 1, api.MembershipManaged))
-					m.assess(inferenceEffect(deleteStatus, api.RecordDelete, "s", 0, api.MembershipUnknown))
-					address := 0
-					if updated {
-						address = 1
-					}
-					observed := inferenceRead("r", address)
-					if !deleted {
-						observed = inferenceRead("rs", address, 2)
-					}
-					if m.assess(observed) {
-						t.Fatalf("excluded own outcome: update=%v/%v delete=%v/%v", updateStatus, updated, deleteStatus, deleted)
+					for observed, compatible := range possible {
+						var m dnsInference
+						ids, addresses := "s", []int{2}
+						if kind == api.RecordUpdate {
+							ids, addresses = "rs", []int{0, 2}
+						}
+						if survivor {
+							ids += "t"
+							addresses = append(addresses, 2)
+						}
+						m.assess(inferenceRead(ids, addresses...))
+						m.assess(inferenceEffect(changeStatus, kind, "r", 1, api.MembershipManaged))
+						m.assess(inferenceEffect(deleteStatus, api.RecordDelete, "s", 2, api.MembershipUnknown))
+						observedIDs := make([]byte, 0, len(inferenceAddresses()))
+						addresses = nil
+						for i := range inferenceAddresses() {
+							if observed&(1<<i) != 0 {
+								observedIDs = append(observedIDs, byte('a'+i))
+								addresses = append(addresses, i)
+							}
+						}
+						if got := m.assess(inferenceRead(string(observedIDs), addresses...)); got == compatible {
+							t.Fatalf("kind=%v change=%v delete=%v survivor=%v observed=%d: unexplained=%v compatible=%v", kind, changeStatus, deleteStatus, survivor, observed, got, compatible)
+						}
 					}
 				}
 			}

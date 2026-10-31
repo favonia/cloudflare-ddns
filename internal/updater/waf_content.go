@@ -58,7 +58,7 @@ func (o wafOutcome) configuredSnapshot(snapshot *api.WAFSnapshot) *api.WAFSnapsh
 		if item.Prefix.Addr().Is4() {
 			family = ipnet.IP4
 		}
-		if o.configured[family] {
+		if o.scope.manages(family) {
 			result.Items = append(result.Items, item)
 		}
 	}
@@ -75,7 +75,7 @@ func (o wafOutcome) activeItems(snapshot *api.WAFSnapshot) []api.WAFListItem {
 		if item.Prefix.Addr().Is4() {
 			family = ipnet.IP4
 		}
-		if o.active[family] {
+		if o.scope.selects(family) {
 			items = append(items, item)
 		}
 	}
@@ -247,14 +247,11 @@ func trustworthyWAFItems(items []api.WAFListItem) bool {
 }
 
 // Both returned views must identify items consistently. A supplied full view
-// contains the selected items verbatim; legacy omitted full views cannot add
-// membership evidence, but do not invalidate an independently selected snapshot.
+// contains the selected items verbatim. A nil full slice represents empty
+// returned contents, not permission to omit nonempty membership evidence.
 func trustworthyWAFResponse(result api.WAFBatchResult) bool {
 	if !trustworthyWAFItems(result.Returned.Items) || !trustworthyWAFItems(result.ReturnedItems) {
 		return false
-	}
-	if result.ReturnedItems == nil {
-		return true
 	}
 	for _, item := range result.Returned.Items {
 		if !slices.Contains(result.ReturnedItems, item) {

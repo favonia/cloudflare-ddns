@@ -37,7 +37,10 @@ const (
 // Returned contains selected managed items; ReturnedItems contains ALL parsed
 // response items, including comments outside ownership. Neither is inferred
 // from the request. Both are nil when unavailable; a nonnil Returned with zero
-// items establishes selected-empty. ReturnedItems must not be reported as owned
+// items establishes selected-empty. When Returned is nonnil, ReturnedItems is
+// the complete parsed view and contains every selected item verbatim; a nil
+// slice denotes an empty full view, not omitted membership evidence.
+// ReturnedItems must not be reported as owned
 // content without checking Returned membership. All slices are detached from
 // caches and request/response storage; returned snapshots are fresh and existing.
 type WAFBatchResult struct {

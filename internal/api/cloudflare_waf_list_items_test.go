@@ -982,3 +982,62 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		assertHandlersExhausted(t, lh, dih, lih)
 	})
 }
+
+// A completed write invalidates input inventory even when its returned contents
+// cannot be parsed. A following read must not reuse the pre-mutation snapshot.
+func TestWAFMalformedMutationResponseInvalidatesInputCache(t *testing.T) {
+	t.Parallel()
+	for _, action := range []string{"create", "delete"} {
+		t.Run(action, func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
+				old := listItem{ID: "old", Prefix: "192.0.2.1/32", Comment: ""}
+				added := listItem{ID: "new", Prefix: "192.0.2.2/32", Comment: ""}
+				var after []listItem
+				var mutation func() api.WAFBatchResult
+				var mh httpHandler
+				if action == "create" {
+					after = []listItem{old, added}
+					request := []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix(added.Prefix), Comment: ""}}
+					mh = newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), request)
+					mutation = func() api.WAFBatchResult {
+						return f.cfHandle.CreateWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", request)
+					}
+				} else {
+					request := []api.ID{old.ID}
+					mh = newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), request)
+					mutation = func() api.WAFBatchResult {
+						return f.cfHandle.DeleteWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", request)
+					}
+				}
+				lih := newListListItemsHandlerSequence(t, f.serveMux, mockID("list", 0), [][]listItem{
+					{old}, {{ID: "malformed", Prefix: "invalid item", Comment: ""}}, after,
+				})
+				lh.setRequestLimit(1)
+				mh.setRequestLimit(1)
+				lih.setRequestLimit(3)
+				initial, exists, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "")
+				require.True(t, ok)
+				require.True(t, exists)
+				require.False(t, cached)
+				require.Len(t, initial, 1)
+				result := mutation()
+				require.Equal(t, api.WAFBatchCompleted, result.Status)
+				require.False(t, result.OK)
+				require.Nil(t, result.Returned)
+				current, exists, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "")
+				require.True(t, ok)
+				require.True(t, exists)
+				assert.False(t, cached, "completed mutation must retire the pre-mutation inventory")
+				want := make([]api.WAFListItem, 0, len(after))
+				for _, item := range after {
+					want = append(want, api.WAFListItem{ID: item.ID, Prefix: netip.MustParsePrefix(item.Prefix), Comment: item.Comment})
+				}
+				require.Equal(t, want, current)
+				assertHandlersExhausted(t, lh, mh, lih)
+			})
+		})
+	}
+}

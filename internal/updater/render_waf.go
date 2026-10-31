@@ -74,7 +74,7 @@ func renderWAF(o wafOutcome) string {
 		}
 	}
 	switch {
-	case o.code == setter.ResponseNoop:
+	case o.result.Code == setter.ResponseNoop:
 		lines = append(lines, renderWAFContext(o, content.observed, false, "")...)
 		if content.observed == nil {
 			lines = append(lines, "No update needed")
@@ -123,10 +123,10 @@ func renderWAF(o wafOutcome) string {
 		action := "Update blocked"
 		if o.cleanup {
 			action = "Cleanup blocked"
-			if o.code == setter.ResponseUpdated {
+			if o.result.Code == setter.ResponseUpdated {
 				action = "Cleanup completed"
 			}
-			if o.code == setter.ResponseUpdating {
+			if o.result.Code == setter.ResponseUpdating {
 				action = "Cleanup started"
 			}
 		}
@@ -147,10 +147,10 @@ func (o wafOutcome) activeFamilyLabel() string {
 	inactive := false
 	var active []string
 	for _, family := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
-		if o.configured[family] && !o.active[family] {
+		if o.scope.manages(family) && !o.scope.selects(family) {
 			inactive = true
 		}
-		if o.configured[family] && o.active[family] {
+		if o.scope.manages(family) && o.scope.selects(family) {
 			active = append(active, family.Describe())
 		}
 	}
@@ -172,7 +172,7 @@ func (o wafOutcome) renderInactiveWAF(content wafContent) []string {
 		return nil
 	}
 	for _, family := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
-		if !o.configured[family] || o.active[family] {
+		if !o.scope.manages(family) || o.scope.selects(family) {
 			continue
 		}
 		subset := cloneWAFSnapshot(snapshot)

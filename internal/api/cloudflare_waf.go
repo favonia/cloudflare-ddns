@@ -684,6 +684,7 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
 		// Completion is independent of the returned inventory's usability.
+		h.cache.listListItems.Delete(list)
 		ppfmt.Noticef(pp.EmojiDeletion, "Removal completed in the list %s", list.Describe())
 		return WAFBatchResult{
 			PrerequisiteMutation: false,
@@ -767,6 +768,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
 		// Completion is independent of the returned inventory's usability.
+		h.cache.listListItems.Delete(list)
 		ppfmt.Noticef(pp.EmojiCreation, "Addition completed in the list %s", list.Describe())
 		return WAFBatchResult{
 			PrerequisiteMutation: prerequisiteMutation,

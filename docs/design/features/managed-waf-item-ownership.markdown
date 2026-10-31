@@ -115,7 +115,7 @@ WAF list item caches store already-filtered managed items.
 
 This relies on one handle and its bound setter using one stable managed-item filter for their lifetime. The cache key does not include filter identity.
 
-Cloudflare item-creation and item-deletion APIs return whole-list content, so managed-item filtering must be reapplied before refreshing the cache.
+Cloudflare item-creation and item-deletion APIs return whole-list content, so managed-item filtering must be reapplied before refreshing the cache. After a dispatched mutation, replace the prior item cache with usable returned contents or invalidate it. Successful mutation completion with an unparseable response does not make the pre-mutation cache reusable; the next content read must fetch again. Completion evidence remains separate from the usability of the returned inventory.
 
 ## Tradeoffs
 

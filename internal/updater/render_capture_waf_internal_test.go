@@ -74,7 +74,7 @@ func defensiveWAFRenderingScenarios() []renderingScenario {
 		case "absent-baseline-response":
 			result.Before = nil
 		}
-		o := wafOutcome{filtered: true, configured: map[ipnet.Family]bool{ipnet.IP4: true}, active: map[ipnet.Family]bool{ipnet.IP4: true}, list: api.WAFList{AccountID: "account", Name: "list"}, code: result.Code, cleanup: result.Cleanup != nil, result: result}
+		o := wafOutcome{filtered: true, scope: wafScope{ipnet.IP4: true}, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: result.Cleanup != nil, result: result}
 		responses := emptySetterWAFListResponses()
 		responses.register(o.list.Name, result.Code)
 		message := generateUpdateWAFListsMessage(responses)
